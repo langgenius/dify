@@ -4,6 +4,7 @@ import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   buildSubscriptionPayload,
   DEFAULT_FORM_VALUES,
@@ -121,7 +122,7 @@ describe('use-common-modal-state helpers', () => {
   })
 
   it('builds confirm button text for verify and create states', () => {
-    const t = (key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`
+    const t = withSelectorKey((key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`, 'pluginTrigger')
 
     expect(getConfirmButtonText({
       isVerifyStep: true,
@@ -153,7 +154,7 @@ describe('use-common-modal-state helpers', () => {
       provider: 'provider-a',
       subscriptionBuilder: undefined,
       setSubscriptionBuilder,
-      t: (key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`,
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`, 'pluginTrigger'),
     }))
 
     await waitFor(() => {
@@ -182,7 +183,7 @@ describe('use-common-modal-state helpers', () => {
       endpoint: 'http://127.0.0.1/callback',
       isConfigurationStep: true,
       subscriptionFormRef,
-      t: (key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`,
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`, 'pluginTrigger'),
     }))
 
     await waitFor(() => {

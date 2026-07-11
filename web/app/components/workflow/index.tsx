@@ -293,13 +293,13 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
   useEffect(() => {
     return collaborationManager.onHistoryAction((_) => {
-      toast.info(t('collaboration.historyAction.generic', { ns: 'workflow' }))
+      toast.info(t($ => $['collaboration.historyAction.generic'], { ns: 'workflow' }))
     })
   }, [t])
 
   useEffect(() => {
     return collaborationManager.onRestoreIntent((data) => {
-      toast.info(t('versionHistory.action.restoreInProgress', {
+      toast.info(t($ => $['versionHistory.action.restoreInProgress'], {
         ns: 'workflow',
         userName: data.initiatorName,
         versionName: data.versionName || data.versionId,
@@ -429,8 +429,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const handleCommentDeleteClick = useCallback((commentId: string) => {
     if (!showConfirm) {
       setShowConfirm({
-        title: t('comments.confirm.deleteThreadTitle', { ns: 'workflow' }),
-        desc: t('comments.confirm.deleteThreadDesc', { ns: 'workflow' }),
+        title: t($ => $['comments.confirm.deleteThreadTitle'], { ns: 'workflow' }),
+        desc: t($ => $['comments.confirm.deleteThreadDesc'], { ns: 'workflow' }),
         onConfirm: async () => {
           await handleCommentDelete(commentId)
           setShowConfirm(undefined)
@@ -442,8 +442,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const handleCommentReplyDeleteClick = useCallback((commentId: string, replyId: string) => {
     if (!showConfirm) {
       setShowConfirm({
-        title: t('comments.confirm.deleteReplyTitle', { ns: 'workflow' }),
-        desc: t('comments.confirm.deleteReplyDesc', { ns: 'workflow' }),
+        title: t($ => $['comments.confirm.deleteReplyTitle'], { ns: 'workflow' }),
+        desc: t($ => $['comments.confirm.deleteReplyDesc'], { ns: 'workflow' }),
         onConfirm: async () => {
           await handleCommentReplyDelete(commentId, replyId)
           setShowConfirm(undefined)
@@ -648,9 +648,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
             )}
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={showConfirm?.onConfirm}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

@@ -49,7 +49,7 @@ export const TextEditorSection = ({
           )
         : (
             <Textarea
-              aria-label={t('errorMsg.fields.variableValue', { ns: 'workflow' })}
+              aria-label={t($ => $['errorMsg.fields.variableValue'], { ns: 'workflow' })}
               readOnly={textEditorDisabled}
               disabled={textEditorDisabled || isTruncated}
               className={cn('h-full', isTruncated && 'pt-[48px]')}

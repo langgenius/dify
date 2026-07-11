@@ -2,7 +2,7 @@
 
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { FieldRoot } from '@langgenius/dify-ui/field'
+import { Field } from '@langgenius/dify-ui/field'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +12,7 @@ import { handleUpload } from '../../hooks'
 const i18nPrefix = 'installFromGitHub'
 
 type SelectOption = {
-  value: string | number
+  value: string
   name: string
 }
 
@@ -49,8 +49,8 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   const { t } = useTranslation()
   const isEdit = Boolean(updatePayload)
   const [isUploading, setIsUploading] = React.useState(false)
-  const selectedVersionOption = versions.find(item => String(item.value) === selectedVersion) ?? null
-  const selectedPackageOption = packages.find(item => String(item.value) === selectedPackage) ?? null
+  const selectedVersionOption = versions.find(item => item.value === selectedVersion) ?? null
+  const selectedPackageOption = packages.find(item => item.value === selectedPackage) ?? null
 
   const handleUploadPackage = async () => {
     if (isUploading)
@@ -69,7 +69,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
       if (e.response?.message)
         onFailed(e.response?.message)
       else
-        onFailed(t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' }))
+        onFailed(t($ => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
     }
     finally {
       setIsUploading(false)
@@ -78,24 +78,24 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
 
   return (
     <>
-      <FieldRoot name="version" className="gap-4 self-stretch">
+      <Field name="version" className="gap-4 self-stretch">
         <Select
-          value={selectedVersionOption ? String(selectedVersionOption.value) : null}
+          value={selectedVersionOption?.value ?? null}
           onValueChange={(value) => {
-            if (!value)
+            if (value == null)
               return
-            const selectedItem = versions.find(item => String(item.value) === value)
+            const selectedItem = versions.find(item => item.value === value)
             if (selectedItem)
               onSelectVersion(selectedItem)
           }}
         >
           <SelectLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
-            <span className="system-sm-semibold">{t(`${i18nPrefix}.selectVersion`, { ns: 'plugin' })}</span>
+            <span className="system-sm-semibold">{t($ => $[`${i18nPrefix}.selectVersion`], { ns: 'plugin' })}</span>
           </SelectLabel>
           <SelectTrigger className="h-9 text-components-input-text-filled">
             <div className="flex items-center justify-between gap-2">
               <span className="truncate">
-                {selectedVersionOption?.name ?? t(`${i18nPrefix}.selectVersionPlaceholder`, { ns: 'plugin' }) ?? ''}
+                {selectedVersionOption?.name ?? t($ => $[`${i18nPrefix}.selectVersionPlaceholder`], { ns: 'plugin' }) ?? ''}
               </span>
               {!!(updatePayload?.originalPackageInfo.version && selectedVersionOption && selectedVersionOption.value !== updatePayload.originalPackageInfo.version) && (
                 <Badge>
@@ -110,7 +110,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           </SelectTrigger>
           <SelectContent popupClassName="w-[512px]">
             {versions.map(item => (
-              <SelectItem key={item.value} value={String(item.value)}>
+              <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
                 {item.value === updatePayload?.originalPackageInfo.version && (
                   <Badge uppercase={true} className="ml-1 shrink-0">INSTALLED</Badge>
@@ -120,35 +120,35 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
             ))}
           </SelectContent>
         </Select>
-      </FieldRoot>
-      <FieldRoot name="package" className="gap-4 self-stretch">
+      </Field>
+      <Field name="package" className="gap-4 self-stretch">
         <Select
-          value={selectedPackageOption ? String(selectedPackageOption.value) : null}
+          value={selectedPackageOption?.value ?? null}
           readOnly={!selectedVersion}
           onValueChange={(value) => {
-            if (!value)
+            if (value == null)
               return
-            const selectedItem = packages.find(item => String(item.value) === value)
+            const selectedItem = packages.find(item => item.value === value)
             if (selectedItem)
               onSelectPackage(selectedItem)
           }}
         >
           <SelectLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
-            <span className="system-sm-semibold">{t(`${i18nPrefix}.selectPackage`, { ns: 'plugin' })}</span>
+            <span className="system-sm-semibold">{t($ => $[`${i18nPrefix}.selectPackage`], { ns: 'plugin' })}</span>
           </SelectLabel>
           <SelectTrigger className="h-9 text-components-input-text-filled">
-            {selectedPackageOption?.name ?? t(`${i18nPrefix}.selectPackagePlaceholder`, { ns: 'plugin' }) ?? ''}
+            {selectedPackageOption?.name ?? t($ => $[`${i18nPrefix}.selectPackagePlaceholder`], { ns: 'plugin' }) ?? ''}
           </SelectTrigger>
           <SelectContent popupClassName="w-[512px]">
             {packages.map(item => (
-              <SelectItem key={item.value} value={String(item.value)}>
+              <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-      </FieldRoot>
+      </Field>
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
         {!isEdit
           && (
@@ -158,7 +158,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
               onClick={onBack}
               disabled={isUploading}
             >
-              {t('installModal.back', { ns: 'plugin' })}
+              {t($ => $['installModal.back'], { ns: 'plugin' })}
             </Button>
           )}
         <Button
@@ -167,7 +167,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           onClick={handleUploadPackage}
           disabled={!selectedVersion || !selectedPackage || isUploading}
         >
-          {t('installModal.next', { ns: 'plugin' })}
+          {t($ => $['installModal.next'], { ns: 'plugin' })}
         </Button>
       </div>
     </>

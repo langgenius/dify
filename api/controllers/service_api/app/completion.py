@@ -10,11 +10,12 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
+    AgentNotPublishedError,
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
@@ -31,6 +32,7 @@ from controllers.service_api.schema import (
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -156,7 +158,7 @@ class ChatRequestPayload(BaseModel):
 
 
 register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)
-register_response_schema_models(service_api_ns, GeneratedAppResponse, SimpleResultResponse)
+register_response_schema_models(service_api_ns, SimpleResultResponse)
 
 
 @service_api_ns.route("/completion-messages")
@@ -199,11 +201,7 @@ class CompletionApi(Resource):
             500: "Internal server error",
         }
     )
-    @service_api_ns.response(
-        200,
-        "Completion created successfully",
-        service_api_ns.models[GeneratedAppResponse.__name__],
-    )
+    @service_api_ns.response(200, "Completion created successfully")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     @with_session
     def post(self, session: Session, app_model: App, end_user: EndUser):
@@ -240,6 +238,7 @@ class CompletionApi(Resource):
                 streaming=streaming,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -248,6 +247,8 @@ class CompletionApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
+        except AgentAppNotPublishedError:
+            raise AgentNotPublishedError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -300,7 +301,7 @@ class CompletionStopApi(Resource):
             app_mode=AppMode.value_of(app_model.mode),
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @service_api_ns.route("/chat-messages")
@@ -350,11 +351,7 @@ class ChatApi(Resource):
             500: "Internal server error",
         }
     )
-    @service_api_ns.response(
-        200,
-        "Message sent successfully",
-        service_api_ns.models[GeneratedAppResponse.__name__],
-    )
+    @service_api_ns.response(200, "Message sent successfully")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     @with_session
     def post(self, session: Session, app_model: App, end_user: EndUser):
@@ -389,6 +386,7 @@ class ChatApi(Resource):
                 streaming=streaming,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except WorkflowNotFoundError as ex:
             raise NotFound(str(ex))
@@ -403,6 +401,8 @@ class ChatApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
+        except AgentAppNotPublishedError:
+            raise AgentNotPublishedError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -458,4 +458,4 @@ class ChatStopApi(Resource):
             app_mode=app_mode,
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200

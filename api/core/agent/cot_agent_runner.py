@@ -133,6 +133,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 stop=app_generate_entity.model_conf.stop,
                 stream=True,
                 callbacks=[],
+                request_metadata={"app_id": self.app_config.app_id},
             )
 
             usage_dict: dict[str, LLMUsage | None] = {}

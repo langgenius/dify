@@ -1,12 +1,14 @@
 'use client'
 
 import { useBoolean, useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 
 // Libraries
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
@@ -22,12 +24,12 @@ import DatasetListHeader from './header'
 const List = () => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const { isCurrentWorkspaceOwner } = useAppContext()
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
   const invalidDatasetList = useInvalidDatasetList()
-  useDocumentTitle(t('knowledge', { ns: 'dataset' }))
+  useDocumentTitle(t($ => $.knowledge, { ns: 'dataset' }))
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -48,7 +50,7 @@ const List = () => {
     handleTagsUpdate()
   }
 
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
@@ -115,7 +117,7 @@ const List = () => {
               />
               <Datasets
                 datasetList={datasetListQuery.data}
-                emptyElement={showFilteredEmptyState ? <FilterEmptyState title={t('filterEmpty.noKnowledge', { ns: 'dataset' })} /> : undefined}
+                emptyElement={showFilteredEmptyState ? <FilterEmptyState title={t($ => $['filterEmpty.noKnowledge'], { ns: 'dataset' })} /> : undefined}
                 fetchNextPage={datasetListQuery.fetchNextPage}
                 hasNextPage={datasetListQuery.hasNextPage}
                 isFetching={datasetListQuery.isFetching}

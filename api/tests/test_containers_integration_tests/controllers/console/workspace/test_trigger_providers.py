@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
@@ -29,6 +30,8 @@ from controllers.console.workspace.trigger_providers import (
     TriggerSubscriptionVerifyApi,
 )
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity, TriggerProviderApiEntity
+from core.trigger.entities.entities import RequestLog
 from models.account import Account
 
 
@@ -36,6 +39,47 @@ def mock_user() -> Account:
     user = Account(name="User", email="user.com")
     user.id = "u1"
     return user
+
+
+def trigger_provider() -> TriggerProviderApiEntity:
+    return TriggerProviderApiEntity(
+        author="Dify",
+        name="github",
+        label={"en_US": "GitHub"},
+        description={"en_US": "GitHub trigger provider"},
+        icon="icon.svg",
+        icon_dark=None,
+        tags=["code"],
+        plugin_id="plugin",
+        plugin_unique_identifier="plugin:github",
+        supported_creation_methods=[],
+        subscription_constructor=None,
+        subscription_schema=[],
+        events=[],
+    )
+
+
+def subscription_builder() -> SubscriptionBuilderApiEntity:
+    return SubscriptionBuilderApiEntity(
+        id="b1",
+        name="Builder",
+        provider="github",
+        endpoint="b1",
+        parameters={"repo": "dify"},
+        properties={"branch": "main"},
+        credentials={"token": "secret"},
+        credential_type=CredentialType.UNAUTHORIZED,
+    )
+
+
+def request_log() -> RequestLog:
+    return RequestLog(
+        id="log1",
+        endpoint="/hooks/b1",
+        request={"headers": {}, "body": {"event": "push"}},
+        response={"status": 200, "body": {"ok": True}},
+        created_at=datetime(2024, 1, 1),
+    )
 
 
 class TestTriggerProviderApis:
@@ -77,10 +121,10 @@ class TestTriggerProviderApis:
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.get_trigger_provider",
-                return_value={"id": "p1"},
+                return_value=trigger_provider(),
             ),
         ):
-            assert method(api, "t1", "github") == {"id": "p1"}
+            assert method(api, "t1", "github")["name"] == "github"
 
 
 class TestTriggerSubscriptionListApi:
@@ -129,11 +173,11 @@ class TestTriggerSubscriptionBuilderApis:
             app.test_request_context("/", json={"credential_type": "UNAUTHORIZED"}),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.create_trigger_subscription_builder",
-                return_value={"id": "b1"},
+                return_value=subscription_builder(),
             ),
         ):
             result = method(api, "t1", mock_user(), "github")
-            assert "subscription_builder" in result
+            assert result["subscription_builder"]["id"] == "b1"
 
     def test_get_builder(self, app: Flask) -> None:
         api = TriggerSubscriptionBuilderGetApi()
@@ -143,10 +187,10 @@ class TestTriggerSubscriptionBuilderApis:
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.get_subscription_builder_by_id",
-                return_value={"id": "b1"},
+                return_value=subscription_builder(),
             ),
         ):
-            assert method(api, "github", "b1") == {"id": "b1"}
+            assert method(api, "github", "b1")["id"] == "b1"
 
     def test_verify_builder(self, app: Flask) -> None:
         api = TriggerSubscriptionBuilderVerifyApi()
@@ -156,10 +200,10 @@ class TestTriggerSubscriptionBuilderApis:
             app.test_request_context("/", json={"credentials": {"a": 1}}),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.update_and_verify_builder",
-                return_value={"ok": True},
+                return_value={"verified": True},
             ),
         ):
-            assert method(api, "t1", mock_user(), "github", "b1") == {"ok": True}
+            assert method(api, "t1", mock_user(), "github", "b1") == {"verified": True}
 
     def test_verify_builder_error(self, app: Flask) -> None:
         api = TriggerSubscriptionBuilderVerifyApi()
@@ -183,26 +227,24 @@ class TestTriggerSubscriptionBuilderApis:
             app.test_request_context("/", json={"name": "n"}),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.update_trigger_subscription_builder",
-                return_value={"id": "b1"},
+                return_value=subscription_builder(),
             ),
         ):
-            assert method(api, "t1", "github", "b1") == {"id": "b1"}
+            assert method(api, "t1", "github", "b1")["id"] == "b1"
 
     def test_logs(self, app: Flask) -> None:
         api = TriggerSubscriptionBuilderLogsApi()
         method = unwrap(api.get)
 
-        log = MagicMock()
-        log.model_dump.return_value = {"a": 1}
-
         with (
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.list_logs",
-                return_value=[log],
+                return_value=[request_log()],
             ),
         ):
-            assert "logs" in method(api, "github", "b1")
+            result = method(api, "github", "b1")
+            assert result["logs"][0]["id"] == "log1"
 
     def test_build(self, app: Flask) -> None:
         api = TriggerSubscriptionBuilderBuildApi()
@@ -215,7 +257,7 @@ class TestTriggerSubscriptionBuilderApis:
                 return_value=None,
             ),
         ):
-            assert method(api, "t1", mock_user(), "github", "b1") == 200
+            assert method(api, "t1", mock_user(), "github", "b1") == {"result": "success"}
 
 
 class TestTriggerSubscriptionCrud:
@@ -239,7 +281,7 @@ class TestTriggerSubscriptionCrud:
             ),
             patch("controllers.console.workspace.trigger_providers.TriggerProviderService.update_trigger_subscription"),
         ):
-            assert method(api, "t1", "s1") == 200
+            assert method(api, "t1", "s1") == {"result": "success"}
 
     def test_update_not_found(self, app: Flask) -> None:
         api = TriggerSubscriptionUpdateApi()
@@ -275,7 +317,7 @@ class TestTriggerSubscriptionCrud:
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.rebuild_trigger_subscription"
             ),
         ):
-            assert method(api, "t1", "s1") == 200
+            assert method(api, "t1", "s1") == {"result": "success"}
 
     def test_delete_subscription(self, app: Flask) -> None:
         api = TriggerSubscriptionDeleteApi()
@@ -336,7 +378,7 @@ class TestTriggerOAuthApis:
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.create_trigger_subscription_builder",
-                return_value=MagicMock(id="b1"),
+                return_value=subscription_builder(),
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.OAuthProxyService.create_proxy_context",
@@ -480,7 +522,7 @@ class TestTriggerOAuthClientManageApi:
             ),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerManager.get_trigger_provider",
-                return_value=MagicMock(get_oauth_client_schema=lambda: {}),
+                return_value=MagicMock(get_oauth_client_schema=lambda: []),
             ),
         ):
             result = method(api, "t1", "github")
@@ -494,10 +536,10 @@ class TestTriggerOAuthClientManageApi:
             app.test_request_context("/", json={"enabled": True}),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.save_custom_oauth_client_params",
-                return_value={"ok": True},
+                return_value={"result": "success"},
             ),
         ):
-            assert method(api, "t1", "github") == {"ok": True}
+            assert method(api, "t1", "github") == {"result": "success"}
 
     def test_delete_client(self, app: Flask) -> None:
         api = TriggerOAuthClientManageApi()
@@ -507,10 +549,10 @@ class TestTriggerOAuthClientManageApi:
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.delete_custom_oauth_client_params",
-                return_value={"ok": True},
+                return_value={"result": "success"},
             ),
         ):
-            assert method(api, "t1", "github") == {"ok": True}
+            assert method(api, "t1", "github") == {"result": "success"}
 
     def test_oauth_client_post_value_error(self, app: Flask) -> None:
         api = TriggerOAuthClientManageApi()
@@ -540,10 +582,10 @@ class TestTriggerSubscriptionVerifyApi:
             app.test_request_context("/", json={"credentials": {}}),
             patch(
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.verify_subscription_credentials",
-                return_value={"ok": True},
+                return_value={"verified": True},
             ),
         ):
-            assert method(api, "t1", mock_user(), "github", "s1") == {"ok": True}
+            assert method(api, "t1", mock_user(), "github", "s1") == {"verified": True}
 
     @pytest.mark.parametrize("raised_exception", [ValueError("bad"), Exception("boom")])
     def test_verify_errors(self, app: Flask, raised_exception: Exception) -> None:

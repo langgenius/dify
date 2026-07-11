@@ -117,13 +117,14 @@ def request_agent_stub_file_download_http_sync(
     base_url: str,
     auth_jwe: str,
     file: AgentStubFileMapping,
+    for_external: bool = True,
     timeout: float | httpx.Timeout = 30.0,
     sync_http_client: httpx.Client | None = None,
 ) -> AgentStubFileDownloadResponse:
     """Request one signed download URL from the HTTP Agent Stub endpoint."""
 
     try:
-        request_model = AgentStubFileDownloadRequest(file=file)
+        request_model = AgentStubFileDownloadRequest(file=file, for_external=for_external)
     except ValidationError as exc:
         raise AgentStubValidationError("invalid Agent Stub file download request") from exc
     response = _post_agent_stub_json(
@@ -131,7 +132,7 @@ def request_agent_stub_file_download_http_sync(
         auth_jwe=auth_jwe,
         endpoint_name="file download request",
         endpoint_url_factory=agent_stub_file_download_request_url,
-        request_body=request_model.model_dump_json(exclude_none=True),
+        request_body=request_model.model_dump_json(exclude_none=True, exclude_defaults=True),
         timeout=timeout,
         sync_http_client=sync_http_client,
     )
@@ -338,7 +339,7 @@ def request_agent_stub_config_env_update_http_sync(
     timeout: float | httpx.Timeout = 30.0,
     sync_http_client: httpx.Client | None = None,
 ) -> dict[str, object]:
-    """Replace or delete config env entries through the HTTP Agent Stub endpoint."""
+    """Set or delete config env entries through the HTTP Agent Stub endpoint."""
     request_model = AgentStubConfigEnvUpdateRequest(env_text=env_text)
     response = _send_agent_stub_json(
         method="PATCH",

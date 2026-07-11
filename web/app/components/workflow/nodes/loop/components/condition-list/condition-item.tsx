@@ -145,13 +145,13 @@ const ConditionItem = ({
     if (isSelect) {
       if (fileAttr?.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
         return FILE_TYPE_OPTIONS.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
+          name: t($ => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflow' }),
           value: item.value,
         }))
       }
       if (fileAttr?.key === 'transfer_method') {
         return TRANSFER_METHOD.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
+          name: t($ => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflow' }),
           value: item.value,
         }))
       }
@@ -236,7 +236,7 @@ const ConditionItem = ({
                               </div>
                             </div>
                           )
-                        : <div className="text-left system-sm-regular text-components-input-text-placeholder">{t('placeholder.select', { ns: 'common' })}</div>}
+                        : <div className="text-left system-sm-regular text-components-input-text-placeholder">{t($ => $['placeholder.select'], { ns: 'common' })}</div>}
                     </SelectTrigger>
                     <SelectContent popupClassName="w-[165px]" listClassName="max-h-none p-1">
                       {subVarOptions.map(option => (
@@ -315,7 +315,7 @@ const ConditionItem = ({
             <div className="border-t border-t-divider-subtle">
               <Select value={selectedSelectOption?.value ?? null} onValueChange={value => value && handleUpdateConditionValue(value)}>
                 <SelectTrigger className="h-8 rounded-t-none border-0 px-2 text-xs hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal">
-                  {selectedSelectOption?.name ?? t('placeholder.select', { ns: 'common' })}
+                  {selectedSelectOption?.name ?? t($ => $['placeholder.select'], { ns: 'common' })}
                 </SelectTrigger>
                 <SelectContent>
                   {selectOptions.map(option => (

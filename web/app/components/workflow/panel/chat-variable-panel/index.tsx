@@ -190,7 +190,7 @@ const ChatVariablePanel = () => {
       )}
     >
       <div className="flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
-        {t('chatVariable.panelTitle', { ns: 'workflow' })}
+        {t($ => $['chatVariable.panelTitle'], { ns: 'workflow' })}
         <div className="flex items-center gap-1">
           <ActionButton state={showTip ? ActionButtonState.Active : undefined} onClick={() => setShowTip(!showTip)}>
             <RiBookOpenLine className="size-4" />
@@ -208,7 +208,7 @@ const ChatVariablePanel = () => {
           <div className="relative rounded-2xl bg-background-section-burn p-3">
             <div className="inline-block rounded-[5px] border border-divider-deep px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary">TIPS</div>
             <div className="mt-1 mb-4 system-sm-regular text-text-secondary">
-              {t('chatVariable.panelDescription', { ns: 'workflow' })}
+              {t($ => $['chatVariable.panelDescription'], { ns: 'workflow' })}
             </div>
             <div className="flex items-center gap-2">
               <div className="flex flex-col rounded-[10px] border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md">
@@ -223,7 +223,7 @@ const ChatVariablePanel = () => {
                     <div className="shrink-0 system-2xs-medium text-text-tertiary">WRITE</div>
                   </div>
                   <BlockIcon className="shrink-0" type={BlockEnum.Assigner} />
-                  <div className="grow truncate system-xs-semibold text-text-secondary">{t('blocks.assigner', { ns: 'workflow' })}</div>
+                  <div className="grow truncate system-xs-semibold text-text-secondary">{t($ => $['blocks.assigner'], { ns: 'workflow' })}</div>
                 </div>
                 <div className="flex items-center gap-2 py-1">
                   <div className="flex h-3 w-16 shrink-0 items-center gap-1 px-1">
@@ -231,7 +231,7 @@ const ChatVariablePanel = () => {
                     <LongArrowRight className="h-2 grow text-text-quaternary" />
                   </div>
                   <BlockIcon className="shrink-0" type={BlockEnum.LLM} />
-                  <div className="grow truncate system-xs-semibold text-text-secondary">{t('blocks.llm', { ns: 'workflow' })}</div>
+                  <div className="grow truncate system-xs-semibold text-text-secondary">{t($ => $['blocks.llm'], { ns: 'workflow' })}</div>
                 </div>
               </div>
             </div>

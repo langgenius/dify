@@ -138,7 +138,7 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(monke
     )
     monkeypatch.setattr(
         "core.app.apps.advanced_chat.app_generator.db",
-        SimpleNamespace(engine=object()),
+        SimpleNamespace(engine=object(), session=lambda: MagicMock()),
     )
     trace_manager = object.__new__(TraceQueueManager)
     monkeypatch.setattr(

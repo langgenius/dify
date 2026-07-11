@@ -11,6 +11,7 @@ import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { intersectionBy } from 'es-toolkit/compat'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,8 +29,9 @@ import {
   getMultipleRetrievalConfig,
   getSelectedDatasetsMode,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import ConfigContext from '@/context/debug-configuration'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { AppModeEnum } from '@/types/app'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import FeaturePanel from '../base/feature-panel'
@@ -45,8 +47,8 @@ type Props = Readonly<{
 }>
 const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   const { t } = useTranslation()
-  const currentUserId = useAppContextSelector(s => s.userProfile?.id)
-  const workspacePermissionKeys = useAppContextSelector(s => s.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const {
     mode,
     dataSets: dataSet,
@@ -263,7 +265,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   return (
     <FeaturePanel
       className="mt-2"
-      title={t('feature.dataSet.title', { ns: 'appDebug' })}
+      title={t($ => $['feature.dataSet.title'], { ns: 'appDebug' })}
       headerRight={(
         !readonly && (
           <div className="flex items-center gap-1">
@@ -292,7 +294,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
           )
         : (
             <div className="mt-1 px-3 pb-3">
-              <div className="pt-2 pb-1 text-xs text-text-tertiary">{t('feature.dataSet.noData', { ns: 'appDebug' })}</div>
+              <div className="pt-2 pb-1 text-xs text-text-tertiary">{t($ => $['feature.dataSet.noData'], { ns: 'appDebug' })}</div>
             </div>
           )}
 

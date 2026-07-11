@@ -30,7 +30,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Drawer, DrawerPopup, DrawerTrigger } from '@langgenius/dify-ui/drawer'
-import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -41,20 +41,22 @@ import '@langgenius/dify-ui/styles.css' // once, in the app root
 
 Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported — it keeps tree-shaking trivial and makes Storybook / test coverage attribution per-primitive.
 
+The canonical boundary exported from a primitive subpath uses the primitive name without a `Root` suffix, and its public types follow the same name (`Select` / `SelectProps`, `Drawer` / `DrawerProps`). Keep `Root` only when the subpath exposes both a low-level anatomy root and a higher-level convenience component, such as `CheckboxRoot` / `Checkbox` or `PaginationRoot` / `Pagination`. Implementation code should continue to reference the upstream Base UI anatomy explicitly through names such as `BaseSelect.Root.Props`.
+
 ## Primitives
 
-| Category         | Subpath                                                                                                                                                                        | Notes                                                                                                 |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| Actions          | `./button`                                                                                                                                                                     | Design-system CTA primitive with `cva` variants.                                                      |
-| Controls         | `./segmented-control`                                                                                                                                                          | SegmentedControl for mode, filter, and view selection.                                                |
-| Display          | `./collapsible`, `./kbd`                                                                                                                                                       | Collapsible disclosure primitive; keyboard input and shortcut keycap primitives.                      |
-| Feedback         | `./meter`, `./toast`                                                                                                                                                           | Meter is inline status; Toast owns the `z-60` layer.                                                  |
-| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls.                                                  |
-| Layout           | `./scroll-area`                                                                                                                                                                | Custom-styled scrollbar over the host viewport.                                                       |
-| Media            | `./avatar`                                                                                                                                                                     | Avatar root, image, and fallback primitives.                                                          |
-| Navigation       | `./file-tree`, `./pagination`, `./tabs`                                                                                                                                        | FileTree for preview-oriented file disclosure lists; Pagination for page navigation; Tabs for panels. |
-| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                                      | Portalled. See [Overlay & portal contract] below.                                                     |
-| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                                     | Search input, searchable picker, and closed picker.                                                   |
+| Category         | Subpath                                                                                                                                                       | Notes                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Actions          | `./button`                                                                                                                                                    | Design-system CTA primitive with `cva` variants.                                                      |
+| Controls         | `./segmented-control`                                                                                                                                         | SegmentedControl for mode, filter, and view selection.                                                |
+| Display          | `./collapsible`, `./kbd`                                                                                                                                      | Collapsible disclosure primitive; keyboard input and shortcut keycap primitives.                      |
+| Feedback         | `./meter`, `./toast`                                                                                                                                          | Meter is inline status; Toast owns the `z-60` layer.                                                  |
+| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls.                                                  |
+| Layout           | `./scroll-area`                                                                                                                                               | Custom-styled scrollbar over the host viewport.                                                       |
+| Media            | `./avatar`                                                                                                                                                    | Avatar root, image, and fallback primitives.                                                          |
+| Navigation       | `./file-tree`, `./pagination`, `./tabs`                                                                                                                       | FileTree for preview-oriented file disclosure lists; Pagination for page navigation; Tabs for panels. |
+| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                     | Portalled. See [Overlay & portal contract] below.                                                     |
+| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                    | Search input, searchable picker, and closed picker.                                                   |
 
 Utilities:
 
@@ -79,15 +81,15 @@ Dify UI's form primitives are a Base UI composition layer for native form semant
 
 Use `Form` for the submit boundary. It renders a native `<form>`, preserves Enter-to-submit and submit-button behavior, and adds Base UI's `onFormSubmit`, `errors`, `actionsRef`, and `validationMode` APIs for structured values and consolidated field validation. Prefer it over a bare `<form>` when the form is composed with Dify UI fields.
 
-Use `FieldRoot` for each standalone named field. A field must have a stable `name`, a label relationship, and either a `FieldControl` or another control that participates in the same Base UI field context. Prefer a visible label for normal form rows; when the surrounding UI already supplies the visible text, use the matching label primitive visually hidden or put `aria-label` on the actual interactive control. `FieldDescription` and `FieldError` provide the message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
+Use `Field` for each standalone named field. A field must have a stable `name`, a label relationship, and either a `FieldControl` or another control that participates in the same Base UI field context. Prefer a visible label for normal form rows; when the surrounding UI already supplies the visible text, use the matching label primitive visually hidden or put `aria-label` on the actual interactive control. `FieldDescription` and `FieldError` provide the message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
 
 Choose the label primitive by the control semantics. Text-like inputs, `Textarea`, input-based `Combobox` / `Autocomplete`, single `Checkbox` / `Radio`, `Switch`, and `NumberField` use `FieldLabel`. Trigger-based `Select` fields use `SelectLabel`; `Slider` fields use `SliderLabel`, with per-thumb `aria-label` only when the thumbs need distinct names. `SelectGroupLabel` and `AutocompleteGroupLabel` only label grouped options inside their popup content; they are not field labels.
 
-Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group of related controls, such as checkbox groups, radio groups, multi-thumb sliders, or a section that combines several inputs. For checkbox and radio groups, wrap each option with `FieldItem` and give each option its own label:
+Use `Fieldset` and `FieldsetLegend` when one field is represented by a group of related controls, such as checkbox groups, radio groups, multi-thumb sliders, or a section that combines several inputs. For checkbox and radio groups, wrap each option with `FieldItem` and give each option its own label:
 
 ```tsx
-<FieldRoot name="allowedNetworkProtocols">
-  <FieldsetRoot render={<CheckboxGroup />}>
+<Field name="allowedNetworkProtocols">
+  <Fieldset render={<CheckboxGroup />}>
     <FieldsetLegend>Allowed network protocols</FieldsetLegend>
     <FieldItem>
       <FieldLabel className="flex items-center gap-2">
@@ -95,11 +97,33 @@ Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group
         HTTPS
       </FieldLabel>
     </FieldItem>
-  </FieldsetRoot>
-</FieldRoot>
+  </Fieldset>
+</Field>
 ```
 
-`FieldsetRoot` provides the group semantics and legend relationship. It does not own the interactive state of the grouped control. Pass `disabled`, `value`, `defaultValue`, and change handlers to the actual group primitive (`CheckboxGroup`, radio group, slider root, etc.) instead of relying on the fieldset wrapper to manage them.
+`Fieldset` provides the group semantics and legend relationship. It does not own the interactive state of the grouped control. Pass `disabled`, `value`, `defaultValue`, and change handlers to the actual group primitive (`CheckboxGroup`, radio group, slider root, etc.) instead of relying on the fieldset wrapper to manage them.
+
+## Typed value contracts
+
+Selection primitives should preserve the caller's domain value type instead of widening values to `string`. Use `Select<Value, Multiple>`, `RadioGroup<Value>`, `Radio<Value>`, and `RadioItem<Value>` when the selected value is an enum, union, boolean, number, object, or nullable placeholder value.
+
+Root-level generics type `value`, `defaultValue`, `onValueChange`, and collection props such as `items`, but JSX children do not automatically inherit the parent generic. For non-string radio groups, type the child item too:
+
+```tsx
+<RadioGroup<PromptMode> value={promptMode} onValueChange={setPromptMode}>
+  <Radio<PromptMode> value={PROMPT_MODE.default} />
+  <RadioItem<PromptMode> value={PROMPT_MODE.custom}>
+    <RadioControl />
+    Custom prompt
+  </RadioItem>
+</RadioGroup>
+```
+
+Use `Radio` for the default Dify control. Use `RadioItem` when custom UI should be the radio item; place `RadioControl` inside it for the standard visual dot. `RadioControl` is a Dify visual part, not a Base UI anatomy export.
+
+For select labels and display values, prefer the Base UI `items` collection pattern so the root, value display, and item list share the same typed values. Avoid helpers that stringify values only to recover labels later; convert values to strings only at real boundaries such as form submission, URL/search params, or legacy APIs that require strings.
+
+`CheckboxGroup` follows the Base UI contract and uses `string[]`. Do not add a generic checkbox-group wrapper unless the underlying primitive contract changes; if different business IDs need stronger separation, model that at the feature/domain type boundary.
 
 For complex business forms, keep state ownership outside these primitives. TanStack Form, zod, server validation, dialog reset behavior, and schema-driven rendering belong to the feature layer in `web/`; they should pass `name`, `invalid`, `dirty`, `touched`, `value`, `onValueChange`, and errors into these primitives rather than replacing the field semantics. In this repo, `web/app/components/base/form` is the TanStack/schema runtime adapter; `packages/dify-ui` remains the primitive layer.
 

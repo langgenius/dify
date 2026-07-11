@@ -6,18 +6,18 @@ import { Field as BaseField } from '@base-ui/react/field'
 import { cn } from '../cn'
 import { formLabelClassName, textControlVariants } from '../form-control-shared'
 
-export type FieldRootProps
+export type FieldProps
   = Omit<BaseFieldNS.Root.Props, 'className'>
     & {
       className?: string
     }
 
-export type FieldRootActions = BaseFieldNS.Root.Actions
+export type FieldActions = BaseFieldNS.Root.Actions
 
-export function FieldRoot({
+export function Field({
   className,
   ...props
-}: FieldRootProps) {
+}: FieldProps) {
   return (
     <BaseField.Root
       className={cn('group/field grid min-w-0 gap-1', className)}

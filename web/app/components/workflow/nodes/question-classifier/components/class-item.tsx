@@ -90,7 +90,7 @@ const ClassItem: FC<Props> = ({
         <input
           ref={labelInputRef}
           value={draftLabel}
-          aria-label={t(`${i18nPrefix}.labelEditorAriaLabel`, { ns: 'workflow' })}
+          aria-label={t($ => $[`${i18nPrefix}.labelEditorAriaLabel`], { ns: 'workflow' })}
           className={cn(
             'h-6 w-full rounded-md border border-divider-regular bg-components-input-bg-normal px-2 text-xs font-semibold text-text-secondary ring-0 outline-none',
             'focus:border-components-input-border-active',
@@ -144,7 +144,7 @@ const ClassItem: FC<Props> = ({
       className={className}
       headerClassName={headerClassName}
       title={title}
-      placeholder={t(`${i18nPrefix}.topicPlaceholder`, { ns: 'workflow' })!}
+      placeholder={t($ => $[`${i18nPrefix}.topicPlaceholder`], { ns: 'workflow' })!}
       value={payload.name}
       onChange={handleNameChange}
       showRemove

@@ -2,10 +2,11 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import InfoPanel from '../InfoPanel'
 
-// Mock useDocLink from @/context/i18n
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
+
+// Mock useDocLink from @/context/i18n
 
 describe('InfoPanel', () => {
   beforeEach(() => {

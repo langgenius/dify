@@ -2,11 +2,12 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
-import { useAppContext } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { BillingPermission, hasPermission } from '@/utils/permission'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
 import { SelfHostedPlan } from '../../../type'
@@ -52,12 +53,12 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
   const isFreePlan = plan === SelfHostedPlan.community
   const isPremiumPlan = plan === SelfHostedPlan.premium
   const isEnterprisePlan = plan === SelfHostedPlan.enterprise
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
 
   const handleGetPayUrl = useCallback(() => {
     if (!canManageBilling) {
-      toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
+      toast.error(t($ => $.buyPermissionDeniedTip, { ns: 'billing' }))
       return
     }
     if (isFreePlan) {
@@ -82,16 +83,16 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
         <div className="flex flex-col gap-y-6 px-1 pt-10">
           {STYLE_MAP[plan].icon}
           <div className="flex min-h-[104px] flex-col gap-y-2">
-            <div className="text-[30px] leading-[1.2] font-medium text-text-primary">{t(`${i18nPrefix}.name`, { ns: 'billing' })}</div>
-            <div className="line-clamp-2 system-md-regular text-text-secondary">{t(`${i18nPrefix}.description`, { ns: 'billing' })}</div>
+            <div className="text-[30px] leading-[1.2] font-medium text-text-primary">{t($ => $[`${i18nPrefix}.name`], { ns: 'billing' })}</div>
+            <div className="line-clamp-2 system-md-regular text-text-secondary">{t($ => $[`${i18nPrefix}.description`], { ns: 'billing' })}</div>
           </div>
         </div>
         {/* Price */}
         <div className="flex items-end gap-x-2 px-1 pt-4 pb-8">
-          <div className="shrink-0 title-4xl-semi-bold text-text-primary">{t(`${i18nPrefix}.price`, { ns: 'billing' })}</div>
+          <div className="shrink-0 title-4xl-semi-bold text-text-primary">{t($ => $[`${i18nPrefix}.price`], { ns: 'billing' })}</div>
           {!isFreePlan && (
             <span className="pb-0.5 system-md-regular text-text-tertiary">
-              {t(`${i18nPrefix}.priceTip`, { ns: 'billing' })}
+              {t($ => $[`${i18nPrefix}.priceTip`], { ns: 'billing' })}
             </span>
           )}
         </div>
@@ -112,7 +113,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
             </div>
           </div>
           <span className="system-xs-regular text-text-tertiary">
-            {t('plans.premium.comingSoon', { ns: 'billing' })}
+            {t($ => $['plans.premium.comingSoon'], { ns: 'billing' })}
           </span>
         </div>
       )}

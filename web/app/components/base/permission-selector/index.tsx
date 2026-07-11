@@ -8,11 +8,13 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine, RiGroup2Line, RiLock2Line } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+// eslint-disable-next-line no-restricted-imports -- This legacy selector still relies on showLeftIcon/showClearIcon props from the old input.
 import Input from '@/app/components/base/input'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { PermissionLevel } from '@/models/permission'
 import MemberItem from './member-item'
 import Item from './permission-item'
@@ -25,7 +27,7 @@ type PermissionSelectorProps = {
   onChange: (permission?: PermissionLevel) => void
   onMemberSelect: (v: string[]) => void
   /** i18n namespace for label strings (defaults to datasetSettings for backward compat) */
-  i18nNamespace?: string
+  i18nNamespace?: 'datasetSettings'
   /**
    * Hide the "Partial members" option. Useful for surfaces (e.g. plugin
    * credential creation) where partial-member access is delegated to RBAC
@@ -45,7 +47,7 @@ const PermissionSelector = ({
   hidePartialMembers = false,
 }: PermissionSelectorProps) => {
   const { t } = useTranslation()
-  const userProfile = useAppContextWithSelector(state => state.userProfile)
+  const userProfile = useAtomValue(userProfileAtom)
   const [open, setOpen] = useState(false)
 
   const [keywords, setKeywords] = useState('')
@@ -72,7 +74,7 @@ const PermissionSelector = ({
   }, [userProfile, value, memberList])
 
   const showMe = useMemo(() => {
-    return userProfile.name.includes(searchKeywords) || userProfile.email.includes(searchKeywords)
+    return (userProfile.name ?? '').includes(searchKeywords) || (userProfile.email ?? '').includes(searchKeywords)
   }, [searchKeywords, userProfile])
 
   const filteredMemberList = useMemo(() => {
@@ -121,7 +123,7 @@ const PermissionSelector = ({
                   <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xs" />
                 </div>
                 <div className="grow p-1 system-sm-regular text-components-input-text-filled">
-                  {t('form.permissionsOnlyMe', { ns: i18nNamespace })}
+                  {t($ => $['form.permissionsOnlyMe'], { ns: i18nNamespace })}
                 </div>
               </>
             )
@@ -133,7 +135,7 @@ const PermissionSelector = ({
                   <RiGroup2Line className="size-4 text-text-secondary" />
                 </div>
                 <div className="grow p-1 system-sm-regular text-components-input-text-filled">
-                  {t('form.permissionsAllMember', { ns: i18nNamespace })}
+                  {t($ => $['form.permissionsAllMember'], { ns: i18nNamespace })}
                 </div>
               </>
             )
@@ -194,7 +196,7 @@ const PermissionSelector = ({
               leftIcon={
                 <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className="shrink-0" size="sm" />
               }
-              text={t('form.permissionsOnlyMe', { ns: i18nNamespace })}
+              text={t($ => $['form.permissionsOnlyMe'], { ns: i18nNamespace })}
               onClick={onSelectOnlyMe}
               isSelected={isOnlyMe}
             />
@@ -205,7 +207,7 @@ const PermissionSelector = ({
                   <RiGroup2Line className="size-4 text-text-secondary" />
                 </div>
               )}
-              text={t('form.permissionsAllMember', { ns: i18nNamespace })}
+              text={t($ => $['form.permissionsAllMember'], { ns: i18nNamespace })}
               onClick={onSelectAllMembers}
               isSelected={isAllTeamMembers}
             />
@@ -217,7 +219,7 @@ const PermissionSelector = ({
                     <RiLock2Line className="size-4 text-text-secondary" />
                   </div>
                 )}
-                text={t('form.permissionsInvitedMembers', { ns: i18nNamespace })}
+                text={t($ => $['form.permissionsInvitedMembers'], { ns: i18nNamespace })}
                 onClick={onSelectPartialMembers}
                 isSelected={isPartialMembers}
               />
@@ -263,7 +265,7 @@ const PermissionSelector = ({
                 {
                   !showMe && filteredMemberList.length === 0 && (
                     <div className="flex items-center justify-center px-1 py-6 text-center system-xs-regular whitespace-pre-wrap text-text-tertiary">
-                      {t('form.onSearchResults', { ns: i18nNamespace })}
+                      {t($ => $['form.onSearchResults'], { ns: i18nNamespace })}
                     </div>
                   )
                 }

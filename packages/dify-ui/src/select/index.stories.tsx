@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '.'
 import { Button } from '../button'
-import { FieldDescription, FieldRoot } from '../field'
+import { Field, FieldDescription } from '../field'
 import { Form } from '../form'
 
 const triggerWidth = 'w-64'
@@ -330,7 +330,7 @@ export const Controlled: Story = {
 export const InForm: Story = {
   render: () => (
     <Form aria-label="Timezone form" className="grid w-72 gap-3" onFormSubmit={() => undefined}>
-      <FieldRoot name="timezone">
+      <Field name="timezone">
         <Select name="timezone" defaultValue="utc">
           <SelectLabel>Timezone</SelectLabel>
           <SelectTrigger>
@@ -352,7 +352,7 @@ export const InForm: Story = {
           </SelectContent>
         </Select>
         <FieldDescription>Used to schedule workflow runs.</FieldDescription>
-      </FieldRoot>
+      </Field>
       <div className="flex justify-end">
         <Button type="submit" variant="primary">Save</Button>
       </div>

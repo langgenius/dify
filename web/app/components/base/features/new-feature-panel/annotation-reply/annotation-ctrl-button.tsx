@@ -34,7 +34,7 @@ const AnnotationCtrlButton: FC<Props> = ({ cached, query, answer, appId, message
       question: query,
       answer,
     })
-    toast.success(t('api.actionSuccess', { ns: 'common' }) as string)
+    toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }) as string)
     onAdded(res.id, res.account?.name ?? '')
   }
   return (
@@ -49,7 +49,7 @@ const AnnotationCtrlButton: FC<Props> = ({ cached, query, answer, appId, message
             )}
           />
           <TooltipContent>
-            {t('feature.annotation.edit', { ns: 'appDebug' })}
+            {t($ => $['feature.annotation.edit'], { ns: 'appDebug' })}
           </TooltipContent>
         </Tooltip>
       )}
@@ -63,7 +63,7 @@ const AnnotationCtrlButton: FC<Props> = ({ cached, query, answer, appId, message
             )}
           />
           <TooltipContent>
-            {t('feature.annotation.add', { ns: 'appDebug' })}
+            {t($ => $['feature.annotation.add'], { ns: 'appDebug' })}
           </TooltipContent>
         </Tooltip>
       )}

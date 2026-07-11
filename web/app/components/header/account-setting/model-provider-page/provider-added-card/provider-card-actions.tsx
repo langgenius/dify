@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import { useDetailHeaderState, usePluginOperations } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
-import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
@@ -30,6 +30,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
   const { source, version, latest_version, latest_unique_identifier, meta } = detail
   const author = detail.declaration?.author ?? ''
   const name = detail.declaration?.name ?? detail.name
+  const isDebuggingPlugin = source === PluginSource.debugging
 
   const {
     modalStates,
@@ -80,31 +81,41 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
   return (
     <>
       {!!version && (
-        <PluginVersionPicker
-          disabled={!isFromMarketplace || !canUpdatePlugin}
-          isShow={versionPicker.isShow}
-          onShowChange={versionPicker.setIsShow}
-          pluginID={detail.plugin_id}
-          currentVersion={version}
-          onSelect={handleVersionSelect}
-          sideOffset={4}
-          alignOffset={0}
-          trigger={(
+        <>
+          <PluginVersionPicker
+            disabled={!isFromMarketplace || !canUpdatePlugin}
+            isShow={versionPicker.isShow}
+            onShowChange={versionPicker.setIsShow}
+            pluginID={detail.plugin_id}
+            currentVersion={version}
+            onSelect={handleVersionSelect}
+            sideOffset={4}
+            alignOffset={0}
+            trigger={(
+              <Badge
+                className={cn(
+                  canUpdatePlugin && isFromMarketplace && 'cursor-pointer hover:bg-state-base-hover',
+                )}
+                uppercase={false}
+                text={(
+                  <>
+                    <span>{version}</span>
+                    {canUpdatePlugin && isFromMarketplace && <span className="ml-1 i-ri-arrow-left-right-line size-3" />}
+                  </>
+                )}
+                hasRedCornerMark={hasNewVersion}
+              />
+            )}
+          />
+          {isDebuggingPlugin && (
             <Badge
-              className={cn(
-                canUpdatePlugin && isFromMarketplace && 'cursor-pointer hover:bg-state-base-hover',
-              )}
+              className="border-state-warning-active bg-state-warning-hover text-text-warning"
+              size="xs"
               uppercase={false}
-              text={(
-                <>
-                  <span>{version}</span>
-                  {canUpdatePlugin && isFromMarketplace && <span className="ml-1 i-ri-arrow-left-right-line size-3" />}
-                </>
-              )}
-              hasRedCornerMark={hasNewVersion}
+              text={t($ => $['operation.debugConfig'], { ns: 'appDebug' })}
             />
           )}
-        />
+        </>
       )}
 
       {canUpdatePlugin && (hasNewVersion || isFromGitHub) && (
@@ -118,12 +129,12 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
                 className="h-5!"
                 onClick={handleTriggerLatestUpdate}
               >
-                {t('detailPanel.operation.update', { ns: 'plugin' })}
+                {t($ => $['detailPanel.operation.update'], { ns: 'plugin' })}
               </Button>
             )}
           />
           <TooltipContent>
-            {t('detailPanel.operation.updateTooltip', { ns: 'plugin' })}
+            {t($ => $['detailPanel.operation.updateTooltip'], { ns: 'plugin' })}
           </TooltipContent>
         </Tooltip>
       )}

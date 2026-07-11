@@ -10,47 +10,27 @@ does not pull in FastAPI, Redis, shellctl, or JWE runtime dependencies.
 
 from __future__ import annotations
 
+from functools import cache
+from importlib import import_module
 import sys
-from typing import cast
 
 import click
 import typer
 from typer.main import get_command
 
-from dify_agent.agent_stub.cli._agent_stub import connect_from_environment
-from dify_agent.agent_stub.cli._config import (
-    delete_config_files_from_environment,
-    delete_config_skills_from_environment,
-    manifest_from_environment,
-    pull_config_env_from_environment,
-    pull_config_files_from_environment,
-    pull_config_note_from_environment,
-    pull_config_skills_from_environment,
-    push_config_env_from_environment,
-    push_config_files_from_environment,
-    push_config_note_from_environment,
-    push_config_skills_from_environment,
-)
-from dify_agent.agent_stub.cli._drive import (
-    DrivePushKind,
-    format_drive_manifest,
-    list_drive_manifest_from_environment,
-    pull_drive_from_environment,
-    push_drive_from_environment,
-)
-from dify_agent.agent_stub.cli._env import (
-    MissingAgentStubEnvironmentError,
-    has_agent_stub_environment,
-    read_agent_stub_drive_base,
-)
-from dify_agent.agent_stub.cli._files import download_file_from_environment, upload_file_from_environment
-from dify_agent.agent_stub.client._errors import AgentStubClientError
-from dify_agent.agent_stub.protocol.agent_stub import AGENT_STUB_DRIVE_BASE_ENV_VAR, DEFAULT_AGENT_STUB_DRIVE_BASE
+from dify_agent.agent_stub._constants import AGENT_STUB_DRIVE_BASE_ENV_VAR, DEFAULT_AGENT_STUB_DRIVE_BASE
 
 _CONFIG_MANIFEST_STDOUT_EXCLUDE = {
     "skills": {"items": {"__all__": {"hash"}}},
     "files": {"items": {"__all__": {"hash"}}},
 }
+_FILE_DOWNLOAD_TRANSFER_METHOD_HELP = (
+    "File mapping transfer_method: local_file, tool_file, datasource_file, or remote_url."
+)
+_FILE_DOWNLOAD_REFERENCE_OR_URL_HELP = (
+    "File mapping reference or URL. Use dify-file-ref:... with local_file, tool_file, or datasource_file; "
+    "use https://... with remote_url."
+)
 
 
 app = typer.Typer(
@@ -68,9 +48,7 @@ config_skills_app = typer.Typer(help="Pull or update config skills through the A
 config_files_app = typer.Typer(help="Pull or update config files through the Agent Stub.", rich_markup_mode=None)
 config_skill_pull_alias_app = typer.Typer(help="Pull config skills through the Agent Stub.", rich_markup_mode=None)
 config_file_pull_alias_app = typer.Typer(help="Pull config files through the Agent Stub.", rich_markup_mode=None)
-config_env_app = typer.Typer(
-    help="Pull or update config env variables visible to the current run.", rich_markup_mode=None
-)
+config_env_app = typer.Typer(help="Update config env variables visible to the current run.", rich_markup_mode=None)
 config_note_app = typer.Typer(help="Pull or update the current config note.", rich_markup_mode=None)
 drive_app = typer.Typer(help="List, pull, or push agent drive files through the Agent Stub.", rich_markup_mode=None)
 app.add_typer(file_app, name="file")
@@ -105,16 +83,18 @@ def upload(path: str = typer.Argument(..., metavar="PATH")) -> None:
 
 @file_app.command("download")
 def download(
-    transfer_method: str | None = typer.Argument(None, metavar="TRANSFER_METHOD"),
-    reference_or_url: str | None = typer.Argument(None, metavar="REFERENCE_OR_URL"),
-    mapping: str | None = typer.Option(None, "--mapping", help="Download one file from a mapping JSON object."),
+    transfer_method: str = typer.Argument(..., metavar="TRANSFER_METHOD", help=_FILE_DOWNLOAD_TRANSFER_METHOD_HELP),
+    reference_or_url: str = typer.Argument(
+        ...,
+        metavar="REFERENCE_OR_URL",
+        help=_FILE_DOWNLOAD_REFERENCE_OR_URL_HELP,
+    ),
     local_dir: str | None = typer.Option(None, "--to", help="Local directory for the downloaded file."),
 ) -> None:
     """Download one workflow file mapping into the local sandbox directory."""
     _run_file_download(
         transfer_method=transfer_method,
         reference_or_url=reference_or_url,
-        mapping=mapping,
         local_dir=local_dir,
     )
 
@@ -147,9 +127,33 @@ def config_skill_pull_alias(
 
 @config_skills_app.command("push")
 def config_skills_push(
-    paths: list[str] = typer.Argument(..., metavar="PATH"),
+    paths: list[str] = typer.Argument(..., metavar="PATH..."),
 ) -> None:
-    """Upload one or more local skill directories into the current config manifest."""
+    """Upload one or more local skill directories into the current config manifest.
+
+    Pass a directory such as ./skills/researcher that contains SKILL.md. Other files in that directory are
+    archived with the skill. Pushing a skill with an existing name replaces that config skill.
+
+    Skill directory requirements:
+
+    - Each PATH must be one skill directory; the directory basename is the config skill name.
+
+    - The directory must contain a top-level SKILL.md.
+
+    - SKILL.md must be non-empty UTF-8 Markdown.
+
+    - SKILL.md must start with YAML frontmatter matching this schema:
+
+    \b
+      ---
+      name: <non-empty string>
+      description: <string>
+      ---
+
+    - Symlinked files are rejected.
+
+    - Dependency/cache folders such as .git, __pycache__, .venv and node_modules should be manually cleared before push.
+    """
     _run_config_skills_push(paths=paths)
 
 
@@ -183,15 +187,15 @@ def config_file_pull_alias(
 
 @config_files_app.command("push")
 def config_files_push(
-    paths: list[str] = typer.Argument(..., metavar="PATH"),
-    name: str | None = typer.Option(
-        None,
-        "--name",
-        help="Override the target config file name when uploading exactly one local file.",
-    ),
+    paths: list[str] = typer.Argument(..., metavar="PATH..."),
 ) -> None:
-    """Upload one or more local files into the current config manifest."""
-    _run_config_files_push(paths=paths, name=name)
+    """Upload one or more local files into the current config manifest.
+
+    Pass one or more regular local files such as ./guide.md and ./policy.txt. To upload a folder, compress it
+    first and pass the archive file. The config file name is the local basename. Pushing a file with an existing config
+    name replaces that config file.
+    """
+    _run_config_files_push(paths=paths)
 
 
 @config_files_app.command("delete")
@@ -202,19 +206,15 @@ def config_files_delete(
     _run_config_files_delete(names=names)
 
 
-@config_env_app.command("pull")
-def config_env_pull(
-    local_path: str | None = typer.Option(None, "--to", help="Local dotenv file path."),
-) -> None:
-    """Export visible config env values into ./.dify_conf/.env by default."""
-    _run_config_env_pull(local_path=local_path)
-
-
 @config_env_app.command("push")
 def config_env_push(
-    local_path: str | None = typer.Argument(None, metavar="PATH|-"),
+    local_path: str = typer.Argument(..., metavar="PATH|-"),
 ) -> None:
-    """Replace visible config env values from one local dotenv file or stdin."""
+    """Set or delete config env entries from one local dotenv file or stdin.
+
+    Pass dotenv text with lines like API_KEY=value and OLD_KEY=. KEY=value sets or updates an entry, KEY= deletes
+    it, and omitted keys are unchanged.
+    """
     _run_config_env_push(local_path=local_path)
 
 
@@ -228,9 +228,13 @@ def config_note_pull(
 
 @config_note_app.command("push")
 def config_note_push(
-    local_path: str | None = typer.Argument(None, metavar="PATH|-"),
+    local_path: str | None = typer.Argument(None, metavar="[PATH|-]"),
 ) -> None:
-    """Replace the current config note from one local text file or stdin."""
+    """Replace the current config note from one local text file or stdin.
+
+    Pass a plain text or Markdown note file, or use - to read the note from stdin. When PATH is omitted, the
+    command reads ./.dify_conf/note.md.
+    """
     _run_config_note_push(local_path=local_path)
 
 
@@ -289,7 +293,7 @@ def main(argv: list[str] | None = None) -> None:
         return
     json_output, forwarded_args = _extract_root_json_flag(args)
     if _is_unknown_bare_command(forwarded_args):
-        if not has_agent_stub_environment():
+        if not _env_module().has_agent_stub_environment():
             _show_root_help()
         _run_connect(argv=forwarded_args, json_output=json_output)
         return
@@ -351,12 +355,15 @@ def render_agent_stub_cli_help(args: tuple[str, ...]) -> str:
 
 
 def _run_connect(*, argv: list[str], json_output: bool) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    agent_stub_module = _agent_stub_module()
     try:
-        response = connect_from_environment(argv=argv)
-    except MissingAgentStubEnvironmentError as exc:
+        response = agent_stub_module.connect_from_environment(argv=argv)
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
 
@@ -367,12 +374,15 @@ def _run_connect(*, argv: list[str], json_output: bool) -> None:
 
 
 def _run_file_upload(*, path: str) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    files_module = _files_module()
     try:
-        response = upload_file_from_environment(path=path)
-    except MissingAgentStubEnvironmentError as exc:
+        response = files_module.upload_file_from_environment(path=path)
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(response.model_dump_json())
@@ -380,46 +390,53 @@ def _run_file_upload(*, path: str) -> None:
 
 def _run_file_download(
     *,
-    transfer_method: str | None,
-    reference_or_url: str | None,
-    mapping: str | None,
+    transfer_method: str,
+    reference_or_url: str,
     local_dir: str | None,
 ) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    files_module = _files_module()
     try:
-        response = download_file_from_environment(
+        response = files_module.download_file_from_environment(
             transfer_method=transfer_method,
             reference_or_url=reference_or_url,
-            mapping=mapping,
             local_dir=local_dir,
         )
-    except MissingAgentStubEnvironmentError as exc:
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(str(response.path))
 
 
 def _run_config_manifest() -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    config_module = _config_module()
     try:
-        response = manifest_from_environment()
-    except MissingAgentStubEnvironmentError as exc:
+        response = config_module.manifest_from_environment()
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(response.model_dump_json(exclude=_CONFIG_MANIFEST_STDOUT_EXCLUDE))
 
 
 def _run_config_skill_pull(*, names: list[str] | None, local_dir: str | None, json_output: bool) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    config_module = _config_module()
     try:
-        response = pull_config_skills_from_environment(names=names, local_dir=local_dir)
-    except MissingAgentStubEnvironmentError as exc:
+        response = config_module.pull_config_skills_from_environment(names=names, local_dir=local_dir)
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     if json_output:
@@ -433,12 +450,15 @@ def _run_config_skill_pull(*, names: list[str] | None, local_dir: str | None, js
 
 
 def _run_config_file_pull(*, names: list[str] | None, local_dir: str | None, json_output: bool) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    config_module = _config_module()
     try:
-        response = pull_config_files_from_environment(names=names, local_dir=local_dir)
-    except MissingAgentStubEnvironmentError as exc:
+        response = config_module.pull_config_files_from_environment(names=names, local_dir=local_dir)
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     if json_output:
@@ -448,124 +468,142 @@ def _run_config_file_pull(*, names: list[str] | None, local_dir: str | None, jso
         typer.echo(item.path)
 
 
-def _run_config_env_pull(*, local_path: str | None) -> None:
-    try:
-        path = pull_config_env_from_environment(local_path=local_path)
-    except MissingAgentStubEnvironmentError as exc:
-        typer.echo(str(exc), err=True)
-        raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
-        typer.echo(str(exc), err=True)
-        raise SystemExit(1) from exc
-    typer.echo(str(path))
-
-
 def _run_config_note_pull(*, local_path: str | None) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    config_module = _config_module()
     try:
-        path = pull_config_note_from_environment(local_path=local_path)
-    except MissingAgentStubEnvironmentError as exc:
+        path = config_module.pull_config_note_from_environment(local_path=local_path)
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(str(path))
 
 
 def _run_config_note_push(*, local_path: str | None) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    config_module = _config_module()
     try:
-        response = push_config_note_from_environment(local_path=local_path)
-    except MissingAgentStubEnvironmentError as exc:
+        response = config_module.push_config_note_from_environment(local_path=local_path)
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(response.model_dump_json())
 
 
-def _run_config_env_push(*, local_path: str | None) -> None:
+def _run_config_env_push(*, local_path: str) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    config_module = _config_module()
     try:
-        response = push_config_env_from_environment(local_path=local_path)
-    except MissingAgentStubEnvironmentError as exc:
+        response = config_module.push_config_env_from_environment(local_path=local_path)
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(response.model_dump_json())
 
 
-def _run_config_files_push(*, paths: list[str], name: str | None) -> None:
+def _run_config_files_push(*, paths: list[str]) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    config_module = _config_module()
     try:
-        response = push_config_files_from_environment(paths=paths, name=name)
-    except MissingAgentStubEnvironmentError as exc:
+        response = config_module.push_config_files_from_environment(paths=paths)
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(response.model_dump_json())
 
 
 def _run_config_files_delete(*, names: list[str]) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    config_module = _config_module()
     try:
-        response = delete_config_files_from_environment(names=names)
-    except MissingAgentStubEnvironmentError as exc:
+        response = config_module.delete_config_files_from_environment(names=names)
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(response.model_dump_json())
 
 
 def _run_config_skills_push(*, paths: list[str]) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    config_module = _config_module()
     try:
-        response = push_config_skills_from_environment(paths=paths)
-    except MissingAgentStubEnvironmentError as exc:
+        response = config_module.push_config_skills_from_environment(paths=paths)
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(response.model_dump_json())
 
 
 def _run_config_skills_delete(*, names: list[str]) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    config_module = _config_module()
     try:
-        response = delete_config_skills_from_environment(names=names)
-    except MissingAgentStubEnvironmentError as exc:
+        response = config_module.delete_config_skills_from_environment(names=names)
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(response.model_dump_json())
 
 
 def _run_drive_list(*, path_prefix: str, json_output: bool) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    drive_module = _drive_module()
     try:
-        response = list_drive_manifest_from_environment(prefix=path_prefix)
-    except MissingAgentStubEnvironmentError as exc:
+        response = drive_module.list_drive_manifest_from_environment(prefix=path_prefix)
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     if json_output:
         typer.echo(response.model_dump_json())
         return
-    typer.echo(format_drive_manifest(response))
+    typer.echo(drive_module.format_drive_manifest(response))
 
 
 def _run_drive_pull(*, targets: list[str] | None, local_base: str | None, json_output: bool) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    drive_module = _drive_module()
     try:
-        response = pull_drive_from_environment(targets=targets, local_base=local_base or read_agent_stub_drive_base())
-    except MissingAgentStubEnvironmentError as exc:
+        response = drive_module.pull_drive_from_environment(
+            targets=targets,
+            local_base=local_base or env_module.read_agent_stub_drive_base(),
+        )
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     if json_output:
@@ -576,19 +614,54 @@ def _run_drive_pull(*, targets: list[str] | None, local_base: str | None, json_o
 
 
 def _run_drive_push(*, local_path: str, drive_path: str, kind: str | None) -> None:
+    env_module = _env_module()
+    client_module = _client_module()
+    drive_module = _drive_module()
     try:
-        response = push_drive_from_environment(
+        response = drive_module.push_drive_from_environment(
             local_path=local_path,
             drive_path=drive_path,
-            kind=cast(DrivePushKind | None, kind),
+            kind=kind,
         )
-    except MissingAgentStubEnvironmentError as exc:
+    except env_module.MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
+    except client_module.AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(response.model_dump_json())
+
+
+# Keep helper imports on demand so importing CLI/help stays free of server-side
+# and unrelated heavy runtime dependencies.
+@cache
+def _agent_stub_module():
+    return import_module("dify_agent.agent_stub.cli._agent_stub")
+
+
+@cache
+def _config_module():
+    return import_module("dify_agent.agent_stub.cli._config")
+
+
+@cache
+def _drive_module():
+    return import_module("dify_agent.agent_stub.cli._drive")
+
+
+@cache
+def _files_module():
+    return import_module("dify_agent.agent_stub.cli._files")
+
+
+@cache
+def _env_module():
+    return import_module("dify_agent.agent_stub.cli._env")
+
+
+@cache
+def _client_module():
+    return import_module("dify_agent.agent_stub.client")
 
 
 __all__ = ["app", "main"]

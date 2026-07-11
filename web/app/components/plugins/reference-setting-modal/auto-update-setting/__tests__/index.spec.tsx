@@ -33,13 +33,6 @@ dayjs.extend(timezone)
 
 // Mock app context
 const mockTimezone = 'America/New_York'
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: {
-      timezone: mockTimezone,
-    },
-  }),
-}))
 
 // Mock modal context
 const mockSetShowAccountSettingModal = vi.fn()
@@ -50,35 +43,35 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 // Mock i18n context
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en-US',
-}))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: (defaultNs?: string) => ({
-    t: (key: string, options?: Record<string, unknown>) => {
-      const ns = (options?.ns as string | undefined) ?? defaultNs
-      const params = { ...options }
-      delete params.ns
-      const suffix = Object.keys(params).length > 0 ? `:${JSON.stringify(params)}` : ''
-      return `${ns ? `${ns}.` : ''}${key}${suffix}`
-    },
-    i18n: {
-      language: 'en',
-      changeLanguage: vi.fn(),
-    },
-  }),
-  Trans: ({ i18nKey, components }: {
-    i18nKey: string
-    components?: Record<string, React.ReactElement>
-  }) => {
-    const setTimezone = components?.setTimezone
-    if (setTimezone)
-      return React.cloneElement(setTimezone, undefined, i18nKey)
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: (defaultNs?: string) => ({
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
+        const ns = (options?.ns as string | undefined) ?? defaultNs
+        const params = { ...options }
+        delete params.ns
+        const suffix = Object.keys(params).length > 0 ? `:${JSON.stringify(params)}` : ''
+        return `${ns ? `${ns}.` : ''}${key}${suffix}`
+      }),
+      i18n: {
+        language: 'en',
+        changeLanguage: vi.fn(),
+      },
+    }),
+    Trans: withSelectorKeyProps(({ i18nKey, components }: {
+      i18nKey: string
+      components?: Record<string, React.ReactElement>
+    }) => {
+      const setTimezone = components?.setTimezone
+      if (setTimezone)
+        return React.cloneElement(setTimezone, undefined, i18nKey)
 
-    return <span>{i18nKey}</span>
-  },
-}))
+      return <span>{i18nKey}</span>
+    }),
+  })
+})
 
 // Mock plugins service
 const mockPluginsData: { plugins: PluginDetail[] } = { plugins: [] }

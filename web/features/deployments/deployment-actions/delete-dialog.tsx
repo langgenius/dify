@@ -37,11 +37,11 @@ function DeleteDeploymentDialogContent() {
       },
       {
         onSuccess: () => {
-          toast.success(t('settings.deleted'))
+          toast.success(t($ => $['settings.deleted']))
           router.push('/deployments')
         },
         onError: () => {
-          toast.error(t('settings.deleteFailed'))
+          toast.error(t($ => $['settings.deleteFailed']))
         },
         onSettled: () => {
           setOpen(false)
@@ -54,21 +54,21 @@ function DeleteDeploymentDialogContent() {
     <>
       <div className="flex flex-col gap-3 px-6 pt-6 pb-2">
         <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t('settings.deleteConfirmTitle')}
+          {t($ => $['settings.deleteConfirmTitle'])}
         </AlertDialogTitle>
         <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-          {t('settings.deleteConfirmDesc', { name: displayName })}
+          {t($ => $['settings.deleteConfirmDesc'], { name: displayName })}
         </AlertDialogDescription>
       </div>
       <AlertDialogActions className="pt-3">
         <AlertDialogCancelButton variant="secondary" disabled={deleteInstance.isPending}>
-          {t('createModal.cancel')}
+          {t($ => $['createModal.cancel'])}
         </AlertDialogCancelButton>
         <AlertDialogConfirmButton
           loading={deleteInstance.isPending}
           onClick={handleDelete}
         >
-          {t('settings.delete')}
+          {t($ => $['settings.delete'])}
         </AlertDialogConfirmButton>
       </AlertDialogActions>
     </>

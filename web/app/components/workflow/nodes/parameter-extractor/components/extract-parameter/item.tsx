@@ -33,7 +33,7 @@ const Item: FC<Props> = ({
           <div className="ml-2 text-xs font-normal text-text-tertiary capitalize">{payload.type}</div>
         </div>
         {payload.required && (
-          <div className="text-xs/4 font-normal text-text-tertiary uppercase">{t(`${i18nPrefix}.addExtractParameterContent.required`, { ns: 'workflow' })}</div>
+          <div className="text-xs/4 font-normal text-text-tertiary uppercase">{t($ => $[`${i18nPrefix}.addExtractParameterContent.required`], { ns: 'workflow' })}</div>
         )}
       </div>
       <div className="mt-0.5 text-xs leading-[18px] font-normal text-text-tertiary">{payload.description}</div>

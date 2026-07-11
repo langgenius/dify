@@ -56,12 +56,12 @@ const ConfigDocument: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="mr-1 system-sm-semibold text-text-secondary">{t('feature.documentUpload.title', { ns: 'appDebug' })}</div>
+        <div className="mr-1 system-sm-semibold text-text-secondary">{t($ => $['feature.documentUpload.title'], { ns: 'appDebug' })}</div>
         <Infotip
-          aria-label={t('feature.documentUpload.description', { ns: 'appDebug' })}
+          aria-label={t($ => $['feature.documentUpload.description'], { ns: 'appDebug' })}
           popupClassName="w-[180px]"
         >
-          {t('feature.documentUpload.description', { ns: 'appDebug' })}
+          {t($ => $['feature.documentUpload.description'], { ns: 'appDebug' })}
         </Infotip>
       </div>
       {!readonly && (

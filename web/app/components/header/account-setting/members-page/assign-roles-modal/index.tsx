@@ -33,15 +33,15 @@ const AssignRolesModalBody = ({
   const selectedRoleIds = selected.map(role => role.id)
   const isConfirmDisabled = selected.length === 0
   const title = allowMultipleRoles
-    ? t('members.assignRolesModal.title', { ns: 'common', defaultValue: 'Assign Roles' })
-    : t('members.editRole', { ns: 'common', defaultValue: 'Edit Role' })
+    ? t($ => $['members.assignRolesModal.title'], { ns: 'common', defaultValue: 'Assign Roles' })
+    : t($ => $['members.editRole'], { ns: 'common', defaultValue: 'Edit Role' })
   const description = allowMultipleRoles
-    ? t('members.assignRolesModal.description', {
+    ? t($ => $['members.assignRolesModal.description'], {
         ns: 'common',
         defaultValue:
           'Select roles to assign to this member. All permissions from selected roles will be combined.',
       })
-    : t('members.assignRolesModal.singleDescription', {
+    : t($ => $['members.assignRolesModal.singleDescription'], {
         ns: 'common',
         defaultValue: 'Select one role to assign to this member.',
       })
@@ -81,7 +81,7 @@ const AssignRolesModalBody = ({
       <div className="flex shrink-0 items-center gap-3 border-t border-divider-subtle px-6 py-4">
         {allowMultipleRoles && (
           <div className="system-xs-regular text-text-tertiary">
-            {t('members.assignRolesModal.selectedCount', {
+            {t($ => $['members.assignRolesModal.selectedCount'], {
               ns: 'common',
               count: selected.length,
             })}
@@ -89,10 +89,10 @@ const AssignRolesModalBody = ({
         )}
         <div className="ml-auto flex items-center gap-2">
           <Button variant="secondary" onClick={onClose}>
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button variant="primary" disabled={isConfirmDisabled} onClick={handleConfirm}>
-            {t('operation.confirm', { ns: 'common' })}
+            {t($ => $['operation.confirm'], { ns: 'common' })}
           </Button>
         </div>
       </div>

@@ -10,16 +10,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 let mockTheme = 'light'
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: mockTheme }),
 }))

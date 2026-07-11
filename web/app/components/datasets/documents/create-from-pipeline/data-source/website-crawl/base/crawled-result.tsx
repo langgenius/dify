@@ -1,7 +1,7 @@
 'use client'
 import type { CrawlResultItem } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -86,7 +86,7 @@ const CrawledResult = ({
   return (
     <div className={cn('flex flex-col gap-y-2', className)}>
       <div className="pt-2 system-sm-medium text-text-primary">
-        {t(`${I18N_PREFIX}.scrapTimeInfo`, {
+        {t($ => $[`${I18N_PREFIX}.scrapTimeInfo`], {
           ns: 'datasetCreation',
           total: list.length,
           time: usedTime.toFixed(1),
@@ -98,7 +98,7 @@ const CrawledResult = ({
             <CheckboxWithLabel
               isChecked={isCheckAll}
               onChange={handleCheckedAll}
-              label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.selectAll`, { ns: 'datasetCreation' })}
+              label={isCheckAll ? t($ => $[`${I18N_PREFIX}.resetAll`], { ns: 'datasetCreation' }) : t($ => $[`${I18N_PREFIX}.selectAll`], { ns: 'datasetCreation' })}
             />
           </div>
         )}
@@ -110,7 +110,7 @@ const CrawledResult = ({
             )
           : (
               <RadioGroup
-                aria-label={t(`${I18N_PREFIX}.scrapTimeInfo`, {
+                aria-label={t($ => $[`${I18N_PREFIX}.scrapTimeInfo`], {
                   ns: 'datasetCreation',
                   total: list.length,
                   time: usedTime.toFixed(1),

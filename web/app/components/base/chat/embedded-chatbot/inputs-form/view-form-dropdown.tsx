@@ -44,7 +44,7 @@ const ViewFormDropdown = ({
         >
           <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-6 py-4">
             <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />
-            <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+            <div className="grow system-xl-semibold text-text-secondary">{t($ => $['chat.chatSettingsTitle'], { ns: 'share' })}</div>
           </div>
           <div className="p-6">
             <InputsFormContent />

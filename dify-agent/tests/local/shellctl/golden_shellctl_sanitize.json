@@ -1,0 +1,32 @@
+[
+  {
+    "name": "utf8_passthrough",
+    "chunks_hex": ["68656c6c6f20e4b896e7958cf09f99820a"],
+    "expected": "hello 世界🙂\n"
+  },
+  {
+    "name": "split_utf8_chunks",
+    "chunks_hex": ["e4bda0e5a5bd20f09f", "99820a"],
+    "expected": "你好 🙂\n"
+  },
+  {
+    "name": "invalid_utf8_replacement",
+    "chunks_hex": ["666f80ff6f0a"],
+    "expected": "fo��o\n"
+  },
+  {
+    "name": "ansi_sequences_removed",
+    "chunks_hex": ["1b5b33316d7265641b5b306d1b5b4b0a"],
+    "expected": "red\n"
+  },
+  {
+    "name": "carriage_return_progress",
+    "chunks_hex": ["30250d3530250d313030250a"],
+    "expected": "100%\n"
+  },
+  {
+    "name": "crlf_normalized",
+    "chunks_hex": ["6f6b0d0a6e6578740d0a"],
+    "expected": "ok\nnext\n"
+  }
+]

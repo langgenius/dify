@@ -140,9 +140,9 @@ const WorkflowVariableBlockComponent = ({
       isExceptionVariable={isException}
       errorMsg={
         !variableValid
-          ? t('errorMsg.invalidVariable', { ns: 'workflow' })
+          ? t($ => $['errorMsg.invalidVariable'], { ns: 'workflow' })
           : !isLlmModelInstalled
-              ? t('errorMsg.modelPluginNotInstalled', { ns: 'workflow' })
+              ? t($ => $['errorMsg.modelPluginNotInstalled'], { ns: 'workflow' })
               : undefined
       }
       isSelected={isSelected}

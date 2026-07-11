@@ -50,7 +50,7 @@ const MCPCard = ({
   const canManageMCP = useCanManageMCP()
   const isConfigured = data.is_team_authorization && data.tools.length > 0
   const updatedAtText = data.updated_at
-    ? `${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at * 1000)}`
+    ? `${t($ => $['mcp.updateTime'], { ns: 'tools' })} ${formatTimeFromNow(data.updated_at * 1000)}`
     : undefined
 
   const { mutateAsync: updateMCP } = useUpdateMCP({})
@@ -144,10 +144,10 @@ const MCPCard = ({
       <div className="flex items-center gap-1 rounded-b-xl pt-1.5 pr-2.5 pb-2.5 pl-4">
         <div className="flex w-0 grow items-center gap-2">
           {data.tools.length > 0 && (
-            <div className="shrink-0 system-xs-regular text-text-tertiary">{t('mcp.toolsCount', { ns: 'tools', count: data.tools.length })}</div>
+            <div className="shrink-0 system-xs-regular text-text-tertiary">{t($ => $['mcp.toolsCount'], { ns: 'tools', count: data.tools.length })}</div>
           )}
           {!data.tools.length && (
-            <div className="shrink-0 system-xs-regular text-text-tertiary">{t('mcp.noTools', { ns: 'tools' })}</div>
+            <div className="shrink-0 system-xs-regular text-text-tertiary">{t($ => $['mcp.noTools'], { ns: 'tools' })}</div>
           )}
           {updatedAtText && (
             <>
@@ -159,7 +159,7 @@ const MCPCard = ({
         {isConfigured && <StatusDot status="success" size="small" className="shrink-0" />}
         {!isConfigured && (
           <div className="flex shrink-0 items-center gap-1 rounded-md border border-util-colors-red-red-500 bg-components-badge-bg-red-soft px-1.5 py-0.5 system-xs-medium text-util-colors-red-red-500">
-            {t('mcp.noConfigured', { ns: 'tools' })}
+            {t($ => $['mcp.noConfigured'], { ns: 'tools' })}
             <StatusDot status="error" size="small" />
           </div>
         )}
@@ -186,16 +186,16 @@ const MCPCard = ({
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('mcp.delete', { ns: 'tools' })}
+              {t($ => $['mcp.delete'], { ns: 'tools' })}
             </AlertDialogTitle>
             <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('mcp.deleteConfirmTitle', { ns: 'tools', mcp: data.name })}
+              {t($ => $['mcp.deleteConfirmTitle'], { ns: 'tools', mcp: data.name })}
             </div>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={handleDelete}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

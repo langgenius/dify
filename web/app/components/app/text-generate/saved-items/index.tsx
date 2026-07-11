@@ -52,7 +52,7 @@ const SavedItems: FC<ISavedItemsProps> = ({
                     <span>
                       {answer.length}
                       {' '}
-                      {t('unit.char', { ns: 'common' })}
+                      {t($ => $['unit.char'], { ns: 'common' })}
                     </span>
                   </div>
                   <div className="absolute right-2 bottom-1">
@@ -60,7 +60,7 @@ const SavedItems: FC<ISavedItemsProps> = ({
                       {isShowTextToSpeech && <NewAudioButton value={answer} />}
                       <ActionButton onClick={() => {
                         copy(answer)
-                        toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
+                        toast.success(t($ => $['actionMsg.copySuccessfully'], { ns: 'common' }))
                       }}
                       >
                         <RiClipboardLine className="size-4" />

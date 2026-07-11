@@ -1,12 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import VersionSelector from '../version-selector'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('VersionSelector', () => {
   it('should not open the selector when only one version exists', () => {
     const onChange = vi.fn()
@@ -19,9 +13,9 @@ describe('VersionSelector', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('generate.version 1 · generate.latest'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.version 1 · (?:.*\.)?generate\.latest$/))
 
-    expect(screen.queryByText('generate.versions')).not.toBeInTheDocument()
+    expect(screen.queryByText(/(?:^|\.)generate\.versions(?=$|:)/)).not.toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
 
@@ -36,16 +30,16 @@ describe('VersionSelector', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('generate.version 3 · generate.latest'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.version 3 · (?:.*\.)?generate\.latest$/))
 
-    expect(screen.getByText('generate.versions')).toBeInTheDocument()
-    expect(screen.getByText('generate.version 1')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)generate\.versions(?=$|:)/)).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)generate\.version 1$/)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('generate.version 1'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.version 1$/))
 
     expect(onChange).toHaveBeenCalledWith(0)
     await waitFor(() => {
-      expect(screen.queryByText('generate.versions')).not.toBeInTheDocument()
+      expect(screen.queryByText(/(?:^|\.)generate\.versions(?=$|:)/)).not.toBeInTheDocument()
     })
   })
 })

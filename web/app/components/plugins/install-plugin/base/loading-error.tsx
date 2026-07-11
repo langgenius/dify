@@ -14,7 +14,7 @@ const LoadingError: FC = () => {
       <CheckboxSkeleton
         className="shrink-0"
       />
-      <div className="hover-bg-components-panel-on-panel-item-bg relative grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs">
+      <div className="relative grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs">
         <div className="flex">
           <div
             className="relative flex h-10 w-10 items-center justify-center gap-2 rounded-[10px] border-[0.5px]
@@ -29,10 +29,10 @@ const LoadingError: FC = () => {
           </div>
           <div className="ml-3 grow">
             <div className="flex h-5 items-center system-md-semibold text-text-destructive">
-              {t('installModal.pluginLoadError', { ns: 'plugin' })}
+              {t($ => $['installModal.pluginLoadError'], { ns: 'plugin' })}
             </div>
             <div className="mt-0.5 system-xs-regular text-text-tertiary">
-              {t('installModal.pluginLoadErrorDesc', { ns: 'plugin' })}
+              {t($ => $['installModal.pluginLoadErrorDesc'], { ns: 'plugin' })}
             </div>
           </div>
         </div>

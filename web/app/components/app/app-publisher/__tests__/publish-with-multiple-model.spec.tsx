@@ -3,13 +3,6 @@ import * as React from 'react'
 import PublishWithMultipleModel from '../publish-with-multiple-model'
 
 const mockUseProviderContext = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockUseProviderContext(),
 }))
@@ -112,8 +105,8 @@ describe('PublishWithMultipleModel', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'operation.applyConfig' })).toBeDisabled()
-    expect(screen.queryByText('publishAs')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /(?:^|\.)operation\.applyConfig(?=$|:)/ })).toBeDisabled()
+    expect(screen.queryByText(/(?:^|\.)publishAs(?=$|:)/)).not.toBeInTheDocument()
   })
 
   it('should open matching model options and call onSelect', () => {
@@ -132,9 +125,9 @@ describe('PublishWithMultipleModel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.applyConfig' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.applyConfig(?=$|:)/ }))
 
-    expect(screen.getByText('publishAs')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)publishAs(?=$|:)/)).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('GPT-4o'))
 

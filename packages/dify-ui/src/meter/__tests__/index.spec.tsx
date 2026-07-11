@@ -1,8 +1,8 @@
 import { render } from 'vitest-browser-react'
 import {
+  Meter,
   MeterIndicator,
   MeterLabel,
-  MeterRoot,
   MeterTrack,
   MeterValue,
 } from '../index'
@@ -10,11 +10,11 @@ import {
 describe('Meter compound primitives', () => {
   it('exposes role="meter" with ARIA value metadata', async () => {
     const screen = await render(
-      <MeterRoot value={40} aria-label="Quota">
+      <Meter value={40} aria-label="Quota">
         <MeterTrack>
           <MeterIndicator />
         </MeterTrack>
-      </MeterRoot>,
+      </Meter>,
     )
 
     const meter = screen.getByLabelText('Quota')
@@ -26,11 +26,11 @@ describe('Meter compound primitives', () => {
 
   it('respects custom min and max', async () => {
     const screen = await render(
-      <MeterRoot value={3} min={1} max={5} aria-label="Quota">
+      <Meter value={3} min={1} max={5} aria-label="Quota">
         <MeterTrack>
           <MeterIndicator />
         </MeterTrack>
-      </MeterRoot>,
+      </Meter>,
     )
 
     const meter = screen.getByLabelText('Quota')
@@ -41,11 +41,11 @@ describe('Meter compound primitives', () => {
 
   it('sets indicator width from value/min/max', async () => {
     const screen = await render(
-      <MeterRoot value={42} aria-label="Quota">
+      <Meter value={42} aria-label="Quota">
         <MeterTrack>
           <MeterIndicator data-testid="indicator" />
         </MeterTrack>
-      </MeterRoot>,
+      </Meter>,
     )
 
     const indicator = screen.getByTestId('indicator').element() as HTMLElement
@@ -54,11 +54,11 @@ describe('Meter compound primitives', () => {
 
   it('forwards className to MeterTrack', async () => {
     const screen = await render(
-      <MeterRoot value={10} aria-label="Quota">
+      <Meter value={10} aria-label="Quota">
         <MeterTrack className="custom-track" data-testid="track">
           <MeterIndicator />
         </MeterTrack>
-      </MeterRoot>,
+      </Meter>,
     )
 
     const track = screen.getByTestId('track').element() as HTMLElement
@@ -67,7 +67,7 @@ describe('Meter compound primitives', () => {
 
   it('renders MeterLabel and MeterValue inside a compound layout', async () => {
     const screen = await render(
-      <MeterRoot
+      <Meter
         value={0.42}
         min={0}
         max={1}
@@ -79,7 +79,7 @@ describe('Meter compound primitives', () => {
           <MeterIndicator />
         </MeterTrack>
         <MeterValue />
-      </MeterRoot>,
+      </Meter>,
     )
 
     await expect.element(screen.getByText('Score')).toBeInTheDocument()

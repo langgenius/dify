@@ -63,10 +63,10 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     const params: SegmentUpdater = { content: '', attachment_ids: [] }
     if (docForm === ChunkingMode.qa) {
       if (!question.trim()) {
-        return toast.error(t('segment.questionEmpty', { ns: 'datasetDocuments' }))
+        return toast.error(t($ => $['segment.questionEmpty'], { ns: 'datasetDocuments' }))
       }
       if (!answer.trim()) {
-        return toast.error(t('segment.answerEmpty', { ns: 'datasetDocuments' }))
+        return toast.error(t($ => $['segment.answerEmpty'], { ns: 'datasetDocuments' }))
       }
 
       params.content = question
@@ -74,7 +74,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     }
     else {
       if (!question.trim()) {
-        return toast.error(t('segment.contentEmpty', { ns: 'datasetDocuments' }))
+        return toast.error(t($ => $['segment.contentEmpty'], { ns: 'datasetDocuments' }))
       }
 
       params.content = question
@@ -89,9 +89,9 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     setLoading(true)
     await addSegment({ datasetId, documentId, body: params }, {
       onSuccess() {
-        toast.success(t('segment.chunkAdded', { ns: 'datasetDocuments' }), {
+        toast.success(t($ => $['segment.chunkAdded'], { ns: 'datasetDocuments' }), {
           actionProps: {
-            children: t('operation.view', { ns: 'common' }),
+            children: t($ => $['operation.view'], { ns: 'common' }),
             onClick: viewNewlyAddedChunk,
           },
         })
@@ -110,7 +110,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   }, [docForm, keywords, addSegment, datasetId, documentId, question, answer, attachments, t, handleCancel, onSave, viewNewlyAddedChunk])
 
   const count = docForm === ChunkingMode.qa ? (question.length + answer.length) : question.length
-  const wordCountText = `${formatNumber(count)} ${t('segment.characters', { ns: 'datasetDocuments', count })}`
+  const wordCountText = `${formatNumber(count)} ${t($ => $['segment.characters'], { ns: 'datasetDocuments', count })}`
 
   const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
 
@@ -121,10 +121,10 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
       >
         <div className="flex flex-col">
           <div className="system-xl-semibold text-text-primary">
-            {t('segment.addChunk', { ns: 'datasetDocuments' })}
+            {t($ => $['segment.addChunk'], { ns: 'datasetDocuments' })}
           </div>
           <div className="flex items-center gap-x-2">
-            <SegmentIndexTag label={t('segment.newChunk', { ns: 'datasetDocuments' })!} />
+            <SegmentIndexTag label={t($ => $['segment.newChunk'], { ns: 'datasetDocuments' })!} />
             <Dot />
             <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
           </div>
@@ -144,7 +144,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
           )}
           <button
             type="button"
-            aria-label={t('operation.zoomIn', { ns: 'common' })}
+            aria-label={t($ => $['operation.zoomIn'], { ns: 'common' })}
             className="mr-1 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={toggleFullScreen}
           >
@@ -152,7 +152,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
           </button>
           <button
             type="button"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t($ => $['operation.close'], { ns: 'common' })}
             className="flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={handleCancel.bind(null, 'esc')}
           >

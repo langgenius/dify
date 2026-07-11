@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { DrawerRootSnapPoint } from '.'
+import type { DrawerSnapPoint } from '.'
 import * as React from 'react'
 import {
   createDrawerHandle,
@@ -293,11 +293,11 @@ export const Positions: Story = {
 
 const snapTopMarginRem = 1
 const visibleSnapPointRem = 30
-const initialSnapPoint: DrawerRootSnapPoint = `${visibleSnapPointRem + snapTopMarginRem}rem`
-const snapPoints = [initialSnapPoint, 1] satisfies DrawerRootSnapPoint[]
+const initialSnapPoint: DrawerSnapPoint = `${visibleSnapPointRem + snapTopMarginRem}rem`
+const snapPoints = [initialSnapPoint, 1] satisfies DrawerSnapPoint[]
 
 function SnapPointsDemo() {
-  const [snapPoint, setSnapPoint] = React.useState<DrawerRootSnapPoint | null>(initialSnapPoint)
+  const [snapPoint, setSnapPoint] = React.useState<DrawerSnapPoint | null>(initialSnapPoint)
 
   return (
     <Drawer

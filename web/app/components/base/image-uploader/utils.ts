@@ -15,7 +15,7 @@ export const getImageUploadErrorMessage = (error: any, defaultMessage: string, t
     return error?.response?.message
 
   if (errorCode === 'file_extension_blocked')
-    return t('fileUploader.fileExtensionBlocked', { ns: 'common' })
+    return t($ => $['fileUploader.fileExtensionBlocked'], { ns: 'common' })
 
   return defaultMessage
 }

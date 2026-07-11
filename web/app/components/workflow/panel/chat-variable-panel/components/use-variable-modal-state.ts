@@ -1,4 +1,4 @@
-import type { ObjectValueItem, ToastPayload } from './variable-modal.helpers'
+import type { ChatVariableTranslator, ObjectValueItem, ToastPayload } from './variable-modal.helpers'
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { useMemo, useState } from 'react'
 import { v4 as uuid4 } from 'uuid'
@@ -22,7 +22,7 @@ type UseVariableModalStateOptions = {
   notify: (props: ToastPayload) => void
   onClose: () => void
   onSave: (chatVar: ConversationVariable) => void
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: ChatVariableTranslator
 }
 
 type VariableModalState = {
@@ -187,20 +187,23 @@ export const useVariableModalState = ({
     if (!chatVar && conversationVariables.some(item => item.name === state.name)) {
       notify({
         type: 'error',
-        message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: t('chatVariable.modal.name', { ns: 'workflow' }) }),
+        message: t($ => $['varKeyError.keyAlreadyExists'], {
+          ns: 'appDebug',
+          key: t($ => $['chatVariable.modal.name'], { ns: 'workflow' }),
+        }),
       })
       return
     }
 
     if (state.type === ChatVarType.Object && state.objectValue.some(item => !item.key && item.value !== undefined && item.value !== '')) {
-      notify({ type: 'error', message: t('chatVariable.modal.objectKeyRequired', { ns: 'workflow' }) })
+      notify({ type: 'error', message: t($ => $['chatVariable.modal.objectKeyRequired'], { ns: 'workflow' }) })
       return
     }
 
     if (state.description.length > MAX_DESCRIPTION_LENGTH) {
       notify({
         type: 'error',
-        message: t('chatVariable.modal.descriptionTooLong', {
+        message: t($ => $['chatVariable.modal.descriptionTooLong'], {
           maxLength: MAX_DESCRIPTION_LENGTH,
           ns: 'workflow',
         }),

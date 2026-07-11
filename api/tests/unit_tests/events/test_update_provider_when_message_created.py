@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 from uuid import uuid4
 
 import pytest
@@ -19,8 +19,19 @@ from models.provider import ProviderType
 @contextmanager
 def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None, None, None]:
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
-    with patch("services.credit_pool_service.session_factory.get_session_maker", return_value=session_maker):
-        yield
+    sessions = []
+
+    def _session():
+        session = session_maker()
+        sessions.append(session)
+        return session
+
+    with patch("events.event_handlers.update_provider_when_message_created.db", SimpleNamespace(session=_session)):
+        try:
+            yield
+        finally:
+            for session in sessions:
+                session.close()
 
 
 def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_insufficient() -> None:
@@ -140,5 +151,6 @@ def test_capped_credit_pool_accounting_skips_exhaustion_warning_when_full_amount
         tenant_id="tenant-id",
         credits_required=3,
         pool_type="trial",
+        session=ANY,
     )
     assert "Credit pool exhausted during message-created accounting" not in caplog.text

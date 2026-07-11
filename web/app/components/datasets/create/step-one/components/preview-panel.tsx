@@ -51,8 +51,8 @@ function PreviewPanel({
         <PlanUpgradeModal
           show
           onClose={hidePlanUpgradeModal}
-          title={t('upgrade.uploadMultiplePages.title', { ns: 'billing' })!}
-          description={t('upgrade.uploadMultiplePages.description', { ns: 'billing' })!}
+          title={t($ => $['upgrade.uploadMultiplePages.title'], { ns: 'billing' })!}
+          description={t($ => $['upgrade.uploadMultiplePages.description'], { ns: 'billing' })!}
         />
       )}
     </div>

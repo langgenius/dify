@@ -13,7 +13,7 @@ const SummaryStatus = ({ status }: SummaryStatusProps) => {
 
   const tip = useMemo(() => {
     if (status === 'SUMMARIZING') {
-      return t('list.summary.generatingSummary', { ns: 'datasetDocuments' })
+      return t($ => $['list.summary.generatingSummary'], { ns: 'datasetDocuments' })
     }
     return ''
   }, [status, t])
@@ -28,7 +28,7 @@ const SummaryStatus = ({ status }: SummaryStatusProps) => {
           <span className="inline-flex">
             <Badge className="border-text-accent-secondary text-text-accent-secondary">
               <SearchLinesSparkle aria-hidden className="mr-0.5 size-3" />
-              <span>{t('list.summary.generating', { ns: 'datasetDocuments' })}</span>
+              <span>{t($ => $['list.summary.generating'], { ns: 'datasetDocuments' })}</span>
             </Badge>
           </span>
         )}

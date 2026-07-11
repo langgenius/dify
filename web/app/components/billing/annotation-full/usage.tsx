@@ -23,7 +23,7 @@ const Usage: FC<Props> = ({
     <UsageInfo
       className={className}
       Icon={MessageFastPlus}
-      name={t('annotatedResponse.quotaTitle', { ns: 'billing' })}
+      name={t($ => $['annotatedResponse.quotaTitle'], { ns: 'billing' })}
       usage={usage.annotatedResponse}
       total={total.annotatedResponse}
     />

@@ -57,7 +57,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
     <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={noop}>
       <PreviewContainer
         header={(
-          <PreviewHeader title={t('stepTwo.preview', { ns: 'datasetCreation' })}>
+          <PreviewHeader title={t($ => $['stepTwo.preview'], { ns: 'datasetCreation' })}>
             <div className="flex items-center gap-1">
               <PreviewDocumentPicker
                 files={pickerFiles as Array<Required<{ id: string, name: string, extension: string }>>}
@@ -66,7 +66,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
               />
               {currentDocForm !== ChunkingMode.qa && (
                 <Badge
-                  text={t('stepTwo.previewChunkCount', {
+                  text={t($ => $['stepTwo.previewChunkCount'], {
                     ns: 'datasetCreation',
                     count: estimate?.total_segments || 0,
                   }) as string}
@@ -145,7 +145,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
             <div className="flex flex-col items-center justify-center gap-3">
               <RiSearchEyeLine className="size-10 text-text-empty-state-icon" />
               <p className="text-sm text-text-tertiary">
-                {t('stepTwo.previewChunkTip', { ns: 'datasetCreation' })}
+                {t($ => $['stepTwo.previewChunkTip'], { ns: 'datasetCreation' })}
               </p>
             </div>
           </div>

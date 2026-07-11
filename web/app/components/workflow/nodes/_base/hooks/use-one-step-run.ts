@@ -412,13 +412,13 @@ const useOneStepRun = <T>({
       })
 
       if (!response) {
-        const message = t('common.scheduleTriggerRunFailed', { ns: 'workflow' })
+        const message = t($ => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
         toast.error(message)
         throw new Error(message)
       }
 
       if (response?.status === 'error') {
-        const message = response?.message || t('common.scheduleTriggerRunFailed', { ns: 'workflow' })
+        const message = response?.message || t($ => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
         toast.error(message)
         throw new Error(message)
       }
@@ -444,7 +444,7 @@ const useOneStepRun = <T>({
           _singleRunningStatus: NodeRunningStatus.Failed,
         },
       })
-      toast.error(t('common.scheduleTriggerRunFailed', { ns: 'workflow' }))
+      toast.error(t($ => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' }))
       throw error
     }
   }, [flowId, id, handleNodeDataUpdate, data, t])
@@ -469,7 +469,7 @@ const useOneStepRun = <T>({
           return null
 
         if (!response) {
-          const message = response?.message || t('common.webhookDebugFailed', { ns: 'workflow' })
+          const message = response?.message || t($ => $['common.webhookDebugFailed'], { ns: 'workflow' })
           toast.error(message)
           cancelWebhookSingleRun()
           throw new Error(message)
@@ -497,7 +497,7 @@ const useOneStepRun = <T>({
         }
 
         if (response?.status === 'error') {
-          const message = response.message || t('common.webhookDebugFailed', { ns: 'workflow' })
+          const message = response.message || t($ => $['common.webhookDebugFailed'], { ns: 'workflow' })
           toast.error(message)
           cancelWebhookSingleRun()
           throw new Error(message)
@@ -521,7 +521,7 @@ const useOneStepRun = <T>({
         if (controller.signal.aborted)
           return null
 
-        toast.error(t('common.webhookDebugRequestFailed', { ns: 'workflow' }))
+        toast.error(t($ => $['common.webhookDebugRequestFailed'], { ns: 'workflow' }))
         cancelWebhookSingleRun()
         if (error instanceof Error)
           throw error

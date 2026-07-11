@@ -136,7 +136,7 @@ const ConfigContent: FC<Props> = ({
       return
 
     if (mode === RerankingModeEnum.RerankingModel && !currentRerankModel)
-      toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
+      toast.error(t($ => $['errorMsg.rerankModelRequired'], { ns: 'workflow' }))
 
     onChange({
       ...datasetConfigs,
@@ -149,13 +149,13 @@ const ConfigContent: FC<Props> = ({
   const rerankingModeOptions = [
     {
       value: RerankingModeEnum.WeightedScore,
-      label: t('weightedScore.title', { ns: 'dataset' }),
-      tips: t('weightedScore.description', { ns: 'dataset' }),
+      label: t($ => $['weightedScore.title'], { ns: 'dataset' }),
+      tips: t($ => $['weightedScore.description'], { ns: 'dataset' }),
     },
     {
       value: RerankingModeEnum.RerankingModel,
-      label: t('modelProvider.rerankModel.key', { ns: 'common' }),
-      tips: t('modelProvider.rerankModel.tip', { ns: 'common' }),
+      label: t($ => $['modelProvider.rerankModel.key'], { ns: 'common' }),
+      tips: t($ => $['modelProvider.rerankModel.tip'], { ns: 'common' }),
     },
   ]
 
@@ -179,7 +179,7 @@ const ConfigContent: FC<Props> = ({
 
   const handleManuallyToggleRerank = useCallback((enable: boolean) => {
     if (!currentRerankModel && enable)
-      toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
+      toast.error(t($ => $['errorMsg.rerankModelRequired'], { ns: 'workflow' }))
     onChange({
       ...datasetConfigs,
       reranking_enable: enable,
@@ -188,15 +188,15 @@ const ConfigContent: FC<Props> = ({
 
   return (
     <div>
-      <div className="system-xl-semibold text-text-primary">{t('retrievalSettings', { ns: 'dataset' })}</div>
+      <div className="system-xl-semibold text-text-primary">{t($ => $.retrievalSettings, { ns: 'dataset' })}</div>
       <div className="system-xs-regular text-text-tertiary">
-        {t('defaultRetrievalTip', { ns: 'dataset' })}
+        {t($ => $.defaultRetrievalTip, { ns: 'dataset' })}
       </div>
       {type === RETRIEVE_TYPE.multiWay && (
         <>
           <div className="my-2 flex flex-col items-center py-1">
             <div className="mr-2 mb-2 shrink-0 system-xs-semibold-uppercase text-text-secondary">
-              {t('rerankSettings', { ns: 'dataset' })}
+              {t($ => $.rerankSettings, { ns: 'dataset' })}
             </div>
             <Divider bgStyle="gradient" className="m-0 h-px!" />
           </div>
@@ -204,21 +204,21 @@ const ConfigContent: FC<Props> = ({
             selectedDatasetsMode.inconsistentEmbeddingModel
             && (
               <div className="mt-4 system-xs-medium text-text-warning">
-                {t('inconsistentEmbeddingModelTip', { ns: 'dataset' })}
+                {t($ => $.inconsistentEmbeddingModelTip, { ns: 'dataset' })}
               </div>
             )
           }
           {
             selectedDatasetsMode.mixtureInternalAndExternal && (
               <div className="mt-4 system-xs-medium text-text-warning">
-                {t('mixtureInternalAndExternalTip', { ns: 'dataset' })}
+                {t($ => $.mixtureInternalAndExternalTip, { ns: 'dataset' })}
               </div>
             )
           }
           {
             selectedDatasetsMode.allExternal && (
               <div className="mt-4 system-xs-medium text-text-warning">
-                {t('allExternalTip', { ns: 'dataset' })}
+                {t($ => $.allExternalTip, { ns: 'dataset' })}
               </div>
             )
           }
@@ -226,7 +226,7 @@ const ConfigContent: FC<Props> = ({
             selectedDatasetsMode.mixtureHighQualityAndEconomic
             && (
               <div className="mt-4 system-xs-medium text-text-warning">
-                {t('mixtureHighQualityAndEconomicTip', { ns: 'dataset' })}
+                {t($ => $.mixtureHighQualityAndEconomicTip, { ns: 'dataset' })}
               </div>
             )
           }
@@ -247,7 +247,6 @@ const ConfigContent: FC<Props> = ({
                       <Infotip
                         aria-label={option.tips}
                         className="ml-0.5 size-3.5"
-                        iconClassName="h-3.5 w-3.5"
                         popupClassName="w-[200px]"
                       >
                         {option.tips}
@@ -271,13 +270,13 @@ const ConfigContent: FC<Props> = ({
                       />
                     )
                   }
-                  <div className="ml-1 system-sm-semibold leading-[32px] text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</div>
+                  <div className="ml-1 system-sm-semibold leading-[32px] text-text-secondary">{t($ => $['modelProvider.rerankModel.key'], { ns: 'common' })}</div>
                   <Infotip
-                    aria-label={t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                    aria-label={t($ => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
                     className="ml-1"
                     popupClassName="w-[200px]"
                   >
-                    {t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                    {t($ => $['modelProvider.rerankModel.tip'], { ns: 'common' })}
                   </Infotip>
                 </div>
                 {
@@ -359,9 +358,9 @@ const ConfigContent: FC<Props> = ({
       {isInWorkflow && type === RETRIEVE_TYPE.oneWay && (
         <div className="mt-4">
           <div className="flex items-center space-x-0.5">
-            <div className="text-[13px] leading-[32px] font-medium text-text-primary">{t('modelProvider.systemReasoningModel.key', { ns: 'common' })}</div>
-            <Infotip aria-label={t('modelProvider.systemReasoningModel.tip', { ns: 'common' })}>
-              {t('modelProvider.systemReasoningModel.tip', { ns: 'common' })}
+            <div className="text-[13px] leading-[32px] font-medium text-text-primary">{t($ => $['modelProvider.systemReasoningModel.key'], { ns: 'common' })}</div>
+            <Infotip aria-label={t($ => $['modelProvider.systemReasoningModel.tip'], { ns: 'common' })}>
+              {t($ => $['modelProvider.systemReasoningModel.tip'], { ns: 'common' })}
             </Infotip>
           </div>
           <ModelParameterModal

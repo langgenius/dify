@@ -220,7 +220,7 @@ const Right = ({
                     )}
                   />
                   <TooltipContent>
-                    {t('generate.optimizePromptTooltip', { ns: 'appDebug' })}
+                    {t($ => $['generate.optimizePromptTooltip'], { ns: 'appDebug' })}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -240,14 +240,14 @@ const Right = ({
                     )}
                   />
                   <TooltipContent>
-                    {t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}
+                    {t($ => $['debug.variableInspect.exportToolTip'], { ns: 'workflow' })}
                   </TooltipContent>
                 </Tooltip>
               )}
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
                   <span className="mr-[4.5px] ml-[2.5px] h-[3px] w-[3px] rounded-sm bg-text-accent-secondary"></span>
-                  <span className="system-2xs-semibold-uupercase">{t('debug.variableInspect.edited', { ns: 'workflow' })}</span>
+                  <span className="system-2xs-semibold-uupercase">{t($ => $['debug.variableInspect.edited'], { ns: 'workflow' })}</span>
                 </Badge>
               )}
               {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type !== VarInInspectType.conversation && (
@@ -260,7 +260,7 @@ const Right = ({
                     )}
                   />
                   <TooltipContent>
-                    {t('debug.variableInspect.reset', { ns: 'workflow' })}
+                    {t($ => $['debug.variableInspect.reset'], { ns: 'workflow' })}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -274,7 +274,7 @@ const Right = ({
                     )}
                   />
                   <TooltipContent>
-                    {t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}
+                    {t($ => $['debug.variableInspect.resetConversationVar'], { ns: 'workflow' })}
                   </TooltipContent>
                 </Tooltip>
               )}

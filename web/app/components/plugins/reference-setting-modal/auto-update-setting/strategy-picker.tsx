@@ -16,21 +16,21 @@ const StrategyPicker = ({
   const options = [
     {
       value: AUTO_UPDATE_STRATEGY.disabled,
-      label: t(`${i18nPrefix}.disabled.name`, { ns: 'plugin' }),
+      label: t($ => $[`${i18nPrefix}.disabled.name`], { ns: 'plugin' }),
     },
     {
       value: AUTO_UPDATE_STRATEGY.fixOnly,
-      label: t(`${i18nPrefix}.fixOnly.name`, { ns: 'plugin' }),
+      label: t($ => $[`${i18nPrefix}.fixOnly.name`], { ns: 'plugin' }),
     },
     {
       value: AUTO_UPDATE_STRATEGY.latest,
-      label: t(`${i18nPrefix}.latest.name`, { ns: 'plugin' }),
+      label: t($ => $[`${i18nPrefix}.latest.name`], { ns: 'plugin' }),
     },
   ]
 
   return (
     <SegmentedControl<AUTO_UPDATE_STRATEGY>
-      aria-label={t('autoUpdate.automaticUpdates', { ns: 'plugin' })}
+      aria-label={t($ => $['autoUpdate.automaticUpdates'], { ns: 'plugin' })}
       className="w-[326px]"
       value={[value]}
       onValueChange={(nextValue) => {

@@ -34,7 +34,7 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
     if (nodesInitialized)
       handleNodeIterationRerender(id)
     if (data.is_parallel && showTips) {
-      toast.warning(t(`${i18nPrefix}.answerNodeWarningDesc`, { ns: 'workflow' }))
+      toast.warning(t($ => $[`${i18nPrefix}.answerNodeWarningDesc`], { ns: 'workflow' }))
       setShowTips(false)
     }
   }, [nodesInitialized, id, handleNodeIterationRerender, data.is_parallel, showTips, t])

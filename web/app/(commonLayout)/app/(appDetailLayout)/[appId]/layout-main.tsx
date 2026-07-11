@@ -3,13 +3,16 @@ import type { FC } from 'react'
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom, workspacePermissionKeysLoadingAtom } from '@/context/permission-state'
+import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -39,7 +42,11 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const router = useRouter()
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, currentWorkspace, userProfile, workspacePermissionKeys } = useAppContext()
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { appDetail, setAppDetail } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -49,7 +56,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
   const routeAppDetail = appDetailRes ?? (appDetail?.id === appId ? appDetail : null)
 
-  useDocumentTitle(appDetail?.name || t('menus.appDetail', { ns: 'common' }))
+  useDocumentTitle(appDetail?.name || t($ => $['menus.appDetail'], { ns: 'common' }))
 
   useEffect(() => {
     let ignore = false
@@ -96,7 +103,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       return
 
     const appACLCapabilities = getAppACLCapabilities(routeAppDetail.permission_keys, {
-      currentUserId: userProfile?.id,
+      currentUserId,
       resourceMaintainer: routeAppDetail.maintainer,
       workspacePermissionKeys,
       isRbacEnabled,
@@ -114,7 +121,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       || (isAccessConfigPath && !appACLCapabilities.canAccessConfig)
     ) {
       router.replace(getRedirectionPath(routeAppDetail, {
-        currentUserId: userProfile?.id,
+        currentUserId,
         resourceMaintainer: routeAppDetail.maintainer,
         workspacePermissionKeys,
         isRbacEnabled,
@@ -131,7 +138,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
     if (appDetailRes && appDetail?.id !== appDetailRes.id)
       setAppDetail({ ...appDetailRes, enable_sso: false })
-  }, [appDetail?.id, appDetailRes, appId, currentWorkspace.id, isLoadingAppDetail, isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, isRbacEnabled, pathname, routeAppDetail, router, setAppDetail, userProfile?.id, workspacePermissionKeys])
+  }, [appDetail?.id, appDetailRes, appId, currentUserId, currentWorkspace.id, isLoadingAppDetail, isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, isRbacEnabled, pathname, routeAppDetail, router, setAppDetail, workspacePermissionKeys])
 
   const isWorkflowPage = pathname.endsWith('/workflow')
   const content = !appDetail

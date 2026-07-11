@@ -119,7 +119,7 @@ const NodeGroupItem = ({
               (showSelectedBorder || showSelectionBorder) && 'bg-black/2!',
             )}
           >
-            {t(`${i18nPrefix}.varNotSet`, { ns: 'workflow' })}
+            {t($ => $[`${i18nPrefix}.varNotSet`], { ns: 'workflow' })}
           </div>
         )
       }

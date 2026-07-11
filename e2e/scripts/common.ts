@@ -32,6 +32,7 @@ type ForegroundProcessOptions = {
 export const rootDir = fileURLToPath(new URL('../..', import.meta.url))
 export const e2eDir = path.join(rootDir, 'e2e')
 export const apiDir = path.join(rootDir, 'api')
+export const difyAgentDir = path.join(rootDir, 'dify-agent')
 export const dockerDir = path.join(rootDir, 'docker')
 export const webDir = path.join(rootDir, 'web')
 
@@ -207,7 +208,7 @@ export const getWebEnvLocalHash = async () => {
     .digest('hex')
 }
 
-export const readSimpleDotenv = async (filePath: string) => {
+export const readSimpleDotenv = async (filePath: string): Promise<Record<string, string>> => {
   const fileContent = await readFile(filePath, 'utf8')
   const entries = fileContent
     .split(/\r?\n/)

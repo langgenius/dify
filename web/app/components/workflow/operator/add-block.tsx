@@ -97,7 +97,7 @@ const AddBlock = ({
   const renderTriggerElement = useCallback((open: boolean) => {
     return (
       <TipPopup
-        title={t('common.addBlock', { ns: 'workflow' })}
+        title={t($ => $['common.addBlock'], { ns: 'workflow' })}
       >
         <div className={cn(
           'flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',

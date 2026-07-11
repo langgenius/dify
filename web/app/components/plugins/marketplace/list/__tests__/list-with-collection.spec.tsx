@@ -5,14 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ListWithCollection from '../list-with-collection'
 
 const mockMoreClick = vi.fn()
-
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('../../atoms', () => ({
   useMarketplaceMoreClick: () => mockMoreClick,
 }))

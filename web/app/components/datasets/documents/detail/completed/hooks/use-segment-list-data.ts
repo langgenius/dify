@@ -160,12 +160,12 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
     const targetIds = segId ? [segId] : selectedSegmentIds
     await operationApi({ datasetId, documentId, segmentIds: targetIds }, {
       onSuccess: () => {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         updateSegmentsInCache(targetIds, seg => ({ ...seg, enabled: enable }))
         refreshChunkListWithStatusChanged()
       },
       onError: () => {
-        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+        toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },
     })
   }, [datasetId, documentId, selectedSegmentIds, disableSegment, enableSegment, t, updateSegmentsInCache, refreshChunkListWithStatusChanged])
@@ -173,13 +173,13 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
     const targetIds = segId ? [segId] : selectedSegmentIds
     await deleteSegment({ datasetId, documentId, segmentIds: targetIds }, {
       onSuccess: () => {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         resetList()
         if (!segId)
           clearSelection()
       },
       onError: () => {
-        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+        toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },
     })
   }, [datasetId, documentId, selectedSegmentIds, deleteSegment, resetList, clearSelection, t])
@@ -188,11 +188,11 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
     // Validate and build params based on doc form
     if (docForm === ChunkingMode.qa) {
       if (!question.trim()) {
-        toast.error(t('segment.questionEmpty', { ns: 'datasetDocuments' }))
+        toast.error(t($ => $['segment.questionEmpty'], { ns: 'datasetDocuments' }))
         return
       }
       if (!answer.trim()) {
-        toast.error(t('segment.answerEmpty', { ns: 'datasetDocuments' }))
+        toast.error(t($ => $['segment.answerEmpty'], { ns: 'datasetDocuments' }))
         return
       }
       params.content = question
@@ -200,7 +200,7 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
     }
     else {
       if (!question.trim()) {
-        toast.error(t('segment.contentEmpty', { ns: 'datasetDocuments' }))
+        toast.error(t($ => $['segment.contentEmpty'], { ns: 'datasetDocuments' }))
         return
       }
       params.content = question
@@ -210,7 +210,7 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
     if (attachments.length) {
       const notAllUploaded = attachments.some(item => !item.uploadedId)
       if (notAllUploaded) {
-        toast.error(t('segment.allFilesUploaded', { ns: 'datasetDocuments' }))
+        toast.error(t($ => $['segment.allFilesUploaded'], { ns: 'datasetDocuments' }))
         return
       }
       params.attachment_ids = attachments.map(item => item.uploadedId!)
@@ -221,7 +221,7 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
     eventEmitter?.emit('update-segment')
     await updateSegment({ datasetId, documentId, segmentId, body: params }, {
       onSuccess(res) {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         if (!needRegenerate)
           onCloseSegmentDetail()
         updateSegmentInCache(segmentId, seg => ({
@@ -264,11 +264,11 @@ export const useSegmentListData = (options: UseSegmentListDataOptions): UseSegme
       const translationKey = (docForm === ChunkingMode.parentChild && parentMode === 'paragraph')
         ? 'segment.parentChunks' as const
         : 'segment.chunks' as const
-      return `${total} ${t(translationKey, { ns: 'datasetDocuments', count })}`
+      return `${total} ${t($ => $[translationKey], { ns: 'datasetDocuments', count })}`
     }
     const total = typeof segmentListData?.total === 'number' ? formatNumber(segmentListData.total) : 0
     const count = segmentListData?.total || 0
-    return `${total} ${t('segment.searchResults', { ns: 'datasetDocuments', count })}`
+    return `${total} ${t($ => $['segment.searchResults'], { ns: 'datasetDocuments', count })}`
   }, [segmentListData, docForm, parentMode, searchValue, selectedStatus, t])
   return {
     segments,

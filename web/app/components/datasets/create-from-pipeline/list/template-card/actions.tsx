@@ -42,7 +42,7 @@ const Actions = ({
         className="grow gap-x-0.5"
       >
         <span aria-hidden className="i-ri-add-line size-4" />
-        <span className="px-0.5">{t('operations.choose', { ns: 'datasetPipeline' })}</span>
+        <span className="px-0.5">{t($ => $['operations.choose'], { ns: 'datasetPipeline' })}</span>
       </Button>
       <Button
         variant="secondary"
@@ -50,13 +50,13 @@ const Actions = ({
         className="grow gap-x-0.5"
       >
         <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
-        <span className="px-0.5">{t('operations.details', { ns: 'datasetPipeline' })}</span>
+        <span className="px-0.5">{t($ => $['operations.details'], { ns: 'datasetPipeline' })}</span>
       </Button>
       {
         showMoreOperations && (
           <DropdownMenu open={isMoreOperationsOpen} onOpenChange={setIsMoreOperationsOpen}>
             <DropdownMenuTrigger
-              aria-label={t('operation.more', { ns: 'common' })}
+              aria-label={t($ => $['operation.more'], { ns: 'common' })}
               className={cn(
                 'flex size-8 cursor-pointer items-center justify-center rounded-lg p-0 shadow-xs shadow-shadow-shadow-3',
                 'data-popup-open:bg-state-base-hover',

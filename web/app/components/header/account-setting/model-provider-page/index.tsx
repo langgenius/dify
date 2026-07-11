@@ -6,15 +6,15 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useCheckInstalled } from '@/service/use-plugins'
+import { useInstalledPluginList } from '@/service/use-plugins'
 import UpdateSettingDialog from '../update-setting-dialog'
 import {
   CustomConfigurationStatusEnum,
@@ -25,7 +25,6 @@ import {
 } from './hooks'
 import ModelProviderPageBody from './model-provider-page-body'
 import SystemModelSelector from './system-model-selector'
-import { providerToPluginId } from './utils'
 
 type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-configured' | 'fully-configured'
 
@@ -58,23 +57,43 @@ const ModelProviderPage = ({
   const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(ModelTypeEnum.rerank)
   const { data: speech2textDefaultModel, isLoading: isSpeech2textDefaultModelLoading } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(ModelTypeEnum.tts)
-  const { modelProviders: providers, isLoadingModelProviders } = useProviderContext()
+  const { modelProviders: providers, isLoadingModelProviders, refreshModelProviders } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
-  const allPluginIds = useMemo(() => {
-    return [...new Set(providers.map(p => providerToPluginId(p.provider)).filter(Boolean))]
-  }, [providers])
-  const { data: installedPlugins } = useCheckInstalled({
-    pluginIds: allPluginIds,
-    enabled: allPluginIds.length > 0,
+  const { data: installedModelPlugins } = useInstalledPluginList(false, 100, {
+    category: PluginCategoryEnum.model,
   })
-  const enrichedPlugins = usePluginsWithLatestVersion(installedPlugins?.plugins)
+  const enrichedPlugins = usePluginsWithLatestVersion(installedModelPlugins?.plugins)
   const pluginDetailMap = useMemo(() => {
     const map = new Map<string, PluginDetail>()
-    for (const plugin of enrichedPlugins)
-      map.set(plugin.plugin_id, plugin)
+    for (const plugin of enrichedPlugins) {
+      const existingPlugin = map.get(plugin.plugin_id)
+      if (!existingPlugin || plugin.source === PluginSource.debugging)
+        map.set(plugin.plugin_id, plugin)
+    }
     return map
   }, [enrichedPlugins])
+  const debuggingModelPluginKey = useMemo(() => {
+    const debuggingModelPluginIds = enrichedPlugins
+      .filter(plugin => plugin.source === PluginSource.debugging)
+      .map(plugin => `${plugin.plugin_id}:${plugin.plugin_unique_identifier}`)
+      .sort()
+
+    return debuggingModelPluginIds.join(',')
+  }, [enrichedPlugins])
+  const refreshedDebuggingModelPluginKeyRef = useRef('')
+  useEffect(() => {
+    if (!debuggingModelPluginKey) {
+      refreshedDebuggingModelPluginKeyRef.current = ''
+      return
+    }
+
+    if (refreshedDebuggingModelPluginKeyRef.current === debuggingModelPluginKey)
+      return
+
+    refreshedDebuggingModelPluginKeyRef.current = debuggingModelPluginKey
+    refreshModelProviders?.()
+  }, [debuggingModelPluginKey, refreshModelProviders])
   const enableMarketplace = systemFeatures.enable_marketplace
   const isDefaultModelLoading = isTextGenerationDefaultModelLoading
     || isEmbeddingsDefaultModelLoading
@@ -169,7 +188,7 @@ const ModelProviderPage = ({
     >
       <SearchInput
         className="w-50 shrink-0"
-        placeholder={t('modelProvider.searchModels', { ns: 'common' })}
+        placeholder={t($ => $['modelProvider.searchModels'], { ns: 'common' })}
         value={searchText}
         onValueChange={onSearchTextChange ?? noop}
       />
@@ -180,8 +199,8 @@ const ModelProviderPage = ({
                 <div className="pointer-events-none absolute inset-[-1px] bg-[linear-gradient(119deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0)_100%)] opacity-40" />
                 <div className="relative flex shrink-0 items-center gap-1">
                   <span aria-hidden className="i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
-                  <span className="shrink-0 system-sm-medium whitespace-nowrap text-text-primary" title={t(warningTextKey, { ns: 'common' })}>
-                    {t(warningTextKey, { ns: 'common' })}
+                  <span className="shrink-0 system-sm-medium whitespace-nowrap text-text-primary" title={t($ => $[warningTextKey], { ns: 'common' })}>
+                    {t($ => $[warningTextKey], { ns: 'common' })}
                   </span>
                 </div>
                 <div className="relative shrink-0">

@@ -31,7 +31,7 @@ const ShowAllSettings = ({
       >
         <div className="flex grow flex-col">
           <span className="flex min-h-6 items-center system-sm-medium text-text-secondary">
-            {t('variableConfig.showAllSettings', { ns: 'appDebug' })}
+            {t($ => $['variableConfig.showAllSettings'], { ns: 'appDebug' })}
           </span>
           <span className="pb-0.5 body-xs-regular text-text-tertiary first-letter:capitalize">
             {hiddenFieldNames}

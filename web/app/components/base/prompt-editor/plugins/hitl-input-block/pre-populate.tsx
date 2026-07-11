@@ -43,15 +43,15 @@ const Placeholder = ({
     <div className="mt-1 h-[80px] rounded-lg bg-components-input-bg-normal px-3 pt-2 system-sm-regular text-text-tertiary">
       <div className="flex flex-wrap items-center leading-5">
         <Trans
-          i18nKey={`${i18nPrefix}.prePopulateFieldPlaceholder`}
+          i18nKey={$ => $[`${i18nPrefix}.prePopulateFieldPlaceholder`]}
           ns="workflow"
           components={{
-            staticContent: <TagLabel type="edit" className="mx-1" onClick={() => onTypeClick(false)}>{t(`${i18nPrefix}.staticContent`, { ns: 'workflow' })}</TagLabel>,
+            staticContent: <TagLabel type="edit" className="mx-1" onClick={() => onTypeClick(false)}>{t($ => $[`${i18nPrefix}.staticContent`], { ns: 'workflow' })}</TagLabel>,
             variable: (
               <VarReferencePicker
                 {...varPickerProps}
                 trigger={
-                  <TagLabel type="variable" className="mx-1">{t(`${i18nPrefix}.variable`, { ns: 'workflow' })}</TagLabel>
+                  <TagLabel type="variable" className="mx-1">{t($ => $[`${i18nPrefix}.variable`], { ns: 'workflow' })}</TagLabel>
                 }
               />
             ),
@@ -126,7 +126,7 @@ const PrePopulate: FC<Props> = ({
   return (
     <div className={cn('relative min-h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal pb-1', isFocus && 'border-components-input-border-active bg-components-input-bg-active shadow-xs')}>
       <Textarea
-        aria-label={t(`${i18nPrefix}.staticContent`, { ns: 'workflow' })}
+        aria-label={t($ => $[`${i18nPrefix}.staticContent`], { ns: 'workflow' })}
         value={value || ''}
         className="h-[43px] min-h-[43px] rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:shadow-none"
         onValueChange={value => onValueChange?.(value)}

@@ -86,14 +86,14 @@ const AddCustomModel = ({
         )}
       >
         <span className="mr-1 i-ri-add-circle-fill size-3.5" />
-        {t('modelProvider.addModel', { ns: 'common' })}
+        {t($ => $['modelProvider.addModel'], { ns: 'common' })}
       </Button>
     )
     if ((notAllowCustomCredential && !!noModels) || disabled) {
       return (
         <Tooltip>
           <TooltipTrigger render={item} />
-          <TooltipContent>{t('auth.credentialUnavailable', { ns: 'plugin' })}</TooltipContent>
+          <TooltipContent>{t($ => $['auth.credentialUnavailable'], { ns: 'plugin' })}</TooltipContent>
         </Tooltip>
       )
     }
@@ -163,7 +163,7 @@ const AddCustomModel = ({
                 }}
               >
                 <span className="mr-1 i-ri-add-line size-4" />
-                {t('modelProvider.auth.addNewModel', { ns: 'common' })}
+                {t($ => $['modelProvider.auth.addNewModel'], { ns: 'common' })}
               </div>
             )
           }

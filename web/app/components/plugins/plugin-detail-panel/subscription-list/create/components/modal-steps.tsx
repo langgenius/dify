@@ -41,9 +41,9 @@ export const MultiSteps = ({ currentStep }: MultiStepsProps) => {
   const { t } = useTranslation()
   return (
     <div className="mb-6 flex w-1/3 items-center gap-2">
-      <StatusStep isActive={currentStep === ApiKeyStep.Verify} text={t('modal.steps.verify', { ns: 'pluginTrigger' })} />
+      <StatusStep isActive={currentStep === ApiKeyStep.Verify} text={t($ => $['modal.steps.verify'], { ns: 'pluginTrigger' })} />
       <div className="h-px w-3 shrink-0 bg-divider-deep"></div>
-      <StatusStep isActive={currentStep === ApiKeyStep.Configuration} text={t('modal.steps.configuration', { ns: 'pluginTrigger' })} />
+      <StatusStep isActive={currentStep === ApiKeyStep.Configuration} text={t($ => $['modal.steps.configuration'], { ns: 'pluginTrigger' })} />
     </div>
   )
 }
@@ -90,20 +90,20 @@ const SubscriptionForm = ({
   const formSchemas = React.useMemo(() => [
     {
       name: 'subscription_name',
-      label: t('modal.form.subscriptionName.label', { ns: 'pluginTrigger' }),
-      placeholder: t('modal.form.subscriptionName.placeholder', { ns: 'pluginTrigger' }),
+      label: t($ => $['modal.form.subscriptionName.label'], { ns: 'pluginTrigger' }),
+      placeholder: t($ => $['modal.form.subscriptionName.placeholder'], { ns: 'pluginTrigger' }),
       type: FormTypeEnum.textInput,
       required: true,
     },
     {
       name: 'callback_url',
-      label: t('modal.form.callbackUrl.label', { ns: 'pluginTrigger' }),
-      placeholder: t('modal.form.callbackUrl.placeholder', { ns: 'pluginTrigger' }),
+      label: t($ => $['modal.form.callbackUrl.label'], { ns: 'pluginTrigger' }),
+      placeholder: t($ => $['modal.form.callbackUrl.placeholder'], { ns: 'pluginTrigger' }),
       type: FormTypeEnum.textInput,
       required: false,
       default: endpoint || '',
       disabled: true,
-      tooltip: t('modal.form.callbackUrl.tooltip', { ns: 'pluginTrigger' }),
+      tooltip: t($ => $['modal.form.callbackUrl.tooltip'], { ns: 'pluginTrigger' }),
       showCopy: true,
     },
   ], [endpoint, t])
@@ -223,7 +223,7 @@ const ManualPropertiesSection = ({
       <div className="mb-6">
         <div className="mb-3 flex items-center gap-2">
           <div className="system-xs-medium-uppercase text-text-tertiary">
-            {t('modal.manual.logs.title', { ns: 'pluginTrigger' })}
+            {t($ => $['modal.manual.logs.title'], { ns: 'pluginTrigger' })}
           </div>
           <div className="h-px flex-1 bg-linear-to-r from-divider-regular to-transparent" />
         </div>
@@ -233,7 +233,7 @@ const ManualPropertiesSection = ({
             <RiLoader2Line className="size-full animate-spin" />
           </div>
           <div className="system-xs-regular text-text-tertiary">
-            {t('modal.manual.logs.loading', { ns: 'pluginTrigger', pluginName })}
+            {t($ => $['modal.manual.logs.loading'], { ns: 'pluginTrigger', pluginName })}
           </div>
         </div>
         <LogViewer logs={logs} />

@@ -60,8 +60,8 @@ function AddAccessSubjectPopover({
     setOpen(nextOpen)
   }, [])
 
-  const addLabel = t('operation.add', { ns: 'common' })
-  const addedLabel = t('operation.added', { ns: 'common' })
+  const addLabel = t($ => $['operation.add'], { ns: 'common' })
+  const addedLabel = t($ => $['operation.added'], { ns: 'common' })
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -82,7 +82,7 @@ function AddAccessSubjectPopover({
         popupClassName="w-[344px] max-w-[calc(100vw-32px)] overflow-hidden bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
         popupProps={{
           'role': 'dialog',
-          'aria-label': t('accessRule.addMembersTitle', { ns: 'permission' }),
+          'aria-label': t($ => $['accessRule.addMembersTitle'], { ns: 'permission' }),
         }}
       >
         <div className="p-2 pb-1">
@@ -90,9 +90,9 @@ function AddAccessSubjectPopover({
             <span className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" aria-hidden="true" />
             <Input
               type="search"
-              aria-label={t('operation.search', { ns: 'common' })}
+              aria-label={t($ => $['operation.search'], { ns: 'common' })}
               value={searchValue}
-              placeholder={t('placeholder.search', { ns: 'common' })}
+              placeholder={t($ => $['placeholder.search'], { ns: 'common' })}
               className="h-8 ps-7 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
               onValueChange={setSearchValue}
               autoComplete="off"
@@ -109,7 +109,7 @@ function AddAccessSubjectPopover({
           : availableMembers.length === 0
             ? (
                 <div className="px-3 py-6 text-center system-xs-regular text-text-tertiary">
-                  {t('accessRule.noAvailableMembers', { ns: 'permission' })}
+                  {t($ => $['accessRule.noAvailableMembers'], { ns: 'permission' })}
                 </div>
               )
             : (
@@ -155,7 +155,7 @@ function AddAccessSubjectPopover({
                               <button
                                 type="button"
                                 disabled={isUpdating}
-                                aria-label={t('accessRule.addMemberAria', { ns: 'permission', name: memberName })}
+                                aria-label={t($ => $['accessRule.addMemberAria'], { ns: 'permission', name: memberName })}
                                 className={cn(
                                   'flex h-6 shrink-0 items-center rounded-md px-1 system-xs-medium text-text-accent outline-hidden',
                                   'hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',

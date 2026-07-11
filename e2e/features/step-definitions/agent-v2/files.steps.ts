@@ -2,7 +2,7 @@ import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
-import { agentBuilderFileTreeFixtureFileNames } from '../../agent-v2/support/test-materials'
+import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials'
 import {
   expectAgentConfigFileHidden,
   expectAgentConfigFileSaved,
@@ -22,30 +22,51 @@ When('I upload the special-name Agent v2 file from the Files section', async fun
   await uploadAgentConfigFile(this, 'specialFilename')
 })
 
+When('I drop multiple Agent v2 files into the Files upload dialog', async function (this: DifyWorld) {
+  const page = this.getPage()
+
+  await page.getByRole('button', { name: 'Add file' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Upload file' })
+  await expect(dialog).toBeVisible()
+
+  const dropZone = dialog.getByRole('group', { name: 'Upload file' })
+  await expect(dropZone).toBeVisible()
+
+  const droppedFileNames: [string, string] = [
+    agentBuilderTestMaterials.smallFile,
+    agentBuilderTestMaterials.emptyFile,
+  ]
+  const dataTransfer = await page.evaluateHandle(([smallFileName, emptyFileName]: [string, string]) => {
+    const transfer = new DataTransfer()
+    transfer.items.add(new File(['small agent file'], smallFileName, { type: 'text/plain' }))
+    transfer.items.add(new File([''], emptyFileName, { type: 'text/plain' }))
+    return transfer
+  }, droppedFileNames)
+
+  await dropZone.dispatchEvent('dragenter', { dataTransfer })
+  await dropZone.dispatchEvent('dragover', { dataTransfer })
+  await dropZone.dispatchEvent('drop', { dataTransfer })
+  await dataTransfer.dispose()
+})
+
 Then(
-  'I should see the Agent v2 file fixture entries in the current flat Files list',
+  'the Agent v2 Files upload dialog should reject the multiple-file drop',
   async function (this: DifyWorld) {
     const page = this.getPage()
-    const filesSection = page.getByRole('region', { name: 'Files' })
-    const filesList = filesSection.getByLabel('Agent files')
+    const dialog = page.getByRole('dialog', { name: 'Upload file' })
 
-    await expect(filesSection).toBeVisible({ timeout: 30_000 })
-    await expect(filesList).toBeVisible()
-
-    for (const fileName of agentBuilderFileTreeFixtureFileNames) {
-      await expect(filesList.getByRole('button', {
-        exact: true,
-        name: fileName,
-      })).toBeVisible()
-    }
-
-    await expect(filesList.getByRole('button', { exact: true, name: 'assets' })).toHaveCount(0)
-    await expect(filesList.getByRole('button', { exact: true, name: 'docs' })).toHaveCount(0)
-    await expect(filesList.getByRole('button', { exact: true, name: 'public' })).toHaveCount(0)
-    await expect(filesList.getByRole('button', { exact: true, name: 'src' })).toHaveCount(0)
-    await expect(filesList.getByRole('button', { exact: true, name: 'web-game' })).toHaveCount(0)
+    await expect(page.getByText('Upload one file.')).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Upload' })).toBeDisabled()
+    await expect(dialog.getByText(agentBuilderTestMaterials.smallFile, { exact: true })).not.toBeVisible()
+    await expect(dialog.getByText(agentBuilderTestMaterials.emptyFile, { exact: true })).not.toBeVisible()
   },
 )
+
+Then('I should not see the dropped Agent v2 files in the Files section', async function (this: DifyWorld) {
+  await expectAgentConfigFileHidden(this, 'smallFile')
+  await expectAgentConfigFileHidden(this, 'emptyFile')
+})
+
 Then('I should see the small Agent v2 file in the Files section', async function (this: DifyWorld) {
   await expectAgentConfigFileVisible(this, 'smallFile')
 })
@@ -118,61 +139,4 @@ Given('Agent v2 oversized file rejection is available', async function (this: Di
 
 Then('Agent v2 oversized file rejection should be available', async function (this: DifyWorld) {
   return skipOversizedFileRejection(this)
-})
-
-async function skipSingleBatchFileCountLimits(world: DifyWorld) {
-  return skipBlockedPrecondition(
-    world,
-    'Agent v2 single-batch file count limits are not reachable: the current Agent config file upload dialog accepts one file per upload.',
-    {
-      owner: 'product',
-      remediation: 'Define multi-file upload behavior and its count-limit error before enabling this scenario.',
-    },
-  )
-}
-
-Given('Agent v2 single-batch file count limits are available', async function (this: DifyWorld) {
-  return skipSingleBatchFileCountLimits(this)
-})
-
-Then('Agent v2 single-batch file count limits should be available', async function (this: DifyWorld) {
-  return skipSingleBatchFileCountLimits(this)
-})
-
-async function skipTotalFileCountLimits(world: DifyWorld) {
-  return skipBlockedPrecondition(
-    world,
-    'Agent v2 total file count limits are not defined for Agent config files in the current product contract.',
-    {
-      owner: 'product',
-      remediation: 'Define the Agent config file total-count limit and user-visible error before enabling this scenario.',
-    },
-  )
-}
-
-Given('Agent v2 total file count limits are available', async function (this: DifyWorld) {
-  return skipTotalFileCountLimits(this)
-})
-
-Then('Agent v2 total file count limits should be available', async function (this: DifyWorld) {
-  return skipTotalFileCountLimits(this)
-})
-
-async function skipInProgressFileUploadRecovery(world: DifyWorld) {
-  return skipBlockedPrecondition(
-    world,
-    'Agent v2 in-progress file upload recovery is not stable: the current dialog has no deterministic slow-upload fixture or user-visible navigation guard contract.',
-    {
-      owner: 'product/test-infra',
-      remediation: 'Define upload-in-progress navigation behavior and provide a deterministic slow upload fixture before enabling this scenario.',
-    },
-  )
-}
-
-Given('Agent v2 in-progress file upload recovery is available', async function (this: DifyWorld) {
-  return skipInProgressFileUploadRecovery(this)
-})
-
-Then('Agent v2 in-progress file upload recovery should be available', async function (this: DifyWorld) {
-  return skipInProgressFileUploadRecovery(this)
 })

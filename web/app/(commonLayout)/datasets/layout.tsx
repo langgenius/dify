@@ -1,10 +1,12 @@
 'use client'
 
+import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { ExternalApiPanelProvider } from '@/context/external-api-panel-context'
 import { ExternalKnowledgeApiProvider } from '@/context/external-knowledge-api-context'
+import { workspacePermissionKeysAtom, workspacePermissionKeysLoadingAtom } from '@/context/permission-state'
+import { currentWorkspaceIdAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { usePathname, useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
 
@@ -21,10 +23,10 @@ const isDatasetExternalConnectPath = (pathname: string) => {
 }
 
 export default function DatasetsLayout({ children }: { children: React.ReactNode }) {
-  const currentWorkspaceId = useAppContextSelector(state => state.currentWorkspace.id)
-  const isLoadingCurrentWorkspace = useAppContextSelector(state => state.isLoadingCurrentWorkspace)
-  const isLoadingWorkspacePermissionKeys = useAppContextSelector(state => state.isLoadingWorkspacePermissionKeys)
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const router = useRouter()
   const pathname = usePathname()
   const isLoadingAccess = isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys

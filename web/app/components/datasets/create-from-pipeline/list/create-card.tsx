@@ -20,7 +20,7 @@ const CreateCard = () => {
       onSuccess: (data) => {
         if (data) {
           const { id } = data
-          toast.success(t('creation.successTip', { ns: 'datasetPipeline' }))
+          toast.success(t($ => $['creation.successTip'], { ns: 'datasetPipeline' }))
           invalidDatasetList()
           trackEvent('create_datasets_from_scratch', {
             dataset_id: id,
@@ -29,7 +29,7 @@ const CreateCard = () => {
         }
       },
       onError: () => {
-        toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
+        toast.error(t($ => $['creation.errorTip'], { ns: 'datasetPipeline' }))
       },
     })
   }, [createEmptyDataset, push, invalidDatasetList, t])
@@ -44,11 +44,11 @@ const CreateCard = () => {
           <RiAddCircleLine className="size-5 text-text-quaternary group-hover:text-text-accent" />
         </div>
         <div className="truncate system-md-semibold text-text-primary">
-          {t('creation.createFromScratch.title', { ns: 'datasetPipeline' })}
+          {t($ => $['creation.createFromScratch.title'], { ns: 'datasetPipeline' })}
         </div>
       </div>
       <p className="line-clamp-3 px-4 py-1 system-xs-regular text-text-tertiary">
-        {t('creation.createFromScratch.description', { ns: 'datasetPipeline' })}
+        {t($ => $['creation.createFromScratch.description'], { ns: 'datasetPipeline' })}
       </p>
     </div>
   )

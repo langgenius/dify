@@ -43,7 +43,7 @@ const ExtractInput: FC<Props> = ({
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onFocusChange={setIsFocus}
-        placeholder={!readOnly ? t('nodes.http.extractListPlaceholder', { ns: 'workflow' })! : ''}
+        placeholder={!readOnly ? t($ => $['nodes.http.extractListPlaceholder'], { ns: 'workflow' })! : ''}
         placeholderClassName="leading-[21px]!"
       />
     </div>

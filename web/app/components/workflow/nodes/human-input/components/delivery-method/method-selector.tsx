@@ -68,7 +68,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
       <PopoverTrigger
         render={(
           <ActionButton
-            aria-label={t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}
+            aria-label={t($ => $[`${i18nPrefix}.deliveryMethod.title`], { ns: 'workflow' })}
             className="data-popup-open:bg-state-base-hover"
           >
             <RiAddLine className="size-4" />
@@ -98,14 +98,14 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 <RiRobot2Fill className="size-4 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', webAppDeliveryInfo.disabled && 'opacity-50')}>
-                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.webapp.title`, { ns: 'workflow' })}</div>
-                <div className="truncate system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.webapp.description`, { ns: 'workflow' })}</div>
+                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t($ => $[`${i18nPrefix}.deliveryMethod.types.webapp.title`], { ns: 'workflow' })}</div>
+                <div className="truncate system-xs-regular text-text-tertiary">{t($ => $[`${i18nPrefix}.deliveryMethod.types.webapp.description`], { ns: 'workflow' })}</div>
               </div>
               {webAppDeliveryInfo.added && (
-                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.added`, { ns: 'workflow' })}</div>
+                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">{t($ => $[`${i18nPrefix}.deliveryMethod.added`], { ns: 'workflow' })}</div>
               )}
               {webAppDeliveryInfo.isTriggerMode && !webAppDeliveryInfo.added && (
-                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.notAvailableInTriggerMode`, { ns: 'workflow' })}</div>
+                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">{t($ => $[`${i18nPrefix}.deliveryMethod.notAvailableInTriggerMode`], { ns: 'workflow' })}</div>
               )}
             </div>
             <div
@@ -136,11 +136,11 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 <RiMailSendFill className="size-4 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', emailDeliveryInfo.added && 'opacity-50')}>
-                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.email.title`, { ns: 'workflow' })}</div>
-                <div className="truncate system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.email.description`, { ns: 'workflow' })}</div>
+                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t($ => $[`${i18nPrefix}.deliveryMethod.types.email.title`], { ns: 'workflow' })}</div>
+                <div className="truncate system-xs-regular text-text-tertiary">{t($ => $[`${i18nPrefix}.deliveryMethod.types.email.description`], { ns: 'workflow' })}</div>
               </div>
               {emailDeliveryInfo.added && (
-                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.added`, { ns: 'workflow' })}</div>
+                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">{t($ => $[`${i18nPrefix}.deliveryMethod.added`], { ns: 'workflow' })}</div>
               )}
             </div>
             {/* Slack */}
@@ -151,8 +151,8 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 <Slack className="size-4 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
-                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.slack.title`, { ns: 'workflow' })}</div>
-                <div className="truncate system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.slack.description`, { ns: 'workflow' })}</div>
+                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t($ => $[`${i18nPrefix}.deliveryMethod.types.slack.title`], { ns: 'workflow' })}</div>
+                <div className="truncate system-xs-regular text-text-tertiary">{t($ => $[`${i18nPrefix}.deliveryMethod.types.slack.description`], { ns: 'workflow' })}</div>
               </div>
               <div className="absolute top-[8px] right-[8px]">
                 <Badge className="h-4">COMING SOON</Badge>
@@ -166,8 +166,8 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 <Teams className="size-4 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
-                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.teams.title`, { ns: 'workflow' })}</div>
-                <div className="truncate system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.teams.description`, { ns: 'workflow' })}</div>
+                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t($ => $[`${i18nPrefix}.deliveryMethod.types.teams.title`], { ns: 'workflow' })}</div>
+                <div className="truncate system-xs-regular text-text-tertiary">{t($ => $[`${i18nPrefix}.deliveryMethod.types.teams.description`], { ns: 'workflow' })}</div>
               </div>
               <div className="absolute top-[8px] right-[8px]">
                 <Badge className="h-4">COMING SOON</Badge>
@@ -181,8 +181,8 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 <RiDiscordFill className="size-5 text-text-primary-on-surface" />
               </div>
               <div className={cn('p-1', 'opacity-50')}>
-                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t(`${i18nPrefix}.deliveryMethod.types.discord.title`, { ns: 'workflow' })}</div>
-                <div className="truncate system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.types.discord.description`, { ns: 'workflow' })}</div>
+                <div className="mb-0.5 truncate system-sm-medium text-text-primary">{t($ => $[`${i18nPrefix}.deliveryMethod.types.discord.title`], { ns: 'workflow' })}</div>
+                <div className="truncate system-xs-regular text-text-tertiary">{t($ => $[`${i18nPrefix}.deliveryMethod.types.discord.description`], { ns: 'workflow' })}</div>
               </div>
               <div className="absolute top-[8px] right-[8px]">
                 <Badge className="h-4">COMING SOON</Badge>
@@ -197,9 +197,9 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 <RiLightbulbFlashFill className="size-4 text-text-primary-on-surface" />
               </div>
               <div className="system-sm-regular text-text-secondary">
-                <div>{t(`${i18nPrefix}.deliveryMethod.contactTip1`, { ns: 'workflow' })}</div>
+                <div>{t($ => $[`${i18nPrefix}.deliveryMethod.contactTip1`], { ns: 'workflow' })}</div>
                 <Trans
-                  i18nKey={`${i18nPrefix}.deliveryMethod.contactTip2`}
+                  i18nKey={$ => $[`${i18nPrefix}.deliveryMethod.contactTip2`]}
                   ns="workflow"
                   components={{ email: <a href="mailto:support@dify.ai" className="text-text-accent-light-mode-only">support@dify.ai</a> }}
                 />

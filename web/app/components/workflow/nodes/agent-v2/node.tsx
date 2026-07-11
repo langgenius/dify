@@ -58,14 +58,14 @@ function AgentNodeModel({
 }) {
   const { t } = useTranslation()
   const isInlineAgent = hasInlineAgentBinding(data)
-  const name = isInlineAgent ? t('nodes.agent.roster.inlineSetup.name', { ns: 'workflow' }) : agent?.name
-  const role = isInlineAgent ? t('nodes.agent.roster.inlineSetup.type', { ns: 'workflow' }) : ''
+  const name = isInlineAgent ? t($ => $['nodes.agent.roster.inlineSetup.name'], { ns: 'workflow' }) : agent?.name
+  const role = isInlineAgent ? t($ => $['nodes.agent.roster.inlineSetup.type'], { ns: 'workflow' }) : ''
   const showPlaceholder = isLoading || (!isInlineAgent && !agent)
 
   return (
     <div className="flex flex-col gap-0.5 py-1">
       <div className="px-2.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-        {t('nodes.agent.roster.label', { ns: 'workflow' })}
+        {t($ => $['nodes.agent.roster.label'], { ns: 'workflow' })}
       </div>
       <div className="px-2.5">
         <div className="flex min-w-0 items-center gap-1 rounded-lg bg-workflow-block-parma-bg p-1">
@@ -113,9 +113,9 @@ export function AgentV2Node({ id, data }: NodeProps<AgentV2NodeType>) {
   return (
     <div className="mb-1 space-y-1 px-3">
       <SettingItem
-        label={t('nodes.agent.roster.label', { ns: 'workflow' })}
+        label={t($ => $['nodes.agent.roster.label'], { ns: 'workflow' })}
         status={hasValidAgent ? undefined : 'error'}
-        tooltip={hasValidAgent ? undefined : t('errorMsg.fieldRequired', { ns: 'workflow', field: t('nodes.agent.roster.label', { ns: 'workflow' }) })}
+        tooltip={hasValidAgent ? undefined : t($ => $['errorMsg.fieldRequired'], { ns: 'workflow', field: t($ => $['nodes.agent.roster.label'], { ns: 'workflow' }) })}
       >
         {rosterAgentQuery.data?.name}
       </SettingItem>

@@ -1,10 +1,10 @@
 import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
+  Field,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FieldRoot,
 } from '../../field'
 import { Form } from '../../form'
 import { Textarea } from '../index'
@@ -20,11 +20,11 @@ const setTextareaValue = (element: HTMLElement | SVGElement, value: string) => {
 describe('Textarea', () => {
   it('should render a labelled textarea through Base UI Field.Control', async () => {
     const screen = await render(
-      <FieldRoot name="description">
+      <Field name="description">
         <FieldLabel>Description</FieldLabel>
         <Textarea defaultValue="A workspace for support automation." />
         <FieldDescription>Shown to workspace members.</FieldDescription>
-      </FieldRoot>,
+      </Field>,
     )
 
     const textarea = screen.getByRole('textbox', { name: 'Description' })
@@ -73,12 +73,12 @@ describe('Textarea', () => {
     const onFormSubmit = vi.fn()
     const screen = await render(
       <Form aria-label="dataset form" onFormSubmit={onFormSubmit}>
-        <FieldRoot name="summary">
+        <Field name="summary">
           <FieldLabel>Summary</FieldLabel>
           <Textarea required minLength={10} />
           <FieldError match="valueMissing">Summary is required.</FieldError>
           <FieldError match="tooShort">Summary is too short.</FieldError>
-        </FieldRoot>
+        </Field>
         <button type="submit">Save</button>
       </Form>,
     )
@@ -94,12 +94,12 @@ describe('Textarea', () => {
 
     await screen.rerender(
       <Form aria-label="dataset form" onFormSubmit={onFormSubmit}>
-        <FieldRoot name="summary">
+        <Field name="summary">
           <FieldLabel>Summary</FieldLabel>
           <Textarea key="valid-summary" required minLength={10} defaultValue="Long enough summary" />
           <FieldError match="valueMissing">Summary is required.</FieldError>
           <FieldError match="tooShort">Summary is too short.</FieldError>
-        </FieldRoot>
+        </Field>
         <button type="submit">Save</button>
       </Form>,
     )
@@ -129,7 +129,7 @@ describe('Textarea', () => {
     })
     const screen = await render(
       <Form aria-label="profile form" onFormSubmit={onFormSubmit}>
-        <FieldRoot name="profileSummary">
+        <Field name="profileSummary">
           <FieldLabel>Profile summary</FieldLabel>
           <Textarea
             id="profile-summary"
@@ -141,11 +141,11 @@ describe('Textarea', () => {
             maxLength={80}
             onBlur={onBlur}
           />
-        </FieldRoot>
-        <FieldRoot disabled>
+        </Field>
+        <Field disabled>
           <FieldLabel>Disabled note</FieldLabel>
           <Textarea name="disabledNote" defaultValue="Disabled value" />
-        </FieldRoot>
+        </Field>
         <button type="submit">Save</button>
       </Form>,
     )

@@ -90,7 +90,7 @@ const CredentialItem = ({
       {
         isUnavailable && (
           <div className="ml-2 shrink-0 pr-1 system-xs-medium text-text-destructive">
-            {t('modelProvider.card.unavailable', { ns: 'common' })}
+            {t($ => $['modelProvider.card.unavailable'], { ns: 'common' })}
           </div>
         )
       }
@@ -113,7 +113,7 @@ const CredentialItem = ({
                       </ActionButton>
                     )}
                   />
-                  <TooltipContent>{t('operation.edit', { ns: 'common' })}</TooltipContent>
+                  <TooltipContent>{t($ => $['operation.edit'], { ns: 'common' })}</TooltipContent>
                 </Tooltip>
               )
             }
@@ -141,7 +141,7 @@ const CredentialItem = ({
                     )}
                   />
                   <TooltipContent>
-                    {disableDeleteWhenSelected ? disableDeleteTip : t('operation.delete', { ns: 'common' })}
+                    {disableDeleteWhenSelected ? disableDeleteTip : t($ => $['operation.delete'], { ns: 'common' })}
                   </TooltipContent>
                 </Tooltip>
               )
@@ -156,7 +156,7 @@ const CredentialItem = ({
     return (
       <Tooltip>
         <TooltipTrigger render={Item} />
-        <TooltipContent>{t('auth.customCredentialUnavailable', { ns: 'plugin' })}</TooltipContent>
+        <TooltipContent>{t($ => $['auth.customCredentialUnavailable'], { ns: 'plugin' })}</TooltipContent>
       </Tooltip>
     )
   }

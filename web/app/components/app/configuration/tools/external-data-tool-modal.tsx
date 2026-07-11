@@ -104,7 +104,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     onSave(formattedData)
   }
 
-  const action = data.type ? t('operation.edit', { ns: 'common' }) : t('operation.add', { ns: 'common' })
+  const action = data.type ? t($ => $['operation.edit'], { ns: 'common' }) : t($ => $['operation.add'], { ns: 'common' })
 
   return (
     <Dialog
@@ -113,17 +113,17 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     >
       <DialogContent className="w-[640px]! max-w-none! p-8! pb-6!">
         <div className="mb-2 text-xl font-semibold text-text-primary">
-          {`${action} ${t('variableConfig.apiBasedVar', { ns: 'appDebug' })}`}
+          {`${action} ${t($ => $['variableConfig.apiBasedVar'], { ns: 'appDebug' })}`}
         </div>
         <div className="py-2">
           <div className="text-sm/9 font-medium text-text-primary">
-            {t('apiBasedExtension.type', { ns: 'common' })}
+            {t($ => $['apiBasedExtension.type'], { ns: 'common' })}
           </div>
           <Select
             defaultValue={localeData.type}
             onValueChange={value => value && handleDataTypeChange(value)}
           >
-            <SelectTrigger className="w-full" aria-label={t('apiBasedExtension.type', { ns: 'common' })}>
+            <SelectTrigger className="w-full" aria-label={t($ => $['apiBasedExtension.type'], { ns: 'common' })}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent popupClassName="w-[354px]">
@@ -138,14 +138,14 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
         </div>
         <div className="py-2">
           <div className="text-sm/9 font-medium text-text-primary">
-            {t('feature.tools.modal.name.title', { ns: 'appDebug' })}
+            {t($ => $['feature.tools.modal.name.title'], { ns: 'appDebug' })}
           </div>
           <div className="flex items-center">
             <input
               value={localeData.label || ''}
               onChange={e => handleValueChange({ label: e.target.value })}
               className="mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden"
-              placeholder={t('feature.tools.modal.name.placeholder', { ns: 'appDebug' }) || ''}
+              placeholder={t($ => $['feature.tools.modal.name.placeholder'], { ns: 'appDebug' }) || ''}
             />
             <AppIcon
               size="large"
@@ -158,20 +158,20 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
         </div>
         <div className="py-2">
           <div className="text-sm/9 font-medium text-text-primary">
-            {t('feature.tools.modal.variableName.title', { ns: 'appDebug' })}
+            {t($ => $['feature.tools.modal.variableName.title'], { ns: 'appDebug' })}
           </div>
           <input
             value={localeData.variable || ''}
             onChange={e => handleValueChange({ variable: e.target.value })}
             className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden"
-            placeholder={t('feature.tools.modal.variableName.placeholder', { ns: 'appDebug' }) || ''}
+            placeholder={t($ => $['feature.tools.modal.variableName.placeholder'], { ns: 'appDebug' }) || ''}
           />
         </div>
         {
           localeData.type === 'api' && (
             <div className="py-2">
               <div className="flex h-9 items-center justify-between text-sm font-medium text-text-primary">
-                {t('apiBasedExtension.selector.title', { ns: 'common' })}
+                {t($ => $['apiBasedExtension.selector.title'], { ns: 'common' })}
                 <a
                   href={docLink('/use-dify/workspace/api-extension/api-extension')}
                   target="_blank"
@@ -179,7 +179,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
                   className="group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent"
                 >
                   <BookOpen01 className="mr-1 size-3 text-text-tertiary group-hover:text-text-accent" />
-                  {t('apiBasedExtension.link', { ns: 'common' })}
+                  {t($ => $['apiBasedExtension.link'], { ns: 'common' })}
                 </a>
               </div>
               <ApiBasedExtensionSelector
@@ -205,13 +205,13 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             onClick={onCancel}
             className="mr-2"
           >
-            {t('operation.cancel', { ns: 'common' })}
+            {t($ => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button
             variant="primary"
             onClick={handleSave}
           >
-            {t('operation.save', { ns: 'common' })}
+            {t($ => $['operation.save'], { ns: 'common' })}
           </Button>
         </div>
         {

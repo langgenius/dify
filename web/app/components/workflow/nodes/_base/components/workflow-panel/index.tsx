@@ -13,6 +13,7 @@ import {
   RiPlayLargeLine,
 } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import {
   cloneElement,
@@ -69,7 +70,7 @@ import {
   hasRetryNode,
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
@@ -114,7 +115,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const { t } = useTranslation()
   const language = useLanguage()
   const appId = useStore(s => s.appId)
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const { isConnected, nodePanelPresence } = useCollaboration(appId as string)
   const { showMessageLogModal } = useAppStore(useShallow(state => ({
     showMessageLogModal: state.showMessageLogModal,
@@ -491,9 +492,9 @@ const BasePanel: FC<BasePanelProps> = ({
     )
   }
 
-  const runThisStepLabel = t('panel.runThisStep', { ns: 'workflow' })
+  const runThisStepLabel = t($ => $['panel.runThisStep'], { ns: 'workflow' })
   const singleRunActionLabel = isSingleRunning
-    ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' })
+    ? t($ => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })
     : runThisStepLabel
   const nodePanelRightOffset = !showMessageLogModal
     ? '4px'
@@ -515,10 +516,10 @@ const BasePanel: FC<BasePanelProps> = ({
   const panelTabs = (
     <TabsList>
       <TabsTab value={TabType.settings}>
-        {t('debug.settingsTab', { ns: 'workflow' }).toLocaleUpperCase()}
+        {t($ => $['debug.settingsTab'], { ns: 'workflow' }).toLocaleUpperCase()}
       </TabsTab>
       <TabsTab value={TabType.lastRun}>
-        {t('debug.lastRunTab', { ns: 'workflow' }).toLocaleUpperCase()}
+        {t($ => $['debug.lastRunTab'], { ns: 'workflow' }).toLocaleUpperCase()}
       </TabsTab>
     </TabsList>
   )
@@ -615,7 +616,7 @@ const BasePanel: FC<BasePanelProps> = ({
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
               <button
                 type="button"
-                aria-label={t('common.operation.close')}
+                aria-label={t($ => $['operation.close'], { ns: 'common' })}
                 className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
                 onClick={() => handleNodeSelect(id, true)}
               >
@@ -734,10 +735,10 @@ const BasePanel: FC<BasePanelProps> = ({
               !!availableNextBlocks.length && (
                 <div className="border-t-[0.5px] border-divider-regular p-4">
                   <div className="mb-1 flex items-center system-sm-semibold-uppercase text-text-secondary">
-                    {t('panel.nextStep', { ns: 'workflow' }).toLocaleUpperCase()}
+                    {t($ => $['panel.nextStep'], { ns: 'workflow' }).toLocaleUpperCase()}
                   </div>
                   <div className="mb-2 system-xs-regular text-text-tertiary">
-                    {t('panel.addNextStep', { ns: 'workflow' })}
+                    {t($ => $['panel.addNextStep'], { ns: 'workflow' })}
                   </div>
                   <NextStep selectedNode={selectedNode} />
                 </div>

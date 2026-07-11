@@ -37,7 +37,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
   const handleSSOLogin = () => {
     const appCode = getAppCodeFromRedirectUrl()
     if (!redirectUrl || !appCode) {
-      toast.error(t('error.invalidRedirectUrlOrAppCode', { ns: 'login' }))
+      toast.error(t($ => $['error.invalidRedirectUrlOrAppCode'], { ns: 'login' }))
       return
     }
     setIsLoading(true)
@@ -63,7 +63,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
       })
     }
     else {
-      toast.error(t('error.invalidSSOProtocol', { ns: 'login' }))
+      toast.error(t($ => $['error.invalidSSOProtocol'], { ns: 'login' }))
       setIsLoading(false)
     }
   }
@@ -76,7 +76,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
       className="w-full"
     >
       <Lock01 className="mr-2 size-5 text-text-accent-light-mode-only" />
-      <span className="truncate">{t('withSSO', { ns: 'login' })}</span>
+      <span className="truncate">{t($ => $.withSSO, { ns: 'login' })}</span>
     </Button>
   )
 }

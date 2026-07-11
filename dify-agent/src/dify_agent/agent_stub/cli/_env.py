@@ -6,11 +6,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 import os
 
+from dify_agent.agent_stub._constants import AGENT_STUB_DRIVE_BASE_ENV_VAR, DEFAULT_AGENT_STUB_DRIVE_BASE
 from dify_agent.agent_stub.protocol.agent_stub import (
     AGENT_STUB_AUTH_JWE_ENV_VAR,
-    AGENT_STUB_DRIVE_BASE_ENV_VAR,
     AGENT_STUB_API_BASE_URL_ENV_VAR,
-    DEFAULT_AGENT_STUB_DRIVE_BASE,
     normalize_agent_stub_api_base_url,
 )
 

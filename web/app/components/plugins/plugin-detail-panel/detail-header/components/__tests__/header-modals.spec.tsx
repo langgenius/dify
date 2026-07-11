@@ -6,10 +6,6 @@ import { expectLoadingButton } from '@/test/button'
 import { PluginSource } from '../../../../types'
 import HeaderModals from '../header-modals'
 
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
 vi.mock('@/app/components/plugins/plugin-page/plugin-info', () => ({
   default: ({ repository, release, packageName, onHide }: {
     repository: string

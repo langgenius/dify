@@ -49,14 +49,14 @@ const RetryOnNode = ({
         <div className="flex items-center">
           {
             showDefault && (
-              t('nodes.common.retry.retryTimes', { ns: 'workflow', times: retry_config.max_retries })
+              t($ => $['nodes.common.retry.retryTimes'], { ns: 'workflow', times: retry_config.max_retries })
             )
           }
           {
             isRunning && (
               <>
                 <RiLoader2Line className="mr-1 size-3.5 animate-spin" />
-                {t('nodes.common.retry.retrying', { ns: 'workflow' })}
+                {t($ => $['nodes.common.retry.retrying'], { ns: 'workflow' })}
               </>
             )
           }
@@ -64,7 +64,7 @@ const RetryOnNode = ({
             isSuccessful && (
               <>
                 <RiCheckboxCircleFill className="mr-1 size-3.5" />
-                {t('nodes.common.retry.retrySuccessful', { ns: 'workflow' })}
+                {t($ => $['nodes.common.retry.retrySuccessful'], { ns: 'workflow' })}
               </>
             )
           }
@@ -72,7 +72,7 @@ const RetryOnNode = ({
             (isFailed || isException) && (
               <>
                 <RiAlertFill className="mr-1 size-3.5" />
-                {t('nodes.common.retry.retryFailed', { ns: 'workflow' })}
+                {t($ => $['nodes.common.retry.retryFailed'], { ns: 'workflow' })}
               </>
             )
           }

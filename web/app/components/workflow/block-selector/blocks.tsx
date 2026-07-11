@@ -104,7 +104,7 @@ const Blocks = ({
         {
           classification !== '-' && !!filteredList.length && (
             <div className="flex h-[22px] items-start px-3 text-xs font-medium text-text-tertiary">
-              {t(`tabs.${classification}`, { ns: 'workflow' })}
+              {t($ => $[`tabs.${classification}`], { ns: 'workflow' })}
             </div>
           )
         }
@@ -157,7 +157,7 @@ const Blocks = ({
                     {
                       block.metaData.type === BlockEnum.LoopEnd && (
                         <Badge
-                          text={t('nodes.loop.loopNode', { ns: 'workflow' })}
+                          text={t($ => $['nodes.loop.loopNode'], { ns: 'workflow' })}
                           className="ml-2 shrink-0"
                         />
                       )
@@ -176,7 +176,7 @@ const Blocks = ({
     <div className="max-h-[480px] max-w-[500px] overflow-y-auto p-1">
       {
         isEmpty && (
-          <div className="flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary">{t('tabs.noResult', { ns: 'workflow' })}</div>
+          <div className="flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary">{t($ => $['tabs.noResult'], { ns: 'workflow' })}</div>
         )
       }
       {

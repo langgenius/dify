@@ -124,13 +124,13 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
                   ? (
                       <>
                         <RiArrowUpSLine className="size-3" />
-                        {t('chat.collapse', { ns: 'share' })}
+                        {t($ => $['chat.collapse'], { ns: 'share' })}
                       </>
                     )
                   : (
                       <>
                         <RiArrowDownSLine className="size-3" />
-                        {t('chat.expand', { ns: 'share' })}
+                        {t($ => $['chat.expand'], { ns: 'share' })}
                       </>
                     )}
               </button>
@@ -139,15 +139,15 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
         )}
         <TabsList className="w-full">
           <TabsTab value="create">
-            <span className="ml-2">{t('generation.tabs.create', { ns: 'share' })}</span>
+            <span className="ml-2">{t($ => $['generation.tabs.create'], { ns: 'share' })}</span>
           </TabsTab>
           <TabsTab value="batch">
-            <span className="ml-2">{t('generation.tabs.batch', { ns: 'share' })}</span>
+            <span className="ml-2">{t($ => $['generation.tabs.batch'], { ns: 'share' })}</span>
           </TabsTab>
           {!isWorkflow && (
             <TabsTab value="saved" className="ml-auto">
               <span aria-hidden className="i-ri-bookmark-3-line size-4" />
-              <span className="ml-2">{t('generation.tabs.saved', { ns: 'share' })}</span>
+              <span className="ml-2">{t($ => $['generation.tabs.saved'], { ns: 'share' })}</span>
               {savedMessages.length > 0 && (
                 <Badge className="ml-1">
                   {savedMessages.length}
@@ -204,7 +204,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}
         >
-          <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+          <div className="system-2xs-medium-uppercase text-text-tertiary">{t($ => $['chat.poweredBy'], { ns: 'share' })}</div>
           {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
             ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
             : customConfig?.replace_webapp_logo

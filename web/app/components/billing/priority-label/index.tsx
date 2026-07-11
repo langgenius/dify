@@ -47,18 +47,18 @@ const PriorityLabel = ({ className }: PriorityLabelProps) => {
             <RiAedFill className="mr-0.5 size-3" />
           )
         }
-        <span>{t(`plansCommon.priority.${priority}`, { ns: 'billing' })}</span>
+        <span>{t($ => $[`plansCommon.priority.${priority}`], { ns: 'billing' })}</span>
       </TooltipTrigger>
       <TooltipContent>
         <div className="mb-1 text-xs font-semibold text-text-primary">
-          {t('plansCommon.documentProcessingPriority', { ns: 'billing' })}
+          {t($ => $['plansCommon.documentProcessingPriority'], { ns: 'billing' })}
           :
           {' '}
-          {t(`plansCommon.priority.${priority}`, { ns: 'billing' })}
+          {t($ => $[`plansCommon.priority.${priority}`], { ns: 'billing' })}
         </div>
         {
           priority !== DocumentProcessingPriority.topPriority && (
-            <div className="text-xs text-text-secondary">{t('plansCommon.documentProcessingPriorityTip', { ns: 'billing' })}</div>
+            <div className="text-xs text-text-secondary">{t($ => $['plansCommon.documentProcessingPriorityTip'], { ns: 'billing' })}</div>
           )
         }
       </TooltipContent>

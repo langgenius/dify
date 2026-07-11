@@ -71,7 +71,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
             hasValidDeprecatedReason && alternativePluginId && (
               <Trans
                 t={t}
-                i18nKey={`${i18nPrefix}.fullMessage`}
+                i18nKey={$ => $[`${i18nPrefix}.fullMessage`]}
                 ns="plugin"
                 components={{
                   CustomLink: (
@@ -84,7 +84,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
                   ),
                 }}
                 values={{
-                  deprecatedReason: deprecatedReasonKey ? t(`${i18nPrefix}.reason.${deprecatedReasonKey}`, { ns: 'plugin' }) : '',
+                  deprecatedReason: deprecatedReasonKey ? t($ => $[`${i18nPrefix}.reason.${deprecatedReasonKey}`], { ns: 'plugin' }) : '',
                   alternativePluginId,
                 }}
               />
@@ -93,13 +93,13 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
           {
             hasValidDeprecatedReason && !alternativePluginId && (
               <span>
-                {t(`${i18nPrefix}.onlyReason`, { ns: 'plugin', deprecatedReason: deprecatedReasonKey ? t(`${i18nPrefix}.reason.${deprecatedReasonKey}`, { ns: 'plugin' }) : '' })}
+                {t($ => $[`${i18nPrefix}.onlyReason`], { ns: 'plugin', deprecatedReason: deprecatedReasonKey ? t($ => $[`${i18nPrefix}.reason.${deprecatedReasonKey}`], { ns: 'plugin' }) : '' })}
               </span>
             )
           }
           {
             !hasValidDeprecatedReason && (
-              <span>{t(`${i18nPrefix}.noReason`, { ns: 'plugin' })}</span>
+              <span>{t($ => $[`${i18nPrefix}.noReason`], { ns: 'plugin' })}</span>
             )
           }
         </div>

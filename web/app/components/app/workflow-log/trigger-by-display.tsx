@@ -1,4 +1,5 @@
 'use client'
+import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { TriggerMetadata } from '@/models/log'
 import * as React from 'react'
@@ -23,18 +24,18 @@ type TriggerByDisplayProps = {
   triggerMetadata?: TriggerMetadata
 }
 
-const getTriggerDisplayName = (triggeredFrom: WorkflowRunTriggeredFrom, t: any, metadata?: TriggerMetadata) => {
+const getTriggerDisplayName = (triggeredFrom: WorkflowRunTriggeredFrom, t: TFunction, metadata?: TriggerMetadata) => {
   if (triggeredFrom === WorkflowRunTriggeredFrom.PLUGIN && metadata?.event_name)
     return metadata.event_name
 
   const nameMap: Record<WorkflowRunTriggeredFrom, string> = {
-    'debugging': t('triggerBy.debugging', { ns: 'appLog' }),
-    'app-run': t('triggerBy.appRun', { ns: 'appLog' }),
-    'webhook': t('triggerBy.webhook', { ns: 'appLog' }),
-    'schedule': t('triggerBy.schedule', { ns: 'appLog' }),
-    'plugin': t('triggerBy.plugin', { ns: 'appLog' }),
-    'rag-pipeline-run': t('triggerBy.ragPipelineRun', { ns: 'appLog' }),
-    'rag-pipeline-debugging': t('triggerBy.ragPipelineDebugging', { ns: 'appLog' }),
+    'debugging': t($ => $['triggerBy.debugging'], { ns: 'appLog' }),
+    'app-run': t($ => $['triggerBy.appRun'], { ns: 'appLog' }),
+    'webhook': t($ => $['triggerBy.webhook'], { ns: 'appLog' }),
+    'schedule': t($ => $['triggerBy.schedule'], { ns: 'appLog' }),
+    'plugin': t($ => $['triggerBy.plugin'], { ns: 'appLog' }),
+    'rag-pipeline-run': t($ => $['triggerBy.ragPipelineRun'], { ns: 'appLog' }),
+    'rag-pipeline-debugging': t($ => $['triggerBy.ragPipelineDebugging'], { ns: 'appLog' }),
   }
 
   return nameMap[triggeredFrom] || triggeredFrom

@@ -69,7 +69,7 @@ const ButtonStyleDropdown: FC<Props> = ({
         popupClassName="border-none bg-transparent shadow-none"
       >
         <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-xs">
-          <div className="system-md-medium text-text-primary">{t(`${i18nPrefix}.userActions.chooseStyle`, { ns: 'workflow' })}</div>
+          <div className="system-md-medium text-text-primary">{t($ => $[`${i18nPrefix}.userActions.chooseStyle`], { ns: 'workflow' })}</div>
           <div className="mt-2 flex w-[324px] flex-wrap gap-1">
             <div
               className={cn(

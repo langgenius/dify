@@ -31,13 +31,13 @@ const ImportFromMarketplaceTemplateModal = ({
   const isImportingRef = useRef(false)
 
   const CATEGORY_I18N_MAP: Record<string, string> = useMemo(() => ({
-    marketing: t('marketplace.template.category.marketing', { ns: 'app' }),
-    sales: t('marketplace.template.category.sales', { ns: 'app' }),
-    support: t('marketplace.template.category.support', { ns: 'app' }),
-    operations: t('marketplace.template.category.operations', { ns: 'app' }),
-    it: t('marketplace.template.category.it', { ns: 'app' }),
-    knowledge: t('marketplace.template.category.knowledge', { ns: 'app' }),
-    design: t('marketplace.template.category.design', { ns: 'app' }),
+    marketing: t($ => $['marketplace.template.category.marketing'], { ns: 'app' }),
+    sales: t($ => $['marketplace.template.category.sales'], { ns: 'app' }),
+    support: t($ => $['marketplace.template.category.support'], { ns: 'app' }),
+    operations: t($ => $['marketplace.template.category.operations'], { ns: 'app' }),
+    it: t($ => $['marketplace.template.category.it'], { ns: 'app' }),
+    knowledge: t($ => $['marketplace.template.category.knowledge'], { ns: 'app' }),
+    design: t($ => $['marketplace.template.category.design'], { ns: 'app' }),
   }), [t])
 
   const translateCategory = useCallback((slug: string) => {
@@ -54,7 +54,7 @@ const ImportFromMarketplaceTemplateModal = ({
       onConfirm(dsl)
     }
     catch {
-      toast.error(t('marketplace.template.importFailed', { ns: 'app' }))
+      toast.error(t($ => $['marketplace.template.importFailed'], { ns: 'app' }))
     }
     finally {
       setImporting(false)
@@ -74,7 +74,7 @@ const ImportFromMarketplaceTemplateModal = ({
         className="w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl"
       >
         <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
-          {t('marketplace.template.modalTitle', { ns: 'app' })}
+          {t($ => $['marketplace.template.modalTitle'], { ns: 'app' })}
           <div
             className="flex size-8 cursor-pointer items-center"
             onClick={onClose}
@@ -93,7 +93,7 @@ const ImportFromMarketplaceTemplateModal = ({
           {isError && (
             <div className="flex items-center justify-center py-8">
               <div className="system-md-regular text-text-destructive">
-                {t('marketplace.template.fetchFailed', { ns: 'app' })}
+                {t($ => $['marketplace.template.fetchFailed'], { ns: 'app' })}
               </div>
             </div>
           )}
@@ -112,13 +112,13 @@ const ImportFromMarketplaceTemplateModal = ({
                   <div className="system-md-semibold text-text-primary">{template.template_name}</div>
                   <div className="flex items-center gap-1 system-xs-regular text-text-tertiary">
                     <span>
-                      {t('marketplace.template.publishedBy', { ns: 'app' })}
+                      {t($ => $['marketplace.template.publishedBy'], { ns: 'app' })}
                       {' '}
                       {template.publisher_unique_handle}
                     </span>
                     <span>·</span>
                     <span>
-                      {t('marketplace.template.usageCount', { ns: 'app' })}
+                      {t($ => $['marketplace.template.usageCount'], { ns: 'app' })}
                       {' '}
                       {template.usage_count}
                     </span>
@@ -129,7 +129,7 @@ const ImportFromMarketplaceTemplateModal = ({
               {template.overview && (
                 <div className="flex flex-col gap-1">
                   <div className="system-xs-medium-uppercase text-text-tertiary">
-                    {t('marketplace.template.overview', { ns: 'app' })}
+                    {t($ => $['marketplace.template.overview'], { ns: 'app' })}
                   </div>
                   <div className="system-sm-regular text-text-secondary">
                     {template.overview}
@@ -155,7 +155,7 @@ const ImportFromMarketplaceTemplateModal = ({
 
         <div className="flex justify-end px-6 py-5">
           <Button className="mr-2" onClick={onClose}>
-            {t('newApp.Cancel', { ns: 'app' })}
+            {t($ => $['newApp.Cancel'], { ns: 'app' })}
           </Button>
           <Button
             variant="primary"
@@ -163,7 +163,7 @@ const ImportFromMarketplaceTemplateModal = ({
             loading={importing}
             onClick={handleConfirm}
           >
-            {t('marketplace.template.importConfirm', { ns: 'app' })}
+            {t($ => $['marketplace.template.importConfirm'], { ns: 'app' })}
           </Button>
         </div>
       </DialogContent>

@@ -46,7 +46,7 @@ const PlanningSkeleton = memo(() => {
       </div>
       <div className="mt-3 flex items-center gap-1.5 text-[13px] text-text-tertiary">
         <RiLoader4Line className="size-4 animate-spin" />
-        <span>{t('workflowGenerator.phases.planning')}</span>
+        <span>{t($ => $['workflowGenerator.phases.planning'])}</span>
       </div>
     </div>
   )
@@ -102,7 +102,7 @@ const GenerationPlan = ({ plan }: Props) => {
 
       <div className="mt-3 flex items-center gap-1.5 text-[13px] text-text-tertiary">
         <RiLoader4Line className="size-4 animate-spin" />
-        <span>{t('workflowGenerator.phases.building')}</span>
+        <span>{t($ => $['workflowGenerator.phases.building'])}</span>
       </div>
     </div>
   )

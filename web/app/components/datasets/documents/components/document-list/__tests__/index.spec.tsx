@@ -34,13 +34,46 @@ vi.mock('@/context/dataset-detail', () => ({
     }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) =>
-    selector({
-      userProfile: { id: 'user-1' },
-      workspacePermissionKeys: ['dataset.create_and_management'],
-    }),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['dataset.create_and_management'],
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['dataset.create_and_management'],
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['dataset.create_and_management'],
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['dataset.create_and_management'],
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['dataset.create_and_management'],
+  }))
+})
 
 vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata', () => ({
   default: () => ({
@@ -51,6 +84,12 @@ vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metada
     handleSave: vi.fn(),
   }),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 const createTestQueryClient = () => new QueryClient({
   defaultOptions: {

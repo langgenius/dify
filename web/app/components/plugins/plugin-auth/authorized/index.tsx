@@ -123,7 +123,7 @@ const Authorized = ({
     try {
       handleSetDoingAction(true)
       await deletePluginCredential({ credential_id: pendingOperationCredentialIdRef.current })
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
       onUpdate?.()
       setDeleteCredentialId(null)
       pendingOperationCredentialIdRef.current = null
@@ -171,7 +171,7 @@ const Authorized = ({
     try {
       handleSetDoingAction(true)
       await setPluginDefaultCredential(id)
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
       onUpdate?.()
     }
     finally {
@@ -188,7 +188,7 @@ const Authorized = ({
     try {
       handleSetDoingAction(true)
       await updatePluginCredential(payload)
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
       onUpdate?.()
     }
     finally {
@@ -228,12 +228,12 @@ const Authorized = ({
 &nbsp;
                         {
                           credentials.length > 1
-                            ? t('auth.authorizations', { ns: 'plugin' })
-                            : t('auth.authorization', { ns: 'plugin' })
+                            ? t($ => $['auth.authorizations'], { ns: 'plugin' })
+                            : t($ => $['auth.authorization'], { ns: 'plugin' })
                         }
                         {
                           !!unavailableCredentials.length && (
-                            ` (${unavailableCredentials.length} ${t('auth.unavailable', { ns: 'plugin' })})`
+                            ` (${unavailableCredentials.length} ${t($ => $['auth.unavailable'], { ns: 'plugin' })})`
                           )
                         }
                         <span className="ml-0.5 i-ri-arrow-down-s-line size-4" />
@@ -362,13 +362,13 @@ const Authorized = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('list.delete.title', { ns: 'datasetDocuments' })}
+              {t($ => $['list.delete.title'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={!canManageCredential || doingAction} onClick={handleConfirm}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t($ => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

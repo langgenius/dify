@@ -17,12 +17,6 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/app/app-1/overview',
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: testState.workspacePermissionKeys,
-  })),
-}))
-
 vi.mock('@/app/components/app/store', () => ({
   useStore: vi.fn((selector: (state: { appDetail: { permission_keys: string[] } }) => unknown) => selector({
     appDetail: {

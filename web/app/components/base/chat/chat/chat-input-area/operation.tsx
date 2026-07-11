@@ -18,6 +18,7 @@ type OperationProps = {
   onShowVoiceInput?: () => void
   onSend: () => void
   sendButtonLabel?: string
+  sendButtonLoading?: boolean
   disabled?: boolean
   theme?: Theme | null
   ref?: Ref<HTMLDivElement>
@@ -30,6 +31,7 @@ const Operation: FC<OperationProps> = ({
   onShowVoiceInput,
   onSend,
   sendButtonLabel,
+  sendButtonLoading,
   disabled,
   theme,
 }) => {
@@ -51,7 +53,7 @@ const Operation: FC<OperationProps> = ({
             speechToTextConfig?.enabled && (
               <ActionButton
                 size="l"
-                aria-label={t('voiceInput.start', { ns: 'common' })}
+                aria-label={t($ => $['voiceInput.start'], { ns: 'common' })}
                 disabled={readonly}
                 onClick={onShowVoiceInput}
               >
@@ -61,13 +63,14 @@ const Operation: FC<OperationProps> = ({
           }
         </div>
         <Button
-          aria-label={sendButtonLabel ? undefined : t('operation.send', { ns: 'common' })}
+          aria-label={sendButtonLabel ? undefined : t($ => $['operation.send'], { ns: 'common' })}
           className={cn(
             'ml-3 focus-visible:ring-inset',
             sendButtonLabel ? 'px-3' : 'w-8 px-0',
           )}
           variant="primary"
           disabled={readonly || disabled}
+          loading={sendButtonLoading}
           onClick={onSend}
           style={
             theme

@@ -4,6 +4,7 @@ import type { CollaborationUpdate } from '@/app/components/workflow/collaboratio
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/store'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useAtomValue } from 'jotai'
 import {
   useCallback,
   useEffect,
@@ -21,7 +22,8 @@ import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
 import {
@@ -77,8 +79,8 @@ const WorkflowMain = ({
   const filteredCursors = Object.fromEntries(
     Object.entries(cursors).filter(([userId]) => userId !== myUserId),
   )
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = useMemo(
     () => getAppACLCapabilities(appDetail?.permission_keys, {
       currentUserId,

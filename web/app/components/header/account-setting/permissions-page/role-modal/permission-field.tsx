@@ -18,7 +18,7 @@ const PermissionField = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <div className="system-sm-medium text-text-secondary">{t('permissionSet.permissions', { ns: 'permission' })}</div>
+      <div className="system-sm-medium text-text-secondary">{t($ => $['permissionSet.permissions'], { ns: 'permission' })}</div>
       <PermissionPicker value={value} onChange={onChange} readonly={readonly} />
     </div>
   )

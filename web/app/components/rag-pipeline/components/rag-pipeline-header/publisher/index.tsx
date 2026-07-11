@@ -58,14 +58,14 @@ const Publisher = () => {
         icon_info: icon,
         description,
       })
-      toast.success(t('publishTemplate.success.message', { ns: 'datasetPipeline' }), {
+      toast.success(t($ => $['publishTemplate.success.message'], { ns: 'datasetPipeline' }), {
         description: (
           <div className="flex flex-col gap-y-1">
             <span className="system-xs-regular text-text-secondary">
-              {t('publishTemplate.success.tip', { ns: 'datasetPipeline' })}
+              {t($ => $['publishTemplate.success.tip'], { ns: 'datasetPipeline' })}
             </span>
             <Link href={docLink()} target="_blank" className="inline-block system-xs-medium-uppercase text-text-accent">
-              {t('publishTemplate.success.learnMore', { ns: 'datasetPipeline' })}
+              {t($ => $['publishTemplate.success.learnMore'], { ns: 'datasetPipeline' })}
             </Link>
           </div>
         ),
@@ -73,7 +73,7 @@ const Publisher = () => {
       invalidCustomizedTemplateList()
     }
     catch {
-      toast.error(t('publishTemplate.error.message', { ns: 'datasetPipeline' }))
+      toast.error(t($ => $['publishTemplate.error.message'], { ns: 'datasetPipeline' }))
     }
     finally {
       setIsPublishingAsCustomizedPipeline(false)
@@ -95,7 +95,7 @@ const Publisher = () => {
               variant="primary"
               disabled={!canPipelineRelease}
             >
-              <span className="pl-1">{t('common.publish', { ns: 'workflow' })}</span>
+              <span className="pl-1">{t($ => $['common.publish'], { ns: 'workflow' })}</span>
               <RiArrowDownSLine className="size-4" />
             </Button>
           )}

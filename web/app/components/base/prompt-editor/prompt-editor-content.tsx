@@ -80,7 +80,7 @@ type ShortcutPopup = {
   Popup: React.ComponentType<{ onClose: () => void, onInsert: ShortcutPopupInsertHandler }>
 }
 
-type PromptEditorContentAriaProps = Pick<React.AriaAttributes, 'aria-label' | 'aria-labelledby'>
+type PromptEditorContentAriaProps = Pick<React.AriaAttributes, 'aria-controls' | 'aria-haspopup' | 'aria-label' | 'aria-labelledby'>
 
 type PromptEditorContentProps = PromptEditorContentAriaProps & {
   compact?: boolean
@@ -112,7 +112,22 @@ type PromptEditorContentProps = PromptEditorContentAriaProps & {
   onEditorChange: (editorState: EditorState) => void
 }
 
+const getShortcutPopupKey = (
+  hotkey: Hotkey,
+  displayMode: ShortcutPopupDisplayMode | undefined,
+  Popup: React.ComponentType<{ onClose: () => void, onInsert: ShortcutPopupInsertHandler }>,
+) => {
+  const hotkeyKey = typeof hotkey === 'function'
+    ? hotkey.name || 'custom'
+    : JSON.stringify(hotkey)
+  const popupKey = Popup.displayName ?? Popup.name ?? 'Popup'
+
+  return `${popupKey}:${displayMode ?? 'default'}:${hotkeyKey}`
+}
+
 const PromptEditorContent: FC<PromptEditorContentProps> = ({
+  'aria-controls': ariaControls,
+  'aria-haspopup': ariaHasPopup,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
   compact,
@@ -148,6 +163,8 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
       <RichTextPlugin
         contentEditable={(
           <ContentEditable
+            aria-controls={ariaControls}
+            aria-haspopup={ariaHasPopup}
             aria-label={ariaLabel}
             aria-labelledby={ariaLabelledBy}
             className={cn(
@@ -167,8 +184,8 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
         )}
         ErrorBoundary={LexicalErrorBoundary}
       />
-      {shortcutPopups.map(({ hotkey, displayMode, Popup }, idx) => (
-        <ShortcutsPopupPlugin key={idx} hotkey={hotkey} displayMode={displayMode}>
+      {shortcutPopups.map(({ hotkey, displayMode, Popup }) => (
+        <ShortcutsPopupPlugin key={getShortcutPopupKey(hotkey, displayMode, Popup)} hotkey={hotkey} displayMode={displayMode}>
           {(closePortal, onInsert) => <Popup onClose={closePortal} onInsert={onInsert} />}
         </ShortcutsPopupPlugin>
       ))}

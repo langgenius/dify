@@ -53,15 +53,15 @@ export function ModelSelectorSearchHeader({
           aria-hidden="true"
         />
         <ComboboxInput
-          aria-label={t('form.searchModel', { ns: 'datasetSettings' }) || ''}
+          aria-label={t($ => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
           className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
-          placeholder={t('form.searchModel', { ns: 'datasetSettings' }) || ''}
+          placeholder={t($ => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
         />
         {
           inputValue && (
             <button
               type="button"
-              aria-label={t('operation.clear', { ns: 'common' }) || 'Clear'}
+              aria-label={t($ => $['operation.clear'], { ns: 'common' }) || 'Clear'}
               className="ml-1.5 flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded-none text-text-quaternary outline-hidden hover:bg-transparent hover:text-text-quaternary focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-active"
               onClick={() => onInputValueChange('')}
               onPointerDown={event => event.preventDefault()}
@@ -108,7 +108,7 @@ export function CompatibleModelsNotice() {
       data-testid="compatible-models-banner"
       className="px-4 py-2 system-xs-regular text-text-tertiary"
     >
-      {t('modelProvider.selector.onlyCompatibleModelsShown', { ns: 'common' })}
+      {t($ => $['modelProvider.selector.onlyCompatibleModelsShown'], { ns: 'common' })}
     </div>
   )
 }
@@ -132,8 +132,8 @@ export function ShowIncompatibleModelsButton({
     >
       <span className="min-w-0 truncate">
         {showIncompatibleModels
-          ? t('modelProvider.selector.hideIncompatibleModels', { ns: 'common' })
-          : t('modelProvider.selector.showIncompatibleModels', { ns: 'common' })}
+          ? t($ => $['modelProvider.selector.hideIncompatibleModels'], { ns: 'common' })
+          : t($ => $['modelProvider.selector.showIncompatibleModels'], { ns: 'common' })}
       </span>
     </button>
   )
@@ -156,7 +156,7 @@ export function ModelProviderSettingsFooter({
         onClick={onOpenSettings}
       >
         <span className="i-ri-equalizer-2-line size-4 shrink-0" />
-        <span className="system-xs-medium">{t('modelProvider.selector.modelProviderSettings', { ns: 'common' })}</span>
+        <span className="system-xs-medium">{t($ => $['modelProvider.selector.modelProviderSettings'], { ns: 'common' })}</span>
       </button>
     </div>
   )

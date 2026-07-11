@@ -47,7 +47,7 @@ function UserAccessPolicyRow({
   const selectedPolicyId = selectedAccessPolicyId ?? DEFAULT_ACCESS_POLICY_ID
   const isPolicySelectDisabled = disabled || isMaintainer || !onChange
   const isRemoveDisabled = disabled || isMaintainer || !onRemove || !selectedAccessPolicyId
-  const defaultAccessPolicyName = t('accessRule.defaultPermission', { ns: 'permission' })
+  const defaultAccessPolicyName = t($ => $['accessRule.defaultPermission'], { ns: 'permission' })
   const accountEmail = setting.account.email || setting.account.account_name
 
   const handlePolicyChange = useCallback((nextPolicyId: string | null) => {
@@ -80,7 +80,7 @@ function UserAccessPolicyRow({
             </span>
             {isMaintainer && (
               <span className="max-w-24 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
-                {t('accessRule.maintainer', { ns: 'permission' })}
+                {t($ => $['accessRule.maintainer'], { ns: 'permission' })}
               </span>
             )}
           </div>
@@ -94,7 +94,7 @@ function UserAccessPolicyRow({
         onValueChange={handlePolicyChange}
       >
         <SelectTrigger
-          aria-label={t('accessRule.exceptionPermissionFor', { ns: 'permission', name: setting.account.account_name })}
+          aria-label={t($ => $['accessRule.exceptionPermissionFor'], { ns: 'permission', name: setting.account.account_name })}
           size="small"
           disabled={isPolicySelectDisabled}
           className="w-36"
@@ -124,7 +124,7 @@ function UserAccessPolicyRow({
         className="w-fit rounded-md border-none bg-transparent p-0 text-left system-xs-medium text-text-destructive outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:no-underline"
         onClick={handleRemove}
       >
-        {t('operation.remove', { ns: 'common' })}
+        {t($ => $['operation.remove'], { ns: 'common' })}
       </button>
     </div>
   )

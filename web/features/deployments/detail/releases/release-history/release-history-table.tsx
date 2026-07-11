@@ -7,8 +7,10 @@ import { DeploymentEmptyState, DeploymentStateMessage } from '../../../shared/co
 import {
   adjustReleaseHistoryPageAfterDeleteAtom,
   RELEASE_HISTORY_PAGE_SIZE,
+  releaseHistoryAtom,
   releaseHistoryCurrentPageAtom,
-  releaseHistoryQueryAtom,
+  releaseHistoryIsErrorAtom,
+  releaseHistoryIsLoadingAtom,
   setReleaseHistoryCurrentPageAtom,
 } from '../state'
 import { ReleaseHistoryRows } from './release-history-rows'
@@ -20,9 +22,9 @@ export function ReleaseHistoryTable() {
   const currentPage = useAtomValue(releaseHistoryCurrentPageAtom)
   const setCurrentPage = useSetAtom(setReleaseHistoryCurrentPageAtom)
   const adjustPageAfterDelete = useSetAtom(adjustReleaseHistoryPageAfterDeleteAtom)
-  const releaseHistoryQuery = useAtomValue(releaseHistoryQueryAtom)
-  const isLoading = releaseHistoryQuery.isLoading
-  const hasError = releaseHistoryQuery.isError
+  const releaseHistory = useAtomValue(releaseHistoryAtom)
+  const isLoading = useAtomValue(releaseHistoryIsLoadingAtom)
+  const hasError = useAtomValue(releaseHistoryIsErrorAtom)
 
   if (isLoading)
     return <ReleaseHistoryTableSkeleton />
@@ -30,16 +32,15 @@ export function ReleaseHistoryTable() {
   if (hasError) {
     return (
       <DeploymentStateMessage variant="list">
-        {t('common.loadFailed')}
+        {t($ => $['common.loadFailed'])}
       </DeploymentStateMessage>
     )
   }
 
-  const releaseHistory = releaseHistoryQuery.data
   if (!releaseHistory) {
     return (
       <DeploymentStateMessage variant="list">
-        {t('common.loadFailed')}
+        {t($ => $['common.loadFailed'])}
       </DeploymentStateMessage>
     )
   }
@@ -56,8 +57,8 @@ export function ReleaseHistoryTable() {
     return (
       <DeploymentEmptyState
         icon="i-ri-stack-line"
-        title={t('versions.emptyTitle')}
-        description={t('versions.emptyDescription')}
+        title={t($ => $['versions.emptyTitle'])}
+        description={t($ => $['versions.emptyDescription'])}
       />
     )
   }

@@ -40,7 +40,7 @@ export function ReadmePanelContent({
   else if (error) {
     readmeContent = (
       <div className="py-8 text-center text-text-tertiary">
-        <p>{t('readmeInfo.failedToFetch', { ns: 'plugin' })}</p>
+        <p>{t($ => $['readmeInfo.failedToFetch'], { ns: 'plugin' })}</p>
       </div>
     )
   }
@@ -55,7 +55,7 @@ export function ReadmePanelContent({
   else {
     readmeContent = (
       <div className="py-8 text-center text-text-tertiary">
-        <p>{t('readmeInfo.noReadmeAvailable', { ns: 'plugin' })}</p>
+        <p>{t($ => $['readmeInfo.noReadmeAvailable'], { ns: 'plugin' })}</p>
       </div>
     )
   }

@@ -56,9 +56,9 @@ export function EnvironmentTile({ row, releaseRows }: EnvironmentTileProps) {
   const showRelease = config.showRelease && release
   const commit = releaseCommit(release)
   const tooltip = isDisabled
-    ? t('overview.chip.needsReleaseFirst')
+    ? t($ => $['overview.chip.needsReleaseFirst'])
     : config.intent === 'navigate'
-      ? t('overview.chip.openInDeployTab')
+      ? t($ => $['overview.chip.openInDeployTab'])
       : undefined
 
   function handleDrawerAction() {
@@ -116,7 +116,7 @@ export function EnvironmentTile({ row, releaseRows }: EnvironmentTileProps) {
       <div className="flex min-w-0 items-end justify-between gap-3">
         <div className="min-w-0">
           <div className="system-2xs-medium-uppercase text-text-tertiary">
-            {t('deployTab.col.currentRelease')}
+            {t($ => $['deployTab.col.currentRelease'])}
           </div>
           <div className="mt-1 flex min-w-0 items-center gap-2">
             <span className="min-w-0 truncate system-sm-semibold text-text-primary">
@@ -148,7 +148,7 @@ function RuntimeStatusSignal({ status, t }: {
   status: RuntimeInstanceStatusValue
   t: ReturnType<typeof useTranslation<'deployments'>>['t']
 }) {
-  const label = t(deploymentStatusLabelKey(status))
+  const label = t($ => $[deploymentStatusLabelKey(status)])
 
   return (
     <TitleTooltip content={label}>

@@ -77,7 +77,7 @@ function InSiteMessageNotification() {
     {
       type: 'default',
       action_name: 'dismiss',
-      text: t('operation.close', { ns: 'common' }),
+      text: t($ => $['operation.close'], { ns: 'common' }),
       action: 'close',
     },
   ]

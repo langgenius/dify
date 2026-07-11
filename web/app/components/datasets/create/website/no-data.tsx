@@ -29,22 +29,22 @@ const NoData: FC<Props> = ({
     [DataSourceProvider.jinaReader]: ENABLE_WEBSITE_JINAREADER
       ? {
           emoji: <span className={s.jinaLogo} />,
-          title: t(`${I18N_PREFIX}.jinaReaderNotConfigured`, { ns: 'datasetCreation' }),
-          description: t(`${I18N_PREFIX}.jinaReaderNotConfiguredDescription`, { ns: 'datasetCreation' }),
+          title: t($ => $[`${I18N_PREFIX}.jinaReaderNotConfigured`], { ns: 'datasetCreation' }),
+          description: t($ => $[`${I18N_PREFIX}.jinaReaderNotConfiguredDescription`], { ns: 'datasetCreation' }),
         }
       : null,
     [DataSourceProvider.fireCrawl]: ENABLE_WEBSITE_FIRECRAWL
       ? {
           emoji: '🔥',
-          title: t(`${I18N_PREFIX}.fireCrawlNotConfigured`, { ns: 'datasetCreation' }),
-          description: t(`${I18N_PREFIX}.fireCrawlNotConfiguredDescription`, { ns: 'datasetCreation' }),
+          title: t($ => $[`${I18N_PREFIX}.fireCrawlNotConfigured`], { ns: 'datasetCreation' }),
+          description: t($ => $[`${I18N_PREFIX}.fireCrawlNotConfiguredDescription`], { ns: 'datasetCreation' }),
         }
       : null,
     [DataSourceProvider.waterCrawl]: ENABLE_WEBSITE_WATERCRAWL
       ? {
           emoji: '💧',
-          title: t(`${I18N_PREFIX}.waterCrawlNotConfigured`, { ns: 'datasetCreation' }),
-          description: t(`${I18N_PREFIX}.waterCrawlNotConfiguredDescription`, { ns: 'datasetCreation' }),
+          title: t($ => $[`${I18N_PREFIX}.waterCrawlNotConfigured`], { ns: 'datasetCreation' }),
+          description: t($ => $[`${I18N_PREFIX}.waterCrawlNotConfiguredDescription`], { ns: 'datasetCreation' }),
         }
       : null,
   }
@@ -72,7 +72,7 @@ const NoData: FC<Props> = ({
           </div>
         </div>
         <Button variant="primary" onClick={onConfig}>
-          {t(`${I18N_PREFIX}.configure`, { ns: 'datasetCreation' })}
+          {t($ => $[`${I18N_PREFIX}.configure`], { ns: 'datasetCreation' })}
         </Button>
       </div>
     </>

@@ -57,7 +57,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
           }
           <button
             type="button"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t($ => $['operation.close'], { ns: 'common' })}
             onClick={onCancel}
             className="flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-components-button-secondary-accent-border"
           >

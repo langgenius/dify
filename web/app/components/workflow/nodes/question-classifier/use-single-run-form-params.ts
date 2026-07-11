@@ -85,9 +85,9 @@ const useSingleRunFormParams = ({
 
     forms.push(
       {
-        label: t('nodes.llm.singleRun.variable', { ns: 'workflow' })!,
+        label: t($ => $['nodes.llm.singleRun.variable'], { ns: 'workflow' })!,
         inputs: [{
-          label: t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })!,
+          label: t($ => $[`${i18nPrefix}.inputVars`], { ns: 'workflow' })!,
           variable: 'query',
           type: InputVarType.paragraph,
           required: true,
@@ -102,7 +102,7 @@ const useSingleRunFormParams = ({
 
       forms.push(
         {
-          label: t('nodes.llm.vision', { ns: 'workflow' })!,
+          label: t($ => $['nodes.llm.vision'], { ns: 'workflow' })!,
           inputs: [{
             label: currentVariable?.variable as any,
             variable: '#files#',

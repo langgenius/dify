@@ -113,6 +113,21 @@ describe('Registry (pure)', () => {
     expect(active?.ctx.account.email).toBe('a@x')
   })
 
+  it('resolveActive returns the active context with insecureTls', () => {
+    const reg = baseReg()
+    reg.upsert('h1', 'a@x', ctx('a@x'))
+    reg.setInsecureTls('h1', true)
+    reg.setHost('h1')
+    reg.setAccount('a@x')
+    expect(reg.resolveActive()?.insecureTls).toBe(true)
+  })
+
+  it('setInsecureTls is a no-op for an unknown host', () => {
+    const reg = baseReg()
+    reg.setInsecureTls('missing', true)
+    expect(reg.hosts.missing).toBeUndefined()
+  })
+
   it('resolveActive returns undefined for each missing pointer', () => {
     const reg = baseReg()
     expect(reg.resolveActive()).toBeUndefined()

@@ -33,7 +33,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
   return (
     <div className="space-y-2">
       <label className="mb-2 block text-xs font-medium text-text-tertiary">
-        {t('nodes.triggerSchedule.days', { ns: 'workflow' })}
+        {t($ => $['nodes.triggerSchedule.days'], { ns: 'workflow' })}
       </label>
 
       <div className="space-y-1.5">
@@ -55,14 +55,14 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                         onClick={() => handleDayClick(day)}
                         className="min-w-0 flex-1 py-1"
                       >
-                        {t('nodes.triggerSchedule.lastDay', { ns: 'workflow' })}
+                        {t($ => $['nodes.triggerSchedule.lastDay'], { ns: 'workflow' })}
                       </button>
                       <Infotip
-                        aria-label={t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
+                        aria-label={t($ => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
                         className="mr-1 size-3"
-                        iconClassName="h-3 w-3"
+                        iconSize="small"
                       >
-                        {t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
+                        {t($ => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
                       </Infotip>
                     </div>
                   )
@@ -93,7 +93,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
       {selectedDays?.includes(31) && (
         <div className="mt-1.5 grid grid-cols-7 gap-1.5">
           <div className="col-span-7 text-xs text-gray-500">
-            {t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
+            {t($ => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
           </div>
         </div>
       )}

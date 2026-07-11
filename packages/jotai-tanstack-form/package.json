@@ -11,7 +11,7 @@
   },
   "scripts": {
     "test": "vp test",
-    "type-check": "tsgo"
+    "type-check": "tsc"
   },
   "peerDependencies": {
     "@tanstack/form-core": "catalog:",
@@ -20,7 +20,7 @@
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@tanstack/form-core": "catalog:",
-    "@typescript/native-preview": "catalog:",
+    "@typescript/native": "catalog:",
     "jotai": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

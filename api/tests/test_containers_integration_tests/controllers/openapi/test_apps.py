@@ -39,7 +39,7 @@ def _create_app(
         icon="🤖",
         icon_background="#FF6B6B",
     )
-    app_model = AppService().create_app(tenant.id, params, account)
+    app_model = AppService().create_app(tenant.id, params, account, session=db_session)
     # The openapi surface gate keys off ``enable_api``; flip it explicitly so
     # the test states the visibility precondition rather than relying on the
     # template default.
@@ -120,7 +120,7 @@ class TestAppDescribe:
         app_model = _create_app(db_session_with_containers, account, name="Describe Me", enable_api=True)
 
         api = AppDescribeApi()
-        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/describe?fields=info"):
+        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}?fields=info"):
             result = unwrap(api.get)(
                 api, app_id=app_model.id, auth_data=auth_for(account), query=AppDescribeQuery(fields="info")
             )
@@ -138,7 +138,7 @@ class TestAppDescribe:
         missing_id = str(uuid4())
 
         api = AppDescribeApi()
-        with app.test_request_context(f"/openapi/v1/apps/{missing_id}/describe"):
+        with app.test_request_context(f"/openapi/v1/apps/{missing_id}"):
             with pytest.raises(NotFound):
                 unwrap(api.get)(api, app_id=missing_id, auth_data=auth_for(account), query=AppDescribeQuery())
 
@@ -151,6 +151,6 @@ class TestAppDescribe:
         hidden = _create_app(db_session_with_containers, account, name="Hidden", enable_api=False)
 
         api = AppDescribeApi()
-        with app.test_request_context(f"/openapi/v1/apps/{hidden.id}/describe"):
+        with app.test_request_context(f"/openapi/v1/apps/{hidden.id}"):
             with pytest.raises(NotFound):
                 unwrap(api.get)(api, app_id=hidden.id, auth_data=auth_for(account), query=AppDescribeQuery())

@@ -61,10 +61,17 @@ _sensitive_word_avoidance_adapter: TypeAdapter[SensitiveWordAvoidanceConfig] = T
 
 def _normalize_raw(raw: Any) -> Any:
     if isinstance(raw, dict):
-        if raw.get("enabled") is None:
+        enabled = raw.get("enabled")
+        if enabled is None:
             raw = {**raw, "enabled": False}
-        elif raw.get("enabled") is True and raw.get("config") is None:
-            raw = {**raw, "config": {}}
+        elif enabled is True:
+            if raw.get("config") is None:
+                raw = {**raw, "config": {}}
+        else:
+            # enabled is False or any falsy value —
+            # drop extra fields (type, config) so they don't
+            # violate SensitiveWordAvoidanceDisabledConfig.extra="forbid"
+            raw = {"enabled": False}
     return raw
 
 

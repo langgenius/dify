@@ -53,17 +53,17 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
     const params: SegmentUpdater = { content: '' }
 
     if (!content.trim())
-      return toast.error(t('segment.contentEmpty', { ns: 'datasetDocuments' }))
+      return toast.error(t($ => $['segment.contentEmpty'], { ns: 'datasetDocuments' }))
 
     params.content = content
 
     setLoading(true)
     await addChildSegment({ datasetId, documentId, segmentId: chunkId, body: params }, {
       onSuccess(res) {
-        toast.success(t('segment.childChunkAdded', { ns: 'datasetDocuments' }), {
+        toast.success(t($ => $['segment.childChunkAdded'], { ns: 'datasetDocuments' }), {
           actionProps: isFullDocMode
             ? {
-                children: t('operation.view', { ns: 'common' }),
+                children: t($ => $['operation.view'], { ns: 'common' }),
                 onClick: viewNewlyAddedChildChunk,
               }
             : undefined,
@@ -84,15 +84,15 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   }
 
   const count = content.length
-  const wordCountText = `${formatNumber(count)} ${t('segment.characters', { ns: 'datasetDocuments', count })}`
+  const wordCountText = `${formatNumber(count)} ${t($ => $['segment.characters'], { ns: 'datasetDocuments', count })}`
 
   return (
     <div className="flex h-full flex-col">
       <div className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pr-4 pl-6' : 'pt-3 pr-3 pl-4')}>
         <div className="flex flex-col">
-          <div className="system-xl-semibold text-text-primary">{t('segment.addChildChunk', { ns: 'datasetDocuments' })}</div>
+          <div className="system-xl-semibold text-text-primary">{t($ => $['segment.addChildChunk'], { ns: 'datasetDocuments' })}</div>
           <div className="flex items-center gap-x-2">
-            <SegmentIndexTag label={t('segment.newChildChunk', { ns: 'datasetDocuments' }) as string} />
+            <SegmentIndexTag label={t($ => $['segment.newChildChunk'], { ns: 'datasetDocuments' }) as string} />
             <Dot />
             <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
           </div>
@@ -113,7 +113,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
           )}
           <button
             type="button"
-            aria-label={t('operation.zoomIn', { ns: 'common' })}
+            aria-label={t($ => $['operation.zoomIn'], { ns: 'common' })}
             className="mr-1 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={toggleFullScreen}
           >
@@ -121,7 +121,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
           </button>
           <button
             type="button"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t($ => $['operation.close'], { ns: 'common' })}
             className="flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={handleCancel.bind(null, 'esc')}
           >

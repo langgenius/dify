@@ -22,7 +22,7 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
       return [{
         groupEnabled: false,
         targetHandleId: 'target',
-        title: t(`${i18nPrefix}.title`, { ns: 'workflow' }),
+        title: t($ => $[`${i18nPrefix}.title`], { ns: 'workflow' }),
         type: data.output_type,
         variables: data.variables,
         variableAssignerNodeId: id,

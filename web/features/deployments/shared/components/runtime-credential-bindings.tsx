@@ -142,9 +142,9 @@ export function RuntimeCredentialBindingsPanel({
                 const missing = showMissingRequired && hasMissingRequiredRuntimeCredentialBinding(slot, selectedValue)
                 const slotName = runtimeCredentialProviderName(slot.providerId) ?? slotKey
                 const categoryLabel = slot.category === 'PLUGIN_CATEGORY_MODEL'
-                  ? t('categorySingle.model')
+                  ? t($ => $['categorySingle.model'])
                   : slot.category === 'PLUGIN_CATEGORY_TOOL'
-                    ? t('categorySingle.tool')
+                    ? t($ => $['categorySingle.tool'])
                     : undefined
 
                 return (

@@ -177,7 +177,7 @@ const StepOne = ({
               {shouldShowDataSourceTypeList && (
                 <>
                   <div className={cn(s.stepHeader, 'system-md-semibold text-text-secondary')}>
-                    {t('steps.one', { ns: 'datasetCreation' })}
+                    {t($ => $['steps.one'], { ns: 'datasetCreation' })}
                   </div>
                   <DataSourceTypeSelector
                     currentType={dataSourceType}
@@ -285,7 +285,7 @@ const StepOne = ({
                     onClick={openModal}
                   >
                     <RiFolder6Line className="mr-1 size-4" />
-                    {t('stepOne.emptyDatasetCreation', { ns: 'datasetCreation' })}
+                    {t($ => $['stepOne.emptyDatasetCreation'], { ns: 'datasetCreation' })}
                   </span>
                 </>
               )}

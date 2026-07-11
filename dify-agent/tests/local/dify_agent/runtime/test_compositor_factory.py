@@ -2,7 +2,6 @@ import sys
 import types
 from typing import cast
 
-import pytest
 from pydantic import BaseModel
 
 
@@ -85,8 +84,6 @@ if "jsonschema" not in sys.modules:
     sys.modules["jsonschema.protocols"] = jsonschema_protocols_module
     sys.modules["jsonschema.validators"] = jsonschema_validators_module
 
-import dify_agent.runtime.compositor_factory as compositor_factory_module
-from dify_agent.adapters.shell.config import ShellAdapterSettings
 from dify_agent.adapters.shell.protocols import ShellProviderProtocol
 from dify_agent.layers.dify_core_tools import DIFY_CORE_TOOLS_LAYER_TYPE_ID, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
@@ -103,68 +100,32 @@ class FakeProvider:
         raise AssertionError("create should not be called by these tests")
 
 
-def test_default_layer_providers_register_shell_layer_with_configured_token_factory(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured_settings: list[ShellAdapterSettings] = []
+def test_default_layer_providers_wire_provided_shell_provider() -> None:
     fake_provider = FakeProvider()
 
-    def fake_create_shell_provider(settings: ShellAdapterSettings) -> ShellProviderProtocol:
-        captured_settings.append(settings)
-        return cast(ShellProviderProtocol, fake_provider)
-
-    monkeypatch.setattr(compositor_factory_module, "create_shell_provider", fake_create_shell_provider)
-
-    providers = create_default_layer_providers(
-        shellctl_entrypoint="http://shellctl.example",
-        shellctl_auth_token="shell-secret",
-    )
+    providers = create_default_layer_providers(shell_provider=cast(ShellProviderProtocol, fake_provider))
     shell_provider = next(provider for provider in providers if provider.type_id == DIFY_SHELL_LAYER_TYPE_ID)
     shell_layer = shell_provider.create_layer(DifyShellLayerConfig())
 
     assert isinstance(shell_layer, DifyShellLayer)
     assert shell_layer.shell_provider is fake_provider
-    assert len(captured_settings) == 1
-    assert captured_settings[0].shellctl_entrypoint == "http://shellctl.example"
-    assert captured_settings[0].shellctl_auth_token == "shell-secret"
 
 
-def test_default_layer_providers_keep_empty_shellctl_token_by_default(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    captured_settings: list[ShellAdapterSettings] = []
+def test_default_layer_providers_forward_agent_stub_token_factory() -> None:
+    captured_calls: list[tuple[DifyExecutionContextLayerConfig, str | None]] = []
 
-    def fake_create_shell_provider(settings: ShellAdapterSettings) -> ShellProviderProtocol:
-        captured_settings.append(settings)
-        return cast(ShellProviderProtocol, FakeProvider())
-
-    monkeypatch.setattr(compositor_factory_module, "create_shell_provider", fake_create_shell_provider)
-
-    providers = create_default_layer_providers(shellctl_entrypoint="http://shellctl.example")
-    shell_provider = next(provider for provider in providers if provider.type_id == DIFY_SHELL_LAYER_TYPE_ID)
-    _ = shell_provider.create_layer(DifyShellLayerConfig())
-
-    assert len(captured_settings) == 1
-    assert captured_settings[0].shellctl_auth_token is None
-
-
-def test_shell_provider_rejects_blank_settings_entrypoint_when_default_providers_are_built() -> None:
-    with pytest.raises(ValueError, match="DIFY_AGENT_SHELLCTL_ENTRYPOINT"):
-        _ = create_default_layer_providers(shellctl_entrypoint="   ")
-
-
-def test_default_layer_providers_build_agent_stub_token_factory_from_agent_stub_codec() -> None:
-    AgentStubTokenCodec = pytest.importorskip(
-        "dify_agent.agent_stub.server.tokens.agent_stub",
-        reason="jwcrypto is not available in this local test environment",
-    ).AgentStubTokenCodec
-
-    codec = AgentStubTokenCodec.from_server_secret("MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTE")
+    def build_agent_stub_token(
+        execution_context: DifyExecutionContextLayerConfig,
+        *,
+        session_id: str | None,
+    ) -> str:
+        captured_calls.append((execution_context, session_id))
+        return f"token-for:{execution_context.tenant_id}:{session_id}"
 
     providers = create_default_layer_providers(
-        shellctl_entrypoint="http://shellctl.example",
+        shell_provider=cast(ShellProviderProtocol, FakeProvider()),
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
-        agent_stub_token_codec=codec,
+        agent_stub_token_factory=build_agent_stub_token,
     )
     shell_provider = next(provider for provider in providers if provider.type_id == DIFY_SHELL_LAYER_TYPE_ID)
     shell_layer = shell_provider.create_layer(DifyShellLayerConfig())
@@ -180,8 +141,19 @@ def test_default_layer_providers_build_agent_stub_token_factory_from_agent_stub_
         session_id="abc12ff",
     )
 
-    assert isinstance(token, str)
-    assert token
+    assert token == "token-for:tenant-1:abc12ff"
+    assert captured_calls == [
+        (
+            DifyExecutionContextLayerConfig(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                user_from="account",
+                agent_mode="workflow_run",
+                invoke_from="service-api",
+            ),
+            "abc12ff",
+        )
+    ]
 
 
 def test_default_layer_providers_register_core_tools_layer() -> None:

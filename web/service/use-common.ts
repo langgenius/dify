@@ -10,13 +10,13 @@ import type {
   CodeBasedExtension,
   CommonResponse,
   FileUploadConfigResponse,
-  LangGeniusVersionResponse,
   Member,
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+// eslint-disable-next-line no-restricted-imports
 import { get, post } from './base'
 
 const NAME_SPACE = 'common'
@@ -54,14 +54,6 @@ export const useFileUploadConfig = () => {
   })
 }
 
-export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: boolean) => {
-  return useQuery<LangGeniusVersionResponse>({
-    queryKey: commonQueryKeys.langGeniusVersion(currentVersion || undefined),
-    queryFn: () => get<LangGeniusVersionResponse>('/version', { params: { current_version: currentVersion } }),
-    enabled: !!currentVersion && (enabled ?? true),
-  })
-}
-
 export const useGenerateStructuredOutputRules = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'generate-structured-output-rules'],
@@ -95,7 +87,7 @@ export const useMailValidity = () => {
   })
 }
 
-export type MailRegisterResponse = { result: string, data: {} }
+export type MailRegisterResponse = { result: string, data: Record<string, never> }
 
 export const useMailRegister = () => {
   return useMutation({
@@ -149,7 +141,7 @@ export const useFilePreview = (fileID: string) => {
 export type SchemaTypeDefinition = {
   name: string
   schema: {
-    properties: Record<string, any>
+    properties: Record<string, unknown>
   }
 }
 

@@ -3,6 +3,7 @@ import type { DefaultModel, Model, ModelItem } from '../../declarations'
 import { Combobox } from '@langgenius/dify-ui/combobox'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
@@ -27,16 +28,27 @@ vi.mock('../../hooks', async () => {
   }
 })
 
-vi.mock('../../model-badge', () => ({
-  default: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-}))
-
 vi.mock('../../model-icon', () => ({
   default: ({ modelName }: { modelName: string }) => <span>{modelName}</span>,
 }))
 
 vi.mock('../../model-name', () => ({
-  default: ({ modelItem, nameClassName }: { modelItem: ModelItem, nameClassName?: string }) => <span className={nameClassName}>{modelItem.label.en_US}</span>,
+  default: ({
+    modelItem,
+    className,
+    nameClassName,
+    children,
+  }: {
+    modelItem: ModelItem
+    className?: string
+    nameClassName?: string
+    children?: ReactNode
+  }) => (
+    <span className={[className, nameClassName].filter(Boolean).join(' ')}>
+      {modelItem.label.en_US}
+      {children}
+    </span>
+  ),
 }))
 
 vi.mock('../feature-icon', () => ({
@@ -75,12 +87,42 @@ const mockUseAppContext = vi.hoisted(() => vi.fn())
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['credential.use', 'credential.create', 'credential.manage'],
 }))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: mockUseAppContext,
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   model: 'gpt-4',
@@ -225,6 +267,52 @@ describe('PopupItem', () => {
     )
 
     expect(screen.getByText('GPT-4')).toHaveClass('line-through')
+  })
+
+  it('should render incompatible model names with tertiary text color', () => {
+    renderWithCombobox(
+      <PopupItem
+        {...previewCardProps()}
+        model={makeModel({
+          models: [
+            makeModelItem({ model: 'gpt-4o', label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' } }),
+            makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+          ],
+        })}
+        modelPredicate={(_provider, modelItem) => modelItem.model !== 'gpt-4'}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('GPT-4o')).toHaveClass('text-text-secondary')
+    expect(screen.getByText('GPT-4o')).not.toHaveClass('text-text-quaternary')
+    expect(screen.getByText('GPT-4')).toHaveClass('text-text-quaternary')
+  })
+
+  it('should render suggestion icon with tooltip for suggested models', async () => {
+    renderWithCombobox(
+      <PopupItem
+        {...previewCardProps()}
+        model={makeModel({
+          models: [
+            makeModelItem({ model: 'gpt-5.5', label: { en_US: 'GPT-5.5', zh_Hans: 'GPT-5.5' } }),
+            makeModelItem({ model: 'gpt-5', label: { en_US: 'GPT-5', zh_Hans: 'GPT-5' } }),
+          ],
+        })}
+        modelSuggestionPredicate={(_provider, modelItem) => modelItem.model === 'gpt-5.5'}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('GPT-5.5')).toBeInTheDocument()
+    expect(screen.getByText('GPT-5')).toBeInTheDocument()
+    const suggestionIcon = screen.getByLabelText('common.modelProvider.selector.suggestionTip')
+
+    expect(suggestionIcon).toHaveClass('i-ri-shield-star-line')
+
+    await userEvent.hover(suggestionIcon)
+
+    expect(await screen.findByText('common.modelProvider.selector.suggestionTip')).toBeInTheDocument()
   })
 
   it('should open model modal when clicking add on unconfigured model', () => {

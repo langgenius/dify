@@ -45,14 +45,14 @@ const OperationDropdown: FC<Props> = ({
       >
         <DropdownMenuItem onClick={onEdit}>
           <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
-          <div className="ml-2 system-md-regular text-text-secondary">{t('mcp.operation.edit', { ns: 'tools' })}</div>
+          <div className="ml-2 system-md-regular text-text-secondary">{t($ => $['mcp.operation.edit'], { ns: 'tools' })}</div>
         </DropdownMenuItem>
         <DropdownMenuItem
           className="data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
           onClick={onRemove}
         >
           <RiDeleteBinLine className="size-4 shrink-0 text-inherit" />
-          <div className="ml-2 system-md-regular text-inherit">{t('mcp.operation.remove', { ns: 'tools' })}</div>
+          <div className="ml-2 system-md-regular text-inherit">{t($ => $['mcp.operation.remove'], { ns: 'tools' })}</div>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -161,7 +161,7 @@ const Panel: FC = () => {
     return (
       <div className={cn('flex h-full flex-col')}>
         <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
-          <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
+          <div className="system-sm-semibold-uppercase text-text-primary">{t($ => $['debug.variableInspect.title'], { ns: 'workflow' })}</div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
             <RiCloseLine className="size-4" />
           </ActionButton>
@@ -179,7 +179,7 @@ const Panel: FC = () => {
     return (
       <div className={cn('flex h-full flex-col')}>
         <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
-          <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
+          <div className="system-sm-semibold-uppercase text-text-primary">{t($ => $['debug.variableInspect.title'], { ns: 'workflow' })}</div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
             <RiCloseLine className="size-4" />
           </ActionButton>

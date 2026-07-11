@@ -59,7 +59,7 @@ const MenuDropdown: FC<Props> = ({
               <span aria-hidden className="i-ri-equalizer-2-line h-[18px] w-[18px]" />
             </ActionButton>
           )}
-          aria-label={t('operation.more', { ns: 'common' })}
+          aria-label={t($ => $['operation.more'], { ns: 'common' })}
         />
         <DropdownMenuContent
           placement={placement || 'bottom-end'}
@@ -68,7 +68,7 @@ const MenuDropdown: FC<Props> = ({
         >
           <div className="px-3 py-1.5 system-md-regular text-text-secondary">
             <div className="flex items-center gap-2">
-              <div className="grow">{t('theme.theme', { ns: 'common' })}</div>
+              <div className="grow">{t($ => $['theme.theme'], { ns: 'common' })}</div>
               <ThemeSwitcher />
             </div>
           </div>
@@ -80,21 +80,21 @@ const MenuDropdown: FC<Props> = ({
               target="_blank"
               rel="noreferrer"
             >
-              <span className="grow">{t('chat.privacyPolicyMiddle', { ns: 'share' })}</span>
+              <span className="grow">{t($ => $['chat.privacyPolicyMiddle'], { ns: 'share' })}</span>
             </DropdownMenuLinkItem>
           )}
           <DropdownMenuItem
             className="px-3 system-md-regular"
             onClick={handleOpenInfoModal}
           >
-            {t('userProfile.about', { ns: 'common' })}
+            {t($ => $['userProfile.about'], { ns: 'common' })}
           </DropdownMenuItem>
           {!(hideLogout || webAppAccessMode === AccessMode.EXTERNAL_MEMBERS || webAppAccessMode === AccessMode.PUBLIC) && (
             <DropdownMenuItem
               className="px-3 system-md-regular"
               onClick={handleLogout}
             >
-              {t('userProfile.logout', { ns: 'common' })}
+              {t($ => $['userProfile.logout'], { ns: 'common' })}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>

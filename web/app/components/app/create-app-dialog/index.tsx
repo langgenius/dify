@@ -14,7 +14,7 @@ const CreateAppTemplateDialog = ({ show, onSuccess, onClose, onCreateFromBlank }
   const { t } = useTranslation()
 
   return (
-    <CreateAppDialogShell show={show} title={t('newApp.startFromTemplate', { ns: 'app' })} onClose={onClose}>
+    <CreateAppDialogShell show={show} title={t($ => $['newApp.startFromTemplate'], { ns: 'app' })} onClose={onClose}>
       <AppList
         onCreateFromBlank={onCreateFromBlank}
         onSuccess={() => {

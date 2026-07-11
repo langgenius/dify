@@ -61,7 +61,7 @@ const InstallPluginDropdown = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const buttonLabel = triggerLabel ?? t('installPlugin', { ns: 'plugin' })
+  const buttonLabel = triggerLabel ?? t($ => $.installPlugin, { ns: 'plugin' })
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
@@ -107,13 +107,13 @@ const InstallPluginDropdown = ({
   const installMethods = useMemo<InstallMethod[]>(() => {
     const methods: InstallMethod[] = []
     if (enable_marketplace)
-      methods.push({ icon: MarketplaceInstallSourceIcon, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
+      methods.push({ icon: MarketplaceInstallSourceIcon, text: t($ => $['source.marketplace'], { ns: 'plugin' }), action: 'marketplace' })
 
     if (plugin_installation_permission.restrict_to_marketplace_only)
       return methods
 
-    methods.push({ icon: GithubInstallSourceIcon, text: t('source.github', { ns: 'plugin' }), action: 'github' })
-    methods.push({ icon: LocalPackageInstallSourceIcon, text: t('source.local', { ns: 'plugin' }), action: 'local' })
+    methods.push({ icon: GithubInstallSourceIcon, text: t($ => $['source.github'], { ns: 'plugin' }), action: 'github' })
+    methods.push({ icon: LocalPackageInstallSourceIcon, text: t($ => $['source.local'], { ns: 'plugin' }), action: 'local' })
     return methods
   }, [plugin_installation_permission, enable_marketplace, t])
 
@@ -176,7 +176,7 @@ const InstallPluginDropdown = ({
           popupClassName={cn('w-[200px] pb-2', popupClassName)}
         >
           <span className="flex items-start self-stretch px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
-            {t('installFrom', { ns: 'plugin' })}
+            {t($ => $.installFrom, { ns: 'plugin' })}
           </span>
           {installMethods.map(({ icon: Icon, text, action }) => (
             <DropdownMenuItem

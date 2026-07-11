@@ -27,9 +27,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     error: mockToastError,
   },
 }))
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
+
 vi.mock('react-multi-email', () => ({
   ReactMultiEmail: ({ emails, onChange, getLabel }: { emails: string[], onChange: (emails: string[]) => void, getLabel: (email: string, index: number, removeEmail: (index: number) => void) => React.ReactNode }) => (
     <div>

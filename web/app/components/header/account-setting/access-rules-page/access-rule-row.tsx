@@ -25,7 +25,7 @@ const AccessRuleRow = ({
 }: AccessRuleRowProps) => {
   const { t } = useTranslation()
   const { policy } = rule
-  const description = policy.description.trim() || t('accessRule.noDescription', { ns: 'permission' })
+  const description = policy.description.trim() || t($ => $['accessRule.noDescription'], { ns: 'permission' })
 
   const handleView = useCallback(() => onView?.(rule), [onView, rule])
   const handleEdit = useCallback(() => onEdit?.(rule), [onEdit, rule])

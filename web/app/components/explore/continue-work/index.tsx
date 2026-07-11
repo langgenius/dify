@@ -25,13 +25,13 @@ const ContinueWork = ({
     <section className={cn('px-8 pb-5', className)} aria-labelledby="continue-work-title">
       <div className="flex items-center justify-between pt-2">
         <h2 id="continue-work-title" className="min-w-0 truncate system-xl-medium text-text-primary">
-          {t('continueWork.title', { ns: 'explore' })}
+          {t($ => $['continueWork.title'], { ns: 'explore' })}
         </h2>
         <Link
           href="/apps"
           className="ml-4 flex shrink-0 items-center gap-1 system-xs-medium text-text-tertiary"
         >
-          {t('continueWork.exploreStudio', { ns: 'explore' })}
+          {t($ => $['continueWork.exploreStudio'], { ns: 'explore' })}
           <span className="i-ri-arrow-right-line size-3 shrink-0" aria-hidden="true" />
         </Link>
       </div>

@@ -57,9 +57,9 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
     if (!notSuccess)
       return undefined
     if (status === 'not-installed')
-      return t('nodes.agent.toolNotInstallTooltip', { ns: 'workflow', tool: name })
+      return t($ => $['nodes.agent.toolNotInstallTooltip'], { ns: 'workflow', tool: name })
     if (status === 'not-authorized')
-      return t('nodes.agent.toolNotAuthorizedTooltip', { ns: 'workflow', tool: name })
+      return t($ => $['nodes.agent.toolNotAuthorizedTooltip'], { ns: 'workflow', tool: name })
     throw new Error('Unknown status')
   }, [name, notSuccess, status, t])
   const [iconFetchError, setIconFetchError] = useState(false)

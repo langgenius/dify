@@ -25,9 +25,9 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const titleText = title || t('operation.deleteConfirmTitle', { ns: 'common', defaultValue: 'Delete?' })
-  const confirmTxt = confirmText || t('operation.yes', { ns: 'common', defaultValue: 'Yes' })
-  const cancelTxt = cancelText || t('operation.no', { ns: 'common', defaultValue: 'No' })
+  const titleText = title || t($ => $['operation.deleteConfirmTitle'], { ns: 'common', defaultValue: 'Delete?' })
+  const confirmTxt = confirmText || t($ => $['operation.yes'], { ns: 'common', defaultValue: 'Yes' })
+  const cancelTxt = cancelText || t($ => $['operation.no'], { ns: 'common', defaultValue: 'No' })
 
   return (
     <div
@@ -72,7 +72,7 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
       </div>
 
       <span id="inline-delete-confirm-description" className="sr-only">
-        {t('operation.confirmAction', { ns: 'common', defaultValue: 'Please confirm your action.' })}
+        {t($ => $['operation.confirmAction'], { ns: 'common', defaultValue: 'Please confirm your action.' })}
       </span>
     </div>
   )

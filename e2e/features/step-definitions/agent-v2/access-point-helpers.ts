@@ -26,11 +26,16 @@ export const getPreseededResource = (
 export const getAccessRegion = (world: DifyWorld) =>
   world.getPage().getByRole('region', { name: 'Access Point' })
 
+export type AccessSurfaceName = 'Web app' | 'Backend service API'
+
+export const getAccessSurfaceCard = (world: DifyWorld, surface: AccessSurfaceName) =>
+  getAccessRegion(world).getByRole('article', { name: surface }).first()
+
 export const getWebAppCard = (world: DifyWorld) =>
-  getAccessRegion(world).locator('article').filter({ hasText: 'Web app' }).first()
+  getAccessSurfaceCard(world, 'Web app')
 
 export const getServiceApiCard = (world: DifyWorld) =>
-  getAccessRegion(world).locator('article').filter({ hasText: 'Backend service API' }).first()
+  getAccessSurfaceCard(world, 'Backend service API')
 
 export const getDialog = (world: DifyWorld, name: string | RegExp) =>
   world.getPage().getByRole('dialog', { name })

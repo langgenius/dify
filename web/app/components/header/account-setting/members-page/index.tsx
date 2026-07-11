@@ -4,14 +4,17 @@ import type { InvitationResult, Member } from '@/models/common'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { useAppContext } from '@/context/app-context'
+import { userProfileEmailAtom } from '@/context/account-state'
 import { useLocale } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n-config/language'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
@@ -30,7 +33,10 @@ const MembersPage = () => {
   const locale = useLocale()
   const language = getAccessControlTemplateLanguage(locale)
 
-  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, workspacePermissionKeys } = useAppContext()
+  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data, refetch } = useMembers(language)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
@@ -46,8 +52,8 @@ const MembersPage = () => {
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const roleColumnLabel = systemFeatures.rbac_enabled
-    ? t('members.roles', { ns: 'common' })
-    : t('members.role', { ns: 'common' })
+    ? t($ => $['members.roles'], { ns: 'common' })
+    : t($ => $['members.role'], { ns: 'common' })
 
   const handleOpenDetails = useCallback((member: Member) => {
     setDetailsMember(member)
@@ -69,7 +75,7 @@ const MembersPage = () => {
       roleIds,
     }, {
       onSuccess: () => {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         refetch()
       },
     })
@@ -98,7 +104,7 @@ const MembersPage = () => {
                       render={(
                         <button
                           type="button"
-                          aria-label={t('account.editWorkspaceInfo', { ns: 'common' })}
+                          aria-label={t($ => $['account.editWorkspaceInfo'], { ns: 'common' })}
                           className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-black/5"
                           onClick={() => {
                             setEditWorkspaceModalVisible(true)
@@ -112,7 +118,7 @@ const MembersPage = () => {
                       )}
                     />
                     <TooltipContent>
-                      {t('account.editWorkspaceInfo', { ns: 'common' })}
+                      {t($ => $['account.editWorkspaceInfo'], { ns: 'common' })}
                     </TooltipContent>
                   </Tooltip>
                 </span>
@@ -123,19 +129,19 @@ const MembersPage = () => {
                 ? (
                     <div className="flex space-x-1">
                       <div>
-                        {t('plansCommon.member', { ns: 'billing' })}
+                        {t($ => $['plansCommon.member'], { ns: 'billing' })}
                         {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
                       </div>
                       <div className="">{accounts.length}</div>
                       <div>/</div>
-                      <div>{plan.total.teamMembers === NUM_INFINITE ? t('plansCommon.unlimited', { ns: 'billing' }) : plan.total.teamMembers}</div>
+                      <div>{plan.total.teamMembers === NUM_INFINITE ? t($ => $['plansCommon.unlimited'], { ns: 'billing' }) : plan.total.teamMembers}</div>
                     </div>
                   )
                 : (
                     <div className="flex space-x-1">
                       <div>{accounts.length}</div>
                       <div>
-                        {t('plansCommon.memberAfter', { ns: 'billing' })}
+                        {t($ => $['plansCommon.memberAfter'], { ns: 'billing' })}
                         {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
                       </div>
                     </div>
@@ -152,8 +158,8 @@ const MembersPage = () => {
         </div>
         <div className="overflow-visible lg:overflow-visible">
           <div className="flex min-w-120 items-center border-b border-divider-regular py-1.75">
-            <div className="w-65 shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.name', { ns: 'common' })}</div>
-            <div className="w-30 shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('members.lastActive', { ns: 'common' })}</div>
+            <div className="w-65 shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">{t($ => $['members.name'], { ns: 'common' })}</div>
+            <div className="w-30 shrink-0 system-xs-medium-uppercase text-text-tertiary">{t($ => $['members.lastActive'], { ns: 'common' })}</div>
             <div className="min-w-0 grow px-3 system-xs-medium-uppercase text-text-tertiary">{roleColumnLabel}</div>
           </div>
           <div className="relative min-w-120">
@@ -162,7 +168,7 @@ const MembersPage = () => {
                 key={account.id}
                 member={account}
                 roles={account.roles}
-                isCurrentUser={userProfile.email === account.email}
+                isCurrentUser={userProfileEmail === account.email}
                 canManage={canManageMembers}
                 canTransferOwnership={isCurrentWorkspaceOwner && isAllowTransferWorkspace}
                 allowMultipleRoles={systemFeatures.rbac_enabled}
@@ -213,7 +219,7 @@ const MembersPage = () => {
           canAssignRoles={
             canManageMembers
             && detailsMember.role !== 'owner'
-            && userProfile.email !== detailsMember.email
+            && userProfileEmail !== detailsMember.email
           }
           allowMultipleRoles={systemFeatures.rbac_enabled}
           onClose={handleCloseDetails}

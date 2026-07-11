@@ -8,7 +8,7 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import { createApiContext, expectApiResponseOK } from '../../../support/api'
 import { assertE2EResourceName, createE2EResourceName } from '../../../support/naming'
-import { defaultAgentSoulConfig, normalAgentSoulConfig } from './agent-soul'
+import { createPublishableAgentSoulConfig, defaultAgentSoulConfig, normalAgentSoulConfig } from './agent-soul'
 
 export type AgentSeed = Pick<
   AgentAppDetailWithSite,
@@ -31,8 +31,8 @@ export type CreateTestAgentOptions = {
   role?: string
 }
 
-export const getAgentConfigurePath = (agentId: string) => `/roster/agent/${agentId}/configure`
-export const getAgentAccessPath = (agentId: string) => `/roster/agent/${agentId}/access`
+export const getAgentConfigurePath = (agentId: string) => `/agents/${agentId}/configure`
+export const getAgentAccessPath = (agentId: string) => `/agents/${agentId}/access`
 
 export async function createTestAgent({
   description = 'Created by Dify E2E.',
@@ -156,6 +156,12 @@ export async function getAgentComposerDraft(agentId: string): Promise<AgentAppCo
   }
 }
 
+export async function ensureAgentComposerDraftIsPublishable(agentId: string): Promise<void> {
+  const composer = await getAgentComposerDraft(agentId)
+  if (!composer.agent_soul?.model)
+    await saveAgentComposerDraft(agentId, createPublishableAgentSoulConfig(composer.agent_soul ?? defaultAgentSoulConfig))
+}
+
 export async function publishAgent(agentId: string, versionNote = 'E2E publish'): Promise<void> {
   const ctx = await createApiContext()
   try {
@@ -167,4 +173,12 @@ export async function publishAgent(agentId: string, versionNote = 'E2E publish')
   finally {
     await ctx.dispose()
   }
+}
+
+export async function publishAgentWithPublishableDraft(
+  agentId: string,
+  versionNote = 'E2E publish',
+): Promise<void> {
+  await ensureAgentComposerDraftIsPublishable(agentId)
+  await publishAgent(agentId, versionNote)
 }

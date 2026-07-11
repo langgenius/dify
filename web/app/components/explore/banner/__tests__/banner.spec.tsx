@@ -6,39 +6,71 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Banner from '../banner'
 
 const mockUseGetBanners = vi.fn()
-const mockUseSelector = vi.fn()
 const mockTrackEvent = vi.fn()
 let mockSelectedIndex = 0
 const mockCarouselListeners = new Set<() => void>()
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'account-123',
+    name: 'Evan',
+  },
+}))
 
 const setMockSelectedIndex = (index: number) => {
   mockSelectedIndex = index
   mockCarouselListeners.forEach(listener => listener())
 }
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (...args: unknown[]) => mockUseSelector(...args),
-}))
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: Record<string, unknown>) => {
-      if (key === 'banner.greeting')
-        return `Welcome back, ${opts?.name} 👋`
-      if (key === 'banner.tagline')
-        return 'What if… this is where your next idea begins.'
-      return key
-    },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      i18n: { language: 'en-US' },
+      t: withSelectorKey((key: string, opts?: Record<string, unknown>) => {
+        if (key === 'banner.greeting')
+          return `Welcome back, ${opts?.name} 👋`
+        if (key === 'banner.tagline')
+          return 'What if… this is where your next idea begins.'
+        return key
+      }),
+    }),
+  })
+})
 
 vi.mock('@/app/components/base/carousel', () => ({
   Carousel: Object.assign(
@@ -133,12 +165,10 @@ describe('Banner', () => {
     vi.useFakeTimers()
     mockSelectedIndex = 0
     mockCarouselListeners.clear()
-    mockUseSelector.mockImplementation(selector => selector({
-      userProfile: {
-        id: 'account-123',
-        name: 'Evan',
-      },
-    }))
+    mockAppContextState.userProfile = {
+      id: 'account-123',
+      name: 'Evan',
+    }
   })
 
   afterEach(() => {
@@ -357,12 +387,10 @@ describe('Banner', () => {
     })
 
     it('does not track impressions when account id is unavailable', () => {
-      mockUseSelector.mockImplementation(selector => selector({
-        userProfile: {
-          id: '',
-          name: '',
-        },
-      }))
+      mockAppContextState.userProfile = {
+        id: '',
+        name: '',
+      }
       mockUseGetBanners.mockReturnValue({
         data: [createMockBanner('1', 'enabled', 'Enabled Banner 1')],
         isLoading: false,

@@ -16,7 +16,11 @@ import { ApiKeyGenerateMenu } from '../api-keys/api-key-generate-menu'
 import { ApiKeyList } from '../api-keys/api-key-list'
 import { CreatedApiTokenDialog } from '../api-keys/created-token-dialog'
 import { DeveloperApiDocsDrawer } from '../docs/docs-drawer'
-import { developerApiSettingsQueryAtom } from '../state'
+import {
+  developerApiSettingsAtom,
+  developerApiSettingsIsErrorAtom,
+  developerApiSettingsIsLoadingAtom,
+} from '../state'
 import { DeveloperApiSkeleton } from './skeleton'
 
 type CreatedApiToken = {
@@ -36,7 +40,7 @@ function ApiKeyListSection({ apiKeys, environments, action }: {
     <div className="flex flex-col gap-2">
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="system-xs-semibold-uppercase text-text-tertiary">
-          {t('access.api.keyList')}
+          {t($ => $['access.api.keyList'])}
         </div>
         {hasAction && (
           <div className="w-full shrink-0 sm:w-auto [&_button]:w-full sm:[&_button]:w-auto">
@@ -61,7 +65,7 @@ function DeveloperApiEndpoint({ apiUrl }: {
   return (
     <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
       <CopyPill
-        label={t('access.api.endpoint')}
+        label={t($ => $['access.api.endpoint'])}
         value={apiUrl}
         className="min-w-0 flex-1"
       />
@@ -71,7 +75,7 @@ function DeveloperApiEndpoint({ apiUrl }: {
         onClick={() => setApiDocsOpen(true)}
       >
         <span className="i-ri-file-list-3-line size-3.5" />
-        {t('access.api.docs')}
+        {t($ => $['access.api.docs'])}
       </Button>
       <DeveloperApiDocsDrawer
         open={apiDocsOpen}
@@ -86,30 +90,32 @@ export function DeveloperApiSection() {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const [createdApiToken, setCreatedApiToken] = useState<CreatedApiToken>()
-  const developerApiSettingsQuery = useAtomValue(developerApiSettingsQueryAtom)
-  const accessChannels = developerApiSettingsQuery.data?.accessChannels
+  const developerApiSettings = useAtomValue(developerApiSettingsAtom)
+  const isLoading = useAtomValue(developerApiSettingsIsLoadingAtom)
+  const isError = useAtomValue(developerApiSettingsIsErrorAtom)
+  const accessChannels = developerApiSettings?.accessChannels
   const apiEnabled = accessChannels?.developerApiEnabled ?? false
-  const apiUrl = developerApiSettingsQuery.data?.developerApiUrl.apiUrl
-  const apiKeys: ApiKey[] = developerApiSettingsQuery.data?.apiKeys ?? []
-  const environments = developerApiSettingsQuery.data?.environments ?? []
+  const apiUrl = developerApiSettings?.developerApiUrl.apiUrl
+  const apiKeys: ApiKey[] = developerApiSettings?.apiKeys ?? []
+  const environments = developerApiSettings?.environments ?? []
   const visibleCreatedApiToken = createdApiToken && createdApiToken.appInstanceId === appInstanceId
     ? createdApiToken.token
     : undefined
   const hasSelectableEnvironment = environments.some(environment => Boolean(environment.id))
 
-  if (developerApiSettingsQuery.isLoading)
+  if (isLoading)
     return <DeveloperApiSkeleton />
 
-  if (developerApiSettingsQuery.isError || !appInstanceId)
-    return <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>
+  if (isError || !appInstanceId)
+    return <DeploymentStateMessage variant="section">{t($ => $['common.loadFailed'])}</DeploymentStateMessage>
 
   if (!apiEnabled) {
     return (
       <DeploymentEmptyState
         variant="section"
         icon="i-ri-toggle-line"
-        title={t('access.api.disabled')}
-        description={t('access.api.disabledHint')}
+        title={t($ => $['access.api.disabled'])}
+        description={t($ => $['access.api.disabledHint'])}
       />
     )
   }
@@ -133,8 +139,8 @@ export function DeveloperApiSection() {
                     <DeploymentEmptyState
                       variant="section"
                       icon="i-ri-key-2-line"
-                      title={t('access.api.noKeysTitle')}
-                      description={t('access.api.noKeys')}
+                      title={t($ => $['access.api.noKeysTitle'])}
+                      description={t($ => $['access.api.noKeys'])}
                       action={trigger}
                     />
                   )
@@ -152,8 +158,8 @@ export function DeveloperApiSection() {
               <DeploymentEmptyState
                 variant="section"
                 icon="i-ri-rocket-line"
-                title={t('access.api.emptyTitle')}
-                description={t('access.api.empty')}
+                title={t($ => $['access.api.emptyTitle'])}
+                description={t($ => $['access.api.empty'])}
               />
             )
           : (

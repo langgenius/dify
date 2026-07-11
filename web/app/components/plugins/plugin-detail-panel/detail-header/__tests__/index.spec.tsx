@@ -1,9 +1,10 @@
 import type { ReactElement } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
-import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
+import { createAccountProfileQueryClient } from '@/test/account-profile-query'
 import DetailHeader from '../index'
 
 const mockSetTargetVersion = vi.fn()
@@ -13,21 +14,12 @@ const mockHandleUpdatedFromMarketplace = vi.fn()
 const mockHandleDelete = vi.fn()
 
 const render = (ui: ReactElement) => {
-  const Wrapper = createAccountProfileQueryWrapper({ timezone: 'UTC' })
-  return rtlRender(ui, { wrapper: Wrapper })
+  const queryClient = createAccountProfileQueryClient({ timezone: 'UTC' })
+  return renderWithSystemFeatures(ui, {
+    queryClient,
+    systemFeatures: { enable_marketplace: true },
+  })
 }
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { timezone: 'UTC' },
-  }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
@@ -77,10 +69,6 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
   PluginAuth: ({ pluginPayload }: { pluginPayload: { provider: string } }) => (
     <div data-testid="plugin-auth">{pluginPayload.provider}</div>
   ),
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/operation-dropdown', () => ({
-  default: ({ detailUrl }: { detailUrl: string }) => <div data-testid="operation-dropdown">{detailUrl}</div>,
 }))
 
 vi.mock('@/app/components/plugins/update-plugin/plugin-version-picker', () => ({
@@ -235,7 +223,8 @@ describe('DetailHeader', () => {
     expect(screen.getByTestId('description')).toHaveTextContent('Tool plugin description')
     expect(screen.getByTestId('source-badge')).toHaveTextContent('marketplace')
     expect(screen.getByTestId('plugin-auth')).toHaveTextContent('tool-plugin/provider-a')
-    expect(screen.getByTestId('operation-dropdown')).toHaveTextContent('https://marketplace.example.com/plugins/acme/provider-a')
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
+    expect(screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.viewDetail' })).toHaveAttribute('href', 'https://marketplace.example.com/plugins/acme/provider-a')
     expect(screen.getByTestId('header-modals')).toBeInTheDocument()
   })
 

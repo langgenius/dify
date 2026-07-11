@@ -71,10 +71,10 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
   if (loadErr) {
     return (
       <div>
-        <h2 className="text-2xl font-semibold text-text-primary">{t('authorize.sessionInvalidTitle')}</h2>
+        <h2 className="text-2xl font-semibold text-text-primary">{t($ => $['authorize.sessionInvalidTitle'])}</h2>
         <p className="mt-2 text-sm text-text-secondary">
           <Trans
-            i18nKey="authorize.sessionInvalidBody"
+            i18nKey={$ => $['authorize.sessionInvalidBody']}
             ns="deviceFlow"
             components={{ codeTag: <code className="rounded bg-components-input-bg-normal px-1 font-mono" /> }}
           />
@@ -83,15 +83,15 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
     )
   }
   if (!ctx) {
-    return <div className="text-sm text-text-secondary">{t('authorize.loadingSession')}</div>
+    return <div className="text-sm text-text-secondary">{t($ => $['authorize.loadingSession'])}</div>
   }
 
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-semibold text-text-primary">{t('authorize.title')}</h2>
+        <h2 className="text-2xl font-semibold text-text-primary">{t($ => $['authorize.title'])}</h2>
         <p className="mt-2 text-sm text-text-secondary">
-          {t('authorize.ssoSubtitle')}
+          {t($ => $['authorize.ssoSubtitle'])}
         </p>
       </div>
       <div className="flex items-center gap-2.5 rounded-lg bg-background-section-burn px-3 py-2.5">
@@ -102,12 +102,12 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
         />
         <div>
           <p className="text-sm font-semibold text-text-primary">{ctx.subject_email}</p>
-          <p className="text-xs text-text-secondary">{t('authorize.viaSSO')}</p>
+          <p className="text-xs text-text-secondary">{t($ => $['authorize.viaSSO'])}</p>
         </div>
       </div>
       {ctx.subject_issuer && (
         <div className="rounded-lg bg-background-section-burn px-3 py-2 text-sm text-text-secondary">
-          {t('authorize.identityProvider')}
+          {t($ => $['authorize.identityProvider'])}
           {' '}
           <span className="font-semibold text-text-primary">{ctx.subject_issuer}</span>
         </div>
@@ -119,7 +119,7 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
         onClick={approve}
         disabled={busy}
       >
-        {t('authorize.approve')}
+        {t($ => $['authorize.approve'])}
       </Button>
     </div>
   )

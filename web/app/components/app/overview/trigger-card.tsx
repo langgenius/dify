@@ -6,13 +6,15 @@ import type { AppSSO } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import {
 
@@ -79,8 +81,8 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const appId = appInfo.id
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canEditApp = React.useMemo(() => getAppACLCapabilities(appInfo.permission_keys, {
     currentUserId,
     resourceMaintainer: appInfo.maintainer,
@@ -164,8 +166,8 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
               <div className="group w-full">
                 <div className="min-w-0 overflow-hidden system-md-semibold break-normal text-ellipsis text-text-secondary group-hover:text-text-primary">
                   {triggerCount > 0
-                    ? t('overview.triggerInfo.triggersAdded', { ns: 'appOverview', count: triggerCount })
-                    : t('overview.triggerInfo.noTriggerAdded', { ns: 'appOverview' })}
+                    ? t($ => $['overview.triggerInfo.triggersAdded'], { ns: 'appOverview', count: triggerCount })
+                    : t($ => $['overview.triggerInfo.noTriggerAdded'], { ns: 'appOverview' })}
                 </div>
               </div>
             </div>
@@ -187,8 +189,8 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                 <div className="flex shrink-0 items-center">
                   <div className={`${trigger.status === 'enabled' ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase whitespace-nowrap`}>
                     {trigger.status === 'enabled'
-                      ? t('overview.status.running', { ns: 'appOverview' })
-                      : t('overview.status.disable', { ns: 'appOverview' })}
+                      ? t($ => $['overview.status.running'], { ns: 'appOverview' })
+                      : t($ => $['overview.status.disable'], { ns: 'appOverview' })}
                   </div>
                 </div>
                 <div className="shrink-0">
@@ -206,7 +208,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
         {triggerCount === 0 && (
           <div className="p-3">
             <div className="system-xs-regular leading-4 text-text-tertiary">
-              {t('overview.triggerInfo.triggerStatusDescription', { ns: 'appOverview' })}
+              {t($ => $['overview.triggerInfo.triggerStatusDescription'], { ns: 'appOverview' })}
               {' '}
               <Link
                 href={docLink('/use-dify/nodes/trigger/overview')}
@@ -214,7 +216,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                 rel="noopener noreferrer"
                 className="text-text-accent hover:underline"
               >
-                {t('overview.triggerInfo.learnAboutTriggers', { ns: 'appOverview' })}
+                {t($ => $['overview.triggerInfo.learnAboutTriggers'], { ns: 'appOverview' })}
               </Link>
             </div>
           </div>

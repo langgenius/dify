@@ -31,7 +31,7 @@ const ConditionInput = ({
       key={controlPromptEditorRerenderKey}
       compact
       value={value}
-      placeholder={t('nodes.ifElse.enterValue', { ns: 'workflow' }) || ''}
+      placeholder={t($ => $['nodes.ifElse.enterValue'], { ns: 'workflow' }) || ''}
       workflowVariableBlock={{
         show: true,
         variables: nodesOutputVars || [],
@@ -45,7 +45,7 @@ const ConditionInput = ({
           }
           if (node.data.type === BlockEnum.Start) {
             acc.sys = {
-              title: t('blocks.start', { ns: 'workflow' }),
+              title: t($ => $['blocks.start'], { ns: 'workflow' }),
               type: BlockEnum.Start,
             }
           }

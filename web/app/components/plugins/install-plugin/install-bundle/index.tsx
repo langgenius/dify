@@ -42,11 +42,11 @@ const InstallBundle: FC<Props> = ({
 
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
-      return t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' })
+      return t($ => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' })
     if (step === InstallStep.installed)
-      return t(`${i18nPrefix}.installedSuccessfully`, { ns: 'plugin' })
+      return t($ => $[`${i18nPrefix}.installedSuccessfully`], { ns: 'plugin' })
 
-    return t(`${i18nPrefix}.installPlugin`, { ns: 'plugin' })
+    return t($ => $[`${i18nPrefix}.installPlugin`], { ns: 'plugin' })
   }, [step, t])
 
   return (

@@ -327,12 +327,12 @@ const ConfigPopup: FC<PopupProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <TracingIcon size="md" className="mr-2" />
-          <div className="title-2xl-semi-bold text-text-primary">{t(`${I18N_PREFIX}.tracing`, { ns: 'app' })}</div>
+          <div className="title-2xl-semi-bold text-text-primary">{t($ => $[`${I18N_PREFIX}.tracing`], { ns: 'app' })}</div>
         </div>
         <div className="flex items-center">
           <StatusDot status={enabled ? 'success' : 'disabled'} />
           <div className={cn('ml-1 system-xs-semibold-uppercase text-text-tertiary', enabled && 'text-util-colors-green-green-600')}>
-            {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`, { ns: 'app' })}
+            {t($ => $[`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`], { ns: 'app' })}
           </div>
           {!readOnly && (
             <>
@@ -343,7 +343,7 @@ const ConfigPopup: FC<PopupProps> = ({
                         render={switchContent}
                       />
                       <TooltipContent>
-                        {t(`${I18N_PREFIX}.disabledTip`, { ns: 'app' })}
+                        {t($ => $[`${I18N_PREFIX}.disabledTip`], { ns: 'app' })}
                       </TooltipContent>
                     </Tooltip>
                   )
@@ -354,14 +354,14 @@ const ConfigPopup: FC<PopupProps> = ({
       </div>
 
       <div className="mt-2 system-xs-regular text-text-tertiary">
-        {t(`${I18N_PREFIX}.tracingDescription`, { ns: 'app' })}
+        {t($ => $[`${I18N_PREFIX}.tracingDescription`], { ns: 'app' })}
       </div>
       <Divider className="my-3" />
       <div className="relative">
         {(providerAllConfigured || providerAllNotConfigured)
           ? (
               <>
-                <div className="system-xs-medium-uppercase text-text-tertiary">{t(`${I18N_PREFIX}.configProviderTitle.${providerAllConfigured ? 'configured' : 'notConfigured'}`, { ns: 'app' })}</div>
+                <div className="system-xs-medium-uppercase text-text-tertiary">{t($ => $[`${I18N_PREFIX}.configProviderTitle.${providerAllConfigured ? 'configured' : 'notConfigured'}`], { ns: 'app' })}</div>
                 <div className="mt-2 max-h-96 space-y-2 overflow-y-auto">
                   {langfusePanel}
                   {langSmithPanel}
@@ -378,11 +378,11 @@ const ConfigPopup: FC<PopupProps> = ({
             )
           : (
               <>
-                <div className="system-xs-medium-uppercase text-text-tertiary">{t(`${I18N_PREFIX}.configProviderTitle.configured`, { ns: 'app' })}</div>
+                <div className="system-xs-medium-uppercase text-text-tertiary">{t($ => $[`${I18N_PREFIX}.configProviderTitle.configured`], { ns: 'app' })}</div>
                 <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">
                   {configuredProviderPanel()}
                 </div>
-                <div className="mt-3 system-xs-medium-uppercase text-text-tertiary">{t(`${I18N_PREFIX}.configProviderTitle.moreProvider`, { ns: 'app' })}</div>
+                <div className="mt-3 system-xs-medium-uppercase text-text-tertiary">{t($ => $[`${I18N_PREFIX}.configProviderTitle.moreProvider`], { ns: 'app' })}</div>
                 <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">
                   {moreProviderPanel()}
                 </div>

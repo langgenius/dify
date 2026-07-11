@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 from controllers.common.controller_schemas import WorkflowRunPayload
-from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -38,13 +38,13 @@ from .. import console_ns
 logger = logging.getLogger(__name__)
 
 register_schema_model(console_ns, WorkflowRunPayload)
-register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultResponse)
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
 class InstalledAppWorkflowRunApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success")
     @with_current_user
     @with_session
     def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
@@ -70,6 +70,7 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
                 streaming=True,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -109,4 +110,4 @@ class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
         # New graph engine command channel mechanism
         GraphEngineManager(redis_client).send_stop_command(task_id)
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")

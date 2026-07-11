@@ -2,6 +2,7 @@
 
 import type { AgentAppDetailWithSite, AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { useAgentConfigureData } from '../hooks'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
@@ -70,7 +71,7 @@ export function AgentConfigureComposerScope({
 
   if (buildDraft.isPending) {
     return (
-      <AgentConfigurePageLoading label={t('agentDetail.sections.configure')} />
+      <AgentConfigurePageLoading label={t($ => $['agentDetail.sections.configure'])} />
     )
   }
 
@@ -214,8 +215,10 @@ function AgentConfigurePageComposerContent({
     activeConfigSnapshot,
     agentSoulConfig,
   } = configureData
+  const { t: tCommon } = useTranslation('common')
   const [buildDraftActionsDisabled, setBuildDraftActionsDisabled] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
+  const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(null)
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const rightPanelChatMode = useAtomValue(agentConfigureRightPanelChatModeAtom)
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel({
@@ -237,6 +240,7 @@ function AgentConfigurePageComposerContent({
       await onRefreshDebugConversationAsync()
     }
     finally {
+      setCompletedBuildConversationId(null)
       setConversationId({ mode: 'build', conversationId: null })
       setClearPreviewChat(true)
     }
@@ -288,6 +292,14 @@ function AgentConfigurePageComposerContent({
     || buildDraftActions.isApplyingBuildDraft
     || buildDraftActions.isDiscardingBuildDraft
   const isChatFeaturesReadOnly = (isViewingVersion && versionQuery.isPending) || buildDraft.isActive
+  const buildConversationHasAgentResponse = !!conversationIds.build && (
+    conversationIds.build === completedBuildConversationId
+    || (
+      conversationIds.build === agentQuery.data?.debug_conversation_id
+      && (agentQuery.data?.debug_conversation_has_messages ?? false)
+    )
+  )
+  const showWorkingDirectoryAction = rightPanelChatMode === 'build' && buildConversationHasAgentResponse
   const restartCurrentChat = () => {
     if (isRestartCurrentChatDisabled)
       return
@@ -323,9 +335,11 @@ function AgentConfigurePageComposerContent({
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
           showPublishBar={!buildDraft.isActive}
+          workflowReferencesEnabled={agentQuery.isSuccess}
           bottomAction={showBuildDraftBar
             ? (
                 <AgentBuildDraftBar
+                  changeSummary={buildDraft.changeSummary}
                   changesCount={buildDraft.changesCount}
                   disabled={buildDraftActionsDisabled}
                   isApplying={buildDraftActions.isApplyingBuildDraft}
@@ -364,6 +378,7 @@ function AgentConfigurePageComposerContent({
               }}
               onRefresh={restartCurrentChat}
               refreshDisabled={isRestartCurrentChatDisabled}
+              showWorkingDirectoryAction={showWorkingDirectoryAction}
             />
           )}
           chat={(
@@ -381,6 +396,7 @@ function AgentConfigurePageComposerContent({
               onClearChatListChange={setClearPreviewChat}
               onConversationComplete={(mode, completedConversationId) => {
                 if (mode === 'build') {
+                  setCompletedBuildConversationId(completedConversationId)
                   invalidateAgentWorkingDirectoryFiles({
                     agentId,
                     conversationId: completedConversationId,
@@ -394,6 +410,11 @@ function AgentConfigurePageComposerContent({
               }}
               onSaveDraftBeforeRun={rightPanelChatMode === 'build'
                 ? async () => {
+                  if (!currentModel?.provider || !currentModel.model) {
+                    toast.error(tCommon($ => $['modelProvider.selectModel']))
+                    throw new Error('Agent model is required.')
+                  }
+
                   setBuildDraftActionsDisabled(true)
                   try {
                     return await buildDraftActions.prepareBuildDraftBeforeRun()

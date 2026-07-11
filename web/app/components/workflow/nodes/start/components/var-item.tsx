@@ -79,7 +79,7 @@ const VarItem: FC<Props> = ({
               ? (
                   <>
                     {payload.required && (
-                      <div className="mr-2 text-xs font-normal text-text-tertiary">{t('nodes.start.required', { ns: 'workflow' })}</div>
+                      <div className="mr-2 text-xs font-normal text-text-tertiary">{t($ => $['nodes.start.required'], { ns: 'workflow' })}</div>
                     )}
                     <InputVarTypeIcon type={payload.type} className="size-3.5 text-text-tertiary" />
                   </>
@@ -88,7 +88,7 @@ const VarItem: FC<Props> = ({
                   <>
                     <button
                       type="button"
-                      aria-label={t('operation.edit', { ns: 'common' })}
+                      aria-label={t($ => $['operation.edit'], { ns: 'common' })}
                       className="mr-1 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                       onClick={showEditVarModal}
                     >
@@ -96,7 +96,7 @@ const VarItem: FC<Props> = ({
                     </button>
                     <button
                       type="button"
-                      aria-label={t('operation.remove', { ns: 'common' })}
+                      aria-label={t($ => $['operation.remove'], { ns: 'common' })}
                       className="group cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-destructive-hover focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
                       onClick={onRemove}
                     >

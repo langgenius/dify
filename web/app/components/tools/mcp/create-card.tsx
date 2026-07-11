@@ -36,7 +36,7 @@ function useMCPCreateAction({ handleCreate }: Props) {
 
 export function NewMCPButton({ handleCreate }: Props) {
   const { t } = useTranslation()
-  const addMCPServerLabel = t('mcp.create.cardTitle', { ns: 'tools' })
+  const addMCPServerLabel = t($ => $['mcp.create.cardTitle'], { ns: 'tools' })
   const {
     canManageMCP,
     create,
@@ -80,14 +80,14 @@ const NewMCPCard = ({ handleCreate }: Props) => {
     showModal,
   } = useMCPCreateAction({ handleCreate })
 
-  const linkUrl = useMemo(() => docLink('/use-dify/build/mcp'), [docLink])
+  const linkUrl = useMemo(() => docLink('/use-dify/workspace/tools#mcp'), [docLink])
 
   return (
     <>
       {canManageMCP && (
         <CreateEntryCard
-          title={t('mcp.create.cardTitle', { ns: 'tools' })}
-          linkText={t('mcp.create.cardLink', { ns: 'tools' })}
+          title={t($ => $['mcp.create.cardTitle'], { ns: 'tools' })}
+          linkText={t($ => $['mcp.create.cardLink'], { ns: 'tools' })}
           linkUrl={linkUrl}
           onCreate={() => setShowModal(true)}
         />

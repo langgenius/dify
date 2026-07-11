@@ -43,7 +43,7 @@ const VarList: FC<Props> = ({
       }
 
       if (errorMsgKey && typeName) {
-        toast.error(t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }))
+        toast.error(t($ => $[errorMsgKey], { ns: 'appDebug', key: t($ => $[typeName], { ns: 'appDebug' }) }))
         return false
       }
       onChange(newList, moreInfo ? { index, payload: moreInfo } : undefined)
@@ -80,7 +80,7 @@ const VarList: FC<Props> = ({
   if (list.length === 0) {
     return (
       <div className="flex h-[42px] items-center justify-center rounded-md bg-components-panel-bg text-xs leading-[18px] font-normal text-text-tertiary">
-        {t('nodes.start.noVarTip', { ns: 'workflow' })}
+        {t($ => $['nodes.start.noVarTip'], { ns: 'workflow' })}
       </div>
     )
   }

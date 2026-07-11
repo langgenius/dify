@@ -20,7 +20,7 @@ export function CreateDeploymentGuide() {
         <div className="relative flex h-full min-w-0 grow flex-col overflow-hidden">
           <Link
             href="/deployments"
-            aria-label={t('createGuide.nav.back')}
+            aria-label={t($ => $['createGuide.nav.back'])}
             className="absolute top-3 right-3 z-50 flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover"
           >
             <span aria-hidden="true" className="i-ri-close-large-line h-3.5 w-3.5 text-components-button-tertiary-text" />

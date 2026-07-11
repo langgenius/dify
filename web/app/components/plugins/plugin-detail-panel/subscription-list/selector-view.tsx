@@ -32,14 +32,13 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
         <div className="mr-1.5 ml-7 flex h-8 items-center justify-between">
           <div className="flex shrink-0 items-center gap-1">
             <span className="system-sm-semibold-uppercase text-text-secondary">
-              {t('subscription.listNum', { ns: 'pluginTrigger', num: subscriptionCount })}
+              {t($ => $['subscription.listNum'], { ns: 'pluginTrigger', num: subscriptionCount })}
             </span>
             <Infotip
-              aria-label={t('subscription.list.tip', { ns: 'pluginTrigger' })}
+              aria-label={t($ => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
               className="size-3.5"
-              iconClassName="h-full w-full"
             >
-              {t('subscription.list.tip', { ns: 'pluginTrigger' })}
+              {t($ => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
             </Infotip>
           </div>
           <CreateSubscriptionButton

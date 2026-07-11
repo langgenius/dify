@@ -8,11 +8,13 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import { useSetEducationExpiredHasNoticed, useSetEducationReverifyHasNoticed, useSetEducationReverifyPrevExpireAt } from '@/app/education-apply/storage'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import AccountAbout from '../account-about'
@@ -37,7 +39,8 @@ export default function AppSelector({
   const [aboutVisible, setAboutVisible] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
   const { t } = useTranslation()
-  const { userProfile, langGeniusVersionInfo } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const clearEducationReverifyPrevExpireAt = useSetEducationReverifyPrevExpireAt()
   const clearEducationReverifyHasNoticed = useSetEducationReverifyHasNoticed()
   const clearEducationExpiredHasNoticed = useSetEducationExpiredHasNoticed()
@@ -65,13 +68,13 @@ export default function AppSelector({
               <DropdownMenuTrigger
                 render={trigger({
                   isOpen: isAccountMenuOpen,
-                  ariaLabel: t('account.account', { ns: 'common' }),
+                  ariaLabel: t($ => $['account.account'], { ns: 'common' }),
                 })}
               />
             )
           : (
               <DropdownMenuTrigger
-                aria-label={t('account.account', { ns: 'common' })}
+                aria-label={t($ => $['account.account'], { ns: 'common' })}
                 className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', isAccountMenuOpen && 'bg-background-default-dodge')}
               >
                 <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />

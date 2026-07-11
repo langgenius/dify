@@ -16,8 +16,10 @@ plugin/knowledge business-layer family:
 
 Public DTOs provide Dify context plus plugin/model/tool data, while server-only
 plugin daemon settings and Dify API inner settings are injected through provider
-factories. Optional shellctl entrypoint/auth token and Agent Stub URL/token
-issuer are injected for ``DifyShellLayer``. The resulting ``Compositor``
+factories. An already-selected shell provider (shellctl or enterprise, built at
+the runtime boundary) and the Agent Stub URL/token factory are injected for
+``DifyShellLayer``; a ``None`` shell provider leaves the shell layer disabled.
+The resulting ``Compositor``
 remains Agenton state-only at the snapshot boundary: live resources such as
 HTTP clients are injected by runtime-owned providers, may be held on active
 layer instances inside ``resource_context()``, and never enter session
@@ -29,6 +31,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
+if TYPE_CHECKING:
+    from dify_agent.adapters.shell.protocols import ShellProviderProtocol
+
 from pydantic_ai.messages import UserContent
 
 from agenton.compositor import Compositor, CompositorConfig, LayerProvider, LayerProviderInput
@@ -36,12 +41,13 @@ from agenton.layers.types import AllPromptTypes, AllToolTypes, AllUserPromptType
 from agenton_collections.layers.pydantic_ai import PydanticAIHistoryLayer
 from agenton_collections.layers.plain.basic import PromptLayer
 from agenton_collections.transformers.pydantic_ai import PYDANTIC_AI_TRANSFORMERS
-from dify_agent.agent_stub.server.shell_agent_stub_env import ShellAgentStubTokenFactory
+from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.layers.ask_human.layer import DifyAskHumanLayer
 from dify_agent.layers.config.layer import DifyConfigLayer
 from dify_agent.layers.dify_core_tools.configs import DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
+from dify_agent.layers.dify_plugin.configs import DifyPluginToolsLayerConfig
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.drive.layer import DifyDriveLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
@@ -49,13 +55,8 @@ from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
-from dify_agent.adapters.shell.config import ShellAdapterSettings
-from dify_agent.adapters.shell.factory import create_shell_provider
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
-
-if TYPE_CHECKING:
-    from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 
 type DifyAgentLayerProvider = LayerProvider[Any]
 
@@ -66,43 +67,11 @@ def create_default_layer_providers(
     plugin_daemon_api_key: str = "",
     inner_api_url: str = "http://localhost:5001",
     inner_api_key: str = "",
-    shellctl_entrypoint: str | None = None,
-    shellctl_auth_token: str | None = None,
+    shell_provider: ShellProviderProtocol | None = None,
     agent_stub_api_base_url: str | None = None,
-    agent_stub_token_codec: AgentStubTokenCodec | None = None,
+    agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
 ) -> tuple[DifyAgentLayerProvider, ...]:
-    """Return the server provider set of safe config-constructible layers.
-
-    ``shellctl_auth_token`` defaults to no token. An explicit empty string
-    prevents ``ShellctlClient`` from falling back to the Dify Agent process's
-    ``SHELLCTL_AUTH_TOKEN`` environment variable; deployments that enable
-    shellctl bearer auth must set the Dify Agent server setting explicitly.
-    """
-    agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
-    if agent_stub_token_codec is not None:
-
-        def build_agent_stub_token(
-            execution_context: DifyExecutionContextLayerConfig,
-            *,
-            session_id: str | None,
-        ) -> str:
-            return agent_stub_token_codec.encode_connection_token(
-                execution_context,
-                session_id=session_id,
-            )
-
-        agent_stub_token_factory = build_agent_stub_token
-    shell_provider = (
-        create_shell_provider(
-            ShellAdapterSettings(
-                shell_provider="shellctl",
-                shellctl_entrypoint=shellctl_entrypoint,
-                shellctl_auth_token=shellctl_auth_token,
-            )
-        )
-        if shellctl_entrypoint
-        else None
-    )
+    """Return the server provider set of safe config-constructible layers."""
     return (
         LayerProvider.from_layer_type(PromptLayer),
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
@@ -128,7 +97,14 @@ def create_default_layer_providers(
             ),
         ),
         LayerProvider.from_layer_type(DifyPluginLLMLayer),
-        LayerProvider.from_layer_type(DifyPluginToolsLayer),
+        LayerProvider.from_factory(
+            layer_type=DifyPluginToolsLayer,
+            create=lambda config: DifyPluginToolsLayer.from_config_with_settings(
+                DifyPluginToolsLayerConfig.model_validate(config),
+                inner_api_url=inner_api_url,
+                inner_api_key=inner_api_key,
+            ),
+        ),
         LayerProvider.from_factory(
             layer_type=DifyCoreToolsLayer,
             create=lambda config: DifyCoreToolsLayer.from_config_with_settings(

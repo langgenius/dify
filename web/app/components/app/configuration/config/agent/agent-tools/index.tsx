@@ -96,7 +96,7 @@ const AgentTools: FC = () => {
   }
 
   const [isDeleting, setIsDeleting] = useState<number>(-1)
-  const getDeleteToolLabel = (tool: AgentTool) => `${t('operation.delete', { ns: 'common' })} ${tool.tool_label || tool.tool_name}`
+  const getDeleteToolLabel = (tool: AgentTool) => `${t($ => $['operation.delete'], { ns: 'common' })} ${tool.tool_label || tool.tool_name}`
   const getToolValue = (tool: ToolDefaultValue) => {
     const currToolInCollections = collectionList.find(c => c.id === tool.provider_id)
     const currToolWithConfigs = currToolInCollections?.tools.find(t => t.name === tool.tool_name)
@@ -136,7 +136,7 @@ const AgentTools: FC = () => {
 
   const handleAuthorizationItemClick = useCallback((credentialId: string) => {
     const newModelConfig = produce(modelConfig, (draft) => {
-      const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === currentTool?.provider_id)
+      const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === currentTool?.provider_id && item.tool_name === currentTool?.tool_name)
       if (tool)
         (tool as AgentTool).credential_id = credentialId
     })
@@ -155,9 +155,9 @@ const AgentTools: FC = () => {
         noBodySpacing={tools.length === 0}
         title={(
           <div className="flex items-center">
-            <div className="mr-1">{t('agent.tools.name', { ns: 'appDebug' })}</div>
-            <Infotip aria-label={t('agent.tools.description', { ns: 'appDebug' })}>
-              {t('agent.tools.description', { ns: 'appDebug' })}
+            <div className="mr-1">{t($ => $['agent.tools.name'], { ns: 'appDebug' })}</div>
+            <Infotip aria-label={t($ => $['agent.tools.description'], { ns: 'appDebug' })}>
+              {t($ => $['agent.tools.description'], { ns: 'appDebug' })}
             </Infotip>
           </div>
         )}
@@ -168,7 +168,7 @@ const AgentTools: FC = () => {
               /
               {tools.length}
               &nbsp;
-              {t('agent.tools.enabled', { ns: 'appDebug' })}
+              {t($ => $['agent.tools.enabled'], { ns: 'appDebug' })}
             </div>
             {tools.length < MAX_TOOLS_NUM && !readonly && (
               <>
@@ -221,13 +221,13 @@ const AgentTools: FC = () => {
                     >
                       <div>
                         <div className="mb-1.5 text-text-secondary">{item.tool_name}</div>
-                        <div className="mb-1.5 text-text-tertiary">{t('toolNameUsageTip', { ns: 'tools' })}</div>
+                        <div className="mb-1.5 text-text-tertiary">{t($ => $.toolNameUsageTip, { ns: 'tools' })}</div>
                         <button
                           type="button"
                           className="cursor-pointer rounded-sm border-none bg-transparent p-0 text-left text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                           onClick={() => void writeTextToClipboard(item.tool_name)}
                         >
-                          {t('copyToolName', { ns: 'tools' })}
+                          {t($ => $.copyToolName, { ns: 'tools' })}
                         </button>
                       </div>
                     </Infotip>
@@ -240,7 +240,7 @@ const AgentTools: FC = () => {
                     <Popover>
                       <PopoverTrigger
                         openOnHover
-                        aria-label={t('toolRemoved', { ns: 'tools' })}
+                        aria-label={t($ => $.toolRemoved, { ns: 'tools' })}
                         render={(
                           <button
                             type="button"
@@ -251,7 +251,7 @@ const AgentTools: FC = () => {
                         )}
                       />
                       <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
-                        {t('toolRemoved', { ns: 'tools' })}
+                        {t($ => $.toolRemoved, { ns: 'tools' })}
                       </PopoverContent>
                     </Popover>
                     <button
@@ -281,7 +281,7 @@ const AgentTools: FC = () => {
                             <button
                               type="button"
                               className="cursor-pointer rounded-md p-1 outline-hidden hover:bg-black/5 focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
-                              aria-label={t('setBuiltInTools.infoAndSetting', { ns: 'tools' })}
+                              aria-label={t($ => $['setBuiltInTools.infoAndSetting'], { ns: 'tools' })}
                               onClick={() => {
                                 setCurrentTool(item)
                                 setIsShowSettingTool(true)
@@ -292,7 +292,7 @@ const AgentTools: FC = () => {
                           )}
                         />
                         <TooltipContent>
-                          {t('setBuiltInTools.infoAndSetting', { ns: 'tools' })}
+                          {t($ => $['setBuiltInTools.infoAndSetting'], { ns: 'tools' })}
                         </TooltipContent>
                       </Tooltip>
                     )}
@@ -339,7 +339,7 @@ const AgentTools: FC = () => {
                         setIsShowSettingTool(true)
                       }}
                     >
-                      {t('notAuthorized', { ns: 'tools' })}
+                      {t($ => $.notAuthorized, { ns: 'tools' })}
                       <StatusDot className="ml-2" status="warning" />
                     </Button>
                   )}

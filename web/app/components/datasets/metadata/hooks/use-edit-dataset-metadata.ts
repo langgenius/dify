@@ -69,7 +69,7 @@ const useEditDatasetMetadata = ({ datasetId,
     setBuiltInEnabled: async (enable: boolean) => {
       await toggleBuiltInStatus(enable)
       setBuiltInEnabled(enable)
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
     },
   }
 }

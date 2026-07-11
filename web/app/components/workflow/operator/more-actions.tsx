@@ -168,7 +168,7 @@ function MoreActions() {
             isReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
         >
-          <TipPopup title={t('common.moreActions', { ns: 'workflow' })}>
+          <TipPopup title={t($ => $['common.moreActions'], { ns: 'workflow' })}>
             <RiMoreFill className="size-4" />
           </TipPopup>
         </DropdownMenuTrigger>
@@ -178,34 +178,34 @@ function MoreActions() {
         >
           <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">
             <RiExportLine className="size-3" />
-            {t('common.exportImage', { ns: 'workflow' })}
+            {t($ => $['common.exportImage'], { ns: 'workflow' })}
           </div>
           <div className="px-2 py-1 text-xs font-medium text-text-tertiary">
-            {t('common.currentView', { ns: 'workflow' })}
+            {t($ => $['common.currentView'], { ns: 'workflow' })}
           </div>
           <DropdownMenuItem className="system-md-regular" onClick={() => handleExportImage('png')}>
-            {t('common.exportPNG', { ns: 'workflow' })}
+            {t($ => $['common.exportPNG'], { ns: 'workflow' })}
           </DropdownMenuItem>
           <DropdownMenuItem className="system-md-regular" onClick={() => handleExportImage('jpeg')}>
-            {t('common.exportJPEG', { ns: 'workflow' })}
+            {t($ => $['common.exportJPEG'], { ns: 'workflow' })}
           </DropdownMenuItem>
           <DropdownMenuItem className="system-md-regular" onClick={() => handleExportImage('svg')}>
-            {t('common.exportSVG', { ns: 'workflow' })}
+            {t($ => $['common.exportSVG'], { ns: 'workflow' })}
           </DropdownMenuItem>
 
           <DropdownMenuSeparator className="mx-2" />
 
           <div className="px-2 py-1 text-xs font-medium text-text-tertiary">
-            {t('common.currentWorkflow', { ns: 'workflow' })}
+            {t($ => $['common.currentWorkflow'], { ns: 'workflow' })}
           </div>
           <DropdownMenuItem className="system-md-regular" onClick={() => handleExportImage('png', true)}>
-            {t('common.exportPNG', { ns: 'workflow' })}
+            {t($ => $['common.exportPNG'], { ns: 'workflow' })}
           </DropdownMenuItem>
           <DropdownMenuItem className="system-md-regular" onClick={() => handleExportImage('jpeg', true)}>
-            {t('common.exportJPEG', { ns: 'workflow' })}
+            {t($ => $['common.exportJPEG'], { ns: 'workflow' })}
           </DropdownMenuItem>
           <DropdownMenuItem className="system-md-regular" onClick={() => handleExportImage('svg', true)}>
-            {t('common.exportSVG', { ns: 'workflow' })}
+            {t($ => $['common.exportSVG'], { ns: 'workflow' })}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

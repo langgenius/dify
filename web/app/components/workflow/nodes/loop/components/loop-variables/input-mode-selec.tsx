@@ -25,7 +25,7 @@ const InputModeSelect = ({
   return (
     <Select value={selectedOption?.value ?? null} onValueChange={nextValue => nextValue && onChange(nextValue)}>
       <SelectTrigger className="w-full">
-        {selectedOption?.label ?? t('nodes.loop.inputMode', { ns: 'workflow' })}
+        {selectedOption?.label ?? t($ => $['nodes.loop.inputMode'], { ns: 'workflow' })}
       </SelectTrigger>
       <SelectContent>
         {options.map(option => (

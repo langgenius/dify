@@ -31,10 +31,12 @@ from controllers.service_api.app.completion import (
     CompletionStopApi,
 )
 from controllers.service_api.app.error import (
+    AgentNotPublishedError,
     AppUnavailableError,
     ConversationCompletedError,
     NotChatAppError,
 )
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import App, AppMode, EndUser
@@ -250,7 +252,12 @@ class TestAppGenerateService:
         mock_generate.return_value = expected
 
         result = AppGenerateService.generate(
-            app_model=Mock(spec=App), user=Mock(spec=EndUser), args={"query": "Hi"}, invoke_from=Mock(), streaming=False
+            app_model=Mock(spec=App),
+            user=Mock(spec=EndUser),
+            args={"query": "Hi"},
+            invoke_from=Mock(),
+            session=Mock(),
+            streaming=False,
         )
 
         assert result == expected
@@ -262,7 +269,12 @@ class TestAppGenerateService:
 
         with pytest.raises(services.errors.conversation.ConversationNotExistsError):
             AppGenerateService.generate(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), args={}, invoke_from=Mock(), streaming=False
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                args={},
+                invoke_from=Mock(),
+                session=Mock(),
+                streaming=False,
             )
 
     @patch.object(AppGenerateService, "generate")
@@ -272,7 +284,12 @@ class TestAppGenerateService:
 
         with pytest.raises(QuotaExceededError):
             AppGenerateService.generate(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), args={}, invoke_from=Mock(), streaming=False
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                args={},
+                invoke_from=Mock(),
+                session=Mock(),
+                streaming=False,
             )
 
     @patch.object(AppGenerateService, "generate")
@@ -282,7 +299,12 @@ class TestAppGenerateService:
 
         with pytest.raises(InvokeError):
             AppGenerateService.generate(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), args={}, invoke_from=Mock(), streaming=False
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                args={},
+                invoke_from=Mock(),
+                session=Mock(),
+                streaming=False,
             )
 
 
@@ -514,6 +536,22 @@ class TestChatApiController:
 
         with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
             with pytest.raises(BadRequest):
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
+
+    def test_agent_not_published_error_mapped(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            AppGenerateService,
+            "generate",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(AgentAppNotPublishedError("Agent has not been published")),
+        )
+
+        api = ChatApi()
+        handler = unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.AGENT.value)
+        end_user = SimpleNamespace()
+
+        with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
+            with pytest.raises(AgentNotPublishedError):
                 handler(api, session=Mock(), app_model=app_model, end_user=end_user)
 
 

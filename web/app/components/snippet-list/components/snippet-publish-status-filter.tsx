@@ -33,14 +33,14 @@ const SnippetPublishStatusFilter = ({
   const { t } = useTranslation()
 
   const options = useMemo(() => ([
-    { value: 'all', text: t('types.all', { ns: 'app' }) },
-    { value: 'published', text: t('common.published', { ns: 'workflow' }) },
-    { value: 'draft', text: t('draft', { ns: 'snippet' }) },
+    { value: 'all', text: t($ => $['types.all'], { ns: 'app' }) },
+    { value: 'published', text: t($ => $['common.published'], { ns: 'workflow' }) },
+    { value: 'draft', text: t($ => $.draft, { ns: 'snippet' }) },
   ] satisfies Array<{ value: SnippetPublishStatus, text: string }>), [t])
 
   const activeOption = options.find(option => option.value === value)
   const isSelected = value !== 'all'
-  const defaultLabel = `${t('common.published', { ns: 'workflow' })} / ${t('draft', { ns: 'snippet' })}`
+  const defaultLabel = `${t($ => $['common.published'], { ns: 'workflow' })} / ${t($ => $.draft, { ns: 'snippet' })}`
   const triggerLabel = isSelected ? activeOption?.text : defaultLabel
 
   return (

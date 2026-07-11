@@ -23,10 +23,10 @@ const NoData: FC<INoDataProps> = ({
         <RiBookmark3Line className="size-4 text-text-accent" />
       </div>
       <div className="mt-3">
-        <span className="system-xl-semibold text-text-secondary">{t('generation.savedNoData.title', { ns: 'share' })}</span>
+        <span className="system-xl-semibold text-text-secondary">{t($ => $['generation.savedNoData.title'], { ns: 'share' })}</span>
       </div>
       <div className="mt-1 system-sm-regular text-text-tertiary">
-        {t('generation.savedNoData.description', { ns: 'share' })}
+        {t($ => $['generation.savedNoData.description'], { ns: 'share' })}
       </div>
       <Button
         variant="primary"
@@ -34,7 +34,7 @@ const NoData: FC<INoDataProps> = ({
         onClick={onStartCreateContent}
       >
         <RiAddLine className="mr-1 size-4" />
-        <span>{t('generation.savedNoData.startCreateContent', { ns: 'share' })}</span>
+        <span>{t($ => $['generation.savedNoData.startCreateContent'], { ns: 'share' })}</span>
       </Button>
     </div>
   )

@@ -16,13 +16,6 @@ const mockDeleteDataset = vi.fn()
 const mockDownloadBlob = vi.fn()
 
 let mockDataset: DataSet
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,

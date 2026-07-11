@@ -3,15 +3,15 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import IntegrationsToolProviderCard from '../tool-provider-card'
 
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { count?: number, ns?: string }) => options?.ns ? `${options.ns}.${key}${options.count ? `:${options.count}` : ''}` : key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return ({
+    useTranslation: () => ({
+      i18n: { language: 'en-US' },
+      t: withSelectorKey((key: string, options?: { count?: number, ns?: string }) => options?.ns ? `${options.ns}.${key}${options.count ? `:${options.count}` : ''}` : key),
+    }),
+  })
+})
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
   default: () => <div data-testid="card-icon" />,
@@ -53,7 +53,7 @@ describe('IntegrationsToolProviderCard', () => {
   it('does not show a source label for builtin tools', () => {
     render(<IntegrationsToolProviderCard collection={createCollection()} />)
 
-    expect(screen.queryByText('plugin.from')).not.toBeInTheDocument()
+    expect(screen.queryByText(/(?:^|\.)plugin\.from(?=$|:)/)).not.toBeInTheDocument()
   })
 
   it('does not show a built-in corner badge for marketplace plugin tools', () => {

@@ -45,7 +45,7 @@ const FileImageItem = ({
         {
           showDeleteAction && (
             <Button
-              aria-label={t('operation.remove', { ns: 'common' })}
+              aria-label={t($ => $['operation.remove'], { ns: 'common' })}
               className="absolute -top-1.5 -right-1.5 z-11 hidden size-5 rounded-full p-0 group-hover/file-image:flex"
               onClick={(e) => {
                 e.stopPropagation()
@@ -67,7 +67,7 @@ const FileImageItem = ({
               <ProgressCircle
                 value={progress}
                 color="white"
-                aria-label={t('uploading', { ns: 'custom' })}
+                aria-label={t($ => $.uploading, { ns: 'custom' })}
               />
             </div>
           )
@@ -77,7 +77,7 @@ const FileImageItem = ({
             <div className="absolute inset-0 z-10 flex items-center justify-center border-2 border-state-destructive-border bg-background-overlay-destructive">
               <button
                 type="button"
-                aria-label={t('operation.retry', { ns: 'common' })}
+                aria-label={t($ => $['operation.retry'], { ns: 'common' })}
                 className="size-5 border-none bg-transparent p-0"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -94,7 +94,7 @@ const FileImageItem = ({
             <div className="absolute inset-0.5 z-10 hidden bg-background-overlay-alt group-hover/file-image:block">
               <button
                 type="button"
-                aria-label={t('operation.download', { ns: 'common' })}
+                aria-label={t($ => $['operation.download'], { ns: 'common' })}
                 className="absolute right-0.5 bottom-0.5 flex size-6 items-center justify-center rounded-lg border-none bg-components-actionbar-bg p-0 shadow-md"
                 onClick={(e) => {
                   e.stopPropagation()

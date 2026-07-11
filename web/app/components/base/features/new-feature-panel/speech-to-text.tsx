@@ -45,9 +45,9 @@ const SpeechToText = ({
           <Microphone01 className="size-4 text-text-primary-on-surface" />
         </div>
       )}
-      title={t('feature.speechToText.title', { ns: 'appDebug' })}
+      title={t($ => $['feature.speechToText.title'], { ns: 'appDebug' })}
       value={!!features.speech2text?.enabled}
-      description={t('feature.speechToText.description', { ns: 'appDebug' })!}
+      description={t($ => $['feature.speechToText.description'], { ns: 'appDebug' })!}
       onChange={state => handleChange(FeatureEnum.speech2text, state)}
       disabled={disabled}
     />

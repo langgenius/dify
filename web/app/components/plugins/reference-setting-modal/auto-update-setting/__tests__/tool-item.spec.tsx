@@ -6,11 +6,6 @@ import ToolItem from '../tool-item'
 vi.mock('@/config', () => ({
   MARKETPLACE_API_PREFIX: 'https://marketplace.example.com',
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
 vi.mock('@/i18n-config', () => ({
   renderI18nObject: (value: Record<string, string>, language: string) => value[language],
 }))

@@ -61,6 +61,7 @@ export default function InviteSettingsPage() {
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
   const locale = useLocale()
   const [name, setName] = useState('')
+  const [isActivating, setIsActivating] = useState(false)
   const [language, setLanguage] = useState(() => getInitialLanguage(locale))
   const [timezone, setTimezone] = useState(() => getBrowserTimezone() || 'America/Los_Angeles')
   const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
@@ -90,9 +91,10 @@ export default function InviteSettingsPage() {
   const handleActivate = useCallback(async () => {
     try {
       if (requiresAccountSetup && !name) {
-        toast.error(t('enterYourName', { ns: 'login' }))
+        toast.error(t($ => $.enterYourName, { ns: 'login' }))
         return
       }
+      setIsActivating(true)
       const body = requiresAccountSetup
         ? {
             token,
@@ -118,8 +120,9 @@ export default function InviteSettingsPage() {
     }
     catch {
       recheck()
+      setIsActivating(false)
     }
-  }, [language, name, queryClient, recheck, requiresAccountSetup, searchParams, timezone, token, router, t])
+  }, [isActivating, language, name, queryClient, recheck, requiresAccountSetup, searchParams, timezone, token, router, t])
 
   if (!checkRes)
     return <Loading />
@@ -128,11 +131,11 @@ export default function InviteSettingsPage() {
       <div className="flex flex-col md:w-[400px]">
         <div className="mx-auto w-full">
           <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">🤷‍♂️</div>
-          <h2 className="title-4xl-semi-bold text-text-primary">{t('invalid', { ns: 'login' })}</h2>
+          <h2 className="title-4xl-semi-bold text-text-primary">{t($ => $.invalid, { ns: 'login' })}</h2>
         </div>
         <div className="mx-auto mt-6 w-full">
           <Button variant="primary" className="w-full text-sm!">
-            <a href="https://dify.ai">{t('explore', { ns: 'login' })}</a>
+            <a href="https://dify.ai">{t($ => $.explore, { ns: 'login' })}</a>
           </Button>
         </div>
       </div>
@@ -147,8 +150,8 @@ export default function InviteSettingsPage() {
       <div className="pt-2 pb-4">
         <h2 className="title-4xl-semi-bold text-text-primary">
           {requiresAccountSetup
-            ? t('setYourAccount', { ns: 'login' })
-            : `${t('join', { ns: 'login' })}${checkRes?.data?.workspace_name}`}
+            ? t($ => $.setYourAccount, { ns: 'login' })
+            : `${t($ => $.join, { ns: 'login' })}${checkRes?.data?.workspace_name}`}
         </h2>
       </div>
       <form onSubmit={noop}>
@@ -156,7 +159,7 @@ export default function InviteSettingsPage() {
           <>
             <div className="mb-5">
               <label htmlFor="name" className="my-2 system-md-semibold text-text-secondary">
-                {t('name', { ns: 'login' })}
+                {t($ => $.name, { ns: 'login' })}
               </label>
               <div className="mt-1">
                 <Input
@@ -164,7 +167,7 @@ export default function InviteSettingsPage() {
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder={t('namePlaceholder', { ns: 'login' }) || ''}
+                  placeholder={t($ => $.namePlaceholder, { ns: 'login' }) || ''}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault()
@@ -177,7 +180,7 @@ export default function InviteSettingsPage() {
             </div>
             <div className="mb-5">
               <label htmlFor="interface_language" className="my-2 system-md-semibold text-text-secondary">
-                {t('interfaceLanguage', { ns: 'login' })}
+                {t($ => $.interfaceLanguage, { ns: 'login' })}
               </label>
               <div className="mt-1">
                 <Select
@@ -185,7 +188,7 @@ export default function InviteSettingsPage() {
                   onValueChange={handleLanguageChange}
                 >
                   <SelectTrigger id="interface_language" size="large">
-                    {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
+                    {selectedLanguage?.name ?? t($ => $['placeholder.select'], { ns: 'common' })}
                   </SelectTrigger>
                   <SelectContent>
                     {LANGUAGE_OPTIONS.map(item => (
@@ -200,7 +203,7 @@ export default function InviteSettingsPage() {
             </div>
             <div className="mb-5">
               <label htmlFor="timezone" className="system-md-semibold text-text-secondary">
-                {t('timezone', { ns: 'login' })}
+                {t($ => $.timezone, { ns: 'login' })}
               </label>
               <div className="mt-1">
                 <Select
@@ -208,7 +211,7 @@ export default function InviteSettingsPage() {
                   onValueChange={handleTimezoneChange}
                 >
                   <SelectTrigger id="timezone" size="large">
-                    {selectedTimezone?.name ?? t('placeholder.select', { ns: 'common' })}
+                    {selectedTimezone?.name ?? t($ => $['placeholder.select'], { ns: 'common' })}
                   </SelectTrigger>
                   <SelectContent>
                     {TIMEZONE_OPTIONS.map(item => (
@@ -228,14 +231,16 @@ export default function InviteSettingsPage() {
             variant="primary"
             className="w-full"
             onClick={handleActivate}
+            loading={isActivating}
+            disabled={isActivating}
           >
-            {`${t('join', { ns: 'login' })} ${checkRes?.data?.workspace_name}`}
+            {`${t($ => $.join, { ns: 'login' })} ${checkRes?.data?.workspace_name}`}
           </Button>
         </div>
       </form>
       {!systemFeatures.branding.enabled && (
         <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
-          {t('license.tip', { ns: 'login' })}
+          {t($ => $['license.tip'], { ns: 'login' })}
       &nbsp;
           <Link
             className="system-xs-medium text-text-accent-secondary"
@@ -243,7 +248,7 @@ export default function InviteSettingsPage() {
             rel="noopener noreferrer"
             href={LICENSE_LINK}
           >
-            {t('license.link', { ns: 'login' })}
+            {t($ => $['license.link'], { ns: 'login' })}
           </Link>
         </div>
       )}

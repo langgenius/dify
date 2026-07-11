@@ -279,7 +279,7 @@ def _csv_string_query_schema(schema: dict[str, Any]) -> None:
 
 
 class AppDescribeQuery(BaseModel):
-    """`?fields=` allow-list for GET /apps/<id>/describe.
+    """`?fields=` allow-list for GET /apps/<id>.
 
     Empty / omitted → all blocks. Unknown member → ValidationError → 422.
     """
@@ -441,7 +441,7 @@ class MemberActionResponse(BaseModel):
 
 
 class TaskStopResponse(BaseModel):
-    """200 body for POST /apps/<id>/tasks/<task_id>/stop. The handler always returns
+    """200 body for POST /apps/<id>/tasks/<task_id>:stop. The handler always returns
     {"result": "success"}, so `result` is required (no default) — the generated contract
     types it as a required `'success'` rather than an optional field."""
 
@@ -473,7 +473,7 @@ class AppDslImportPayload(BaseModel):
 
 
 class AppDslExportQuery(BaseModel):
-    """Query parameters for GET /apps/<app_id>/export."""
+    """Query parameters for GET /apps/<app_id>/dsl."""
 
     include_secret: bool = Field(False, description="Include encrypted secret values in the exported DSL")
     workflow_id: UUIDStr | None = Field(
@@ -488,7 +488,7 @@ class AppDslExportResponse(BaseModel):
 
 
 class FormSubmitResponse(BaseModel):
-    """Empty 200 body for POST /apps/<id>/form/human_input/<token>. `extra='forbid'`
+    """Empty 200 body for POST /apps/<id>/human-input-forms/<token>:submit. `extra='forbid'`
     pins `additionalProperties: false` so the generated contract is an exact `{}` rather
     than an under-annotated open object."""
 

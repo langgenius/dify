@@ -93,7 +93,7 @@ const OAuthClientSettings = ({
         client_params: restValues,
         enable_oauth_custom_client: __oauth_client__ === 'custom',
       })
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
 
       onOpenChange?.(false)
       onClose?.()
@@ -118,7 +118,7 @@ const OAuthClientSettings = ({
     try {
       handleSetDoingAction(true)
       await deletePluginOAuthCustomClient()
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t($ => $['api.actionSuccess'], { ns: 'common' }))
       onOpenChange?.(false)
       onClose?.()
       onUpdate?.()
@@ -147,7 +147,7 @@ const OAuthClientSettings = ({
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
             <DialogTitle data-testid="modal-title" className="title-2xl-semi-bold text-text-primary">
-              {t('auth.oauthClientSettings', { ns: 'plugin' })}
+              {t($ => $['auth.oauthClientSettings'], { ns: 'plugin' })}
             </DialogTitle>
             <DialogCloseButton
               className="top-5 right-5 size-8 rounded-lg"
@@ -175,7 +175,7 @@ const OAuthClientSettings = ({
                   disabled={isDisabled || !editValues}
                   onClick={handleRemove}
                 >
-                  {t('operation.remove', { ns: 'common' })}
+                  {t($ => $['operation.remove'], { ns: 'common' })}
                 </Button>
               )}
             </div>
@@ -185,7 +185,7 @@ const OAuthClientSettings = ({
                 onClick={() => handleOpenChange(false)}
                 disabled={isDisabled}
               >
-                {t('operation.cancel', { ns: 'common' })}
+                {t($ => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <div className="mx-3 h-4 w-px bg-divider-regular"></div>
               <Button
@@ -193,7 +193,7 @@ const OAuthClientSettings = ({
                 onClick={handleConfirm}
                 disabled={isDisabled}
               >
-                {t('auth.saveOnly', { ns: 'plugin' })}
+                {t($ => $['auth.saveOnly'], { ns: 'plugin' })}
               </Button>
               <Button
                 data-testid="modal-confirm"
@@ -202,7 +202,7 @@ const OAuthClientSettings = ({
                 onClick={handleConfirmAndAuthorize}
                 disabled={isDisabled}
               >
-                {t('auth.saveAndAuth', { ns: 'plugin' })}
+                {t($ => $['auth.saveAndAuth'], { ns: 'plugin' })}
               </Button>
             </div>
           </div>

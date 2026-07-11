@@ -50,8 +50,8 @@ const Left = ({
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
       <div className="flex shrink-0 items-center justify-between gap-1 pt-2 pr-1 pl-4">
-        <div className="truncate system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
-        <Button variant="ghost" size="small" className="shrink-0" onClick={handleClearAll}>{t('debug.variableInspect.clearAll', { ns: 'workflow' })}</Button>
+        <div className="truncate system-sm-semibold-uppercase text-text-primary">{t($ => $['debug.variableInspect.title'], { ns: 'workflow' })}</div>
+        <Button variant="ghost" size="small" className="shrink-0" onClick={handleClearAll}>{t($ => $['debug.variableInspect.clearAll'], { ns: 'workflow' })}</Button>
       </div>
       {/* content */}
       <div className="grow overflow-y-auto py-1">

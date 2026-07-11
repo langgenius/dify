@@ -19,13 +19,6 @@ const {
     appName: 'Demo App',
   },
 }))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const React = await import('react')
   const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)

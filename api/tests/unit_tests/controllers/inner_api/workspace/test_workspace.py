@@ -117,7 +117,7 @@ class TestEnterpriseWorkspace:
         assert result["tenant"]["name"] == "My Workspace"
         mock_tenant_svc.create_tenant.assert_called_once_with("My Workspace", is_from_dashboard=True, session=ANY)
         mock_tenant_svc.create_tenant_member.assert_called_once_with(
-            mock_tenant, mock_account, mock_db.session, role="owner"
+            mock_tenant, mock_account, mock_db.session(), role="owner"
         )
         mock_event.send.assert_called_once_with(mock_tenant)
 

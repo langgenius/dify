@@ -58,8 +58,8 @@ const ConfigVision: FC<Props> = ({
 
   return (
     <Field
-      title={t(`${i18nPrefix}.vision`, { ns: 'workflow' })}
-      tooltip={t('vision.description', { ns: 'appDebug' })!}
+      title={t($ => $[`${i18nPrefix}.vision`], { ns: 'workflow' })}
+      tooltip={t($ => $['vision.description'], { ns: 'appDebug' })!}
       operations={(
         <Tooltip>
           <TooltipTrigger
@@ -69,7 +69,7 @@ const ConfigVision: FC<Props> = ({
             )}
           />
           <TooltipContent>
-            {t('vision.onlySupportVisionModelTip', { ns: 'appDebug' })!}
+            {t($ => $['vision.onlySupportVisionModelTip'], { ns: 'appDebug' })!}
           </TooltipContent>
         </Tooltip>
       )}

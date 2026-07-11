@@ -24,6 +24,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { buildChatItemTree, getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -34,7 +36,7 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/comp
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
@@ -259,6 +261,7 @@ const toAgentThoughtItem = (thought: AgentThought, conversationId: string): Thou
   id: thought.id,
   tool: thought.tool ?? '',
   thought: thought.thought ?? '',
+  answer: thought.answer ?? '',
   tool_input: thought.tool_input ?? '',
   message_id: thought.message_id,
   conversation_id: conversationId,
@@ -448,6 +451,7 @@ export type AgentChatRuntimeProps = {
   conversationId?: string | null
   draftType?: 'debug_build'
   inputPlaceholder: string
+  inputAutoFocus?: boolean
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
@@ -469,6 +473,7 @@ export function AgentChatRuntime({
   conversationId,
   draftType,
   inputPlaceholder,
+  inputAutoFocus,
   sendButtonLabel,
   renderEmptyState,
   onClearChatListChange,
@@ -533,6 +538,7 @@ export function AgentChatRuntime({
       draftType={draftType}
       initialChatTree={initialChatTree}
       inputPlaceholder={inputPlaceholder}
+      inputAutoFocus={inputAutoFocus}
       sendButtonLabel={sendButtonLabel}
       renderEmptyState={renderEmptyState}
       onClearChatListChange={handleClearChatListChange}
@@ -557,6 +563,7 @@ function AgentPreviewChatSession({
   draftType,
   initialChatTree,
   inputPlaceholder,
+  inputAutoFocus,
   sendButtonLabel,
   renderEmptyState,
   onClearChatListChange,
@@ -577,6 +584,7 @@ function AgentPreviewChatSession({
   draftType?: 'debug_build'
   initialChatTree: ChatItemInTree[]
   inputPlaceholder: string
+  inputAutoFocus?: boolean
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
@@ -586,8 +594,9 @@ function AgentPreviewChatSession({
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
 }) {
+  const { t } = useTranslation('agentV2')
   const queryClient = useQueryClient()
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const prompt = useAtomValue(agentComposerPromptAtom)
   const currentModel = useAtomValue(agentComposerModelAtom)
   const config = useMemo(() => buildChatConfig({
@@ -598,6 +607,7 @@ function AgentPreviewChatSession({
   const inputsForm = useMemo(() => getAgentSoulInputsForm(agentSoulConfig), [agentSoulConfig])
   const inputs = useMemo(() => getAgentSoulInputs(inputsForm), [inputsForm])
   const sendInterruptedRef = useRef(false)
+  const [isSendPending, setIsSendPending] = useState(false)
   const notifySendInterrupted = useCallback(() => {
     if (sendInterruptedRef.current)
       return
@@ -631,10 +641,13 @@ function AgentPreviewChatSession({
     clearChatList,
     onClearChatListChange,
     conversationId ?? undefined,
+    { isNewAgent: true },
   )
 
   const doSend: OnSend = useCallback(async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     sendInterruptedRef.current = false
+    setIsSendPending(true)
+    let sendStarted = false
 
     try {
       const preparedAgentSoulConfig = await onSaveDraftBeforeRun?.()
@@ -684,6 +697,17 @@ function AgentPreviewChatSession({
             })
           },
           onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
+          onUnhandledEvent: (event) => {
+            if (event.event !== 'error' || typeof event.message !== 'string')
+              return
+
+            return {
+              conversationId: typeof event.conversation_id === 'string' ? event.conversation_id : undefined,
+              messageId: typeof event.message_id === 'string' ? event.message_id : undefined,
+              errorMessage: event.message,
+              errorCode: typeof event.code === 'string' ? event.code : undefined,
+            }
+          },
           onConversationComplete: (completedConversationId, workflowRunId) => {
             if (completedConversationId && completedConversationId !== conversationId)
               onCurrentSessionConversationIdChange(completedConversationId)
@@ -691,14 +715,20 @@ function AgentPreviewChatSession({
             onConversationComplete?.(completedConversationId, workflowRunId)
           },
           onSendSettled: (hasError) => {
+            setIsSendPending(false)
             if (hasError)
               notifySendInterrupted()
           },
         },
       )
+      sendStarted = true
     }
     catch {
       return false
+    }
+    finally {
+      if (!sendStarted)
+        setIsSendPending(false)
     }
   }, [agentId, agentSoulConfig, chatList, config, conversationId, draftType, handleSend, inputs, inputsForm, notifySendInterrupted, onConversationComplete, onConversationIdChange, onCurrentSessionConversationIdChange, onSaveDraftBeforeRun, queryClient, textGenerationModelList])
 
@@ -722,12 +752,20 @@ function AgentPreviewChatSession({
   }, [chatList, doSend])
   const isEmptyChat = chatList.length === 0
   const hasInstructions = !!config.pre_prompt.trim()
+  const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
+  const sandboxNotice = t($ => $['agentDetail.configure.preview.sandboxNotice'])
+  const sandboxNoticeTooltip = t($ => $['agentDetail.configure.preview.sandboxNoticeTooltip'])
+  const showSandboxNotice = isEmptyChat && !isSendPending && !isResponding
   const emptyChatInputNode = (
     <div className="pointer-events-auto mt-5 w-full">
       <ChatInputArea
         botName={agentName || 'Agent'}
         customPlaceholder={inputPlaceholder}
         disabled={isResponding}
+        // Build chat opts out so it does not steal focus from the configure editor.
+        // eslint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={inputAutoFocus}
+        sendButtonLoading={sendButtonLoading}
         showFileUpload={false}
         visionConfig={config.file_upload}
         speechToTextConfig={config.speech_to_text}
@@ -735,6 +773,8 @@ function AgentPreviewChatSession({
         inputs={inputs}
         inputsForm={inputsForm}
         sendButtonLabel={sendButtonLabel}
+        footerNotice={showSandboxNotice ? sandboxNotice : undefined}
+        footerNoticeTooltip={showSandboxNotice ? sandboxNoticeTooltip : undefined}
       />
     </div>
   )
@@ -744,6 +784,7 @@ function AgentPreviewChatSession({
       config={config}
       chatList={chatList}
       isResponding={isResponding}
+      sendButtonLoading={sendButtonLoading}
       chatNode={isEmptyChat
         ? renderEmptyState({
             agentIcon,
@@ -760,7 +801,7 @@ function AgentPreviewChatSession({
         isEmptyChat ? 'hidden' : 'px-3 pt-10',
       )}
       inputPlaceholder={inputPlaceholder}
-      sendButtonLabel={sendButtonLabel}
+      sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       showFileUpload={false}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
@@ -770,11 +811,11 @@ function AgentPreviewChatSession({
       switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
       onStopResponding={doStopResponding}
       noChatInput={isEmptyChat}
-      showPromptLog
       questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}
+      renderAgentContent={AgentRosterResponseContent}
       noSpacing
     />
   )

@@ -1,23 +1,23 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { MeterIndicator, MeterLabel, MeterRoot, MeterTrack, MeterValue } from '.'
+import { Meter, MeterIndicator, MeterLabel, MeterTrack, MeterValue } from '.'
 
 const meta = {
   title: 'Base/UI/Meter',
-  component: MeterRoot,
+  component: Meter,
   parameters: {
     layout: 'centered',
     docs: {
       description: {
         component:
           'A graphical display of a numeric value within a known range. '
-          + 'Use the compound primitives (`MeterRoot / MeterTrack / MeterIndicator / '
+          + 'Use the compound primitives (`Meter / MeterTrack / MeterIndicator / '
           + 'MeterValue / MeterLabel`) for quota, capacity, or score indicators; do '
           + 'not use for task-completion progress.',
       },
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof MeterRoot>
+} satisfies Meta<typeof Meter>
 
 export default meta
 
@@ -30,11 +30,11 @@ export const Default: Story = {
   },
   render: args => (
     <div className="w-[320px]">
-      <MeterRoot {...args}>
+      <Meter {...args}>
         <MeterTrack>
           <MeterIndicator />
         </MeterTrack>
-      </MeterRoot>
+      </Meter>
     </div>
   ),
 }
@@ -46,11 +46,11 @@ export const Warning: Story = {
   },
   render: args => (
     <div className="w-[320px]">
-      <MeterRoot {...args}>
+      <Meter {...args}>
         <MeterTrack>
           <MeterIndicator tone="warning" />
         </MeterTrack>
-      </MeterRoot>
+      </Meter>
     </div>
   ),
 }
@@ -62,11 +62,11 @@ export const Error: Story = {
   },
   render: args => (
     <div className="w-[320px]">
-      <MeterRoot {...args}>
+      <Meter {...args}>
         <MeterTrack>
           <MeterIndicator tone="error" />
         </MeterTrack>
-      </MeterRoot>
+      </Meter>
     </div>
   ),
 }
@@ -78,7 +78,7 @@ export const ComposedWithLabelAndValue: Story = {
   },
   render: args => (
     <div className="w-[320px] space-y-2 rounded-xl bg-components-panel-bg p-4">
-      <MeterRoot {...args}>
+      <Meter {...args}>
         <div className="flex items-center justify-between">
           <MeterLabel>Storage</MeterLabel>
           <MeterValue />
@@ -86,7 +86,7 @@ export const ComposedWithLabelAndValue: Story = {
         <MeterTrack className="mt-2">
           <MeterIndicator tone="warning" />
         </MeterTrack>
-      </MeterRoot>
+      </Meter>
     </div>
   ),
 }
@@ -101,7 +101,7 @@ export const PercentFormatted: Story = {
   },
   render: args => (
     <div className="w-[320px] space-y-2">
-      <MeterRoot {...args}>
+      <Meter {...args}>
         <div className="flex items-center justify-between">
           <MeterLabel>Score</MeterLabel>
           <MeterValue />
@@ -109,7 +109,7 @@ export const PercentFormatted: Story = {
         <MeterTrack className="mt-2">
           <MeterIndicator />
         </MeterTrack>
-      </MeterRoot>
+      </Meter>
     </div>
   ),
 }

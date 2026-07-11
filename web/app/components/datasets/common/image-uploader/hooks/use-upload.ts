@@ -54,9 +54,9 @@ export const useUpload = () => {
 
   const showErrorMessage = useCallback((type: 'type' | 'size') => {
     if (type === 'type')
-      toast.error(t('fileUploader.fileExtensionNotSupport', { ns: 'common' }))
+      toast.error(t($ => $['fileUploader.fileExtensionNotSupport'], { ns: 'common' }))
     else
-      toast.error(t('imageUploader.fileSizeLimitExceeded', { ns: 'dataset', size: fileUploadConfig.imageFileSizeLimit }))
+      toast.error(t($ => $['imageUploader.fileSizeLimitExceeded'], { ns: 'dataset', size: fileUploadConfig.imageFileSizeLimit }))
   }, [fileUploadConfig, t])
 
   const getValidFiles = useCallback((files: File[]) => {
@@ -145,7 +145,7 @@ export const useUpload = () => {
           handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
         onErrorCallback: (error?: any) => {
-          const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
+          const errorMessage = getFileUploadErrorMessage(error, t($ => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }), t)
           toast.error(errorMessage)
           handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
@@ -187,7 +187,7 @@ export const useUpload = () => {
             })
           },
           onErrorCallback: (error?: any) => {
-            const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
+            const errorMessage = getFileUploadErrorMessage(error, t($ => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }), t)
             toast.error(errorMessage)
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
@@ -198,7 +198,7 @@ export const useUpload = () => {
     reader.addEventListener(
       'error',
       () => {
-        toast.error(t('fileUploader.uploadFromComputerReadError', { ns: 'common' }))
+        toast.error(t($ => $['fileUploader.uploadFromComputerReadError'], { ns: 'common' }))
       },
       false,
     )
@@ -211,7 +211,7 @@ export const useUpload = () => {
     if (newFiles.length === 0)
       return
     if (files.length + newFiles.length > singleChunkAttachmentLimit) {
-      toast.error(t('imageUploader.singleChunkAttachmentLimitTooltip', { ns: 'datasetHitTesting', limit: singleChunkAttachmentLimit }))
+      toast.error(t($ => $['imageUploader.singleChunkAttachmentLimitTooltip'], { ns: 'datasetHitTesting', limit: singleChunkAttachmentLimit }))
       return
     }
     for (const file of newFiles)

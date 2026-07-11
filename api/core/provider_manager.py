@@ -1544,10 +1544,12 @@ class ProviderManager:
             trail_pool = CreditPoolService.get_pool(
                 tenant_id=tenant_id,
                 pool_type=ProviderQuotaType.TRIAL,
+                session=db.session(),
             )
             paid_pool = CreditPoolService.get_pool(
                 tenant_id=tenant_id,
                 pool_type=ProviderQuotaType.PAID,
+                session=db.session(),
             )
         else:
             trail_pool = None

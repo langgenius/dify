@@ -91,7 +91,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   const isDataSourceWeb = dataSourceType === DataSourceType.WEB
 
   const statusFilterItems: SelectOption[] = useMemo(() => [
-    { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) as string },
+    { value: 'all', name: t($ => $['list.index.all'], { ns: 'datasetDocuments' }) as string },
     { value: 'queuing', name: DOC_INDEX_STATUS_MAP.queuing.text },
     { value: 'indexing', name: DOC_INDEX_STATUS_MAP.indexing.text },
     { value: 'paused', name: DOC_INDEX_STATUS_MAP.paused.text },
@@ -103,17 +103,17 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   ], [DOC_INDEX_STATUS_MAP, t])
 
   const sortItems: SelectOption[] = useMemo(() => [
-    { value: 'created_at', name: t('list.sort.uploadTime', { ns: 'datasetDocuments' }) as string },
-    { value: 'hit_count', name: t('list.sort.hitCount', { ns: 'datasetDocuments' }) as string },
+    { value: 'created_at', name: t($ => $['list.sort.uploadTime'], { ns: 'datasetDocuments' }) as string },
+    { value: 'hit_count', name: t($ => $['list.sort.hitCount'], { ns: 'datasetDocuments' }) as string },
   ], [t])
 
   // Determine add button text based on data source type
   const addButtonText = useMemo(() => {
     if (isDataSourceNotion)
-      return t('list.addPages', { ns: 'datasetDocuments' })
+      return t($ => $['list.addPages'], { ns: 'datasetDocuments' })
     if (isDataSourceWeb)
-      return t('list.addUrl', { ns: 'datasetDocuments' })
-    return t('list.addFile', { ns: 'datasetDocuments' })
+      return t($ => $['list.addUrl'], { ns: 'datasetDocuments' })
+    return t($ => $['list.addFile'], { ns: 'datasetDocuments' })
   }, [isDataSourceNotion, isDataSourceWeb, t])
 
   return (
@@ -121,17 +121,17 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
       {/* Title section */}
       <div className="flex flex-col justify-center gap-1 px-6 pt-4">
         <h1 className="text-base font-semibold text-text-primary">
-          {t('list.title', { ns: 'datasetDocuments' })}
+          {t($ => $['list.title'], { ns: 'datasetDocuments' })}
         </h1>
         <div className="flex items-center space-x-0.5 text-sm font-normal text-text-tertiary">
-          <span>{t('list.desc', { ns: 'datasetDocuments' })}</span>
+          <span>{t($ => $['list.desc'], { ns: 'datasetDocuments' })}</span>
           <a
             className="flex items-center text-text-accent"
             target="_blank"
             rel="noopener noreferrer"
             href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
           >
-            <span>{t('list.learnMore', { ns: 'datasetDocuments' })}</span>
+            <span>{t($ => $['list.learnMore'], { ns: 'datasetDocuments' })}</span>
             <span className="i-ri-external-link-line size-3" />
           </a>
         </div>
@@ -173,13 +173,13 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           {!embeddingAvailable && (
             <StatusWithAction
               type="warning"
-              description={t('embeddingModelNotAvailable', { ns: 'dataset' })}
+              description={t($ => $.embeddingModelNotAvailable, { ns: 'dataset' })}
             />
           )}
           {embeddingAvailable && canManageMetadata && (
             <Button variant="secondary" className="shrink-0" onClick={showEditMetadataModal}>
               <span className="mr-1 i-ri-draft-line size-4" />
-              {t('metadata.metadata', { ns: 'dataset' })}
+              {t($ => $['metadata.metadata'], { ns: 'dataset' })}
             </Button>
           )}
           {isShowEditMetadataModal && (

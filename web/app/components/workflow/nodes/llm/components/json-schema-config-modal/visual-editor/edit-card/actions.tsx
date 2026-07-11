@@ -17,9 +17,9 @@ const Actions: FC<ActionsProps> = ({
   onDelete,
 }) => {
   const { t } = useTranslation()
-  const addChildFieldLabel = t('nodes.llm.jsonSchema.addChildField', { ns: 'workflow' })
-  const editLabel = t('operation.edit', { ns: 'common' })
-  const removeLabel = t('operation.remove', { ns: 'common' })
+  const addChildFieldLabel = t($ => $['nodes.llm.jsonSchema.addChildField'], { ns: 'workflow' })
+  const editLabel = t($ => $['operation.edit'], { ns: 'common' })
+  const removeLabel = t($ => $['operation.remove'], { ns: 'common' })
 
   return (
     <div className="flex items-center gap-x-0.5">

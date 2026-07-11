@@ -40,29 +40,30 @@ export const useKnowledgeValidationMessage = () => {
   return (issueCode?: KnowledgeValidationIssueCode) => {
     switch (issueCode) {
       case 'name_required':
-        return tCommon('errorMsg.fieldRequired', {
-          field: t('agentDetail.configure.knowledgeRetrieval.dialog.nameLabel'),
+        return tCommon($ => $['errorMsg.fieldRequired'], {
+          field: t($ => $['agentDetail.configure.knowledgeRetrieval.dialog.nameLabel']),
         })
       case 'name_duplicate':
-        return tAppDebug('varKeyError.keyAlreadyExists', {
-          key: t('agentDetail.configure.knowledgeRetrieval.dialog.nameLabel'),
+        return tAppDebug($ => $['varKeyError.keyAlreadyExists'], {
+          key: t($ => $['agentDetail.configure.knowledgeRetrieval.dialog.nameLabel']),
         })
       case 'datasets_required':
-        return tCommon('errorMsg.fieldRequired', {
-          field: t('agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label'),
+        return tCommon($ => $['errorMsg.fieldRequired'], {
+          field: t($ => $['agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label']),
         })
       case 'custom_query_required':
-        return tCommon('errorMsg.fieldRequired', {
-          field: t('agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel'),
+        return tCommon($ => $['errorMsg.fieldRequired'], {
+          field: t($ => $['agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel']),
         })
       case 'single_model_required':
-      case 'metadata_model_required':
-        return tCommon('errorMsg.fieldRequired', {
-          field: tCommon('modelProvider.systemReasoningModel.key'),
+        return tCommon($ => $['errorMsg.fieldRequired'], {
+          field: tCommon($ => $['modelProvider.systemReasoningModel.key']),
         })
+      case 'metadata_model_required':
+        return t($ => $['agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired'])
       case 'metadata_conditions_required':
-        return tCommon('errorMsg.fieldRequired', {
-          field: tWorkflow('nodes.knowledgeRetrieval.metadata.panel.conditions'),
+        return tCommon($ => $['errorMsg.fieldRequired'], {
+          field: tWorkflow($ => $['nodes.knowledgeRetrieval.metadata.panel.conditions']),
         })
       default:
         return undefined

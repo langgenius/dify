@@ -49,7 +49,7 @@ const Field: FC<Props> = ({
               {getFieldType(payload)}
               {(payload.schemaType && payload.schemaType !== 'file' && ` (${payload.schemaType})`)}
             </div>
-            {required && <div className="ml-3 system-2xs-medium-uppercase leading-6 text-text-warning">{t('structOutput.required', { ns: 'app' })}</div>}
+            {required && <div className="ml-3 system-2xs-medium-uppercase leading-6 text-text-warning">{t($ => $['structOutput.required'], { ns: 'app' })}</div>}
           </div>
           {payload.description && (
             <div className="ml-[7px] flex">
