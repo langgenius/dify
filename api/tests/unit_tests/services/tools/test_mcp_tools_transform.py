@@ -232,6 +232,80 @@ class TestMCPToolTransform:
         assert "null_prop_list" in param_map
         assert param_map["null_prop_list"].type == ToolParameter.ToolParameterType.STRING
 
+    def test_convert_mcp_schema_to_parameter_falls_back_to_string_for_unsupported_type(self):
+        """Non-standard JSON schema type names from a remote MCP server should fall back to string.
+
+        A tool's ``inputSchema`` is provided verbatim by a third-party MCP server. Type names that
+        are not part of the supported parameter set (e.g. ``"text"``, capitalized ``"String"``, or a
+        list whose first entry is such a name) must not reach ``ToolParameterType(...)`` unguarded,
+        otherwise loading or invoking the provider raises an unhandled ``ValueError``.
+        """
+        schema = {
+            "type": "object",
+            "properties": {
+                "unknown_str": {"type": "text"},
+                "capitalized": {"type": "String"},
+                "unknown_in_list": {"type": ["bogus", "null"]},
+            },
+        }
+
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        param_map = {parameter.name: parameter for parameter in result}
+        assert param_map["unknown_str"].type == ToolParameter.ToolParameterType.STRING
+        assert param_map["capitalized"].type == ToolParameter.ToolParameterType.STRING
+        assert param_map["unknown_in_list"].type == ToolParameter.ToolParameterType.STRING
+
+    def test_convert_mcp_schema_to_parameter_falls_back_to_string_for_dify_internal_type(self):
+        """A remote server must not select a Dify-internal parameter type by naming it in inputSchema.
+
+        ``ToolParameterType`` also carries types that exist for Dify's own parameter forms and are not
+        JSON schema types at all. Echoing them through would let a third-party server turn a parameter
+        into a file upload or a secret input, and would only defer the crash to
+        ``cast_parameter_value``, which raises for these types on unexpected values.
+        """
+        schema = {
+            "type": "object",
+            "properties": {
+                "as_file": {"type": "file"},
+                "as_secret": {"type": "secret-input"},
+                "as_system_files": {"type": "system-files"},
+                "as_model_selector": {"type": "model-selector"},
+                "as_select": {"type": "select"},
+            },
+        }
+
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        for parameter in result:
+            assert parameter.type == ToolParameter.ToolParameterType.STRING
+
+    def test_convert_mcp_schema_to_parameter_preserves_standard_json_schema_types(self):
+        """Standard JSON schema types must survive the unsupported-type fallback."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "a_string": {"type": "string"},
+                "a_number": {"type": "number"},
+                "an_integer": {"type": "integer"},
+                "a_boolean": {"type": "boolean"},
+                "an_object": {"type": "object"},
+                "an_array": {"type": "array"},
+            },
+        }
+
+        result = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        param_map = {parameter.name: parameter.type for parameter in result}
+        assert param_map == {
+            "a_string": ToolParameter.ToolParameterType.STRING,
+            "a_number": ToolParameter.ToolParameterType.NUMBER,
+            "an_integer": ToolParameter.ToolParameterType.NUMBER,
+            "a_boolean": ToolParameter.ToolParameterType.BOOLEAN,
+            "an_object": ToolParameter.ToolParameterType.OBJECT,
+            "an_array": ToolParameter.ToolParameterType.ARRAY,
+        }
+
     def test_convert_mcp_schema_to_parameter_preserves_allof_object_type_with_multiple_object_items(self):
         """Property-level allOf with multiple object items should still resolve to object."""
         schema = {
