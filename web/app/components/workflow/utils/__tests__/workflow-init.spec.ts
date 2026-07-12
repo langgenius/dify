@@ -9,7 +9,7 @@ import type {
   Edge,
   Node,
 } from '@/app/components/workflow/types'
-import { CUSTOM_NODE, DEFAULT_RETRY_INTERVAL, DEFAULT_RETRY_MAX } from '@/app/components/workflow/constants'
+import { CUSTOM_NODE, DEFAULT_RETRY_INTERVAL, DEFAULT_RETRY_MAX, NESTED_ELEMENT_Z_INDEX } from '@/app/components/workflow/constants'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { BlockEnum, ErrorHandleMode } from '@/app/components/workflow/types'
@@ -186,6 +186,37 @@ describe('preprocessNodesAndEdges', () => {
 })
 
 describe('initialNodes', () => {
+  it('should normalize legacy container and nested node layers regardless of node order', () => {
+    const nodes = [
+      createNode({
+        id: 'child-1',
+        parentId: 'iter-1',
+        zIndex: 1002,
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
+      createNode({
+        id: 'iter-1',
+        selected: true,
+        zIndex: 1,
+        data: { type: BlockEnum.Iteration, title: '', desc: '' },
+      }),
+      createNode({
+        id: 'root-1',
+        zIndex: 1002,
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
+    ]
+
+    const result = initialNodes(nodes, [])
+
+    const parentNode = result.find(node => node.id === 'iter-1')!
+    const childNode = result.find(node => node.id === 'child-1')!
+    expect(parentNode.zIndex).toBe(0)
+    expect(childNode.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+    expect(result.find(node => node.id === 'root-1')!.zIndex).toBe(0)
+    expect(parentNode.zIndex! + 1000).toBeLessThan(childNode.zIndex!)
+  })
+
   it('should set positions when first node has no position', () => {
     const nodes = [
       createNode({ id: 'n1', data: { type: BlockEnum.Start, title: '', desc: '' } }),
@@ -564,6 +595,26 @@ describe('initialNodes', () => {
 })
 
 describe('initialEdges', () => {
+  it('should normalize legacy nested and root edge layers', () => {
+    const nodes = [
+      createNode({ id: 'iter-1', data: { type: BlockEnum.Iteration, title: '', desc: '' } }),
+      createNode({ id: 'child-1', parentId: 'iter-1', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      createNode({ id: 'child-2', parentId: 'iter-1', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      createNode({ id: 'root-1', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+    ]
+    const edges = [
+      createEdge({ id: 'nested-edge', source: 'child-1', target: 'child-2', zIndex: 1002 }),
+      createEdge({ id: 'boundary-edge', source: 'child-2', target: 'root-1', zIndex: 1002 }),
+      createEdge({ id: 'root-edge', source: 'root-1', target: 'iter-1', zIndex: 1002 }),
+    ]
+
+    const result = initialEdges(edges, nodes)
+
+    expect(result.find(edge => edge.id === 'nested-edge')!.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+    expect(result.find(edge => edge.id === 'boundary-edge')!.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+    expect(result.find(edge => edge.id === 'root-edge')!.zIndex).toBe(0)
+  })
+
   it('should set edge type to custom', () => {
     const nodes = [
       createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),

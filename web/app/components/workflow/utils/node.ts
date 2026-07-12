@@ -10,10 +10,7 @@ import {
 import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
 import {
   CUSTOM_NODE,
-  ITERATION_CHILDREN_Z_INDEX,
-  ITERATION_NODE_Z_INDEX,
-  LOOP_CHILDREN_Z_INDEX,
-  LOOP_NODE_Z_INDEX,
+  NESTED_ELEMENT_Z_INDEX,
 } from '../constants'
 import { isAgentV2NodeData } from '../nodes/agent-v2/types'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
@@ -38,7 +35,7 @@ export function generateNewNode({ data, position, id, zIndex, type, ...rest }: O
     position,
     targetPosition: Position.Left,
     sourcePosition: Position.Right,
-    zIndex: data.type === BlockEnum.Iteration ? ITERATION_NODE_Z_INDEX : (data.type === BlockEnum.Loop ? LOOP_NODE_Z_INDEX : zIndex),
+    zIndex: data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop ? 0 : zIndex,
     ...rest,
   } as Node
 
@@ -81,7 +78,7 @@ export function getIterationStartNode(iterationId: string): Node {
       x: 24,
       y: 68,
     },
-    zIndex: ITERATION_CHILDREN_Z_INDEX,
+    zIndex: NESTED_ELEMENT_Z_INDEX,
     parentId: iterationId,
     selectable: false,
     draggable: false,
@@ -102,7 +99,7 @@ export function getLoopStartNode(loopId: string): Node {
       x: 24,
       y: 68,
     },
-    zIndex: LOOP_CHILDREN_Z_INDEX,
+    zIndex: NESTED_ELEMENT_Z_INDEX,
     parentId: loopId,
     selectable: false,
     draggable: false,

@@ -87,7 +87,7 @@ describe('loop interaction helpers', () => {
     expect(result.newId).toBe('loop-23')
     expect(result.params).toEqual(expect.objectContaining({
       parentId: 'loop-2',
-      zIndex: 1002,
+      zIndex: 1001,
       data: expect.objectContaining({
         title: 'Code 3',
         isInLoop: true,

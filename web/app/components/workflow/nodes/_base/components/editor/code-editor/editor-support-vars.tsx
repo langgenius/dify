@@ -151,12 +151,10 @@ const CodeEditor: FC<Props> = ({
       {isShowVarPicker && createPortal(
         <div
           ref={popupRef}
-          className="w-[228px] space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
+          className="fixed z-50 w-[228px] space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
           style={{
-            position: 'fixed',
             top: popupPosition.y,
             left: popupPosition.x,
-            zIndex: 100,
           }}
         >
           <VarReferenceVars

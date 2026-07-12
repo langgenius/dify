@@ -622,7 +622,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
 
       {showMentionDropdown && filteredMentionUsers.length > 0 && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed z-9999 max-h-[248px] w-[280px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg/95 shadow-lg backdrop-blur-[10px]"
+          className="fixed z-50 max-h-[248px] w-[280px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg/95 shadow-lg backdrop-blur-[10px]"
           style={{
             left: dropdownPosition.x,
             [dropdownPosition.placement === 'top' ? 'bottom' : 'top']: dropdownPosition.placement === 'top'

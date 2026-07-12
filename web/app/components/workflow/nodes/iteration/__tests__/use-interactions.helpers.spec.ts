@@ -85,7 +85,7 @@ describe('iteration interaction helpers', () => {
       position: { x: 12, y: 24 },
       positionAbsolute: { x: 12, y: 24 },
       extent: 'parent',
-      zIndex: 7,
+      zIndex: 1002,
       data: { type: BlockEnum.Code, title: 'Original', desc: 'child', selected: true },
     })
 
@@ -99,7 +99,7 @@ describe('iteration interaction helpers', () => {
 
     expect(result).toEqual(expect.objectContaining({
       parentId: 'iteration-2',
-      zIndex: 7,
+      zIndex: 1001,
       data: expect.objectContaining({
         title: 'blocks.code 3',
         iteration_id: 'iteration-2',

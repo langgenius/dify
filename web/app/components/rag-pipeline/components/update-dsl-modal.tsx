@@ -60,7 +60,7 @@ const UpdateDSLModal = ({
             </button>
           </div>
           <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
-            <div className="absolute top-0 left-0 size-full bg-toast-warning-bg opacity-40" />
+            <div className="pointer-events-none absolute top-0 left-0 size-full bg-toast-warning-bg opacity-40" />
             <div className="flex items-start justify-center p-1">
               <RiAlertFill className="size-4 shrink-0 text-text-warning-secondary" />
             </div>
@@ -70,7 +70,7 @@ const UpdateDSLModal = ({
                 <Button
                   size="small"
                   variant="secondary"
-                  className="z-1000"
+                  className="relative"
                   onClick={onBackup}
                 >
                   <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />

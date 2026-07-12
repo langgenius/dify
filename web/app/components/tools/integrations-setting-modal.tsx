@@ -41,7 +41,12 @@ export default function IntegrationsSettingModal({
       )}
       >
         <div className="relative flex min-h-0 w-full shrink-0 overflow-hidden rounded-2xl border border-divider-subtle bg-components-panel-bg shadow-2xl">
-          <div className="fixed top-6 right-6 z-9999 flex flex-col items-center">
+          <IntegrationsPage
+            section={section}
+            onSectionChange={onSectionChange}
+            onSwitchToMarketplace={handleSwitchToMarketplace}
+          />
+          <div className="fixed top-6 right-6 flex shrink-0 flex-col items-center">
             <Button
               variant="tertiary"
               size="large"
@@ -53,11 +58,6 @@ export default function IntegrationsSettingModal({
             </Button>
             <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
           </div>
-          <IntegrationsPage
-            section={section}
-            onSectionChange={onSectionChange}
-            onSwitchToMarketplace={handleSwitchToMarketplace}
-          />
         </div>
       </div>
     </MenuDialog>

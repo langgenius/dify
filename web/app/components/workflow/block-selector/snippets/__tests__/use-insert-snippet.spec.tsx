@@ -6,7 +6,9 @@ type TestNode = {
   position: { x: number, y: number }
   selected?: boolean
   parentId?: string
+  zIndex?: number
   data: {
+    type?: string
     selected?: boolean
     _children?: { nodeId: string, nodeType: string }[]
     _connectedSourceHandleIds?: string[]
@@ -20,6 +22,7 @@ type TestEdge = {
   sourceHandle?: string
   target: string
   targetHandle?: string
+  zIndex?: number
 }
 
 const mockFetchQuery = vi.fn()
@@ -93,14 +96,16 @@ describe('useInsertSnippet', () => {
           nodes: [
             {
               id: 'snippet-node-1',
+              zIndex: 1,
               position: { x: 10, y: 20 },
-              data: { selected: false, _children: [{ nodeId: 'snippet-node-2', nodeType: 'code' }] },
+              data: { type: 'iteration', selected: false, _children: [{ nodeId: 'snippet-node-2', nodeType: 'code' }] },
             },
             {
               id: 'snippet-node-2',
               parentId: 'snippet-node-1',
+              zIndex: 1002,
               position: { x: 30, y: 40 },
-              data: { selected: false },
+              data: { type: 'code', selected: false },
             },
           ],
           edges: [
@@ -110,6 +115,7 @@ describe('useInsertSnippet', () => {
               sourceHandle: 'source',
               target: 'snippet-node-2',
               targetHandle: 'target',
+              zIndex: 1002,
               data: {},
             },
           ],
@@ -132,12 +138,15 @@ describe('useInsertSnippet', () => {
       expect(nextNodes).toHaveLength(3)
       expect(nextNodes[1]!.id).not.toBe('snippet-node-1')
       expect(nextNodes[2]!.parentId).toBe(nextNodes[1]!.id)
+      expect(nextNodes[1]!.zIndex).toBe(0)
+      expect(nextNodes[2]!.zIndex).toBe(1001)
       expect(nextNodes[1]!.data._children![0]!.nodeId).toBe(nextNodes[2]!.id)
 
       const nextEdges = mockSetEdges.mock.calls[0]![0] as TestEdge[]
       expect(nextEdges).toHaveLength(2)
       expect(nextEdges[1]!.source).toBe(nextNodes[1]!.id)
       expect(nextEdges[1]!.target).toBe(nextNodes[2]!.id)
+      expect(nextEdges[1]!.zIndex).toBe(1001)
 
       expect(mockSaveStateToHistory).toHaveBeenCalledWith('NodePaste', {
         nodeId: nextNodes[1]!.id,

@@ -20,8 +20,7 @@ import {
   CUSTOM_NODE,
   DEFAULT_RETRY_INTERVAL,
   DEFAULT_RETRY_MAX,
-  ITERATION_CHILDREN_Z_INDEX,
-  LOOP_CHILDREN_Z_INDEX,
+  NESTED_ELEMENT_Z_INDEX,
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '../constants'
@@ -176,7 +175,7 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
         loop_id: isInLoop ? startNode!.parentId : undefined,
         _connectedNodeIsSelected: true,
       },
-      zIndex: isIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX,
+      zIndex: NESTED_ELEMENT_Z_INDEX,
     }
   })
   nodes.forEach((node) => {
@@ -196,6 +195,7 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
 export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
   const { nodes, edges } = preprocessNodesAndEdges(cloneDeep(originNodes), cloneDeep(originEdges))
   const firstNode = nodes[0]
+  const nodesById = new Map(nodes.map(node => [node.id, node]))
 
   if (!firstNode?.position) {
     nodes.forEach((node, index) => {
@@ -217,6 +217,11 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
   }, {} as Record<string, { nodeId: string, nodeType: BlockEnum }[]>)
 
   return nodes.map((node) => {
+    const parentNode = node.parentId ? nodesById.get(node.parentId) : undefined
+    const isNested = parentNode?.data.type === BlockEnum.Iteration || parentNode?.data.type === BlockEnum.Loop
+
+    node.zIndex = isNested ? NESTED_ELEMENT_Z_INDEX : 0
+
     if (!node.type)
       node.type = CUSTOM_NODE
 
@@ -355,6 +360,18 @@ export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
         _connectedNodeIsSelected: edge.source === selectedNode.id || edge.target === selectedNode.id,
       } as any
     }
+
+    const sourceNode = nodesMap[edge.source]
+    const targetNode = nodesMap[edge.target]
+    const sourceParentNode = sourceNode?.parentId ? nodesMap[sourceNode.parentId] : undefined
+    const targetParentNode = targetNode?.parentId ? nodesMap[targetNode.parentId] : undefined
+    const isNestedEdge = sourceParentNode?.data.type === BlockEnum.Iteration
+      || sourceParentNode?.data.type === BlockEnum.Loop
+      || targetParentNode?.data.type === BlockEnum.Iteration
+      || targetParentNode?.data.type === BlockEnum.Loop
+    edge.zIndex = isNestedEdge
+      ? NESTED_ELEMENT_Z_INDEX
+      : 0
 
     return edge
   })

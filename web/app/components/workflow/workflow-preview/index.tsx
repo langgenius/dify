@@ -25,7 +25,6 @@ import ReactFlow, {
 import {
   CUSTOM_EDGE,
   CUSTOM_NODE,
-  ITERATION_CHILDREN_Z_INDEX,
 } from '@/app/components/workflow/constants'
 import CustomConnectionLine from '@/app/components/workflow/custom-connection-line'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
@@ -113,7 +112,6 @@ const WorkflowPreview = ({
         edges={edgesData}
         onEdgesChange={onEdgesChange}
         connectionLineComponent={CustomConnectionLine}
-        connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
         deleteKeyCode={null}

@@ -3,7 +3,6 @@ import type {
   Edge,
   OnSelectBlock,
 } from './types'
-import { cn } from '@langgenius/dify-ui/cn'
 import { intersection } from 'es-toolkit/array'
 import {
   memo,
@@ -19,7 +18,7 @@ import {
 } from 'reactflow'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import BlockSelector from './block-selector'
-import { ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX } from './constants'
+import { NESTED_ELEMENT_Z_INDEX } from './constants'
 import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
 import {
   useAvailableBlocks,
@@ -143,17 +142,15 @@ const CustomEdge = ({
       />
       <EdgeLabelRenderer>
         <div
-          className={cn(
-            'nopan nodrag',
-            'transition-opacity duration-150',
-            data.isInIteration && `z-[${ITERATION_CHILDREN_Z_INDEX}]`,
-            data.isInLoop && `z-[${LOOP_CHILDREN_Z_INDEX}]`,
-          )}
+          className="nopan nodrag transition-opacity duration-150"
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
             pointerEvents: isTriggerVisible ? 'all' : 'none',
             opacity: isTriggerVisible ? (data._waitingRun ? 0.7 : 1) : 0,
+            zIndex: data.isInIteration || data.isInLoop
+              ? NESTED_ELEMENT_Z_INDEX
+              : undefined,
           }}
           onMouseEnter={() => setIsTriggerHovered(true)}
           onMouseLeave={() => setIsTriggerHovered(false)}
