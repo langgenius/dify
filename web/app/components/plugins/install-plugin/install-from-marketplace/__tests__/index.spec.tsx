@@ -198,6 +198,20 @@ describe('InstallFromMarketplace', () => {
       expect(screen.getByText('plugin.installModal.installPlugin')).toBeInTheDocument()
     })
 
+    it('should expose the current step title as the dialog name', () => {
+      render(<InstallFromMarketplace {...defaultProps} />)
+
+      expect(screen.getByRole('dialog', { name: 'plugin.installModal.installPlugin' })).toBeInTheDocument()
+    })
+
+    it('should initially focus the safe cancel action', async () => {
+      render(<InstallFromMarketplace {...defaultProps} />)
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus()
+      })
+    })
+
     it('should render with bundle step when isBundle is true', () => {
       const dependencies = createMockDependencies()
       render(
@@ -293,7 +307,7 @@ describe('InstallFromMarketplace', () => {
       fireEvent.click(screen.getByTestId('install-fail-btn'))
 
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installFailed')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'plugin.installModal.installFailed' })).toBeInTheDocument()
       })
     })
   })
