@@ -70,22 +70,44 @@ vi.mock('@/utils/completion-params', () => ({
 
 // Mock child components
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel, modelList, scopeFeatures, onSelect }: {
+  default: ({ defaultModel, modelList, scopeFeatures, triggerClassName, readonly, onSelect }: {
     defaultModel?: { provider?: string, model?: string }
     modelList?: Model[]
     scopeFeatures?: string[]
+    triggerClassName?: string
+    readonly?: boolean
     onSelect?: (model: { provider: string, model: string }) => void
-  }) => (
-    <div
-      data-testid="model-selector"
-      data-default-model={JSON.stringify(defaultModel)}
-      data-model-list-count={modelList?.length || 0}
-      data-scope-features={JSON.stringify(scopeFeatures)}
-      onClick={() => onSelect?.({ provider: 'openai', model: 'gpt-4' })}
-    >
-      Model Selector
-    </div>
-  ),
+  }) => {
+    const currentProvider = modelList?.find(model => model.provider === defaultModel?.provider)
+    const currentModel = currentProvider?.models.find(model => model.model === defaultModel?.model)
+    const hasDeprecated = !!defaultModel && (!currentProvider || !currentModel)
+    const modelDisabled = currentModel?.status !== ModelStatusEnum.active
+
+    return (
+      <div
+        data-testid="trigger"
+        data-disabled={readonly || hasDeprecated || modelDisabled}
+        data-has-deprecated={hasDeprecated}
+        data-model-disabled={modelDisabled}
+        data-provider={defaultModel?.provider}
+        data-model={defaultModel?.model}
+        data-in-workflow={triggerClassName?.includes('workflow-block-parma-bg')}
+        data-has-current-provider={!!currentProvider}
+        data-has-current-model={!!currentModel}
+      >
+        <button
+          type="button"
+          data-testid="model-selector"
+          data-default-model={JSON.stringify(defaultModel)}
+          data-model-list-count={modelList?.length || 0}
+          data-scope-features={JSON.stringify(scopeFeatures)}
+          onClick={() => onSelect?.({ provider: 'openai', model: 'gpt-4' })}
+        >
+          Model Selector
+        </button>
+      </div>
+    )
+  },
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger', () => ({
@@ -255,6 +277,8 @@ const setupModelLists = (config: {
 // ==================== Tests ====================
 
 describe('ModelParameterModal', () => {
+  const openSettings = () => fireEvent.click(screen.getByRole('button', { name: /modelProvider\.modelSettings/i }))
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockProviderContextValue.isAPIKeySet = true
@@ -285,6 +309,16 @@ describe('ModelParameterModal', () => {
 
       // Assert
       expect(screen.getByTestId('trigger')).toBeInTheDocument()
+    })
+
+    it('should keep model selection and model settings as separate actions', () => {
+      const props = createDefaultProps()
+
+      render(<ModelParameterModal {...props} />)
+
+      expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+      expect(screen.queryByTestId('llm-params-panel')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
     })
 
     it('should render agent model trigger when isAgentStrategy is true', () => {
@@ -339,20 +373,25 @@ describe('ModelParameterModal', () => {
       render(<ModelParameterModal {...props} />)
 
       // Assert
-      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('llm-params-panel')).not.toBeInTheDocument()
     })
 
-    it('should render model selector inside portal content when open', async () => {
+    it('should render model settings inside portal content when open', async () => {
       // Arrange
-      const props = createDefaultProps()
+      const model = createModel({
+        provider: 'openai',
+        models: [createModelItem({ model: 'gpt-4' })],
+      })
+      setupModelLists({ textGeneration: [model] })
+      const props = createDefaultProps({ value: { provider: 'openai', model: 'gpt-4' } })
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+        expect(screen.getByTestId('llm-params-panel')).toBeInTheDocument()
       })
     })
   })
@@ -383,11 +422,19 @@ describe('ModelParameterModal', () => {
 
     it('should apply popupClassName to portal content', async () => {
       // Arrange
-      const props = createDefaultProps({ popupClassName: 'custom-popup-class' })
+      const model = createModel({
+        provider: 'openai',
+        models: [createModelItem({ model: 'gpt-4' })],
+      })
+      setupModelLists({ textGeneration: [model] })
+      const props = createDefaultProps({
+        popupClassName: 'custom-popup-class',
+        value: { provider: 'openai', model: 'gpt-4' },
+      })
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -403,7 +450,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       const selector = screen.getByTestId('model-selector')
@@ -413,19 +460,24 @@ describe('ModelParameterModal', () => {
 
   // ==================== State Management ====================
   describe('State Management', () => {
-    it('should toggle open state when trigger is clicked', async () => {
+    it('should toggle model settings when the settings button is clicked', async () => {
       // Arrange
-      const props = createDefaultProps()
+      const model = createModel({
+        provider: 'openai',
+        models: [createModelItem({ model: 'gpt-4' })],
+      })
+      setupModelLists({ textGeneration: [model] })
+      const props = createDefaultProps({ value: { provider: 'openai', model: 'gpt-4' } })
 
       // Act
       render(<ModelParameterModal {...props} />)
-      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('llm-params-panel')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+        expect(screen.getByTestId('llm-params-panel')).toBeInTheDocument()
       })
     })
 
@@ -434,16 +486,10 @@ describe('ModelParameterModal', () => {
       const props = createDefaultProps({ readonly: true })
 
       // Act
-      const { rerender } = render(<ModelParameterModal {...props} />)
-      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
+      render(<ModelParameterModal {...props} />)
 
-      fireEvent.click(screen.getByTestId('trigger'))
-
-      // Force a re-render to ensure state is stable
-      rerender(<ModelParameterModal {...props} />)
-
-      // Assert - open state should remain false due to readonly
-      expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
+      expect(screen.queryByTestId('llm-params-panel')).not.toBeInTheDocument()
     })
   })
 
@@ -455,7 +501,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -470,7 +516,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -493,7 +539,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -511,7 +557,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -528,7 +574,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -545,7 +591,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -562,7 +608,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -579,7 +625,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -596,7 +642,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -613,7 +659,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -735,7 +781,7 @@ describe('ModelParameterModal', () => {
   })
 
   describe('Memoization - disabled', () => {
-    it('should set disabled to true when isAPIKeySet is false', () => {
+    it('should keep model selection available when isAPIKeySet is false', () => {
       // Arrange
       mockProviderContextValue.isAPIKeySet = false
       const model = createModel({
@@ -749,7 +795,7 @@ describe('ModelParameterModal', () => {
       render(<ModelParameterModal {...props} />)
 
       // Assert
-      expect(screen.getByTestId('trigger')).toHaveAttribute('data-disabled', 'true')
+      expect(screen.getByTestId('trigger')).toHaveAttribute('data-disabled', 'false')
     })
 
     it('should set disabled to true when hasDeprecated is true', () => {
@@ -812,7 +858,7 @@ describe('ModelParameterModal', () => {
 
         // Act
         render(<ModelParameterModal {...props} />)
-        fireEvent.click(screen.getByTestId('trigger'))
+        openSettings()
 
         await waitFor(() => {
           fireEvent.click(screen.getByTestId('model-selector'))
@@ -837,7 +883,7 @@ describe('ModelParameterModal', () => {
 
         // Act
         render(<ModelParameterModal {...props} />)
-        fireEvent.click(screen.getByTestId('trigger'))
+        openSettings()
 
         await waitFor(() => {
           fireEvent.click(screen.getByTestId('model-selector'))
@@ -869,7 +915,7 @@ describe('ModelParameterModal', () => {
 
         // Act
         render(<ModelParameterModal {...props} />)
-        fireEvent.click(screen.getByTestId('trigger'))
+        openSettings()
 
         await waitFor(() => {
           fireEvent.click(screen.getByTestId('model-selector'))
@@ -894,7 +940,7 @@ describe('ModelParameterModal', () => {
 
         // Act
         render(<ModelParameterModal {...props} />)
-        fireEvent.click(screen.getByTestId('trigger'))
+        openSettings()
 
         await waitFor(() => {
           fireEvent.click(screen.getByTestId('model-selector'))
@@ -928,7 +974,7 @@ describe('ModelParameterModal', () => {
 
         // Act
         render(<ModelParameterModal {...props} />)
-        fireEvent.click(screen.getByTestId('trigger'))
+        openSettings()
 
         await waitFor(() => {
           const panel = screen.getByTestId('llm-params-panel')
@@ -965,7 +1011,7 @@ describe('ModelParameterModal', () => {
 
         // Act
         render(<ModelParameterModal {...props} />)
-        fireEvent.click(screen.getByTestId('trigger'))
+        openSettings()
 
         await waitFor(() => {
           const panel = screen.getByTestId('tts-params-panel')
@@ -1002,7 +1048,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -1028,7 +1074,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -1054,7 +1100,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -1063,7 +1109,7 @@ describe('ModelParameterModal', () => {
       expect(screen.queryByTestId('llm-params-panel')).not.toBeInTheDocument()
     })
 
-    it('should render divider when model type is textGeneration or tts', async () => {
+    it('should not render a selector divider inside split model settings', async () => {
       // Arrange
       const textGenModel = createModel({
         provider: 'openai',
@@ -1081,11 +1127,11 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
-        expect(document.querySelector('.bg-divider-subtle')).toBeInTheDocument()
+        expect(document.querySelector('.bg-divider-subtle')).not.toBeInTheDocument()
       })
     })
   })
@@ -1101,7 +1147,7 @@ describe('ModelParameterModal', () => {
 
       // Assert
       expect(screen.getByTestId('trigger')).toBeInTheDocument()
-      expect(screen.getByTestId('trigger')).toHaveAttribute('data-has-deprecated', 'true')
+      expect(screen.getByTestId('trigger')).toHaveAttribute('data-has-deprecated', 'false')
     })
 
     it('should handle undefined value', () => {
@@ -1122,7 +1168,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -1161,7 +1207,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -1240,7 +1286,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert
       await waitFor(() => {
@@ -1256,7 +1302,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert - defaultModel is created with undefined provider
       await waitFor(() => {
@@ -1273,7 +1319,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert - defaultModel is created with undefined model
       await waitFor(() => {
@@ -1290,7 +1336,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       // Assert - when defaultModel is undefined, attribute is not set (returns null)
       await waitFor(() => {
@@ -1326,7 +1372,7 @@ describe('ModelParameterModal', () => {
 
       // Act
       const { rerender } = render(<ModelParameterModal {...props} />)
-      fireEvent.click(screen.getByTestId('trigger'))
+      openSettings()
 
       await waitFor(() => {
         expect(screen.getByTestId('model-selector')).toHaveAttribute('data-model-list-count', '1')
@@ -1341,7 +1387,7 @@ describe('ModelParameterModal', () => {
       })
     })
 
-    it('should update disabled state when isAPIKeySet changes', () => {
+    it('should keep selector state independent from isAPIKeySet changes', () => {
       // Arrange
       const model = createModel({
         provider: 'openai',
@@ -1359,7 +1405,7 @@ describe('ModelParameterModal', () => {
       rerender(<ModelParameterModal {...props} />)
 
       // Assert
-      expect(screen.getByTestId('trigger')).toHaveAttribute('data-disabled', 'true')
+      expect(screen.getByTestId('trigger')).toHaveAttribute('data-disabled', 'false')
     })
   })
 

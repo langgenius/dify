@@ -22,7 +22,6 @@ import {
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import AgentModelTrigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger'
-import Trigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useProviderContext } from '@/context/provider-context'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
@@ -174,6 +173,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     })
   }
 
+  const hasSelectedModel = !!value?.provider && !!value?.model
+  const isSplitTrigger = !renderTrigger && !isAgentStrategy
+
   return (
     <Popover
       open={open}
@@ -184,20 +186,47 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       }}
     >
       <div className="relative">
-        <PopoverTrigger
-          render={(
-            <button type="button" className="block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]">
-              {
-                renderTrigger
-                  ? renderTrigger({
-                      open,
-                      currentProvider,
-                      currentModel,
-                      providerName: value?.provider,
-                      modelId: value?.model,
-                    })
-                  : (isAgentStrategy
-                      ? (
+        {isSplitTrigger
+          ? (
+              <div className="flex h-8 min-w-[296px] items-center gap-px overflow-hidden rounded-lg">
+                <div className="min-w-0 flex-1">
+                  <ModelSelector
+                    defaultModel={(value?.provider || value?.model) ? { provider: value?.provider, model: value?.model } : undefined}
+                    modelList={scopedModelList}
+                    readonly={readonly}
+                    scopeFeatures={scopeFeatures}
+                    triggerClassName={cn(
+                      'h-8! w-full rounded-r-none!',
+                      isInWorkflow && 'border border-workflow-block-parma-bg bg-workflow-block-parma-bg hover:bg-workflow-block-parma-bg',
+                    )}
+                    onSelect={handleChangeModel}
+                  />
+                </div>
+                <PopoverTrigger
+                  aria-label={t($ => $['modelProvider.modelSettings'], { ns: 'common' })}
+                  disabled={readonly || !hasSelectedModel}
+                  className={cn(
+                    'flex size-8 shrink-0 items-center justify-center rounded-l-none rounded-r-lg border-0 bg-components-button-tertiary-bg p-0 text-text-tertiary outline-hidden hover:bg-components-button-tertiary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled',
+                    isInWorkflow && 'border border-workflow-block-parma-bg bg-workflow-block-parma-bg hover:bg-workflow-block-parma-bg',
+                  )}
+                >
+                  <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+                </PopoverTrigger>
+              </div>
+            )
+          : (
+              <PopoverTrigger
+                render={(
+                  <button type="button" className="block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]">
+                    {renderTrigger
+                      ? renderTrigger({
+                          open,
+                          currentProvider,
+                          currentModel,
+                          providerName: value?.provider,
+                          modelId: value?.model,
+                        })
+                      : (
                           <AgentModelTrigger
                             disabled={disabled}
                             hasDeprecated={hasDeprecated}
@@ -207,39 +236,31 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                             modelId={value?.model}
                             scope={scope}
                           />
-                        )
-                      : (
-                          <Trigger
-                            isInWorkflow={isInWorkflow}
-                            currentProvider={currentProvider}
-                            currentModel={currentModel}
-                            providerName={value?.provider}
-                            modelId={value?.model}
-                          />
-                        )
-                    )
-              }
-            </button>
-          )}
-        />
+                        )}
+                  </button>
+                )}
+              />
+            )}
         <PopoverContent
           placement={isInWorkflow ? 'left' : 'bottom-end'}
           sideOffset={4}
           popupClassName={cn(popupClassName, 'w-[389px] rounded-2xl')}
         >
           <div className="max-h-[420px] overflow-y-auto p-4 pt-3">
-            <div className="relative">
-              <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">
-                {t($ => $['modelProvider.model'], { ns: 'common' }).toLocaleUpperCase()}
+            {!isSplitTrigger && (
+              <div className="relative">
+                <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">
+                  {t($ => $['modelProvider.model'], { ns: 'common' }).toLocaleUpperCase()}
+                </div>
+                <ModelSelector
+                  defaultModel={hasSelectedModel ? { provider: value.provider, model: value.model } : undefined}
+                  modelList={scopedModelList}
+                  scopeFeatures={scopeFeatures}
+                  onSelect={handleChangeModel}
+                />
               </div>
-              <ModelSelector
-                defaultModel={(value?.provider || value?.model) ? { provider: value?.provider, model: value?.model } : undefined}
-                modelList={scopedModelList}
-                scopeFeatures={scopeFeatures}
-                onSelect={handleChangeModel}
-              />
-            </div>
-            {(currentModel?.model_type === ModelTypeEnum.textGeneration || currentModel?.model_type === ModelTypeEnum.tts) && (
+            )}
+            {!isSplitTrigger && (currentModel?.model_type === ModelTypeEnum.textGeneration || currentModel?.model_type === ModelTypeEnum.tts) && (
               <div className="my-3 h-px bg-divider-subtle" />
             )}
             {currentModel?.model_type === ModelTypeEnum.textGeneration && (
