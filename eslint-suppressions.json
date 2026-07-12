@@ -3718,10 +3718,10 @@
   },
   "web/app/components/plugins/plugin-detail-panel/model-selector/__tests__/index.spec.tsx": {
     "jsx-a11y/click-events-have-key-events": {
-      "count": 3
+      "count": 2
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 3
+      "count": 2
     }
   },
   "web/app/components/plugins/plugin-detail-panel/model-selector/index.tsx": {
