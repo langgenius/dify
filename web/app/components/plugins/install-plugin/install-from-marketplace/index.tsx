@@ -2,7 +2,7 @@
 
 import type { Dependency, Plugin, PluginCategoryEnum, PluginManifestInMarket } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -84,12 +84,10 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
         backdropProps={{ forceRender: true }}
         className={cn('w-[560px] max-w-none! overflow-hidden! text-left align-middle', cn(modalClassName, 'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0'))}
       >
-        <DialogCloseButton />
-
         <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-          <div className="self-stretch title-2xl-semi-bold text-text-primary">
+          <DialogTitle className="self-stretch title-2xl-semi-bold text-text-primary">
             {getTitle()}
-          </div>
+          </DialogTitle>
         </div>
         {
           isBundle
@@ -134,6 +132,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
                 </>
               )
         }
+        <DialogCloseButton />
       </DialogContent>
     </Dialog>
   )
