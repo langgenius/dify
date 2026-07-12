@@ -1,8 +1,9 @@
 import logging
 from datetime import datetime
+from http import HTTPStatus
 
 from flask import request
-from flask_restx import Resource, fields, marshal
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
@@ -16,7 +17,12 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    query_params_from_request,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
@@ -31,9 +37,10 @@ from controllers.console.wraps import (
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.helper import TimestampField, dump_response, to_timestamp
+from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
-from models.account import Account, Tenant, TenantCustomConfigDict, TenantStatus
+from libs.pagination import paginate_query
+from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
 from services.billing_service import BillingService, SubscriptionPlan
 from services.enterprise.enterprise_service import EnterpriseService
@@ -102,6 +109,7 @@ class TenantListItemResponse(ResponseModel):
     plan: str | None = None
     status: str | None = None
     created_at: int | None = None
+    last_opened_at: int | None = None
     current: bool
 
     @field_validator("plan", "status", mode="before")
@@ -113,9 +121,9 @@ class TenantListItemResponse(ResponseModel):
             return value
         return str(getattr(value, "value", value))
 
-    @field_validator("created_at", mode="before")
+    @field_validator("created_at", "last_opened_at", mode="before")
     @classmethod
-    def _normalize_created_at(cls, value: datetime | int | None):
+    def _normalize_timestamp(cls, value: datetime | int | None):
         return to_timestamp(value)
 
 
@@ -131,7 +139,7 @@ class WorkspaceListItemResponse(ResponseModel):
 
     @field_validator("status", mode="before")
     @classmethod
-    def _normalize_status(cls, value):
+    def _normalize_enum_like(cls, value):
         if value is None:
             return None
         if isinstance(value, str):
@@ -144,7 +152,7 @@ class WorkspaceListItemResponse(ResponseModel):
         return to_timestamp(value)
 
 
-class WorkspaceListResponse(ResponseModel):
+class WorkspacePaginationResponse(ResponseModel):
     data: list[WorkspaceListItemResponse]
     has_more: bool
     limit: int
@@ -157,7 +165,7 @@ class SwitchWorkspaceResponse(ResponseModel):
     new_tenant: TenantInfoResponse
 
 
-class WorkspaceMutationResponse(ResponseModel):
+class WorkspaceTenantResultResponse(ResponseModel):
     result: str
     tenant: TenantInfoResponse
 
@@ -172,6 +180,16 @@ class WorkspacePermissionResponse(ResponseModel):
     allow_owner_transfer: bool
 
 
+WORKSPACE_LOGO_UPLOAD_PARAMS = {
+    "file": {
+        "in": "formData",
+        "type": "file",
+        "required": True,
+        "description": "Workspace web app logo file. Only SVG and PNG files are supported.",
+    }
+}
+
+
 register_schema_models(
     console_ns,
     WorkspaceListQuery,
@@ -182,59 +200,33 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     TenantInfoResponse,
+    TenantListItemResponse,
     TenantListResponse,
-    WorkspaceListResponse,
-    SwitchWorkspaceResponse,
-    WorkspaceMutationResponse,
-    WorkspaceLogoUploadResponse,
     WorkspaceCustomConfigResponse,
+    WorkspaceListItemResponse,
+    WorkspacePaginationResponse,
+    SwitchWorkspaceResponse,
+    WorkspaceTenantResultResponse,
+    WorkspaceLogoUploadResponse,
     WorkspacePermissionResponse,
 )
-
-provider_fields = {
-    "provider_name": fields.String,
-    "provider_type": fields.String,
-    "is_valid": fields.Boolean,
-    "token_is_set": fields.Boolean,
-}
-
-tenant_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "plan": fields.String,
-    "status": fields.String,
-    "created_at": TimestampField,
-    "role": fields.String,
-    "in_trial": fields.Boolean,
-    "trial_end_reason": fields.String,
-    "custom_config": fields.Raw(attribute="custom_config"),
-    "trial_credits": fields.Integer,
-    "trial_credits_used": fields.Integer,
-    "next_credit_reset_date": fields.Integer,
-}
-
-tenants_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "plan": fields.String,
-    "status": fields.String,
-    "created_at": TimestampField,
-    "current": fields.Boolean,
-}
-
-workspace_fields = {"id": fields.String, "name": fields.String, "status": fields.String, "created_at": TimestampField}
 
 
 @console_ns.route("/workspaces")
 class TenantListApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[TenantListResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TenantListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account):
-        tenants = TenantService.get_join_tenants(current_user)
+        tenant_rows: list[tuple[Tenant, TenantAccountJoin]] = [
+            (tenant, membership)
+            for tenant, membership in TenantService.get_workspaces_for_account(current_user.id, session=db.session())
+            if tenant.status == TenantStatus.NORMAL
+        ]
+        tenants = [tenant for tenant, _ in tenant_rows]
         tenant_dicts = []
         is_enterprise_only = dify_config.ENTERPRISE_ENABLED and not dify_config.BILLING_ENABLED
         is_saas = dify_config.EDITION == "CLOUD" and dify_config.BILLING_ENABLED
@@ -247,7 +239,7 @@ class TenantListApi(Resource):
                 if not tenant_plans:
                     logger.warning("get_plan_bulk returned empty result, falling back to legacy feature path")
 
-        for tenant in tenants:
+        for tenant, membership in tenant_rows:
             plan: str = CloudPlan.SANDBOX
             if is_saas:
                 tenant_plan = tenant_plans.get(tenant.id)
@@ -266,39 +258,35 @@ class TenantListApi(Resource):
                 "name": tenant.name,
                 "status": tenant.status,
                 "created_at": tenant.created_at,
+                "last_opened_at": membership.last_opened_at,
                 "plan": plan,
                 "current": tenant.id == current_tenant_id if current_tenant_id else False,
             }
 
             tenant_dicts.append(tenant_dict)
 
-        return {"workspaces": marshal(tenant_dicts, tenants_fields)}, 200
+        return dump_response(TenantListResponse, {"workspaces": tenant_dicts}), HTTPStatus.OK
 
 
 @console_ns.route("/all-workspaces")
 class WorkspaceListApi(Resource):
     @console_ns.doc(params=query_params_from_model(WorkspaceListQuery))
-    @console_ns.response(200, "Success", console_ns.models[WorkspaceListResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspacePaginationResponse.__name__])
     @setup_required
     @admin_required
     def get(self):
-        payload = request.args.to_dict(flat=True)
-        args = WorkspaceListQuery.model_validate(payload)
+        args = query_params_from_request(WorkspaceListQuery)
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
-        tenants = db.paginate(select=stmt, page=args.page, per_page=args.limit, error_out=False)
+        tenants = paginate_query(stmt, page=args.page, per_page=args.limit)
         has_more = False
 
         if tenants.has_next:
             has_more = True
 
-        return {
-            "data": marshal(tenants.items, workspace_fields),
-            "has_more": has_more,
-            "limit": args.limit,
-            "page": args.page,
-            "total": tenants.total,
-        }, 200
+        return WorkspacePaginationResponse(
+            data=tenants.items, has_more=has_more, limit=args.limit, page=args.page, total=tenants.total or 0
+        ).model_dump(mode="json"), HTTPStatus.OK
 
 
 @console_ns.route("/workspaces/current", endpoint="workspaces_current")
@@ -307,7 +295,7 @@ class TenantApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[TenantInfoResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TenantInfoResponse.__name__])
     @with_current_user
     def post(self, current_user: Account):
         if request.path == "/info":
@@ -318,22 +306,25 @@ class TenantApi(Resource):
             raise ValueError("No current tenant")
 
         if tenant.status == TenantStatus.ARCHIVE:
-            tenants = TenantService.get_join_tenants(current_user)
+            tenants = TenantService.get_join_tenants(current_user, session=db.session())
             # if there is any tenant, switch to the first one
             if len(tenants) > 0:
-                TenantService.switch_tenant(current_user, tenants[0].id)
+                TenantService.switch_tenant(current_user, tenants[0].id, session=db.session())
                 tenant = tenants[0]
             # else, raise Unauthorized
             else:
                 raise Unauthorized("workspace is archived")
 
-        return dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant)), 200
+        return (
+            dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant, session=db.session())),
+            HTTPStatus.OK,
+        )
 
 
 @console_ns.route("/workspaces/switch")
 class SwitchWorkspaceApi(Resource):
     @console_ns.expect(console_ns.models[SwitchWorkspacePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SwitchWorkspaceResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SwitchWorkspaceResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -342,9 +333,9 @@ class SwitchWorkspaceApi(Resource):
         payload = console_ns.payload or {}
         args = SwitchWorkspacePayload.model_validate(payload)
 
-        # check if tenant_id is valid, 403 if not
+        # Check whether the tenant_id belongs to the current account.
         try:
-            TenantService.switch_tenant(current_user, args.tenant_id)
+            TenantService.switch_tenant(current_user, args.tenant_id, session=db.session())
         except Exception:
             raise AccountNotLinkTenantError("Account not link tenant")
 
@@ -352,13 +343,15 @@ class SwitchWorkspaceApi(Resource):
         if new_tenant is None:
             raise ValueError("Tenant not found")
 
-        return {"result": "success", "new_tenant": marshal(WorkspaceService.get_tenant_info(new_tenant), tenant_fields)}
+        return SwitchWorkspaceResponse(
+            result="success", new_tenant=WorkspaceService.get_tenant_info(new_tenant, session=db.session())
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/custom-config")
 class CustomConfigWorkspaceApi(Resource):
     @console_ns.expect(console_ns.models[WorkspaceCustomConfigPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[WorkspaceMutationResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspaceTenantResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -381,12 +374,15 @@ class CustomConfigWorkspaceApi(Resource):
         tenant.custom_config_dict = custom_config_dict
         db.session.commit()
 
-        return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
+        return WorkspaceTenantResultResponse(
+            result="success", tenant=WorkspaceService.get_tenant_info(tenant, session=db.session())
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/custom-config/webapp-logo/upload")
 class WebappLogoWorkspaceApi(Resource):
-    @console_ns.response(201, "Logo uploaded", console_ns.models[WorkspaceLogoUploadResponse.__name__])
+    @console_ns.doc(consumes=["multipart/form-data"], params=WORKSPACE_LOGO_UPLOAD_PARAMS)
+    @console_ns.response(HTTPStatus.CREATED, "Logo uploaded", console_ns.models[WorkspaceLogoUploadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -422,13 +418,13 @@ class WebappLogoWorkspaceApi(Resource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return {"id": upload_file.id}, 201
+        return WorkspaceLogoUploadResponse(id=upload_file.id).model_dump(mode="json"), HTTPStatus.CREATED
 
 
 @console_ns.route("/workspaces/info")
 class WorkspaceInfoApi(Resource):
     @console_ns.expect(console_ns.models[WorkspaceInfoPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[WorkspaceMutationResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspaceTenantResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -444,14 +440,16 @@ class WorkspaceInfoApi(Resource):
         tenant.name = args.name
         db.session.commit()
 
-        return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
+        return WorkspaceTenantResultResponse(
+            result="success", tenant=WorkspaceService.get_tenant_info(tenant, session=db.session())
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/permission")
 class WorkspacePermissionApi(Resource):
     """Get workspace permissions for the current workspace."""
 
-    @console_ns.response(200, "Success", console_ns.models[WorkspacePermissionResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspacePermissionResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -468,8 +466,8 @@ class WorkspacePermissionApi(Resource):
         # Get workspace permissions from enterprise service
         permission = EnterpriseService.WorkspacePermissionService.get_permission(current_tenant_id)
 
-        return {
-            "workspace_id": permission.workspace_id,
-            "allow_member_invite": permission.allow_member_invite,
-            "allow_owner_transfer": permission.allow_owner_transfer,
-        }, 200
+        return WorkspacePermissionResponse(
+            workspace_id=permission.workspace_id,
+            allow_member_invite=permission.allow_member_invite,
+            allow_owner_transfer=permission.allow_owner_transfer,
+        ).model_dump(mode="json"), HTTPStatus.OK

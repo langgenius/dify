@@ -8,8 +8,10 @@ import DatasetCardHeader from '../dataset-card-header'
 
 // Mock AppIcon component to avoid emoji-mart initialization issues
 vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ icon, className }: { icon?: string, className?: string }) => (
-    <div data-testid="app-icon" className={className}>{icon}</div>
+  default: ({ icon, className }: { icon?: string; className?: string }) => (
+    <div data-testid="app-icon" className={className}>
+      {icon}
+    </div>
   ),
 }))
 
@@ -27,14 +29,25 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 vi.mock('@/hooks/use-knowledge', () => ({
   useKnowledge: () => ({
     formatIndexingTechniqueAndMethod: (technique: string, _method: string) => {
-      if (technique === 'high_quality')
-        return 'High Quality'
-      if (technique === 'economy')
-        return 'Economy'
+      if (technique === 'high_quality') return 'High Quality'
+      if (technique === 'economy') return 'Economy'
       return ''
     },
   }),
 }))
+
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return {
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string }) => {
+        if (key === 'cornerLabel.pipeline' && options?.ns === 'dataset') return 'Pipeline'
+
+        return options?.ns ? `${options.ns}.${key}` : key
+      }),
+    }),
+  }
+})
 
 describe('DatasetCardHeader', () => {
   const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
@@ -103,17 +116,16 @@ describe('DatasetCardHeader', () => {
       expect(screen.getByText('Custom Dataset')).toBeInTheDocument()
     })
 
-    it('should render author name', () => {
+    it('should not render author name in the compact card header', () => {
       const dataset = createMockDataset({ author_name: 'John Doe' })
       render(<DatasetCardHeader dataset={dataset} />)
-      expect(screen.getByText('John Doe')).toBeInTheDocument()
+      expect(screen.queryByText('John Doe')).not.toBeInTheDocument()
     })
 
-    it('should render edit time', () => {
+    it('should not render edit time in the compact card header', () => {
       const dataset = createMockDataset()
       render(<DatasetCardHeader dataset={dataset} />)
-      // Should contain the formatted time
-      expect(screen.getByText(/segment\.editedAt/)).toBeInTheDocument()
+      expect(screen.queryByText(/segment\.editedAt/)).not.toBeInTheDocument()
     })
   })
 
@@ -201,7 +213,9 @@ describe('DatasetCardHeader', () => {
       const dataset = createMockDataset({
         doc_form: ChunkingMode.text,
         indexing_technique: IndexingType.QUALIFIED,
-        retrieval_model_dict: { search_method: RETRIEVE_METHOD.semantic } as DataSet['retrieval_model_dict'],
+        retrieval_model_dict: {
+          search_method: RETRIEVE_METHOD.semantic,
+        } as DataSet['retrieval_model_dict'],
         runtime_mode: 'general',
       })
       render(<DatasetCardHeader dataset={dataset} />)
@@ -214,7 +228,7 @@ describe('DatasetCardHeader', () => {
         is_published: false,
       })
       render(<DatasetCardHeader dataset={dataset} />)
-      // DocModeInfo should not be rendered since isShowDocModeInfo is false
+      expect(screen.getByText('Pipeline')).toBeInTheDocument()
       expect(screen.queryByText(/High Quality/)).not.toBeInTheDocument()
     })
 
@@ -222,11 +236,14 @@ describe('DatasetCardHeader', () => {
       const dataset = createMockDataset({
         doc_form: ChunkingMode.text,
         indexing_technique: IndexingType.QUALIFIED,
-        retrieval_model_dict: { search_method: RETRIEVE_METHOD.semantic } as DataSet['retrieval_model_dict'],
+        retrieval_model_dict: {
+          search_method: RETRIEVE_METHOD.semantic,
+        } as DataSet['retrieval_model_dict'],
         runtime_mode: 'rag_pipeline',
         is_published: true,
       })
       render(<DatasetCardHeader dataset={dataset} />)
+      expect(screen.getByText('Pipeline')).toBeInTheDocument()
       expect(screen.getByText(/chunkingMode/)).toBeInTheDocument()
     })
   })

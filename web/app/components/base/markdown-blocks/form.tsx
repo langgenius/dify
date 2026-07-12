@@ -2,14 +2,25 @@ import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { Dayjs } from 'dayjs'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
-import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
+import {
+  formatDateForOutput,
+  toDayjs,
+} from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
 
 const DATA_FORMAT = {
@@ -37,19 +48,28 @@ const SUPPORTED_TYPES = {
   HIDDEN: 'hidden',
 } as const
 
-type SupportedType = typeof SUPPORTED_TYPES[keyof typeof SUPPORTED_TYPES]
+type SupportedType = (typeof SUPPORTED_TYPES)[keyof typeof SUPPORTED_TYPES]
 
 const SUPPORTED_TYPES_SET = new Set<string>(Object.values(SUPPORTED_TYPES))
 
-const SAFE_NAME_RE = /^[a-z][\w-]*$/i
+const SAFE_NAME_RE = (() => {
+  try {
+    return new RegExp('^\\p{L}[\\p{L}\\p{M}\\p{N}_()!*&（）！＊＆－-]*$', 'u')
+  } catch {
+    // Fallback for browsers without Unicode property escape support.
+    return /^[a-z][\w-]*$/i
+  }
+})()
 const PROTOTYPE_POISON_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
 function isSafeName(name: unknown): name is string {
-  return typeof name === 'string'
-    && name.length > 0
-    && name.length <= 128
-    && SAFE_NAME_RE.test(name)
-    && !PROTOTYPE_POISON_KEYS.has(name)
+  return (
+    typeof name === 'string' &&
+    name.length > 0 &&
+    name.length <= 128 &&
+    SAFE_NAME_RE.test(name) &&
+    !PROTOTYPE_POISON_KEYS.has(name)
+  )
 }
 
 const VALID_BUTTON_VARIANTS = new Set<string>([
@@ -92,8 +112,7 @@ function getLabelTarget(node: HastElement): string {
 }
 
 function str(val: unknown): string {
-  if (val == null)
-    return ''
+  if (val == null) return ''
   return String(val)
 }
 
@@ -103,23 +122,23 @@ function computeInitialFormValues(children: HastElement[]): FormValues {
     if (child.tagName !== SUPPORTED_TAGS.INPUT && child.tagName !== SUPPORTED_TAGS.TEXTAREA)
       continue
     const name = child.properties.name
-    if (!isSafeName(name))
-      continue
+    if (!isSafeName(name)) continue
 
     const type = child.tagName === SUPPORTED_TAGS.INPUT ? str(child.properties.type) : ''
 
     if (type === SUPPORTED_TYPES.HIDDEN) {
       init[name] = str(child.properties.value)
-    }
-    else if (type === SUPPORTED_TYPES.DATE || type === SUPPORTED_TYPES.DATETIME || type === SUPPORTED_TYPES.TIME) {
+    } else if (
+      type === SUPPORTED_TYPES.DATE ||
+      type === SUPPORTED_TYPES.DATETIME ||
+      type === SUPPORTED_TYPES.TIME
+    ) {
       const raw = child.properties.value
       init[name] = raw != null ? toDayjs(String(raw)) : undefined
-    }
-    else if (type === SUPPORTED_TYPES.CHECKBOX) {
+    } else if (type === SUPPORTED_TYPES.CHECKBOX) {
       const { checked, value } = child.properties
       init[name] = !!checked || value === true || value === 'true'
-    }
-    else {
+    } else {
       init[name] = child.properties.value != null ? str(child.properties.value) : undefined
     }
   }
@@ -132,14 +151,10 @@ function getElementKey(child: HastElement, index: number): string {
   const htmlFor = str(child.properties.htmlFor)
   const type = str(child.properties.type)
 
-  if (tag === SUPPORTED_TAGS.LABEL)
-    return `label-${index}-${htmlFor || name}`
-  if (tag === SUPPORTED_TAGS.INPUT)
-    return `input-${index}-${type}-${name}`
-  if (tag === SUPPORTED_TAGS.TEXTAREA)
-    return `textarea-${index}-${name}`
-  if (tag === SUPPORTED_TAGS.BUTTON)
-    return `button-${index}-${getTextContent(child)}`
+  if (tag === SUPPORTED_TAGS.LABEL) return `label-${index}-${htmlFor || name}`
+  if (tag === SUPPORTED_TAGS.INPUT) return `input-${index}-${type}-${name}`
+  if (tag === SUPPORTED_TAGS.TEXTAREA) return `textarea-${index}-${name}`
+  if (tag === SUPPORTED_TAGS.BUTTON) return `button-${index}-${getTextContent(child)}`
   return `${tag}-${index}`
 }
 
@@ -153,10 +168,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
     [typedNode.children],
   )
 
-  const baseFormValues = useMemo(
-    () => computeInitialFormValues(elementChildren),
-    [elementChildren],
-  )
+  const baseFormValues = useMemo(() => computeInitialFormValues(elementChildren), [elementChildren])
 
   const [editState, setEditState] = useState<EditState>(() => ({
     source: elementChildren,
@@ -164,22 +176,23 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
   }))
 
   const formValues = useMemo<FormValues>(() => {
-    if (editState.source === elementChildren)
-      return { ...baseFormValues, ...editState.edits }
+    if (editState.source === elementChildren) return { ...baseFormValues, ...editState.edits }
     return baseFormValues
   }, [editState, baseFormValues, elementChildren])
 
-  const updateValue = useCallback((name: string, value: FormValue) => {
-    if (!isSafeName(name))
-      return
-    setEditState(prev => ({
-      source: elementChildren,
-      edits: {
-        ...(prev.source === elementChildren ? prev.edits : {}),
-        [name]: value,
-      },
-    }))
-  }, [elementChildren])
+  const updateValue = useCallback(
+    (name: string, value: FormValue) => {
+      if (!isSafeName(name)) return
+      setEditState((prev) => ({
+        source: elementChildren,
+        edits: {
+          ...(prev.source === elementChildren ? prev.edits : {}),
+          [name]: value,
+        },
+      }))
+    },
+    [elementChildren],
+  )
 
   const getFormOutput = useCallback((): Record<string, string | boolean | undefined> => {
     const out = Object.create(null) as Record<string, string | boolean | undefined>
@@ -187,49 +200,47 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
       if (child.tagName !== SUPPORTED_TAGS.INPUT && child.tagName !== SUPPORTED_TAGS.TEXTAREA)
         continue
       const name = child.properties.name
-      if (!isSafeName(name))
-        continue
+      if (!isSafeName(name)) continue
       let value: FormValue = formValues[name]
       if (
-        child.tagName === SUPPORTED_TAGS.INPUT
-        && (child.properties.type === SUPPORTED_TYPES.DATE || child.properties.type === SUPPORTED_TYPES.DATETIME)
-        && value != null
-        && typeof value === 'object'
-        && 'format' in value
+        child.tagName === SUPPORTED_TAGS.INPUT &&
+        (child.properties.type === SUPPORTED_TYPES.DATE ||
+          child.properties.type === SUPPORTED_TYPES.DATETIME) &&
+        value != null &&
+        typeof value === 'object' &&
+        'format' in value
       ) {
         const includeTime = child.properties.type === SUPPORTED_TYPES.DATETIME
         value = formatDateForOutput(value as Dayjs, includeTime)
       }
-      if (typeof value === 'boolean')
-        out[name] = value
-      else
-        out[name] = value != null ? String(value) : undefined
+      if (typeof value === 'boolean') out[name] = value
+      else out[name] = value != null ? String(value) : undefined
     }
     return out
   }, [elementChildren, formValues])
 
-  const onSubmit = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    if (isSubmitting)
-      return
-    setIsSubmitting(true)
-    try {
-      const format = str(typedNode.properties.dataFormat) || DATA_FORMAT.TEXT
-      const result = getFormOutput()
-      if (format === DATA_FORMAT.JSON) {
-        onSend?.(JSON.stringify(result))
+  const onSubmit = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      if (isSubmitting) return
+      setIsSubmitting(true)
+      try {
+        const format = str(typedNode.properties.dataFormat) || DATA_FORMAT.TEXT
+        const result = getFormOutput()
+        if (format === DATA_FORMAT.JSON) {
+          onSend?.(JSON.stringify(result))
+        } else {
+          const textResult = Object.entries(result)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join('\n')
+          onSend?.(textResult)
+        }
+      } catch {
+        setIsSubmitting(false)
       }
-      else {
-        const textResult = Object.entries(result)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join('\n')
-        onSend?.(textResult)
-      }
-    }
-    catch {
-      setIsSubmitting(false)
-    }
-  }, [isSubmitting, typedNode.properties.dataFormat, getFormOutput, onSend])
+    },
+    [isSubmitting, typedNode.properties.dataFormat, getFormOutput, onSend],
+  )
 
   return (
     <form
@@ -256,10 +267,12 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           )
         }
 
-        if (child.tagName === SUPPORTED_TAGS.INPUT && SUPPORTED_TYPES_SET.has(str(child.properties.type))) {
+        if (
+          child.tagName === SUPPORTED_TAGS.INPUT &&
+          SUPPORTED_TYPES_SET.has(str(child.properties.type))
+        ) {
           const name = str(child.properties.name)
-          if (!isSafeName(name))
-            return null
+          if (!isSafeName(name)) return null
 
           const type = str(child.properties.type) as SupportedType
 
@@ -269,7 +282,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                 key={key}
                 value={formValues[name] as Dayjs | undefined}
                 needTimePicker={type === SUPPORTED_TYPES.DATETIME}
-                onChange={date => updateValue(name, date)}
+                onChange={(date) => updateValue(name, date)}
                 onClear={() => updateValue(name, undefined)}
               />
             )
@@ -279,15 +292,15 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
               <TimePicker
                 key={key}
                 value={formValues[name] as Dayjs | string | undefined}
-                onChange={time => updateValue(name, time)}
+                onChange={(time) => updateValue(name, time)}
                 onClear={() => updateValue(name, undefined)}
               />
             )
           }
           if (type === SUPPORTED_TYPES.CHECKBOX) {
             const label = str(child.properties.dataTip || child.properties['data-tip'])
-            const hasExternalLabel = elementChildren.some(node =>
-              node.tagName === SUPPORTED_TAGS.LABEL && getLabelTarget(node) === name,
+            const hasExternalLabel = elementChildren.some(
+              (node) => node.tagName === SUPPORTED_TAGS.LABEL && getLabelTarget(node) === name,
             )
             const checkboxAriaLabel = label || (hasExternalLabel ? undefined : name)
             return (
@@ -296,27 +309,26 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                   id={name}
                   checked={!!formValues[name]}
                   aria-label={checkboxAriaLabel}
-                  onCheckedChange={checked => updateValue(name, checked)}
+                  onCheckedChange={(checked) => updateValue(name, checked)}
                 />
                 {label && <span>{label}</span>}
               </div>
             )
           }
           if (type === SUPPORTED_TYPES.SELECT) {
-            const rawOptions = child.properties.dataOptions || child.properties['data-options'] || []
+            const rawOptions =
+              child.properties.dataOptions || child.properties['data-options'] || []
             let options: string[] = []
             if (typeof rawOptions === 'string') {
               try {
                 const parsed: unknown = JSON.parse(rawOptions)
                 if (Array.isArray(parsed))
                   options = parsed.filter((o): o is string => typeof o === 'string')
-              }
-              catch (error) {
+              } catch (error) {
                 console.error('Failed to parse data-options JSON:', rawOptions, error)
                 options = []
               }
-            }
-            else if (Array.isArray(rawOptions)) {
+            } else if (Array.isArray(rawOptions)) {
               options = rawOptions.filter((o): o is string => typeof o === 'string')
             }
             return (
@@ -324,15 +336,14 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                 key={key}
                 defaultValue={formValues[name] as string | undefined}
                 onValueChange={(val) => {
-                  if (val != null)
-                    updateValue(name, val)
+                  if (val != null) updateValue(name, val)
                 }}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {options.map(option => (
+                  {options.map((option) => (
                     <SelectItem key={option} value={option}>
                       <SelectItemText>{option}</SelectItemText>
                       <SelectItemIndicator />
@@ -361,15 +372,14 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
               name={name}
               placeholder={str(child.properties.placeholder)}
               value={str(formValues[name])}
-              onChange={e => updateValue(name, e.target.value)}
+              onChange={(e) => updateValue(name, e.target.value)}
             />
           )
         }
 
         if (child.tagName === SUPPORTED_TAGS.TEXTAREA) {
           const name = str(child.properties.name)
-          if (!isSafeName(name))
-            return null
+          if (!isSafeName(name)) return null
           return (
             <Textarea
               aria-label={name}
@@ -377,7 +387,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
               name={name}
               placeholder={str(child.properties.placeholder)}
               value={str(formValues[name])}
-              onValueChange={value => updateValue(name, value)}
+              onValueChange={(value) => updateValue(name, value)}
             />
           )
         }
@@ -386,10 +396,10 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
           const rawVariant = str(child.properties.dataVariant)
           const rawSize = str(child.properties.dataSize)
           const variant = VALID_BUTTON_VARIANTS.has(rawVariant)
-            ? rawVariant as ButtonProps['variant']
+            ? (rawVariant as ButtonProps['variant'])
             : undefined
           const size = VALID_BUTTON_SIZES.has(rawSize)
-            ? rawSize as ButtonProps['size']
+            ? (rawSize as ButtonProps['size'])
             : undefined
 
           return (

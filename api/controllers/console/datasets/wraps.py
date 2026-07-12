@@ -2,6 +2,7 @@ from collections.abc import Callable
 from functools import wraps
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from controllers.console.datasets.error import PipelineNotFoundError
 from extensions.ext_database import db
@@ -22,9 +23,10 @@ def get_rag_pipeline[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
 
         del kwargs["pipeline_id"]
 
-        pipeline = db.session.scalar(
-            select(Pipeline).where(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_tenant_id).limit(1)
-        )
+        stmt = select(Pipeline).where(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_tenant_id).limit(1)
+        # Migrated handlers pass the request Session as args[1]; legacy handlers still use db.session.
+        session = args[1] if len(args) > 1 and isinstance(args[1], Session) else db.session
+        pipeline = session.scalar(stmt)
 
         if not pipeline:
             raise PipelineNotFoundError()

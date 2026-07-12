@@ -56,6 +56,7 @@ export type Collection = {
   is_team_authorization: boolean
   allow_delete: boolean
   labels: string[]
+  tools?: Tool[]
   plugin_id?: string
   letter?: string
   // MCP Server
@@ -212,10 +213,13 @@ export type WorkflowToolProviderOutputParameter = {
 
 export type WorkflowToolProviderOutputSchema = {
   type: string
-  properties: Record<string, {
-    type: string
-    description: string
-  }>
+  properties: Record<
+    string,
+    {
+      type: string
+      description: string
+    }
+  >
 }
 
 export type WorkflowToolProviderRequest = {

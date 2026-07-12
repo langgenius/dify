@@ -8,37 +8,37 @@ import { runConfigGet } from './run'
 describe('runConfigGet', () => {
   useTempConfigDir('difyctl-get-')
 
-  it('returns set value with trailing newline', () => {
-    getConfigurationStore().setTyped({
+  it('returns set value with trailing newline', async () => {
+    await getConfigurationStore().setTyped({
       schema_version: 1,
       defaults: { format: 'yaml' },
     })
-    const out = runConfigGet({ store: getConfigurationStore(), key: 'defaults.format' })
+    const out = await runConfigGet({ store: getConfigurationStore(), key: 'defaults.format' })
     expect(out).toBe('yaml\n')
   })
 
-  it('returns empty line when key is unset (matches Go fmt.Fprintln)', () => {
-    const out = runConfigGet({ store: getConfigurationStore(), key: 'defaults.format' })
+  it('returns empty line when key is unset (matches Go fmt.Fprintln)', async () => {
+    const out = await runConfigGet({ store: getConfigurationStore(), key: 'defaults.format' })
     expect(out).toBe('\n')
   })
 
-  it('throws BaseError(config_invalid_key) on unknown key', () => {
+  it('throws BaseError(config_invalid_key) on unknown key', async () => {
     let caught: unknown
     try {
-      runConfigGet({ store: getConfigurationStore(), key: 'bogus.key' })
+      await runConfigGet({ store: getConfigurationStore(), key: 'bogus.key' })
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
-    if (isBaseError(caught))
-      expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
+    if (isBaseError(caught)) expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
   })
 
-  it('returns numeric limit as string', () => {
-    getConfigurationStore().setTyped({
+  it('returns numeric limit as string', async () => {
+    await getConfigurationStore().setTyped({
       schema_version: 1,
       defaults: { limit: 75 },
     })
-    const out = runConfigGet({ store: getConfigurationStore(), key: 'defaults.limit' })
+    const out = await runConfigGet({ store: getConfigurationStore(), key: 'defaults.limit' })
     expect(out).toBe('75\n')
   })
 })

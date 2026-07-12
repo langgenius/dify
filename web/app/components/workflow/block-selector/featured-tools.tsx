@@ -4,19 +4,26 @@ import type { ToolWithProvider } from '../types'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
-import { createPreviewCardHandle, PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
-import { RiMoreLine } from '@remixicon/react'
-import { useLocalStorage } from 'foxact/use-local-storage'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  createPreviewCardHandle,
+  PreviewCard,
+  PreviewCardContent,
+  PreviewCardTrigger,
+} from '@langgenius/dify-ui/preview-card'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowDownDoubleLine, ArrowDownRoundFill, ArrowUpDoubleLine } from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
+import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
+import { useFeaturedToolsCollapsed } from '@/app/components/workflow/block-selector/storage'
 import { useGetLanguage } from '@/context/i18n'
 import Link from '@/next/link'
 import { formatNumber } from '@/utils/format'
-import { getMarketplaceUrl } from '@/utils/var'
+import { PluginCategoryEnum } from '../../plugins/types'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import Tools from './tools'
@@ -40,8 +47,6 @@ type FeaturedToolPreviewPayload = {
   description: string
 }
 
-const STORAGE_KEY = 'workflow_tools_featured_collapsed'
-
 const FeaturedTools = ({
   plugins,
   providerMap,
@@ -55,22 +60,16 @@ const FeaturedTools = ({
   const previewCardHandle = useMemo(() => createPreviewCardHandle<FeaturedToolPreviewPayload>(), [])
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
   const [visibleCountPlugins, setVisibleCountPlugins] = useState(plugins)
-  const [isCollapsed, setIsCollapsed] = useLocalStorage<boolean>(STORAGE_KEY, false)
+  const [isCollapsed, setIsCollapsed] = useFeaturedToolsCollapsed()
 
   if (visibleCountPlugins !== plugins) {
     setVisibleCountPlugins(plugins)
     setVisibleCount(INITIAL_VISIBLE_COUNT)
   }
 
-  const limitedPlugins = useMemo(
-    () => plugins.slice(0, MAX_RECOMMENDED_COUNT),
-    [plugins],
-  )
+  const limitedPlugins = useMemo(() => plugins.slice(0, MAX_RECOMMENDED_COUNT), [plugins])
 
-  const {
-    installedProviders,
-    uninstalledPlugins,
-  } = useMemo(() => {
+  const { installedProviders, uninstalledPlugins } = useMemo(() => {
     const installed: ToolWithProvider[] = []
     const uninstalled: Plugin[] = []
     const visitedProviderIds = new Set<string>()
@@ -82,8 +81,7 @@ const FeaturedTools = ({
           installed.push(provider)
           visitedProviderIds.add(provider.id)
         }
-      }
-      else {
+      } else {
         uninstalled.push(plugin)
       }
     })
@@ -109,7 +107,10 @@ const FeaturedTools = ({
   )
 
   const totalVisible = visibleInstalledProviders.length + visibleUninstalledPlugins.length
-  const maxAvailable = Math.min(MAX_RECOMMENDED_COUNT, installedProviders.length + uninstalledPlugins.length)
+  const maxAvailable = Math.min(
+    MAX_RECOMMENDED_COUNT,
+    installedProviders.length + uninstalledPlugins.length,
+  )
   const hasMoreToShow = totalVisible < maxAvailable
   const canToggleVisibility = maxAvailable > INITIAL_VISIBLE_COUNT
   const isExpanded = canToggleVisibility && !hasMoreToShow
@@ -120,10 +121,18 @@ const FeaturedTools = ({
       <button
         type="button"
         className="flex w-full items-center rounded-md px-0 py-1 text-left text-text-primary"
-        onClick={() => setIsCollapsed(prev => !prev)}
+        onClick={() => setIsCollapsed((prev) => !prev)}
       >
-        <span className="system-xs-medium text-text-primary">{t('tabs.featuredTools', { ns: 'workflow' })}</span>
-        <ArrowDownRoundFill className={`ml-0.5 size-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+        <span className="system-xs-medium text-text-primary">
+          {t(($) => $['tabs.featuredTools'], { ns: 'workflow' })}
+        </span>
+        <span
+          className={cn(
+            'i-custom-vender-solid-arrows-arrow-down-round-fill',
+            'ml-0.5 size-4 text-text-tertiary transition-transform',
+            isCollapsed ? '-rotate-90' : 'rotate-0',
+          )}
+        />
       </button>
 
       {!isCollapsed && (
@@ -136,8 +145,13 @@ const FeaturedTools = ({
 
           {showEmptyState && (
             <p className="py-2 system-xs-regular text-text-tertiary">
-              <Link className="text-text-accent" href={getMarketplaceUrl('', { category: 'tool' })} target="_blank" rel="noopener noreferrer">
-                {t('tabs.noFeaturedPlugins', { ns: 'workflow' })}
+              <Link
+                className="text-text-accent"
+                href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t(($) => $['tabs.noFeaturedPlugins'], { ns: 'workflow' })}
               </Link>
             </p>
           )}
@@ -159,7 +173,7 @@ const FeaturedTools = ({
 
               {visibleUninstalledPlugins.length > 0 && (
                 <div className="mt-1 flex flex-col gap-1">
-                  {visibleUninstalledPlugins.map(plugin => (
+                  {visibleUninstalledPlugins.map((plugin) => (
                     <FeaturedToolUninstalledItem
                       key={plugin.plugin_id}
                       plugin={plugin}
@@ -181,25 +195,24 @@ const FeaturedTools = ({
               className="group mt-1 flex cursor-pointer items-center gap-x-2 rounded-lg py-1 pr-2 pl-3 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
               onClick={() => {
                 setVisibleCount((count) => {
-                  if (count >= maxAvailable)
-                    return INITIAL_VISIBLE_COUNT
+                  if (count >= maxAvailable) return INITIAL_VISIBLE_COUNT
 
                   return Math.min(count + INITIAL_VISIBLE_COUNT, maxAvailable)
                 })
               }}
             >
               <div className="flex items-center px-1 text-text-tertiary transition-colors group-hover:text-text-secondary">
-                <RiMoreLine className="size-4 group-hover:hidden" />
-                {isExpanded
-                  ? (
-                      <ArrowUpDoubleLine className="hidden size-4 group-hover:block" />
-                    )
-                  : (
-                      <ArrowDownDoubleLine className="hidden size-4 group-hover:block" />
-                    )}
+                <span className="i-ri-more-line size-4 group-hover:hidden" />
+                {isExpanded ? (
+                  <span className="i-custom-vender-solid-arrows-arrow-up-double-line hidden size-4 group-hover:block" />
+                ) : (
+                  <span className="i-custom-vender-solid-arrows-arrow-down-double-line hidden size-4 group-hover:block" />
+                )}
               </div>
               <div className="system-xs-regular">
-                {t(isExpanded ? 'tabs.showLessFeatured' : 'tabs.showMoreFeatured', { ns: 'workflow' })}
+                {t(($) => $[isExpanded ? 'tabs.showLessFeatured' : 'tabs.showMoreFeatured'], {
+                  ns: 'workflow',
+                })}
               </div>
             </div>
           )}
@@ -231,13 +244,16 @@ function FeaturedToolUninstalledItem({
 }: FeaturedToolUninstalledItemProps) {
   const label = plugin.label?.[language] || plugin.name
   const description = typeof plugin.brief === 'object' ? plugin.brief[language] : plugin.brief
-  const installCountLabel = t('install', { ns: 'plugin', num: formatNumber(plugin.install_count || 0) })
+  const installCountLabel = t(($) => $.install, {
+    ns: 'plugin',
+    num: formatNumber(plugin.install_count || 0),
+  })
   const [actionOpen, setActionOpen] = useState(false)
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false)
+  const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
 
   useEffect(() => {
-    if (!actionOpen)
-      return
+    if (!actionOpen) return
 
     const handleScroll = () => {
       setActionOpen(false)
@@ -251,9 +267,7 @@ function FeaturedToolUninstalledItem({
   }, [actionOpen])
 
   const row = (
-    <div
-      className="group flex h-8 w-full items-center rounded-lg pr-1 pl-3 hover:bg-state-base-hover"
-    >
+    <div className="group flex h-8 w-full items-center rounded-lg pr-1 pl-3 hover:bg-state-base-hover">
       <div className="flex h-full min-w-0 items-center">
         <BlockIcon type={BlockEnum.Tool} toolIcon={plugin.icon} />
         <div className="ml-2 min-w-0">
@@ -261,20 +275,26 @@ function FeaturedToolUninstalledItem({
         </div>
       </div>
       <div className="ml-auto flex h-full items-center gap-1 pl-1">
-        <span className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}>{installCountLabel}</span>
+        <span
+          className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}
+        >
+          {installCountLabel}
+        </span>
         <div
           className={`flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text [&_.action-btn]:size-6 [&_.action-btn]:min-h-0 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
         >
-          <button
-            type="button"
-            className="cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover"
-            onClick={() => {
-              setActionOpen(false)
-              setIsInstallModalOpen(true)
-            }}
-          >
-            {t('installAction', { ns: 'plugin' })}
-          </button>
+          {canInstallPlugin && (
+            <button
+              type="button"
+              className="cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover"
+              onClick={() => {
+                setActionOpen(false)
+                setIsInstallModalOpen(true)
+              }}
+            >
+              {t(($) => $.installAction, { ns: 'plugin' })}
+            </button>
+          )}
           <Action
             open={actionOpen}
             onOpenChange={setActionOpen}
@@ -289,32 +309,37 @@ function FeaturedToolUninstalledItem({
 
   return (
     <>
-      {description
-        ? (
-            // Preview is supplementary: icon / label / brief are all reachable from
-            // the InstallFromMarketplace modal that opens on click, so hover/focus-only
-            // activation is a11y-safe. See packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
-            <PreviewCardTrigger
-              delay={150}
-              closeDelay={150}
-              handle={previewCardHandle}
-              payload={{ plugin, label, description }}
-              render={row}
-            />
-          )
-        : row}
-      {isInstallModalOpen && (
-        <InstallFromMarketplace
-          uniqueIdentifier={plugin.latest_package_identifier}
-          manifest={plugin}
-          onSuccess={async () => {
-            setIsInstallModalOpen(false)
-            await onInstallSuccess?.()
-          }}
-          onClose={() => {
-            setIsInstallModalOpen(false)
-          }}
+      {description ? (
+        // Preview is supplementary: icon / label / brief are all reachable from
+        // the InstallFromMarketplace modal that opens on click, so hover/focus-only
+        // activation is a11y-safe. See packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
+        <PreviewCardTrigger
+          delay={150}
+          closeDelay={150}
+          handle={previewCardHandle}
+          payload={{ plugin, label, description }}
+          render={row}
         />
+      ) : (
+        row
+      )}
+      {isInstallModalOpen && canInstallPlugin && (
+        <PluginInstallPermissionProvider
+          canInstallPlugin={canInstallPlugin}
+          currentDifyVersion={currentDifyVersion}
+        >
+          <InstallFromMarketplace
+            uniqueIdentifier={plugin.latest_package_identifier}
+            manifest={plugin}
+            onSuccess={async () => {
+              setIsInstallModalOpen(false)
+              await onInstallSuccess?.()
+            }}
+            onClose={() => {
+              setIsInstallModalOpen(false)
+            }}
+          />
+        </PluginInstallPermissionProvider>
       )}
     </>
   )
@@ -324,18 +349,22 @@ type FeaturedToolPreviewCardProps = {
   payload?: FeaturedToolPreviewPayload
 }
 
-function FeaturedToolPreviewCard({
-  payload,
-}: FeaturedToolPreviewCardProps) {
-  if (!payload)
-    return null
+function FeaturedToolPreviewCard({ payload }: FeaturedToolPreviewCardProps) {
+  if (!payload) return null
 
   return (
     <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
       <div>
-        <BlockIcon size="md" className="mb-2" type={BlockEnum.Tool} toolIcon={payload.plugin.icon} />
+        <BlockIcon
+          size="md"
+          className="mb-2"
+          type={BlockEnum.Tool}
+          toolIcon={payload.plugin.icon}
+        />
         <div className="mb-1 text-sm/5 text-text-primary">{payload.label}</div>
-        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">{payload.description}</div>
+        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
+          {payload.description}
+        </div>
       </div>
     </PreviewCardContent>
   )

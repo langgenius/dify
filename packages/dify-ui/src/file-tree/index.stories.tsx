@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { FileTreeIconType } from '.'
 import * as React from 'react'
+import { expect } from 'storybook/test'
 import {
+  FileTree,
   FileTreeBadge,
   FileTreeFile,
   FileTreeFolder,
@@ -11,12 +13,11 @@ import {
   FileTreeLabel,
   FileTreeList,
   FileTreeMeta,
-  FileTreeRoot,
 } from '.'
 
 const meta = {
   title: 'Base/UI/FileTree',
-  component: FileTreeRoot,
+  component: FileTree,
   parameters: {
     layout: 'centered',
     docs: {
@@ -27,7 +28,7 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof FileTreeRoot>
+} satisfies Meta<typeof FileTree>
 
 export default meta
 type Story = StoryObj<typeof meta>
@@ -85,7 +86,10 @@ function FileTreeNodeRows({
   return nodes.map((node) => {
     if (node.children?.length) {
       return (
-        <FileTreeFolder key={node.id} defaultOpen={node.id === 'app' || node.id === 'app-components'}>
+        <FileTreeFolder
+          key={node.id}
+          defaultOpen={node.id === 'app' || node.id === 'app-components'}
+        >
           <FileTreeFolderTrigger>
             <FileTreeIcon type="folder" />
             <FileTreeLabel>{node.name}</FileTreeLabel>
@@ -120,7 +124,7 @@ function ComposedFileTree() {
   const [selectedItemId, setSelectedItemId] = React.useState<string | null>('button')
 
   return (
-    <FileTreeRoot
+    <FileTree
       aria-label="Project files"
       className="w-80 rounded-lg border border-divider-subtle bg-background-default-subtle"
     >
@@ -137,49 +141,72 @@ function ComposedFileTree() {
                 <FileTreeLabel>components</FileTreeLabel>
               </FileTreeFolderTrigger>
               <FileTreeFolderPanel>
-                <FileTreeFile selected={selectedItemId === 'button'} onClick={() => setSelectedItemId('button')}>
+                <FileTreeFile
+                  selected={selectedItemId === 'button'}
+                  onClick={() => setSelectedItemId('button')}
+                >
                   <FileTreeIcon type="code" />
                   <FileTreeLabel>button.tsx</FileTreeLabel>
                 </FileTreeFile>
-                <FileTreeFile selected={selectedItemId === 'dialog'} onClick={() => setSelectedItemId('dialog')}>
+                <FileTreeFile
+                  selected={selectedItemId === 'dialog'}
+                  onClick={() => setSelectedItemId('dialog')}
+                >
                   <FileTreeIcon type="code" />
                   <FileTreeLabel>dialog.tsx</FileTreeLabel>
                 </FileTreeFile>
-                <FileTreeFile selected={selectedItemId === 'readme'} onClick={() => setSelectedItemId('readme')}>
+                <FileTreeFile
+                  selected={selectedItemId === 'readme'}
+                  onClick={() => setSelectedItemId('readme')}
+                >
                   <FileTreeIcon type="markdown" />
                   <FileTreeLabel>README.md</FileTreeLabel>
                 </FileTreeFile>
-                <FileTreeFile selected={selectedItemId === 'config'} onClick={() => setSelectedItemId('config')}>
+                <FileTreeFile
+                  selected={selectedItemId === 'config'}
+                  onClick={() => setSelectedItemId('config')}
+                >
                   <FileTreeIcon type="json" />
                   <FileTreeLabel>config.json</FileTreeLabel>
                 </FileTreeFile>
               </FileTreeFolderPanel>
             </FileTreeFolder>
-            <FileTreeFile selected={selectedItemId === 'index'} onClick={() => setSelectedItemId('index')}>
+            <FileTreeFile
+              selected={selectedItemId === 'index'}
+              onClick={() => setSelectedItemId('index')}
+            >
               <FileTreeIcon type="code" />
               <FileTreeLabel>index.ts</FileTreeLabel>
             </FileTreeFile>
           </FileTreeFolderPanel>
         </FileTreeFolder>
-        <FileTreeFile selected={selectedItemId === 'hero'} onClick={() => setSelectedItemId('hero')}>
+        <FileTreeFile
+          selected={selectedItemId === 'hero'}
+          onClick={() => setSelectedItemId('hero')}
+        >
           <FileTreeIcon type="image" />
           <FileTreeLabel>hero.png</FileTreeLabel>
         </FileTreeFile>
-        <FileTreeFile selected={selectedItemId === 'license'} onClick={() => setSelectedItemId('license')}>
+        <FileTreeFile
+          selected={selectedItemId === 'license'}
+          onClick={() => setSelectedItemId('license')}
+        >
           <FileTreeIcon type="text" />
           <FileTreeLabel>LICENSE</FileTreeLabel>
           <FileTreeMeta>root</FileTreeMeta>
         </FileTreeFile>
       </FileTreeList>
-    </FileTreeRoot>
+    </FileTree>
   )
 }
 
 function DataDrivenFileTree() {
-  const [selectedItemId, setSelectedItemId] = React.useState<string | null>('app-components-file-tree')
+  const [selectedItemId, setSelectedItemId] = React.useState<string | null>(
+    'app-components-file-tree',
+  )
 
   return (
-    <FileTreeRoot
+    <FileTree
       aria-label="Data-driven project files"
       className="w-80 rounded-lg border border-divider-subtle bg-background-default-subtle"
     >
@@ -190,7 +217,7 @@ function DataDrivenFileTree() {
           onPreview={setSelectedItemId}
         />
       </FileTreeList>
-    </FileTreeRoot>
+    </FileTree>
   )
 }
 
@@ -210,46 +237,42 @@ function IconGallery() {
   ] as const
 
   return (
-    <FileTreeRoot aria-label="File icon examples" className="w-64 rounded-lg border border-divider-subtle bg-background-default-subtle">
+    <FileTree
+      aria-label="File icon examples"
+      className="w-64 rounded-lg border border-divider-subtle bg-background-default-subtle"
+    >
       <FileTreeList>
-        {iconTypes.map(type => (
-          type === 'folder'
-            ? (
-                <FileTreeFolder key={type}>
-                  <FileTreeFolderTrigger>
-                    <FileTreeIcon type={type} />
-                    <FileTreeLabel>{type}</FileTreeLabel>
-                  </FileTreeFolderTrigger>
-                  <FileTreeFolderPanel />
-                </FileTreeFolder>
-              )
-            : (
-                <FileTreeFile key={type}>
-                  <FileTreeIcon type={type} />
-                  <FileTreeLabel>{type}</FileTreeLabel>
-                </FileTreeFile>
-              )
-        ))}
+        {iconTypes.map((type) =>
+          type === 'folder' ? (
+            <FileTreeFolder key={type}>
+              <FileTreeFolderTrigger>
+                <FileTreeIcon type={type} />
+                <FileTreeLabel>{type}</FileTreeLabel>
+              </FileTreeFolderTrigger>
+              <FileTreeFolderPanel />
+            </FileTreeFolder>
+          ) : (
+            <FileTreeFile key={type}>
+              <FileTreeIcon type={type} />
+              <FileTreeLabel>{type}</FileTreeLabel>
+            </FileTreeFile>
+          ),
+        )}
       </FileTreeList>
-    </FileTreeRoot>
+    </FileTree>
   )
 }
 
-function StateFrame({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
+function StateFrame({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="w-80 min-w-0 space-y-1">
       <div className="system-xs-medium-uppercase text-text-tertiary">{label}</div>
-      <FileTreeRoot aria-label={label} className="rounded-lg border border-divider-subtle bg-background-default-subtle">
-        <FileTreeList>
-          {children}
-        </FileTreeList>
-      </FileTreeRoot>
+      <FileTree
+        aria-label={label}
+        className="rounded-lg border border-divider-subtle bg-background-default-subtle"
+      >
+        <FileTreeList>{children}</FileTreeList>
+      </FileTree>
     </div>
   )
 }
@@ -320,7 +343,9 @@ function VisualStates() {
       <StateFrame label="Long label">
         <FileTreeFile selected>
           <FileTreeIcon type="text" />
-          <FileTreeLabel>very-long-file-name-that-should-truncate-without-shifting-layout.txt</FileTreeLabel>
+          <FileTreeLabel>
+            very-long-file-name-that-should-truncate-without-shifting-layout.txt
+          </FileTreeLabel>
           <FileTreeMeta>preview</FileTreeMeta>
         </FileTreeFile>
       </StateFrame>
@@ -330,6 +355,19 @@ function VisualStates() {
 
 export const Default: Story = {
   render: () => <ComposedFileTree />,
+  play: async ({ canvas, userEvent }) => {
+    const srcFolder = canvas.getByRole('button', { name: 'src' })
+
+    await expect(canvas.getByRole('button', { name: 'components' })).toBeVisible()
+
+    await userEvent.click(srcFolder)
+    await expect(srcFolder).toHaveAttribute('aria-expanded', 'false')
+    await expect(canvas.queryByRole('button', { name: 'components' })).not.toBeInTheDocument()
+
+    await userEvent.click(srcFolder)
+    await expect(srcFolder).toHaveAttribute('aria-expanded', 'true')
+    await expect(canvas.getByRole('button', { name: 'components' })).toBeVisible()
+  },
 }
 
 export const DataDriven: Story = {

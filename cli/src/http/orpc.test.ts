@@ -13,7 +13,11 @@ import { createOpenApiClient } from './orpc.js'
 // method/url, and the raw body — straight from a plain `orpc.x()` call, with no per-call wrapper.
 function orpcClient(host: string) {
   // retryAttempts: 0 so the 5xx case fails fast instead of burning the backoff budget.
-  const http = createHttpClient({ baseURL: openAPIBase(host), bearer: 'dfoa_test', retryAttempts: 0 })
+  const http = createHttpClient({
+    baseURL: openAPIBase(host),
+    bearer: 'dfoa_test',
+    retryAttempts: 0,
+  })
   return createOpenApiClient(http)
 }
 
@@ -21,8 +25,7 @@ async function catchErr(run: () => Promise<unknown>): Promise<unknown> {
   try {
     await run()
     return undefined
-  }
-  catch (err) {
+  } catch (err) {
     return err
   }
 }
@@ -35,7 +38,7 @@ describe('createOpenApiClient error mapping', () => {
   })
 
   async function classifiedError(status: number, body: unknown): Promise<HttpClientError> {
-    stub = await startStubServer(cap => jsonResponder(status, body, cap))
+    stub = await startStubServer((cap) => jsonResponder(status, body, cap))
     const orpc = orpcClient(stub.url)
     const caught = await catchErr(() => orpc.account.get())
     if (!isHttpClientError(caught))
@@ -44,10 +47,14 @@ describe('createOpenApiClient error mapping', () => {
   }
 
   it('recovers Dify message from a canonical ErrorBody 4xx response', async () => {
-    const caught = await classifiedError(403, { code: 'access_denied', message: 'no access', status: 403 })
+    const caught = await classifiedError(422, {
+      code: 'invalid_param',
+      message: 'no access',
+      status: 422,
+    })
 
     expect(caught.code).toBe(ErrorCode.Server4xxOther)
-    expect(caught.httpStatus).toBe(403)
+    expect(caught.httpStatus).toBe(422)
     expect(caught.message).toBe('no access')
     // Parity with the transport path: the migrated endpoint's error keeps the request
     // method/url and the raw body, so formatted errors still print the `request:` line
@@ -58,7 +65,11 @@ describe('createOpenApiClient error mapping', () => {
   })
 
   it('reads server message from canonical ErrorBody on 401 and keeps the auth code', async () => {
-    const caught = await classifiedError(401, { code: 'unauthorized', message: 'expired', status: 401 })
+    const caught = await classifiedError(401, {
+      code: 'unauthorized',
+      message: 'expired',
+      status: 401,
+    })
 
     expect(caught.code).toBe(ErrorCode.AuthExpired)
     expect(caught.httpStatus).toBe(401)
@@ -73,7 +84,11 @@ describe('createOpenApiClient error mapping', () => {
   })
 
   it('maps 5xx to Server5xx with message from canonical ErrorBody', async () => {
-    const caught = await classifiedError(503, { code: 'service_unavailable', message: 'down for maintenance', status: 503 })
+    const caught = await classifiedError(503, {
+      code: 'service_unavailable',
+      message: 'down for maintenance',
+      status: 503,
+    })
 
     expect(caught.code).toBe(ErrorCode.Server5xx)
     expect(caught.httpStatus).toBe(503)

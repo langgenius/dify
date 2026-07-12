@@ -2,10 +2,10 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteAppsAnnotationsByAnnotationIdPath,
   zDeleteAppsAnnotationsByAnnotationIdResponse,
+  zDeleteConversationsByCIdBody,
   zDeleteConversationsByCIdPath,
   zDeleteConversationsByCIdResponse,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath,
@@ -72,6 +72,7 @@ import {
   zGetFormHumanInputByFormTokenResponse,
   zGetInfoResponse,
   zGetMessagesByMessageIdSuggestedPath,
+  zGetMessagesByMessageIdSuggestedQuery,
   zGetMessagesByMessageIdSuggestedResponse,
   zGetMessagesQuery,
   zGetMessagesResponse,
@@ -110,12 +111,15 @@ import {
   zPostAppsAnnotationReplyByActionResponse,
   zPostAppsAnnotationsBody,
   zPostAppsAnnotationsResponse,
+  zPostAudioToTextBody,
   zPostAudioToTextResponse,
   zPostChatMessagesBody,
+  zPostChatMessagesByTaskIdStopBody,
   zPostChatMessagesByTaskIdStopPath,
   zPostChatMessagesByTaskIdStopResponse,
   zPostChatMessagesResponse,
   zPostCompletionMessagesBody,
+  zPostCompletionMessagesByTaskIdStopBody,
   zPostCompletionMessagesByTaskIdStopPath,
   zPostCompletionMessagesByTaskIdStopResponse,
   zPostCompletionMessagesResponse,
@@ -179,6 +183,7 @@ import {
   zPostDatasetsByDatasetIdRetrieveBody,
   zPostDatasetsByDatasetIdRetrievePath,
   zPostDatasetsByDatasetIdRetrieveResponse,
+  zPostDatasetsPipelineFileUploadBody,
   zPostDatasetsPipelineFileUploadResponse,
   zPostDatasetsResponse,
   zPostDatasetsTagsBindingBody,
@@ -187,6 +192,7 @@ import {
   zPostDatasetsTagsResponse,
   zPostDatasetsTagsUnbindingBody,
   zPostDatasetsTagsUnbindingResponse,
+  zPostFilesUploadBody,
   zPostFilesUploadResponse,
   zPostFormHumanInputByFormTokenBody,
   zPostFormHumanInputByFormTokenPath,
@@ -201,6 +207,7 @@ import {
   zPostWorkflowsByWorkflowIdRunResponse,
   zPostWorkflowsRunBody,
   zPostWorkflowsRunResponse,
+  zPostWorkflowsTasksByTaskIdStopBody,
   zPostWorkflowsTasksByTaskIdStopPath,
   zPostWorkflowsTasksByTaskIdStopResponse,
   zPutAppsAnnotationsByAnnotationIdBody,
@@ -226,21 +233,20 @@ export const root = {
 }
 
 /**
- * Get all feedbacks for the application
+ * List App Feedbacks
  *
- * Get all feedbacks for the application
- * Returns paginated list of all feedback submitted for messages in this app.
+ * Retrieve a paginated list of all feedback submitted for messages in this application, including both end-user and admin feedback.
  */
 export const get2 = oc
   .route({
     description:
-      'Get all feedbacks for the application\nReturns paginated list of all feedback submitted for messages in this app.',
+      'Retrieve a paginated list of all feedback submitted for messages in this application, including both end-user and admin feedback.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppFeedbacks',
     path: '/app/feedbacks',
-    summary: 'Get all feedbacks for the application',
-    tags: ['service_api'],
+    summary: 'List App Feedbacks',
+    tags: ['Feedback'],
   })
   .input(z.object({ query: zGetAppFeedbacksQuery.optional() }))
   .output(zGetAppFeedbacksResponse)
@@ -254,19 +260,20 @@ export const app = {
 }
 
 /**
- * Get the status of an annotation reply action job
+ * Get Annotation Reply Job Status
  *
- * Get the status of an annotation reply action job
+ * Retrieves the status of an asynchronous annotation reply configuration job started by [Configure Annotation Reply](/api-reference/annotations/configure-annotation-reply).
  */
 export const get3 = oc
   .route({
-    description: 'Get the status of an annotation reply action job',
+    description:
+      'Retrieves the status of an asynchronous annotation reply configuration job started by [Configure Annotation Reply](/api-reference/annotations/configure-annotation-reply).',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsAnnotationReplyByActionStatusByJobId',
     path: '/apps/annotation-reply/{action}/status/{job_id}',
-    summary: 'Get the status of an annotation reply action job',
-    tags: ['service_api'],
+    summary: 'Get Annotation Reply Job Status',
+    tags: ['Annotations'],
   })
   .input(z.object({ params: zGetAppsAnnotationReplyByActionStatusByJobIdPath }))
   .output(zGetAppsAnnotationReplyByActionStatusByJobIdResponse)
@@ -280,19 +287,20 @@ export const status = {
 }
 
 /**
- * Enable or disable annotation reply feature
+ * Configure Annotation Reply
  *
- * Enable or disable annotation reply feature
+ * Enables or disables the annotation reply feature. Requires embedding model configuration when enabling. Executes asynchronously — use [Get Annotation Reply Job Status](/api-reference/annotations/get-annotation-reply-job-status) to track progress.
  */
 export const post = oc
   .route({
-    description: 'Enable or disable annotation reply feature',
+    description:
+      'Enables or disables the annotation reply feature. Requires embedding model configuration when enabling. Executes asynchronously — use [Get Annotation Reply Job Status](/api-reference/annotations/get-annotation-reply-job-status) to track progress.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsAnnotationReplyByAction',
     path: '/apps/annotation-reply/{action}',
-    summary: 'Enable or disable annotation reply feature',
-    tags: ['service_api'],
+    summary: 'Configure Annotation Reply',
+    tags: ['Annotations'],
   })
   .input(
     z.object({
@@ -312,38 +320,38 @@ export const annotationReply = {
 }
 
 /**
- * Delete an annotation
+ * Delete Annotation
  *
- * Delete an annotation
+ * Deletes an annotation and its associated hit history.
  */
 export const delete_ = oc
   .route({
-    description: 'Delete an annotation',
+    description: 'Deletes an annotation and its associated hit history.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAppsAnnotationsByAnnotationId',
     path: '/apps/annotations/{annotation_id}',
     successStatus: 204,
-    summary: 'Delete an annotation',
-    tags: ['service_api'],
+    summary: 'Delete Annotation',
+    tags: ['Annotations'],
   })
   .input(z.object({ params: zDeleteAppsAnnotationsByAnnotationIdPath }))
   .output(zDeleteAppsAnnotationsByAnnotationIdResponse)
 
 /**
- * Update an existing annotation
+ * Update Annotation
  *
- * Update an existing annotation
+ * Updates the question and answer of an existing annotation.
  */
 export const put = oc
   .route({
-    description: 'Update an existing annotation',
+    description: 'Updates the question and answer of an existing annotation.',
     inputStructure: 'detailed',
     method: 'PUT',
     operationId: 'putAppsAnnotationsByAnnotationId',
     path: '/apps/annotations/{annotation_id}',
-    summary: 'Update an existing annotation',
-    tags: ['service_api'],
+    summary: 'Update Annotation',
+    tags: ['Annotations'],
   })
   .input(
     z.object({
@@ -359,38 +367,40 @@ export const byAnnotationId = {
 }
 
 /**
- * List annotations for the application
+ * List Annotations
  *
- * List annotations for the application
+ * Retrieves a paginated list of annotations for the application. Supports keyword search filtering.
  */
 export const get4 = oc
   .route({
-    description: 'List annotations for the application',
+    description:
+      'Retrieves a paginated list of annotations for the application. Supports keyword search filtering.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsAnnotations',
     path: '/apps/annotations',
-    summary: 'List annotations for the application',
-    tags: ['service_api'],
+    summary: 'List Annotations',
+    tags: ['Annotations'],
   })
   .input(z.object({ query: zGetAppsAnnotationsQuery.optional() }))
   .output(zGetAppsAnnotationsResponse)
 
 /**
- * Create a new annotation
+ * Create Annotation
  *
- * Create a new annotation
+ * Creates a new annotation. Annotations provide predefined question-answer pairs that the app can match and return directly instead of generating a response.
  */
 export const post2 = oc
   .route({
-    description: 'Create a new annotation',
+    description:
+      'Creates a new annotation. Annotations provide predefined question-answer pairs that the app can match and return directly instead of generating a response.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsAnnotations',
     path: '/apps/annotations',
     successStatus: 201,
-    summary: 'Create a new annotation',
-    tags: ['service_api'],
+    summary: 'Create Annotation',
+    tags: ['Annotations'],
   })
   .input(z.object({ body: zPostAppsAnnotationsBody }))
   .output(zPostAppsAnnotationsResponse)
@@ -407,22 +417,22 @@ export const apps = {
 }
 
 /**
- * Convert audio to text using speech-to-text
+ * Convert Audio to Text
  *
- * Convert audio to text using speech-to-text
- * Accepts an audio file upload and returns the transcribed text.
+ * Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.
  */
 export const post3 = oc
   .route({
     description:
-      'Convert audio to text using speech-to-text\nAccepts an audio file upload and returns the transcribed text.',
+      'Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAudioToText',
     path: '/audio-to-text',
-    summary: 'Convert audio to text using speech-to-text',
-    tags: ['service_api'],
+    summary: 'Convert Audio to Text',
+    tags: ['TTS'],
   })
+  .input(z.object({ body: zPostAudioToTextBody }))
   .output(zPostAudioToTextResponse)
 
 export const audioToText = {
@@ -430,21 +440,26 @@ export const audioToText = {
 }
 
 /**
- * Stop a running chat message generation
+ * Stop Chat Message Generation
  *
- * Stop a running chat message generation
+ * Stops a chat message generation task. Only supported in `streaming` mode.
  */
 export const post4 = oc
   .route({
-    description: 'Stop a running chat message generation',
+    description: 'Stops a chat message generation task. Only supported in `streaming` mode.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postChatMessagesByTaskIdStop',
     path: '/chat-messages/{task_id}/stop',
-    summary: 'Stop a running chat message generation',
-    tags: ['service_api'],
+    summary: 'Stop Chat Message Generation',
+    tags: ['Chatflows', 'Chats'],
   })
-  .input(z.object({ params: zPostChatMessagesByTaskIdStopPath }))
+  .input(
+    z.object({
+      body: zPostChatMessagesByTaskIdStopBody,
+      params: zPostChatMessagesByTaskIdStopPath,
+    }),
+  )
   .output(zPostChatMessagesByTaskIdStopResponse)
 
 export const stop = {
@@ -456,22 +471,19 @@ export const byTaskId = {
 }
 
 /**
- * Send a message in a chat conversation
+ * Send Chat Message
  *
- * Send a message in a chat conversation
- * This endpoint handles chat messages for chat, agent chat, and advanced chat applications.
- * Supports conversation management and both blocking and streaming response modes.
+ * Send a request to the chat application.
  */
 export const post5 = oc
   .route({
-    description:
-      'Send a message in a chat conversation\nThis endpoint handles chat messages for chat, agent chat, and advanced chat applications.\nSupports conversation management and both blocking and streaming response modes.',
+    description: 'Send a request to the chat application.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postChatMessages',
     path: '/chat-messages',
-    summary: 'Send a message in a chat conversation',
-    tags: ['service_api'],
+    summary: 'Send Chat Message',
+    tags: ['Chatflows', 'Chats'],
   })
   .input(z.object({ body: zPostChatMessagesBody }))
   .output(zPostChatMessagesResponse)
@@ -482,21 +494,26 @@ export const chatMessages = {
 }
 
 /**
- * Stop a running completion task
+ * Stop Completion Message Generation
  *
- * Stop a running completion task
+ * Stops a completion message generation task. Only supported in `streaming` mode.
  */
 export const post6 = oc
   .route({
-    description: 'Stop a running completion task',
+    description: 'Stops a completion message generation task. Only supported in `streaming` mode.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postCompletionMessagesByTaskIdStop',
     path: '/completion-messages/{task_id}/stop',
-    summary: 'Stop a running completion task',
-    tags: ['service_api'],
+    summary: 'Stop Completion Message Generation',
+    tags: ['Completions'],
   })
-  .input(z.object({ params: zPostCompletionMessagesByTaskIdStopPath }))
+  .input(
+    z.object({
+      body: zPostCompletionMessagesByTaskIdStopBody,
+      params: zPostCompletionMessagesByTaskIdStopPath,
+    }),
+  )
   .output(zPostCompletionMessagesByTaskIdStopResponse)
 
 export const stop2 = {
@@ -508,22 +525,19 @@ export const byTaskId2 = {
 }
 
 /**
- * Create a completion for the given prompt
+ * Send Completion Message
  *
- * Create a completion for the given prompt
- * This endpoint generates a completion based on the provided inputs and query.
- * Supports both blocking and streaming response modes.
+ * Send a request to the text generation application.
  */
 export const post7 = oc
   .route({
-    description:
-      'Create a completion for the given prompt\nThis endpoint generates a completion based on the provided inputs and query.\nSupports both blocking and streaming response modes.',
+    description: 'Send a request to the text generation application.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postCompletionMessages',
     path: '/completion-messages',
-    summary: 'Create a completion for the given prompt',
-    tags: ['service_api'],
+    summary: 'Send Completion Message',
+    tags: ['Completions'],
   })
   .input(z.object({ body: zPostCompletionMessagesBody }))
   .output(zPostCompletionMessagesResponse)
@@ -534,19 +548,20 @@ export const completionMessages = {
 }
 
 /**
- * Rename a conversation or auto-generate a name
+ * Rename Conversation
  *
- * Rename a conversation or auto-generate a name
+ * Rename a conversation or auto-generate a name. The conversation name is used for display on clients that support multiple conversations.
  */
 export const post8 = oc
   .route({
-    description: 'Rename a conversation or auto-generate a name',
+    description:
+      'Rename a conversation or auto-generate a name. The conversation name is used for display on clients that support multiple conversations.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postConversationsByCIdName',
     path: '/conversations/{c_id}/name',
-    summary: 'Rename a conversation or auto-generate a name',
-    tags: ['service_api'],
+    summary: 'Rename Conversation',
+    tags: ['Conversations'],
   })
   .input(
     z.object({ body: zPostConversationsByCIdNameBody, params: zPostConversationsByCIdNamePath }),
@@ -558,22 +573,20 @@ export const name = {
 }
 
 /**
- * Update a conversation variable's value
+ * Update Conversation Variable
  *
- * Update a conversation variable's value
- * Allows updating the value of a specific conversation variable.
- * The value must match the variable's expected type.
+ * Update the value of a specific conversation variable. The value must match the expected type.
  */
 export const put2 = oc
   .route({
     description:
-      'Update a conversation variable\'s value\nAllows updating the value of a specific conversation variable.\nThe value must match the variable\'s expected type.',
+      'Update the value of a specific conversation variable. The value must match the expected type.',
     inputStructure: 'detailed',
     method: 'PUT',
     operationId: 'putConversationsByCIdVariablesByVariableId',
     path: '/conversations/{c_id}/variables/{variable_id}',
-    summary: 'Update a conversation variable\'s value',
-    tags: ['service_api'],
+    summary: 'Update Conversation Variable',
+    tags: ['Conversations'],
   })
   .input(
     z.object({
@@ -588,21 +601,19 @@ export const byVariableId = {
 }
 
 /**
- * List all variables for a conversation
+ * List Conversation Variables
  *
- * List all variables for a conversation
- * Conversational variables are only available for chat applications.
+ * Retrieve variables from a specific conversation.
  */
 export const get5 = oc
   .route({
-    description:
-      'List all variables for a conversation\nConversational variables are only available for chat applications.',
+    description: 'Retrieve variables from a specific conversation.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getConversationsByCIdVariables',
     path: '/conversations/{c_id}/variables',
-    summary: 'List all variables for a conversation',
-    tags: ['service_api'],
+    summary: 'List Conversation Variables',
+    tags: ['Conversations'],
   })
   .input(
     z.object({
@@ -618,22 +629,22 @@ export const variables = {
 }
 
 /**
- * Delete a specific conversation
+ * Delete Conversation
  *
- * Delete a specific conversation
+ * Delete a conversation.
  */
 export const delete2 = oc
   .route({
-    description: 'Delete a specific conversation',
+    description: 'Delete a conversation.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteConversationsByCId',
     path: '/conversations/{c_id}',
     successStatus: 204,
-    summary: 'Delete a specific conversation',
-    tags: ['service_api'],
+    summary: 'Delete Conversation',
+    tags: ['Conversations'],
   })
-  .input(z.object({ params: zDeleteConversationsByCIdPath }))
+  .input(z.object({ body: zDeleteConversationsByCIdBody, params: zDeleteConversationsByCIdPath }))
   .output(zDeleteConversationsByCIdResponse)
 
 export const byCId = {
@@ -643,21 +654,20 @@ export const byCId = {
 }
 
 /**
- * List all conversations for the current user
+ * List Conversations
  *
- * List all conversations for the current user
- * Supports pagination using last_id and limit parameters.
+ * Retrieve the conversation list for the current user, ordered by most recently active.
  */
 export const get6 = oc
   .route({
     description:
-      'List all conversations for the current user\nSupports pagination using last_id and limit parameters.',
+      'Retrieve the conversation list for the current user, ordered by most recently active.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getConversations',
     path: '/conversations',
-    summary: 'List all conversations for the current user',
-    tags: ['service_api'],
+    summary: 'List Conversations',
+    tags: ['Conversations'],
   })
   .input(z.object({ query: zGetConversationsQuery.optional() }))
   .output(zGetConversationsResponse)
@@ -668,23 +678,23 @@ export const conversations = {
 }
 
 /**
- * Upload a file for use in conversations
+ * Upload Pipeline File
  *
- * Upload a file to a knowledgebase pipeline
- * Accepts a single file upload via multipart/form-data.
+ * Upload a file for use in a knowledge pipeline. Accepts a single file via `multipart/form-data`.
  */
 export const post9 = oc
   .route({
     description:
-      'Upload a file to a knowledgebase pipeline\nAccepts a single file upload via multipart/form-data.',
+      'Upload a file for use in a knowledge pipeline. Accepts a single file via `multipart/form-data`.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsPipelineFileUpload',
     path: '/datasets/pipeline/file-upload',
     successStatus: 201,
-    summary: 'Upload a file for use in conversations',
-    tags: ['service_api'],
+    summary: 'Upload Pipeline File',
+    tags: ['Knowledge Pipeline'],
   })
+  .input(z.object({ body: zPostDatasetsPipelineFileUploadBody }))
   .output(zPostDatasetsPipelineFileUploadResponse)
 
 export const fileUpload = {
@@ -696,17 +706,21 @@ export const pipeline = {
 }
 
 /**
- * Bind tags to a dataset
+ * Create Tag Binding
+ *
+ * Bind one or more tags to a knowledge base. A knowledge base can have multiple tags.
  */
 export const post10 = oc
   .route({
-    description: 'Bind tags to a dataset',
+    description:
+      'Bind one or more tags to a knowledge base. A knowledge base can have multiple tags.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsTagsBinding',
     path: '/datasets/tags/binding',
     successStatus: 204,
-    tags: ['service_api'],
+    summary: 'Create Tag Binding',
+    tags: ['Tags'],
   })
   .input(z.object({ body: zPostDatasetsTagsBindingBody }))
   .output(zPostDatasetsTagsBindingResponse)
@@ -716,17 +730,20 @@ export const binding = {
 }
 
 /**
- * Unbind tags from a dataset
+ * Delete Tag Binding
+ *
+ * Remove one or more tags from a knowledge base.
  */
 export const post11 = oc
   .route({
-    description: 'Unbind tags from a dataset',
+    description: 'Remove one or more tags from a knowledge base.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsTagsUnbinding',
     path: '/datasets/tags/unbinding',
     successStatus: 204,
-    tags: ['service_api'],
+    summary: 'Delete Tag Binding',
+    tags: ['Tags'],
   })
   .input(z.object({ body: zPostDatasetsTagsUnbindingBody }))
   .output(zPostDatasetsTagsUnbindingResponse)
@@ -736,70 +753,74 @@ export const unbinding = {
 }
 
 /**
- * Delete a knowledge type tag
+ * Delete Knowledge Tag
  *
- * Delete a knowledge type tag
+ * Permanently delete a knowledge base tag. Does not delete the knowledge bases that were tagged.
  */
 export const delete3 = oc
   .route({
-    description: 'Delete a knowledge type tag',
+    description:
+      'Permanently delete a knowledge base tag. Does not delete the knowledge bases that were tagged.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteDatasetsTags',
     path: '/datasets/tags',
     successStatus: 204,
-    summary: 'Delete a knowledge type tag',
-    tags: ['service_api'],
+    summary: 'Delete Knowledge Tag',
+    tags: ['Tags'],
   })
   .input(z.object({ body: zDeleteDatasetsTagsBody }))
   .output(zDeleteDatasetsTagsResponse)
 
 /**
- * Get all knowledge type tags
+ * List Knowledge Tags
  *
- * Get all knowledge type tags
+ * Returns the list of all knowledge base tags in the workspace.
  */
 export const get7 = oc
   .route({
-    description: 'Get all knowledge type tags',
+    description: 'Returns the list of all knowledge base tags in the workspace.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsTags',
     path: '/datasets/tags',
-    summary: 'Get all knowledge type tags',
-    tags: ['service_api'],
+    summary: 'List Knowledge Tags',
+    tags: ['Tags'],
   })
   .output(zGetDatasetsTagsResponse)
 
 /**
- * Update a knowledge type tag
+ * Update Knowledge Tag
+ *
+ * Rename an existing knowledge base tag.
  */
 export const patch = oc
   .route({
-    description: 'Update a knowledge type tag',
+    description: 'Rename an existing knowledge base tag.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsTags',
     path: '/datasets/tags',
-    tags: ['service_api'],
+    summary: 'Update Knowledge Tag',
+    tags: ['Tags'],
   })
   .input(z.object({ body: zPatchDatasetsTagsBody }))
   .output(zPatchDatasetsTagsResponse)
 
 /**
- * Add a knowledge type tag
+ * Create Knowledge Tag
  *
- * Add a knowledge type tag
+ * Create a new tag for organizing knowledge bases.
  */
 export const post12 = oc
   .route({
-    description: 'Add a knowledge type tag',
+    description: 'Create a new tag for organizing knowledge bases.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsTags',
     path: '/datasets/tags',
-    summary: 'Add a knowledge type tag',
-    tags: ['service_api'],
+    summary: 'Create Knowledge Tag',
+    tags: ['Tags'],
   })
   .input(z.object({ body: zPostDatasetsTagsBody }))
   .output(zPostDatasetsTagsResponse)
@@ -814,16 +835,20 @@ export const tags = {
 }
 
 /**
- * Create a new document by uploading a file
+ * Create Document by File
+ *
+ * Create a document by uploading a file. Supports common document formats (PDF, TXT, DOCX, etc.). Processing is asynchronous — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
  */
 export const post13 = oc
   .route({
-    description: 'Create a new document by uploading a file',
+    description:
+      'Create a document by uploading a file. Supports common document formats (PDF, TXT, DOCX, etc.). Processing is asynchronous — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentCreateByFile',
     path: '/datasets/{dataset_id}/document/create-by-file',
-    tags: ['service_api'],
+    summary: 'Create Document by File',
+    tags: ['Documents'],
   })
   .input(
     z.object({
@@ -834,16 +859,23 @@ export const post13 = oc
   .output(zPostDatasetsByDatasetIdDocumentCreateByFileResponse)
 
 /**
- * Create a new document by uploading a file
+ * Create Document by File
+ *
+ * Create a document by uploading a file. Supports common document formats (PDF, TXT, DOCX, etc.). Processing is asynchronous — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
+ *
+ * @deprecated
  */
 export const post14 = oc
   .route({
-    description: 'Create a new document by uploading a file',
+    deprecated: true,
+    description:
+      'Create a document by uploading a file. Supports common document formats (PDF, TXT, DOCX, etc.). Processing is asynchronous — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentCreateByFile',
     path: '/datasets/{dataset_id}/document/create_by_file',
-    tags: ['service_api'],
+    summary: 'Create Document by File',
+    tags: ['Documents'],
   })
   .input(
     z.object({
@@ -858,16 +890,20 @@ export const createByFile = {
 }
 
 /**
- * Create a new document by providing text content
+ * Create Document by Text
+ *
+ * Create a document from raw text content. The document is processed asynchronously — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
  */
 export const post15 = oc
   .route({
-    description: 'Create a new document by providing text content',
+    description:
+      'Create a document from raw text content. The document is processed asynchronously — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentCreateByText',
     path: '/datasets/{dataset_id}/document/create-by-text',
-    tags: ['service_api'],
+    summary: 'Create Document by Text',
+    tags: ['Documents'],
   })
   .input(
     z.object({
@@ -911,16 +947,20 @@ export const document_ = {
 }
 
 /**
- * Download selected uploaded documents as a single ZIP archive
+ * Download Documents as ZIP
+ *
+ * Download multiple uploaded-file documents as a single ZIP archive. Accepts up to `100` document IDs.
  */
 export const post17 = oc
   .route({
-    description: 'Download selected uploaded documents as a single ZIP archive',
+    description:
+      'Download multiple uploaded-file documents as a single ZIP archive. Accepts up to `100` document IDs.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsDownloadZip',
     path: '/datasets/{dataset_id}/documents/download-zip',
-    tags: ['service_api'],
+    summary: 'Download Documents as ZIP',
+    tags: ['Documents'],
   })
   .input(
     z.object({
@@ -935,19 +975,20 @@ export const downloadZip = {
 }
 
 /**
- * Update metadata for multiple documents
+ * Update Document Metadata in Batch
  *
- * Update metadata for multiple documents
+ * Update metadata values for multiple documents at once. Each document in the request receives the specified metadata key-value pairs.
  */
 export const post18 = oc
   .route({
-    description: 'Update metadata for multiple documents',
+    description:
+      'Update metadata values for multiple documents at once. Each document in the request receives the specified metadata key-value pairs.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsMetadata',
     path: '/datasets/{dataset_id}/documents/metadata',
-    summary: 'Update metadata for multiple documents',
-    tags: ['service_api'],
+    summary: 'Update Document Metadata in Batch',
+    tags: ['Metadata'],
   })
   .input(
     z.object({
@@ -962,33 +1003,19 @@ export const metadata = {
 }
 
 /**
- * Batch update document status
+ * Update Document Status in Batch
  *
- * Batch update document status
- * Args:
- * tenant_id: tenant id
- * dataset_id: dataset id
- * action: action to perform (Literal["enable", "disable", "archive", "un_archive"])
- *
- * Returns:
- * dict: A dictionary with a key 'result' and a value 'success'
- * int: HTTP status code 200 indicating that the operation was successful.
- *
- * Raises:
- * NotFound: If the dataset with the given ID does not exist.
- * Forbidden: If the user does not have permission.
- * InvalidActionError: If the action is invalid or cannot be performed.
+ * Enable, disable, archive, or unarchive multiple documents at once.
  */
 export const patch2 = oc
   .route({
-    description:
-      'Batch update document status\nArgs:\n    tenant_id: tenant id\n    dataset_id: dataset id\n    action: action to perform (Literal["enable", "disable", "archive", "un_archive"])\n\nReturns:\n    dict: A dictionary with a key \'result\' and a value \'success\'\n    int: HTTP status code 200 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.\n    Forbidden: If the user does not have permission.\n    InvalidActionError: If the action is invalid or cannot be performed.',
+    description: 'Enable, disable, archive, or unarchive multiple documents at once.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdDocumentsStatusByAction',
     path: '/datasets/{dataset_id}/documents/status/{action}',
-    summary: 'Batch update document status',
-    tags: ['service_api'],
+    summary: 'Update Document Status in Batch',
+    tags: ['Documents'],
   })
   .input(
     z.object({
@@ -1007,16 +1034,20 @@ export const status2 = {
 }
 
 /**
- * Get indexing status for documents in a batch
+ * Get Document Indexing Status
+ *
+ * Check the indexing progress of documents in a batch. Returns the current processing stage and chunk completion counts for each document. Poll this endpoint until `indexing_status` reaches `completed` or `error`. The status progresses through: `waiting` → `parsing` → `cleaning` → `splitting` → `indexing` → `completed`.
  */
 export const get8 = oc
   .route({
-    description: 'Get indexing status for documents in a batch',
+    description:
+      'Check the indexing progress of documents in a batch. Returns the current processing stage and chunk completion counts for each document. Poll this endpoint until `indexing_status` reaches `completed` or `error`. The status progresses through: `waiting` → `parsing` → `cleaning` → `splitting` → `indexing` → `completed`.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByBatchIndexingStatus',
     path: '/datasets/{dataset_id}/documents/{batch}/indexing-status',
-    tags: ['service_api'],
+    summary: 'Get Document Indexing Status',
+    tags: ['Documents'],
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse)
@@ -1030,16 +1061,19 @@ export const byBatch = {
 }
 
 /**
- * Get a signed download URL for a document's original uploaded file
+ * Download Document
+ *
+ * Get a signed download URL for a document's original uploaded file.
  */
 export const get9 = oc
   .route({
-    description: 'Get a signed download URL for a document\'s original uploaded file',
+    description: "Get a signed download URL for a document's original uploaded file.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdDownload',
     path: '/datasets/{dataset_id}/documents/{document_id}/download',
-    tags: ['service_api'],
+    summary: 'Download Document',
+    tags: ['Documents'],
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse)
@@ -1049,18 +1083,21 @@ export const download = {
 }
 
 /**
- * Delete a specific child chunk
+ * Delete Child Chunk
+ *
+ * Permanently delete a child chunk from its parent chunk.
  */
 export const delete4 = oc
   .route({
-    description: 'Delete a specific child chunk',
+    description: 'Permanently delete a child chunk from its parent chunk.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId:
       'deleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkId',
     path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}',
     successStatus: 204,
-    tags: ['service_api'],
+    summary: 'Delete Child Chunk',
+    tags: ['Chunks'],
   })
   .input(
     z.object({
@@ -1073,17 +1110,20 @@ export const delete4 = oc
   )
 
 /**
- * Update a specific child chunk
+ * Update Child Chunk
+ *
+ * Update the content of an existing child chunk.
  */
 export const patch3 = oc
   .route({
-    description: 'Update a specific child chunk',
+    description: 'Update the content of an existing child chunk.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId:
       'patchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkId',
     path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}',
-    tags: ['service_api'],
+    summary: 'Update Child Chunk',
+    tags: ['Chunks'],
   })
   .input(
     z.object({
@@ -1102,16 +1142,19 @@ export const byChildChunkId = {
 }
 
 /**
- * List child chunks for a segment
+ * List Child Chunks
+ *
+ * Returns a paginated list of child chunks under a specific parent chunk.
  */
 export const get10 = oc
   .route({
-    description: 'List child chunks for a segment',
+    description: 'Returns a paginated list of child chunks under a specific parent chunk.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
     path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks',
-    tags: ['service_api'],
+    summary: 'List Child Chunks',
+    tags: ['Chunks'],
   })
   .input(
     z.object({
@@ -1123,16 +1166,19 @@ export const get10 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
 
 /**
- * Create a new child chunk for a segment
+ * Create Child Chunk
+ *
+ * Create a child chunk under the specified segment.
  */
 export const post19 = oc
   .route({
-    description: 'Create a new child chunk for a segment',
+    description: 'Create a child chunk under the specified segment.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
     path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks',
-    tags: ['service_api'],
+    summary: 'Create Child Chunk',
+    tags: ['Chunks'],
   })
   .input(
     z.object({
@@ -1149,17 +1195,20 @@ export const childChunks = {
 }
 
 /**
- * Delete a specific segment
+ * Delete Chunk
+ *
+ * Permanently delete a chunk from the document.
  */
 export const delete5 = oc
   .route({
-    description: 'Delete a specific segment',
+    description: 'Permanently delete a chunk from the document.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
     path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}',
     successStatus: 204,
-    tags: ['service_api'],
+    summary: 'Delete Chunk',
+    tags: ['Chunks'],
   })
   .input(
     z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath }),
@@ -1167,31 +1216,39 @@ export const delete5 = oc
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
 
 /**
- * Get a specific segment by ID
+ * Get Chunk
+ *
+ * Retrieve detailed information about a specific chunk, including its content, keywords, and indexing status.
  */
 export const get11 = oc
   .route({
-    description: 'Get a specific segment by ID',
+    description:
+      'Retrieve detailed information about a specific chunk, including its content, keywords, and indexing status.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
     path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}',
-    tags: ['service_api'],
+    summary: 'Get Chunk',
+    tags: ['Chunks'],
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
 
 /**
- * Update a specific segment
+ * Update Chunk
+ *
+ * Update a chunk's content, keywords, or answer. Re-triggers indexing for the modified chunk.
  */
 export const post20 = oc
   .route({
-    description: 'Update a specific segment',
+    description:
+      "Update a chunk's content, keywords, or answer. Re-triggers indexing for the modified chunk.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
     path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}',
-    tags: ['service_api'],
+    summary: 'Update Chunk',
+    tags: ['Chunks'],
   })
   .input(
     z.object({
@@ -1209,16 +1266,20 @@ export const bySegmentId = {
 }
 
 /**
- * List segments in a document
+ * List Chunks
+ *
+ * Returns a paginated list of chunks within a document. Supports filtering by keyword and status.
  */
 export const get12 = oc
   .route({
-    description: 'List segments in a document',
+    description:
+      'Returns a paginated list of chunks within a document. Supports filtering by keyword and status.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegments',
     path: '/datasets/{dataset_id}/documents/{document_id}/segments',
-    tags: ['service_api'],
+    summary: 'List Chunks',
+    tags: ['Chunks'],
   })
   .input(
     z.object({
@@ -1229,16 +1290,20 @@ export const get12 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
 
 /**
- * Create segments in a document
+ * Create Chunks
+ *
+ * Create one or more chunks within a document. Each chunk can include optional keywords and an answer field (for QA-mode documents).
  */
 export const post21 = oc
   .route({
-    description: 'Create segments in a document',
+    description:
+      'Create one or more chunks within a document. Each chunk can include optional keywords and an answer field (for QA-mode documents).',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegments',
     path: '/datasets/{dataset_id}/documents/{document_id}/segments',
-    tags: ['service_api'],
+    summary: 'Create Chunks',
+    tags: ['Chunks'],
   })
   .input(
     z.object({
@@ -1255,7 +1320,9 @@ export const segments = {
 }
 
 /**
- * Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.
+ * Update Document by File
+ *
+ * Update an existing document by uploading a new file. Re-triggers indexing — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
  *
  * @deprecated
  */
@@ -1263,12 +1330,13 @@ export const post22 = oc
   .route({
     deprecated: true,
     description:
-      'Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.',
+      'Update an existing document by uploading a new file. Re-triggers indexing — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile',
     path: '/datasets/{dataset_id}/documents/{document_id}/update-by-file',
-    tags: ['service_api'],
+    summary: 'Update Document by File',
+    tags: ['Documents'],
   })
   .input(
     z.object({
@@ -1279,7 +1347,9 @@ export const post22 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse)
 
 /**
- * Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.
+ * Update Document by File
+ *
+ * Update an existing document by uploading a new file. Re-triggers indexing — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
  *
  * @deprecated
  */
@@ -1287,12 +1357,13 @@ export const post23 = oc
   .route({
     deprecated: true,
     description:
-      'Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.',
+      'Update an existing document by uploading a new file. Re-triggers indexing — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile',
     path: '/datasets/{dataset_id}/documents/{document_id}/update_by_file',
-    tags: ['service_api'],
+    summary: 'Update Document by File',
+    tags: ['Documents'],
   })
   .input(
     z.object({
@@ -1307,16 +1378,20 @@ export const updateByFile = {
 }
 
 /**
- * Update an existing document by providing text content
+ * Update Document by Text
+ *
+ * Update an existing document's text content, name, or processing configuration. Re-triggers indexing if content changes — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
  */
 export const post24 = oc
   .route({
-    description: 'Update an existing document by providing text content',
+    description:
+      "Update an existing document's text content, name, or processing configuration. Re-triggers indexing if content changes — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',
     path: '/datasets/{dataset_id}/documents/{document_id}/update-by-text',
-    tags: ['service_api'],
+    summary: 'Update Document by Text',
+    tags: ['Documents'],
   })
   .input(
     z.object({
@@ -1355,35 +1430,39 @@ export const updateByText = {
 }
 
 /**
- * Delete document
+ * Delete Document
  *
- * Delete a document
+ * Permanently delete a document and all its chunks from the knowledge base.
  */
 export const delete6 = oc
   .route({
-    description: 'Delete a document',
+    description: 'Permanently delete a document and all its chunks from the knowledge base.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentId',
     path: '/datasets/{dataset_id}/documents/{document_id}',
     successStatus: 204,
-    summary: 'Delete document',
-    tags: ['service_api'],
+    summary: 'Delete Document',
+    tags: ['Documents'],
   })
   .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath }))
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 /**
- * Get a specific document by ID
+ * Get Document
+ *
+ * Retrieve detailed information about a specific document, including its indexing status, metadata, and processing statistics.
  */
 export const get13 = oc
   .route({
-    description: 'Get a specific document by ID',
+    description:
+      'Retrieve detailed information about a specific document, including its indexing status, metadata, and processing statistics.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentId',
     path: '/datasets/{dataset_id}/documents/{document_id}',
-    tags: ['service_api'],
+    summary: 'Get Document',
+    tags: ['Documents'],
   })
   .input(
     z.object({
@@ -1394,16 +1473,20 @@ export const get13 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 /**
- * Update an existing document by uploading a file
+ * Update Document by File
+ *
+ * Update an existing document by uploading a new file. Re-triggers indexing — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
  */
 export const patch4 = oc
   .route({
-    description: 'Update an existing document by uploading a file',
+    description:
+      'Update an existing document by uploading a new file. Re-triggers indexing — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentId',
     path: '/datasets/{dataset_id}/documents/{document_id}',
-    tags: ['service_api'],
+    summary: 'Update Document by File',
+    tags: ['Documents'],
   })
   .input(
     z.object({
@@ -1424,16 +1507,20 @@ export const byDocumentId = {
 }
 
 /**
- * List all documents in a dataset
+ * List Documents
+ *
+ * Returns a paginated list of documents in the knowledge base. Supports filtering by keyword and indexing status.
  */
 export const get14 = oc
   .route({
-    description: 'List all documents in a dataset',
+    description:
+      'Returns a paginated list of documents in the knowledge base. Supports filtering by keyword and indexing status.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocuments',
     path: '/datasets/{dataset_id}/documents',
-    tags: ['service_api'],
+    summary: 'List Documents',
+    tags: ['Documents'],
   })
   .input(
     z.object({
@@ -1453,21 +1540,20 @@ export const documents = {
 }
 
 /**
- * Perform hit testing on a dataset
+ * Retrieve Chunks from a Knowledge Base / Test Retrieval
  *
- * Perform hit testing on a dataset
- * Tests retrieval performance for the specified dataset.
+ * Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.
  */
 export const post26 = oc
   .route({
     description:
-      'Perform hit testing on a dataset\nTests retrieval performance for the specified dataset.',
+      'Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdHitTesting',
     path: '/datasets/{dataset_id}/hit-testing',
-    summary: 'Perform hit testing on a dataset',
-    tags: ['service_api'],
+    summary: 'Retrieve Chunks from a Knowledge Base / Test Retrieval',
+    tags: ['Knowledge Bases'],
   })
   .input(
     z.object({
@@ -1482,19 +1568,19 @@ export const hitTesting = {
 }
 
 /**
- * Enable or disable built-in metadata field
+ * Update Built-in Metadata Field
  *
- * Enable or disable built-in metadata field
+ * Enable or disable built-in metadata fields for the knowledge base.
  */
 export const post27 = oc
   .route({
-    description: 'Enable or disable built-in metadata field',
+    description: 'Enable or disable built-in metadata fields for the knowledge base.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdMetadataBuiltInByAction',
     path: '/datasets/{dataset_id}/metadata/built-in/{action}',
-    summary: 'Enable or disable built-in metadata field',
-    tags: ['service_api'],
+    summary: 'Update Built-in Metadata Field',
+    tags: ['Metadata'],
   })
   .input(z.object({ params: zPostDatasetsByDatasetIdMetadataBuiltInByActionPath }))
   .output(zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse)
@@ -1504,19 +1590,20 @@ export const byAction3 = {
 }
 
 /**
- * Get all built-in metadata fields
+ * Get Built-in Metadata Fields
  *
- * Get all built-in metadata fields
+ * Returns the list of built-in metadata fields provided by the system (e.g., document type, source URL).
  */
 export const get15 = oc
   .route({
-    description: 'Get all built-in metadata fields',
+    description:
+      'Returns the list of built-in metadata fields provided by the system (e.g., document type, source URL).',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdMetadataBuiltIn',
     path: '/datasets/{dataset_id}/metadata/built-in',
-    summary: 'Get all built-in metadata fields',
-    tags: ['service_api'],
+    summary: 'Get Built-in Metadata Fields',
+    tags: ['Metadata'],
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdMetadataBuiltInPath }))
   .output(zGetDatasetsByDatasetIdMetadataBuiltInResponse)
@@ -1527,38 +1614,39 @@ export const builtIn = {
 }
 
 /**
- * Delete metadata
+ * Delete Metadata Field
  *
- * Delete metadata
+ * Permanently delete a custom metadata field. Documents using this field will lose their metadata values for it.
  */
 export const delete7 = oc
   .route({
-    description: 'Delete metadata',
+    description:
+      'Permanently delete a custom metadata field. Documents using this field will lose their metadata values for it.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteDatasetsByDatasetIdMetadataByMetadataId',
     path: '/datasets/{dataset_id}/metadata/{metadata_id}',
     successStatus: 204,
-    summary: 'Delete metadata',
-    tags: ['service_api'],
+    summary: 'Delete Metadata Field',
+    tags: ['Metadata'],
   })
   .input(z.object({ params: zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath }))
   .output(zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse)
 
 /**
- * Update metadata name
+ * Update Metadata Field
  *
- * Update metadata name
+ * Rename a custom metadata field.
  */
 export const patch5 = oc
   .route({
-    description: 'Update metadata name',
+    description: 'Rename a custom metadata field.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetIdMetadataByMetadataId',
     path: '/datasets/{dataset_id}/metadata/{metadata_id}',
-    summary: 'Update metadata name',
-    tags: ['service_api'],
+    summary: 'Update Metadata Field',
+    tags: ['Metadata'],
   })
   .input(
     z.object({
@@ -1574,38 +1662,40 @@ export const byMetadataId = {
 }
 
 /**
- * Get all metadata for a dataset
+ * List Metadata Fields
  *
- * Get all metadata for a dataset
+ * Returns the list of all metadata fields (both custom and built-in) for the knowledge base, along with the count of documents using each field.
  */
 export const get16 = oc
   .route({
-    description: 'Get all metadata for a dataset',
+    description:
+      'Returns the list of all metadata fields (both custom and built-in) for the knowledge base, along with the count of documents using each field.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdMetadata',
     path: '/datasets/{dataset_id}/metadata',
-    summary: 'Get all metadata for a dataset',
-    tags: ['service_api'],
+    summary: 'List Metadata Fields',
+    tags: ['Metadata'],
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdMetadataPath }))
   .output(zGetDatasetsByDatasetIdMetadataResponse)
 
 /**
- * Create metadata for a dataset
+ * Create Metadata Field
  *
- * Create metadata for a dataset
+ * Create a custom metadata field for the knowledge base. Metadata fields can be used to annotate documents with structured information.
  */
 export const post28 = oc
   .route({
-    description: 'Create metadata for a dataset',
+    description:
+      'Create a custom metadata field for the knowledge base. Metadata fields can be used to annotate documents with structured information.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdMetadata',
     path: '/datasets/{dataset_id}/metadata',
     successStatus: 201,
-    summary: 'Create metadata for a dataset',
-    tags: ['service_api'],
+    summary: 'Create Metadata Field',
+    tags: ['Metadata'],
   })
   .input(
     z.object({
@@ -1623,19 +1713,20 @@ export const metadata2 = {
 }
 
 /**
- * Resource for getting datasource plugins
+ * List Datasource Plugins
  *
- * List all datasource plugins for a rag pipeline
+ * List the datasource nodes configured in the knowledge pipeline. Each node includes the plugin it uses plus the metadata needed to run it.
  */
 export const get17 = oc
   .route({
-    description: 'List all datasource plugins for a rag pipeline',
+    description:
+      'List the datasource nodes configured in the knowledge pipeline. Each node includes the plugin it uses plus the metadata needed to run it.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdPipelineDatasourcePlugins',
     path: '/datasets/{dataset_id}/pipeline/datasource-plugins',
-    summary: 'Resource for getting datasource plugins',
-    tags: ['service_api'],
+    summary: 'List Datasource Plugins',
+    tags: ['Knowledge Pipeline'],
   })
   .input(
     z.object({
@@ -1650,19 +1741,20 @@ export const datasourcePlugins = {
 }
 
 /**
- * Resource for getting datasource plugins
+ * Run Datasource Node
  *
- * Run a datasource node for a rag pipeline
+ * Execute a single datasource node within the knowledge pipeline. Returns a streaming response with the node execution results.
  */
 export const post29 = oc
   .route({
-    description: 'Run a datasource node for a rag pipeline',
+    description:
+      'Execute a single datasource node within the knowledge pipeline. Returns a streaming response with the node execution results.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRun',
     path: '/datasets/{dataset_id}/pipeline/datasource/nodes/{node_id}/run',
-    summary: 'Resource for getting datasource plugins',
-    tags: ['service_api'],
+    summary: 'Run Datasource Node',
+    tags: ['Knowledge Pipeline'],
   })
   .input(
     z.object({
@@ -1689,19 +1781,20 @@ export const datasource = {
 }
 
 /**
- * Resource for running a rag pipeline
+ * Run Pipeline
  *
- * Run a datasource node for a rag pipeline
+ * Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response modes.
  */
 export const post30 = oc
   .route({
-    description: 'Run a datasource node for a rag pipeline',
+    description:
+      'Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response modes.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdPipelineRun',
     path: '/datasets/{dataset_id}/pipeline/run',
-    summary: 'Resource for running a rag pipeline',
-    tags: ['service_api'],
+    summary: 'Run Pipeline',
+    tags: ['Knowledge Pipeline'],
   })
   .input(
     z.object({
@@ -1722,21 +1815,20 @@ export const pipeline2 = {
 }
 
 /**
- * Perform hit testing on a dataset
+ * Retrieve Chunks from a Knowledge Base / Test Retrieval
  *
- * Perform hit testing on a dataset
- * Tests retrieval performance for the specified dataset.
+ * Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.
  */
 export const post31 = oc
   .route({
     description:
-      'Perform hit testing on a dataset\nTests retrieval performance for the specified dataset.',
+      'Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdRetrieve',
     path: '/datasets/{dataset_id}/retrieve',
-    summary: 'Perform hit testing on a dataset',
-    tags: ['service_api'],
+    summary: 'Retrieve Chunks from a Knowledge Base / Test Retrieval',
+    tags: ['Knowledge Bases'],
   })
   .input(
     z.object({
@@ -1751,19 +1843,19 @@ export const retrieve = {
 }
 
 /**
- * Get all knowledge type tags
+ * Get Knowledge Base Tags
  *
- * Get tags bound to a specific dataset
+ * Returns the list of tags bound to a specific knowledge base.
  */
 export const get18 = oc
   .route({
-    description: 'Get tags bound to a specific dataset',
+    description: 'Returns the list of tags bound to a specific knowledge base.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdTags',
     path: '/datasets/{dataset_id}/tags',
-    summary: 'Get all knowledge type tags',
-    tags: ['service_api'],
+    summary: 'Get Knowledge Base Tags',
+    tags: ['Tags'],
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdTagsPath }))
   .output(zGetDatasetsByDatasetIdTagsResponse)
@@ -1773,62 +1865,59 @@ export const tags2 = {
 }
 
 /**
- * Deletes a dataset given its ID
+ * Delete Knowledge Base
  *
- * Delete a dataset
- * Args:
- * _: ignore
- * dataset_id (UUID): The ID of the dataset to be deleted.
- *
- * Returns:
- * dict: A dictionary with a key 'result' and a value 'success'
- * if the dataset was successfully deleted. Omitted in HTTP response.
- * int: HTTP status code 204 indicating that the operation was successful.
- *
- * Raises:
- * NotFound: If the dataset with the given ID does not exist.
+ * Permanently delete a knowledge base and all its documents. The knowledge base must not be in use by any application.
  */
 export const delete8 = oc
   .route({
     description:
-      'Delete a dataset\nArgs:\n    _: ignore\n    dataset_id (UUID): The ID of the dataset to be deleted.\n\nReturns:\n    dict: A dictionary with a key \'result\' and a value \'success\'\n          if the dataset was successfully deleted. Omitted in HTTP response.\n    int: HTTP status code 204 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.',
+      'Permanently delete a knowledge base and all its documents. The knowledge base must not be in use by any application.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteDatasetsByDatasetId',
     path: '/datasets/{dataset_id}',
     successStatus: 204,
-    summary: 'Deletes a dataset given its ID',
-    tags: ['service_api'],
+    summary: 'Delete Knowledge Base',
+    tags: ['Knowledge Bases'],
   })
   .input(z.object({ params: zDeleteDatasetsByDatasetIdPath }))
   .output(zDeleteDatasetsByDatasetIdResponse)
 
 /**
- * Get a specific dataset by ID
+ * Get Knowledge Base
+ *
+ * Retrieve detailed information about a specific knowledge base, including its embedding model, retrieval configuration, and document statistics.
  */
 export const get19 = oc
   .route({
-    description: 'Get a specific dataset by ID',
+    description:
+      'Retrieve detailed information about a specific knowledge base, including its embedding model, retrieval configuration, and document statistics.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetId',
     path: '/datasets/{dataset_id}',
-    tags: ['service_api'],
+    summary: 'Get Knowledge Base',
+    tags: ['Knowledge Bases'],
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdPath }))
   .output(zGetDatasetsByDatasetIdResponse)
 
 /**
- * Update an existing dataset
+ * Update Knowledge Base
+ *
+ * Update the name, description, permissions, or retrieval settings of an existing knowledge base. Only the fields provided in the request body are updated.
  */
 export const patch6 = oc
   .route({
-    description: 'Update an existing dataset',
+    description:
+      'Update the name, description, permissions, or retrieval settings of an existing knowledge base. Only the fields provided in the request body are updated.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsByDatasetId',
     path: '/datasets/{dataset_id}',
-    tags: ['service_api'],
+    summary: 'Update Knowledge Base',
+    tags: ['Knowledge Bases'],
   })
   .input(z.object({ body: zPatchDatasetsByDatasetIdBody, params: zPatchDatasetsByDatasetIdPath }))
   .output(zPatchDatasetsByDatasetIdResponse)
@@ -1847,37 +1936,39 @@ export const byDatasetId = {
 }
 
 /**
- * Resource for getting datasets
+ * List Knowledge Bases
  *
- * List all datasets
+ * Returns a paginated list of knowledge bases. Supports filtering by keyword and tags.
  */
 export const get20 = oc
   .route({
-    description: 'List all datasets',
+    description:
+      'Returns a paginated list of knowledge bases. Supports filtering by keyword and tags.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasets',
     path: '/datasets',
-    summary: 'Resource for getting datasets',
-    tags: ['service_api'],
+    summary: 'List Knowledge Bases',
+    tags: ['Knowledge Bases'],
   })
   .input(z.object({ query: zGetDatasetsQuery.optional() }))
   .output(zGetDatasetsResponse)
 
 /**
- * Resource for creating datasets
+ * Create an Empty Knowledge Base
  *
- * Create a new dataset
+ * Create a new empty knowledge base. After creation, use [Create Document by Text](/api-reference/documents/create-document-by-text) or [Create Document by File](/api-reference/documents/create-document-by-file) to add documents.
  */
 export const post32 = oc
   .route({
-    description: 'Create a new dataset',
+    description:
+      'Create a new empty knowledge base. After creation, use [Create Document by Text](/api-reference/documents/create-document-by-text) or [Create Document by File](/api-reference/documents/create-document-by-file) to add documents.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasets',
     path: '/datasets',
-    summary: 'Resource for creating datasets',
-    tags: ['service_api'],
+    summary: 'Create an Empty Knowledge Base',
+    tags: ['Knowledge Bases'],
   })
   .input(z.object({ body: zPostDatasetsBody }))
   .output(zPostDatasetsResponse)
@@ -1891,22 +1982,20 @@ export const datasets = {
 }
 
 /**
- * Get end user detail
+ * Get End User Info
  *
- * Get an end user by ID
- * This endpoint is scoped to the current app token's tenant/app to prevent
- * cross-tenant/app access when an end-user ID is known.
+ * Retrieve an end user by ID. Useful when other APIs return an end-user ID (e.g., `created_by` from [Upload File](/api-reference/files/upload-file)).
  */
 export const get21 = oc
   .route({
     description:
-      'Get an end user by ID\nThis endpoint is scoped to the current app token\'s tenant/app to prevent\ncross-tenant/app access when an end-user ID is known.',
+      'Retrieve an end user by ID. Useful when other APIs return an end-user ID (e.g., `created_by` from [Upload File](/api-reference/files/upload-file)).',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getEndUsersByEndUserId',
     path: '/end-users/{end_user_id}',
-    summary: 'Get end user detail',
-    tags: ['service_api'],
+    summary: 'Get End User Info',
+    tags: ['End Users'],
   })
   .input(z.object({ params: zGetEndUsersByEndUserIdPath }))
   .output(zGetEndUsersByEndUserIdResponse)
@@ -1920,23 +2009,23 @@ export const endUsers = {
 }
 
 /**
- * Upload a file for use in conversations
+ * Upload File
  *
- * Upload a file for use in conversations
- * Accepts a single file upload via multipart/form-data.
+ * Upload a file for use when sending messages, enabling multimodal understanding of images, documents, audio, and video. Uploaded files are for use by the current end-user only.
  */
 export const post33 = oc
   .route({
     description:
-      'Upload a file for use in conversations\nAccepts a single file upload via multipart/form-data.',
+      'Upload a file for use when sending messages, enabling multimodal understanding of images, documents, audio, and video. Uploaded files are for use by the current end-user only.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFilesUpload',
     path: '/files/upload',
     successStatus: 201,
-    summary: 'Upload a file for use in conversations',
-    tags: ['service_api'],
+    summary: 'Upload File',
+    tags: ['Files'],
   })
+  .input(z.object({ body: zPostFilesUploadBody }))
   .output(zPostFilesUploadResponse)
 
 export const upload = {
@@ -1944,22 +2033,20 @@ export const upload = {
 }
 
 /**
- * Preview/Download a file that was uploaded via Service API
+ * Download File
  *
- * Preview or download a file uploaded via Service API
- * Provides secure file preview/download functionality.
- * Files can only be accessed if they belong to messages within the requesting app's context.
+ * Preview or download uploaded files previously uploaded via the [Upload File](/api-reference/files/upload-file) API. Files can only be accessed if they belong to messages within the requesting application.
  */
 export const get22 = oc
   .route({
     description:
-      'Preview or download a file uploaded via Service API\nProvides secure file preview/download functionality.\nFiles can only be accessed if they belong to messages within the requesting app\'s context.',
+      'Preview or download uploaded files previously uploaded via the [Upload File](/api-reference/files/upload-file) API. Files can only be accessed if they belong to messages within the requesting application.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFilesByFileIdPreview',
     path: '/files/{file_id}/preview',
-    summary: 'Preview/Download a file that was uploaded via Service API',
-    tags: ['service_api'],
+    summary: 'Download File',
+    tags: ['Files'],
   })
   .input(
     z.object({
@@ -1983,31 +2070,39 @@ export const files = {
 }
 
 /**
- * Get a paused human input form by token
+ * Get Human Input Form
+ *
+ * Retrieve a paused Human Input form's contents using the `form_token` from a `human_input_required` event. Requires **WebApp** delivery.
  */
 export const get23 = oc
   .route({
-    description: 'Get a paused human input form by token',
+    description:
+      "Retrieve a paused Human Input form's contents using the `form_token` from a `human_input_required` event. Requires **WebApp** delivery.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFormHumanInputByFormToken',
     path: '/form/human_input/{form_token}',
-    tags: ['service_api'],
+    summary: 'Get Human Input Form',
+    tags: ['Human Input'],
   })
   .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
   .output(zGetFormHumanInputByFormTokenResponse)
 
 /**
- * Submit a paused human input form by token
+ * Submit Human Input Form
+ *
+ * Submit the recipient's response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.
  */
 export const post34 = oc
   .route({
-    description: 'Submit a paused human input form by token',
+    description:
+      "Submit the recipient's response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFormHumanInputByFormToken',
     path: '/form/human_input/{form_token}',
-    tags: ['service_api'],
+    summary: 'Submit Human Input Form',
+    tags: ['Human Input'],
   })
   .input(
     z.object({
@@ -2031,21 +2126,20 @@ export const form = {
 }
 
 /**
- * Get app information
+ * Get App Info
  *
- * Get basic application information
- * Returns basic information about the application including name, description, tags, and mode.
+ * Retrieve basic information about this application, including name, description, tags, and mode.
  */
 export const get24 = oc
   .route({
     description:
-      'Get basic application information\nReturns basic information about the application including name, description, tags, and mode.',
+      'Retrieve basic information about this application, including name, description, tags, and mode.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getInfo',
     path: '/info',
-    summary: 'Get app information',
-    tags: ['service_api'],
+    summary: 'Get App Info',
+    tags: ['Applications'],
   })
   .output(zGetInfoResponse)
 
@@ -2054,21 +2148,20 @@ export const info = {
 }
 
 /**
- * Submit feedback for a message
+ * Submit Message Feedback
  *
- * Submit feedback for a message
- * Allows users to rate messages as like/dislike and provide optional feedback content.
+ * Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.
  */
 export const post35 = oc
   .route({
     description:
-      'Submit feedback for a message\nAllows users to rate messages as like/dislike and provide optional feedback content.',
+      'Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postMessagesByMessageIdFeedbacks',
     path: '/messages/{message_id}/feedbacks',
-    summary: 'Submit feedback for a message',
-    tags: ['service_api'],
+    summary: 'Submit Message Feedback',
+    tags: ['Feedback'],
   })
   .input(
     z.object({
@@ -2083,23 +2176,26 @@ export const feedbacks2 = {
 }
 
 /**
- * Get suggested follow-up questions for a message
+ * Get Next Suggested Questions
  *
- * Get suggested follow-up questions for a message
- * Returns AI-generated follow-up questions based on the message content.
+ * Get next questions suggestions for the current message.
  */
 export const get25 = oc
   .route({
-    description:
-      'Get suggested follow-up questions for a message\nReturns AI-generated follow-up questions based on the message content.',
+    description: 'Get next questions suggestions for the current message.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdSuggested',
     path: '/messages/{message_id}/suggested',
-    summary: 'Get suggested follow-up questions for a message',
-    tags: ['service_api'],
+    summary: 'Get Next Suggested Questions',
+    tags: ['Chatflows', 'Chats'],
   })
-  .input(z.object({ params: zGetMessagesByMessageIdSuggestedPath }))
+  .input(
+    z.object({
+      params: zGetMessagesByMessageIdSuggestedPath,
+      query: zGetMessagesByMessageIdSuggestedQuery,
+    }),
+  )
   .output(zGetMessagesByMessageIdSuggestedResponse)
 
 export const suggested = {
@@ -2112,21 +2208,20 @@ export const byMessageId = {
 }
 
 /**
- * List messages in a conversation
+ * List Conversation Messages
  *
- * List messages in a conversation
- * Retrieves messages with pagination support using first_id.
+ * Returns historical chat records in a scrolling load format, with the first page returning the latest `limit` messages, i.e., in reverse order.
  */
 export const get26 = oc
   .route({
     description:
-      'List messages in a conversation\nRetrieves messages with pagination support using first_id.',
+      'Returns historical chat records in a scrolling load format, with the first page returning the latest `limit` messages, i.e., in reverse order.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessages',
     path: '/messages',
-    summary: 'List messages in a conversation',
-    tags: ['service_api'],
+    summary: 'List Conversation Messages',
+    tags: ['Conversations'],
   })
   .input(z.object({ query: zGetMessagesQuery }))
   .output(zGetMessagesResponse)
@@ -2137,21 +2232,20 @@ export const messages = {
 }
 
 /**
- * Get app metadata
+ * Get App Meta
  *
- * Get application metadata
- * Returns metadata about the application including configuration and settings.
+ * Retrieve metadata about this application, including tool icons and other configuration details.
  */
 export const get27 = oc
   .route({
     description:
-      'Get application metadata\nReturns metadata about the application including configuration and settings.',
+      'Retrieve metadata about this application, including tool icons and other configuration details.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMeta',
     path: '/meta',
-    summary: 'Get app metadata',
-    tags: ['service_api'],
+    summary: 'Get App Meta',
+    tags: ['Applications'],
   })
   .output(zGetMetaResponse)
 
@@ -2160,21 +2254,20 @@ export const meta = {
 }
 
 /**
- * Retrieve app parameters
+ * Get App Parameters
  *
- * Retrieve application input parameters and configuration
- * Returns the input form parameters and configuration for the application.
+ * Retrieve the application's input form configuration, including feature switches, input parameter names, types, and default values.
  */
 export const get28 = oc
   .route({
     description:
-      'Retrieve application input parameters and configuration\nReturns the input form parameters and configuration for the application.',
+      "Retrieve the application's input form configuration, including feature switches, input parameter names, types, and default values.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getParameters',
     path: '/parameters',
-    summary: 'Retrieve app parameters',
-    tags: ['service_api'],
+    summary: 'Get App Parameters',
+    tags: ['Applications'],
   })
   .output(zGetParametersResponse)
 
@@ -2183,21 +2276,20 @@ export const parameters = {
 }
 
 /**
- * Retrieve app site info
+ * Get App WebApp Settings
  *
- * Get application site configuration
- * Returns the site configuration for the application including theme, icons, and text.
+ * Retrieve the WebApp settings of this application, including site configuration, theme, and customization options.
  */
 export const get29 = oc
   .route({
     description:
-      'Get application site configuration\nReturns the site configuration for the application including theme, icons, and text.',
+      'Retrieve the WebApp settings of this application, including site configuration, theme, and customization options.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSite',
     path: '/site',
-    summary: 'Retrieve app site info',
-    tags: ['service_api'],
+    summary: 'Get App WebApp Settings',
+    tags: ['Applications'],
   })
   .output(zGetSiteResponse)
 
@@ -2206,21 +2298,19 @@ export const site = {
 }
 
 /**
- * Convert text to audio using text-to-speech
+ * Convert Text to Audio
  *
- * Convert text to audio using text-to-speech
- * Converts the provided text to audio using the specified voice.
+ * Convert text to speech.
  */
 export const post36 = oc
   .route({
-    description:
-      'Convert text to audio using text-to-speech\nConverts the provided text to audio using the specified voice.',
+    description: 'Convert text to speech.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTextToAudio',
     path: '/text-to-audio',
-    summary: 'Convert text to audio using text-to-speech',
-    tags: ['service_api'],
+    summary: 'Convert Text to Audio',
+    tags: ['TTS'],
   })
   .input(z.object({ body: zPostTextToAudioBody }))
   .output(zPostTextToAudioResponse)
@@ -2230,16 +2320,20 @@ export const textToAudio = {
 }
 
 /**
- * Get workflow execution events stream after resume
+ * Stream Workflow Events
+ *
+ * Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE connection. For runs that have already finished, the stream emits a single `workflow_finished` event and closes.
  */
 export const get30 = oc
   .route({
-    description: 'Get workflow execution events stream after resume',
+    description:
+      'Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE connection. For runs that have already finished, the stream emits a single `workflow_finished` event and closes.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkflowByTaskIdEvents',
     path: '/workflow/{task_id}/events',
-    tags: ['service_api'],
+    summary: 'Stream Workflow Events',
+    tags: ['Chatflows', 'Workflows'],
   })
   .input(
     z.object({ params: zGetWorkflowByTaskIdEventsPath, query: zGetWorkflowByTaskIdEventsQuery }),
@@ -2259,21 +2353,19 @@ export const workflow = {
 }
 
 /**
- * Get workflow app logs
+ * List Workflow Logs
  *
- * Get workflow execution logs
- * Returns paginated workflow execution logs with filtering options.
+ * Retrieve paginated workflow execution logs with filtering options.
  */
 export const get31 = oc
   .route({
-    description:
-      'Get workflow execution logs\nReturns paginated workflow execution logs with filtering options.',
+    description: 'Retrieve paginated workflow execution logs with filtering options.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkflowsLogs',
     path: '/workflows/logs',
-    summary: 'Get workflow app logs',
-    tags: ['service_api'],
+    summary: 'List Workflow Logs',
+    tags: ['Chatflows', 'Workflows'],
   })
   .input(z.object({ query: zGetWorkflowsLogsQuery.optional() }))
   .output(zGetWorkflowsLogsResponse)
@@ -2283,21 +2375,20 @@ export const logs = {
 }
 
 /**
- * Get a workflow task running detail
+ * Get Workflow Run Detail
  *
- * Get workflow run details
- * Returns detailed information about a specific workflow run.
+ * Retrieve the current execution results of a workflow task based on the workflow execution ID.
  */
 export const get32 = oc
   .route({
     description:
-      'Get workflow run details\nReturns detailed information about a specific workflow run.',
+      'Retrieve the current execution results of a workflow task based on the workflow execution ID.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkflowsRunByWorkflowRunId',
     path: '/workflows/run/{workflow_run_id}',
-    summary: 'Get a workflow task running detail',
-    tags: ['service_api'],
+    summary: 'Get Workflow Run Detail',
+    tags: ['Chatflows', 'Workflows'],
   })
   .input(z.object({ params: zGetWorkflowsRunByWorkflowRunIdPath }))
   .output(zGetWorkflowsRunByWorkflowRunIdResponse)
@@ -2307,22 +2398,19 @@ export const byWorkflowRunId = {
 }
 
 /**
- * Execute a workflow
+ * Run Workflow
  *
- * Execute a workflow
- * Runs a workflow with the provided inputs and returns the results.
- * Supports both blocking and streaming response modes.
+ * Execute a workflow. Cannot be executed without a published workflow.
  */
 export const post37 = oc
   .route({
-    description:
-      'Execute a workflow\nRuns a workflow with the provided inputs and returns the results.\nSupports both blocking and streaming response modes.',
+    description: 'Execute a workflow. Cannot be executed without a published workflow.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkflowsRun',
     path: '/workflows/run',
-    summary: 'Execute a workflow',
-    tags: ['service_api'],
+    summary: 'Run Workflow',
+    tags: ['Workflows'],
   })
   .input(z.object({ body: zPostWorkflowsRunBody }))
   .output(zPostWorkflowsRunResponse)
@@ -2333,21 +2421,26 @@ export const run3 = {
 }
 
 /**
- * Stop a running workflow task
+ * Stop Workflow Task
  *
- * Stop a running workflow task
+ * Stop a running workflow task. Only supported in `streaming` mode.
  */
 export const post38 = oc
   .route({
-    description: 'Stop a running workflow task',
+    description: 'Stop a running workflow task. Only supported in `streaming` mode.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkflowsTasksByTaskIdStop',
     path: '/workflows/tasks/{task_id}/stop',
-    summary: 'Stop a running workflow task',
-    tags: ['service_api'],
+    summary: 'Stop Workflow Task',
+    tags: ['Workflows'],
   })
-  .input(z.object({ params: zPostWorkflowsTasksByTaskIdStopPath }))
+  .input(
+    z.object({
+      body: zPostWorkflowsTasksByTaskIdStopBody,
+      params: zPostWorkflowsTasksByTaskIdStopPath,
+    }),
+  )
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {
@@ -2363,21 +2456,20 @@ export const tasks = {
 }
 
 /**
- * Run specific workflow by ID
+ * Run Workflow by ID
  *
- * Execute a specific workflow by ID
- * Executes a specific workflow version identified by its ID.
+ * Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.
  */
 export const post39 = oc
   .route({
     description:
-      'Execute a specific workflow by ID\nExecutes a specific workflow version identified by its ID.',
+      'Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkflowsByWorkflowIdRun',
     path: '/workflows/{workflow_id}/run',
-    summary: 'Run specific workflow by ID',
-    tags: ['service_api'],
+    summary: 'Run Workflow by ID',
+    tags: ['Workflows'],
   })
   .input(
     z.object({
@@ -2403,21 +2495,20 @@ export const workflows = {
 }
 
 /**
- * Get available models by model type
+ * Get Available Models
  *
- * Get available models by model type
- * Returns a list of available models for the specified model type.
+ * Retrieve the list of available models by type. Primarily used to query `text-embedding` and `rerank` models for knowledge base configuration.
  */
 export const get33 = oc
   .route({
     description:
-      'Get available models by model type\nReturns a list of available models for the specified model type.',
+      'Retrieve the list of available models by type. Primarily used to query `text-embedding` and `rerank` models for knowledge base configuration.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentModelsModelTypesByModelType',
     path: '/workspaces/current/models/model-types/{model_type}',
-    summary: 'Get available models by model type',
-    tags: ['service_api'],
+    summary: 'Get Available Models',
+    tags: ['Models'],
   })
   .input(z.object({ params: zGetWorkspacesCurrentModelsModelTypesByModelTypePath }))
   .output(zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse)

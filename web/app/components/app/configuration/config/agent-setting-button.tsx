@@ -2,16 +2,16 @@
 import type { FC } from 'react'
 import type { AgentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiSettings2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AgentSetting from './agent/agent-setting'
+import { AgentSetting } from './agent/agent-setting'
 
 type Props = Readonly<{
   isFunctionCall: boolean
   isChatModel: boolean
   agentConfig?: AgentConfig
+  disabled?: boolean
   onAgentSettingChange: (payload: AgentConfig) => void
 }>
 
@@ -20,15 +20,20 @@ const AgentSettingButton: FC<Props> = ({
   isFunctionCall,
   isChatModel,
   agentConfig,
+  disabled = false,
 }) => {
   const { t } = useTranslation()
   const [isShowAgentSetting, setIsShowAgentSetting] = useState(false)
 
   return (
     <>
-      <Button onClick={() => setIsShowAgentSetting(true)} className="mr-2 shrink-0">
-        <RiSettings2Line className="mr-1 size-4 text-text-tertiary" />
-        {t('agent.setting.name', { ns: 'appDebug' })}
+      <Button
+        onClick={() => setIsShowAgentSetting(true)}
+        className="mr-2 shrink-0"
+        disabled={disabled}
+      >
+        <span className="mr-1 i-ri-settings-2-line size-4 text-text-tertiary" />
+        {t(($) => $['agent.setting.name'], { ns: 'appDebug' })}
       </Button>
       {isShowAgentSetting && (
         <AgentSetting

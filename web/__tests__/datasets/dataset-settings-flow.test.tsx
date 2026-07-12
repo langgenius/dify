@@ -14,8 +14,14 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ChunkingMode, DatasetPermission, DataSourceType, WeightedScoreEnum } from '@/models/datasets'
+import {
+  ChunkingMode,
+  DatasetPermission,
+  DataSourceType,
+  WeightedScoreEnum,
+} from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 
 // --- Mocks ---
 
@@ -26,10 +32,6 @@ const { mockToastError } = vi.hoisted(() => ({
 const mockMutateDatasets = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockUpdateDatasetSetting = vi.fn().mockResolvedValue({})
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => false,
-}))
 
 vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: (...args: unknown[]) => mockUpdateDatasetSetting(...args),
@@ -43,9 +45,39 @@ vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
     data: {
       accounts: [
-        { id: 'user-1', name: 'Alice', email: 'alice@example.com', role: 'owner', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
-        { id: 'user-2', name: 'Bob', email: 'bob@example.com', role: 'admin', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
-        { id: 'user-3', name: 'Charlie', email: 'charlie@example.com', role: 'normal', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
+        {
+          id: 'user-1',
+          name: 'Alice',
+          email: 'alice@example.com',
+          role: 'owner',
+          avatar: '',
+          avatar_url: '',
+          last_login_at: '',
+          created_at: '',
+          status: 'active',
+        },
+        {
+          id: 'user-2',
+          name: 'Bob',
+          email: 'bob@example.com',
+          role: 'admin',
+          avatar: '',
+          avatar_url: '',
+          last_login_at: '',
+          created_at: '',
+          status: 'active',
+        },
+        {
+          id: 'user-3',
+          name: 'Charlie',
+          email: 'charlie@example.com',
+          role: 'normal',
+          avatar: '',
+          avatar_url: '',
+          last_login_at: '',
+          created_at: '',
+          status: 'active',
+        },
       ],
     },
   }),
@@ -68,81 +100,82 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 // --- Dataset factory ---
 
-const createMockDataset = (overrides?: Partial<DataSet>): DataSet => ({
-  id: 'ds-settings-1',
-  name: 'Settings Test Dataset',
-  description: 'Integration test dataset',
-  permission: DatasetPermission.onlyMe,
-  icon_info: {
-    icon_type: 'emoji',
-    icon: '📙',
-    icon_background: '#FFF4ED',
-    icon_url: '',
-  },
-  indexing_technique: 'high_quality',
-  indexing_status: 'completed',
-  data_source_type: DataSourceType.FILE,
-  doc_form: ChunkingMode.text,
-  embedding_model: 'text-embedding-ada-002',
-  embedding_model_provider: 'openai',
-  embedding_available: true,
-  app_count: 2,
-  document_count: 10,
-  total_document_count: 10,
-  word_count: 5000,
-  provider: 'vendor',
-  tags: [],
-  partial_member_list: [],
-  external_knowledge_info: {
-    external_knowledge_id: '',
-    external_knowledge_api_id: '',
-    external_knowledge_api_name: '',
-    external_knowledge_api_endpoint: '',
-  },
-  external_retrieval_model: {
-    top_k: 2,
-    score_threshold: 0.5,
-    score_threshold_enabled: false,
-  },
-  retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
-    top_k: 3,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  } as RetrievalConfig,
-  retrieval_model: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
-    top_k: 3,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  } as RetrievalConfig,
-  built_in_field_enabled: false,
-  keyword_number: 10,
-  created_by: 'user-1',
-  updated_by: 'user-1',
-  updated_at: Date.now(),
-  runtime_mode: 'general',
-  enable_api: true,
-  is_multimodal: false,
-  ...overrides,
-} as DataSet)
+const createMockDataset = (overrides?: Partial<DataSet>): DataSet =>
+  ({
+    id: 'ds-settings-1',
+    name: 'Settings Test Dataset',
+    description: 'Integration test dataset',
+    permission: DatasetPermission.onlyMe,
+    icon_info: {
+      icon_type: 'emoji',
+      icon: '📙',
+      icon_background: '#FFF4ED',
+      icon_url: '',
+    },
+    indexing_technique: 'high_quality',
+    indexing_status: 'completed',
+    data_source_type: DataSourceType.FILE,
+    doc_form: ChunkingMode.text,
+    embedding_model: 'text-embedding-ada-002',
+    embedding_model_provider: 'openai',
+    embedding_available: true,
+    app_count: 2,
+    document_count: 10,
+    total_document_count: 10,
+    word_count: 5000,
+    provider: 'vendor',
+    tags: [],
+    partial_member_list: [],
+    external_knowledge_info: {
+      external_knowledge_id: '',
+      external_knowledge_api_id: '',
+      external_knowledge_api_name: '',
+      external_knowledge_api_endpoint: '',
+    },
+    external_retrieval_model: {
+      top_k: 2,
+      score_threshold: 0.5,
+      score_threshold_enabled: false,
+    },
+    retrieval_model_dict: {
+      search_method: RETRIEVE_METHOD.semantic,
+      reranking_enable: false,
+      reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
+      top_k: 3,
+      score_threshold_enabled: false,
+      score_threshold: 0,
+    } as RetrievalConfig,
+    retrieval_model: {
+      search_method: RETRIEVE_METHOD.semantic,
+      reranking_enable: false,
+      reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
+      top_k: 3,
+      score_threshold_enabled: false,
+      score_threshold: 0,
+    } as RetrievalConfig,
+    built_in_field_enabled: false,
+    keyword_number: 10,
+    created_by: 'user-1',
+    updated_by: 'user-1',
+    updated_at: Date.now(),
+    runtime_mode: 'general',
+    enable_api: true,
+    is_multimodal: false,
+    permission_keys: [DatasetACLPermission.Edit],
+    ...overrides,
+  }) as DataSet
 
 let mockDataset: DataSet = createMockDataset()
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
-    selector: (state: { dataset: DataSet | null, mutateDatasetRes: () => void }) => unknown,
+    selector: (state: { dataset: DataSet | null; mutateDatasetRes: () => void }) => unknown,
   ) => selector({ dataset: mockDataset, mutateDatasetRes: mockMutateDatasets }),
 }))
 
 // Import after mocks are registered
-const { useFormState } = await import(
-  '@/app/components/datasets/settings/form/hooks/use-form-state',
-)
+const { useFormState } =
+  await import('@/app/components/datasets/settings/form/hooks/use-form-state')
 
 describe('Dataset Settings Flow - Cross-Module Configuration Cascade', () => {
   beforeEach(() => {
@@ -255,7 +288,7 @@ describe('Dataset Settings Flow - Cross-Module Configuration Cascade', () => {
 
       expect(result.current.permission).toBe(DatasetPermission.partialMembers)
       expect(result.current.memberList).toHaveLength(3)
-      expect(result.current.memberList.map(m => m.id)).toEqual(['user-1', 'user-2', 'user-3'])
+      expect(result.current.memberList.map((m) => m.id)).toEqual(['user-1', 'user-2', 'user-3'])
     })
 
     it('should persist member selection through permission toggle', () => {
@@ -293,9 +326,7 @@ describe('Dataset Settings Flow - Cross-Module Configuration Cascade', () => {
         datasetId: 'ds-settings-1',
         body: expect.objectContaining({
           permission: DatasetPermission.partialMembers,
-          partial_member_list: [
-            expect.objectContaining({ user_id: 'user-2', role: 'admin' }),
-          ],
+          partial_member_list: [expect.objectContaining({ user_id: 'user-2', role: 'admin' })],
         }),
       })
     })
@@ -388,7 +419,9 @@ describe('Dataset Settings Flow - Cross-Module Configuration Cascade', () => {
         provider: 'cohere',
         model: 'embed-english-v3.0',
       })
-      expect(result.current.retrievalConfig.search_method).toBe(originalRetrievalConfig.search_method)
+      expect(result.current.retrievalConfig.search_method).toBe(
+        originalRetrievalConfig.search_method,
+      )
     })
 
     it('should propagate embedding model into weighted retrieval config on save', async () => {

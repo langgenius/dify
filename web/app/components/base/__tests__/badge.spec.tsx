@@ -9,7 +9,11 @@ describe('Badge', () => {
     })
 
     it('should render with children instead of text', () => {
-      render(<Badge><span>child content</span></Badge>)
+      render(
+        <Badge>
+          <span>child content</span>
+        </Badge>,
+      )
       expect(screen.getByText(/child content/i)).toBeInTheDocument()
     })
 
@@ -31,6 +35,13 @@ describe('Badge', () => {
       const { container } = render(<Badge text="test" className="my-custom" />)
       const badge = container.firstChild as HTMLElement
       expect(badge).toHaveClass('relative', 'inline-flex', 'h-5', 'items-center')
+    })
+
+    it('should render xs dimm badge variant', () => {
+      const { container } = render(<Badge text="beta" size="xs" variant="dimm" />)
+      const badge = container.firstChild as HTMLElement
+      expect(badge).toHaveClass('min-w-4', 'px-1', 'py-0.5', 'bg-components-badge-bg-dimm')
+      expect(badge).not.toHaveClass('h-5')
     })
 
     it('should apply uppercase class by default', () => {
@@ -59,7 +70,11 @@ describe('Badge', () => {
     })
 
     it('should prioritize children over text', () => {
-      render(<Badge text="text content"><span>child wins</span></Badge>)
+      render(
+        <Badge text="text content">
+          <span>child wins</span>
+        </Badge>,
+      )
       expect(screen.getByText(/child wins/i)).toBeInTheDocument()
       expect(screen.queryByText(/text content/i)).not.toBeInTheDocument()
     })

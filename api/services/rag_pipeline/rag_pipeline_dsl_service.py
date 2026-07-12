@@ -36,6 +36,7 @@ from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
+from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
 from services.entities.knowledge_entities.rag_pipeline_entities import (
@@ -50,7 +51,6 @@ logger = logging.getLogger(__name__)
 IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
-DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = "0.1.0"
 
 
@@ -127,15 +127,16 @@ class RagPipelineDslService:
                     yaml_url = yaml_url.replace("/blob/", "/")
                 response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
-                content = response.content.decode()
+                raw_content = response.content
 
-                if len(content) > DSL_MAX_SIZE:
+                if dsl_content_size(raw_content) > DSL_MAX_SIZE:
                     return RagPipelineImportInfo(
                         id=import_id,
                         status=ImportStatus.FAILED,
                         error="File size exceeds the limit of 10MB",
                     )
 
+                content = raw_content.decode("utf-8")
                 if not content:
                     return RagPipelineImportInfo(
                         id=import_id,
@@ -156,6 +157,12 @@ class RagPipelineDslService:
                     error="yaml_content is required when import_mode is yaml-content",
                 )
             content = yaml_content
+            if dsl_content_size(content) > DSL_MAX_SIZE:
+                return RagPipelineImportInfo(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="File size exceeds the limit of 10MB",
+                )
 
         # Process YAML content
         try:
@@ -283,6 +290,7 @@ class RagPipelineDslService:
                             },
                             indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
+                            maintainer=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
                             runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,
@@ -415,6 +423,7 @@ class RagPipelineDslService:
                             },
                             indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
+                            maintainer=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
                             runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,

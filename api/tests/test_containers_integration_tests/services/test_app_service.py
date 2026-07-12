@@ -1,6 +1,8 @@
+from datetime import datetime
 from unittest.mock import create_autospec, patch
 
 import pytest
+import sqlalchemy as sa
 from faker import Faker
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -60,8 +62,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Setup app creation arguments
@@ -81,7 +84,7 @@ class TestAppService:
 
         # Create app
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_params, account)
+        app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Verify app was created correctly
         assert app.name == app_params.name
@@ -94,6 +97,7 @@ class TestAppService:
         assert app.api_rph == app_params.api_rph
         assert app.api_rpm == app_params.api_rpm
         assert app.created_by == account.id
+        assert app.maintainer == account.id
         assert app.updated_by == account.id
         assert app.status == "normal"
         assert app.enable_site is True
@@ -116,8 +120,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
@@ -139,7 +144,7 @@ class TestAppService:
                 icon_background="#4ECDC4",
             )
 
-            app = app_service.create_app(tenant.id, app_params, account)
+            app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
             # Verify app mode was set correctly
             assert app.mode == mode
@@ -159,8 +164,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app first
@@ -177,7 +183,7 @@ class TestAppService:
         )
 
         app_service = AppService()
-        created_app = app_service.create_app(tenant.id, app_params, account)
+        created_app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Get app using the service - needs current_user mock
         mock_current_user = create_autospec(Account, instance=True)
@@ -207,8 +213,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
@@ -227,12 +234,12 @@ class TestAppService:
                 icon="📱",
                 icon_background="#96CEB4",
             )
-            app_service.create_app(tenant.id, app_params, account)
+            app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Get paginated apps
         params = AppListParams(page=1, limit=10, mode="chat")
 
-        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params)
+        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params, db_session_with_containers)
 
         # Verify pagination results
         assert paginated_apps is not None
@@ -244,6 +251,256 @@ class TestAppService:
         for app in paginated_apps.items:
             assert app.tenant_id == tenant.id
             assert app.mode == "chat"
+
+    def test_get_paginate_apps_sorts_by_modified_and_created_times(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test app list sort options for modified time and creation time.
+        """
+        fake = Faker()
+
+        account = AccountService.create_account(
+            email=fake.email(),
+            name=fake.name(),
+            interface_language="en-US",
+            password=generate_valid_password(fake),
+            session=db_session_with_containers,
+        )
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        tenant = account.current_tenant
+
+        from services.app_service import AppListParams, AppService, CreateAppParams
+
+        app_service = AppService()
+        oldest_created = app_service.create_app(
+            tenant.id,
+            CreateAppParams(name="Oldest Created", mode="chat", icon_type="emoji", icon="1"),
+            account,
+            session=db_session_with_containers,
+        )
+        newest_modified = app_service.create_app(
+            tenant.id,
+            CreateAppParams(name="Newest Modified", mode="chat", icon_type="emoji", icon="2"),
+            account,
+            session=db_session_with_containers,
+        )
+        newest_created = app_service.create_app(
+            tenant.id,
+            CreateAppParams(name="Newest Created", mode="chat", icon_type="emoji", icon="3"),
+            account,
+            session=db_session_with_containers,
+        )
+
+        timestamp_by_app_id = {
+            oldest_created.id: (datetime(2026, 1, 1, 10, 0, 0), datetime(2026, 1, 1, 10, 0, 0)),
+            newest_modified.id: (datetime(2026, 1, 2, 10, 0, 0), datetime(2026, 1, 4, 10, 0, 0)),
+            newest_created.id: (datetime(2026, 1, 3, 10, 0, 0), datetime(2026, 1, 3, 10, 0, 0)),
+        }
+        for app_id, (created_at, updated_at) in timestamp_by_app_id.items():
+            db_session_with_containers.execute(
+                sa.update(App).where(App.id == app_id).values(created_at=created_at, updated_at=updated_at)
+            )
+        db_session_with_containers.commit()
+
+        last_modified_apps = app_service.get_paginate_apps(
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"), db_session_with_containers
+        )
+        assert last_modified_apps is not None
+        assert [app.name for app in last_modified_apps.items] == [
+            "Newest Modified",
+            "Newest Created",
+            "Oldest Created",
+        ]
+
+        recently_created_apps = app_service.get_paginate_apps(
+            account.id,
+            tenant.id,
+            AppListParams(page=1, limit=10, mode="chat", sort_by="recently_created"),
+            db_session_with_containers,
+        )
+        assert recently_created_apps is not None
+        assert [app.name for app in recently_created_apps.items] == [
+            "Newest Created",
+            "Newest Modified",
+            "Oldest Created",
+        ]
+
+        earliest_created_apps = app_service.get_paginate_apps(
+            account.id,
+            tenant.id,
+            AppListParams(page=1, limit=10, mode="chat", sort_by="earliest_created"),
+            db_session_with_containers,
+        )
+        assert earliest_created_apps is not None
+        assert [app.name for app in earliest_created_apps.items] == [
+            "Oldest Created",
+            "Newest Modified",
+            "Newest Created",
+        ]
+
+    def test_get_paginate_apps_marks_starred_apps(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test app list marks apps starred by the current account.
+        """
+        fake = Faker()
+
+        account = AccountService.create_account(
+            email=fake.email(),
+            name=fake.name(),
+            interface_language="en-US",
+            password=generate_valid_password(fake),
+            session=db_session_with_containers,
+        )
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        tenant = account.current_tenant
+
+        from models import AppStar
+        from services.app_service import AppListParams, AppService, CreateAppParams
+
+        app_service = AppService()
+        starred_app = app_service.create_app(
+            tenant.id,
+            CreateAppParams(name="Starred App", mode="chat", icon_type="emoji", icon="1"),
+            account,
+            session=db_session_with_containers,
+        )
+        unstarred_app = app_service.create_app(
+            tenant.id,
+            CreateAppParams(name="Unstarred App", mode="chat", icon_type="emoji", icon="2"),
+            account,
+            session=db_session_with_containers,
+        )
+
+        app_service.star_app(app=starred_app, account_id=account.id, session=db_session_with_containers)
+        app_service.star_app(app=starred_app, account_id=account.id, session=db_session_with_containers)
+        db_session_with_containers.commit()
+
+        star_count = db_session_with_containers.scalar(
+            sa.select(sa.func.count()).select_from(AppStar).where(AppStar.app_id == starred_app.id)
+        )
+        assert star_count == 1
+
+        paginated_apps = app_service.get_paginate_apps(
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"), db_session_with_containers
+        )
+        assert paginated_apps is not None
+        starred_by_app_id = {app.id: app.is_starred for app in paginated_apps.items}
+        assert starred_by_app_id[starred_app.id] is True
+        assert starred_by_app_id[unstarred_app.id] is False
+
+        app_service.unstar_app(app=starred_app, account_id=account.id, session=db_session_with_containers)
+        db_session_with_containers.commit()
+
+        paginated_apps = app_service.get_paginate_apps(
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"), db_session_with_containers
+        )
+        assert paginated_apps is not None
+        starred_by_app_id = {app.id: app.is_starred for app in paginated_apps.items}
+        assert starred_by_app_id[starred_app.id] is False
+        assert starred_by_app_id[unstarred_app.id] is False
+
+    def test_get_paginate_starred_apps_returns_only_starred_apps_with_requested_sort(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test starred app list returns only starred apps ordered by requested app sort.
+        """
+        fake = Faker()
+
+        account = AccountService.create_account(
+            email=fake.email(),
+            name=fake.name(),
+            interface_language="en-US",
+            password=generate_valid_password(fake),
+            session=db_session_with_containers,
+        )
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        tenant = account.current_tenant
+
+        from services.app_service import AppService, CreateAppParams, StarredAppListParams
+
+        app_service = AppService()
+        oldest_created_app = app_service.create_app(
+            tenant.id,
+            CreateAppParams(name="Oldest Created Starred App", mode="chat", icon_type="emoji", icon="1"),
+            account,
+            session=db_session_with_containers,
+        )
+        newest_modified_app = app_service.create_app(
+            tenant.id,
+            CreateAppParams(name="Newest Modified Starred App", mode="chat", icon_type="emoji", icon="2"),
+            account,
+            session=db_session_with_containers,
+        )
+        newest_created_app = app_service.create_app(
+            tenant.id,
+            CreateAppParams(name="Newest Created Starred App", mode="chat", icon_type="emoji", icon="3"),
+            account,
+            session=db_session_with_containers,
+        )
+        unstarred_app = app_service.create_app(
+            tenant.id,
+            CreateAppParams(name="Unstarred App", mode="chat", icon_type="emoji", icon="4"),
+            account,
+            session=db_session_with_containers,
+        )
+
+        app_service.star_app(app=oldest_created_app, account_id=account.id, session=db_session_with_containers)
+        app_service.star_app(app=newest_modified_app, account_id=account.id, session=db_session_with_containers)
+        app_service.star_app(app=newest_created_app, account_id=account.id, session=db_session_with_containers)
+
+        timestamp_by_app_id = {
+            oldest_created_app.id: (datetime(2026, 1, 1, 10, 0, 0), datetime(2026, 1, 1, 10, 0, 0)),
+            newest_modified_app.id: (datetime(2026, 1, 2, 10, 0, 0), datetime(2026, 1, 4, 10, 0, 0)),
+            newest_created_app.id: (datetime(2026, 1, 3, 10, 0, 0), datetime(2026, 1, 3, 10, 0, 0)),
+            unstarred_app.id: (datetime(2026, 1, 5, 10, 0, 0), datetime(2026, 1, 5, 10, 0, 0)),
+        }
+        for app_id, (created_at, updated_at) in timestamp_by_app_id.items():
+            db_session_with_containers.execute(
+                sa.update(App).where(App.id == app_id).values(created_at=created_at, updated_at=updated_at)
+            )
+        db_session_with_containers.commit()
+
+        last_modified_apps = app_service.get_paginate_starred_apps(
+            account.id, tenant.id, StarredAppListParams(page=1, limit=10, mode="chat"), db_session_with_containers
+        )
+        assert last_modified_apps is not None
+        assert [app.name for app in last_modified_apps.items] == [
+            "Newest Modified Starred App",
+            "Newest Created Starred App",
+            "Oldest Created Starred App",
+        ]
+        assert all(app.is_starred for app in last_modified_apps.items)
+        assert unstarred_app.id not in {app.id for app in last_modified_apps.items}
+
+        recently_created_apps = app_service.get_paginate_starred_apps(
+            account.id,
+            tenant.id,
+            StarredAppListParams(page=1, limit=10, mode="chat", sort_by="recently_created"),
+            db_session_with_containers,
+        )
+        assert recently_created_apps is not None
+        assert [app.name for app in recently_created_apps.items] == [
+            "Newest Created Starred App",
+            "Newest Modified Starred App",
+            "Oldest Created Starred App",
+        ]
+
+        earliest_created_apps = app_service.get_paginate_starred_apps(
+            account.id,
+            tenant.id,
+            StarredAppListParams(page=1, limit=10, mode="chat", sort_by="earliest_created"),
+            db_session_with_containers,
+        )
+        assert earliest_created_apps is not None
+        assert [app.name for app in earliest_created_apps.items] == [
+            "Oldest Created Starred App",
+            "Newest Modified Starred App",
+            "Newest Created Starred App",
+        ]
 
     def test_get_paginate_apps_with_filters(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -259,8 +516,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
@@ -286,24 +544,31 @@ class TestAppService:
             icon_background="#4ECDC4",
         )
 
-        chat_app = app_service.create_app(tenant.id, chat_app_params, account)
-        completion_app = app_service.create_app(tenant.id, completion_app_params, account)
+        chat_app = app_service.create_app(tenant.id, chat_app_params, account, session=db_session_with_containers)
+        completion_app = app_service.create_app(
+            tenant.id, completion_app_params, account, session=db_session_with_containers
+        )
 
         # Test filter by mode
-        chat_apps = app_service.get_paginate_apps(account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"))
+        chat_apps = app_service.get_paginate_apps(
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"), db_session_with_containers
+        )
         assert len(chat_apps.items) == 1
         assert chat_apps.items[0].mode == "chat"
 
         # Test filter by name
         filtered_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat", name="Chat")
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat", name="Chat"), db_session_with_containers
         )
         assert len(filtered_apps.items) == 1
         assert "Chat" in filtered_apps.items[0].name
 
         # Test filter by created_by_me
         my_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(page=1, limit=10, mode="completion", is_created_by_me=True)
+            account.id,
+            tenant.id,
+            AppListParams(page=1, limit=10, mode="completion", is_created_by_me=True),
+            db_session_with_containers,
         )
         assert len(my_apps.items) == 1
 
@@ -320,14 +585,18 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(first_account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(
+            first_account, name=fake.company(), session=db_session_with_containers
+        )
         tenant = first_account.current_tenant
         second_account = AccountService.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
 
         from services.app_service import AppListParams, AppService, CreateAppParams
@@ -341,7 +610,7 @@ class TestAppService:
             icon="💬",
             icon_background="#FF6B6B",
         )
-        app_service.create_app(tenant.id, app_params, first_account)
+        app_service.create_app(tenant.id, app_params, first_account, session=db_session_with_containers)
         other_app_params = CreateAppParams(
             name="Second Creator App",
             description="Created by the second account",
@@ -350,12 +619,13 @@ class TestAppService:
             icon="✍️",
             icon_background="#4ECDC4",
         )
-        app_service.create_app(tenant.id, other_app_params, second_account)
+        app_service.create_app(tenant.id, other_app_params, second_account, session=db_session_with_containers)
 
         filtered_apps = app_service.get_paginate_apps(
             first_account.id,
             tenant.id,
             AppListParams(page=1, limit=10, mode="chat", creator_ids=[second_account.id]),
+            db_session_with_containers,
         )
 
         assert filtered_apps is not None
@@ -376,8 +646,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
@@ -394,7 +665,7 @@ class TestAppService:
             icon="🏷️",
             icon_background="#FFEAA7",
         )
-        app = app_service.create_app(tenant.id, app_params, account)
+        app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Mock TagService to return the app ID for tag filtering
         with patch("services.app_service.TagService.get_target_ids_by_tag_ids") as mock_tag_service:
@@ -403,10 +674,12 @@ class TestAppService:
             # Test with tag filter
             params = AppListParams(page=1, limit=10, mode="chat", tag_ids=["tag1", "tag2"])
 
-            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params)
+            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params, db_session_with_containers)
 
             # Verify tag service was called
-            mock_tag_service.assert_called_once_with("app", tenant.id, ["tag1", "tag2"], match_all=True)
+            mock_tag_service.assert_called_once_with(
+                "app", tenant.id, ["tag1", "tag2"], db_session_with_containers, match_all=True
+            )
 
             # Verify results
             assert paginated_apps is not None
@@ -419,7 +692,7 @@ class TestAppService:
 
             params = AppListParams(page=1, limit=10, mode="chat", tag_ids=["nonexistent_tag"])
 
-            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params)
+            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params, db_session_with_containers)
 
             # Should return None when no apps match tag filter
             assert paginated_apps is None
@@ -436,8 +709,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app first
@@ -454,7 +728,7 @@ class TestAppService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_params, account)
+        app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Store original values
         original_name = app.name
@@ -478,7 +752,7 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app(app, update_args)
+            updated_app = app_service.update_app(app, update_args, session=db_session_with_containers)
 
         # Verify updated fields
         assert updated_app.name == update_args["name"]
@@ -506,8 +780,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         from services.app_service import AppService, CreateAppParams
@@ -524,6 +799,7 @@ class TestAppService:
                 icon_background="#45B7D1",
             ),
             account,
+            session=db_session_with_containers,
         )
 
         mock_current_user = create_autospec(Account, instance=True)
@@ -541,6 +817,7 @@ class TestAppService:
                     "icon_background": "#FF8C42",
                     "use_icon_as_answer_icon": True,
                 },
+                session=db_session_with_containers,
             )
 
         assert updated_app.icon_type == IconType.EMOJI
@@ -558,8 +835,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         from services.app_service import AppService, CreateAppParams
@@ -576,6 +854,7 @@ class TestAppService:
                 icon_background="#45B7D1",
             ),
             account,
+            session=db_session_with_containers,
         )
 
         mock_current_user = create_autospec(Account, instance=True)
@@ -594,6 +873,7 @@ class TestAppService:
                         "icon_background": "#FF8C42",
                         "use_icon_as_answer_icon": True,
                     },
+                    session=db_session_with_containers,
                 )
 
     def test_update_app_name_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
@@ -608,8 +888,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app first
@@ -626,7 +907,7 @@ class TestAppService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_params, account)
+        app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Store original name
         original_name = app.name
@@ -638,7 +919,7 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_name(app, new_name)
+            updated_app = app_service.update_app_name(app, new_name, session=db_session_with_containers)
 
         assert updated_app.name == new_name
         assert updated_app.updated_by == account.id
@@ -661,8 +942,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app first
@@ -679,7 +961,7 @@ class TestAppService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_params, account)
+        app = app_service.create_app(tenant.id, app_params, account, session=db_session_with_containers)
 
         # Store original values
         original_icon = app.icon
@@ -694,7 +976,9 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_icon(app, new_icon, new_icon_background, new_icon_type)
+            updated_app = app_service.update_app_icon(
+                app, new_icon, new_icon_background, new_icon_type, session=db_session_with_containers
+            )
 
         assert updated_app.icon == new_icon
         assert updated_app.icon_background == new_icon_background
@@ -722,8 +1006,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app first
@@ -739,7 +1024,7 @@ class TestAppService:
             icon_background="#74B9FF",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Store original site status
         original_site_status = app.enable_site
@@ -750,13 +1035,13 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_site_status(app, False)
+            updated_app = app_service.update_app_site_status(app, False, session=db_session_with_containers)
         assert updated_app.enable_site is False
         assert updated_app.updated_by == account.id
 
         # Update site status back to enabled
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_site_status(updated_app, True)
+            updated_app = app_service.update_app_site_status(updated_app, True, session=db_session_with_containers)
         assert updated_app.enable_site is True
         assert updated_app.updated_by == account.id
 
@@ -781,8 +1066,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app first
@@ -798,7 +1084,7 @@ class TestAppService:
             icon_background="#A29BFE",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Store original API status
         original_api_status = app.enable_api
@@ -809,13 +1095,13 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_api_status(app, False)
+            updated_app = app_service.update_app_api_status(app, False, session=db_session_with_containers)
         assert updated_app.enable_api is False
         assert updated_app.updated_by == account.id
 
         # Update API status back to enabled
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_api_status(updated_app, True)
+            updated_app = app_service.update_app_api_status(updated_app, True, session=db_session_with_containers)
         assert updated_app.enable_api is True
         assert updated_app.updated_by == account.id
 
@@ -840,8 +1126,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app first
@@ -857,14 +1144,14 @@ class TestAppService:
             icon_background="#FD79A8",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Store original values
         original_site_status = app.enable_site
         original_updated_at = app.updated_at
 
         # Update site status to the same value (no change)
-        updated_app = app_service.update_app_site_status(app, original_site_status)
+        updated_app = app_service.update_app_site_status(app, original_site_status, session=db_session_with_containers)
 
         # Verify app is returned unchanged
         assert updated_app.id == app.id
@@ -890,8 +1177,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app first
@@ -907,7 +1195,7 @@ class TestAppService:
             icon_background="#E17055",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Store app ID for verification
         app_id = app.id
@@ -917,7 +1205,7 @@ class TestAppService:
             mock_delete_task.delay.return_value = None
 
             # Delete app
-            app_service.delete_app(app)
+            app_service.delete_app(app, session=db_session_with_containers)
 
             # Verify async deletion task was called
             mock_delete_task.delay.assert_called_once_with(tenant_id=tenant.id, app_id=app_id)
@@ -941,8 +1229,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app first
@@ -958,7 +1247,7 @@ class TestAppService:
             icon_background="#00B894",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Store app ID for verification
         app_id = app.id
@@ -973,7 +1262,7 @@ class TestAppService:
             mock_delete_task.delay.return_value = None
 
             # Delete app
-            app_service.delete_app(app)
+            app_service.delete_app(app, session=db_session_with_containers)
 
             # Verify webapp auth cleanup was called
             mock_external_service_dependencies["enterprise_service"].WebAppAuth.cleanup_webapp.assert_called_once_with(
@@ -1000,8 +1289,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app first
@@ -1017,10 +1307,10 @@ class TestAppService:
             icon_background="#6C5CE7",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Get app metadata
-        app_meta = app_service.get_app_meta(app)
+        app_meta = app_service.get_app_meta(app, session=db_session_with_containers)
 
         # Verify metadata contains expected fields
         assert "tool_icons" in app_meta
@@ -1038,8 +1328,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app first
@@ -1055,10 +1346,10 @@ class TestAppService:
             icon_background="#FDCB6E",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Get app code by ID
-        app_code = AppService.get_app_code_by_id(app.id)
+        app_code = AppService.get_app_code_by_id(app.id, session=db_session_with_containers)
 
         # Verify app code was retrieved correctly
         # Note: Site would be created when App is created, site.code is auto-generated
@@ -1077,8 +1368,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app first
@@ -1094,7 +1386,7 @@ class TestAppService:
             icon_background="#E84393",
         )
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Create a site for the app
         site = Site()
@@ -1109,7 +1401,7 @@ class TestAppService:
         db_session_with_containers.commit()
 
         # Get app ID by code
-        app_id = AppService.get_app_id_by_code(site.code)
+        app_id = AppService.get_app_id_by_code(site.code, session=db_session_with_containers)
 
         # Verify app ID was retrieved correctly
         assert app_id == app.id
@@ -1126,8 +1418,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
 
         # Import here to avoid circular dependency
         from services.app_service import CreateAppParams
@@ -1162,8 +1455,9 @@ class TestAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Import here to avoid circular dependency
@@ -1185,6 +1479,7 @@ class TestAppService:
                 api_rpm=10,
             ),
             account,
+            session=db_session_with_containers,
         )
 
         app_with_underscore = app_service.create_app(
@@ -1200,6 +1495,7 @@ class TestAppService:
                 api_rpm=10,
             ),
             account,
+            session=db_session_with_containers,
         )
 
         app_with_backslash = app_service.create_app(
@@ -1215,6 +1511,7 @@ class TestAppService:
                 api_rpm=10,
             ),
             account,
+            session=db_session_with_containers,
         )
 
         # Create app that should NOT match
@@ -1231,11 +1528,12 @@ class TestAppService:
                 api_rpm=10,
             ),
             account,
+            session=db_session_with_containers,
         )
 
         # Test 1: Search with % character
         paginated_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(name="50%", mode="chat", page=1, limit=10)
+            account.id, tenant.id, AppListParams(name="50%", mode="chat", page=1, limit=10), db_session_with_containers
         )
         assert paginated_apps is not None
         assert paginated_apps.total == 1
@@ -1244,7 +1542,10 @@ class TestAppService:
 
         # Test 2: Search with _ character
         paginated_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(name="test_data", mode="chat", page=1, limit=10)
+            account.id,
+            tenant.id,
+            AppListParams(name="test_data", mode="chat", page=1, limit=10),
+            db_session_with_containers,
         )
         assert paginated_apps is not None
         assert paginated_apps.total == 1
@@ -1253,7 +1554,10 @@ class TestAppService:
 
         # Test 3: Search with \ character
         paginated_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(name="path\\to\\app", mode="chat", page=1, limit=10)
+            account.id,
+            tenant.id,
+            AppListParams(name="path\\to\\app", mode="chat", page=1, limit=10),
+            db_session_with_containers,
         )
         assert paginated_apps is not None
         assert paginated_apps.total == 1
@@ -1262,7 +1566,7 @@ class TestAppService:
 
         # Test 4: Search with % should NOT match 100% (verifies escaping works)
         paginated_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(name="50%", mode="chat", page=1, limit=10)
+            account.id, tenant.id, AppListParams(name="50%", mode="chat", page=1, limit=10), db_session_with_containers
         )
         assert paginated_apps is not None
         assert paginated_apps.total == 1
@@ -1277,7 +1581,7 @@ class TestAppService:
         from services.app_service import AppService
 
         with pytest.raises(ValueError, match="not found"):
-            AppService.get_app_code_by_id(str(uuid4()))
+            AppService.get_app_code_by_id(str(uuid4()), session=db_session_with_containers)
 
     def test_get_app_id_by_code_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1286,7 +1590,7 @@ class TestAppService:
         from services.app_service import AppService
 
         with pytest.raises(ValueError, match="not found"):
-            AppService.get_app_id_by_code("nonexistent-code")
+            AppService.get_app_id_by_code("nonexistent-code", session=db_session_with_containers)
 
     def test_get_app_meta_returns_empty_when_workflow_missing(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1299,7 +1603,7 @@ class TestAppService:
         app_service = AppService()
         workflow_app = SimpleNamespace(mode="workflow", workflow=None)
 
-        meta = app_service.get_app_meta(workflow_app)
+        meta = app_service.get_app_meta(workflow_app, session=db_session_with_containers)
         assert meta == {"tool_icons": {}}
 
     def test_get_app_meta_returns_empty_when_model_config_missing(
@@ -1313,5 +1617,5 @@ class TestAppService:
         app_service = AppService()
         chat_app = SimpleNamespace(mode="chat", app_model_config=None)
 
-        meta = app_service.get_app_meta(chat_app)
+        meta = app_service.get_app_meta(chat_app, session=db_session_with_containers)
         assert meta == {"tool_icons": {}}

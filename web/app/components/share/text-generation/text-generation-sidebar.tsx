@@ -6,6 +6,8 @@ import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SavedItems from '@/app/components/app/text-generate/saved-items'
 import AppIcon from '@/app/components/base/app-icon'
@@ -69,6 +71,11 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
   visionConfig,
 }) => {
   const { t } = useTranslation()
+  const [descExpanded, setDescExpanded] = useState(false)
+  const [showDescToggle, setShowDescToggle] = useState(false)
+  const handleDescRef = useCallback((node: HTMLDivElement | null) => {
+    setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
+  }, [])
 
   return (
     <Tabs
@@ -80,7 +87,12 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
         isInstalledApp && 'rounded-l-2xl',
       )}
     >
-      <div className={cn('shrink-0 space-y-4 border-b border-divider-subtle', isPC ? 'bg-components-panel-bg p-8 pb-0' : 'p-4 pb-0')}>
+      <div
+        className={cn(
+          'shrink-0 space-y-4 border-b border-divider-subtle',
+          isPC ? 'bg-components-panel-bg p-8 pb-0' : 'p-4 pb-0',
+        )}
+      >
         <div className="flex items-center gap-3">
           <AppIcon
             size={isPC ? 'large' : 'small'}
@@ -89,28 +101,62 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             background={siteInfo.icon_background || appDefaultIconBackground}
             imageUrl={siteInfo.icon_url}
           />
-          <div className="grow truncate system-md-semibold text-text-secondary">{siteInfo.title}</div>
-          <MenuDropdown hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC} data={siteInfo} />
+          <div className="grow truncate system-md-semibold text-text-secondary">
+            {siteInfo.title}
+          </div>
+          <MenuDropdown
+            hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC}
+            data={siteInfo}
+          />
         </div>
         {siteInfo.description && (
-          <div className="system-xs-regular text-text-tertiary">{siteInfo.description}</div>
+          <div>
+            <div
+              ref={handleDescRef}
+              className={cn(
+                'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
+                !descExpanded && 'line-clamp-3',
+                descExpanded && 'max-h-32 overflow-y-auto',
+              )}
+            >
+              {siteInfo.description}
+              {!descExpanded && showDescToggle && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
+              )}
+            </div>
+            {showDescToggle && (
+              <button
+                type="button"
+                className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
+                onClick={() => setDescExpanded((v) => !v)}
+              >
+                {descExpanded ? (
+                  <>
+                    <RiArrowUpSLine className="size-3" />
+                    {t(($) => $['chat.collapse'], { ns: 'share' })}
+                  </>
+                ) : (
+                  <>
+                    <RiArrowDownSLine className="size-3" />
+                    {t(($) => $['chat.expand'], { ns: 'share' })}
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         )}
         <TabsList className="w-full">
           <TabsTab value="create">
-            <span className="ml-2">{t('generation.tabs.create', { ns: 'share' })}</span>
+            <span className="ml-2">{t(($) => $['generation.tabs.create'], { ns: 'share' })}</span>
           </TabsTab>
           <TabsTab value="batch">
-            <span className="ml-2">{t('generation.tabs.batch', { ns: 'share' })}</span>
+            <span className="ml-2">{t(($) => $['generation.tabs.batch'], { ns: 'share' })}</span>
           </TabsTab>
           {!isWorkflow && (
             <TabsTab value="saved" className="ml-auto">
               <span aria-hidden className="i-ri-bookmark-3-line size-4" />
-              <span className="ml-2">{t('generation.tabs.saved', { ns: 'share' })}</span>
-              {savedMessages.length > 0 && (
-                <Badge className="ml-1">
-                  {savedMessages.length}
-                </Badge>
-              )}
+              <span className="ml-2">{t(($) => $['generation.tabs.saved'], { ns: 'share' })}</span>
+              {savedMessages.length > 0 && <Badge className="ml-1">{savedMessages.length}</Badge>}
             </TabsTab>
           )}
         </TabsList>
@@ -119,7 +165,10 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
         className={cn(
           'h-0 grow overflow-y-auto bg-components-panel-bg',
           isPC ? 'px-8' : 'px-4',
-          !isPC && resultExisted && customConfig?.remove_webapp_brand && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
+          !isPC &&
+            resultExisted &&
+            customConfig?.remove_webapp_brand &&
+            'rounded-b-2xl border-b-[0.5px] border-divider-regular',
         )}
       >
         <TabsPanel value="create" keepMounted>
@@ -162,12 +211,20 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}
         >
-          <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
-          {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-            ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
-            : customConfig?.replace_webapp_logo
-              ? <img src={customConfig.replace_webapp_logo} alt="logo" className="block h-5 w-auto" />
-              : <DifyLogo size="small" />}
+          <div className="system-2xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['chat.poweredBy'], { ns: 'share' })}
+          </div>
+          {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo ? (
+            <img
+              src={systemFeatures.branding.workspace_logo}
+              alt="logo"
+              className="block h-5 w-auto"
+            />
+          ) : customConfig?.replace_webapp_logo ? (
+            <img src={customConfig.replace_webapp_logo} alt="logo" className="block h-5 w-auto" />
+          ) : (
+            <DifyLogo size="small" />
+          )}
         </div>
       )}
     </Tabs>

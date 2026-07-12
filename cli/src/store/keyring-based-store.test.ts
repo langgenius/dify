@@ -11,27 +11,26 @@ class FakeEntry {
     this.key = `${service}::${username}`
   }
 
-  setPassword(value: string): void {
+  async setPassword(value: string): Promise<void> {
     setPassword(this.key, value)
     passwords.set(this.key, value)
   }
 
-  getPassword(): string | null {
+  async getPassword(): Promise<string | undefined> {
     getPassword(this.key)
-    return passwords.get(this.key) ?? null
+    return passwords.get(this.key) ?? undefined
   }
 
-  deletePassword(): boolean {
+  async deletePassword(): Promise<boolean> {
     deletePassword(this.key)
-    if (!passwords.has(this.key))
-      return false
+    if (!passwords.has(this.key)) return false
     passwords.delete(this.key)
     return true
   }
 }
 
 vi.mock('@napi-rs/keyring', () => ({
-  Entry: FakeEntry,
+  AsyncEntry: FakeEntry,
 }))
 
 const { KeyringBasedStore } = await import('./store')
@@ -46,64 +45,58 @@ beforeEach(() => {
 })
 
 describe('KeyringBasedStore', () => {
-  it('returns default when entry missing', () => {
+  it('returns default when entry missing', async () => {
     const s = new KeyringBasedStore(SERVICE)
-    expect(s.get({ key: 'k', default: 'fallback' })).toBe('fallback')
+    expect(await s.get({ key: 'k', default: 'fallback' })).toBe('fallback')
   })
 
-  it('round-trips strings via JSON encoding', () => {
+  it('round-trips strings via JSON encoding', async () => {
     const s = new KeyringBasedStore(SERVICE)
-    s.set({ key: 'k', default: '' }, 'tok-abc')
-    expect(s.get({ key: 'k', default: '' })).toBe('tok-abc')
+    await s.set({ key: 'k', default: '' }, 'tok-abc')
+    expect(await s.get({ key: 'k', default: '' })).toBe('tok-abc')
   })
 
-  it('isolates entries by key', () => {
+  it('isolates entries by key', async () => {
     const s = new KeyringBasedStore(SERVICE)
-    s.set({ key: 'a', default: '' }, 'A')
-    s.set({ key: 'b', default: '' }, 'B')
-    expect(s.get({ key: 'a', default: '' })).toBe('A')
-    expect(s.get({ key: 'b', default: '' })).toBe('B')
+    await s.set({ key: 'a', default: '' }, 'A')
+    await s.set({ key: 'b', default: '' }, 'B')
+    expect(await s.get({ key: 'a', default: '' })).toBe('A')
+    expect(await s.get({ key: 'b', default: '' })).toBe('B')
   })
 
-  it('unset removes the entry', () => {
+  it('unset removes the entry', async () => {
     const s = new KeyringBasedStore(SERVICE)
-    s.set({ key: 'k', default: '' }, 'v')
-    s.unset({ key: 'k', default: '' })
-    expect(s.get({ key: 'k', default: '' })).toBe('')
+    await s.set({ key: 'k', default: '' }, 'v')
+    await s.unset({ key: 'k', default: '' })
+    expect(await s.get({ key: 'k', default: '' })).toBe('')
   })
 
-  it('unset is a no-op when entry missing', () => {
+  it('unset is a no-op when entry missing', async () => {
     const s = new KeyringBasedStore(SERVICE)
-    expect(() => s.unset({ key: 'gone', default: '' })).not.toThrow()
+    await expect(s.unset({ key: 'gone', default: '' })).resolves.not.toThrow()
   })
 
-  it('swallows getPassword exceptions and returns default', () => {
+  it('swallows getPassword exceptions and returns default', async () => {
     const s = new KeyringBasedStore(SERVICE)
-    getPassword.mockImplementationOnce(
-      () => {
-        throw new Error('NoEntry')
-      },
-    )
-    expect(s.get({ key: 'k', default: 'd' })).toBe('d')
+    getPassword.mockImplementationOnce(() => {
+      throw new Error('NoEntry')
+    })
+    expect(await s.get({ key: 'k', default: 'd' })).toBe('d')
   })
 
-  it('swallows unset exceptions', () => {
+  it('swallows unset exceptions', async () => {
     const s = new KeyringBasedStore(SERVICE)
-    deletePassword.mockImplementationOnce(
-      () => {
-        throw new Error('NoEntry')
-      },
-    )
-    expect(() => s.unset({ key: 'k', default: '' })).not.toThrow()
+    deletePassword.mockImplementationOnce(() => {
+      throw new Error('NoEntry')
+    })
+    await expect(s.unset({ key: 'k', default: '' })).resolves.not.toThrow()
   })
 
-  it('lets set propagate exceptions (caller decides fallback)', () => {
+  it('lets set propagate exceptions (caller decides fallback)', async () => {
     const s = new KeyringBasedStore(SERVICE)
-    setPassword.mockImplementationOnce(
-      () => {
-        throw new Error('keyring locked')
-      },
-    )
-    expect(() => s.set({ key: 'k', default: '' }, 'v')).toThrow(/keyring locked/)
+    setPassword.mockImplementationOnce(() => {
+      throw new Error('keyring locked')
+    })
+    await expect(s.set({ key: 'k', default: '' }, 'v')).rejects.toThrow(/keyring locked/)
   })
 })

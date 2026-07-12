@@ -4,13 +4,10 @@ import type { Params as OneStepRunParams } from '@/app/components/workflow/nodes
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useState } from 'react'
-import {
-  useNodesSyncDraft,
-} from '@/app/components/workflow/hooks'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import { useWorkflowRunValidation } from '@/app/components/workflow/hooks/use-checklist'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
-import useAgentSingleRunFormParams from '@/app/components/workflow/nodes/agent/use-single-run-form-params'
 import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/nodes/assigner/use-single-run-form-params'
 import useCodeSingleRunFormParams from '@/app/components/workflow/nodes/code/use-single-run-form-params'
 import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/document-extractor/use-single-run-form-params'
@@ -23,16 +20,13 @@ import useKnowledgeRetrievalSingleRunFormParams from '@/app/components/workflow/
 import useLLMSingleRunFormParams from '@/app/components/workflow/nodes/llm/use-single-run-form-params'
 import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use-single-run-form-params'
 import useParameterExtractorSingleRunFormParams from '@/app/components/workflow/nodes/parameter-extractor/use-single-run-form-params'
-
 import useQuestionClassifierSingleRunFormParams from '@/app/components/workflow/nodes/question-classifier/use-single-run-form-params'
 import useStartSingleRunFormParams from '@/app/components/workflow/nodes/start/use-single-run-form-params'
 import useTemplateTransformSingleRunFormParams from '@/app/components/workflow/nodes/template-transform/use-single-run-form-params'
-
 import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/hooks/use-get-data-for-check-more'
 import useToolSingleRunFormParams from '@/app/components/workflow/nodes/tool/hooks/use-single-run-form-params'
 import useTriggerPluginGetDataForCheckMore from '@/app/components/workflow/nodes/trigger-plugin/use-check-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
-
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
@@ -50,7 +44,8 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.Tool]: useToolSingleRunFormParams,
   [BlockEnum.ParameterExtractor]: useParameterExtractorSingleRunFormParams,
   [BlockEnum.Iteration]: useIterationSingleRunFormParams,
-  [BlockEnum.Agent]: useAgentSingleRunFormParams,
+  [BlockEnum.Agent]: undefined,
+  [BlockEnum.AgentV2]: undefined,
   [BlockEnum.DocExtractor]: useDocExtractorSingleRunFormParams,
   [BlockEnum.Loop]: useLoopSingleRunFormParams,
   [BlockEnum.Start]: useStartSingleRunFormParams,
@@ -91,6 +86,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.ParameterExtractor]: undefined,
   [BlockEnum.Iteration]: undefined,
   [BlockEnum.Agent]: undefined,
+  [BlockEnum.AgentV2]: undefined,
   [BlockEnum.DocExtractor]: undefined,
   [BlockEnum.Loop]: undefined,
   [BlockEnum.Start]: undefined,
@@ -116,18 +112,18 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
 
 const useGetDataForCheckMoreHooks = <T>(nodeType: BlockEnum) => {
   return (id: string, payload: CommonNodeType<T>) => {
-    return getDataForCheckMoreHooks[nodeType]?.({ id, payload }) || {
-      getData: () => {
-        return {}
-      },
-    }
+    return (
+      getDataForCheckMoreHooks[nodeType]?.({ id, payload }) || {
+        getData: () => {
+          return {}
+        },
+      }
+    )
   }
 }
 
 type Params<T> = Omit<OneStepRunParams<T>, 'isRunAfterSingleRun'>
-const useLastRun = <T>({
-  ...oneStepRunParams
-}: Params<T>) => {
+const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   const { conversationVars, systemVars, hasSetInspectVar } = useInspectVarsCrud()
   const blockType = oneStepRunParams.data.type
   const isStartNode = blockType === BlockEnum.Start
@@ -137,17 +133,13 @@ const useLastRun = <T>({
   const isCustomRunNode = isSupportCustomRunForm(blockType)
   const isHumanInputNode = blockType === BlockEnum.HumanInput
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const {
-    getData: getDataForCheckMore,
-  } = useGetDataForCheckMoreHooks<T>(blockType)(oneStepRunParams.id, oneStepRunParams.data)
+  const { getData: getDataForCheckMore } = useGetDataForCheckMoreHooks<T>(blockType)(
+    oneStepRunParams.id,
+    oneStepRunParams.data,
+  )
   const [isRunAfterSingleRun, setIsRunAfterSingleRun] = useState(false)
 
-  const {
-    id,
-    flowId,
-    flowType,
-    data,
-  } = oneStepRunParams
+  const { id, flowId, flowType, data } = oneStepRunParams
   const oneStepRunRes = useOneStepRun({
     ...oneStepRunParams,
     iteratorInputKey: blockType === BlockEnum.Iteration ? `${id}.input_selector` : '',
@@ -157,12 +149,10 @@ const useLastRun = <T>({
 
   const { warningNodes } = useWorkflowRunValidation()
   const blockIfChecklistFailed = useCallback(() => {
-    const warningForNode = warningNodes.find(item => item.id === id)
-    if (!warningForNode)
-      return false
+    const warningForNode = warningNodes.find((item) => item.id === id)
+    if (!warningForNode) return false
 
-    if (warningForNode.unConnected && warningForNode.errorMessages.length === 0)
-      return false
+    if (warningForNode.unConnected && warningForNode.errorMessages.length === 0) return false
 
     const message = warningForNode.errorMessages[0] || 'This node has unresolved checklist issues'
     toast.error(message)
@@ -187,9 +177,7 @@ const useLastRun = <T>({
   } = oneStepRunRes
 
   const nodeInfo = runResult
-  const {
-    ...singleRunParams
-  } = useSingleRunFormParamsHooks(blockType)({
+  const { ...singleRunParams } = useSingleRunFormParamsHooks(blockType)({
     id,
     payload: data,
     runInputData,
@@ -203,22 +191,24 @@ const useLastRun = <T>({
     loopRunResult,
   })
 
-  const toSubmitData = useCallback((data: Record<string, any>) => {
-    if (!isIterationNode && !isLoopNode)
-      return data
+  const toSubmitData = useCallback(
+    (data: Record<string, any>) => {
+      if (!isIterationNode && !isLoopNode) return data
 
-    const allVarObject = singleRunParams?.allVarObject || {}
-    const formattedData: Record<string, any> = {}
-    Object.keys(allVarObject).forEach((key) => {
-      const [varSectorStr, nodeId] = key.split(DELIMITER)
-      formattedData[`${nodeId}.${allVarObject[key].inSingleRunPassedKey}`] = data[varSectorStr!]
-    })
-    if (isIterationNode) {
-      const iteratorInputKey = `${id}.input_selector`
-      formattedData[iteratorInputKey] = data[iteratorInputKey]
-    }
-    return formattedData
-  }, [isIterationNode, isLoopNode, singleRunParams?.allVarObject, id])
+      const allVarObject = singleRunParams?.allVarObject || {}
+      const formattedData: Record<string, any> = {}
+      Object.keys(allVarObject).forEach((key) => {
+        const [varSectorStr, nodeId] = key.split(DELIMITER)
+        formattedData[`${nodeId}.${allVarObject[key].inSingleRunPassedKey}`] = data[varSectorStr!]
+      })
+      if (isIterationNode) {
+        const iteratorInputKey = `${id}.input_selector`
+        formattedData[iteratorInputKey] = data[iteratorInputKey]
+      }
+      return formattedData
+    },
+    [isIterationNode, isLoopNode, singleRunParams?.allVarObject, id],
+  )
 
   const callRunApi = (data: Record<string, any>, cb?: () => void) => {
     handleSyncWorkflowDraft(true, true, {
@@ -230,22 +220,21 @@ const useLastRun = <T>({
   }
   const workflowStore = useWorkflowStore()
   const { setInitShowLastRunTab, setShowVariableInspectPanel } = workflowStore.getState()
-  const initShowLastRunTab = useStore(s => s.initShowLastRunTab)
-  const [tabType, setTabType] = useState<TabType>(initShowLastRunTab ? TabType.lastRun : TabType.settings)
+  const initShowLastRunTab = useStore((s) => s.initShowLastRunTab)
+  const [tabType, setTabType] = useState<TabType>(
+    initShowLastRunTab ? TabType.lastRun : TabType.settings,
+  )
   useEffect(() => {
-    if (initShowLastRunTab)
-      setTabType(TabType.lastRun)
+    if (initShowLastRunTab) setTabType(TabType.lastRun)
 
     setInitShowLastRunTab(false)
   }, [initShowLastRunTab, setInitShowLastRunTab])
   const invalidLastRun = useInvalidLastRun(flowType, flowId, id)
 
   const handleRunWithParams = async (data: Record<string, any>) => {
-    if (blockIfChecklistFailed())
-      return
+    if (blockIfChecklistFailed()) return
     const { isValid } = checkValid()
-    if (!isValid)
-      return
+    if (!isValid) return
     setNodeRunning()
     setIsRunAfterSingleRun(true)
     setTabType(TabType.lastRun)
@@ -261,27 +250,26 @@ const useLastRun = <T>({
   }, [])
 
   const getExistVarValuesInForms = (forms: FormProps[]) => {
-    if (!forms || forms.length === 0)
-      return []
+    if (!forms || forms.length === 0) return []
 
     const valuesArr = forms.map((form) => {
       const values: Record<string, boolean> = {}
       form.inputs.forEach(({ variable, getVarValueFromDependent }) => {
         const isGetValueFromDependent = getVarValueFromDependent || !variable.includes('.')
-        if (isGetValueFromDependent && !singleRunParams?.getDependentVar)
-          return
+        if (isGetValueFromDependent && !singleRunParams?.getDependentVar) return
 
-        const selector = isGetValueFromDependent ? (singleRunParams?.getDependentVar(variable) || []) : variable.slice(1, -1).split('.')
-        if (!selector || selector.length === 0)
-          return
+        const selector = isGetValueFromDependent
+          ? singleRunParams?.getDependentVar(variable) || []
+          : variable.slice(1, -1).split('.')
+        if (!selector || selector.length === 0) return
         const [nodeId, varName] = selector.slice(0, 2)
-        if (!isStartNode && nodeId === id) { // inner vars like loop vars
+        if (!isStartNode && nodeId === id) {
+          // inner vars like loop vars
           values[variable] = true
           return
         }
         const inspectVarValue = hasSetInspectVar(nodeId, varName, systemVars, conversationVars) // also detect system var , env and  conversation var
-        if (inspectVarValue)
-          values[variable] = true
+        if (inspectVarValue) values[variable] = true
       })
       return values
     })
@@ -289,8 +277,7 @@ const useLastRun = <T>({
   }
 
   const isAllVarsHasValue = (vars?: ValueSelector[]) => {
-    if (!vars || vars.length === 0)
-      return true
+    if (!vars || vars.length === 0) return true
     return vars.every((varItem) => {
       const [nodeId, varName] = varItem.slice(0, 2)
       const inspectVarValue = hasSetInspectVar(nodeId!, varName!, systemVars, conversationVars) // also detect system var , env and  conversation var
@@ -299,8 +286,7 @@ const useLastRun = <T>({
   }
 
   const isSomeVarsHasValue = (vars?: ValueSelector[]) => {
-    if (!vars || vars.length === 0)
-      return true
+    if (!vars || vars.length === 0) return true
     return vars.some((varItem) => {
       const [nodeId, varName] = varItem.slice(0, 2)
       const inspectVarValue = hasSetInspectVar(nodeId!, varName!, systemVars, conversationVars) // also detect system var , env and  conversation var
@@ -308,26 +294,26 @@ const useLastRun = <T>({
     })
   }
   const getFilteredExistVarForms = (forms: FormProps[]) => {
-    if (!forms || forms.length === 0)
-      return []
+    if (!forms || forms.length === 0) return []
 
     const existVarValuesInForms = getExistVarValuesInForms(forms)
 
-    const res = forms.map((form, i) => {
-      const existVarValuesInForm = existVarValuesInForms[i]
-      const newForm = { ...form }
-      const inputs = form.inputs.filter((input) => {
-        return !(input.variable in existVarValuesInForm!)
+    const res = forms
+      .map((form, i) => {
+        const existVarValuesInForm = existVarValuesInForms[i]
+        const newForm = { ...form }
+        const inputs = form.inputs.filter((input) => {
+          return !(input.variable in existVarValuesInForm!)
+        })
+        newForm.inputs = inputs
+        return newForm
       })
-      newForm.inputs = inputs
-      return newForm
-    }).filter(form => form.inputs.length > 0)
+      .filter((form) => form.inputs.length > 0)
     return res
   }
 
   const checkAggregatorVarsSet = (vars: ValueSelector[][]) => {
-    if (!vars || vars.length === 0)
-      return true
+    if (!vars || vars.length === 0) return true
     // in each group, at last one set is ok
     return vars.every((varItem) => {
       return isSomeVarsHasValue(varItem)
@@ -346,12 +332,14 @@ const useLastRun = <T>({
   }
 
   const handleSingleRun = () => {
-    if (blockIfChecklistFailed())
-      return
+    if (blockIfChecklistFailed()) return
     const { isValid } = checkValid()
-    if (!isValid)
-      return
-    if (blockType === BlockEnum.TriggerWebhook || blockType === BlockEnum.TriggerPlugin || blockType === BlockEnum.TriggerSchedule)
+    if (!isValid) return
+    if (
+      blockType === BlockEnum.TriggerWebhook ||
+      blockType === BlockEnum.TriggerPlugin ||
+      blockType === BlockEnum.TriggerSchedule
+    )
       setShowVariableInspectPanel(true)
     if (isCustomRunNode || isHumanInputNode) {
       showSingleRunWithDraftSync()
@@ -366,8 +354,7 @@ const useLastRun = <T>({
         invalidLastRun()
         setTabType(TabType.lastRun)
       })
-    }
-    else {
+    } else {
       showSingleRunWithDraftSync()
     }
   }

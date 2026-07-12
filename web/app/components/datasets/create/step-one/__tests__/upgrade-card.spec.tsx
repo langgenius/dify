@@ -4,6 +4,14 @@ import UpgradeCard from '../upgrade-card'
 
 const mockSetShowPricingModal = vi.fn()
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
@@ -11,7 +19,7 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 vi.mock('@/app/components/billing/upgrade-btn', () => ({
-  default: ({ onClick, className }: { onClick?: () => void, className?: string }) => (
+  default: ({ onClick, className }: { onClick?: () => void; className?: string }) => (
     <button type="button" className={className} onClick={onClick} data-testid="upgrade-btn">
       upgrade
     </button>

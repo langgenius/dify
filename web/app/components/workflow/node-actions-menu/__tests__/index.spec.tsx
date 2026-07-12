@@ -35,39 +35,37 @@ const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
 const mockUseAllWorkflowTools = vi.mocked(useAllWorkflowTools)
 
-const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> => ({
-  data,
-  error: null,
-  refetch: vi.fn(),
-  isError: false,
-  isPending: false,
-  isLoading: false,
-  isSuccess: true,
-  isFetching: false,
-  isRefetching: false,
-  isLoadingError: false,
-  isRefetchError: false,
-  isInitialLoading: false,
-  isPaused: false,
-  isEnabled: true,
-  status: 'success',
-  fetchStatus: 'idle',
-  dataUpdatedAt: Date.now(),
-  errorUpdatedAt: 0,
-  failureCount: 0,
-  failureReason: null,
-  errorUpdateCount: 0,
-  isFetched: true,
-  isFetchedAfterMount: true,
-  isPlaceholderData: false,
-  isStale: false,
-  promise: Promise.resolve(data),
-} as UseQueryResult<T, Error>)
+const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> =>
+  ({
+    data,
+    error: null,
+    refetch: vi.fn(),
+    isError: false,
+    isPending: false,
+    isLoading: false,
+    isSuccess: true,
+    isFetching: false,
+    isRefetching: false,
+    isLoadingError: false,
+    isRefetchError: false,
+    isInitialLoading: false,
+    isPaused: false,
+    isEnabled: true,
+    status: 'success',
+    fetchStatus: 'idle',
+    dataUpdatedAt: Date.now(),
+    errorUpdatedAt: 0,
+    failureCount: 0,
+    failureReason: null,
+    errorUpdateCount: 0,
+    isFetched: true,
+    isFetchedAfterMount: true,
+    isPlaceholderData: false,
+    isStale: false,
+    promise: Promise.resolve(data),
+  }) as UseQueryResult<T, Error>
 
-const renderComponent = (
-  showHelpLink: boolean = true,
-  onOpenChange?: (open: boolean) => void,
-) =>
+const renderComponent = (showHelpLink: boolean = true, onOpenChange?: (open: boolean) => void) =>
   renderWorkflowFlowComponent(
     <NodeActionsDropdown
       id="node-1"
@@ -128,6 +126,19 @@ describe('NodeActionsDropdown', () => {
     expect(handleNodeSelect).toHaveBeenCalledWith('node-1')
     expect(store.getState().initShowLastRunTab).toBe(true)
     expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'run' })
+  })
+
+  it('should hide single-run actions when nodes are readonly', async () => {
+    const user = userEvent.setup()
+    mockUseNodesReadOnly.mockReturnValueOnce({
+      nodesReadOnly: true,
+    } as ReturnType<typeof useNodesReadOnly>)
+
+    renderComponent()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+
+    expect(screen.queryByText('workflow.panel.runThisStep')).not.toBeInTheDocument()
   })
 
   it('should hide the help link when showHelpLink is false', async () => {

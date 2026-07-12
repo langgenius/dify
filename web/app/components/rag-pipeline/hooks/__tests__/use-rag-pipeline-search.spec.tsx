@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useRagPipelineSearch } from '../use-rag-pipeline-search'
 
-const mockNodes: Array<{ id: string, data: Record<string, unknown> }> = []
+const mockNodes: Array<{ id: string; data: Record<string, unknown> }> = []
 vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
   default: () => mockNodes,
 }))
@@ -109,11 +109,22 @@ describe('useRagPipelineSearch', () => {
         },
         {
           id: 'node-2',
-          data: { type: BlockEnum.KnowledgeRetrieval, title: 'Knowledge Base', desc: 'Search knowledge', dataset_ids: ['ds1', 'ds2'] },
+          data: {
+            type: BlockEnum.KnowledgeRetrieval,
+            title: 'Knowledge Base',
+            desc: 'Search knowledge',
+            dataset_ids: ['ds1', 'ds2'],
+          },
         },
         {
           id: 'node-3',
-          data: { type: BlockEnum.Tool, title: 'Web Search', desc: '', tool_description: 'Search the web', tool_label: 'WebSearch' },
+          data: {
+            type: BlockEnum.Tool,
+            title: 'Web Search',
+            desc: '',
+            tool_description: 'Search the web',
+            tool_label: 'WebSearch',
+          },
         },
         {
           id: 'node-4',
@@ -138,7 +149,7 @@ describe('useRagPipelineSearch', () => {
       const searchFn = mockRagPipelineNodesAction.searchFn!
       const results = searchFn(BlockEnum.LLM)
 
-      expect(results.some(r => r.title === 'GPT Model')).toBe(true)
+      expect(results.some((r) => r.title === 'GPT Model')).toBe(true)
     })
 
     it('should find nodes by description', () => {
@@ -147,7 +158,7 @@ describe('useRagPipelineSearch', () => {
       const searchFn = mockRagPipelineNodesAction.searchFn!
       const results = searchFn('knowledge')
 
-      expect(results.some(r => r.title === 'Knowledge Base')).toBe(true)
+      expect(results.some((r) => r.title === 'Knowledge Base')).toBe(true)
     })
 
     it('should return all nodes when search term is empty', () => {
@@ -164,7 +175,7 @@ describe('useRagPipelineSearch', () => {
 
       const searchFn = mockRagPipelineNodesAction.searchFn!
       const results = searchFn('')
-      const titles = results.map(r => r.title)
+      const titles = results.map((r) => r.title)
 
       const sortedTitles = [...titles].sort((a, b) => a.localeCompare(b))
       expect(titles).toEqual(sortedTitles)
@@ -194,7 +205,7 @@ describe('useRagPipelineSearch', () => {
       const searchFn = mockRagPipelineNodesAction.searchFn!
       const results = searchFn('web')
 
-      const toolResult = results.find(r => r.title === 'Web Search')
+      const toolResult = results.find((r) => r.title === 'Web Search')
       expect(toolResult).toBeDefined()
       expect(toolResult?.description).toContain('Search the web')
     })
@@ -205,7 +216,7 @@ describe('useRagPipelineSearch', () => {
       const searchFn = mockRagPipelineNodesAction.searchFn!
       const results = searchFn('Start')
 
-      const startResult = results.find(r => r.title === 'Start Node')
+      const startResult = results.find((r) => r.title === 'Start Node')
       expect(startResult?.metadata?.nodeId).toBe('node-4')
     })
 

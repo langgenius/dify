@@ -1,11 +1,10 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -23,17 +22,17 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setLoading] = useState(false)
   const locale = useLocale()
-  const setCountdownLeftTime = useSetLocalStorage<string>(COUNT_DOWN_KEY, { raw: true })
+  const setCountdownLeftTime = useSetCountdownLeftTime()
 
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        toast.error(t('error.emailEmpty', { ns: 'login' }))
+        toast.error(t(($) => $['error.emailEmpty'], { ns: 'login' }))
         return
       }
 
       if (!emailRegex.test(email)) {
-        toast.error(t('error.emailInValid', { ns: 'login' }))
+        toast.error(t(($) => $['error.emailInValid'], { ns: 'login' }))
         return
       }
       setLoading(true)
@@ -45,11 +44,9 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         params.set('token', encodeURIComponent(ret.data))
         router.push(`/signin/check-code?${params.toString()}`)
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error(error)
-    }
-    finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -60,21 +57,31 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         void handleGetEMailVerificationCode()
       }}
     >
-      <FieldRoot name="email" disabled={isInvite} className="mb-2">
-        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">{t('email', { ns: 'login' })}</FieldLabel>
+      <Field name="email" disabled={isInvite} className="mb-2">
+        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">
+          {t(($) => $.email, { ns: 'login' })}
+        </FieldLabel>
         <FieldControl
           type="email"
           autoComplete="email"
           spellCheck={false}
           disabled={isInvite}
           value={email}
-          placeholder={t('emailPlaceholder', { ns: 'login' }) as string}
+          placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
           onValueChange={setEmail}
         />
         <div className="mt-3">
-          <Button type="submit" loading={loading} disabled={loading || !email} variant="primary" className="w-full">{t('signup.verifyMail', { ns: 'login' })}</Button>
+          <Button
+            type="submit"
+            loading={loading}
+            disabled={loading || !email}
+            variant="primary"
+            className="w-full"
+          >
+            {t(($) => $['signup.verifyMail'], { ns: 'login' })}
+          </Button>
         </div>
-      </FieldRoot>
+      </Field>
     </Form>
   )
 }

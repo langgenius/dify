@@ -11,6 +11,7 @@ type Props = Readonly<{
   enable: boolean
   hasSwitch?: boolean
   onSwitchChange?: (key: string, enable: boolean) => void
+  disabled?: boolean
 }>
 
 const VALUE_LIMIT = {
@@ -21,15 +22,11 @@ const VALUE_LIMIT = {
 }
 
 const normalizeScoreThreshold = (value?: number): number => {
-  const normalizedValue = typeof value === 'number' && Number.isFinite(value)
-    ? value
-    : VALUE_LIMIT.default
+  const normalizedValue =
+    typeof value === 'number' && Number.isFinite(value) ? value : VALUE_LIMIT.default
   const roundedValue = Number.parseFloat(normalizedValue.toFixed(2))
 
-  return Math.min(
-    VALUE_LIMIT.max,
-    Math.max(VALUE_LIMIT.min, roundedValue),
-  )
+  return Math.min(VALUE_LIMIT.max, Math.max(VALUE_LIMIT.min, roundedValue))
 }
 
 const ScoreThresholdItem: FC<Props> = ({
@@ -39,6 +36,7 @@ const ScoreThresholdItem: FC<Props> = ({
   onChange,
   hasSwitch,
   onSwitchChange,
+  disabled = false,
 }) => {
   const { t } = useTranslation()
   const handleParamChange = (key: string, nextValue: number) => {
@@ -50,12 +48,13 @@ const ScoreThresholdItem: FC<Props> = ({
     <ParamItem
       className={className}
       id="score_threshold"
-      name={t('datasetConfig.score_threshold', { ns: 'appDebug' })}
-      tip={t('datasetConfig.score_thresholdTip', { ns: 'appDebug' }) as string}
+      name={t(($) => $['datasetConfig.score_threshold'], { ns: 'appDebug' })}
+      tip={t(($) => $['datasetConfig.score_thresholdTip'], { ns: 'appDebug' }) as string}
       {...VALUE_LIMIT}
       value={safeValue}
       enable={enable}
       onChange={handleParamChange}
+      disabled={disabled}
       hasSwitch={hasSwitch}
       onSwitchChange={onSwitchChange}
     />

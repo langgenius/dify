@@ -1,7 +1,6 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-
 import Conversion from '../conversion'
 import RagPipelinePanel from '../panel'
 import PublishAsKnowledgePipelineModal from '../publish-as-knowledge-pipeline-modal'
@@ -82,15 +81,28 @@ vi.mock('@/app/components/workflow/store', () => {
   }
 })
 
-const {
-  mockHandlePaneContextmenuCancel,
-  mockExportCheck,
-  mockHandleExportDSL,
-} = vi.hoisted(() => ({
-  mockHandlePaneContextmenuCancel: vi.fn(),
-  mockExportCheck: vi.fn(),
-  mockHandleExportDSL: vi.fn(),
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(
+    selector: (state: {
+      accessControl: { canImportExportDSL: boolean; canRun: boolean; canReleaseAndVersion: boolean }
+    }) => T,
+  ): T =>
+    selector({
+      accessControl: {
+        canImportExportDSL: true,
+        canRun: true,
+        canReleaseAndVersion: true,
+      },
+    }),
 }))
+
+const { mockHandlePaneContextmenuCancel, mockExportCheck, mockHandleExportDSL } = vi.hoisted(
+  () => ({
+    mockHandlePaneContextmenuCancel: vi.fn(),
+    mockExportCheck: vi.fn(),
+    mockHandleExportDSL: vi.fn(),
+  }),
+)
 vi.mock('@/app/components/workflow/hooks', () => {
   return {
     useNodesSyncDraft: () => ({
@@ -208,6 +220,18 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useInvalidDatasetList: () => vi.fn(),
 }))
 
+let mockDatasetDetailState = {
+  dataset: {
+    permission_keys: ['dataset.acl.edit'],
+    maintainer: 'maintainer-id',
+  },
+}
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (
+    selector: (state: typeof mockDatasetDetailState) => unknown,
+  ) => selector(mockDatasetDetailState),
+}))
+
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: vi.fn().mockResolvedValue({
     graph: { nodes: [], edges: [], viewport: {} },
@@ -216,10 +240,14 @@ vi.mock('@/service/workflow', () => ({
   }),
 }))
 
-let mockEventSubscriptionCallback: ((v: { type: string, payload?: { data?: EnvironmentVariable[] } }) => void) | null = null
-const mockUseSubscription = vi.fn((callback: (v: { type: string, payload?: { data?: EnvironmentVariable[] } }) => void) => {
-  mockEventSubscriptionCallback = callback
-})
+let mockEventSubscriptionCallback:
+  | ((v: { type: string; payload?: { data?: EnvironmentVariable[] } }) => void)
+  | null = null
+const mockUseSubscription = vi.fn(
+  (callback: (v: { type: string; payload?: { data?: EnvironmentVariable[] } }) => void) => {
+    mockEventSubscriptionCallback = callback
+  },
+)
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: {
@@ -241,8 +269,9 @@ vi.mock('@/utils/var', () => ({
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => createMockProviderContextValue(),
-  useProviderContextSelector: <T,>(selector: (state: ReturnType<typeof createMockProviderContextValue>) => T): T =>
-    selector(createMockProviderContextValue()),
+  useProviderContextSelector: <T,>(
+    selector: (state: ReturnType<typeof createMockProviderContextValue>) => T,
+  ): T => selector(createMockProviderContextValue()),
 }))
 
 vi.mock('@/app/components/workflow', () => ({
@@ -252,7 +281,11 @@ vi.mock('@/app/components/workflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/panel', () => ({
-  default: ({ components }: { components?: { left?: React.ReactNode, right?: React.ReactNode } }) => (
+  default: ({
+    components,
+  }: {
+    components?: { left?: React.ReactNode; right?: React.ReactNode }
+  }) => (
     <div data-testid="workflow-panel">
       <div data-testid="panel-left">{components?.left}</div>
       <div data-testid="panel-right">{components?.right}</div>
@@ -276,12 +309,18 @@ vi.mock('@/app/components/workflow/constants', () => ({
 }))
 
 vi.mock('@/app/components/workflow/utils', () => ({
-  initialNodes: vi.fn(nodes => nodes),
-  initialEdges: vi.fn(edges => edges),
+  initialNodes: vi.fn((nodes) => nodes),
+  initialEdges: vi.fn((edges) => edges),
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  default: ({ file, updateFile, className, accept, displayName }: {
+  default: ({
+    file,
+    updateFile,
+    className,
+    accept,
+    displayName,
+  }: {
     file?: File
     updateFile: (file?: File) => void
     className?: string
@@ -300,7 +339,9 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
       />
       {file && <span data-testid="file-name">{file.name}</span>}
       <span data-testid="display-name">{displayName}</span>
-      <button data-testid="clear-file" onClick={() => updateFile(undefined)}>Clear</button>
+      <button data-testid="clear-file" onClick={() => updateFile(undefined)}>
+        Clear
+      </button>
     </div>
   ),
 }))
@@ -314,35 +355,50 @@ vi.mock('../publish-toast', () => ({
 }))
 
 vi.mock('../update-dsl-modal', () => ({
-  default: ({ onCancel, onBackup, onImport }: {
+  default: ({
+    onCancel,
+    onBackup,
+    onImport,
+  }: {
     onCancel: () => void
     onBackup: () => void
     onImport?: () => void
   }) => (
     <div data-testid="update-dsl-modal">
-      <button data-testid="dsl-cancel" onClick={onCancel}>Cancel</button>
-      <button data-testid="dsl-backup" onClick={onBackup}>Backup</button>
-      <button data-testid="dsl-import" onClick={onImport}>Import</button>
+      <button data-testid="dsl-cancel" onClick={onCancel}>
+        Cancel
+      </button>
+      <button data-testid="dsl-backup" onClick={onBackup}>
+        Backup
+      </button>
+      <button data-testid="dsl-import" onClick={onImport}>
+        Import
+      </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
-  default: ({ envList, onConfirm, onClose }: {
+  default: ({
+    envList,
+    onConfirm,
+    onClose,
+  }: {
     envList: EnvironmentVariable[]
     onConfirm: () => void
     onClose: () => void
-  }) => (
-    envList.length > 0
-      ? (
-          <div data-testid="dsl-export-confirm-modal">
-            <span data-testid="env-count">{envList.length}</span>
-            <button data-testid="dsl-export-confirm" onClick={onConfirm}>Confirm</button>
-            <button data-testid="dsl-export-close" onClick={onClose}>Close</button>
-          </div>
-        )
-      : null
-  ),
+  }) =>
+    envList.length > 0 ? (
+      <div data-testid="dsl-export-confirm-modal">
+        <span data-testid="env-count">{envList.length}</span>
+        <button data-testid="dsl-export-confirm" onClick={onConfirm}>
+          Confirm
+        </button>
+        <button data-testid="dsl-export-close" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    ) : null,
 }))
 
 // Silence expected console.error from Dialog/Modal rendering
@@ -374,6 +430,12 @@ function getAppIcon() {
 describe('Conversion', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDatasetDetailState = {
+      dataset: {
+        permission_keys: ['dataset.acl.edit'],
+        maintainer: 'maintainer-id',
+      },
+    }
   })
 
   describe('Rendering', () => {
@@ -386,7 +448,9 @@ describe('Conversion', () => {
     it('should render conversion button', () => {
       render(<Conversion />)
 
-      expect(screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i }),
+      ).toBeInTheDocument()
     })
 
     it('should render description text', () => {
@@ -414,7 +478,9 @@ describe('Conversion', () => {
     it('should show confirm modal when convert button is clicked', () => {
       render(<Conversion />)
 
-      const convertButton = screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })
+      const convertButton = screen.getByRole('button', {
+        name: /datasetPipeline\.operations\.convert/i,
+      })
       fireEvent.click(convertButton)
 
       // AlertDialog renders title and content via portal.
@@ -425,14 +491,18 @@ describe('Conversion', () => {
     it('should hide confirm modal when cancel is clicked', async () => {
       render(<Conversion />)
 
-      const convertButton = screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })
+      const convertButton = screen.getByRole('button', {
+        name: /datasetPipeline\.operations\.convert/i,
+      })
       fireEvent.click(convertButton)
       expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
 
       // AlertDialog close is async because it unmounts after state updates.
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => {
-        expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('datasetPipeline.conversion.confirm.title'),
+        ).not.toBeInTheDocument()
       })
     })
   })
@@ -444,50 +514,67 @@ describe('Conversion', () => {
     })
 
     it('should call convert with datasetId and show success toast on success', async () => {
-      mockConvertFn.mockImplementation((_datasetId: string, options: { onSuccess: (res: { status: string }) => void }) => {
-        options.onSuccess({ status: 'success' })
-      })
+      mockConvertFn.mockImplementation(
+        (_datasetId: string, options: { onSuccess: (res: { status: string }) => void }) => {
+          options.onSuccess({ status: 'success' })
+        },
+      )
 
       render(<Conversion />)
 
-      const convertButton = screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })
+      const convertButton = screen.getByRole('button', {
+        name: /datasetPipeline\.operations\.convert/i,
+      })
       fireEvent.click(convertButton)
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
-        expect(mockConvertFn).toHaveBeenCalledWith('test-dataset-id', expect.objectContaining({
-          onSuccess: expect.any(Function),
-          onError: expect.any(Function),
-        }))
+        expect(mockConvertFn).toHaveBeenCalledWith(
+          'test-dataset-id',
+          expect.objectContaining({
+            onSuccess: expect.any(Function),
+            onError: expect.any(Function),
+          }),
+        )
       })
     })
 
     it('should close modal on success', async () => {
-      mockConvertFn.mockImplementation((_datasetId: string, options: { onSuccess: (res: { status: string }) => void }) => {
-        options.onSuccess({ status: 'success' })
-      })
+      mockConvertFn.mockImplementation(
+        (_datasetId: string, options: { onSuccess: (res: { status: string }) => void }) => {
+          options.onSuccess({ status: 'success' })
+        },
+      )
 
       render(<Conversion />)
 
-      const convertButton = screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })
+      const convertButton = screen.getByRole('button', {
+        name: /datasetPipeline\.operations\.convert/i,
+      })
       fireEvent.click(convertButton)
       expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
-        expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('datasetPipeline.conversion.confirm.title'),
+        ).not.toBeInTheDocument()
       })
     })
 
     it('should show error toast when conversion fails with status failed', async () => {
-      mockConvertFn.mockImplementation((_datasetId: string, options: { onSuccess: (res: { status: string }) => void }) => {
-        options.onSuccess({ status: 'failed' })
-      })
+      mockConvertFn.mockImplementation(
+        (_datasetId: string, options: { onSuccess: (res: { status: string }) => void }) => {
+          options.onSuccess({ status: 'failed' })
+        },
+      )
 
       render(<Conversion />)
 
-      const convertButton = screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })
+      const convertButton = screen.getByRole('button', {
+        name: /datasetPipeline\.operations\.convert/i,
+      })
       fireEvent.click(convertButton)
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
@@ -505,7 +592,9 @@ describe('Conversion', () => {
 
       render(<Conversion />)
 
-      const convertButton = screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })
+      const convertButton = screen.getByRole('button', {
+        name: /datasetPipeline\.operations\.convert/i,
+      })
       fireEvent.click(convertButton)
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
@@ -517,14 +606,18 @@ describe('Conversion', () => {
 
   describe('Memoization', () => {
     it('should be wrapped with React.memo', () => {
-      expect((Conversion as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
+      expect((Conversion as unknown as { $$typeof: symbol }).$$typeof).toBe(
+        Symbol.for('react.memo'),
+      )
     })
 
     it('should use useCallback for handleConvert', () => {
       const { rerender } = render(<Conversion />)
 
       rerender(<Conversion />)
-      expect(screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i }),
+      ).toBeInTheDocument()
     })
   })
 
@@ -569,7 +662,9 @@ describe('PipelineScreenShot', () => {
 
   describe('Memoization', () => {
     it('should be wrapped with React.memo', () => {
-      expect((PipelineScreenShot as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
+      expect((PipelineScreenShot as unknown as { $$typeof: symbol }).$$typeof).toBe(
+        Symbol.for('react.memo'),
+      )
     })
   })
 })
@@ -818,7 +913,9 @@ describe('RagPipelinePanel', () => {
 
   describe('Memoization', () => {
     it('should be wrapped with memo', () => {
-      expect((RagPipelinePanel as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
+      expect((RagPipelinePanel as unknown as { $$typeof: symbol }).$$typeof).toBe(
+        Symbol.for('react.memo'),
+      )
     })
   })
 })
@@ -865,7 +962,13 @@ describe('RagPipelineChildren', () => {
       render(<RagPipelineChildren />)
 
       const mockEnvVariables: EnvironmentVariable[] = [
-        { id: '1', name: 'SECRET_KEY', value: 'test-secret', value_type: 'secret' as const, description: '' },
+        {
+          id: '1',
+          name: 'SECRET_KEY',
+          value: 'test-secret',
+          value_type: 'secret' as const,
+          description: '',
+        },
       ]
 
       if (mockEventSubscriptionCallback) {
@@ -931,7 +1034,13 @@ describe('RagPipelineChildren', () => {
       render(<RagPipelineChildren />)
 
       const mockEnvVariables: EnvironmentVariable[] = [
-        { id: '1', name: 'API_KEY', value: 'secret-value', value_type: 'secret' as const, description: '' },
+        {
+          id: '1',
+          name: 'API_KEY',
+          value: 'secret-value',
+          value_type: 'secret' as const,
+          description: '',
+        },
       ]
 
       if (mockEventSubscriptionCallback) {
@@ -952,7 +1061,13 @@ describe('RagPipelineChildren', () => {
       render(<RagPipelineChildren />)
 
       const mockEnvVariables: EnvironmentVariable[] = [
-        { id: '1', name: 'API_KEY', value: 'secret-value', value_type: 'secret' as const, description: '' },
+        {
+          id: '1',
+          name: 'API_KEY',
+          value: 'secret-value',
+          value_type: 'secret' as const,
+          description: '',
+        },
       ]
 
       if (mockEventSubscriptionCallback) {
@@ -979,7 +1094,13 @@ describe('RagPipelineChildren', () => {
       render(<RagPipelineChildren />)
 
       const mockEnvVariables: EnvironmentVariable[] = [
-        { id: '1', name: 'API_KEY', value: 'secret-value', value_type: 'secret' as const, description: '' },
+        {
+          id: '1',
+          name: 'API_KEY',
+          value: 'secret-value',
+          value_type: 'secret' as const,
+          description: '',
+        },
       ]
 
       if (mockEventSubscriptionCallback) {
@@ -1003,7 +1124,9 @@ describe('RagPipelineChildren', () => {
 
   describe('Memoization', () => {
     it('should be wrapped with memo', () => {
-      expect((RagPipelineChildren as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
+      expect((RagPipelineChildren as unknown as { $$typeof: symbol }).$$typeof).toBe(
+        Symbol.for('react.memo'),
+      )
     })
   })
 })
@@ -1018,12 +1141,7 @@ describe('Integration Tests', () => {
     const mockOnConfirm = vi.fn().mockResolvedValue(undefined)
 
     it('should complete full publish flow', async () => {
-      render(
-        <PublishAsKnowledgePipelineModal
-          onCancel={mockOnCancel}
-          onConfirm={mockOnConfirm}
-        />,
-      )
+      render(<PublishAsKnowledgePipelineModal onCancel={mockOnCancel} onConfirm={mockOnConfirm} />)
 
       fireEvent.change(getNameInput(), { target: { value: 'My Pipeline' } })
 
@@ -1057,12 +1175,7 @@ describe('Edge Cases', () => {
 
   describe('Null/Undefined Values', () => {
     it('should handle empty knowledgeName', () => {
-      render(
-        <PublishAsKnowledgePipelineModal
-          onCancel={vi.fn()}
-          onConfirm={vi.fn()}
-        />,
-      )
+      render(<PublishAsKnowledgePipelineModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
 
       const input = getNameInput()
       fireEvent.change(input, { target: { value: '' } })
@@ -1072,12 +1185,7 @@ describe('Edge Cases', () => {
 
   describe('Boundary Conditions', () => {
     it('should handle very long pipeline name', () => {
-      render(
-        <PublishAsKnowledgePipelineModal
-          onCancel={vi.fn()}
-          onConfirm={vi.fn()}
-        />,
-      )
+      render(<PublishAsKnowledgePipelineModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
 
       const longName = 'A'.repeat(1000)
       const input = getNameInput()
@@ -1086,12 +1194,7 @@ describe('Edge Cases', () => {
     })
 
     it('should handle special characters in name', () => {
-      render(
-        <PublishAsKnowledgePipelineModal
-          onCancel={vi.fn()}
-          onConfirm={vi.fn()}
-        />,
-      )
+      render(<PublishAsKnowledgePipelineModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
 
       const specialName = '<script>alert("xss")</script>'
       const input = getNameInput()
@@ -1113,24 +1216,14 @@ describe('Accessibility', () => {
 
   describe('PublishAsKnowledgePipelineModal', () => {
     it('should have accessible form inputs', () => {
-      render(
-        <PublishAsKnowledgePipelineModal
-          onCancel={vi.fn()}
-          onConfirm={vi.fn()}
-        />,
-      )
+      render(<PublishAsKnowledgePipelineModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
 
       expect(getNameInput()).toBeInTheDocument()
       expect(getDescriptionTextarea()).toBeInTheDocument()
     })
 
     it('should have accessible buttons', () => {
-      render(
-        <PublishAsKnowledgePipelineModal
-          onCancel={vi.fn()}
-          onConfirm={vi.fn()}
-        />,
-      )
+      render(<PublishAsKnowledgePipelineModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
 
       expect(screen.getByRole('button', { name: /common\.operation\.cancel/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /workflow\.common\.publish/i })).toBeInTheDocument()

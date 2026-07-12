@@ -40,7 +40,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -158,7 +158,7 @@ jobs:
 
       - name: Run Claude Code for Translation Sync
         if: steps.context.outputs.CHANGED_FILES != ''
-        uses: anthropics/claude-code-action@1dc994ee7a008f0ecc866d9ac23ef036b7229f84 # v1.0.127
+        uses: anthropics/claude-code-action@558b1d6cab4085c7753fe402c10bef0fbb92ac7a # v1.0.165
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -223,7 +223,7 @@ jobs:
                - Match the existing terminology and register used by each locale.
                - Prefer one Edit per file when stable, but prioritize correctness over batching.
             6. Verify only the edited files.
-               - Run `vp run dify-web#lint:fix --quiet -- <relative edited i18n file paths under web/>`
+               - Run `vp fmt <repo-relative edited paths such as web/i18n/...>`
                - Run `vp run dify-web#i18n:check ${{ steps.context.outputs.FILE_ARGS }} ${{ steps.context.outputs.LANG_ARGS }}`
                - If verification fails, fix the remaining problems before continuing.
             7. Stop after the scoped locale files are updated and verification passes.
@@ -322,7 +322,7 @@ jobs:
             '## Verification',
             '',
             `- \`vp run dify-web#i18n:check --file ${process.env.FILES_IN_SCOPE} --lang ${process.env.TARGET_LANGS}\``,
-            `- \`vp run dify-web#lint:fix --quiet -- <edited i18n files under web/>\``,
+            `- \`vp fmt <repo-relative edited paths such as web/i18n/...>\``,
             '',
             '## Notes',
             '',

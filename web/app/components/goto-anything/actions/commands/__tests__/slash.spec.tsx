@@ -1,6 +1,12 @@
 import type { SearchResult } from '../../types'
 import { render } from '@testing-library/react'
-import { slashAction, SlashCommandProvider } from '../slash'
+import { slashAction } from '../slash'
+import { SlashCommandProvider } from '../slash-provider'
+
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextLanguageMock } = await import('@/test/i18n-mock')
+  return createReactI18nextLanguageMock('ja')
+})
 
 const {
   mockSetTheme,
@@ -32,14 +38,6 @@ vi.mock('next-themes', () => ({
     setTheme: mockSetTheme,
   }),
 }))
-
-vi.mock('react-i18next', () => ({
-  getI18n: () => ({
-    language: 'ja',
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@/i18n-config', () => ({
   setLocaleOnClient: mockSetLocale,
 }))
@@ -89,12 +87,16 @@ describe('slashAction', () => {
   })
 
   it('should delegate search to the slash command registry with the active language', async () => {
-    mockSearch.mockResolvedValue([{ id: 'theme', title: '/theme', type: 'command', data: { command: 'theme' } }])
+    mockSearch.mockResolvedValue([
+      { id: 'theme', title: '/theme', type: 'command', data: { command: 'theme' } },
+    ])
 
     const results = await slashAction.search('/theme dark', 'dark')
 
     expect(mockSearch).toHaveBeenCalledWith('/theme dark', 'ja')
-    expect(results).toEqual([{ id: 'theme', title: '/theme', type: 'command', data: { command: 'theme' } }])
+    expect(results).toEqual([
+      { id: 'theme', title: '/theme', type: 'command', data: { command: 'theme' } },
+    ])
   })
 })
 
@@ -108,31 +110,33 @@ describe('SlashCommandProvider', () => {
   it('should not register the /create and /refine preview commands when the feature flag is off', () => {
     const { unmount } = render(<SlashCommandProvider />)
 
-    expect(mockRegister.mock.calls.map(call => call[0].name)).toEqual([
+    expect(mockRegister.mock.calls.map((call) => call[0].name)).toEqual([
       'theme',
       'language',
       'forum',
       'docs',
       'community',
       'account',
-      'zen',
       'go',
     ])
-    expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({ name: 'theme' }), { setTheme: mockSetTheme })
-    expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({ name: 'language' }), { setLocale: mockSetLocale })
+    expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({ name: 'theme' }), {
+      setTheme: mockSetTheme,
+    })
+    expect(mockRegister).toHaveBeenCalledWith(expect.objectContaining({ name: 'language' }), {
+      setLocale: mockSetLocale,
+    })
 
     unmount()
 
     // Unregister is always called for the preview commands (a no-op when they
     // were never registered) so toggling the flag off mid-session stays clean.
-    expect(mockUnregister.mock.calls.map(call => call[0])).toEqual([
+    expect(mockUnregister.mock.calls.map((call) => call[0])).toEqual([
       'theme',
       'language',
       'forum',
       'docs',
       'community',
       'account',
-      'zen',
       'go',
       'create',
       'refine',
@@ -144,14 +148,13 @@ describe('SlashCommandProvider', () => {
 
     const { unmount } = render(<SlashCommandProvider />)
 
-    expect(mockRegister.mock.calls.map(call => call[0].name)).toEqual([
+    expect(mockRegister.mock.calls.map((call) => call[0].name)).toEqual([
       'theme',
       'language',
       'forum',
       'docs',
       'community',
       'account',
-      'zen',
       'go',
       'create',
       'refine',
@@ -159,14 +162,13 @@ describe('SlashCommandProvider', () => {
 
     unmount()
 
-    expect(mockUnregister.mock.calls.map(call => call[0])).toEqual([
+    expect(mockUnregister.mock.calls.map((call) => call[0])).toEqual([
       'theme',
       'language',
       'forum',
       'docs',
       'community',
       'account',
-      'zen',
       'go',
       'create',
       'refine',

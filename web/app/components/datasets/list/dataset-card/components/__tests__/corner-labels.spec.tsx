@@ -6,28 +6,29 @@ import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datase
 import CornerLabels from '../corner-labels'
 
 describe('CornerLabels', () => {
-  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-    id: 'dataset-1',
-    name: 'Test Dataset',
-    description: 'Test description',
-    provider: 'vendor',
-    permission: DatasetPermission.allTeamMembers,
-    data_source_type: DataSourceType.FILE,
-    indexing_technique: IndexingType.QUALIFIED,
-    embedding_available: true,
-    app_count: 5,
-    document_count: 10,
-    word_count: 1000,
-    created_at: 1609459200,
-    updated_at: 1609545600,
-    tags: [],
-    embedding_model: 'text-embedding-ada-002',
-    embedding_model_provider: 'openai',
-    created_by: 'user-1',
-    doc_form: ChunkingMode.text,
-    runtime_mode: 'general',
-    ...overrides,
-  } as DataSet)
+  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+    ({
+      id: 'dataset-1',
+      name: 'Test Dataset',
+      description: 'Test description',
+      provider: 'vendor',
+      permission: DatasetPermission.allTeamMembers,
+      data_source_type: DataSourceType.FILE,
+      indexing_technique: IndexingType.QUALIFIED,
+      embedding_available: true,
+      app_count: 5,
+      document_count: 10,
+      word_count: 1000,
+      created_at: 1609459200,
+      updated_at: 1609545600,
+      tags: [],
+      embedding_model: 'text-embedding-ada-002',
+      embedding_model_provider: 'openai',
+      created_by: 'user-1',
+      doc_form: ChunkingMode.text,
+      runtime_mode: 'general',
+      ...overrides,
+    }) as DataSet
 
   describe('Rendering', () => {
     it('should render without crashing when embedding is available', () => {
@@ -43,13 +44,13 @@ describe('CornerLabels', () => {
       expect(screen.getByText(/unavailable/i)).toBeInTheDocument()
     })
 
-    it('should render pipeline label when runtime_mode is rag_pipeline', () => {
+    it('should not render pipeline label when runtime_mode is rag_pipeline', () => {
       const dataset = createMockDataset({
         embedding_available: true,
         runtime_mode: 'rag_pipeline',
       })
-      render(<CornerLabels dataset={dataset} />)
-      expect(screen.getByText(/pipeline/i)).toBeInTheDocument()
+      const { container } = render(<CornerLabels dataset={dataset} />)
+      expect(container.firstChild).toBeNull()
     })
   })
 
@@ -83,14 +84,13 @@ describe('CornerLabels', () => {
       expect(labelContainer).toHaveClass('absolute', 'right-0', 'top-0', 'z-5')
     })
 
-    it('should have correct positioning for pipeline label', () => {
+    it('should not reserve corner positioning for pipeline label', () => {
       const dataset = createMockDataset({
         embedding_available: true,
         runtime_mode: 'rag_pipeline',
       })
       const { container } = render(<CornerLabels dataset={dataset} />)
-      const labelContainer = container.firstChild as HTMLElement
-      expect(labelContainer).toHaveClass('absolute', 'right-0', 'top-0', 'z-5')
+      expect(container.firstChild).toBeNull()
     })
   })
 

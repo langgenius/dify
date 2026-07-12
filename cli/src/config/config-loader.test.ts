@@ -9,26 +9,25 @@ import { loadConfig } from './config-loader'
 describe('loadConfig', () => {
   useTempConfigDir('difyctl-cfg-')
 
-  it('returns found:false when config is missing', () => {
-    const r = loadConfig(getConfigurationStore())
+  it('returns found:false when config is missing', async () => {
+    const r = await loadConfig(getConfigurationStore())
     expect(r.found).toBe(false)
   })
 
-  it('parses a minimal valid config', () => {
-    getConfigurationStore().setTyped({ schema_version: 1 })
-    const r = loadConfig(getConfigurationStore())
+  it('parses a minimal valid config', async () => {
+    await getConfigurationStore().setTyped({ schema_version: 1 })
+    const r = await loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
-    if (r.found)
-      expect(r.config.schema_version).toBe(1)
+    if (r.found) expect(r.config.schema_version).toBe(1)
   })
 
-  it('parses defaults + state', () => {
-    getConfigurationStore().setTyped({
+  it('parses defaults + state', async () => {
+    await getConfigurationStore().setTyped({
       schema_version: 1,
       defaults: { format: 'json', limit: 100 },
       state: { current_app: 'app-1' },
     })
-    const r = loadConfig(getConfigurationStore())
+    const r = await loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
     if (r.found) {
       expect(r.config.defaults.format).toBe('json')
@@ -37,17 +36,20 @@ describe('loadConfig', () => {
     }
   })
 
-  it('throws BaseError(config_schema_unsupported) when the store fails to parse the file', () => {
+  it('throws BaseError(config_schema_unsupported) when the store fails to parse the file', async () => {
     // Simulate a corrupt on-disk file via a fake store; loadConfig must wrap
     // the underlying error as ConfigSchemaUnsupported.
     const throwingStore = {
-      getTyped: () => { throw new Error('YAML parse failure') },
+      getTyped: () => {
+        throw new Error('YAML parse failure')
+      },
     } as unknown as YamlStore
     let caught: unknown
     try {
-      loadConfig(throwingStore)
+      await loadConfig(throwingStore)
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
     if (isBaseError(caught)) {
       expect(caught.code).toBe(ErrorCode.ConfigSchemaUnsupported)
@@ -55,25 +57,26 @@ describe('loadConfig', () => {
     }
   })
 
-  it('throws BaseError(config_schema_unsupported) when zod validation fails', () => {
-    getConfigurationStore().setTyped({ defaults: { limit: 9999 } })
+  it('throws BaseError(config_schema_unsupported) when zod validation fails', async () => {
+    await getConfigurationStore().setTyped({ defaults: { limit: 9999 } })
     let caught: unknown
     try {
-      loadConfig(getConfigurationStore())
+      await loadConfig(getConfigurationStore())
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
-    if (isBaseError(caught))
-      expect(caught.code).toBe(ErrorCode.ConfigSchemaUnsupported)
+    if (isBaseError(caught)) expect(caught.code).toBe(ErrorCode.ConfigSchemaUnsupported)
   })
 
-  it('throws BaseError(config_schema_unsupported) when schema_version > 1 (forward-refuse)', () => {
-    getConfigurationStore().setTyped({ schema_version: 2 })
+  it('throws BaseError(config_schema_unsupported) when schema_version > 1 (forward-refuse)', async () => {
+    await getConfigurationStore().setTyped({ schema_version: 2 })
     let caught: unknown
     try {
-      loadConfig(getConfigurationStore())
+      await loadConfig(getConfigurationStore())
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
     if (isBaseError(caught)) {
       expect(caught.code).toBe(ErrorCode.ConfigSchemaUnsupported)

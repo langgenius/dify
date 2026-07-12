@@ -8,17 +8,26 @@ import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
+import {
+  createTestQueryClient,
+  renderWithSystemFeatures as render,
+} from '@/__tests__/utils/mock-system-features'
 import AppList from '@/app/components/explore/app-list'
-import { useAppContext } from '@/context/app-context'
-import { fetchAppDetail } from '@/service/explore'
+import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
 import { AppModeEnum } from '@/types/app'
 
-const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en"}'
+type MockAppContext = {
+  userProfile: { id: string }
+  workspacePermissionKeys: string[]
+}
+
+const mockUseAppContext = vi.hoisted(() => vi.fn<() => MockAppContext>())
+
+const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en-US"}'
 let mockTabValue = allCategoriesEn
 const mockSetTab = vi.fn()
-let mockExploreData: { categories: string[], allList: App[] } | undefined
+let mockExploreData: { categories: string[]; allList: App[] } | undefined
 let mockIsLoading = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
@@ -47,9 +56,9 @@ vi.mock('ahooks', async () => {
 })
 
 vi.mock('@/service/use-explore', () => ({
-  useExploreAppList: () => ({
-    data: mockExploreData,
-    isLoading: mockIsLoading,
+  useLearnDifyAppList: () => ({
+    data: [],
+    isLoading: false,
     isError: false,
   }),
 }))
@@ -57,11 +66,105 @@ vi.mock('@/service/use-explore', () => ({
 vi.mock('@/service/explore', () => ({
   fetchAppDetail: vi.fn(),
   fetchAppList: vi.fn(),
+  fetchBanners: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
+vi.mock('@/service/client', () => ({
+  consoleClient: {},
+  consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures'],
+      },
+    },
+    apps: {
+      get: {
+        queryOptions: (options: {
+          input?: { query?: { limit?: number } }
+          select?: (response: {
+            data: []
+            has_more: boolean
+            limit: number
+            page: number
+            total: number
+          }) => unknown
+        }) => {
+          const limit = options.input?.query?.limit ?? 0
+          const response = {
+            data: [],
+            has_more: false,
+            limit,
+            page: 1,
+            total: 0,
+          }
+          return {
+            queryKey: ['console', 'apps', 'get', options.input],
+            queryFn: () => Promise.resolve(response),
+            initialData: response,
+            select: options.select,
+          }
+        },
+      },
+    },
+    explore: {
+      apps: {
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => [
+            'console',
+            'explore',
+            'apps',
+            'get',
+            input,
+          ],
+        },
+      },
+      banners: {
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => [
+            'console',
+            'explore',
+            'banners',
+            'get',
+            input,
+          ],
+        },
+      },
+    },
+  },
 }))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/use-common', () => ({
   useMembers: vi.fn(),
@@ -78,33 +181,40 @@ vi.mock('@/hooks/use-import-dsl', () => ({
 
 vi.mock('@/app/components/explore/create-app-modal', () => ({
   default: (props: CreateAppModalProps) => {
-    if (!props.show)
-      return null
+    if (!props.show) return null
     return (
       <div data-testid="create-app-modal">
         <button
           data-testid="confirm-create"
-          onClick={() => props.onConfirm({
-            name: 'New App',
-            icon_type: 'emoji',
-            icon: '🤖',
-            icon_background: '#fff',
-            description: 'desc',
-          })}
+          onClick={() =>
+            props.onConfirm({
+              name: 'New App',
+              icon_type: 'emoji',
+              icon: '🤖',
+              icon_background: '#fff',
+              description: 'desc',
+            })
+          }
         >
           confirm
         </button>
-        <button data-testid="hide-create" onClick={props.onHide}>hide</button>
+        <button data-testid="hide-create" onClick={props.onHide}>
+          hide
+        </button>
       </div>
     )
   },
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal', () => ({
-  default: ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
+  default: ({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) => (
     <div data-testid="dsl-confirm-modal">
-      <button data-testid="dsl-confirm" onClick={onConfirm}>confirm</button>
-      <button data-testid="dsl-cancel" onClick={onCancel}>cancel</button>
+      <button data-testid="dsl-confirm" onClick={onConfirm}>
+        confirm
+      </button>
+      <button data-testid="dsl-cancel" onClick={onCancel}>
+        cancel
+      </button>
     </div>
   ),
 }))
@@ -137,24 +247,48 @@ const createApp = (overrides: Partial<App> = {}): App => ({
 })
 
 const mockMemberRole = (hasEditPermission: boolean) => {
-  ;(useAppContext as Mock).mockReturnValue({
+  mockUseAppContext.mockReturnValue({
     userProfile: { id: 'user-1' },
+    workspacePermissionKeys: hasEditPermission ? ['app.create_and_management'] : [],
   })
-  ;(useMembers as Mock).mockReturnValue({
+  vi.mocked(useMembers).mockReturnValue({
     data: {
       accounts: [{ id: 'user-1', role: hasEditPermission ? 'admin' : 'normal' }],
     },
+  } as unknown as ReturnType<typeof useMembers>)
+}
+
+const localeInput = { query: { language: 'en-US' } }
+const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en-US']
+const homeContinueWorkAppsInput = {
+  query: {
+    page: 1,
+    limit: 8,
+    name: '',
+  },
+}
+
+const createHomeQueryClient = () => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(['console', 'apps', 'get', homeContinueWorkAppsInput], {
+    data: [],
+    has_more: false,
+    limit: 8,
+    page: 1,
+    total: 0,
   })
+
+  if (!mockIsLoading && mockExploreData)
+    queryClient.setQueryData(exploreAppListQueryKey, mockExploreData)
+
+  return queryClient
 }
 
 const renderAppList = (hasEditPermission = true, onSuccess?: () => void) => {
   mockMemberRole(hasEditPermission)
-  return render(<AppList onSuccess={onSuccess} />)
-}
-
-const appListElement = (hasEditPermission = true, onSuccess?: () => void) => {
-  mockMemberRole(hasEditPermission)
-  return <AppList onSuccess={onSuccess} />
+  return render(<AppList onSuccess={onSuccess} />, {
+    queryClient: createHomeQueryClient(),
+  })
 }
 
 describe('Explore App List Flow', () => {
@@ -165,11 +299,25 @@ describe('Explore App List Flow', () => {
     mockExploreData = {
       categories: ['Writing', 'Translate', 'Programming'],
       allList: [
-        createApp({ app_id: 'app-1', app: { ...createApp().app, name: 'Writer Bot' }, categories: ['Writing'] }),
-        createApp({ app_id: 'app-2', app: { ...createApp().app, id: 'app-id-2', name: 'Translator' }, categories: ['Translate'] }),
-        createApp({ app_id: 'app-3', app: { ...createApp().app, id: 'app-id-3', name: 'Code Helper' }, categories: ['Programming'] }),
+        createApp({
+          app_id: 'app-1',
+          app: { ...createApp().app, name: 'Writer Bot' },
+          categories: ['Writing'],
+        }),
+        createApp({
+          app_id: 'app-2',
+          app: { ...createApp().app, id: 'app-id-2', name: 'Translator' },
+          categories: ['Translate'],
+        }),
+        createApp({
+          app_id: 'app-3',
+          app: { ...createApp().app, id: 'app-id-3', name: 'Code Helper' },
+          categories: ['Programming'],
+        }),
       ],
     }
+    ;(fetchAppList as unknown as Mock).mockImplementation(() => new Promise(() => {}))
+    ;(fetchBanners as unknown as Mock).mockResolvedValue([])
   })
 
   describe('Browse and Filter Flow', () => {
@@ -233,17 +381,21 @@ describe('Explore App List Flow', () => {
       // Step 1: User clicks "Add to Workspace" on an app card
       const onSuccess = vi.fn()
       ;(fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content' })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void, onPending?: () => void }) => {
-        options.onPending?.()
-      })
-      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-      })
+      mockHandleImportDSL.mockImplementation(
+        async (_payload: unknown, options: { onSuccess?: () => void; onPending?: () => void }) => {
+          options.onPending?.()
+        },
+      )
+      mockHandleImportDSLConfirm.mockImplementation(
+        async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        },
+      )
 
       renderAppList(true, onSuccess)
 
-      // Step 2: Click add to workspace button - opens create modal
-      fireEvent.click(screen.getAllByText('explore.appCard.addToWorkspace')[0]!)
+      // Step 2: Click the app card - opens create modal in self-hosted/non-cloud mode
+      fireEvent.click(screen.getByRole('button', { name: 'Writer Bot' }))
 
       // Step 3: Confirm creation in modal
       fireEvent.click(await screen.findByTestId('confirm-create'))
@@ -256,7 +408,6 @@ describe('Explore App List Flow', () => {
       // Step 5: DSL import triggers pending confirmation
       expect(mockHandleImportDSL).toHaveBeenCalledTimes(1)
 
-      // Step 6: DSL confirm modal appears and user confirms
       // Step 6: DSL confirm modal appears and user confirms
       expect(await screen.findByTestId('dsl-confirm-modal'))!.toBeInTheDocument()
       fireEvent.click(screen.getByTestId('dsl-confirm'))
@@ -274,7 +425,7 @@ describe('Explore App List Flow', () => {
       // Step 1: Loading state
       mockIsLoading = true
       mockExploreData = undefined
-      const { unmount } = render(appListElement())
+      const { unmount } = renderAppList()
 
       expect(screen.getByRole('status'))!.toBeInTheDocument()
 
@@ -293,16 +444,16 @@ describe('Explore App List Flow', () => {
   })
 
   describe('Permission-Based Behavior', () => {
-    it('should hide add-to-workspace button when user has no edit permission', () => {
+    it('should not make app cards clickable when user has no edit permission', () => {
       renderAppList(false)
 
-      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Writer Bot' })).not.toBeInTheDocument()
     })
 
-    it('should show add-to-workspace button when user has edit permission', () => {
+    it('should make app cards clickable when user has edit permission', () => {
       renderAppList(true)
 
-      expect(screen.getAllByText('explore.appCard.addToWorkspace').length).toBeGreaterThan(0)
+      expect(screen.getByRole('button', { name: 'Writer Bot' })).toBeInTheDocument()
     })
   })
 })

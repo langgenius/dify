@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { Button } from '../button'
+import { Field, FieldDescription, FieldError, FieldLabel } from '../field'
+import { Form } from '../form'
 import {
   NumberField,
   NumberFieldControls,
@@ -8,104 +11,7 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
   NumberFieldUnit,
-} from '.'
-import { cn } from '../cn'
-
-type DemoFieldProps = {
-  label: string
-  helperText: string
-  placeholder: string
-  size: 'medium' | 'large'
-  unit?: string
-  defaultValue?: number | null
-  min?: number
-  max?: number
-  step?: number
-  disabled?: boolean
-  readOnly?: boolean
-  showCurrentValue?: boolean
-  widthClassName?: string
-  formatValue?: (value: number | null) => string
-}
-
-const formatNumericValue = (value: number | null, unit?: string) => {
-  if (value === null)
-    return 'Empty'
-
-  if (!unit)
-    return String(value)
-
-  return `${value} ${unit}`
-}
-
-const FieldLabel = ({
-  inputId,
-  label,
-  helperText,
-}: Pick<DemoFieldProps, 'label' | 'helperText'> & { inputId: string }) => (
-  <div className="space-y-1">
-    <label htmlFor={inputId} className="system-sm-medium text-text-secondary">
-      {label}
-    </label>
-    <p className="system-xs-regular text-text-tertiary">{helperText}</p>
-  </div>
-)
-
-const DemoField = ({
-  label,
-  helperText,
-  placeholder,
-  size,
-  unit,
-  defaultValue,
-  min,
-  max,
-  step,
-  disabled,
-  readOnly,
-  showCurrentValue,
-  widthClassName,
-  formatValue,
-}: DemoFieldProps) => {
-  const inputId = React.useId()
-  const [value, setValue] = React.useState<number | null>(defaultValue ?? null)
-
-  return (
-    <div className={cn('flex w-full max-w-80 flex-col gap-2', widthClassName)}>
-      <FieldLabel inputId={inputId} label={label} helperText={helperText} />
-      <NumberField
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-        readOnly={readOnly}
-        onValueChange={setValue}
-      >
-        <NumberFieldGroup size={size}>
-          <NumberFieldInput
-            id={inputId}
-            aria-label={label}
-            placeholder={placeholder}
-            size={size}
-          />
-          {unit && <NumberFieldUnit size={size}>{unit}</NumberFieldUnit>}
-          <NumberFieldControls>
-            <NumberFieldIncrement size={size} />
-            <NumberFieldDecrement size={size} />
-          </NumberFieldControls>
-        </NumberFieldGroup>
-      </NumberField>
-      {showCurrentValue && (
-        <p className="system-xs-regular text-text-quaternary">
-          Current value:
-          {' '}
-          {formatValue ? formatValue(value) : formatNumericValue(value, unit)}
-        </p>
-      )}
-    </div>
-  )
-}
+} from './index'
 
 const meta = {
   title: 'Base/Form/NumberField',
@@ -114,7 +20,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound numeric input built on Base UI NumberField. Stories explicitly enumerate the shipped CVA variants, then cover realistic numeric-entry cases such as decimals, empty values, range limits, read-only, and disabled states.',
+        component:
+          'Compound numeric input built on Base UI NumberField. Use it with Field for labelled, described, and validated form fields.',
       },
     },
   },
@@ -122,164 +29,310 @@ const meta = {
 } satisfies Meta<typeof NumberField>
 
 export default meta
+
 type Story = StoryObj<typeof meta>
 
-export const VariantMatrix: Story = {
+type NumberFieldExampleProps = {
+  id: string
+  label: string
+  name: string
+  defaultValue?: number
+  min?: number
+  max?: number
+  step?: number | 'any'
+  placeholder?: string
+  unit?: string
+  size?: 'medium' | 'large'
+  disabled?: boolean
+  readOnly?: boolean
+}
+
+function NumberFieldExample({
+  id,
+  label,
+  name,
+  defaultValue,
+  min,
+  max,
+  step,
+  placeholder,
+  unit,
+  size = 'medium',
+  disabled,
+  readOnly,
+}: NumberFieldExampleProps) {
+  return (
+    <div className="grid w-80 gap-1">
+      <label htmlFor={id} className="system-sm-medium text-text-secondary">
+        {label}
+      </label>
+      <NumberField
+        id={id}
+        name={name}
+        defaultValue={defaultValue}
+        min={min}
+        max={max}
+        step={step}
+        disabled={disabled}
+        readOnly={readOnly}
+      >
+        <NumberFieldGroup size={size}>
+          <NumberFieldInput placeholder={placeholder} size={size} />
+          {unit && <NumberFieldUnit size={size}>{unit}</NumberFieldUnit>}
+          <NumberFieldControls>
+            <NumberFieldIncrement size={size} />
+            <NumberFieldDecrement size={size} />
+          </NumberFieldControls>
+        </NumberFieldGroup>
+      </NumberField>
+    </div>
+  )
+}
+
+export const Basic: Story = {
   render: () => (
-    <div className="grid w-[720px] gap-6 md:grid-cols-2">
-      <DemoField
-        label="Top K"
-        helperText="Regular size without suffix. Covers the regular group, input, and control button spacing."
-        placeholder="Set top K"
-        size="medium"
-        defaultValue={3}
-        min={1}
-        max={10}
-        step={1}
-      />
-      <DemoField
-        label="Score threshold"
-        helperText="Regular size with a suffix so the regular unit variant is visible."
-        placeholder="Set threshold"
-        size="medium"
-        unit="%"
-        defaultValue={85}
-        min={0}
-        max={100}
-        step={1}
-      />
-      <DemoField
-        label="Chunk overlap"
-        helperText="Large size without suffix. Matches the larger dataset form treatment."
-        placeholder="Set overlap"
-        size="large"
+    <NumberFieldExample
+      id="top-k-basic"
+      name="topK"
+      label="Top K"
+      defaultValue={3}
+      min={1}
+      max={10}
+      step={1}
+      placeholder="Set top K…"
+    />
+  ),
+}
+
+export const Sizes: Story = {
+  render: () => (
+    <div className="grid w-80 gap-3">
+      <NumberFieldExample
+        id="number-field-medium"
+        name="mediumNumber"
+        label="Medium"
         defaultValue={64}
         min={0}
         max={512}
         step={16}
+        placeholder="Set value…"
       />
-      <DemoField
-        label="Max segment length"
-        helperText="Large size with suffix so the large unit variant is also enumerated."
-        placeholder="Set length"
-        size="large"
-        unit="tokens"
+      <NumberFieldExample
+        id="number-field-large"
+        name="largeNumber"
+        label="Large with unit"
         defaultValue={512}
         min={1}
         max={4000}
         step={32}
+        placeholder="Set length…"
+        unit="tokens"
+        size="large"
       />
     </div>
   ),
 }
 
-export const DecimalInputs: Story = {
+export const States: Story = {
   render: () => (
-    <div className="grid w-[720px] gap-6 md:grid-cols-2">
-      <DemoField
-        label="Score threshold"
-        helperText="Two-decimal precision with a 0.01 step, like retrieval tuning fields."
-        placeholder="0.00"
-        size="medium"
-        defaultValue={0.82}
+    <div className="grid w-80 gap-3">
+      <Field name="placeholderState">
+        <FieldLabel>Placeholder</FieldLabel>
+        <NumberField min={0} max={100}>
+          <NumberFieldGroup>
+            <NumberFieldInput placeholder="Set threshold…" />
+            <NumberFieldUnit>%</NumberFieldUnit>
+            <NumberFieldControls>
+              <NumberFieldIncrement />
+              <NumberFieldDecrement />
+            </NumberFieldControls>
+          </NumberFieldGroup>
+        </NumberField>
+      </Field>
+      <Field name="filledState">
+        <FieldLabel>Filled</FieldLabel>
+        <NumberField defaultValue={85} min={0} max={100}>
+          <NumberFieldGroup>
+            <NumberFieldInput />
+            <NumberFieldUnit>%</NumberFieldUnit>
+            <NumberFieldControls>
+              <NumberFieldIncrement />
+              <NumberFieldDecrement />
+            </NumberFieldControls>
+          </NumberFieldGroup>
+        </NumberField>
+      </Field>
+      <Field name="invalidState" invalid>
+        <FieldLabel>Invalid</FieldLabel>
+        <NumberField defaultValue={120} min={0} max={100}>
+          <NumberFieldGroup>
+            <NumberFieldInput />
+            <NumberFieldUnit>%</NumberFieldUnit>
+            <NumberFieldControls>
+              <NumberFieldIncrement />
+              <NumberFieldDecrement />
+            </NumberFieldControls>
+          </NumberFieldGroup>
+        </NumberField>
+        <FieldError match>Use a value from 0 to 100.</FieldError>
+      </Field>
+      <Field name="disabledState">
+        <FieldLabel>Disabled</FieldLabel>
+        <NumberField defaultValue={5} min={0} max={10} disabled>
+          <NumberFieldGroup>
+            <NumberFieldInput />
+            <NumberFieldControls>
+              <NumberFieldIncrement />
+              <NumberFieldDecrement />
+            </NumberFieldControls>
+          </NumberFieldGroup>
+        </NumberField>
+      </Field>
+      <Field name="readonlyState">
+        <FieldLabel>Read-only</FieldLabel>
+        <NumberField defaultValue={92} min={0} max={100} readOnly>
+          <NumberFieldGroup>
+            <NumberFieldInput />
+            <NumberFieldUnit>%</NumberFieldUnit>
+            <NumberFieldControls>
+              <NumberFieldIncrement />
+              <NumberFieldDecrement />
+            </NumberFieldControls>
+          </NumberFieldGroup>
+        </NumberField>
+      </Field>
+    </div>
+  ),
+}
+
+function ControlledDemo() {
+  const [value, setValue] = React.useState<number | null>(0.82)
+
+  return (
+    <Field name="controlledThreshold">
+      <FieldLabel>Score threshold</FieldLabel>
+      <NumberField
+        value={value}
         min={0}
         max={1}
         step={0.01}
-        showCurrentValue
-        formatValue={value => value === null ? 'Empty' : value.toFixed(2)}
-      />
-      <DemoField
-        label="Temperature"
-        helperText="One-decimal stepping for generation parameters."
-        placeholder="0.0"
-        size="large"
-        defaultValue={0.7}
-        min={0}
-        max={2}
-        step={0.1}
-        showCurrentValue
-        formatValue={value => value === null ? 'Empty' : value.toFixed(1)}
-      />
-      <DemoField
-        label="Penalty"
-        helperText="Starts empty so the placeholder and empty numeric state are both visible."
-        placeholder="Optional"
-        size="medium"
-        defaultValue={null}
-        min={0}
-        max={2}
-        step={0.05}
-        showCurrentValue
-        formatValue={value => value === null ? 'Empty' : value.toFixed(2)}
-      />
-      <DemoField
-        label="Latency budget"
-        helperText="Decimal input with a unit suffix and larger spacing."
-        placeholder="0.0"
-        size="large"
-        unit="s"
-        defaultValue={1.5}
-        min={0.5}
-        max={10}
-        step={0.5}
-        showCurrentValue
-        formatValue={value => value === null ? 'Empty' : `${value.toFixed(1)} s`}
-      />
+        format={{
+          maximumFractionDigits: 2,
+        }}
+        onValueChange={setValue}
+      >
+        <NumberFieldGroup>
+          <NumberFieldInput placeholder="0.00" />
+          <NumberFieldControls>
+            <NumberFieldIncrement />
+            <NumberFieldDecrement />
+          </NumberFieldControls>
+        </NumberFieldGroup>
+      </NumberField>
+      <FieldDescription>
+        Current value: {value === null ? 'Empty' : value.toFixed(2)}
+      </FieldDescription>
+    </Field>
+  )
+}
+
+export const Controlled: Story = {
+  render: () => (
+    <div className="w-80">
+      <ControlledDemo />
     </div>
   ),
 }
 
-export const BoundariesAndStates: Story = {
+function FormDemo() {
+  const [savedValue, setSavedValue] = React.useState<string | null>(null)
+
+  return (
+    <Form
+      aria-label="Retrieval settings"
+      className="grid w-80 gap-4"
+      onFormSubmit={(values) => {
+        setSavedValue(String(values.topK ?? ''))
+      }}
+    >
+      <Field name="topK">
+        <FieldLabel>Top K</FieldLabel>
+        <NumberField required defaultValue={3} min={1} max={10} step={1}>
+          <NumberFieldGroup>
+            <NumberFieldInput />
+            <NumberFieldControls>
+              <NumberFieldIncrement />
+              <NumberFieldDecrement />
+            </NumberFieldControls>
+          </NumberFieldGroup>
+        </NumberField>
+        <FieldDescription>Choose how many chunks are returned.</FieldDescription>
+        <FieldError match="valueMissing">Top K is required.</FieldError>
+        <FieldError match="rangeUnderflow">Use at least 1.</FieldError>
+        <FieldError match="rangeOverflow">Use 10 or fewer.</FieldError>
+      </Field>
+      <div className="flex justify-end">
+        <Button type="submit" variant="primary">
+          Save Settings
+        </Button>
+      </div>
+      {savedValue && (
+        <div className="rounded-lg bg-background-section px-3 py-2 system-xs-regular text-text-secondary">
+          Saved: {savedValue}
+        </div>
+      )}
+    </Form>
+  )
+}
+
+export const WithField: Story = {
+  render: () => <FormDemo />,
+}
+
+export const Formatting: Story = {
   render: () => (
-    <div className="grid w-[720px] gap-6 md:grid-cols-2">
-      <DemoField
-        label="HTTP status code"
-        helperText="Integer-only style usage with tighter bounds from 100 to 599."
-        placeholder="200"
-        size="medium"
-        defaultValue={200}
-        min={100}
-        max={599}
-        step={1}
-        showCurrentValue
-      />
-      <DemoField
-        label="Request timeout"
-        helperText="Bounded regular input with suffix, common in system settings."
-        placeholder="Set timeout"
-        size="medium"
-        unit="ms"
-        defaultValue={1200}
-        min={100}
-        max={10000}
-        step={100}
-        showCurrentValue
-      />
-      <DemoField
-        label="Retry count"
-        helperText="Disabled state preserves the layout while switching to disabled tokens."
-        placeholder="Retry count"
-        size="large"
-        defaultValue={5}
-        min={0}
-        max={10}
-        step={1}
-        disabled
-        showCurrentValue
-      />
-      <DemoField
-        label="Archived score threshold"
-        helperText="Read-only state keeps the same structure but removes interactive affordances."
-        placeholder="0.00"
-        size="large"
-        unit="%"
-        defaultValue={92}
-        min={0}
-        max={100}
-        step={1}
-        readOnly
-        showCurrentValue
-      />
+    <div className="grid w-80 gap-3">
+      <Field name="currencyBudget">
+        <FieldLabel>Budget</FieldLabel>
+        <NumberField
+          defaultValue={1200}
+          min={0}
+          step={100}
+          format={{
+            style: 'currency',
+            currency: 'USD',
+            maximumFractionDigits: 0,
+          }}
+        >
+          <NumberFieldGroup>
+            <NumberFieldInput />
+            <NumberFieldControls>
+              <NumberFieldIncrement />
+              <NumberFieldDecrement />
+            </NumberFieldControls>
+          </NumberFieldGroup>
+        </NumberField>
+      </Field>
+      <Field name="temperature">
+        <FieldLabel>Temperature</FieldLabel>
+        <NumberField
+          defaultValue={0.7}
+          min={0}
+          max={2}
+          step={0.1}
+          format={{
+            maximumFractionDigits: 1,
+          }}
+        >
+          <NumberFieldGroup>
+            <NumberFieldInput />
+            <NumberFieldControls>
+              <NumberFieldIncrement />
+              <NumberFieldDecrement />
+            </NumberFieldControls>
+          </NumberFieldGroup>
+        </NumberField>
+      </Field>
     </div>
   ),
 }

@@ -2,11 +2,13 @@ from flask import Blueprint
 from flask_restx import Namespace
 
 from controllers.openapi._errors import ErrorBody, OpenApiErrorCode, OpenApiErrorFormatter
+from controllers.openapi._version_gate import attach_version_gate
 from libs.device_flow_security import attach_anti_framing
 from libs.external_api import ExternalApi
 
 bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
 attach_anti_framing(bp)
+attach_version_gate(bp)
 
 api = ExternalApi(
     bp,
@@ -20,7 +22,7 @@ openapi_ns = Namespace("openapi", description="User-scoped operations", path="/"
 
 # Register response/query models BEFORE importing controller modules so that
 # @openapi_ns.response / @openapi_ns.expect decorators can resolve model names.
-from controllers.common.fields import EventStreamResponse
+from controllers.common.fields import EventStreamResponse, SimpleResultResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.openapi._models import (
     AccountPayload,
@@ -31,7 +33,7 @@ from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
     AppDslImportPayload,
-    AppInfoResponse,
+    AppInfo,
     AppListQuery,
     AppListResponse,
     AppListRow,
@@ -62,7 +64,6 @@ from controllers.openapi._models import (
     SessionListQuery,
     SessionListResponse,
     SessionRow,
-    TagItem,
     TaskStopResponse,
     UsageInfo,
     WorkflowRunData,
@@ -96,12 +97,12 @@ register_response_schema_models(
     openapi_ns,
     ErrorBody,
     EventStreamResponse,
-    TagItem,
+    SimpleResultResponse,
     UsageInfo,
     MessageMetadata,
     AppListRow,
     AppListResponse,
-    AppInfoResponse,
+    AppInfo,
     AppDescribeInfo,
     AppDescribeResponse,
     AppDslExportResponse,

@@ -1,13 +1,10 @@
 import type { RelatedApp, RelatedAppResponse } from '@/models/datasets'
 import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { AppModeEnum } from '@/types/app'
 import Statistics from '../statistics'
 
 // Mock useDocLink
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
 
 afterEach(() => {
   cleanup()
@@ -72,6 +69,18 @@ describe('Statistics', () => {
     }
     render(<Statistics expand={true} documentCount={5} relatedApps={emptyRelatedApps} />)
     expect(screen.getByText('0')).toBeInTheDocument()
+  })
+
+  it('should use the compact bottom-sidebar statistics layout', () => {
+    const { container } = render(
+      <Statistics expand={true} documentCount={5} relatedApps={mockRelatedApps} />,
+    )
+
+    expect(container.firstChild).toHaveClass('items-start', 'gap-x-0.5', 'px-1', 'pt-2')
+    expect(container.querySelector('.rotate-\\[15deg\\]')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.datasetMenus.relatedApp' })).toHaveClass(
+      'max-w-full',
+    )
   })
 
   it('should be wrapped with React.memo', () => {

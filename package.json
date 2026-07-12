@@ -1,8 +1,32 @@
 {
   "name": "dify",
-  "type": "module",
   "private": true,
-  "packageManager": "pnpm@11.5.2",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n vinext,proxy \"vp run dify-web#dev:vinext\" \"vp run dify-web#dev:proxy\"",
+    "fmt": "vp fmt",
+    "fmt:check": "vp fmt --check",
+    "prepare": "vp config",
+    "type-check": "vp run -r type-check",
+    "lint": "eslint --cache --concurrency=auto",
+    "lint:ci": "eslint --cache --cache-strategy content --concurrency 2",
+    "lint:fix": "vp run lint --fix",
+    "lint:quiet": "vp run lint --quiet"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "catalog:",
+    "@iconify-json/heroicons": "catalog:",
+    "@iconify-json/ri": "catalog:",
+    "@typescript/native": "catalog:",
+    "concurrently": "catalog:",
+    "eslint": "catalog:",
+    "eslint-markdown": "catalog:",
+    "eslint-plugin-markdown-preferences": "catalog:",
+    "eslint-plugin-no-barrel-files": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
   "devEngines": {
     "runtime": {
       "name": "node",
@@ -13,23 +37,5 @@
   "engines": {
     "node": "^22.22.1"
   },
-  "scripts": {
-    "dev": "concurrently -k -n vinext,proxy \"vp run dify-web#dev:vinext\" \"vp run dify-web#dev:proxy\"",
-    "prepare": "vp config",
-    "type-check": "vp run -r type-check",
-    "lint": "eslint --cache --concurrency=auto",
-    "lint:ci": "eslint --cache --cache-strategy content --concurrency 2",
-    "lint:fix": "vp run lint --fix",
-    "lint:quiet": "vp run lint --quiet"
-  },
-  "devDependencies": {
-    "@antfu/eslint-config": "catalog:",
-    "concurrently": "catalog:",
-    "eslint": "catalog:",
-    "eslint-markdown": "catalog:",
-    "eslint-plugin-markdown-preferences": "catalog:",
-    "eslint-plugin-no-barrel-files": "catalog:",
-    "vite": "catalog:",
-    "vite-plus": "catalog:"
-  }
+  "packageManager": "pnpm@11.10.0"
 }

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, override
 from agenton.compositor import CompositorSessionSnapshot
 
 from clients.agent_backend import (
+    AgentBackendAgentMessageDeltaInternalEvent,
     AgentBackendDeferredToolCallInternalEvent,
     AgentBackendError,
     AgentBackendHTTPError,
@@ -16,6 +17,7 @@ from clients.agent_backend import (
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
+    AgentBackendSessionCleanupPayload,
     AgentBackendStreamError,
     AgentBackendStreamInternalEvent,
     AgentBackendTransportError,
@@ -24,13 +26,20 @@ from clients.agent_backend import (
     extract_runtime_layer_specs,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.entities.pause_reason import SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeEventBase, NodeRunResult, PauseRequestedEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
-from models.agent_config_entities import WorkflowNodeJobConfig
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from services.agent.prompt_mentions import extract_workflow_node_output_selectors
+from tasks.agent_backend_session_cleanup_task import cleanup_workflow_agent_runtime_session
 
+from .ask_human_hitl import AskHumanFormBuildError, build_ask_human_pause_reason
+from .ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from .binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from .entities import DifyAgentNodeData
 from .output_adapter import WorkflowAgentOutputAdapter
@@ -109,6 +118,16 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     def populate_start_event(self, event) -> None:
         event.extras["agent_node"] = {"version": "2", "agent_node_kind": self.node_data.agent_node_kind}
 
+    @staticmethod
+    def _to_graph_pause_reason(reason: HumanInputRequired | SchedulingPause) -> HitlRequired | SchedulingPause:
+        if isinstance(reason, HumanInputRequired):
+            return HitlRequired(
+                session_id=default_session_binding.issue_session_id_for_form(form_id=reason.form_id),
+                node_id=reason.node_id,
+                node_title=reason.node_title,
+            )
+        return reason
+
     @override
     def _run(self) -> Generator[NodeEventBase, None, None]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
@@ -116,6 +135,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         workflow_run_id = get_system_text(
             self.graph_runtime_state.variable_pool,
             SystemVariableKey.WORKFLOW_EXECUTION_ID,
+        )
+        # Set on chatflow (advanced-chat) runs; None for a pure workflow run. Lets an
+        # ask_human form be tagged with its conversation in addition to workflow_run_id.
+        conversation_id = get_system_text(
+            self.graph_runtime_state.variable_pool,
+            SystemVariableKey.CONVERSATION_ID,
         )
         inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
@@ -168,6 +193,33 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         )
         outputs_by_name = {o.name: o for o in effective_outputs}
 
+        # ──── ENG-638: resume after a submitted/timed-out ask_human form ────
+        # graphon re-executes this _run when the outer workflow resumes. If a
+        # pending ask_human form is now terminal, thread the human's answer into
+        # the second Agent run as deferred_tool_results; if it is somehow still
+        # waiting, re-emit the same pause defensively.
+        deferred_tool_results = None
+        if self._session_store is not None:
+            stored_session = self._session_store.load_active_session(session_scope)
+            if stored_session is not None and stored_session.pending_form_id is not None:
+                resume_outcome = resolve_ask_human_form(
+                    form_id=stored_session.pending_form_id,
+                    tenant_id=dify_ctx.tenant_id,
+                    node_id=self._node_id,
+                )
+                if resume_outcome is not None and resume_outcome.repause is not None:
+                    yield PauseRequestedEvent(reason=self._to_graph_pause_reason(resume_outcome.repause))
+                    return
+                if (
+                    resume_outcome is not None
+                    and resume_outcome.deferred_result is not None
+                    and stored_session.pending_tool_call_id is not None
+                ):
+                    deferred_tool_results = build_deferred_tool_results(
+                        tool_call_id=stored_session.pending_tool_call_id,
+                        result=resume_outcome.deferred_result,
+                    )
+
         # ──── Retry loop (Stage 4 §7) ────
         attempt = 0
         while True:
@@ -188,6 +240,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         snapshot=bundle.snapshot,
                         attempt=attempt,
                         session_snapshot=session_snapshot,
+                        deferred_tool_results=deferred_tool_results,
                     )
                 )
             except WorkflowAgentRuntimeRequestBuildError as error:
@@ -251,19 +304,58 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 return
 
             if isinstance(terminal_event, AgentBackendDeferredToolCallInternalEvent):
+                # ENG-636: a dify.ask_human deferred call pauses the *outer*
+                # workflow through the existing HITL form path. Any other deferred
+                # tool (none today) falls back to a generic scheduling pause. The
+                # form is built *before* the snapshot is saved so its id can be
+                # persisted as the pause correlation (ENG-637).
+                try:
+                    pause_request = build_ask_human_pause_reason(
+                        deferred_tool_call=terminal_event.deferred_tool_call,
+                        node_id=self._node_id,
+                        default_node_title=bundle.agent.name or self._node_id,
+                        workflow_run_id=workflow_run_id,
+                        conversation_id=conversation_id,
+                        contacts=AgentSoulConfig.model_validate(bundle.snapshot.config_snapshot_dict).human.contacts,
+                        repository=self._build_human_input_form_repository(
+                            dify_ctx=dify_ctx, workflow_run_id=workflow_run_id
+                        ),
+                    )
+                except AskHumanFormBuildError as error:
+                    yield self._failure_event(
+                        inputs=inputs,
+                        process_data=process_data,
+                        metadata=metadata,
+                        error=str(error),
+                        error_type="agent_ask_human_form_build_error",
+                    )
+                    return
+
+                # ENG-637: persist the awaiting-form id + deferred tool_call id
+                # next to the snapshot so the resumed node can rebuild
+                # deferred_tool_results from the submitted form.
+                pending_form_id: str | None = None
+                pending_tool_call_id: str | None = None
+                pause_reason: HumanInputRequired | SchedulingPause
+                if pause_request is not None:
+                    pending_form_id = pause_request.form_id
+                    pending_tool_call_id = terminal_event.deferred_tool_call.tool_call_id
+                    pause_reason = pause_request
+                else:
+                    pause_reason = SchedulingPause(
+                        message=terminal_event.message
+                        or "Agent backend run requested workflow pause for external input."
+                    )
                 self._save_session_snapshot(
                     session_scope=session_scope,
                     backend_run_id=terminal_event.run_id,
                     snapshot=terminal_event.session_snapshot,
                     runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
                     metadata=metadata,
+                    pending_form_id=pending_form_id,
+                    pending_tool_call_id=pending_tool_call_id,
                 )
-                yield PauseRequestedEvent(
-                    reason=SchedulingPause(
-                        message=terminal_event.message
-                        or "Agent backend run requested workflow pause for external input."
-                    )
-                )
+                yield PauseRequestedEvent(reason=self._to_graph_pause_reason(pause_reason))
                 return
 
             # Non-success terminal (failed / cancelled) skips per-output
@@ -390,6 +482,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         if isinstance(internal_event, AgentBackendStreamInternalEvent):
                             self._record_stream_metadata(metadata, internal_event)
                         continue
+                    if internal_event.type == AgentBackendInternalEventType.AGENT_MESSAGE_DELTA:
+                        if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
+                            self._record_agent_message_delta_metadata(metadata, internal_event)
+                        continue
                     metadata["agent_backend"] = {
                         **dict(metadata.get("agent_backend") or {}),
                         "stream_event_count": stream_event_count,
@@ -448,6 +544,27 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             ],
         }
 
+    def _build_human_input_form_repository(
+        self,
+        *,
+        dify_ctx: DifyRunContext,
+        workflow_run_id: str | None,
+    ) -> HumanInputFormRepository:
+        """Construct the existing HITL form repository for ask_human form creation.
+
+        Mirrors the Human Input node's repository wiring (``node_runtime``) so the
+        ask_human form shares the same delivery/debug/console behavior: a
+        submission actor is only attributed for debugger/explore surfaces.
+        """
+        invoke_source = dify_ctx.invoke_from.value
+        return HumanInputFormRepositoryImpl(
+            tenant_id=dify_ctx.tenant_id,
+            app_id=dify_ctx.app_id,
+            workflow_execution_id=workflow_run_id,
+            invoke_source=invoke_source,
+            submission_actor_id=dify_ctx.user_id if invoke_source in {"debugger", "explore"} else None,
+        )
+
     def _save_session_snapshot(
         self,
         *,
@@ -456,6 +573,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
         metadata: dict[str, Any],
+        pending_form_id: str | None = None,
+        pending_tool_call_id: str | None = None,
     ) -> None:
         if self._session_store is None:
             return
@@ -465,6 +584,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 backend_run_id=backend_run_id,
                 snapshot=snapshot,
                 runtime_layer_specs=runtime_layer_specs,
+                pending_form_id=pending_form_id,
+                pending_tool_call_id=pending_tool_call_id,
             )
             agent_backend = dict(metadata.get("agent_backend") or {})
             agent_backend["session_snapshot_persisted"] = snapshot is not None
@@ -495,6 +616,44 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     ) -> None:
         if self._session_store is None:
             return
+        stored_session = self._session_store.load_active_session(session_scope)
+        try:
+            if stored_session is not None and stored_session.runtime_layer_specs:
+                payload = AgentBackendSessionCleanupPayload(
+                    session_snapshot=stored_session.session_snapshot,
+                    runtime_layer_specs=stored_session.runtime_layer_specs,
+                    idempotency_key=(
+                        f"{session_scope.tenant_id}:{session_scope.workflow_run_id}:{session_scope.node_id}:"
+                        f"{session_scope.binding_id}:workflow-agent-failure-cleanup:"
+                        f"{stored_session.backend_run_id or 'no-stored-run'}:{backend_run_id}"
+                    ),
+                    metadata={
+                        "tenant_id": session_scope.tenant_id,
+                        "app_id": session_scope.app_id,
+                        "workflow_id": session_scope.workflow_id,
+                        "workflow_run_id": session_scope.workflow_run_id,
+                        "node_id": session_scope.node_id,
+                        "node_execution_id": session_scope.node_execution_id,
+                        "binding_id": session_scope.binding_id,
+                        "agent_id": session_scope.agent_id,
+                        "agent_config_snapshot_id": session_scope.agent_config_snapshot_id,
+                        "previous_agent_backend_run_id": stored_session.backend_run_id,
+                        "failed_agent_backend_run_id": backend_run_id,
+                    },
+                )
+                cleanup_workflow_agent_runtime_session.delay(payload.model_dump(mode="json"))
+        except Exception:
+            logger.warning(
+                "Failed to enqueue workflow Agent backend cleanup on agent run failure: "
+                "tenant_id=%s workflow_run_id=%s node_id=%s binding_id=%s agent_id=%s backend_run_id=%s",
+                session_scope.tenant_id,
+                session_scope.workflow_run_id,
+                session_scope.node_id,
+                session_scope.binding_id,
+                session_scope.agent_id,
+                backend_run_id,
+                exc_info=True,
+            )
         try:
             self._session_store.mark_cleaned(scope=session_scope, backend_run_id=backend_run_id)
             agent_backend = dict(metadata.get("agent_backend") or {})
@@ -580,6 +739,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 agent_backend["usage"] = dict(usage)
         metadata["agent_backend"] = agent_backend
 
+    @staticmethod
+    def _record_agent_message_delta_metadata(
+        metadata: dict[str, Any], event: AgentBackendAgentMessageDeltaInternalEvent
+    ) -> None:
+        agent_backend = dict(metadata.get("agent_backend") or {})
+        agent_backend["agent_message_delta_count"] = int(agent_backend.get("agent_message_delta_count") or 0) + 1
+        agent_backend["agent_message_delta_length"] = int(agent_backend.get("agent_message_delta_length") or 0) + len(
+            event.delta
+        )
+        metadata["agent_backend"] = agent_backend
+
     @classmethod
     @override
     def _extract_variable_selector_to_variable_mapping(
@@ -589,5 +759,20 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         node_id: str,
         node_data: DifyAgentNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        del graph_config, node_id, node_data
-        return {}
+        """Reuse frontend workflow-marker parsing for graph variable loading.
+
+        This follows the same marker parser used by publish sync and runtime
+        request building, including reserved-prefix exclusion.
+        """
+        del graph_config
+
+        agent_task = (
+            node_data.get("agent_task") if isinstance(node_data, Mapping) else getattr(node_data, "agent_task", None)
+        )
+        if not isinstance(agent_task, str):
+            return {}
+
+        return {
+            f"{node_id}.{'.'.join(selector)}": list(selector)
+            for selector in extract_workflow_node_output_selectors(agent_task)
+        }

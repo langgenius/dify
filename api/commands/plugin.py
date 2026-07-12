@@ -1,10 +1,11 @@
 import json
 import logging
+import time
 from typing import Any, cast
 
 import click
 from pydantic import TypeAdapter
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
 
 from configs import dify_config
@@ -15,11 +16,13 @@ from core.plugin.plugin_service import PluginService
 from core.tools.utils.system_encryption import encrypt_system_params
 from extensions.ext_database import db
 from models import Tenant
+from models.account import TenantPluginAutoUpgradeCategory, TenantPluginAutoUpgradeStrategy
 from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID, ToolProviderID
 from models.source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from models.tools import ToolOAuthSystemClient
 from services.plugin.data_migration import PluginDataMigration
+from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_migration import PluginMigration
 
 logger = logging.getLogger(__name__)
@@ -185,13 +188,13 @@ def transform_datasource_credentials(environment: str):
         firecrawl_plugin_id = "langgenius/firecrawl_datasource"
         jina_plugin_id = "langgenius/jina_datasource"
         if environment == "online":
-            notion_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(notion_plugin_id)
-            firecrawl_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(firecrawl_plugin_id)
-            jina_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(jina_plugin_id)
+            notion_package_identifier = plugin_migration._fetch_latest_package_identifier(notion_plugin_id)
+            firecrawl_package_identifier = plugin_migration._fetch_latest_package_identifier(firecrawl_plugin_id)
+            jina_package_identifier = plugin_migration._fetch_latest_package_identifier(jina_plugin_id)
         else:
-            notion_plugin_unique_identifier = None
-            firecrawl_plugin_unique_identifier = None
-            jina_plugin_unique_identifier = None
+            notion_package_identifier = None
+            firecrawl_package_identifier = None
+            jina_package_identifier = None
         oauth_credential_type = CredentialType.OAUTH2
         api_key_credential_type = CredentialType.API_KEY
 
@@ -216,9 +219,9 @@ def transform_datasource_credentials(environment: str):
                     installed_plugins = installer_manager.list_plugins(tenant_id)
                     installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
                     if notion_plugin_id not in installed_plugins_ids:
-                        if notion_plugin_unique_identifier:
+                        if notion_package_identifier:
                             # install notion plugin
-                            PluginService.install_from_marketplace_pkg(tenant_id, [notion_plugin_unique_identifier])
+                            PluginService.install_from_marketplace_pkg(tenant_id, [notion_package_identifier])
                     auth_count = 0
                     for notion_tenant_credential in notion_tenant_credentials:
                         auth_count += 1
@@ -276,9 +279,9 @@ def transform_datasource_credentials(environment: str):
                     installed_plugins = installer_manager.list_plugins(tenant_id)
                     installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
                     if firecrawl_plugin_id not in installed_plugins_ids:
-                        if firecrawl_plugin_unique_identifier:
+                        if firecrawl_package_identifier:
                             # install firecrawl plugin
-                            PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_plugin_unique_identifier])
+                            PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_package_identifier])
 
                     auth_count = 0
                     for firecrawl_tenant_credential in firecrawl_tenant_credentials:
@@ -340,10 +343,10 @@ def transform_datasource_credentials(environment: str):
                     installed_plugins = installer_manager.list_plugins(tenant_id)
                     installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
                     if jina_plugin_id not in installed_plugins_ids:
-                        if jina_plugin_unique_identifier:
+                        if jina_package_identifier:
                             # install jina plugin
-                            logger.debug("Installing Jina plugin %s", jina_plugin_unique_identifier)
-                            PluginService.install_from_marketplace_pkg(tenant_id, [jina_plugin_unique_identifier])
+                            logger.debug("Installing Jina plugin %s", jina_package_identifier)
+                            PluginService.install_from_marketplace_pkg(tenant_id, [jina_package_identifier])
 
                     auth_count = 0
                     for jina_tenant_credential in jina_tenant_credentials:
@@ -400,6 +403,111 @@ def migrate_data_for_plugin():
     PluginDataMigration.migrate()
 
     click.echo(click.style("Migrate data for plugin completed.", fg="green"))
+
+
+def _candidate_auto_upgrade_strategy_tenant_ids_stmt(limit: int | None = None):
+    category_count = len(TenantPluginAutoUpgradeCategory)
+    stmt = (
+        select(TenantPluginAutoUpgradeStrategy.tenant_id)
+        .group_by(TenantPluginAutoUpgradeStrategy.tenant_id)
+        .having(func.count(func.distinct(TenantPluginAutoUpgradeStrategy.category)) < category_count)
+        .order_by(TenantPluginAutoUpgradeStrategy.tenant_id)
+    )
+
+    if limit is not None:
+        stmt = stmt.limit(limit)
+
+    return stmt
+
+
+def _count_auto_upgrade_strategy_tenant_ids(limit: int | None) -> int:
+    candidate_stmt = _candidate_auto_upgrade_strategy_tenant_ids_stmt(limit).subquery()
+    return db.session.scalar(select(func.count()).select_from(candidate_stmt)) or 0
+
+
+def _iter_auto_upgrade_strategy_tenant_ids(limit: int | None):
+    stmt = _candidate_auto_upgrade_strategy_tenant_ids_stmt(limit).execution_options(yield_per=1000)
+    yield from db.session.scalars(stmt)
+
+
+@click.command(
+    "backfill-plugin-auto-upgrade",
+    help="Backfill category-scoped plugin auto-upgrade strategies and normalize plugin lists.",
+)
+@click.option("--tenant-id", multiple=True, help="Tenant ID to backfill. Can be passed multiple times.")
+@click.option("--limit", type=int, default=None, help="Maximum number of candidate tenants to process.")
+@click.option("--batch-size", type=int, default=500, show_default=True, help="Progress reporting batch size.")
+@click.option("--dry-run", is_flag=True, help="Only print candidate tenant count.")
+def backfill_plugin_auto_upgrade(
+    tenant_id: tuple[str, ...],
+    limit: int | None,
+    batch_size: int,
+    dry_run: bool,
+):
+    """
+    Backfill historical auto-upgrade strategies after the category column exists.
+
+    Missing category rows are created from the tenant's tool/default row. Pure default
+    strategies become latest for model plugins and fix-only for all other categories.
+    Tenants with include/exclude plugin IDs are split
+    by installed plugin category using plugin daemon metadata.
+    """
+    start_at = time.perf_counter()
+    candidate_count = len(tenant_id) if tenant_id else _count_auto_upgrade_strategy_tenant_ids(limit)
+    click.echo(click.style(f"Found {candidate_count} candidate tenants.", fg="yellow"))
+
+    if dry_run:
+        elapsed = time.perf_counter() - start_at
+        click.echo(click.style(f"Dry run completed. elapsed={elapsed:.2f}s", fg="green"))
+        return
+
+    tenant_ids = list(tenant_id) if tenant_id else _iter_auto_upgrade_strategy_tenant_ids(limit)
+
+    backfilled_count = 0
+    created_count = 0
+    normalized_count = 0
+    skipped_count = 0
+    failed_count = 0
+    for index, current_tenant_id in enumerate(tenant_ids, start=1):
+        try:
+            result = PluginAutoUpgradeService.backfill_strategy_categories(
+                current_tenant_id,
+                session=db.session(),
+            )
+        except Exception as e:
+            failed_count += 1
+            click.echo(click.style(f"Failed tenant {current_tenant_id}: {str(e)}", fg="red"))
+            continue
+
+        if result.created_count > 0:
+            backfilled_count += 1
+            created_count += result.created_count
+        elif not result.normalized:
+            skipped_count += 1
+        if result.normalized:
+            normalized_count += 1
+
+        if batch_size > 0 and index % batch_size == 0:
+            click.echo(
+                click.style(
+                    f"Processed {index}/{candidate_count} tenants. "
+                    f"backfilled={backfilled_count}, created_rows={created_count}, "
+                    f"normalized={normalized_count}, skipped={skipped_count}, failed={failed_count}, "
+                    f"elapsed={time.perf_counter() - start_at:.2f}s",
+                    fg="yellow",
+                )
+            )
+
+    elapsed = time.perf_counter() - start_at
+    click.echo(
+        click.style(
+            f"Backfill plugin auto-upgrade strategy categories completed. "
+            f"backfilled={backfilled_count}, created_rows={created_count}, "
+            f"normalized={normalized_count}, skipped={skipped_count}, failed={failed_count}, "
+            f"elapsed={elapsed:.2f}s",
+            fg="green",
+        )
+    )
 
 
 @click.command("extract-plugins", help="Extract plugins.")

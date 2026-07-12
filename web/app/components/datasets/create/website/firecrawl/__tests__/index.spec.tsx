@@ -2,9 +2,7 @@ import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 // Component Import (after mocks)
-
 import FireCrawl from '../index'
 
 // Mock Setup - Only mock API calls and context
@@ -12,6 +10,16 @@ import FireCrawl from '../index'
 // Mock API service
 const mockCreateFirecrawlTask = vi.fn()
 const mockCheckFirecrawlTaskStatus = vi.fn()
+const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  mockSetShowAccountSettingModal: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
 
 vi.mock('@/service/datasets', () => ({
   createFirecrawlTask: (...args: unknown[]) => mockCreateFirecrawlTask(...args),
@@ -19,9 +27,10 @@ vi.mock('@/service/datasets', () => ({
 }))
 
 // Mock modal context
-const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: vi.fn(() => mockSetShowAccountSettingModal),
+  useModalContext: () => ({
+    setShowAccountSettingModal: mockSetShowAccountSettingModal,
+  }),
 }))
 
 // Mock sleep utility to speed up tests
@@ -168,16 +177,15 @@ describe('FireCrawl', () => {
 
   // Configuration Button Tests
   describe('Configuration Button', () => {
-    it('should call setShowAccountSettingModal when configure button is clicked', async () => {
+    it('should navigate to data source settings when configure button is clicked', async () => {
       const user = userEvent.setup()
       render(<FireCrawl {...defaultProps} />)
 
       const configButton = screen.getByText(/configureFirecrawl/i)
       await user.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: 'data-source',
-      })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
   })
 
@@ -656,9 +664,7 @@ describe('FireCrawl', () => {
       const limitInput = screen.getByDisplayValue('10')
       fireEvent.change(limitInput, { target: { value: '20' } })
 
-      expect(mockOnCrawlOptionsChange).toHaveBeenCalledWith(
-        expect.objectContaining({ limit: 20 }),
-      )
+      expect(mockOnCrawlOptionsChange).toHaveBeenCalledWith(expect.objectContaining({ limit: 20 }))
     })
 
     it('should call onCrawlOptionsChange when checkbox changes', () => {

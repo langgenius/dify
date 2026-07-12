@@ -1,4 +1,4 @@
-import type { UserProfile } from '@/contract/console/workflow-comment'
+import type { UserProfile } from '@/app/components/workflow/comment/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { MentionInput } from './mention-input'
@@ -19,21 +19,22 @@ const mentionStoreState = vi.hoisted(() => ({
     mentionStoreState.mentionableUsersCache[appId] = users
   },
 }))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
-    workflowComments: {
-      mentionUsers: (...args: unknown[]) => mockFetchMentionableUsers(...args),
+    apps: {
+      byAppId: {
+        workflow: {
+          comments: {
+            mentionUsers: {
+              get: (...args: unknown[]) => mockFetchMentionableUsers(...args),
+            },
+          },
+        },
+      },
     },
   },
 }))
@@ -70,13 +71,7 @@ function ControlledMentionInput({
   onSubmit: (content: string, mentionedUserIds: string[]) => void
 }) {
   const [value, setValue] = useState('')
-  return (
-    <MentionInput
-      value={value}
-      onChange={setValue}
-      onSubmit={onSubmit}
-    />
-  )
+  return <MentionInput value={value} onChange={setValue} onSubmit={onSubmit} />
 }
 
 describe('MentionInput', () => {
@@ -88,17 +83,11 @@ describe('MentionInput', () => {
   })
 
   it('loads mentionable users when cache is empty', async () => {
-    render(
-      <MentionInput
-        value=""
-        onChange={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    )
+    render(<MentionInput value="" onChange={vi.fn()} onSubmit={vi.fn()} />)
 
     await waitFor(() => {
       expect(mockFetchMentionableUsers).toHaveBeenCalledWith({
-        params: { appId: 'app-1' },
+        params: { app_id: 'app-1' },
       })
     })
 
@@ -113,7 +102,9 @@ describe('MentionInput', () => {
 
     render(<ControlledMentionInput onSubmit={onSubmit} />)
 
-    const textarea = screen.getByPlaceholderText('workflow.comments.placeholder.add') as HTMLTextAreaElement
+    const textarea = screen.getByPlaceholderText(
+      'workflow.comments.placeholder.add',
+    ) as HTMLTextAreaElement
     textarea.focus()
     textarea.setSelectionRange(4, 4)
     fireEvent.change(textarea, { target: { value: '@Ali' } })
@@ -161,15 +152,12 @@ describe('MentionInput', () => {
       mentionStoreState.mentionableUsersCache['app-1'] = mentionUsers
 
       const { unmount } = render(
-        <MentionInput
-          value="draft"
-          onChange={vi.fn()}
-          onSubmit={vi.fn()}
-          autoFocus
-        />,
+        <MentionInput value="draft" onChange={vi.fn()} onSubmit={vi.fn()} autoFocus />,
       )
 
-      const textarea = screen.getByPlaceholderText('workflow.comments.placeholder.add') as HTMLTextAreaElement
+      const textarea = screen.getByPlaceholderText(
+        'workflow.comments.placeholder.add',
+      ) as HTMLTextAreaElement
 
       act(() => {
         vi.runOnlyPendingTimers()
@@ -180,8 +168,7 @@ describe('MentionInput', () => {
       expect(textarea.selectionEnd).toBe(5)
 
       unmount()
-    }
-    finally {
+    } finally {
       vi.useRealTimers()
     }
   })

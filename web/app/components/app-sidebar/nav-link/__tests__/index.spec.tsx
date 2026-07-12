@@ -10,7 +10,17 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock Next.js Link component
 vi.mock('@/next/link', () => ({
-  default: function MockLink({ children, href, className, title }: { children: React.ReactNode, href: string, className?: string, title?: string }) {
+  default: function MockLink({
+    children,
+    href,
+    className,
+    title,
+  }: {
+    children: React.ReactNode
+    href: string
+    className?: string
+    title?: string
+  }) {
     return (
       <a href={href} className={className} title={title} data-testid="nav-link">
         {children}
@@ -39,13 +49,17 @@ describe('NavLink Animation and Layout Issues', () => {
     Object.defineProperty(window, 'getComputedStyle', {
       value: vi.fn((element) => {
         const isExpanded = element.getAttribute('data-mode') === 'expand'
-        return {
+        const style = {
           transition: 'all 0.3s ease',
           opacity: isExpanded ? '1' : '0',
           width: isExpanded ? 'auto' : '0px',
           overflow: 'hidden',
           paddingLeft: isExpanded ? '12px' : '10px', // px-3 vs px-2.5
           paddingRight: isExpanded ? '12px' : '10px',
+        }
+        return {
+          ...style,
+          getPropertyValue: (property: keyof typeof style) => style[property] ?? '',
         }
       }),
       writable: true,
@@ -66,10 +80,10 @@ describe('NavLink Animation and Layout Issues', () => {
       // Icon should still be present
       expect(screen.getByTestId('nav-icon')).toBeInTheDocument()
 
-      // Check consistent padding in collapse mode
+      // Check Figma collapsed icon-only sizing.
       const linkElement = screen.getByTestId('nav-link')
-      expect(linkElement).toHaveClass('pl-3')
-      expect(linkElement).toHaveClass('pr-1')
+      expect(linkElement).toHaveClass('size-8')
+      expect(linkElement).toHaveClass('p-1.5')
 
       // Switch to expand mode - should have smooth text transition
       rerender(<NavLink {...mockProps} mode="expand" />)
@@ -77,9 +91,10 @@ describe('NavLink Animation and Layout Issues', () => {
       // Text should now be visible with opacity animation
       expect(screen.getByText('Orchestrate')).toBeInTheDocument()
 
-      // Check padding remains consistent - no layout shift
-      expect(linkElement).toHaveClass('pl-3')
-      expect(linkElement).toHaveClass('pr-1')
+      // Expanded state returns to the full-width navigation item.
+      const expandedLinkElement = screen.getByTestId('nav-link')
+      expect(expandedLinkElement).toHaveClass('pl-3')
+      expect(expandedLinkElement).toHaveClass('pr-1')
 
       // Fixed: text now uses max-width animation instead of abrupt show/hide
       const expandedTextElement = screen.getByText('Orchestrate')
@@ -99,18 +114,24 @@ describe('NavLink Animation and Layout Issues', () => {
       const iconElement = screen.getByTestId('nav-icon')
       const iconWrapper = iconElement.parentElement
 
-      // Icon wrapper should have -ml-1 micro-adjustment in collapse mode for centering
-      expect(iconWrapper).toHaveClass('-ml-1')
+      // Icon wrapper should center the icon in the collapsed button.
+      expect(iconWrapper).toHaveClass('flex')
+      expect(iconWrapper).toHaveClass('size-5')
+      expect(iconWrapper).toHaveClass('items-center')
+      expect(iconWrapper).toHaveClass('justify-center')
 
       rerender(<NavLink {...mockProps} mode="expand" />)
 
-      // In expand mode, wrapper should not have the micro-adjustment
+      // In expand mode, wrapper should keep the fixed icon slot.
       const expandedIconWrapper = screen.getByTestId('nav-icon').parentElement
-      expect(expandedIconWrapper).not.toHaveClass('-ml-1')
+      expect(expandedIconWrapper).toHaveClass('flex')
+      expect(expandedIconWrapper).toHaveClass('size-5')
+      expect(expandedIconWrapper).toHaveClass('items-center')
+      expect(expandedIconWrapper).toHaveClass('justify-center')
 
-      // Icon itself maintains consistent classes - no margin changes
-      expect(iconElement).toHaveClass('size-4')
-      expect(iconElement).toHaveClass('size-4')
+      // Icon itself uses the fixed glyph size.
+      const expandedIconElement = screen.getByTestId('nav-icon')
+      expect(expandedIconElement).toHaveClass('size-[18px]')
       expect(iconElement).toHaveClass('shrink-0')
 
       // This wrapper approach eliminates the icon margin shift issue
@@ -145,15 +166,16 @@ describe('NavLink Animation and Layout Issues', () => {
 
       const linkElement = screen.getByTestId('nav-link')
 
-      // Consistent padding in collapsed state
-      expect(linkElement).toHaveClass('pl-3')
-      expect(linkElement).toHaveClass('pr-1')
+      // Collapsed state uses a fixed icon-only button.
+      expect(linkElement).toHaveClass('size-8')
+      expect(linkElement).toHaveClass('p-1.5')
 
       rerender(<NavLink {...mockProps} mode="expand" />)
 
-      // Same padding in expanded state - no layout shift
-      expect(linkElement).toHaveClass('pl-3')
-      expect(linkElement).toHaveClass('pr-1')
+      // Expanded state uses text item padding.
+      const expandedLinkElement = screen.getByTestId('nav-link')
+      expect(expandedLinkElement).toHaveClass('pl-3')
+      expect(expandedLinkElement).toHaveClass('pr-1')
 
       // This consistency eliminates the layout shift issue
     })
@@ -164,25 +186,30 @@ describe('NavLink Animation and Layout Issues', () => {
       const iconElement = screen.getByTestId('nav-icon')
       const iconWrapper = iconElement.parentElement
 
-      // Collapsed: wrapper has micro-adjustment for centering
-      expect(iconWrapper).toHaveClass('-ml-1')
+      // Collapsed: wrapper centers the icon in the 32px item.
+      expect(iconWrapper).toHaveClass('flex')
+      expect(iconWrapper).toHaveClass('size-5')
+      expect(iconWrapper).toHaveClass('items-center')
+      expect(iconWrapper).toHaveClass('justify-center')
 
-      // Icon itself has consistent classes
-      expect(iconElement).toHaveClass('size-4')
-      expect(iconElement).toHaveClass('size-4')
+      // Icon itself uses the larger collapsed glyph size.
+      expect(iconElement).toHaveClass('size-[18px]')
       expect(iconElement).toHaveClass('shrink-0')
 
       rerender(<NavLink {...mockProps} mode="expand" />)
 
       const expandedIconWrapper = screen.getByTestId('nav-icon').parentElement
 
-      // Expanded: no wrapper adjustment needed
-      expect(expandedIconWrapper).not.toHaveClass('-ml-1')
+      // Expanded: wrapper still centers the 18px icon in a 20px slot.
+      expect(expandedIconWrapper).toHaveClass('flex')
+      expect(expandedIconWrapper).toHaveClass('size-5')
+      expect(expandedIconWrapper).toHaveClass('items-center')
+      expect(expandedIconWrapper).toHaveClass('justify-center')
 
-      // Icon classes remain consistent - no margin shifts
-      expect(iconElement).toHaveClass('size-4')
-      expect(iconElement).toHaveClass('size-4')
-      expect(iconElement).toHaveClass('shrink-0')
+      // Icon keeps the same fixed glyph size.
+      const expandedIconElement = screen.getByTestId('nav-icon')
+      expect(expandedIconElement).toHaveClass('size-[18px]')
+      expect(expandedIconElement).toHaveClass('shrink-0')
     })
   })
 
@@ -206,6 +233,20 @@ describe('NavLink Animation and Layout Issues', () => {
       expect(linkElement).toHaveClass('bg-components-menu-item-bg-active')
       expect(linkElement).toHaveClass('text-text-accent-light-mode-only')
     })
+
+    it('should not mark logs active on the annotations pathname', () => {
+      render(<NavLink {...mockProps} href="/app/123/logs" pathname="/app/123/annotations" />)
+
+      const linkElement = screen.getByRole('link', { name: 'Orchestrate' })
+      expect(linkElement).not.toHaveClass('bg-components-menu-item-bg-active')
+    })
+
+    it('should use pathname to mark annotations active when rendered outside the app detail route segment', () => {
+      render(<NavLink {...mockProps} href="/app/123/annotations" pathname="/app/123/annotations" />)
+
+      const linkElement = screen.getByRole('link', { name: 'Orchestrate' })
+      expect(linkElement).toHaveClass('bg-components-menu-item-bg-active')
+    })
   })
 
   describe('Text Animation Classes', () => {
@@ -216,7 +257,7 @@ describe('NavLink Animation and Layout Issues', () => {
 
       expect(textElement).toHaveClass('overflow-hidden')
       expect(textElement).toHaveClass('whitespace-nowrap')
-      expect(textElement).toHaveClass('transition-all')
+      expect(textElement).toHaveClass('transition-[margin-left,max-width,opacity]')
       expect(textElement).toHaveClass('duration-200')
       expect(textElement).toHaveClass('ease-in-out')
       expect(textElement).toHaveClass('ml-0')
@@ -231,7 +272,7 @@ describe('NavLink Animation and Layout Issues', () => {
 
       expect(textElement).toHaveClass('overflow-hidden')
       expect(textElement).toHaveClass('whitespace-nowrap')
-      expect(textElement).toHaveClass('transition-all')
+      expect(textElement).toHaveClass('transition-[margin-left,max-width,opacity]')
       expect(textElement).toHaveClass('duration-200')
       expect(textElement).toHaveClass('ease-in-out')
       expect(textElement).toHaveClass('ml-2')
@@ -255,11 +296,11 @@ describe('NavLink Animation and Layout Issues', () => {
       render(<NavLink {...mockProps} mode="collapse" disabled={true} />)
 
       const buttonElement = screen.getByRole('button')
-      expect(buttonElement).toHaveClass('pl-3')
-      expect(buttonElement).toHaveClass('pr-1')
+      expect(buttonElement).toHaveClass('size-8')
+      expect(buttonElement).toHaveClass('p-1.5')
 
       const iconWrapper = screen.getByTestId('nav-icon').parentElement
-      expect(iconWrapper).toHaveClass('-ml-1')
+      expect(iconWrapper).toHaveClass('size-5')
     })
   })
 

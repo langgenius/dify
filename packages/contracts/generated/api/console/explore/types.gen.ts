@@ -9,9 +9,11 @@ export type RecommendedAppListResponse = {
   recommended_apps: Array<RecommendedAppResponse>
 }
 
-export type RecommendedAppDetailResponse = {
-  [key: string]: unknown
+export type LearnDifyAppListResponse = {
+  recommended_apps: Array<RecommendedAppResponse>
 }
+
+export type RecommendedAppDetailNullableResponse = RecommendedAppDetailResponse | null
 
 export type BannerListResponse = Array<BannerResponse>
 
@@ -28,6 +30,16 @@ export type RecommendedAppResponse = {
   privacy_policy?: string | null
 }
 
+export type RecommendedAppDetailResponse = {
+  can_trial?: boolean | null
+  export_data: string
+  icon?: string | null
+  icon_background?: string | null
+  id: string
+  mode: string
+  name: string
+}
+
 export type BannerResponse = {
   content: unknown
   created_at?: string | null
@@ -38,6 +50,38 @@ export type BannerResponse = {
 }
 
 export type RecommendedAppInfoResponse = {
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  readonly icon_url: string | null
+  id: string
+  mode?: string | null
+  name?: string | null
+}
+
+export type RecommendedAppListResponseWritable = {
+  categories: Array<string>
+  recommended_apps: Array<RecommendedAppResponseWritable>
+}
+
+export type LearnDifyAppListResponseWritable = {
+  recommended_apps: Array<RecommendedAppResponseWritable>
+}
+
+export type RecommendedAppResponseWritable = {
+  app?: RecommendedAppInfoResponseWritable | null
+  app_id: string
+  can_trial?: boolean | null
+  categories?: Array<string>
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  description?: string | null
+  is_listed?: boolean | null
+  position?: number | null
+  privacy_policy?: string | null
+}
+
+export type RecommendedAppInfoResponseWritable = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
@@ -61,6 +105,22 @@ export type GetExploreAppsResponses = {
 
 export type GetExploreAppsResponse = GetExploreAppsResponses[keyof GetExploreAppsResponses]
 
+export type GetExploreAppsLearnDifyData = {
+  body?: never
+  path?: never
+  query?: {
+    language?: string
+  }
+  url: '/explore/apps/learn-dify'
+}
+
+export type GetExploreAppsLearnDifyResponses = {
+  200: LearnDifyAppListResponse
+}
+
+export type GetExploreAppsLearnDifyResponse =
+  GetExploreAppsLearnDifyResponses[keyof GetExploreAppsLearnDifyResponses]
+
 export type GetExploreAppsByAppIdData = {
   body?: never
   path: {
@@ -71,11 +131,11 @@ export type GetExploreAppsByAppIdData = {
 }
 
 export type GetExploreAppsByAppIdResponses = {
-  200: RecommendedAppDetailResponse
+  200: RecommendedAppDetailNullableResponse
 }
 
-export type GetExploreAppsByAppIdResponse
-  = GetExploreAppsByAppIdResponses[keyof GetExploreAppsByAppIdResponses]
+export type GetExploreAppsByAppIdResponse =
+  GetExploreAppsByAppIdResponses[keyof GetExploreAppsByAppIdResponses]
 
 export type GetExploreBannersData = {
   body?: never

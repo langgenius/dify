@@ -125,10 +125,11 @@ class DraftVarLoader(VariableLoader):
         # can be safely accessed before any offloading logic is applied.
         for draft_var in draft_vars:
             value = draft_var.get_value()
-            if isinstance(value, FileSegment):
-                files.append(value.value)
-            elif isinstance(value, ArrayFileSegment):
-                files.extend(value.value)
+            match value:
+                case FileSegment():
+                    files.append(value.value)
+                case ArrayFileSegment():
+                    files.extend(value.value)
         with Session(bind=self._engine) as session:
             storage_key_loader = StorageKeyLoader(
                 session,

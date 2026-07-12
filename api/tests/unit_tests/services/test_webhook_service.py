@@ -1,3 +1,4 @@
+import logging
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -5,11 +6,55 @@ import pytest
 from flask import Flask
 from werkzeug.datastructures import FileStorage
 
+from services.errors.app import QuotaExceededError
 from services.trigger.webhook_service import WebhookService
 
 
 class TestWebhookServiceUnit:
     """Unit tests for WebhookService focusing on business logic without database dependencies."""
+
+    def test_trigger_workflow_execution_propagates_quota_error_without_error_log(self):
+        webhook_trigger = MagicMock(
+            webhook_id="webhook-123",
+            tenant_id="tenant-123",
+            app_id="app-123",
+            node_id="node-123",
+        )
+        workflow = MagicMock(id="workflow-123")
+        quota_charge = MagicMock()
+        quota_error = QuotaExceededError(feature="workflow", tenant_id="tenant-123", required=1)
+
+        with (
+            patch(
+                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
+                return_value=MagicMock(id="end-user-123"),
+            ),
+            patch("services.trigger.webhook_service.QuotaService.reserve", return_value=quota_charge),
+            patch("services.trigger.webhook_service.db"),
+            patch("services.trigger.webhook_service.Session"),
+            patch(
+                "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
+                side_effect=quota_error,
+            ),
+            patch("services.trigger.webhook_service.logger.info") as mock_log_info,
+            patch("services.trigger.webhook_service.logger.exception") as mock_log_exception,
+        ):
+            with pytest.raises(QuotaExceededError) as exc_info:
+                WebhookService.trigger_workflow_execution(
+                    webhook_trigger,
+                    {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
+                    workflow,
+                )
+
+        assert exc_info.value is quota_error
+        quota_charge.refund.assert_called_once_with()
+        mock_log_info.assert_called_once_with(
+            "Tenant %s quota exceeded for feature %s, skipping webhook trigger %s",
+            webhook_trigger.tenant_id,
+            quota_error.feature,
+            webhook_trigger.webhook_id,
+        )
+        mock_log_exception.assert_not_called()
 
     def test_extract_webhook_data_json(self):
         """Test webhook data extraction from JSON request."""
@@ -159,7 +204,9 @@ class TestWebhookServiceUnit:
 
         assert result == "application/octet-stream"
 
-    def test_detect_binary_mimetype_handles_magic_exception(self, monkeypatch: pytest.MonkeyPatch):
+    def test_detect_binary_mimetype_handles_magic_exception(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         """Fallback MIME type should be used when python-magic raises an exception."""
         try:
             import magic as real_magic
@@ -169,12 +216,12 @@ class TestWebhookServiceUnit:
         fake_magic = MagicMock()
         fake_magic.from_buffer.side_effect = real_magic.MagicException("magic error")
         monkeypatch.setattr("services.trigger.webhook_service.magic", fake_magic)
+        caplog.set_level(logging.DEBUG, logger="services.trigger.webhook_service")
 
-        with patch("services.trigger.webhook_service.logger", autospec=True) as mock_logger:
-            result = WebhookService._detect_binary_mimetype(b"binary data")
+        result = WebhookService._detect_binary_mimetype(b"binary data")
 
-            assert result == "application/octet-stream"
-            mock_logger.debug.assert_called_once()
+        assert result == "application/octet-stream"
+        assert "python-magic detection failed for octet-stream payload" in caplog.messages
 
     def test_extract_webhook_data_invalid_json(self):
         """Test webhook data extraction with invalid JSON."""

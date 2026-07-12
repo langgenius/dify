@@ -29,13 +29,16 @@ When a run includes `dify.shell`, the Dify Agent server must construct its layer
 providers with a non-empty shellctl entrypoint:
 
 ```python
+from dify_agent.adapters.shell.shellctl import ShellctlProvider
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 
 layer_providers = create_default_layer_providers(
     plugin_daemon_url="http://localhost:5002",
     plugin_daemon_api_key="replace-with-plugin-daemon-key",
-    shellctl_entrypoint="http://127.0.0.1:5004",
-    shellctl_auth_token="replace-with-shellctl-token",  # optional; defaults to no token
+    shell_provider=ShellctlProvider(
+        entrypoint="http://127.0.0.1:5004",
+        token="replace-with-shellctl-token",  # optional; defaults to empty string
+    ),
 )
 ```
 
@@ -55,24 +58,36 @@ To let commands inside user-visible shell jobs call back to the Dify Agent serve
 with `dify-agent ...`, also enable the Agent Stub:
 
 ```env
-DIFY_AGENT_STUB_URL=https://agent.example.com/agent-stub
-DIFY_AGENT_SERVER_SECRET_KEY=replace-with-base64url-32-byte-secret
+DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
+# This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
+# Replace this development default in production.
+# Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'
+DIFY_AGENT_SERVER_SECRET_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
 ```
 
-`DIFY_AGENT_SERVER_SECRET_KEY` must be unpadded base64url text for exactly 32
-decoded bytes. One way to generate it is:
+HTTP `DIFY_AGENT_STUB_API_BASE_URL` may be either the service root or the
+explicit `/agent-stub` API root; the server normalizes the service root to
+`/agent-stub`. Other HTTP paths are rejected at startup.
+
+The supplied Docker and `.example.env` configs use a development
+`DIFY_AGENT_SERVER_SECRET_KEY`. Override it in production with unpadded base64url
+text for exactly 32 decoded bytes. One way to generate it is:
 
 ```bash
-python -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode())'
+python -c 'import secrets; print(secrets.token_urlsafe(32))'
 ```
 
 ## Client request shape
 
 A client adds the shell layer as an ordinary composition layer. Basic shell jobs
-do not need dependencies. To inject `DIFY_AGENT_STUB_URL` and
-`DIFY_AGENT_STUB_AUTH_JWE` into user-visible `shell.run` jobs, declare the
-execution-context layer as the shell layer's `execution_context` dependency. A
-typical run still also includes:
+do not need dependencies. To inject `DIFY_AGENT_STUB_API_BASE_URL`,
+`DIFY_AGENT_STUB_AUTH_JWE`, and `DIFY_AGENT_STUB_DRIVE_BASE` into user-visible
+`shell.run` jobs, declare the execution-context layer as the shell layer's
+`execution_context` dependency. When the run also includes `dify.drive`, declare
+it as the shell layer's `drive` dependency; the injected drive base is then
+computed from the fixed Agent Stub drive mount and the drive reference, for
+example `/mnt/drive/agent-123`. Without a drive dependency, the CLI keeps the
+historical `/mnt/drive` fallback. A typical run still also includes:
 
 - a prompt layer that supplies the task;
 - an execution-context layer carrying tenant/user context;
@@ -194,33 +209,39 @@ Here is the analysis of the sales dataset:
 * **SHA-256 Hash:** `e86521a0d759037a09b059cb3cb2419f0a3f06e674db8151ccf2f93811dac0b8`
 ````
 
-## Running shellctl in Docker
+## Running the local sandbox in Docker
 
-Build the shellctl image from the Dify Agent package root:
+Build the local sandbox image from the Dify Agent package root:
 
 ```bash
-docker build -f docker/shellctl/Dockerfile -t dify-agent-shellctl:local .
+docker build -f docker/local-sandbox/Dockerfile -t dify-agent-local-sandbox:local .
 ```
 
 Run it with a bearer token and publish the API on localhost:
 
 ```bash
-docker run --rm --name dify-agent-shellctl \
+docker run --rm --name dify-agent-local-sandbox \
   -e SHELLCTL_AUTH_TOKEN=replace-with-a-token \
   -p 127.0.0.1:5004:5004 \
-  dify-agent-shellctl:local
+  dify-agent-local-sandbox:local
 ```
 
 The image starts `shellctl serve --listen 0.0.0.0:5004` as the non-root
-`dify` user and leaves shellctl state/runtime directories at their package
-defaults.
+`dify` user. It also sets the fallback `DIFY_AGENT_STUB_DRIVE_BASE=/mnt/drive`
+and pre-creates that directory with write access for the same user.
 
 ## Docker image contents
 
-The provided `docker/shellctl/Dockerfile` installs:
+The provided `docker/local-sandbox/Dockerfile` installs:
 
 - `tmux`, required by `shellctl` to manage shell jobs;
-- `shell-session-manager==2.2.0`, which provides the `shellctl` CLI/server;
+- common shell workspace tools: `git`, `openssh-client`, `jq`, `ripgrep`,
+  `unzip`, `zip`, `file`, `procps`, and `less`;
+- `dify-agent[grpc,shellctl-server]` as a standalone uv tool, which provides
+  both the Agent Stub client CLI and the built-in `shellctl` CLI/server;
 - `uv`, so uv shebang scripts with PEP 723 metadata can run inside the shell
-  workspace;
+  workspace and Python CLI tools can be installed with isolated tool
+  environments;
+- `node==22.22.1` and `pnpm==11.9.0`, so JavaScript and TypeScript tooling can
+  run inside the shell workspace without per-job installation;
 - a non-root default user named `dify`.

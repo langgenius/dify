@@ -2,24 +2,38 @@ import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import CreditsExhaustedAlert from '../credits-exhausted-alert'
 
-const mockTrialCredits = { credits: 0, totalCredits: 10_000, isExhausted: true, isLoading: false, nextCreditResetDate: undefined }
+const mockTrialCredits = {
+  credits: 0,
+  totalCredits: 10_000,
+  isExhausted: true,
+  isLoading: false,
+  nextCreditResetDate: undefined,
+}
 const mockSetShowPricingModal = vi.fn()
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 vi.mock('react-i18next', async (importOriginal) => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
   const actual = await importOriginal<typeof import('react-i18next')>()
   return {
     ...actual,
-    Trans: ({
-      i18nKey,
-      components,
-    }: {
-      i18nKey?: string
-      components: { upgradeLink: ReactNode }
-    }) => (
-      <>
-        {i18nKey}
-        {components.upgradeLink}
-      </>
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => key),
+    }),
+    Trans: withSelectorKeyProps(
+      ({ i18nKey, components }: { i18nKey?: string; components: { upgradeLink: ReactNode } }) => (
+        <>
+          {i18nKey}
+          {components.upgradeLink}
+        </>
+      ),
     ),
   }
 })
@@ -90,7 +104,9 @@ describe('CreditsExhaustedAlert', () => {
 
       const { container } = render(<CreditsExhaustedAlert hasApiKeyFallback={false} />)
 
-      expect(container.querySelector('.bg-components-progress-error-progress')).toHaveStyle({ width: '100%' })
+      expect(container.querySelector('.bg-components-progress-error-progress')).toHaveStyle({
+        width: '100%',
+      })
     })
 
     it('should open the pricing modal when the upgrade link is clicked', () => {

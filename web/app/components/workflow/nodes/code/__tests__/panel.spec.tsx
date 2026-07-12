@@ -55,10 +55,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
 
 vi.mock('@/app/components/workflow/nodes/_base/components/selector', () => ({
   __esModule: true,
-  default: (props: {
-    value: CodeLanguage
-    onChange: (value: CodeLanguage) => void
-  }) => (
+  default: (props: { value: CodeLanguage; onChange: (value: CodeLanguage) => void }) => (
     <button type="button" onClick={() => props.onChange(CodeLanguage.python3)}>
       {`language:${props.value}`}
     </button>
@@ -78,10 +75,14 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-list', ()
         <div>{props.readonly ? 'var-list:readonly' : 'var-list:editable'}</div>
         <button
           type="button"
-          onClick={() => props.onChange([{
-            variable: 'changed',
-            value_selector: ['start', 'changed'],
-          }])}
+          onClick={() =>
+            props.onChange([
+              {
+                variable: 'changed',
+                value_selector: ['start', 'changed'],
+              },
+            ])
+          }
         >
           change-var-list
         </button>
@@ -104,12 +105,14 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/output-var-li
         <div>{props.readonly ? 'output-list:readonly' : 'output-list:editable'}</div>
         <button
           type="button"
-          onClick={() => props.onChange({
-            next_result: {
-              type: VarType.number,
-              children: null,
-            },
-          })}
+          onClick={() =>
+            props.onChange({
+              next_result: {
+                type: VarType.number,
+                children: null,
+              },
+            })
+          }
         >
           change-output-list
         </button>
@@ -123,24 +126,18 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/output-var-li
 
 vi.mock('../../_base/components/remove-effect-var-confirm', () => ({
   __esModule: true,
-  default: (props: {
-    isShow: boolean
-    onCancel: () => void
-    onConfirm: () => void
-  }) => {
+  default: (props: { isShow: boolean; onCancel: () => void; onConfirm: () => void }) => {
     mockRemoveEffectVarConfirm(props)
-    return props.isShow
-      ? (
-          <div>
-            <button type="button" onClick={props.onCancel}>
-              cancel-remove
-            </button>
-            <button type="button" onClick={props.onConfirm}>
-              confirm-remove
-            </button>
-          </div>
-        )
-      : null
+    return props.isShow ? (
+      <div>
+        <button type="button" onClick={props.onCancel}>
+          cancel-remove
+        </button>
+        <button type="button" onClick={props.onConfirm}>
+          confirm-remove
+        </button>
+      </div>
+    ) : null
   },
 }))
 
@@ -150,11 +147,13 @@ const createData = (overrides: Partial<CodeNodeType> = {}): CodeNodeType => ({
   type: BlockEnum.Code,
   code_language: CodeLanguage.javascript,
   code: 'function main({ foo }) { return { result: foo } }',
-  variables: [{
-    variable: 'foo',
-    value_selector: ['start', 'foo'],
-    value_type: VarType.string,
-  }],
+  variables: [
+    {
+      variable: 'foo',
+      value_selector: ['start', 'foo'],
+      value_type: VarType.string,
+    },
+  ],
   outputs: {
     result: {
       type: VarType.string,
@@ -164,7 +163,9 @@ const createData = (overrides: Partial<CodeNodeType> = {}): CodeNodeType => ({
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   outputKeyOrders: ['result'],
@@ -226,15 +227,21 @@ describe('code/panel', () => {
     expect(screen.getByText('editor:editable')).toBeInTheDocument()
     expect(screen.getByText('language:javascript')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.inputVars' }))
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.code.syncFunctionSignature' }))
+    await user.click(
+      screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.inputVars' }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.nodes.code.syncFunctionSignature' }),
+    )
     await user.click(screen.getByRole('button', { name: 'change-code' }))
     await user.click(screen.getByRole('button', { name: 'generate-code' }))
     await user.click(screen.getByRole('button', { name: 'language:javascript' }))
     await user.click(screen.getByRole('button', { name: 'change-var-list' }))
     await user.click(screen.getByRole('button', { name: 'change-output-list' }))
     await user.click(screen.getByRole('button', { name: 'remove-output' }))
-    await user.click(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.outputVars' }))
+    await user.click(
+      screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.outputVars' }),
+    )
     await user.click(screen.getByRole('button', { name: 'cancel-remove' }))
     await user.click(screen.getByRole('button', { name: 'confirm-remove' }))
 
@@ -242,10 +249,12 @@ describe('code/panel', () => {
     expect(config.handleSyncFunctionSignature).toHaveBeenCalled()
     expect(config.handleCodeChange).toHaveBeenCalledWith('generated code body')
     expect(config.handleCodeLanguageChange).toHaveBeenCalledWith(CodeLanguage.python3)
-    expect(config.handleVarListChange).toHaveBeenCalledWith([{
-      variable: 'changed',
-      value_selector: ['start', 'changed'],
-    }])
+    expect(config.handleVarListChange).toHaveBeenCalledWith([
+      {
+        variable: 'changed',
+        value_selector: ['start', 'changed'],
+      },
+    ])
     expect(config.handleVarsChange).toHaveBeenCalledWith({
       next_result: {
         type: VarType.number,
@@ -258,13 +267,16 @@ describe('code/panel', () => {
     expect(config.onRemoveVarConfirm).toHaveBeenCalled()
     expect(config.handleCodeAndVarsChange).toHaveBeenCalledWith(
       'generated signature code',
-      [{
-        variable: 'summary',
-        value_selector: [],
-      }, {
-        variable: 'count',
-        value_selector: [],
-      }],
+      [
+        {
+          variable: 'summary',
+          value_selector: [],
+        },
+        {
+          variable: 'count',
+          value_selector: [],
+        },
+      ],
       {
         result: {
           type: VarType.string,
@@ -272,21 +284,35 @@ describe('code/panel', () => {
         },
       },
     )
-    expect(mockExtractFunctionParams).toHaveBeenCalledWith('generated signature code', CodeLanguage.javascript)
-    expect(mockExtractReturnType).toHaveBeenCalledWith('generated signature code', CodeLanguage.javascript)
+    expect(mockExtractFunctionParams).toHaveBeenCalledWith(
+      'generated signature code',
+      CodeLanguage.javascript,
+    )
+    expect(mockExtractReturnType).toHaveBeenCalledWith(
+      'generated signature code',
+      CodeLanguage.javascript,
+    )
   })
 
   it('removes input actions in readonly mode and passes readonly state to child sections', () => {
-    mockUseConfig.mockReturnValue(createConfigResult({
-      readOnly: true,
-      isShowRemoveVarConfirm: false,
-    }))
+    mockUseConfig.mockReturnValue(
+      createConfigResult({
+        readOnly: true,
+        isShowRemoveVarConfirm: false,
+      }),
+    )
 
     renderPanel()
 
-    expect(screen.queryByRole('button', { name: 'workflow.nodes.code.syncFunctionSignature' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'common.operation.add workflow.nodes.code.inputVars' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.outputVars' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'workflow.nodes.code.syncFunctionSignature' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.add workflow.nodes.code.inputVars' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'common.operation.add workflow.nodes.code.outputVars' }),
+    ).toBeInTheDocument()
     expect(screen.getByText('editor:readonly')).toBeInTheDocument()
     expect(screen.getByText('var-list:readonly')).toBeInTheDocument()
     expect(screen.getByText('output-list:readonly')).toBeInTheDocument()

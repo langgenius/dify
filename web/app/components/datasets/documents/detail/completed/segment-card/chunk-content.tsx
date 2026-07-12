@@ -17,11 +17,7 @@ type ChunkContentProps = {
 
 const selectIsCollapsed = (s: SegmentListContextValue) => s.isCollapsed
 
-const ChunkContent: FC<ChunkContentProps> = ({
-  detail,
-  isFullDocMode,
-  className,
-}) => {
+const ChunkContent: FC<ChunkContentProps> = ({ detail, isFullDocMode, className }) => {
   const { answer, content, sign_content } = detail
   const isCollapsed = useSegmentListContext(selectIsCollapsed)
 
@@ -29,17 +25,27 @@ const ChunkContent: FC<ChunkContentProps> = ({
     return (
       <div className={className}>
         <div className="flex gap-x-1">
-          <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">Q</div>
+          <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">
+            Q
+          </div>
           <Markdown
-            className={cn('body-md-regular text-text-secondary', isCollapsed ? 'line-clamp-2' : 'line-clamp-20')}
+            className={cn(
+              'body-md-regular text-text-secondary',
+              isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
+            )}
             content={content}
             customDisallowedElements={['input']}
           />
         </div>
         <div className="flex gap-x-1">
-          <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">A</div>
+          <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">
+            A
+          </div>
           <Markdown
-            className={cn('body-md-regular text-text-secondary', isCollapsed ? 'line-clamp-2' : 'line-clamp-20')}
+            className={cn(
+              'body-md-regular text-text-secondary',
+              isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
+            )}
             content={answer}
             customDisallowedElements={['input']}
           />
@@ -49,7 +55,11 @@ const ChunkContent: FC<ChunkContentProps> = ({
   }
   return (
     <Markdown
-      className={cn('mt-0.5! text-text-secondary!', isFullDocMode ? 'line-clamp-3' : isCollapsed ? 'line-clamp-2' : 'line-clamp-20', className)}
+      className={cn(
+        'mt-0.5! text-text-secondary!',
+        isFullDocMode ? 'line-clamp-3' : isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
+        className,
+      )}
       content={sign_content || content || ''}
       customDisallowedElements={['input']}
     />

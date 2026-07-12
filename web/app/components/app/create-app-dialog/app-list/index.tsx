@@ -5,27 +5,32 @@ import type { App } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiRobot2Line } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppTypeSelector from '@/app/components/app/type-selector'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DSLImportMode } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { importDSL } from '@/service/apps'
 import { fetchAppDetail } from '@/service/explore'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { hasPermission } from '@/utils/permission'
 import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 
@@ -39,23 +44,31 @@ type AppsProps = {
 //   CREATE = 'create',
 // }
 
-const Apps = ({
-  onSuccess,
-  onCreateFromBlank,
-}: AppsProps) => {
+const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const canCreateAppFromTemplate = hasPermission(
+    workspacePermissionKeys,
+    'app.create_and_management',
+  )
   const { push } = useRouter()
+  const invalidateAppList = useInvalidateAppList()
   const allCategoriesEn = AppCategories.RECOMMENDED
 
-  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
 
-  const { run: handleSearch } = useDebounceFn(() => {
-    setSearchKeywords(keywords)
-  }, { wait: 500 })
+  const { run: handleSearch } = useDebounceFn(
+    () => {
+      setSearchKeywords(keywords)
+    },
+    { wait: 500 },
+  )
 
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
@@ -65,26 +78,35 @@ const Apps = ({
   const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
   const [currCategory, setCurrCategory] = useState<AppCategories | string>(allCategoriesEn)
 
-  const {
-    data,
-    isLoading,
-  } = useExploreAppList()
+  const { data, isLoading } = useExploreAppList()
+
+  const visibleCategories = useMemo(() => {
+    if (!data) return []
+
+    const categoriesWithApps = new Set<string>()
+    data.allList.forEach((app) => {
+      app.categories.forEach((category) => categoriesWithApps.add(category))
+    })
+
+    return data.categories.filter((category) => categoriesWithApps.has(category))
+  }, [data])
+
+  const activeCategory = visibleCategories.includes(currCategory) ? currCategory : allCategoriesEn
 
   const filteredList = useMemo(() => {
-    if (!data)
-      return []
+    if (!data) return []
     const { allList } = data
     const filteredByCategory = allList.filter((item) => {
-      if (currCategory === allCategoriesEn)
-        return true
-      return item.categories?.includes(currCategory) ?? false
+      if (activeCategory === allCategoriesEn) return true
+      return item.categories?.includes(activeCategory) ?? false
     })
-    if (currentType.length === 0)
-      return filteredByCategory
+    if (currentType.length === 0) return filteredByCategory
     return filteredByCategory.filter((item) => {
-      if (currentType.includes(AppModeEnum.CHAT) && item.app.mode === AppModeEnum.CHAT)
-        return true
-      if (currentType.includes(AppModeEnum.ADVANCED_CHAT) && item.app.mode === AppModeEnum.ADVANCED_CHAT)
+      if (currentType.includes(AppModeEnum.CHAT) && item.app.mode === AppModeEnum.CHAT) return true
+      if (
+        currentType.includes(AppModeEnum.ADVANCED_CHAT) &&
+        item.app.mode === AppModeEnum.ADVANCED_CHAT
+      )
         return true
       if (currentType.includes(AppModeEnum.AGENT_CHAT) && item.app.mode === AppModeEnum.AGENT_CHAT)
         return true
@@ -94,16 +116,16 @@ const Apps = ({
         return true
       return false
     })
-  }, [currentType, currCategory, allCategoriesEn, data])
+  }, [currentType, activeCategory, allCategoriesEn, data])
 
   const searchFilteredList = useMemo(() => {
-    if (!searchKeywords || !filteredList || filteredList.length === 0)
-      return filteredList
+    if (!searchKeywords || !filteredList || filteredList.length === 0) return filteredList
 
     const lowerCaseSearchKeywords = searchKeywords.toLowerCase()
 
-    return filteredList.filter(item =>
-      item.app && item.app.name && item.app.name.toLowerCase().includes(lowerCaseSearchKeywords),
+    return filteredList.filter(
+      (item) =>
+        item.app && item.app.name && item.app.name.toLowerCase().includes(lowerCaseSearchKeywords),
     )
   }, [searchKeywords, filteredList])
 
@@ -117,9 +139,7 @@ const Apps = ({
     icon_background,
     description,
   }) => {
-    const { export_data, mode } = await fetchAppDetail(
-      currApp?.app.id as string,
-    )
+    const { export_data, mode } = await fetchAppDetail(currApp?.app.id as string)
     try {
       const app = await importDSL({
         mode: DSLImportMode.YAML_CONTENT,
@@ -133,16 +153,25 @@ const Apps = ({
       trackCreateApp({ source: 'studio_template_list', appMode: mode, templateId: currApp?.app_id })
 
       setIsShowCreateModal(false)
-      toast.success(t('newApp.appCreated', { ns: 'app' }))
-      if (onSuccess)
-        onSuccess()
-      if (app.app_id)
-        await handleCheckPluginDependencies(app.app_id)
+      toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
+      if (onSuccess) onSuccess()
+      if (app.app_id) await handleCheckPluginDependencies(app.app_id)
       setNeedRefresh('1')
-      getRedirection(isCurrentWorkspaceEditor, { id: app.app_id!, mode }, push)
-    }
-    catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+      invalidateAppList()
+      if (app.app_id) {
+        getRedirection(
+          { id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys },
+          push,
+          {
+            currentUserId,
+            resourceMaintainer: currentUserId,
+            workspacePermissionKeys,
+            isRbacEnabled,
+          },
+        )
+      }
+    } catch {
+      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
 
@@ -158,7 +187,9 @@ const Apps = ({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-divider-burn py-3">
         <div className="min-w-[180px] pl-5">
-          <span className="title-xl-semi-bold text-text-primary">{t('newApp.startFromTemplate', { ns: 'app' })}</span>
+          <span className="title-xl-semi-bold text-text-primary">
+            {t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
+          </span>
         </div>
         <div className="flex max-w-[548px] flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md">
           <AppTypeSelector value={currentType} onChange={setCurrentType} />
@@ -169,9 +200,11 @@ const Apps = ({
             showClearIcon
             wrapperClassName="w-full flex-1"
             className="bg-transparent hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none"
-            placeholder={t('newAppFromTemplate.searchAllTemplate', { ns: 'app' }) as string}
+            placeholder={
+              t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' }) as string
+            }
             value={keywords}
-            onChange={e => handleKeywordsChange(e.target.value)}
+            onChange={(e) => handleKeywordsChange(e.target.value)}
             onClear={() => handleKeywordsChange('')}
           />
         </div>
@@ -180,31 +213,51 @@ const Apps = ({
       <div className="relative flex flex-1 overflow-y-auto">
         {!searchKeywords && (
           <div className="h-full w-[200px] p-4">
-            <Sidebar current={currCategory as AppCategories} categories={data?.categories || []} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
+            <Sidebar
+              current={activeCategory as AppCategories}
+              categories={visibleCategories}
+              onClick={(category) => {
+                setCurrCategory(category)
+              }}
+              onCreateFromBlank={onCreateFromBlank}
+            />
           </div>
         )}
         <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">
           {searchFilteredList && searchFilteredList.length > 0 && (
             <>
               <div className="pt-4 pb-1">
-                {searchKeywords
-                  ? <p className="title-md-semi-bold text-text-tertiary">{searchFilteredList.length > 1 ? t('newApp.foundResults', { ns: 'app', count: searchFilteredList.length }) : t('newApp.foundResult', { ns: 'app', count: searchFilteredList.length })}</p>
-                  : (
-                      <div className="flex h-[22px] items-center">
-                        <AppCategoryLabel category={currCategory as AppCategories} className="title-md-semi-bold text-text-primary" />
-                      </div>
-                    )}
+                {searchKeywords ? (
+                  <p className="title-md-semi-bold text-text-tertiary">
+                    {searchFilteredList.length > 1
+                      ? t(($) => $['newApp.foundResults'], {
+                          ns: 'app',
+                          count: searchFilteredList.length,
+                        })
+                      : t(($) => $['newApp.foundResult'], {
+                          ns: 'app',
+                          count: searchFilteredList.length,
+                        })}
+                  </p>
+                ) : (
+                  <div className="flex h-[22px] items-center">
+                    <AppCategoryLabel
+                      category={activeCategory as AppCategories}
+                      className="title-md-semi-bold text-text-primary"
+                    />
+                  </div>
+                )}
               </div>
               <div
                 className={cn(
-                  'grid shrink-0 grid-cols-1 content-start gap-3 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+                  'grid shrink-0 grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3',
                 )}
               >
-                {searchFilteredList.map(app => (
+                {searchFilteredList.map((app) => (
                   <AppCard
                     key={app.app_id}
                     app={app}
-                    canCreate={isCurrentWorkspaceEditor}
+                    canCreate={canCreateAppFromTemplate}
                     onCreate={() => {
                       setCurrApp(app)
                       setIsShowCreateModal(true)
@@ -243,8 +296,12 @@ function NoTemplateFound() {
       <div className="mb-2 inline-flex size-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">
         <RiRobot2Line className="size-5 text-text-tertiary" />
       </div>
-      <p className="title-md-semi-bold text-text-primary">{t('newApp.noTemplateFound', { ns: 'app' })}</p>
-      <p className="system-sm-regular text-text-tertiary">{t('newApp.noTemplateFoundTip', { ns: 'app' })}</p>
+      <p className="title-md-semi-bold text-text-primary">
+        {t(($) => $['newApp.noTemplateFound'], { ns: 'app' })}
+      </p>
+      <p className="system-sm-regular text-text-tertiary">
+        {t(($) => $['newApp.noTemplateFoundTip'], { ns: 'app' })}
+      </p>
     </div>
   )
 }

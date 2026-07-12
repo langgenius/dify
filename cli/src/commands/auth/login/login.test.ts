@@ -14,11 +14,15 @@ import { openAPIBase } from '@/util/host'
 import { runLogin } from './login.js'
 
 const noopClock: Clock = {
-  sleepMs: async () => { /* immediate */ },
+  sleepMs: async () => {
+    /* immediate */
+  },
   isCancelled: () => false,
 }
 
-const noopBrowser = async (): Promise<void> => { /* skip OS open */ }
+const noopBrowser = async (): Promise<void> => {
+  /* skip OS open */
+}
 
 describe('runLogin', () => {
   let mock: DifyMock
@@ -49,7 +53,7 @@ describe('runLogin', () => {
     const active = reg.resolveActive()
     expect(active?.ctx.account.email).toBe('tester@dify.ai')
     expect(active?.ctx.workspace?.id).toBe('550e8400-e29b-41d4-a716-446655440000')
-    expect(store.read(active!.host, 'tester@dify.ai')).toBe('dfoa_test')
+    expect(await store.read(active!.host, 'tester@dify.ai')).toBe('dfoa_test')
 
     const hostsRaw = await readFile(join(configDir(), 'hosts.yml'), 'utf8')
     expect(hostsRaw).toContain('current_host:')
@@ -82,7 +86,7 @@ describe('runLogin', () => {
     expect(active?.ctx.external_subject?.email).toBe('sso@dify.ai')
     expect(active?.ctx.external_subject?.issuer).toBe('https://issuer.example')
     expect(active?.ctx.account.email).toBe('')
-    expect(store.read(active!.host, 'sso@dify.ai')).toBe('dfoe_test')
+    expect(await store.read(active!.host, 'sso@dify.ai')).toBe('dfoe_test')
     expect(io.outBuf()).toContain('external SSO')
     expect(io.outBuf()).toContain('sso@dify.ai')
   })
@@ -91,17 +95,19 @@ describe('runLogin', () => {
     mock.setScenario('denied')
     const io = bufferStreams()
     const store = new MemStore()
-    await expect(runLogin({
-      io,
-      host: mock.url,
-      noBrowser: true,
-      insecure: true,
-      deviceLabel: 'difyctl on test',
-      api: new DeviceFlowApi(testHttpClient(mock.url)),
-      store: { store, mode: 'file' },
-      clock: noopClock,
-      browserOpener: noopBrowser,
-    })).rejects.toThrow(/denied/)
+    await expect(
+      runLogin({
+        io,
+        host: mock.url,
+        noBrowser: true,
+        insecure: true,
+        deviceLabel: 'difyctl on test',
+        api: new DeviceFlowApi(testHttpClient(mock.url)),
+        store: { store, mode: 'file' },
+        clock: noopClock,
+        browserOpener: noopBrowser,
+      }),
+    ).rejects.toThrow(/denied/)
     expect(store.entries.size).toBe(0)
     await expect(readFile(join(configDir(), 'hosts.yml'), 'utf8')).rejects.toThrow(/ENOENT/)
   })
@@ -110,51 +116,57 @@ describe('runLogin', () => {
     mock.setScenario('expired')
     const io = bufferStreams()
     const store = new MemStore()
-    await expect(runLogin({
-      io,
-      host: mock.url,
-      noBrowser: true,
-      insecure: true,
-      deviceLabel: 'difyctl on test',
-      api: new DeviceFlowApi(testHttpClient(mock.url)),
-      store: { store, mode: 'file' },
-      clock: noopClock,
-      browserOpener: noopBrowser,
-    })).rejects.toThrow(/expired/)
+    await expect(
+      runLogin({
+        io,
+        host: mock.url,
+        noBrowser: true,
+        insecure: true,
+        deviceLabel: 'difyctl on test',
+        api: new DeviceFlowApi(testHttpClient(mock.url)),
+        store: { store, mode: 'file' },
+        clock: noopClock,
+        browserOpener: noopBrowser,
+      }),
+    ).rejects.toThrow(/expired/)
   })
 
   it('rejects login when the account has no email', async () => {
     mock.setScenario('no-email')
     const io = bufferStreams()
     const store = new MemStore()
-    await expect(runLogin({
-      io,
-      host: mock.url,
-      noBrowser: true,
-      insecure: true,
-      deviceLabel: 'difyctl on test',
-      api: new DeviceFlowApi(createHttpClient({ baseURL: openAPIBase(mock.url) })),
-      store: { store, mode: 'file' },
-      clock: noopClock,
-      browserOpener: noopBrowser,
-    })).rejects.toThrow(/no email/i)
+    await expect(
+      runLogin({
+        io,
+        host: mock.url,
+        noBrowser: true,
+        insecure: true,
+        deviceLabel: 'difyctl on test',
+        api: new DeviceFlowApi(createHttpClient({ baseURL: openAPIBase(mock.url) })),
+        store: { store, mode: 'file' },
+        clock: noopClock,
+        browserOpener: noopBrowser,
+      }),
+    ).rejects.toThrow(/no email/i)
     expect(store.entries.size).toBe(0)
   })
 
   it('rejects http:// host without --insecure', async () => {
     const io = bufferStreams()
     const store = new MemStore()
-    await expect(runLogin({
-      io,
-      host: mock.url,
-      noBrowser: true,
-      insecure: false,
-      deviceLabel: 'difyctl on test',
-      api: new DeviceFlowApi(testHttpClient(mock.url)),
-      store: { store, mode: 'file' },
-      clock: noopClock,
-      browserOpener: noopBrowser,
-    })).rejects.toThrow(/https:\/\//)
+    await expect(
+      runLogin({
+        io,
+        host: mock.url,
+        noBrowser: true,
+        insecure: false,
+        deviceLabel: 'difyctl on test',
+        api: new DeviceFlowApi(testHttpClient(mock.url)),
+        store: { store, mode: 'file' },
+        clock: noopClock,
+        browserOpener: noopBrowser,
+      }),
+    ).rejects.toThrow(/https:\/\//)
   })
 
   it('emits skip-reason to stderr when --no-browser', async () => {

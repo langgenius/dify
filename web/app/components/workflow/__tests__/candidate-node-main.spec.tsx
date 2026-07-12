@@ -16,6 +16,8 @@ const mockCustomNode = vi.hoisted(() => vi.fn())
 const mockCustomNoteNode = vi.hoisted(() => vi.fn())
 const mockGetIterationStartNode = vi.hoisted(() => vi.fn())
 const mockGetLoopStartNode = vi.hoisted(() => vi.fn())
+const mockCreateInlineAgentBinding = vi.hoisted(() => vi.fn())
+const mockSetOpenInlineAgentPanelNodeId = vi.hoisted(() => vi.fn())
 
 vi.mock('ahooks', () => ({
   useEventListener: (...args: unknown[]) => mockUseEventListener(...args),
@@ -32,12 +34,16 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { mousePosition: {
-    pageX: number
-    pageY: number
-    elementX: number
-    elementY: number
-  } }) => unknown) => mockUseStore(selector),
+  useStore: (
+    selector: (state: {
+      mousePosition: {
+        pageX: number
+        pageY: number
+        elementX: number
+        elementY: number
+      }
+    }) => unknown,
+  ) => mockUseStore(selector),
   useWorkflowStore: () => mockUseWorkflowStore(),
 }))
 
@@ -68,6 +74,12 @@ vi.mock('@/app/components/workflow/note-node', () => ({
   },
 }))
 
+vi.mock('@/app/components/workflow/nodes/agent-v2/hooks', () => ({
+  useCreateInlineAgentBinding: () => ({
+    createInlineAgentBinding: mockCreateInlineAgentBinding,
+  }),
+}))
+
 vi.mock('@/app/components/workflow/utils', () => ({
   getIterationStartNode: (...args: unknown[]) => mockGetIterationStartNode(...args),
   getLoopStartNode: (...args: unknown[]) => mockGetLoopStartNode(...args),
@@ -90,7 +102,9 @@ describe('CandidateNodeMain', () => {
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   })
   const createAutoGenerateWebhookUrl = () => mockAutoGenerateWebhookUrl
-  const eventHandlers: Partial<Record<'click' | 'contextmenu', (event: { preventDefault: () => void }) => void>> = {}
+  const eventHandlers: Partial<
+    Record<'click' | 'contextmenu', (event: { preventDefault: () => void }) => void>
+  > = {}
   let nodes = [createNode({ id: 'existing-node' })]
 
   beforeEach(() => {
@@ -99,8 +113,16 @@ describe('CandidateNodeMain', () => {
     eventHandlers.click = undefined
     eventHandlers.contextmenu = undefined
 
-    mockUseEventListener.mockImplementation((event: 'click' | 'contextmenu', handler: (event: { preventDefault: () => void }) => void) => {
-      eventHandlers[event] = handler
+    mockUseEventListener.mockImplementation(
+      (
+        event: 'click' | 'contextmenu',
+        handler: (event: { preventDefault: () => void }) => void,
+      ) => {
+        eventHandlers[event] = handler
+      },
+    )
+    mockSetNodes.mockImplementation((nextNodes) => {
+      nodes = nextNodes
     })
     mockUseStoreApi.mockReturnValue({
       getState: () => ({
@@ -109,23 +131,33 @@ describe('CandidateNodeMain', () => {
       }),
     })
     mockUseReactFlow.mockReturnValue({
-      screenToFlowPosition: ({ x, y }: { x: number, y: number }) => ({ x: x + 10, y: y + 20 }),
+      screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x: x + 10, y: y + 20 }),
     })
     mockUseViewport.mockReturnValue({ zoom: 1.5 })
-    mockUseStore.mockImplementation((selector: (state: { mousePosition: {
-      pageX: number
-      pageY: number
-      elementX: number
-      elementY: number
-    } }) => unknown) => selector({
-      mousePosition: {
-        pageX: 100,
-        pageY: 200,
-        elementX: 30,
-        elementY: 40,
-      },
-    }))
+    mockUseStore.mockImplementation(
+      (
+        selector: (state: {
+          mousePosition: {
+            pageX: number
+            pageY: number
+            elementX: number
+            elementY: number
+          }
+        }) => unknown,
+      ) =>
+        selector({
+          mousePosition: {
+            pageX: 100,
+            pageY: 200,
+            elementX: 30,
+            elementY: 40,
+          },
+        }),
+    )
     mockUseWorkflowStore.mockReturnValue({
+      getState: () => ({
+        setOpenInlineAgentPanelNodeId: mockSetOpenInlineAgentPanelNodeId,
+      }),
       setState: mockWorkflowStoreSetState,
     })
     mockUseHooks.mockReturnValue({
@@ -134,9 +166,29 @@ describe('CandidateNodeMain', () => {
       useNodesSyncDraft: createNodesSyncDraft,
       useAutoGenerateWebhookUrl: createAutoGenerateWebhookUrl,
     })
-    mockHandleSyncWorkflowDraft.mockImplementation((_isSync: boolean, _force: boolean, options?: { onSuccess?: () => void }) => {
-      options?.onSuccess?.()
-    })
+    mockHandleSyncWorkflowDraft.mockImplementation(
+      (_isSync: boolean, _force: boolean, options?: { onSuccess?: () => void }) => {
+        options?.onSuccess?.()
+      },
+    )
+    mockCreateInlineAgentBinding.mockImplementation(
+      (
+        _nodeId: string,
+        options?: {
+          onSuccess?: (binding: {
+            binding_type: 'inline_agent'
+            agent_id: string
+            current_snapshot_id: string
+          }) => void
+        },
+      ) => {
+        options?.onSuccess?.({
+          binding_type: 'inline_agent',
+          agent_id: 'inline-agent-1',
+          current_snapshot_id: 'inline-snapshot-1',
+        })
+      },
+    )
     mockGetIterationStartNode.mockReturnValue(createNode({ id: 'iteration-start' }))
     mockGetLoopStartNode.mockReturnValue(createNode({ id: 'loop-start' }))
   })
@@ -163,19 +215,25 @@ describe('CandidateNodeMain', () => {
 
     eventHandlers.click?.({ preventDefault: vi.fn() })
 
-    expect(mockSetNodes).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({ id: 'existing-node' }),
-      expect.objectContaining({
-        id: 'candidate-webhook',
-        position: { x: 110, y: 220 },
-        data: expect.objectContaining({ _isCandidate: false }),
-      }),
-    ]))
+    expect(mockSetNodes).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'existing-node' }),
+        expect.objectContaining({
+          id: 'candidate-webhook',
+          position: { x: 110, y: 220 },
+          data: expect.objectContaining({ _isCandidate: false }),
+        }),
+      ]),
+    )
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('NodeAdd', { nodeId: 'candidate-webhook' })
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ candidateNode: undefined })
-    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true, expect.objectContaining({
-      onSuccess: expect.any(Function),
-    }))
+    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(
+      true,
+      true,
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
     expect(mockAutoGenerateWebhookUrl).toHaveBeenCalledWith('candidate-webhook')
     expect(mockHandleNodeSelect).not.toHaveBeenCalled()
   })
@@ -199,6 +257,110 @@ describe('CandidateNodeMain', () => {
 
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('NoteAdd', { nodeId: 'candidate-note' })
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('candidate-note')
+  })
+
+  it('should sync draft immediately when committing an Agent v2 node', () => {
+    const candidateNode = createNode({
+      id: 'candidate-agent-v2',
+      type: CUSTOM_NODE,
+      data: {
+        type: BlockEnum.Agent,
+        title: 'Agent Candidate',
+        agent_binding: {
+          binding_type: 'roster_agent',
+          agent_id: 'agent-1',
+        },
+        agent_node_kind: 'dify_agent',
+        version: '2',
+        _isCandidate: true,
+      },
+    })
+
+    render(<CandidateNodeMain candidateNode={candidateNode} />)
+
+    eventHandlers.click?.({ preventDefault: vi.fn() })
+
+    expect(mockSetNodes).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'candidate-agent-v2',
+          data: expect.objectContaining({
+            agent_binding: {
+              binding_type: 'roster_agent',
+              agent_id: 'agent-1',
+            },
+            agent_node_kind: 'dify_agent',
+            version: '2',
+            _isCandidate: false,
+          }),
+        }),
+      ]),
+    )
+    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
+  })
+
+  it('should create inline binding before syncing a start-from-scratch Agent v2 node', () => {
+    const candidateNode = createNode({
+      id: 'candidate-inline-agent-v2',
+      type: CUSTOM_NODE,
+      data: {
+        type: BlockEnum.Agent,
+        title: 'Agent Candidate',
+        agent_binding: {
+          binding_type: 'inline_agent',
+        },
+        agent_node_kind: 'dify_agent',
+        version: '2',
+        _isCandidate: true,
+      },
+    })
+
+    render(<CandidateNodeMain candidateNode={candidateNode} />)
+
+    eventHandlers.click?.({ preventDefault: vi.fn() })
+
+    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(
+      'candidate-inline-agent-v2',
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
+    expect(mockSetNodes.mock.calls[0]?.[0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'candidate-inline-agent-v2',
+          data: expect.objectContaining({
+            agent_binding: {
+              binding_type: 'inline_agent',
+            },
+            selected: true,
+            _isTempNode: true,
+          }),
+        }),
+      ]),
+    )
+    expect(mockSetNodes).toHaveBeenLastCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'candidate-inline-agent-v2',
+          data: expect.objectContaining({
+            agent_binding: {
+              binding_type: 'inline_agent',
+              agent_id: 'inline-agent-1',
+              current_snapshot_id: 'inline-snapshot-1',
+            },
+            selected: true,
+          }),
+        }),
+      ]),
+    )
+    const finalNodes = mockSetNodes.mock.calls.at(-1)?.[0]
+    const finalAgentNode = finalNodes.find(
+      (node: { id: string }) => node.id === 'candidate-inline-agent-v2',
+    )
+    expect(finalAgentNode.data._isTempNode).toBeUndefined()
+    expect(mockSetOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('candidate-inline-agent-v2')
+    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
   })
 
   it('should append iteration and loop start helper nodes for control-flow candidates', () => {
@@ -225,19 +387,23 @@ describe('CandidateNodeMain', () => {
 
     eventHandlers.click?.({ preventDefault: vi.fn() })
     expect(mockGetIterationStartNode).toHaveBeenCalledWith('candidate-iteration')
-    expect(mockSetNodes.mock.calls[0]![0]).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'candidate-iteration' }),
-      expect.objectContaining({ id: 'iteration-start' }),
-    ]))
+    expect(mockSetNodes.mock.calls[0]![0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'candidate-iteration' }),
+        expect.objectContaining({ id: 'iteration-start' }),
+      ]),
+    )
 
     rerender(<CandidateNodeMain candidateNode={loopNode} />)
     eventHandlers.click?.({ preventDefault: vi.fn() })
 
     expect(mockGetLoopStartNode).toHaveBeenCalledWith('candidate-loop')
-    expect(mockSetNodes.mock.calls[1]![0]).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'candidate-loop' }),
-      expect.objectContaining({ id: 'loop-start' }),
-    ]))
+    expect(mockSetNodes.mock.calls[1]![0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'candidate-loop' }),
+        expect.objectContaining({ id: 'loop-start' }),
+      ]),
+    )
   })
 
   it('should clear the candidate node on contextmenu', () => {

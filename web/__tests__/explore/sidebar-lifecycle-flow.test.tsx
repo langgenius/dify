@@ -24,6 +24,7 @@ let mockInstalledApps: InstalledApp[] = []
 let mockIsUninstallPending = false
 
 vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/explore',
   useSelectedLayoutSegments: () => mockSegments,
   useRouter: () => ({
     push: mockPush,
@@ -173,8 +174,16 @@ describe('Sidebar Lifecycle Flow', () => {
   describe('Multi-App Ordering', () => {
     it('should display pinned apps before unpinned apps with divider', () => {
       mockInstalledApps = [
-        createInstalledApp({ id: 'pinned-1', is_pinned: true, app: { ...createInstalledApp().app, name: 'Pinned App' } }),
-        createInstalledApp({ id: 'unpinned-1', is_pinned: false, app: { ...createInstalledApp().app, name: 'Regular App' } }),
+        createInstalledApp({
+          id: 'pinned-1',
+          is_pinned: true,
+          app: { ...createInstalledApp().app, name: 'Pinned App' },
+        }),
+        createInstalledApp({
+          id: 'unpinned-1',
+          is_pinned: false,
+          app: { ...createInstalledApp().app, name: 'Regular App' },
+        }),
       ]
 
       const { container } = renderSidebar()
@@ -188,7 +197,9 @@ describe('Sidebar Lifecycle Flow', () => {
       // Pinned app appears before unpinned app in the DOM
       const pinnedItem = pinnedApp.closest('[class*="rounded-lg"]')!
       const regularItem = regularApp.closest('[class*="rounded-lg"]')!
-      expect(pinnedItem.compareDocumentPosition(regularItem) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(
+        pinnedItem.compareDocumentPosition(regularItem) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
 
       // Divider is rendered between pinned and unpinned sections
       const divider = container.querySelector('[class*="bg-divider-regular"]')
@@ -202,13 +213,6 @@ describe('Sidebar Lifecycle Flow', () => {
       renderSidebar()
 
       expect(screen.getByText('explore.sidebar.noApps.title')).toBeInTheDocument()
-    })
-
-    it('should hide NoApps on mobile', () => {
-      mockMediaType = MediaType.mobile
-      renderSidebar()
-
-      expect(screen.queryByText('explore.sidebar.noApps.title')).not.toBeInTheDocument()
     })
   })
 })

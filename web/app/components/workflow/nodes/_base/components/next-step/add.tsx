@@ -1,16 +1,6 @@
-import type {
-  CommonNodeType,
-  OnSelectBlock,
-} from '@/app/components/workflow/types'
-import {
-  RiAddLine,
-} from '@remixicon/react'
-import {
-  memo,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
+import type { CommonNodeType, OnSelectBlock } from '@/app/components/workflow/types'
+import { RiAddLine } from '@remixicon/react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
@@ -18,6 +8,7 @@ import {
   useNodesInteractions,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
+import { getNodeCatalogType } from '@/app/components/workflow/utils'
 
 type AddProps = {
   nodeId: string
@@ -26,64 +17,58 @@ type AddProps = {
   isParallel?: boolean
   isFailBranch?: boolean
 }
-const Add = ({
-  nodeId,
-  nodeData,
-  sourceHandle,
-  isParallel,
-  isFailBranch,
-}: AddProps) => {
+const Add = ({ nodeId, nodeData, sourceHandle, isParallel, isFailBranch }: AddProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(nodeData.type, nodeData.isInIteration || nodeData.isInLoop)
+  const { availableNextBlocks } = useAvailableBlocks(
+    getNodeCatalogType(nodeData),
+    nodeData.isInIteration || nodeData.isInLoop,
+  )
 
-  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
-    handleNodeAdd(
-      {
-        nodeType: type,
-        pluginDefaultValue,
-      },
-      {
-        prevNodeId: nodeId,
-        prevNodeSourceHandle: sourceHandle,
-      },
-    )
-  }, [handleNodeAdd])
+  const handleSelect = useCallback<OnSelectBlock>(
+    (type, pluginDefaultValue) => {
+      handleNodeAdd(
+        {
+          nodeType: type,
+          pluginDefaultValue,
+        },
+        {
+          prevNodeId: nodeId,
+          prevNodeSourceHandle: sourceHandle,
+        },
+      )
+    },
+    [handleNodeAdd],
+  )
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setOpen(newOpen)
   }, [])
 
   const tip = useMemo(() => {
-    if (isFailBranch)
-      return t('common.addFailureBranch', { ns: 'workflow' })
+    if (isFailBranch) return t(($) => $['common.addFailureBranch'], { ns: 'workflow' })
 
-    if (isParallel)
-      return t('common.addParallelNode', { ns: 'workflow' })
+    if (isParallel) return t(($) => $['common.addParallelNode'], { ns: 'workflow' })
 
-    return t('panel.selectNextStep', { ns: 'workflow' })
+    return t(($) => $['panel.selectNextStep'], { ns: 'workflow' })
   }, [isFailBranch, isParallel, t])
-  const renderTrigger = useCallback((open: boolean) => {
-    return (
-      <div
-        className={`
-          bg-dropzone-bg hover:bg-dropzone-bg-hover relative flex h-9 cursor-pointer items-center rounded-lg border border-dashed
-          border-divider-regular px-2 text-xs text-text-placeholder
-          ${open && 'bg-components-dropzone-bg-alt!'}
-          ${nodesReadOnly && 'cursor-not-allowed!'}
-        `}
-      >
-        <div className="mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed">
-          <RiAddLine className="size-3" />
+  const renderTrigger = useCallback(
+    (open: boolean) => {
+      return (
+        <div
+          className={`bg-dropzone-bg hover:bg-dropzone-bg-hover relative flex h-9 cursor-pointer items-center rounded-lg border border-dashed border-divider-regular px-2 text-xs text-text-placeholder ${open && 'bg-components-dropzone-bg-alt!'} ${nodesReadOnly && 'cursor-not-allowed!'} `}
+        >
+          <div className="mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed">
+            <RiAddLine className="size-3" />
+          </div>
+          <div className="flex items-center uppercase">{tip}</div>
         </div>
-        <div className="flex items-center uppercase">
-          {tip}
-        </div>
-      </div>
-    )
-  }, [nodesReadOnly, tip])
+      )
+    },
+    [nodesReadOnly, tip],
+  )
 
   return (
     <BlockSelector

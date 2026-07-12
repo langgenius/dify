@@ -28,7 +28,8 @@ type Props = Readonly<{
   disabled?: boolean
   align?: 'left' | 'center' | 'right'
   tooltip?: string
-}> & VariantProps<typeof variants>
+}> &
+  VariantProps<typeof variants>
 
 const OptionCard: FC<Props> = ({
   className,
@@ -40,8 +41,7 @@ const OptionCard: FC<Props> = ({
   tooltip,
 }) => {
   const handleSelect = useCallback(() => {
-    if (selected || disabled)
-      return
+    if (selected || disabled) return
     onSelect()
   }, [onSelect, selected, disabled])
 
@@ -49,8 +49,12 @@ const OptionCard: FC<Props> = ({
     <div
       className={cn(
         'flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
-        (!selected && !disabled) && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
-        selected && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
+        !selected &&
+          !disabled &&
+          'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+        selected &&
+          !disabled &&
+          'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
         disabled && 'text-text-disabled',
         variants({ align }),
         className,
@@ -58,12 +62,11 @@ const OptionCard: FC<Props> = ({
       onClick={handleSelect}
     >
       <span>{title}</span>
-      {tooltip
-        && (
-          <Infotip aria-label={tooltip} popupClassName="w-[240px]">
-            {tooltip}
-          </Infotip>
-        )}
+      {tooltip && (
+        <Infotip aria-label={tooltip} popupClassName="w-[240px]">
+          {tooltip}
+        </Infotip>
+      )}
     </div>
   )
 }

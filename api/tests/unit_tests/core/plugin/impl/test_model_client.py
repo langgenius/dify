@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import io
+import json
 from types import SimpleNamespace
 
 import pytest
 from pytest_mock import MockerFixture
 
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
+from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
 from core.plugin.impl.model import PluginModelClient
+from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus, LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
 
 class TestPluginModelClient:
@@ -152,14 +156,34 @@ class TestPluginModelClient:
                 tools=[],
                 stop=["STOP"],
                 stream=False,
+                app_id="app-1",
             )
         )
 
         assert result == ["chunk-1"]
         call_kwargs = stream_mock.call_args.kwargs
         assert call_kwargs["path"] == "plugin/tenant-1/dispatch/llm/invoke"
+        assert call_kwargs["data"]["app_id"] == "app-1"
         assert call_kwargs["data"]["data"]["stream"] is False
         assert call_kwargs["data"]["data"]["model_parameters"] == {"temperature": 0.1}
+
+    def test_invoke_llm_omits_app_id_when_missing(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        stream_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
+
+        list(
+            client.invoke_llm(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                plugin_id="org/plugin:1",
+                provider="provider-a",
+                model="gpt-test",
+                credentials={},
+                prompt_messages=[],
+            )
+        )
+
+        assert "app_id" not in stream_mock.call_args.kwargs["data"]
 
     def test_invoke_llm_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture):
         client = PluginModelClient()
@@ -181,6 +205,113 @@ class TestPluginModelClient:
                     credentials={},
                     prompt_messages=[],
                 )
+            )
+
+    def test_start_llm_polling(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        polling_result = LLMPollingResult(
+            status=LLMPollingStatus.RUNNING,
+            plugin_state={"task_id": "poll-1"},
+            next_check_after_seconds=3,
+        )
+        request_mock = mocker.patch.object(
+            client,
+            "_request_with_plugin_daemon_response",
+            return_value=polling_result,
+        )
+
+        result = client.start_llm_polling(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            plugin_id="org/plugin:1",
+            provider="provider-a",
+            model="gpt-test",
+            credentials={"api_key": "key"},
+            prompt_messages=[],
+            model_parameters={"temperature": 0.1},
+            tools=[],
+            stop=["STOP"],
+            json_schema={"type": "object"},
+        )
+
+        assert result == polling_result
+        call_kwargs = request_mock.call_args.kwargs
+        assert call_kwargs["path"] == "plugin/tenant-1/dispatch/model/polling/start"
+        assert call_kwargs["data"]["data"] == {
+            "provider": "provider-a",
+            "model_type": "llm",
+            "model": "gpt-test",
+            "credentials": {"api_key": "key"},
+            "prompt_messages": [],
+            "model_parameters": {"temperature": 0.1},
+            "tools": [],
+            "stop": ["STOP"],
+            "stream": False,
+            "json_schema": {"type": "object"},
+        }
+
+    def test_check_llm_polling(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        polling_result = LLMPollingResult(
+            status=LLMPollingStatus.SUCCEEDED,
+            result=LLMResult(
+                model="gpt-test",
+                prompt_messages=[],
+                message=AssistantPromptMessage(content="done"),
+                usage=LLMUsage.empty_usage(),
+            ),
+        )
+        request_mock = mocker.patch.object(
+            client,
+            "_request_with_plugin_daemon_response",
+            return_value=polling_result,
+        )
+
+        result = client.check_llm_polling(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            plugin_id="org/plugin:1",
+            provider="provider-a",
+            model="gpt-test",
+            credentials={"api_key": "key"},
+            plugin_state={"task_id": "poll-1"},
+        )
+
+        assert result == polling_result
+        call_kwargs = request_mock.call_args.kwargs
+        assert call_kwargs["path"] == "plugin/tenant-1/dispatch/model/polling/check"
+        assert call_kwargs["data"]["data"] == {
+            "provider": "provider-a",
+            "model_type": "llm",
+            "model": "gpt-test",
+            "credentials": {"api_key": "key"},
+            "plugin_state": {"task_id": "poll-1"},
+        }
+
+    def test_start_llm_polling_maps_unsupported_polling_invoke_error(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        mocker.patch.object(
+            client,
+            "_request_with_plugin_daemon_response",
+            side_effect=PluginInvokeError(
+                json.dumps(
+                    {
+                        "error_type": PluginLLMPollingUnsupportedError.__name__,
+                        "message": "Model `gpt-test` does not support polling.",
+                    }
+                )
+            ),
+        )
+
+        with pytest.raises(PluginLLMPollingUnsupportedError):
+            client.start_llm_polling(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                plugin_id="org/plugin:1",
+                provider="provider-a",
+                model="gpt-test",
+                credentials={"api_key": "key"},
+                prompt_messages=[],
             )
 
     def test_get_llm_num_tokens(self, mocker: MockerFixture):

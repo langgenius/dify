@@ -10,6 +10,7 @@ const createMember = (overrides: Partial<Member>): Member => ({
   avatar_url: 'owner.png',
   status: 'active',
   role: 'normal',
+  roles: [],
   created_at: '2026-01-01T00:00:00Z',
   last_active_at: '2026-01-02T00:00:00Z',
   last_login_at: '2026-01-03T00:00:00Z',
@@ -48,7 +49,11 @@ describe('human-input/delivery-method/recipient/member-list', () => {
 
     expect(screen.getByText('Pending User')).toBeInTheDocument()
     expect(screen.getByText('common.members.pending')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.add')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.add',
+      ),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Pending User'))
     expect(handleSelect).toHaveBeenCalledWith('member-2')
@@ -69,7 +74,11 @@ describe('human-input/delivery-method/recipient/member-list', () => {
     )
 
     expect(screen.getByText('common.members.you')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.added')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.added',
+      ),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Owner'))
     expect(handleSelect).not.toHaveBeenCalled()

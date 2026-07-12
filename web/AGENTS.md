@@ -9,12 +9,20 @@
 - User-facing strings must use `web/i18n/en-US/` keys instead of hardcoded text.
 - When adding or renaming an i18n key, update all supported locale files with correct localized values. Do not leave fallback English in non-English locales unless the repo already intentionally does so for that exact key.
 
+## Backend API Calls
+
+- For new backend calls, and for surfaces already migrated to generated contracts, use `consoleQuery` / `consoleClient` from `@/service/client`. Do not add handwritten REST helpers, handwritten API types, mock-backed app state, or direct edits to generated contract files.
+
 ## Overlay Components (Mandatory)
 
 - `../packages/dify-ui/README.md` is the permanent contract for overlay primitives, portals, root `isolation: isolate`, and the `z-50` / `z-60` layering.
 - `./docs/overlay.md` records the current web overlay best practices.
 - In new or modified code, use only overlay primitives from `@langgenius/dify-ui/*`.
 - Do not introduce overlay imports from `@/app/components/base/*`; when touching existing callers, migrate them.
+
+## UI Components
+
+- Use `@langgenius/dify-ui/*` primitives and primitive data/CSS selectors first. Add call-site Tailwind only for real design deltas, avoid arbitrary values when token utilities exist, and keep focus rings visible without making inert layout regions focusable.
 
 ## SVG Icons (Mandatory)
 
@@ -33,9 +41,9 @@
 - Use local component state for state owned by one component.
 - Use feature-level Jotai atoms for simple client state shared across components in the same feature, especially when components need a shared source of truth, derived values, or shared actions.
 - Use existing feature stores for complex or high-frequency interaction state such as workflow canvas, drag, resize, and panel runtime state.
-- Use `foxact/use-local-storage` only for low-frequency, client-only persistence such as user preferences, dismissed notices, and UI defaults. Do not use localStorage as the live source of truth for app state.
+- For shared low-frequency, client-only persistence such as user preferences, dismissed notices, and UI defaults, use feature-owned storage modules built with `createLocalStorageState`.
 - For high-frequency interactions, update the feature state during interaction and persist storage only on commit or settled updates.
-- Do not access `localStorage`, `window.localStorage`, or `globalThis.localStorage` directly in app code; use the storage hook boundary and preserve existing raw/custom storage formats.
+- Keep storage keys and raw/custom formats in the owner module; callers should import the named storage hooks instead of scattering direct storage access.
 - Do not add ad hoc global event listeners for shared state. Prefer atoms, existing stores, or a shared subscription hook so listeners are centralized and deduplicated.
 
 ## Automated Test Generation

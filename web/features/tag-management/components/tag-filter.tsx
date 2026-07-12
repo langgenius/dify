@@ -1,5 +1,5 @@
-import type { ComboboxRootProps } from '@langgenius/dify-ui/combobox'
-import type { Tag, TagType } from '@/contract/console/tags'
+import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
+import type { ComboboxProps } from '@langgenius/dify-ui/combobox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { useQuery } from '@tanstack/react-query'
@@ -9,7 +9,8 @@ import XCircleIcon from '@/app/components/base/icons/src/vender/solid/general/XC
 import { consoleQuery } from '@/service/client'
 import { TagSearchContent } from './tag-search-content'
 
-const tagFilterComboboxFilter: NonNullable<ComboboxRootProps<Tag, true>['filter']> = (tag, query) => tag.name.includes(query)
+const tagFilterComboboxFilter: NonNullable<ComboboxProps<Tag, true>['filter']> = (tag, query) =>
+  tag.name.includes(query)
 const tagToString = (tag: Tag) => tag.name
 const isSameTag = (item: Tag, value: Tag) => item.id === value.id
 
@@ -18,27 +19,33 @@ type TagFilterProps = {
   value: string[]
   onChange: (v: string[]) => void
   onOpenTagManagement?: () => void
+  showLeadingIcon?: boolean
+  triggerClassName?: string
 }
 export const TagFilter = ({
   type,
   value,
   onChange,
   onOpenTagManagement = () => {},
+  showLeadingIcon = true,
+  triggerClassName,
 }: TagFilterProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
 
-  const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
-    input: {
-      query: {
-        type,
+  const { data: tagList = [] } = useQuery(
+    consoleQuery.tags.get.queryOptions({
+      input: {
+        query: {
+          type,
+        },
       },
-    },
-  }))
+    }),
+  )
 
-  const tagById = useMemo(() => new Map(tagList.map(tag => [tag.id, tag])), [tagList])
-  const items = useMemo(() => tagList.filter(tag => tag.type === type), [tagList, type])
+  const tagById = useMemo(() => new Map(tagList.map((tag) => [tag.id, tag])), [tagList])
+  const items = useMemo(() => tagList.filter((tag) => tag.type === type), [tagList, type])
   const selectedTags = useMemo(() => {
     return value.flatMap((tagId) => {
       const tag = tagById.get(tagId)
@@ -48,11 +55,17 @@ export const TagFilter = ({
 
   const firstTagId = value[0]
   const currentTagName = firstTagId ? tagById.get(firstTagId)?.name : undefined
-  const triggerLabel = selectedTags.length ? selectedTags.map(tag => tag.name).join(', ') : t('tag.placeholder', { ns: 'common' })
-  const handleValueChange = useCallback((nextTags: Tag[]) => {
-    const unknownTagIds = value.filter(tagId => !tagById.has(tagId))
-    onChange([...unknownTagIds, ...nextTags.map(tag => tag.id)])
-  }, [onChange, tagById, value])
+  const placeholderLabel = t(($) => $['tag.placeholder'], { ns: 'common' })
+  const triggerLabel = selectedTags.length
+    ? selectedTags.map((tag) => tag.name).join(', ')
+    : placeholderLabel
+  const handleValueChange = useCallback(
+    (nextTags: Tag[]) => {
+      const unknownTagIds = value.filter((tagId) => !tagById.has(tagId))
+      onChange([...unknownTagIds, ...nextTags.map((tag) => tag.id)])
+    },
+    [onChange, tagById, value],
+  )
 
   return (
     <Combobox
@@ -73,16 +86,22 @@ export const TagFilter = ({
           aria-label={triggerLabel}
           icon={false}
           className={cn(
-            'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal data-popup-open:bg-components-input-bg-normal',
+            'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left whitespace-nowrap select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-components-input-bg-normal',
             !!value.length && 'pr-6 shadow-xs',
+            triggerClassName,
           )}
         >
           <span className="flex w-full min-w-0 items-center gap-1">
-            <span className="p-px">
-              <span className="i-custom-vender-line-financeAndECommerce-tag-01 size-3.5 text-text-tertiary" aria-hidden="true" />
-            </span>
+            {showLeadingIcon && (
+              <span className="p-px">
+                <span
+                  className="i-custom-vender-line-financeAndECommerce-tag-01 size-3.5 text-text-tertiary"
+                  aria-hidden="true"
+                />
+              </span>
+            )}
             <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-tertiary">
-              {!value.length && t('tag.placeholder', { ns: 'common' })}
+              {!value.length && placeholderLabel}
               {!!value.length && currentTagName}
             </span>
             {value.length > 1 && (
@@ -98,14 +117,17 @@ export const TagFilter = ({
         {!!value.length && (
           <button
             type="button"
-            aria-label={t('operation.clear', { ns: 'common' })}
-            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
+            aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 rounded-md border-none bg-transparent p-px outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={(event) => {
               event.stopPropagation()
               onChange([])
             }}
           >
-            <XCircleIcon className="size-3.5 text-text-tertiary group-hover/clear:text-text-secondary" aria-hidden="true" />
+            <XCircleIcon
+              className="size-3.5 text-text-tertiary group-hover/clear:text-text-secondary"
+              aria-hidden="true"
+            />
           </button>
         )}
         <ComboboxContent
@@ -123,6 +145,5 @@ export const TagFilter = ({
         </ComboboxContent>
       </div>
     </Combobox>
-
   )
 }

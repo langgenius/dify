@@ -46,30 +46,39 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
   it('[P0] streaming output arrives in real-time chunks (stdout non-empty, echo complete)', async () => {
     // Spec: streaming output is printed in real-time by chunk + token order is preserved
     // withRetry: staging SSE connections may fail transiently on cold start
-    await withRetry(async () => {
-      const query = 'chunk-order-test'
-      const proc = spawn(BUN, [BIN, 'run', 'app', E.chatAppId, query, '--stream'], {
-        env: { ...process.env, DIFY_CONFIG_DIR: fx.configDir, CI: '1', NO_COLOR: '1', DIFY_E2E_NO_KEYRING: '1' },
-      })
+    await withRetry(
+      async () => {
+        const query = 'chunk-order-test'
+        const proc = spawn(BUN, [BIN, 'run', 'app', E.chatAppId, query, '--stream'], {
+          env: {
+            ...process.env,
+            DIFY_CONFIG_DIR: fx.configDir,
+            CI: '1',
+            NO_COLOR: '1',
+            DIFY_E2E_NO_KEYRING: '1',
+          },
+        })
 
-      const chunks: string[] = []
-      proc.stdout.on('data', (d: Buffer) => {
-        chunks.push(d.toString('utf8'))
-      })
+        const chunks: string[] = []
+        proc.stdout.on('data', (d: Buffer) => {
+          chunks.push(d.toString('utf8'))
+        })
 
-      let stderr = ''
-      proc.stderr.on('data', (d: Buffer) => {
-        stderr += d.toString('utf8')
-      })
+        let stderr = ''
+        proc.stderr.on('data', (d: Buffer) => {
+          stderr += d.toString('utf8')
+        })
 
-      const exitCode = await new Promise<number>((res) => {
-        proc.on('close', code => res(code ?? 1))
-      })
+        const exitCode = await new Promise<number>((res) => {
+          proc.on('close', (code) => res(code ?? 1))
+        })
 
-      assertExitCode({ stdout: chunks.join(''), stderr, exitCode }, 0)
-      // May arrive in multiple chunks; the concatenated result must contain the full query
-      expect(chunks.join('')).toContain(query)
-    }, { attempts: 3, delayMs: 2000 })
+        assertExitCode({ stdout: chunks.join(''), stderr, exitCode }, 0)
+        // May arrive in multiple chunks; the concatenated result must contain the full query
+        expect(chunks.join('')).toContain(query)
+      },
+      { attempts: 3, delayMs: 2000 },
+    )
   })
 
   // ── Basic streaming behaviour ───────────────────────────────────────────
@@ -92,7 +101,7 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
     // Spec: streaming mode produces valid JSON output
     const result = await fx.r(['run', 'app', E.chatAppId, 'sjson', '--stream', '-o', 'json'])
     assertExitCode(result, 0)
-    const parsed = assertJson<{ mode: string, answer: string }>(result)
+    const parsed = assertJson<{ mode: string; answer: string }>(result)
     expect(parsed.mode).toMatch(/chat/)
   })
 
@@ -134,7 +143,7 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
       stderr += d.toString('utf8')
     })
     const exitCode = await new Promise<number>((res) => {
-      proc.on('close', code => res(code ?? 1))
+      proc.on('close', (code) => res(code ?? 1))
     })
     expect(exitCode, 'error event should cause non-zero exit').not.toBe(0)
     expect(stderr.length).toBeGreaterThan(0)
@@ -148,8 +157,7 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
         configDir: unauthTmp.configDir,
       })
       assertExitCode(result, 4)
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
   })
@@ -162,14 +170,20 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
     // ⚠️  Depends on feat/cli API version (server-side pre-validation of missing required inputs).
     //     Current local server 1.14.1 does not support this check; test passes once upgraded.
     const proc = spawn(BUN, [BIN, 'run', 'app', E.workflowAppId, '--stream'], {
-      env: { ...process.env, DIFY_CONFIG_DIR: fx.configDir, CI: '1', NO_COLOR: '1', DIFY_E2E_NO_KEYRING: '1' },
+      env: {
+        ...process.env,
+        DIFY_CONFIG_DIR: fx.configDir,
+        CI: '1',
+        NO_COLOR: '1',
+        DIFY_E2E_NO_KEYRING: '1',
+      },
     })
     let stderr = ''
     proc.stderr.on('data', (d: Buffer) => {
       stderr += d.toString('utf8')
     })
     const exitCode = await new Promise<number>((res) => {
-      proc.on('close', code => res(code ?? 1))
+      proc.on('close', (code) => res(code ?? 1))
     })
     expect(exitCode).not.toBe(0)
     // The server should return a clear validation error rather than timing out
@@ -194,11 +208,11 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
     })
 
     // Wait for the process to start streaming, then interrupt.
-    await new Promise(res => setTimeout(res, 800))
+    await new Promise((res) => setTimeout(res, 800))
     proc.kill('SIGINT')
 
     const exitCode = await new Promise<number>((res) => {
-      proc.on('close', code => res(code ?? 1))
+      proc.on('close', (code) => res(code ?? 1))
     })
 
     expect(exitCode, 'SIGINT should cause non-zero exit').not.toBe(0)
@@ -209,16 +223,17 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
   it('[P1] workflow streaming with multiple inputs passes all params correctly', async () => {
     // Spec 4.2.8: multiple --inputs entries take effect simultaneously in streaming mode
     const result = await withRetry(
-      () => fx.r([
-        'run',
-        'app',
-        E.workflowAppId,
-        '--inputs',
-        JSON.stringify({ x: 'multi-stream-k1', num: 42, enum_var: 'A', paragraph: 'short text' }),
-        '--stream',
-        '-o',
-        'json',
-      ]),
+      () =>
+        fx.r([
+          'run',
+          'app',
+          E.workflowAppId,
+          '--inputs',
+          JSON.stringify({ x: 'multi-stream-k1', num: 42, enum_var: 'A', paragraph: 'short text' }),
+          '--stream',
+          '-o',
+          'json',
+        ]),
       { attempts: 3, delayMs: 2000 },
     )
     assertExitCode(result, 0)
@@ -251,14 +266,13 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
         `    role: owner`,
       ].join('\n')}\n`
       await writeFile(join(networkTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
-      const result = await run(
-        ['run', 'app', E.chatAppId, 'hello', '--stream'],
-        { configDir: networkTmp.configDir, timeout: 15_000 },
-      )
+      const result = await run(['run', 'app', E.chatAppId, 'hello', '--stream'], {
+        configDir: networkTmp.configDir,
+        timeout: 15_000,
+      })
       expect(result.exitCode, 'unreachable host should cause non-zero exit').not.toBe(0)
       expect(result.stderr.length, 'stderr should contain error message').toBeGreaterThan(0)
-    }
-    finally {
+    } finally {
       await networkTmp.cleanup()
     }
   })
@@ -277,7 +291,7 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
       '--stream',
     ])
     expect(result.exitCode, 'wrong-type input should cause non-zero exit').not.toBe(0)
-    expect(result.stderr).toMatch(/validation|invalid|type|400|server_5xx|must be/i)
+    expect(result.stderr).toMatch(/validation|invalid|type|422|must be/i)
   })
 
   // ── Non-existent app with positional query (4.2.16) ────────────────────
@@ -285,37 +299,46 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
   it('[P0] streaming with non-existent app id and query exits 1 with app-not-found error', async () => {
     // Spec 4.2.16: non-existent app id + positional query → app not found, exit code 1
     // Distinct from the earlier server-error test: this checks exit=1 precisely and the not-found message.
-    const result = await fx.r(['run', 'app', 'nonexistent-app-id-404-streaming-e2e', 'hello', '--stream'])
+    const result = await fx.r([
+      'run',
+      'app',
+      'nonexistent-app-id-404-streaming-e2e',
+      'hello',
+      '--stream',
+    ])
     expect(result.exitCode, 'app not found should exit with code 1').toBe(1)
     expect(result.stderr).toMatch(/not.?found|404|does not exist/i)
   })
 
   // ── SSO (dfoe_) token in streaming mode (4.2.18) ──────────────────────
 
-  itWithSso('[P0] streaming with SSO (dfoe_) token succeeds (exit code 0, stdout non-empty)', async () => {
-    // Spec 4.2.18: dfoe_ token can invoke streaming run on an authorised app
-    const ssoTmp = await withTempConfig()
-    try {
-      await injectAuth(ssoTmp.configDir, {
-        host: E.host,
-        bearer: E.ssoToken,
-        email: 'sso-e2e@example.com',
-        workspaceId: E.workspaceId,
-        workspaceName: E.workspaceName,
-      })
-      const result = await withRetry(
-        () => run(['run', 'app', E.chatAppId, 'sso-stream-test', '--stream'], {
-          configDir: ssoTmp.configDir,
-        }),
-        { attempts: 3, delayMs: 2000 },
-      )
-      assertExitCode(result, 0)
-      expect(result.stdout.length, 'SSO streaming should produce output').toBeGreaterThan(0)
-    }
-    finally {
-      await ssoTmp.cleanup()
-    }
-  })
+  itWithSso(
+    '[P0] streaming with SSO (dfoe_) token succeeds (exit code 0, stdout non-empty)',
+    async () => {
+      // Spec 4.2.18: dfoe_ token can invoke streaming run on an authorised app
+      const ssoTmp = await withTempConfig()
+      try {
+        await injectAuth(ssoTmp.configDir, {
+          host: E.host,
+          bearer: E.ssoToken,
+          email: 'sso-e2e@example.com',
+          workspaceId: E.workspaceId,
+          workspaceName: E.workspaceName,
+        })
+        const result = await withRetry(
+          () =>
+            run(['run', 'app', E.chatAppId, 'sso-stream-test', '--stream'], {
+              configDir: ssoTmp.configDir,
+            }),
+          { attempts: 3, delayMs: 2000 },
+        )
+        assertExitCode(result, 0)
+        expect(result.stdout.length, 'SSO streaming should produce output').toBeGreaterThan(0)
+      } finally {
+        await ssoTmp.cleanup()
+      }
+    },
+  )
 
   // ── JSON error envelope for non-existent app in -o json mode (4.2.23) ─
 

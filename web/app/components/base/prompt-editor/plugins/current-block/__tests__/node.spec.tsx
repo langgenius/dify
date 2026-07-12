@@ -1,19 +1,9 @@
 import { act } from '@testing-library/react'
-import {
-  $createParagraphNode,
-  $getRoot,
-} from 'lexical'
+import { $createParagraphNode, $getRoot } from 'lexical'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
-import {
-  createLexicalTestEditor,
-  expectInlineWrapperDom,
-} from '../../test-helpers'
+import { createLexicalTestEditor, expectInlineWrapperDom } from '../../test-helpers'
 import CurrentBlockComponent from '../component'
-import {
-  $createCurrentBlockNode,
-  $isCurrentBlockNode,
-  CurrentBlockNode,
-} from '../node'
+import { $createCurrentBlockNode, CurrentBlockNode } from '../node'
 
 const createTestEditor = () => {
   return createLexicalTestEditor('current-block-node-test', [CurrentBlockNode])
@@ -174,22 +164,6 @@ describe('CurrentBlockNode', () => {
       })
 
       expect(node).toBeInstanceOf(CurrentBlockNode)
-    })
-
-    it('should identify current block nodes using type guard helper', () => {
-      const editor = createTestEditor()
-      let node!: CurrentBlockNode
-
-      act(() => {
-        editor.update(() => {
-          node = $createCurrentBlockNode(GeneratorType.prompt)
-          appendNodeToRoot(node)
-        })
-      })
-
-      expect($isCurrentBlockNode(node)).toBe(true)
-      expect($isCurrentBlockNode(null)).toBe(false)
-      expect($isCurrentBlockNode(undefined)).toBe(false)
     })
   })
 })

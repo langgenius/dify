@@ -11,7 +11,12 @@ type RetrievalSettingsProps = {
   scoreThresholdEnabled: boolean
   isInHitTesting?: boolean
   isInRetrievalSetting?: boolean
-  onChange: (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => void
+  readonly?: boolean
+  onChange: (data: {
+    top_k?: number
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+  }) => void
 }
 
 const RetrievalSettings: FC<RetrievalSettingsProps> = ({
@@ -21,6 +26,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
   onChange,
   isInHitTesting = false,
   isInRetrievalSetting = false,
+  readonly = false,
 }) => {
   const { t } = useTranslation()
 
@@ -29,20 +35,25 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
   }
 
   return (
-    <div className={cn('flex flex-col gap-2 self-stretch', isInRetrievalSetting && 'w-full max-w-[480px]')}>
+    <div
+      className={cn(
+        'flex flex-col gap-2 self-stretch',
+        isInRetrievalSetting && 'w-full max-w-[480px]',
+      )}
+    >
       {!isInHitTesting && !isInRetrievalSetting && (
         <div className="flex h-7 flex-col gap-2 self-stretch pt-1">
-          <label className="system-sm-semibold text-text-secondary">{t('retrievalSettings', { ns: 'dataset' })}</label>
+          <label className="system-sm-semibold text-text-secondary">
+            {t(($) => $.retrievalSettings, { ns: 'dataset' })}
+          </label>
         </div>
       )}
-      <div className={cn(
-        'flex gap-4 self-stretch',
-        {
+      <div
+        className={cn('flex gap-4 self-stretch', {
           'flex-col': isInHitTesting,
           'flex-row': isInRetrievalSetting,
           'flex-col sm:flex-row': !isInHitTesting && !isInRetrievalSetting,
-        },
-      )}
+        })}
       >
         <div className="flex grow flex-col gap-1">
           <TopKItem
@@ -50,6 +61,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
             value={topK}
             onChange={(_key, v) => onChange({ top_k: v })}
             enable={true}
+            disabled={readonly}
           />
         </div>
         <div className="flex grow flex-col gap-1">
@@ -60,6 +72,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
             enable={scoreThresholdEnabled}
             hasSwitch={true}
             onSwitchChange={(_key, v) => handleScoreThresholdChange(v)}
+            disabled={readonly}
           />
         </div>
       </div>

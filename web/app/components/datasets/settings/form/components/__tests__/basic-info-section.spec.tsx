@@ -7,16 +7,90 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import BasicInfoSection from '../basic-info-section'
 
-// Mock app-context
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => ({
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useSuspenseQuery: () => ({
+      data: {
+        rbac_enabled: false,
+      },
+    }),
+  }
+})
+
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
     id: 'user-1',
     name: 'Current User',
     email: 'current@example.com',
     avatar_url: '',
     role: 'owner',
-  }),
+  },
 }))
+
+// Mock app-context
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => mockAppContextState,
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
 
 // Mock image uploader hooks for AppIconPicker
 vi.mock('@/app/components/base/image-uploader/hooks', () => ({
@@ -34,6 +108,13 @@ vi.mock('@/app/components/base/image-uploader/hooks', () => ({
     onClear: vi.fn(),
   }),
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 describe('BasicInfoSection', () => {
   const mockDataset: DataSet = {
@@ -105,8 +186,30 @@ describe('BasicInfoSection', () => {
   }
 
   const mockMemberList: Member[] = [
-    { id: 'user-1', name: 'User 1', email: 'user1@example.com', role: 'owner', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
-    { id: 'user-2', name: 'User 2', email: 'user2@example.com', role: 'admin', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
+    {
+      id: 'user-1',
+      name: 'User 1',
+      email: 'user1@example.com',
+      role: 'owner',
+      roles: [],
+      avatar: '',
+      avatar_url: '',
+      last_login_at: '',
+      created_at: '',
+      status: 'active',
+    },
+    {
+      id: 'user-2',
+      name: 'User 2',
+      email: 'user2@example.com',
+      role: 'admin',
+      roles: [],
+      avatar: '',
+      avatar_url: '',
+      last_login_at: '',
+      created_at: '',
+      status: 'active',
+    },
   ]
 
   const mockIconInfo: IconInfo = {
@@ -118,7 +221,6 @@ describe('BasicInfoSection', () => {
 
   const defaultProps = {
     currentDataset: mockDataset,
-    isCurrentWorkspaceDatasetOperator: false,
     name: 'Test Dataset',
     setName: vi.fn(),
     description: 'Test description',
@@ -247,7 +349,9 @@ describe('BasicInfoSection', () => {
   describe('App Icon', () => {
     it('should call handleOpenAppIconPicker when icon is clicked', () => {
       const handleOpenAppIconPicker = vi.fn()
-      const { container } = render(<BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />)
+      const { container } = render(
+        <BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />,
+      )
 
       // Find the clickable icon element - it's inside a wrapper that handles the click
       const iconWrapper = container.querySelector('[class*="cursor-pointer"]')
@@ -258,7 +362,9 @@ describe('BasicInfoSection', () => {
     })
 
     it('should render AppIconPicker when showAppIconPicker is true', () => {
-      const { baseElement } = render(<BasicInfoSection {...defaultProps} showAppIconPicker={true} />)
+      const { baseElement } = render(
+        <BasicInfoSection {...defaultProps} showAppIconPicker={true} />,
+      )
 
       // AppIconPicker renders a modal with emoji tabs and options via portal
       // We just verify the component renders without crashing when picker is shown
@@ -346,10 +452,8 @@ describe('BasicInfoSection', () => {
       expect(disabledElement)!.toBeInTheDocument()
     })
 
-    it('should be disabled when user is dataset operator', () => {
-      const { container } = render(
-        <BasicInfoSection {...defaultProps} isCurrentWorkspaceDatasetOperator={true} />,
-      )
+    it('should be disabled when form is readonly from dataset ACL editability', () => {
+      const { container } = render(<BasicInfoSection {...defaultProps} readonly />)
 
       const disabledElement = container.querySelector('[class*="cursor-not-allowed"]')
       expect(disabledElement)!.toBeInTheDocument()
@@ -412,7 +516,9 @@ describe('BasicInfoSection', () => {
     })
 
     it('should update when description prop changes', () => {
-      const { rerender } = render(<BasicInfoSection {...defaultProps} description="Initial Description" />)
+      const { rerender } = render(
+        <BasicInfoSection {...defaultProps} description="Initial Description" />,
+      )
 
       expect(screen.getByDisplayValue('Initial Description'))!.toBeInTheDocument()
 
@@ -422,7 +528,9 @@ describe('BasicInfoSection', () => {
     })
 
     it('should update when permission prop changes', () => {
-      const { rerender } = render(<BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />)
+      const { rerender } = render(
+        <BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />,
+      )
 
       expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
 
@@ -450,12 +558,7 @@ describe('BasicInfoSection', () => {
     })
 
     it('should handle empty member list', () => {
-      render(
-        <BasicInfoSection
-          {...defaultProps}
-          memberList={[]}
-        />,
-      )
+      render(<BasicInfoSection {...defaultProps} memberList={[]} />)
 
       expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
     })

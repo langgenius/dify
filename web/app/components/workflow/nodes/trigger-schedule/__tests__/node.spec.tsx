@@ -5,7 +5,9 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
 import { getNextExecutionTime } from '../utils/execution-time-calculator'
 
-const createNodeData = (overrides: Partial<ScheduleTriggerNodeType> = {}): ScheduleTriggerNodeType => ({
+const createNodeData = (
+  overrides: Partial<ScheduleTriggerNodeType> = {},
+): ScheduleTriggerNodeType => ({
   title: 'Schedule Trigger',
   desc: '',
   type: BlockEnum.TriggerSchedule,
@@ -30,15 +32,20 @@ describe('TriggerScheduleNode', () => {
 
       renderNodeComponent(Node, data)
 
-      expect(screen.getByText('workflow.nodes.triggerSchedule.nextExecutionTime')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflow.nodes.triggerSchedule.nextExecutionTime'),
+      ).toBeInTheDocument()
       expect(screen.getByText(getNextExecutionTime(data))).toBeInTheDocument()
     })
 
     it('should render the placeholder when cron mode has an invalid expression', () => {
-      renderNodeComponent(Node, createNodeData({
-        mode: 'cron',
-        cron_expression: 'invalid cron',
-      }))
+      renderNodeComponent(
+        Node,
+        createNodeData({
+          mode: 'cron',
+          cron_expression: 'invalid cron',
+        }),
+      )
 
       expect(screen.getByText('--')).toBeInTheDocument()
     })

@@ -1,5 +1,8 @@
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
+import { FlowType } from '@/types/common'
+import { fullWorkflowAccessControl } from '../hooks-store'
 import { PanelContextmenu } from '../panel-contextmenu'
 import { BlockEnum } from '../types'
 import { createNode } from './fixtures'
@@ -57,7 +60,7 @@ describe('PanelContextmenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseNodesInteractions.mockReturnValue({
       handleNodesPaste: mockHandleNodesPaste,
@@ -146,6 +149,24 @@ describe('PanelContextmenu', () => {
     })
   })
 
+  it('should hide import app on snippet canvases', async () => {
+    renderPanelContextmenu({
+      initialStoreState: {
+        contextMenuTarget: { type: 'panel' },
+      },
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'snippet-1',
+          flowType: FlowType.snippet,
+          fileSettings: {},
+        },
+      },
+    })
+
+    expect(await screen.findByText('export')).toBeInTheDocument()
+    expect(screen.queryByText('importApp')).not.toBeInTheDocument()
+  })
+
   it('should render preview action in chat mode', async () => {
     mockUseIsChatMode.mockReturnValue(true)
 
@@ -166,5 +187,27 @@ describe('PanelContextmenu', () => {
       expect(mockHandleStartWorkflowRun).not.toHaveBeenCalled()
       expect(mockClose).toHaveBeenCalled()
     })
+  })
+
+  it('should hide add note when editing is denied but comments are allowed', async () => {
+    mockUseWorkflowMoveMode.mockReturnValue({
+      isCommentModeAvailable: true,
+    })
+
+    renderPanelContextmenu({
+      initialStoreState: {
+        contextMenuTarget: { type: 'panel' },
+      },
+      hooksStoreProps: {
+        accessControl: {
+          ...fullWorkflowAccessControl,
+          canEdit: false,
+          canComment: true,
+        },
+      },
+    })
+
+    expect(await screen.findByText('comments.actions.addComment')).toBeInTheDocument()
+    expect(screen.queryByText('nodes.note.addNote')).not.toBeInTheDocument()
   })
 })

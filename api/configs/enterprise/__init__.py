@@ -29,6 +29,17 @@ class EnterpriseFeatureConfig(BaseSettings):
         "This helps gain runtime performance by trading off consistency.",
     )
 
+    RBAC_ENABLED: bool = Field(
+        description="Enable enterprise RBAC APIs. When disabled, compatibility responses fall back to legacy roles.",
+        default=False,
+    )
+
+    ENTERPRISE_RBAC_REQUEST_TIMEOUT: int = Field(
+        ge=1,
+        description="Maximum timeout in seconds for inner RBAC requests.",
+        default=30,
+    )
+
 
 class EnterpriseTelemetryConfig(BaseSettings):
     """

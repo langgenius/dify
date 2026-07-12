@@ -1,0 +1,48 @@
+export const agentBuilderPreseededResources = {
+  stableChatModel: 'E2E Stable Chat Model',
+  summarySkill: 'e2e-summary-skill',
+  jsonReplaceTool: 'JSON Process / JSON Replace',
+  tavilySearchTool: 'Tavily / Tavily Search',
+  agentKnowledgeBase: 'E2E Agent Knowledge Base',
+  indexingKnowledgeBase: 'E2E Agent Knowledge Base Indexing',
+  agentDecisionChatModel: 'E2E Agent Decision Chat Model',
+  brokenModelProvider: 'E2E Broken Model Provider',
+  brokenModel: 'e2e-broken-model',
+  fullConfigAgent: 'E2E New Agent Builder Full Config',
+  toolStatesAgent: 'E2E New Agent Builder Tool States',
+  oauthToolAgent: 'E2E Agent With OAuth Tool',
+  dualRetrievalAgent: 'E2E Agent With Dual Retrieval',
+  publishedWebAppAgent: 'E2E Agent Published Web App',
+  backendApiEnabledAgent: 'E2E Agent Backend API Enabled',
+  workflowReferenceAgent: 'E2E Agent With Workflow Reference',
+  referenceWorkflow: 'E2E Agent Reference Workflow',
+  backendApiKey: 'E2E Backend API Key',
+} as const
+
+export const agentBuilderFixedInputs = {
+  tavilyInvalidApiKey: 'E2E_INVALID_TAVILY_API_KEY_DO_NOT_USE',
+  missingSkillSearch: 'E2E_NOT_EXIST_SKILL',
+  missingToolSearch: 'E2E_NOT_EXIST_TOOL',
+  missingToolSearchWithSuffix: 'E2E_NOT_EXIST_TOOL_12345',
+  customKnowledgeQuery: 'Dify Agent E2E knowledge marker',
+  knowledgeRuntimeQuery:
+    'Use the connected knowledge source to find the Dify Agent E2E knowledge marker.',
+  envPlainKey: 'E2E_AGENT_FLAG',
+  envPlainValue: 'enabled',
+  envModeKey: 'E2E_AGENT_MODE',
+  envModeValue: 'plain',
+  envAfterInvalidImportKey: 'E2E_AGENT_AFTER_INVALID',
+  envAfterInvalidImportValue: 'still-valid',
+  moderationKeyword: 'E2E_BLOCKED_KEYWORD',
+  inputModerationReply: 'E2E_INPUT_BLOCKED_REPLY',
+  outputModerationReply: 'E2E_OUTPUT_BLOCKED_REPLY',
+  backendApiUser: 'e2e-agent-access-point',
+} as const
+
+export const agentBuilderExpectedTokens = {
+  agentReply: 'AGENT_E2E_PASS',
+  updatedAgentReply: 'E2E_AGENT_UPDATED',
+  knowledgeReply: 'AGENT_KNOWLEDGE_PASS',
+  jsonToolBefore: 'JSON_TOOL_E2E',
+  jsonToolAfter: 'E2E_AFTER',
+} as const

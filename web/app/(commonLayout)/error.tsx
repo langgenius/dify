@@ -19,16 +19,15 @@ export default function CommonLayoutError({ error, unstable_retry }: Props) {
   // until the browser navigation completes, matching main's Splash behavior.
   // Showing the "Try again" button here would just flash for a few frames before
   // the page navigates away, and clicking it would 401 again anyway.
-  if (isLegacyBase401(error))
-    return <FullScreenLoading />
+  if (isLegacyBase401(error)) return <FullScreenLoading />
 
   return (
-    <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background-body">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center gap-4 bg-background-body">
       <div className="system-sm-regular text-text-tertiary">
-        {t('errorBoundary.message')}
+        {t(($) => $['errorBoundary.message'])}
       </div>
       <Button size="small" variant="secondary" onClick={() => unstable_retry()}>
-        {t('errorBoundary.tryAgain')}
+        {t(($) => $['errorBoundary.tryAgain'])}
       </Button>
     </div>
   )

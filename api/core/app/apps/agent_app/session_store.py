@@ -45,7 +45,7 @@ class AgentAppSessionScope:
     app_id: str
     conversation_id: str
     agent_id: str
-    agent_config_snapshot_id: str
+    agent_config_snapshot_id: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +56,10 @@ class StoredAgentAppSession:
     session_snapshot: CompositorSessionSnapshot
     backend_run_id: str | None
     runtime_layer_specs: list[RuntimeLayerSpec] = field(default_factory=list)
+    # ENG-635: set while the conversation turn is paused on a dify.ask_human
+    # deferred call, awaiting a HITL form submission.
+    pending_form_id: str | None = None
+    pending_tool_call_id: str | None = None
 
 
 class AgentAppRuntimeSessionStore:
@@ -75,6 +79,8 @@ class AgentAppRuntimeSessionStore:
                 session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
                 backend_run_id=row.backend_run_id,
                 runtime_layer_specs=_deserialize_runtime_layer_specs(row.composition_layer_specs),
+                pending_form_id=row.pending_form_id,
+                pending_tool_call_id=row.pending_tool_call_id,
             )
 
     def load_active_session_for_conversation(
@@ -118,6 +124,41 @@ class AgentAppRuntimeSessionStore:
                 runtime_layer_specs=_deserialize_runtime_layer_specs(row.composition_layer_specs),
             )
 
+    def list_active_sessions_for_conversation(
+        self, *, tenant_id: str, app_id: str, conversation_id: str
+    ) -> list[StoredAgentAppSession]:
+        """List all ACTIVE conversation-owned sessions for lifecycle cleanup."""
+        stmt = (
+            select(AgentRuntimeSession)
+            .where(
+                AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
+                AgentRuntimeSession.tenant_id == tenant_id,
+                AgentRuntimeSession.app_id == app_id,
+                AgentRuntimeSession.conversation_id == conversation_id,
+                AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
+            )
+            .order_by(AgentRuntimeSession.updated_at.desc())
+        )
+        with session_factory.create_session() as session:
+            rows = session.scalars(stmt).all()
+            return [
+                StoredAgentAppSession(
+                    scope=AgentAppSessionScope(
+                        tenant_id=row.tenant_id,
+                        app_id=row.app_id,
+                        conversation_id=row.conversation_id or "",
+                        agent_id=row.agent_id,
+                        agent_config_snapshot_id=row.agent_config_snapshot_id,
+                    ),
+                    session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
+                    backend_run_id=row.backend_run_id,
+                    runtime_layer_specs=_deserialize_runtime_layer_specs(row.composition_layer_specs),
+                    pending_form_id=row.pending_form_id,
+                    pending_tool_call_id=row.pending_tool_call_id,
+                )
+                for row in rows
+            ]
+
     def save_active_snapshot(
         self,
         *,
@@ -125,7 +166,17 @@ class AgentAppRuntimeSessionStore:
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
+        pending_form_id: str | None = None,
+        pending_tool_call_id: str | None = None,
     ) -> None:
+        """Persist the current conversation snapshot and enforce one ACTIVE row.
+
+        Agent App chat treats one conversation as one resumable runtime shell.
+        Saving the latest snapshot therefore upserts the scoped row back to
+        ACTIVE and retires any other ACTIVE conversation-owned rows for the
+        same ``tenant_id + app_id + conversation_id`` so later lookups see a
+        single active session.
+        """
         if snapshot is None:
             return
         snapshot_json = snapshot.model_dump_json()
@@ -144,6 +195,8 @@ class AgentAppRuntimeSessionStore:
                     session_snapshot=snapshot_json,
                     composition_layer_specs=runtime_layer_specs_json,
                     status=AgentRuntimeSessionStatus.ACTIVE,
+                    pending_form_id=pending_form_id,
+                    pending_tool_call_id=pending_tool_call_id,
                 )
                 session.add(row)
             else:
@@ -152,6 +205,9 @@ class AgentAppRuntimeSessionStore:
                 row.composition_layer_specs = runtime_layer_specs_json
                 row.status = AgentRuntimeSessionStatus.ACTIVE
                 row.cleaned_at = None
+                # Set (or clear, when omitted) the ask_human pause correlation.
+                row.pending_form_id = pending_form_id
+                row.pending_tool_call_id = pending_tool_call_id
             session.flush()
             other_rows = session.scalars(
                 select(AgentRuntimeSession).where(
@@ -181,13 +237,15 @@ class AgentAppRuntimeSessionStore:
 
     @staticmethod
     def _scope_stmt(scope: AgentAppSessionScope):
-        return select(AgentRuntimeSession).where(
+        stmt = select(AgentRuntimeSession).where(
             AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
             AgentRuntimeSession.tenant_id == scope.tenant_id,
             AgentRuntimeSession.conversation_id == scope.conversation_id,
             AgentRuntimeSession.agent_id == scope.agent_id,
-            AgentRuntimeSession.agent_config_snapshot_id == scope.agent_config_snapshot_id,
         )
+        if scope.agent_config_snapshot_id is None:
+            return stmt.where(AgentRuntimeSession.agent_config_snapshot_id.is_(None))
+        return stmt.where(AgentRuntimeSession.agent_config_snapshot_id == scope.agent_config_snapshot_id)
 
     @classmethod
     def _active_stmt(cls, scope: AgentAppSessionScope):

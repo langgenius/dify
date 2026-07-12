@@ -9,15 +9,15 @@ import { runConfigUnset } from './run'
 describe('runConfigUnset', () => {
   useTempConfigDir('difyctl-unset-')
 
-  it('clears the requested key, leaves others intact', () => {
-    getConfigurationStore().setTyped({
+  it('clears the requested key, leaves others intact', async () => {
+    await getConfigurationStore().setTyped({
       schema_version: 1,
       defaults: { format: 'json', limit: 25 },
     })
-    const out = runConfigUnset({ store: getConfigurationStore(), key: 'defaults.format' })
+    const out = await runConfigUnset({ store: getConfigurationStore(), key: 'defaults.format' })
     expect(out).toBe('unset defaults.format\n')
 
-    const r = loadConfig(getConfigurationStore())
+    const r = await loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
     if (r.found) {
       expect(r.config.defaults.format).not.toBe('json')
@@ -25,23 +25,22 @@ describe('runConfigUnset', () => {
     }
   })
 
-  it('is a no-op (writes empty config) when key was already unset', () => {
-    const out = runConfigUnset({ store: getConfigurationStore(), key: 'defaults.format' })
+  it('is a no-op (writes empty config) when key was already unset', async () => {
+    const out = await runConfigUnset({ store: getConfigurationStore(), key: 'defaults.format' })
     expect(out).toBe('unset defaults.format\n')
-    const r = loadConfig(getConfigurationStore())
+    const r = await loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
-    if (r.found)
-      expect(r.config.schema_version).toBe(1)
+    if (r.found) expect(r.config.schema_version).toBe(1)
   })
 
-  it('rejects unknown key', () => {
+  it('rejects unknown key', async () => {
     let caught: unknown
     try {
-      runConfigUnset({ store: getConfigurationStore(), key: 'bogus' })
+      await runConfigUnset({ store: getConfigurationStore(), key: 'bogus' })
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
-    if (isBaseError(caught))
-      expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
+    if (isBaseError(caught)) expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
   })
 })

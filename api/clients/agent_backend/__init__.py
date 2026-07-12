@@ -18,6 +18,7 @@ from clients.agent_backend.errors import (
     AgentBackendValidationError,
 )
 from clients.agent_backend.event_adapter import (
+    AgentBackendAgentMessageDeltaInternalEvent,
     AgentBackendDeferredToolCallInternalEvent,
     AgentBackendInternalEvent,
     AgentBackendInternalEventType,
@@ -32,7 +33,10 @@ from clients.agent_backend.factory import create_agent_backend_run_client
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
 from clients.agent_backend.request_builder import (
     AGENT_SOUL_PROMPT_LAYER_ID,
+    DIFY_CONFIG_LAYER_ID,
+    DIFY_CORE_TOOLS_LAYER_ID,
     DIFY_EXECUTION_CONTEXT_LAYER_ID,
+    DIFY_KNOWLEDGE_BASE_LAYER_ID,
     DIFY_PLUGIN_TOOLS_LAYER_ID,
     WORKFLOW_NODE_JOB_PROMPT_LAYER_ID,
     WORKFLOW_USER_PROMPT_LAYER_ID,
@@ -43,14 +47,23 @@ from clients.agent_backend.request_builder import (
     AgentBackendWorkflowNodeRunInput,
     redact_for_agent_backend_log,
 )
+from clients.agent_backend.session_cleanup import (
+    AgentBackendSessionCleanupPayload,
+    AgentBackendSessionCleanupResult,
+    cleanup_agent_backend_session,
+)
 
 __all__ = [
     "AGENT_SOUL_PROMPT_LAYER_ID",
+    "DIFY_CONFIG_LAYER_ID",
+    "DIFY_CORE_TOOLS_LAYER_ID",
     "DIFY_EXECUTION_CONTEXT_LAYER_ID",
+    "DIFY_KNOWLEDGE_BASE_LAYER_ID",
     "DIFY_PLUGIN_TOOLS_LAYER_ID",
     "WORKFLOW_NODE_JOB_PROMPT_LAYER_ID",
     "WORKFLOW_USER_PROMPT_LAYER_ID",
     "AgentBackendAgentAppRunInput",
+    "AgentBackendAgentMessageDeltaInternalEvent",
     "AgentBackendDeferredToolCallInternalEvent",
     "AgentBackendError",
     "AgentBackendHTTPError",
@@ -67,6 +80,8 @@ __all__ = [
     "AgentBackendRunRequestBuilder",
     "AgentBackendRunStartedInternalEvent",
     "AgentBackendRunSucceededInternalEvent",
+    "AgentBackendSessionCleanupPayload",
+    "AgentBackendSessionCleanupResult",
     "AgentBackendStreamError",
     "AgentBackendStreamInternalEvent",
     "AgentBackendTransportError",
@@ -76,6 +91,7 @@ __all__ = [
     "FakeAgentBackendRunClient",
     "FakeAgentBackendScenario",
     "RuntimeLayerSpec",
+    "cleanup_agent_backend_session",
     "create_agent_backend_run_client",
     "extract_runtime_layer_specs",
     "redact_for_agent_backend_log",

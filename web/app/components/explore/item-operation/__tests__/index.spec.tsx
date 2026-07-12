@@ -3,28 +3,26 @@ import * as React from 'react'
 import ItemOperation from '../index'
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
-  const DropdownMenuContext = React.createContext<{ isOpen: boolean, setOpen: (open: boolean) => void } | null>(null)
+  const DropdownMenuContext = React.createContext<{
+    isOpen: boolean
+    setOpen: (open: boolean) => void
+  } | null>(null)
 
   const useDropdownMenuContext = () => {
     const context = React.use(DropdownMenuContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
     return context
   }
 
   return {
-    DropdownMenu: ({
-      children,
-      modal,
-    }: {
-      children: React.ReactNode
-      modal?: boolean
-    }) => {
+    DropdownMenu: ({ children, modal }: { children: React.ReactNode; modal?: boolean }) => {
       const [isOpen, setIsOpen] = React.useState(false)
 
       return (
         <DropdownMenuContext value={{ isOpen, setOpen: setIsOpen }}>
-          <div data-modal={modal} data-open={isOpen} data-testid="dropdown-menu">{children}</div>
+          <div data-modal={modal} data-open={isOpen} data-testid="dropdown-menu">
+            {children}
+          </div>
         </DropdownMenuContext>
       )
     },
@@ -55,10 +53,13 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
       popupProps?: React.HTMLAttributes<HTMLDivElement>
     }) => {
       const { isOpen } = useDropdownMenuContext()
-      if (!isOpen)
-        return null
+      if (!isOpen) return null
 
-      return <div data-testid="dropdown-content" {...popupProps}>{children}</div>
+      return (
+        <div data-testid="dropdown-content" {...popupProps}>
+          {children}
+        </div>
+      )
     },
     DropdownMenuItem: ({
       children,
@@ -168,12 +169,12 @@ describe('ItemOperation', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should keep the menu open when item hover leaves', async () => {
-      const { props, rerender } = renderComponent({ isItemHovering: true })
+    it('should keep the menu open after rerender', async () => {
+      const { props, rerender } = renderComponent()
       fireEvent.click(screen.getByTestId('item-operation-trigger'))
       await screen.findByText('explore.sidebar.action.pin')
 
-      rerender(<ItemOperation {...props} isItemHovering={false} />)
+      rerender(<ItemOperation {...props} />)
 
       expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
     })
@@ -190,12 +191,7 @@ describe('ItemOperation', () => {
 
       render(
         <div onClick={onParentClick}>
-          <ItemOperation
-            isPinned={false}
-            isShowDelete
-            togglePin={togglePin}
-            onDelete={vi.fn()}
-          />
+          <ItemOperation isPinned={false} isShowDelete togglePin={togglePin} onDelete={vi.fn()} />
         </div>,
       )
 

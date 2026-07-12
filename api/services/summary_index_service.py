@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import TypedDict, cast
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
@@ -94,6 +94,8 @@ class SummaryIndexService:
         dataset: Dataset,
         summary_content: str,
         status: SummaryStatus = SummaryStatus.GENERATING,
+        *,
+        session: Session,
     ) -> DocumentSegmentSummary:
         """
         Create or update a DocumentSegmentSummary record.
@@ -105,46 +107,48 @@ class SummaryIndexService:
             summary_content: Generated summary content
             status: Summary status (default: SummaryStatus.GENERATING)
 
+        Keyword Args:
+            session: SQLAlchemy session used for the summary record.
+
         Returns:
             Created or updated DocumentSegmentSummary instance
         """
-        with session_factory.create_session() as session:
-            # Check if summary record already exists
-            existing_summary = session.scalar(
-                select(DocumentSegmentSummary)
-                .where(
-                    DocumentSegmentSummary.chunk_id == segment.id,
-                    DocumentSegmentSummary.dataset_id == dataset.id,
-                )
-                .limit(1)
+        # Check if summary record already exists
+        existing_summary = session.scalar(
+            select(DocumentSegmentSummary)
+            .where(
+                DocumentSegmentSummary.chunk_id == segment.id,
+                DocumentSegmentSummary.dataset_id == dataset.id,
             )
+            .limit(1)
+        )
 
-            if existing_summary:
-                # Update existing record
-                existing_summary.summary_content = summary_content
-                existing_summary.status = status
-                existing_summary.error = None  # type: ignore[assignment]  # Clear any previous errors
-                # Re-enable if it was disabled
-                if not existing_summary.enabled:
-                    existing_summary.enabled = True
-                    existing_summary.disabled_at = None
-                    existing_summary.disabled_by = None
-                session.add(existing_summary)
-                session.flush()
-                return existing_summary
-            else:
-                # Create new record (enabled by default)
-                summary_record = DocumentSegmentSummary(
-                    dataset_id=dataset.id,
-                    document_id=segment.document_id,
-                    chunk_id=segment.id,
-                    summary_content=summary_content,
-                    status=status,
-                    enabled=True,  # Explicitly set enabled to True
-                )
-                session.add(summary_record)
-                session.flush()
-                return summary_record
+        if existing_summary:
+            # Update existing record
+            existing_summary.summary_content = summary_content
+            existing_summary.status = status
+            existing_summary.error = None  # Clear any previous errors
+            # Re-enable if it was disabled
+            if not existing_summary.enabled:
+                existing_summary.enabled = True
+                existing_summary.disabled_at = None
+                existing_summary.disabled_by = None
+            session.add(existing_summary)
+            session.flush()
+            return existing_summary
+        else:
+            # Create new record (enabled by default)
+            summary_record = DocumentSegmentSummary(
+                dataset_id=dataset.id,
+                document_id=segment.document_id,
+                chunk_id=segment.id,
+                summary_content=summary_content,
+                status=status,
+                enabled=True,  # Explicitly set enabled to True
+            )
+            session.add(summary_record)
+            session.flush()
+            return summary_record
 
     @staticmethod
     def vectorize_summary(
@@ -583,7 +587,7 @@ class SummaryIndexService:
                 if existing_summary:
                     # Update existing record
                     existing_summary.status = status
-                    existing_summary.error = None  # type: ignore[assignment]  # Clear any previous errors
+                    existing_summary.error = None  # Clear any previous errors
                     if not existing_summary.enabled:
                         existing_summary.enabled = True
                         existing_summary.disabled_at = None
@@ -641,6 +645,8 @@ class SummaryIndexService:
         segment: DocumentSegment,
         dataset: Dataset,
         summary_index_setting: SummaryIndexSettingDict,
+        *,
+        session: Session,
     ) -> DocumentSegmentSummary:
         """
         Generate summary for a segment and vectorize it.
@@ -651,105 +657,100 @@ class SummaryIndexService:
             dataset: Dataset containing the segment
             summary_index_setting: Summary index configuration
 
+        Keyword Args:
+            session: SQLAlchemy session used for summary record updates.
+
         Returns:
             Created DocumentSegmentSummary instance
 
         Raises:
             ValueError: If summary generation fails
         """
-        with session_factory.create_session() as session:
-            try:
-                # Get or refresh summary record in this session
-                summary_record_in_session = session.scalar(
-                    select(DocumentSegmentSummary)
-                    .where(
-                        DocumentSegmentSummary.chunk_id == segment.id,
-                        DocumentSegmentSummary.dataset_id == dataset.id,
-                    )
-                    .limit(1)
+        try:
+            # Get or refresh summary record in this session
+            summary_record_in_session = session.scalar(
+                select(DocumentSegmentSummary)
+                .where(
+                    DocumentSegmentSummary.chunk_id == segment.id,
+                    DocumentSegmentSummary.dataset_id == dataset.id,
                 )
+                .limit(1)
+            )
 
-                if not summary_record_in_session:
-                    # If not found, create one
-                    logger.warning("Summary record not found for segment %s, creating one", segment.id)
-                    summary_record_in_session = DocumentSegmentSummary(
-                        dataset_id=dataset.id,
-                        document_id=segment.document_id,
-                        chunk_id=segment.id,
-                        summary_content="",
-                        status=SummaryStatus.GENERATING,
-                        enabled=True,
-                    )
-                    session.add(summary_record_in_session)
-                    session.flush()
-
-                # Update status to "generating"
-                summary_record_in_session.status = SummaryStatus.GENERATING
-                summary_record_in_session.error = None  # type: ignore[assignment]
-                session.add(summary_record_in_session)
-                # Don't flush here - wait until after vectorization succeeds
-
-                # Generate summary (returns summary_content and llm_usage)
-                summary_content, llm_usage = SummaryIndexService.generate_summary_for_segment(
-                    segment, dataset, summary_index_setting
+            if not summary_record_in_session:
+                # If not found, create one
+                logger.warning("Summary record not found for segment %s, creating one", segment.id)
+                summary_record_in_session = DocumentSegmentSummary(
+                    dataset_id=dataset.id,
+                    document_id=segment.document_id,
+                    chunk_id=segment.id,
+                    summary_content="",
+                    status=SummaryStatus.GENERATING,
+                    enabled=True,
                 )
-
-                # Update summary content
-                summary_record_in_session.summary_content = summary_content
                 session.add(summary_record_in_session)
-                # Flush to ensure summary_content is saved before vectorize_summary queries it
                 session.flush()
 
-                # Log LLM usage for summary generation
-                if llm_usage and llm_usage.total_tokens > 0:
-                    logger.info(
-                        "Summary generation for segment %s used %s tokens (prompt: %s, completion: %s)",
-                        segment.id,
-                        llm_usage.total_tokens,
-                        llm_usage.prompt_tokens,
-                        llm_usage.completion_tokens,
-                    )
+            # Update status to "generating"
+            summary_record_in_session.status = SummaryStatus.GENERATING
+            summary_record_in_session.error = None
+            session.add(summary_record_in_session)
+            # Don't flush here - wait until after vectorization succeeds
 
-                # Vectorize summary (will delete old vector if exists before creating new one)
-                # Pass the session-managed record to vectorize_summary
-                # vectorize_summary will update status to "completed" and tokens in its own session
-                # vectorize_summary will also ensure summary_content is preserved
-                try:
-                    # Pass the session to vectorize_summary to avoid session isolation issues
-                    SummaryIndexService.vectorize_summary(summary_record_in_session, segment, dataset, session=session)
-                    # Refresh the object from database to get the updated status and tokens from vectorize_summary
-                    session.refresh(summary_record_in_session)
-                    # Commit the session
-                    # (summary_record_in_session should have status="completed" and tokens from refresh)
-                    session.commit()
-                    logger.info("Successfully generated and vectorized summary for segment %s", segment.id)
-                    return summary_record_in_session
-                except Exception as vectorize_error:
-                    # If vectorization fails, update status to error in current session
-                    logger.exception("Failed to vectorize summary for segment %s", segment.id)
-                    summary_record_in_session.status = SummaryStatus.ERROR
-                    summary_record_in_session.error = f"Vectorization failed: {str(vectorize_error)}"
-                    session.add(summary_record_in_session)
-                    session.commit()
-                    raise
+            # Generate summary (returns summary_content and llm_usage)
+            summary_content, llm_usage = SummaryIndexService.generate_summary_for_segment(
+                segment, dataset, summary_index_setting
+            )
 
-            except Exception as e:
-                logger.exception("Failed to generate summary for segment %s", segment.id)
-                # Update summary record with error status
-                summary_record_in_session = session.scalar(
-                    select(DocumentSegmentSummary)
-                    .where(
-                        DocumentSegmentSummary.chunk_id == segment.id,
-                        DocumentSegmentSummary.dataset_id == dataset.id,
-                    )
-                    .limit(1)
+            # Update summary content
+            summary_record_in_session.summary_content = summary_content
+            session.add(summary_record_in_session)
+            # Flush to ensure summary_content is saved before vectorize_summary queries it
+            session.flush()
+
+            # Log LLM usage for summary generation
+            if llm_usage and llm_usage.total_tokens > 0:
+                logger.info(
+                    "Summary generation for segment %s used %s tokens (prompt: %s, completion: %s)",
+                    segment.id,
+                    llm_usage.total_tokens,
+                    llm_usage.prompt_tokens,
+                    llm_usage.completion_tokens,
                 )
-                if summary_record_in_session:
-                    summary_record_in_session.status = SummaryStatus.ERROR
-                    summary_record_in_session.error = str(e)
-                    session.add(summary_record_in_session)
-                    session.commit()
+
+            try:
+                SummaryIndexService.vectorize_summary(summary_record_in_session, segment, dataset, session=session)
+                # vectorize_summary mutates status and token fields; refresh before returning the ORM object.
+                session.refresh(summary_record_in_session)
+                session.commit()
+                logger.info("Successfully generated and vectorized summary for segment %s", segment.id)
+                return summary_record_in_session
+            except Exception as vectorize_error:
+                # If vectorization fails, update status to error in current session
+                logger.exception("Failed to vectorize summary for segment %s", segment.id)
+                summary_record_in_session.status = SummaryStatus.ERROR
+                summary_record_in_session.error = f"Vectorization failed: {str(vectorize_error)}"
+                session.add(summary_record_in_session)
+                session.commit()
                 raise
+
+        except Exception as e:
+            logger.exception("Failed to generate summary for segment %s", segment.id)
+            # Update summary record with error status
+            summary_record_in_session = session.scalar(
+                select(DocumentSegmentSummary)
+                .where(
+                    DocumentSegmentSummary.chunk_id == segment.id,
+                    DocumentSegmentSummary.dataset_id == dataset.id,
+                )
+                .limit(1)
+            )
+            if summary_record_in_session:
+                summary_record_in_session.status = SummaryStatus.ERROR
+                summary_record_in_session.error = str(e)
+                session.add(summary_record_in_session)
+                session.commit()
+            raise
 
     @staticmethod
     def generate_summaries_for_document(
@@ -840,7 +841,7 @@ class SummaryIndexService:
 
                 try:
                     summary_record = SummaryIndexService.generate_and_vectorize_summary(
-                        segment, dataset, summary_index_setting
+                        segment, dataset, summary_index_setting, session=session
                     )
                     summary_records.append(summary_record)
                 except Exception as e:
@@ -911,12 +912,11 @@ class SummaryIndexService:
 
             # Disable summary records (don't delete)
             now = naive_utc_now()
-            for summary in summaries:
-                summary.enabled = False
-                summary.disabled_at = now
-                summary.disabled_by = disabled_by
-                session.add(summary)
-
+            session.execute(
+                update(DocumentSegmentSummary)
+                .where(DocumentSegmentSummary.id.in_(s.id for s in summaries))
+                .values(enabled=False, disabled_at=now, disabled_by=disabled_by)
+            )
             session.commit()
             logger.info("Disabled %s summary records for dataset %s", len(summaries), dataset.id)
 
@@ -1048,6 +1048,8 @@ class SummaryIndexService:
         segment: DocumentSegment,
         dataset: Dataset,
         summary_content: str,
+        *,
+        session: Session,
     ) -> DocumentSegmentSummary | None:
         """
         Update summary for a segment and re-vectorize it.
@@ -1056,6 +1058,9 @@ class SummaryIndexService:
             segment: DocumentSegment to update summary for
             dataset: Dataset containing the segment
             summary_content: New summary content
+
+        Keyword Args:
+            session: SQLAlchemy session used for summary record updates.
 
         Returns:
             Updated DocumentSegmentSummary instance, or None if indexing technique is not high_quality
@@ -1072,67 +1077,22 @@ class SummaryIndexService:
         if segment.document and segment.document.doc_form == "qa_model":
             return None
 
-        with session_factory.create_session() as session:
-            try:
-                # Check if summary_content is empty (whitespace-only strings are considered empty)
-                if not summary_content or not summary_content.strip():
-                    # If summary is empty, only delete existing summary vector and record
-                    summary_record = session.scalar(
-                        select(DocumentSegmentSummary)
-                        .where(
-                            DocumentSegmentSummary.chunk_id == segment.id,
-                            DocumentSegmentSummary.dataset_id == dataset.id,
-                        )
-                        .limit(1)
-                    )
-
-                    if summary_record:
-                        # Delete old vector if exists
-                        old_summary_node_id = summary_record.summary_index_node_id
-                        if old_summary_node_id:
-                            try:
-                                vector = Vector(dataset)
-                                vector.delete_by_ids([old_summary_node_id])
-                            except Exception as e:
-                                logger.warning(
-                                    "Failed to delete old summary vector for segment %s: %s",
-                                    segment.id,
-                                    str(e),
-                                )
-
-                        # Delete summary record since summary is empty
-                        session.delete(summary_record)
-                        session.commit()
-                        logger.info("Deleted summary for segment %s (empty content provided)", segment.id)
-                        return None
-                    else:
-                        # No existing summary record, nothing to do
-                        logger.info("No summary record found for segment %s, nothing to delete", segment.id)
-                        return None
-
-                # Find existing summary record
-                summary_record = session.scalar(
-                    select(DocumentSegmentSummary)
-                    .where(
-                        DocumentSegmentSummary.chunk_id == segment.id,
-                        DocumentSegmentSummary.dataset_id == dataset.id,
-                    )
-                    .limit(1)
+        try:
+            summary_record = session.scalar(
+                select(DocumentSegmentSummary)
+                .where(
+                    DocumentSegmentSummary.chunk_id == segment.id,
+                    DocumentSegmentSummary.dataset_id == dataset.id,
                 )
+                .limit(1)
+            )
 
+            # Check if summary_content is empty (whitespace-only strings are considered empty)
+            if not summary_content or not summary_content.strip():
+                # If summary is empty, only delete existing summary vector and record
                 if summary_record:
-                    # Update existing summary
+                    # Delete old vector if exists
                     old_summary_node_id = summary_record.summary_index_node_id
-
-                    # Update summary content
-                    summary_record.summary_content = summary_content
-                    summary_record.status = SummaryStatus.GENERATING
-                    summary_record.error = None  # type: ignore[assignment]  # Clear any previous errors
-                    session.add(summary_record)
-                    # Flush to ensure summary_content is saved before vectorize_summary queries it
-                    session.flush()
-
-                    # Delete old vector if exists (before vectorization)
                     if old_summary_node_id:
                         try:
                             vector = Vector(dataset)
@@ -1144,80 +1104,90 @@ class SummaryIndexService:
                                 str(e),
                             )
 
-                    # Re-vectorize summary (this will update status to "completed" and tokens in its own session)
-                    # vectorize_summary will also ensure summary_content is preserved
-                    # Note: vectorize_summary may take time due to embedding API calls, but we need to complete it
-                    # to ensure the summary is properly indexed
-                    try:
-                        # Pass the session to vectorize_summary to avoid session isolation issues
-                        SummaryIndexService.vectorize_summary(summary_record, segment, dataset, session=session)
-                        # Refresh the object from database to get the updated status and tokens from vectorize_summary
-                        session.refresh(summary_record)
-                        # Now commit the session (summary_record should have status="completed" and tokens from refresh)
-                        session.commit()
-                        logger.info("Successfully updated and re-vectorized summary for segment %s", segment.id)
-                        return summary_record
-                    except Exception as e:
-                        # If vectorization fails, update status to error in current session
-                        # Don't raise the exception - just log it and return the record with error status
-                        # This allows the segment update to complete even if vectorization fails
-                        summary_record.status = SummaryStatus.ERROR
-                        summary_record.error = f"Vectorization failed: {str(e)}"
-                        session.commit()
-                        logger.exception("Failed to vectorize summary for segment %s", segment.id)
-                        # Return the record with error status instead of raising
-                        # The caller can check the status if needed
-                        return summary_record
-                else:
-                    # Create new summary record if doesn't exist
-                    summary_record = SummaryIndexService.create_summary_record(
-                        segment, dataset, summary_content, status=SummaryStatus.GENERATING
-                    )
-                    # Re-vectorize summary (this will update status to "completed" and tokens in its own session)
-                    # Note: summary_record was created in a different session,
-                    # so we need to merge it into current session
-                    try:
-                        # Merge the record into current session first (since it was created in a different session)
-                        summary_record = session.merge(summary_record)
-                        # Pass the session to vectorize_summary - it will update the merged record
-                        SummaryIndexService.vectorize_summary(summary_record, segment, dataset, session=session)
-                        # Refresh to get updated status and tokens from database
-                        session.refresh(summary_record)
-                        # Commit the session to persist the changes
-                        session.commit()
-                        logger.info("Successfully created and vectorized summary for segment %s", segment.id)
-                        return summary_record
-                    except Exception as e:
-                        # If vectorization fails, update status to error in current session
-                        # Merge the record into current session first
-                        error_record = session.merge(summary_record)
-                        error_record.status = SummaryStatus.ERROR
-                        error_record.error = f"Vectorization failed: {str(e)}"
-                        session.commit()
-                        logger.exception("Failed to vectorize summary for segment %s", segment.id)
-                        # Return the record with error status instead of raising
-                        return error_record
-
-            except Exception as e:
-                logger.exception("Failed to update summary for segment %s", segment.id)
-                # Update summary record with error status if it exists
-                summary_record = session.scalar(
-                    select(DocumentSegmentSummary)
-                    .where(
-                        DocumentSegmentSummary.chunk_id == segment.id,
-                        DocumentSegmentSummary.dataset_id == dataset.id,
-                    )
-                    .limit(1)
-                )
-                if summary_record:
-                    summary_record.status = SummaryStatus.ERROR
-                    summary_record.error = str(e)
-                    session.add(summary_record)
+                    # Delete summary record since summary is empty
+                    session.delete(summary_record)
                     session.commit()
-                raise
+                    logger.info("Deleted summary for segment %s (empty content provided)", segment.id)
+                    return None
+                else:
+                    # No existing summary record, nothing to do
+                    logger.info("No summary record found for segment %s, nothing to delete", segment.id)
+                    return None
+
+            if summary_record:
+                # Update existing summary
+                old_summary_node_id = summary_record.summary_index_node_id
+
+                # Update summary content
+                summary_record.summary_content = summary_content
+                summary_record.status = SummaryStatus.GENERATING
+                summary_record.error = None  # Clear any previous errors
+                session.add(summary_record)
+                # Flush to ensure summary_content is saved before vectorize_summary queries it
+                session.flush()
+
+                # Delete old vector if exists (before vectorization)
+                if old_summary_node_id:
+                    try:
+                        vector = Vector(dataset)
+                        vector.delete_by_ids([old_summary_node_id])
+                    except Exception as e:
+                        logger.warning(
+                            "Failed to delete old summary vector for segment %s: %s",
+                            segment.id,
+                            str(e),
+                        )
+            else:
+                # Create new summary record if doesn't exist
+                summary_record = SummaryIndexService.create_summary_record(
+                    segment,
+                    dataset,
+                    summary_content,
+                    status=SummaryStatus.GENERATING,
+                    session=session,
+                )
+
+            try:
+                # Vectorization must finish here so the manual summary is searchable immediately.
+                SummaryIndexService.vectorize_summary(summary_record, segment, dataset, session=session)
+                session.refresh(summary_record)
+                session.commit()
+                logger.info("Successfully updated and re-vectorized summary for segment %s", segment.id)
+                return summary_record
+            except Exception as e:
+                # If vectorization fails, update status to error in current session.
+                # Return the record with error status so callers can still finish segment updates.
+                summary_record.status = SummaryStatus.ERROR
+                summary_record.error = f"Vectorization failed: {str(e)}"
+                session.commit()
+                logger.exception("Failed to vectorize summary for segment %s", segment.id)
+                return summary_record
+
+        except Exception as e:
+            logger.exception("Failed to update summary for segment %s", segment.id)
+            # Update summary record with error status if it exists
+            summary_record = session.scalar(
+                select(DocumentSegmentSummary)
+                .where(
+                    DocumentSegmentSummary.chunk_id == segment.id,
+                    DocumentSegmentSummary.dataset_id == dataset.id,
+                )
+                .limit(1)
+            )
+            if summary_record:
+                summary_record.status = SummaryStatus.ERROR
+                summary_record.error = str(e)
+                session.add(summary_record)
+                session.commit()
+            raise
 
     @staticmethod
-    def get_segment_summary(segment_id: str, dataset_id: str) -> DocumentSegmentSummary | None:
+    def get_segment_summary(
+        segment_id: str,
+        dataset_id: str,
+        *,
+        session: Session,
+    ) -> DocumentSegmentSummary | None:
         """
         Get summary for a single segment.
 
@@ -1225,22 +1195,29 @@ class SummaryIndexService:
             segment_id: Segment ID (chunk_id)
             dataset_id: Dataset ID
 
+        Keyword Args:
+            session: SQLAlchemy session used to read summary records.
+
         Returns:
             DocumentSegmentSummary instance if found, None otherwise
         """
-        with session_factory.create_session() as session:
-            return session.scalar(
-                select(DocumentSegmentSummary)
-                .where(
-                    DocumentSegmentSummary.chunk_id == segment_id,
-                    DocumentSegmentSummary.dataset_id == dataset_id,
-                    DocumentSegmentSummary.enabled.is_(True),  # Only return enabled summaries
-                )
-                .limit(1)
+        return session.scalar(
+            select(DocumentSegmentSummary)
+            .where(
+                DocumentSegmentSummary.chunk_id == segment_id,
+                DocumentSegmentSummary.dataset_id == dataset_id,
+                DocumentSegmentSummary.enabled.is_(True),
             )
+            .limit(1)
+        )
 
     @staticmethod
-    def get_segments_summaries(segment_ids: list[str], dataset_id: str) -> dict[str, DocumentSegmentSummary]:
+    def get_segments_summaries(
+        segment_ids: list[str],
+        dataset_id: str,
+        *,
+        session: Session,
+    ) -> dict[str, DocumentSegmentSummary]:
         """
         Get summaries for multiple segments.
 
@@ -1248,26 +1225,31 @@ class SummaryIndexService:
             segment_ids: List of segment IDs (chunk_ids)
             dataset_id: Dataset ID
 
+        Keyword Args:
+            session: SQLAlchemy session used to read summary records.
+
         Returns:
             Dictionary mapping segment_id to DocumentSegmentSummary (only enabled summaries)
         """
         if not segment_ids:
             return {}
 
-        with session_factory.create_session() as session:
-            summary_records = session.scalars(
-                select(DocumentSegmentSummary).where(
-                    DocumentSegmentSummary.chunk_id.in_(segment_ids),
-                    DocumentSegmentSummary.dataset_id == dataset_id,
-                    DocumentSegmentSummary.enabled.is_(True),  # Only return enabled summaries
-                )
-            ).all()
-
-            return {summary.chunk_id: summary for summary in summary_records}
+        summaries = session.scalars(
+            select(DocumentSegmentSummary).where(
+                DocumentSegmentSummary.chunk_id.in_(segment_ids),
+                DocumentSegmentSummary.dataset_id == dataset_id,
+                DocumentSegmentSummary.enabled.is_(True),
+            )
+        ).all()
+        return {summary.chunk_id: summary for summary in summaries}
 
     @staticmethod
     def get_document_summaries(
-        document_id: str, dataset_id: str, segment_ids: list[str] | None = None
+        document_id: str,
+        dataset_id: str,
+        segment_ids: list[str] | None = None,
+        *,
+        session: Session,
     ) -> list[DocumentSegmentSummary]:
         """
         Get all summary records for a document.
@@ -1277,23 +1259,31 @@ class SummaryIndexService:
             dataset_id: Dataset ID
             segment_ids: Optional list of segment IDs to filter by
 
+        Keyword Args:
+            session: SQLAlchemy session used to read summary records.
+
         Returns:
             List of DocumentSegmentSummary instances (only enabled summaries)
         """
-        with session_factory.create_session() as session:
-            stmt = select(DocumentSegmentSummary).where(
-                DocumentSegmentSummary.document_id == document_id,
-                DocumentSegmentSummary.dataset_id == dataset_id,
-                DocumentSegmentSummary.enabled.is_(True),  # Only return enabled summaries
-            )
+        stmt = select(DocumentSegmentSummary).where(
+            DocumentSegmentSummary.document_id == document_id,
+            DocumentSegmentSummary.dataset_id == dataset_id,
+            DocumentSegmentSummary.enabled.is_(True),
+        )
 
-            if segment_ids:
-                stmt = stmt.where(DocumentSegmentSummary.chunk_id.in_(segment_ids))
+        if segment_ids:
+            stmt = stmt.where(DocumentSegmentSummary.chunk_id.in_(segment_ids))
 
-            return list(session.scalars(stmt).all())
+        return list(session.scalars(stmt).all())
 
     @staticmethod
-    def get_document_summary_index_status(document_id: str, dataset_id: str, tenant_id: str) -> str | None:
+    def get_document_summary_index_status(
+        document_id: str,
+        dataset_id: str,
+        tenant_id: str,
+        *,
+        session: Session,
+    ) -> str | None:
         """
         Get summary_index_status for a single document.
 
@@ -1302,26 +1292,28 @@ class SummaryIndexService:
             dataset_id: Dataset ID
             tenant_id: Tenant ID
 
+        Keyword Args:
+            session: SQLAlchemy session used to read summary status.
+
         Returns:
             "SUMMARIZING" if there are pending summaries, None otherwise
         """
         # Get all segments for this document (excluding qa_model and re_segment)
-        with session_factory.create_session() as session:
-            segment_ids = list(
-                session.scalars(
-                    select(DocumentSegment.id).where(
-                        DocumentSegment.document_id == document_id,
-                        DocumentSegment.status != "re_segment",
-                        DocumentSegment.tenant_id == tenant_id,
-                    )
-                ).all()
-            )
+        segment_ids = list(
+            session.scalars(
+                select(DocumentSegment.id).where(
+                    DocumentSegment.document_id == document_id,
+                    DocumentSegment.status != "re_segment",
+                    DocumentSegment.tenant_id == tenant_id,
+                )
+            ).all()
+        )
 
         if not segment_ids:
             return None
 
         # Get all summary records for these segments
-        summaries = SummaryIndexService.get_segments_summaries(segment_ids, dataset_id)
+        summaries = SummaryIndexService.get_segments_summaries(segment_ids, dataset_id, session=session)
         summary_status_map = {chunk_id: summary.status for chunk_id, summary in summaries.items()}
 
         # Check if there are any "not_started" or "generating" status summaries
@@ -1335,7 +1327,11 @@ class SummaryIndexService:
 
     @staticmethod
     def get_documents_summary_index_status(
-        document_ids: list[str], dataset_id: str, tenant_id: str
+        document_ids: list[str],
+        dataset_id: str,
+        tenant_id: str,
+        *,
+        session: Session,
     ) -> dict[str, str | None]:
         """
         Get summary_index_status for multiple documents.
@@ -1345,6 +1341,9 @@ class SummaryIndexService:
             dataset_id: Dataset ID
             tenant_id: Tenant ID
 
+        Keyword Args:
+            session: SQLAlchemy session used to read summary status.
+
         Returns:
             Dictionary mapping document_id to summary_index_status ("SUMMARIZING" or None)
         """
@@ -1352,14 +1351,13 @@ class SummaryIndexService:
             return {}
 
         # Get all segments for these documents (excluding qa_model and re_segment)
-        with session_factory.create_session() as session:
-            segments = session.execute(
-                select(DocumentSegment.id, DocumentSegment.document_id).where(
-                    DocumentSegment.document_id.in_(document_ids),
-                    DocumentSegment.status != "re_segment",
-                    DocumentSegment.tenant_id == tenant_id,
-                )
-            ).all()
+        segments = session.execute(
+            select(DocumentSegment.id, DocumentSegment.document_id).where(
+                DocumentSegment.document_id.in_(document_ids),
+                DocumentSegment.status != "re_segment",
+                DocumentSegment.tenant_id == tenant_id,
+            )
+        ).all()
 
         # Group segments by document_id
         document_segments_map: dict[str, list[str]] = {}
@@ -1371,7 +1369,7 @@ class SummaryIndexService:
 
         # Get all summary records for these segments
         all_segment_ids = [seg.id for seg in segments]
-        summaries = SummaryIndexService.get_segments_summaries(all_segment_ids, dataset_id)
+        summaries = SummaryIndexService.get_segments_summaries(all_segment_ids, dataset_id, session=session)
         summary_status_map = {chunk_id: summary.status for chunk_id, summary in summaries.items()}
 
         # Calculate summary_index_status for each document
@@ -1407,6 +1405,7 @@ class SummaryIndexService:
     def get_document_summary_status_detail(
         document_id: str,
         dataset_id: str,
+        session: Session,
     ) -> DocumentSummaryStatusDetailDict:
         """
         Get detailed summary status for a document.
@@ -1414,6 +1413,7 @@ class SummaryIndexService:
         Args:
             document_id: Document ID
             dataset_id: Dataset ID
+            session: SQLAlchemy session used for segment lookup
 
         Returns:
             Dictionary containing:
@@ -1423,6 +1423,7 @@ class SummaryIndexService:
               - generating: Number of summaries being generated
               - error: Number of summaries with errors
               - not_started: Number of segments without summary records
+              - timeout: Number of summaries that timed out
             - summaries: List of summary records with status and content preview
         """
         from services.dataset_service import SegmentService
@@ -1431,6 +1432,7 @@ class SummaryIndexService:
         segments = SegmentService.get_segments_by_document_and_dataset(
             document_id=document_id,
             dataset_id=dataset_id,
+            session=session,
             status="completed",
             enabled=True,
         )
@@ -1445,6 +1447,7 @@ class SummaryIndexService:
                 document_id=document_id,
                 dataset_id=dataset_id,
                 segment_ids=segment_ids,
+                session=session,
             )
 
         # Create a mapping of chunk_id to summary

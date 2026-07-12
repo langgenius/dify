@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  ALL_ERROR_CODES,
-  CODE_TO_EXIT_MAP,
-  ErrorCode,
-  ExitCode,
-  exitFor,
-} from './codes'
+import { ALL_ERROR_CODES, CODE_TO_EXIT_MAP, ErrorCode, ExitCode, exitFor } from './codes'
 
 describe('error codes', () => {
   it('has correct number codes (parity with internal/api/errors)', () => {
@@ -22,8 +16,7 @@ describe('error codes', () => {
   })
 
   it('every code maps to an exit', () => {
-    for (const code of ALL_ERROR_CODES)
-      expect(CODE_TO_EXIT_MAP[code]).toBeDefined()
+    for (const code of ALL_ERROR_CODES) expect(CODE_TO_EXIT_MAP[code]).toBeDefined()
   })
 
   it('CODE_TO_EXIT_MAP entry count == ALL_ERROR_CODES length (drift guard)', () => {

@@ -14,13 +14,18 @@ vi.mock('@/context/i18n', () => ({
 // Mock dataset-detail context - context provider requires mocking
 let mockPipelineId = 'pipeline-123'
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (s: Record<string, unknown>) => unknown) => selector({ dataset: { pipeline_id: mockPipelineId } }),
+  useDatasetDetailContextWithSelector: (selector: (s: Record<string, unknown>) => unknown) =>
+    selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
 
 // Mock modal context - context provider requires mocking
 const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: (selector: (s: Record<string, unknown>) => unknown) => selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
+  useModalContext: () => ({
+    setShowAccountSettingModal: mockSetShowAccountSettingModal,
+  }),
+  useModalContextSelector: (selector: (s: Record<string, unknown>) => unknown) =>
+    selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
 }))
 
 // Mock ssePost - API service requires mocking
@@ -75,7 +80,8 @@ const mockGetState = vi.fn(() => mockStoreState)
 const mockDataSourceStore = { getState: mockGetState }
 
 vi.mock('../../store', () => ({
-  useDataSourceStoreWithSelector: (selector: (s: Record<string, unknown>) => unknown) => selector(mockStoreState as unknown as Record<string, unknown>),
+  useDataSourceStoreWithSelector: (selector: (s: Record<string, unknown>) => unknown) =>
+    selector(mockStoreState as unknown as Record<string, unknown>),
   useDataSourceStore: () => mockDataSourceStore,
 }))
 
@@ -87,21 +93,33 @@ vi.mock('../../base/header', () => ({
       <span data-testid="header-doc-link">{props.docLink as string}</span>
       <span data-testid="header-plugin-name">{props.pluginName as string}</span>
       <span data-testid="header-credential-id">{props.currentCredentialId as string}</span>
-      <button data-testid="header-config-btn" onClick={props.onClickConfiguration as React.MouseEventHandler}>Configure</button>
-      <button data-testid="header-credential-change" onClick={() => (props.onCredentialChange as (id: string) => void)('new-cred-id')}>Change Credential</button>
-      <span data-testid="header-credentials-count">{(props.credentials as unknown[] | undefined)?.length || 0}</span>
+      <button
+        data-testid="header-config-btn"
+        onClick={props.onClickConfiguration as React.MouseEventHandler}
+      >
+        Configure
+      </button>
+      <button
+        data-testid="header-credential-change"
+        onClick={() => (props.onCredentialChange as (id: string) => void)('new-cred-id')}
+      >
+        Change Credential
+      </button>
+      <span data-testid="header-credentials-count">
+        {(props.credentials as unknown[] | undefined)?.length || 0}
+      </span>
     </div>
   ),
 }))
 
 // Mock SearchInput component
 vi.mock('@/app/components/base/notion-page-selector/search-input', () => ({
-  default: ({ value, onChange }: { value: string, onChange: (v: string) => void }) => (
+  default: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
     <div data-testid="search-input">
       <input
         data-testid="search-input-field"
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         placeholder="Search"
       />
     </div>
@@ -112,14 +130,18 @@ vi.mock('@/app/components/base/notion-page-selector/search-input', () => ({
 vi.mock('../page-selector', () => ({
   default: (props: Record<string, unknown>) => (
     <div data-testid="page-selector">
-      <span data-testid="page-selector-checked-count">{(props.checkedIds as Set<string> | undefined)?.size || 0}</span>
+      <span data-testid="page-selector-checked-count">
+        {(props.checkedIds as Set<string> | undefined)?.size || 0}
+      </span>
       <span data-testid="page-selector-search-value">{props.searchValue as string}</span>
       <span data-testid="page-selector-can-preview">{String(props.canPreview)}</span>
       <span data-testid="page-selector-multiple-choice">{String(props.isMultipleChoice)}</span>
       <span data-testid="page-selector-credential-id">{props.currentCredentialId as string}</span>
       <button
         data-testid="page-selector-select-btn"
-        onClick={() => (props.onSelect as (ids: Set<string>) => void)(new Set(['page-1', 'page-2']))}
+        onClick={() =>
+          (props.onSelect as (ids: Set<string>) => void)(new Set(['page-1', 'page-2']))
+        }
       >
         Select Pages
       </button>
@@ -142,17 +164,18 @@ vi.mock('../title', () => ({
   ),
 }))
 
-const createMockNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType => ({
-  title: 'Test Node',
-  plugin_id: 'plugin-123',
-  provider_type: 'notion',
-  provider_name: 'notion-provider',
-  datasource_name: 'notion-ds',
-  datasource_label: 'Notion',
-  datasource_parameters: {},
-  datasource_configurations: {},
-  ...overrides,
-} as DataSourceNodeType)
+const createMockNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType =>
+  ({
+    title: 'Test Node',
+    plugin_id: 'plugin-123',
+    provider_type: 'notion',
+    provider_name: 'notion-provider',
+    datasource_name: 'notion-ds',
+    datasource_label: 'Notion',
+    datasource_parameters: {},
+    datasource_configurations: {},
+    ...overrides,
+  }) as DataSourceNodeType
 
 const createMockPage = (overrides?: Partial<NotionPage>): NotionPage => ({
   page_id: 'page-1',
@@ -165,7 +188,9 @@ const createMockPage = (overrides?: Partial<NotionPage>): NotionPage => ({
   ...overrides,
 })
 
-const createMockWorkspace = (overrides?: Partial<DataSourceNotionWorkspace>): DataSourceNotionWorkspace => ({
+const createMockWorkspace = (
+  overrides?: Partial<DataSourceNotionWorkspace>,
+): DataSourceNotionWorkspace => ({
   workspace_id: 'workspace-1',
   workspace_name: 'Test Workspace',
   workspace_icon: null,
@@ -173,7 +198,7 @@ const createMockWorkspace = (overrides?: Partial<DataSourceNotionWorkspace>): Da
   ...overrides,
 })
 
-const createMockCredential = (overrides?: Partial<{ id: string, name: string }>) => ({
+const createMockCredential = (overrides?: Partial<{ id: string; name: string }>) => ({
   id: 'cred-1',
   name: 'Test Credential',
   avatar_url: 'https://example.com/avatar.png',
@@ -579,9 +604,7 @@ describe('OnlineDocuments', () => {
     })
 
     it('should have stable handlePreviewPage that updates store', () => {
-      const mockPages = [
-        createMockPage({ page_id: 'page-1', page_name: 'Page 1' }),
-      ]
+      const mockPages = [createMockPage({ page_id: 'page-1', page_name: 'Page 1' })]
       mockStoreState.documentsData = [createMockWorkspace({ pages: mockPages })]
       const props = createDefaultProps()
       render(<OnlineDocuments {...props} />)
@@ -896,7 +919,10 @@ describe('OnlineDocuments', () => {
       const nodeData = createMockNodeData({
         datasource_parameters: {
           // Object without 'value' key - should use the object itself
-          objWithoutValue: { type: VarKindType.constant, other: 'data' } as Record<string, unknown> & { type: VarKindType },
+          objWithoutValue: { type: VarKindType.constant, other: 'data' } as Record<
+            string,
+            unknown
+          > & { type: VarKindType },
         },
       })
       const props = createDefaultProps({ nodeData })
@@ -909,7 +935,10 @@ describe('OnlineDocuments', () => {
         expect.objectContaining({
           body: expect.objectContaining({
             inputs: expect.objectContaining({
-              objWithoutValue: expect.objectContaining({ type: VarKindType.constant, other: 'data' }),
+              objWithoutValue: expect.objectContaining({
+                type: VarKindType.constant,
+                other: 'data',
+              }),
             }),
           }),
         }),
@@ -919,8 +948,14 @@ describe('OnlineDocuments', () => {
 
     it('should handle multiple workspaces in documentsData', () => {
       mockStoreState.documentsData = [
-        createMockWorkspace({ workspace_id: 'ws-1', pages: [createMockPage({ page_id: 'page-1' })] }),
-        createMockWorkspace({ workspace_id: 'ws-2', pages: [createMockPage({ page_id: 'page-2' })] }),
+        createMockWorkspace({
+          workspace_id: 'ws-1',
+          pages: [createMockPage({ page_id: 'page-1' })],
+        }),
+        createMockWorkspace({
+          workspace_id: 'ws-2',
+          pages: [createMockPage({ page_id: 'page-2' })],
+        }),
       ]
       const props = createDefaultProps()
 
@@ -937,7 +972,9 @@ describe('OnlineDocuments', () => {
       const searchInput = screen.getByTestId('search-input-field')
       fireEvent.change(searchInput, { target: { value: 'test<script>alert("xss")</script>' } })
 
-      expect(mockStoreState.setSearchValue).toHaveBeenCalledWith('test<script>alert("xss")</script>')
+      expect(mockStoreState.setSearchValue).toHaveBeenCalledWith(
+        'test<script>alert("xss")</script>',
+      )
     })
 
     it('should handle unicode characters in searchValue', () => {

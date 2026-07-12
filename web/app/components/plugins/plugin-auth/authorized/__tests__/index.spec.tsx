@@ -59,10 +59,18 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'success', message, ...options }),
+    ),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'error', message, ...options }),
+    ),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'warning', message, ...options }),
+    ),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'info', message, ...options }),
+    ),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -74,6 +82,53 @@ vi.mock('@/hooks/use-oauth', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
+
+const mockAppContext = vi.hoisted(() => ({
+  userProfile: { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' },
+  workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
+}))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockAppContext.userProfile,
+    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockAppContext.userProfile,
+    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockAppContext.userProfile,
+    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockAppContext.userProfile,
+    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockAppContext.userProfile,
+    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 // Mock service/use-triggers
 vi.mock('@/service/use-triggers', () => ({
@@ -103,9 +158,7 @@ const createTestQueryClient = () =>
 const createWrapper = () => {
   const testQueryClient = createTestQueryClient()
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={testQueryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
   )
 }
 
@@ -130,6 +183,11 @@ const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
 describe('Authorized Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppContext.workspacePermissionKeys = [
+      'credential.use',
+      'credential.create',
+      'credential.manage',
+    ]
     mockDeletePluginCredential.mockResolvedValue({})
     mockSetPluginDefaultCredential.mockResolvedValue({})
     mockUpdatePluginCredential.mockResolvedValue({})
@@ -141,13 +199,9 @@ describe('Authorized Component', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential()]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
@@ -160,7 +214,9 @@ describe('Authorized Component', () => {
         <Authorized
           pluginPayload={pluginPayload}
           credentials={credentials}
-          renderTrigger={open => <div data-testid="custom-trigger">{open ? 'Open' : 'Closed'}</div>}
+          renderTrigger={(open) => (
+            <div data-testid="custom-trigger">{open ? 'Open' : 'Closed'}</div>
+          )}
         />,
         { wrapper: createWrapper() },
       )
@@ -173,13 +229,9 @@ describe('Authorized Component', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential()]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} />, {
+        wrapper: createWrapper(),
+      })
 
       // Text is split by elements, use regex to find partial match
       // Text is split by elements, use regex to find partial match
@@ -188,18 +240,11 @@ describe('Authorized Component', () => {
 
     it('should show plural authorizations text for multiple credentials', () => {
       const pluginPayload = createPluginPayload()
-      const credentials = [
-        createCredential({ id: '1' }),
-        createCredential({ id: '2' }),
-      ]
+      const credentials = [createCredential({ id: '1' }), createCredential({ id: '2' })]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} />, {
+        wrapper: createWrapper(),
+      })
 
       // Text is split by elements, use regex to find partial match
       // Text is split by elements, use regex to find partial match
@@ -213,28 +258,19 @@ describe('Authorized Component', () => {
         createCredential({ id: '2', not_allowed_to_use: true }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText(/plugin\.auth\.unavailable/))!.toBeInTheDocument()
     })
 
     it('should show gray indicator when default credential is unavailable', () => {
       const pluginPayload = createPluginPayload()
-      const credentials = [
-        createCredential({ is_default: true, not_allowed_to_use: true }),
-      ]
+      const credentials = [createCredential({ is_default: true, not_allowed_to_use: true })]
 
       const { container } = render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-        />,
+        <Authorized pluginPayload={pluginPayload} credentials={credentials} />,
         { wrapper: createWrapper() },
       )
 
@@ -248,13 +284,9 @@ describe('Authorized Component', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential()]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} />, {
+        wrapper: createWrapper(),
+      })
 
       const trigger = screen.getByRole('button')
       fireEvent.click(trigger)
@@ -294,13 +326,9 @@ describe('Authorized Component', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential()]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} />, {
+        wrapper: createWrapper(),
+      })
 
       const trigger = screen.getByRole('button')
 
@@ -319,17 +347,16 @@ describe('Authorized Component', () => {
     it('should render OAuth credentials section when oAuthCredentials exist', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [
-        createCredential({ id: '1', credential_type: CredentialTypeEnum.OAUTH2, name: 'OAuth Cred' }),
+        createCredential({
+          id: '1',
+          credential_type: CredentialTypeEnum.OAUTH2,
+          name: 'OAuth Cred',
+        }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       expect(screen.getByText('OAuth Cred'))!.toBeInTheDocument()
@@ -338,17 +365,16 @@ describe('Authorized Component', () => {
     it('should render API Key credentials section when apiKeyCredentials exist', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [
-        createCredential({ id: '1', credential_type: CredentialTypeEnum.API_KEY, name: 'API Key Cred' }),
+        createCredential({
+          id: '1',
+          credential_type: CredentialTypeEnum.API_KEY,
+          name: 'API Key Cred',
+        }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('API Keys'))!.toBeInTheDocument()
       expect(screen.getByText('API Key Cred'))!.toBeInTheDocument()
@@ -357,18 +383,21 @@ describe('Authorized Component', () => {
     it('should render both OAuth and API Key sections when both exist', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [
-        createCredential({ id: '1', credential_type: CredentialTypeEnum.OAUTH2, name: 'OAuth Cred' }),
-        createCredential({ id: '2', credential_type: CredentialTypeEnum.API_KEY, name: 'API Key Cred' }),
+        createCredential({
+          id: '1',
+          credential_type: CredentialTypeEnum.OAUTH2,
+          name: 'OAuth Cred',
+        }),
+        createCredential({
+          id: '2',
+          credential_type: CredentialTypeEnum.API_KEY,
+          name: 'API Key Cred',
+        }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       expect(screen.getByText('API Keys'))!.toBeInTheDocument()
@@ -377,9 +406,7 @@ describe('Authorized Component', () => {
     it('should render extra authorization items when provided', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential()]
-      const extraItems = [
-        createCredential({ id: 'extra-1', name: 'Extra Item' }),
-      ]
+      const extraItems = [createCredential({ id: 'extra-1', name: 'Extra Item' })]
 
       render(
         <Authorized
@@ -421,14 +448,9 @@ describe('Authorized Component', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential({ credential_type: CredentialTypeEnum.OAUTH2 })]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Find and click delete button in the credential item
       const deleteButton = document.querySelector('svg.ri-delete-bin-line')?.closest('button')
@@ -446,14 +468,9 @@ describe('Authorized Component', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential({ credential_type: CredentialTypeEnum.OAUTH2 })]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Wait for OAuth section to render
       await waitFor(() => {
@@ -480,7 +497,9 @@ describe('Authorized Component', () => {
 
             // Dialog should close
             await waitFor(() => {
-              expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
+              expect(
+                screen.queryByText('datasetDocuments.list.delete.title'),
+              ).not.toBeInTheDocument()
             })
             break
           }
@@ -494,7 +513,9 @@ describe('Authorized Component', () => {
 
     it('should call deletePluginCredential when confirm is clicked', async () => {
       const pluginPayload = createPluginPayload()
-      const credentials = [createCredential({ id: 'delete-me', credential_type: CredentialTypeEnum.OAUTH2 })]
+      const credentials = [
+        createCredential({ id: 'delete-me', credential_type: CredentialTypeEnum.OAUTH2 }),
+      ]
       const onUpdate = vi.fn()
 
       render(
@@ -537,14 +558,9 @@ describe('Authorized Component', () => {
       const credentials: Credential[] = []
 
       // This test verifies the edge case handling
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // No credentials to delete, so nothing to test here
       expect(mockDeletePluginCredential).not.toHaveBeenCalled()
@@ -665,7 +681,11 @@ describe('Authorized Component', () => {
         if (btn.querySelector('svg.remixicon') && !btn.querySelector('svg.ri-delete-bin-line')) {
           // Check if this is an action button (not delete)
           const svg = btn.querySelector('svg')
-          if (svg && !svg.classList.contains('ri-delete-bin-line') && !svg.classList.contains('ri-arrow-down-s-line')) {
+          if (
+            svg &&
+            !svg.classList.contains('ri-delete-bin-line') &&
+            !svg.classList.contains('ri-arrow-down-s-line')
+          ) {
             renameButton = btn
             break
           }
@@ -697,8 +717,7 @@ describe('Authorized Component', () => {
           })
           expect(onUpdate).toHaveBeenCalled()
         }
-      }
-      else {
+      } else {
         // Verify component renders properly
         // Verify component renders properly
         expect(screen.getByText('OAuth'))!.toBeInTheDocument()
@@ -714,14 +733,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Verify component renders
       // Verify component renders
@@ -793,11 +807,15 @@ describe('Authorized Component', () => {
 
       // Find all action buttons in the credential item
       // The rename button should be present for OAuth credentials
-      const actionButtons = Array.from(document.querySelectorAll('.group-hover\\:flex button, button'))
+      const actionButtons = Array.from(
+        document.querySelectorAll('.group-hover\\:flex button, button'),
+      )
 
       // Find the rename trigger button (the one with edit icon, not delete)
       for (const btn of actionButtons) {
-        const hasDeleteIcon = btn.querySelector('svg path')?.getAttribute('d')?.includes('DELETE') || btn.querySelector('.ri-delete-bin-line')
+        const hasDeleteIcon =
+          btn.querySelector('svg path')?.getAttribute('d')?.includes('DELETE') ||
+          btn.querySelector('.ri-delete-bin-line')
         const hasSvg = btn.querySelector('svg')
 
         if (hasSvg && !hasDeleteIcon && !btn.textContent?.includes('setDefault')) {
@@ -851,14 +869,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Find edit button (RiEqualizer2Line)
       const editButton = document.querySelector('svg.ri-equalizer-2-line')?.closest('button')
@@ -884,14 +897,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Open edit modal
       const editButton = document.querySelector('svg.ri-equalizer-2-line')?.closest('button')
@@ -937,14 +945,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Find and click edit button
       const editButtons = Array.from(document.querySelectorAll('button'))
@@ -987,8 +990,7 @@ describe('Authorized Component', () => {
             expect(screen.getByText('API Keys'))!.toBeInTheDocument()
           })
         }
-      }
-      else {
+      } else {
         // Verify component renders
         // Verify component renders
         expect(screen.getByText('API Keys'))!.toBeInTheDocument()
@@ -1006,14 +1008,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Wait for component to render
       // Wait for component to render
@@ -1030,10 +1027,13 @@ describe('Authorized Component', () => {
           })
 
           // Wait for ApiKeyModal to render
-          await waitFor(() => {
-            const modals = document.querySelectorAll('.fixed')
-            expect(modals.length).toBeGreaterThan(0)
-          }, { timeout: 2000 })
+          await waitFor(
+            () => {
+              const modals = document.querySelectorAll('.fixed')
+              expect(modals.length).toBeGreaterThan(0)
+            },
+            { timeout: 2000 },
+          )
 
           // Find and click the close/cancel button
           // The modal should have a cancel button
@@ -1068,14 +1068,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Wait for component to render
       // Wait for component to render
@@ -1106,12 +1101,15 @@ describe('Authorized Component', () => {
 
             // After clicking remove, a confirm dialog should appear
             // because handleRemove sets deleteCredentialId
-            await waitFor(() => {
-              const confirmDialog = screen.queryByText('datasetDocuments.list.delete.title')
-              if (confirmDialog) {
-                expect(confirmDialog)!.toBeInTheDocument()
-              }
-            }, { timeout: 1000 })
+            await waitFor(
+              () => {
+                const confirmDialog = screen.queryByText('datasetDocuments.list.delete.title')
+                if (confirmDialog) {
+                  expect(confirmDialog)!.toBeInTheDocument()
+                }
+              },
+              { timeout: 1000 },
+            )
           }
         }
       }
@@ -1128,39 +1126,43 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Verify API Keys section is shown
       // Verify API Keys section is shown
       expect(screen.getByText('API Keys'))!.toBeInTheDocument()
 
       // Find edit button - look for buttons in the action area
-      const actionAreaButtons = Array.from(document.querySelectorAll('.group-hover\\:flex button, .hidden button'))
+      const actionAreaButtons = Array.from(
+        document.querySelectorAll('.group-hover\\:flex button, .hidden button'),
+      )
 
       for (const btn of actionAreaButtons) {
         const svg = btn.querySelector('svg')
-        if (svg && !btn.textContent?.includes('setDefault') && !btn.textContent?.includes('delete')) {
+        if (
+          svg &&
+          !btn.textContent?.includes('setDefault') &&
+          !btn.textContent?.includes('delete')
+        ) {
           await act(async () => {
             fireEvent.click(btn)
           })
 
           // Check if modal opened
-          await waitFor(() => {
-            const modal = document.querySelector('.fixed')
-            if (modal) {
-              const cancelButton = screen.queryByText('common.operation.cancel')
-              if (cancelButton) {
-                fireEvent.click(cancelButton)
+          await waitFor(
+            () => {
+              const modal = document.querySelector('.fixed')
+              if (modal) {
+                const cancelButton = screen.queryByText('common.operation.cancel')
+                if (cancelButton) {
+                  fireEvent.click(cancelButton)
+                }
               }
-            }
-          }, { timeout: 1000 })
+            },
+            { timeout: 1000 },
+          )
           break
         }
       }
@@ -1181,14 +1183,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Verify component renders
       // Verify component renders
@@ -1196,27 +1193,36 @@ describe('Authorized Component', () => {
 
       // Find edit button by looking for action buttons (not in the confirm dialog)
       // These are grouped in hidden elements that show on hover
-      const actionAreaButtons = Array.from(document.querySelectorAll('.group-hover\\:flex button, .hidden button'))
+      const actionAreaButtons = Array.from(
+        document.querySelectorAll('.group-hover\\:flex button, .hidden button'),
+      )
 
       for (const btn of actionAreaButtons) {
         const svg = btn.querySelector('svg')
         // Look for a button that's not the delete button
-        if (svg && !btn.textContent?.includes('setDefault') && !btn.textContent?.includes('delete')) {
+        if (
+          svg &&
+          !btn.textContent?.includes('setDefault') &&
+          !btn.textContent?.includes('delete')
+        ) {
           await act(async () => {
             fireEvent.click(btn)
           })
 
           // Check if ApiKeyModal opened
-          await waitFor(() => {
-            const modal = document.querySelector('.fixed')
-            if (modal) {
-              // Find remove button
-              const removeButton = screen.queryByText('common.operation.remove')
-              if (removeButton) {
-                fireEvent.click(removeButton)
+          await waitFor(
+            () => {
+              const modal = document.querySelector('.fixed')
+              if (modal) {
+                // Find remove button
+                const removeButton = screen.queryByText('common.operation.remove')
+                if (removeButton) {
+                  fireEvent.click(removeButton)
+                }
               }
-            }
-          }, { timeout: 1000 })
+            },
+            { timeout: 1000 },
+          )
           break
         }
       }
@@ -1235,14 +1241,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Open edit modal
       const editButton = document.querySelector('svg.ri-equalizer-2-line')?.closest('button')
@@ -1254,8 +1255,9 @@ describe('Authorized Component', () => {
         })
 
         // Find remove button in modal (usually has delete/remove text)
-        const removeButton = screen.queryByText('common.operation.remove')
-          || screen.queryByText('common.operation.delete')
+        const removeButton =
+          screen.queryByText('common.operation.remove') ||
+          screen.queryByText('common.operation.delete')
 
         if (removeButton) {
           fireEvent.click(removeButton)
@@ -1279,14 +1281,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Open edit modal - find the edit button by looking for RiEqualizer2Line icon
       const allButtons = Array.from(document.querySelectorAll('button'))
@@ -1327,8 +1324,7 @@ describe('Authorized Component', () => {
             expect(screen.getByText('API Keys'))!.toBeInTheDocument()
           })
         }
-      }
-      else {
+      } else {
         // If no edit button found, just verify the component renders
         // If no edit button found, just verify the component renders
         expect(screen.getByText('API Keys'))!.toBeInTheDocument()
@@ -1445,32 +1441,32 @@ describe('Authorized Component', () => {
       expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
-    it('should pass disabled to Item components', () => {
+    it('should allow credential.use to set default when credential.manage is missing', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential({ is_default: false })]
+      mockAppContext.workspacePermissionKeys = ['credential.use']
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-          disabled={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
-      // When disabled is true, action buttons should be disabled
-      // Look for the set default button which should have disabled attribute
       const setDefaultButton = screen.queryByText('plugin.auth.setDefault')
-      if (setDefaultButton) {
-        const button = setDefaultButton.closest('button')
-        expect(button)!.toBeDisabled()
-      }
-      else {
-        // If no set default button, verify the component rendered
-        // If no set default button, verify the component rendered
-        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-      }
+      expect(setDefaultButton)!.toBeInTheDocument()
+      expect(setDefaultButton!.closest('button'))!.toBeEnabled()
+    })
+
+    it('should disable set default when credential.use and credential.manage are missing', () => {
+      const pluginPayload = createPluginPayload()
+      const credentials = [createCredential({ is_default: false })]
+      mockAppContext.workspacePermissionKeys = []
+
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
+
+      const setDefaultButton = screen.queryByText('plugin.auth.setDefault')
+      expect(setDefaultButton)!.toBeInTheDocument()
+      expect(setDefaultButton!.closest('button'))!.toBeDisabled()
     })
 
     it('should pass disableSetDefault to Item components', () => {
@@ -1530,16 +1526,13 @@ describe('Authorized Component', () => {
       const credentials = [createCredential({ credential_type: CredentialTypeEnum.OAUTH2 })]
 
       // Make delete slow
-      mockDeletePluginCredential.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
-
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
+      mockDeletePluginCredential.mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 100)),
       )
+
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Trigger delete
       const deleteButton = document.querySelector('svg.ri-delete-bin-line')?.closest('button')
@@ -1568,16 +1561,13 @@ describe('Authorized Component', () => {
       const credentials = [createCredential({ is_default: false })]
 
       // Make set default slow
-      mockSetPluginDefaultCredential.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
-
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
+      mockSetPluginDefaultCredential.mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 100)),
       )
+
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       const setDefaultButton = screen.queryByText('plugin.auth.setDefault')
       if (setDefaultButton) {
@@ -1600,16 +1590,13 @@ describe('Authorized Component', () => {
       ]
 
       // Make rename slow
-      mockUpdatePluginCredential.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
-
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
+      mockUpdatePluginCredential.mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 100)),
       )
+
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Enter rename mode
       const renameButton = document.querySelector('svg.ri-edit-line')?.closest('button')
@@ -1635,13 +1622,9 @@ describe('Authorized Component', () => {
       const pluginPayload = createPluginPayload()
       const credentials: Credential[] = []
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} />, {
+        wrapper: createWrapper(),
+      })
 
       // Should render with 0 count - the button should contain 0
       const button = screen.getByRole('button')
@@ -1653,13 +1636,9 @@ describe('Authorized Component', () => {
       const credentials = [createCredential({ credential_type: undefined })]
 
       expect(() => {
-        render(
-          <Authorized
-            pluginPayload={pluginPayload}
-            credentials={credentials}
-          />,
-          { wrapper: createWrapper() },
-        )
+        render(<Authorized pluginPayload={pluginPayload} credentials={credentials} />, {
+          wrapper: createWrapper(),
+        })
       }).not.toThrow()
     })
 
@@ -1668,14 +1647,9 @@ describe('Authorized Component', () => {
       const credentials = [createCredential()]
 
       // This tests the branch where credentialId is undefined
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Component should render without error
       // Component should render without error
@@ -1783,8 +1757,7 @@ describe('Authorized Component', () => {
         await waitFor(() => {
           expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
         })
-      }
-      else {
+      } else {
         // Component should still render correctly
         // Component should still render correctly
         expect(screen.getByText('OAuth'))!.toBeInTheDocument()
@@ -1800,14 +1773,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Verify component renders
       // Verify component renders
@@ -1825,20 +1793,17 @@ describe('Authorized Component', () => {
 
       // Make delete very slow to keep doingAction true
       mockDeletePluginCredential.mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 5000)),
+        () => new Promise((resolve) => setTimeout(resolve, 5000)),
       )
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Find delete button in action area
-      const actionButtons = Array.from(document.querySelectorAll('.hidden button, [class*="group-hover"] button'))
+      const actionButtons = Array.from(
+        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
+      )
       let foundDeleteButton = false
 
       for (const btn of actionButtons) {
@@ -1881,14 +1846,9 @@ describe('Authorized Component', () => {
       const pluginPayload = createPluginPayload()
       const credentials: Credential[] = []
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // With no credentials, there's no way to trigger openConfirm,
       // so pendingOperationCredentialId stays null
@@ -2000,14 +1960,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Wait for component to render
       await waitFor(() => {
@@ -2015,7 +1970,9 @@ describe('Authorized Component', () => {
       })
 
       // Find delete button in action area
-      const actionButtons = Array.from(document.querySelectorAll('.hidden button, [class*="group-hover"] button'))
+      const actionButtons = Array.from(
+        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
+      )
 
       for (const btn of actionButtons) {
         await act(async () => {
@@ -2050,21 +2007,18 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       await waitFor(() => {
         expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
       // Find and trigger delete to open confirm dialog
-      const actionButtons = Array.from(document.querySelectorAll('.hidden button, [class*="group-hover"] button'))
+      const actionButtons = Array.from(
+        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
+      )
 
       for (const btn of actionButtons) {
         await act(async () => {
@@ -2108,21 +2062,18 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       await waitFor(() => {
         expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
       // Find and trigger delete to open confirm dialog
-      const actionButtons = Array.from(document.querySelectorAll('.hidden button, [class*="group-hover"] button'))
+      const actionButtons = Array.from(
+        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
+      )
 
       for (const btn of actionButtons) {
         await act(async () => {
@@ -2154,21 +2105,18 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       await waitFor(() => {
         expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
       // Find and trigger delete to open confirm dialog
-      const actionButtons = Array.from(document.querySelectorAll('.hidden button, [class*="group-hover"] button'))
+      const actionButtons = Array.from(
+        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
+      )
 
       for (const btn of actionButtons) {
         await act(async () => {
@@ -2187,7 +2135,9 @@ describe('Authorized Component', () => {
 
             // Dialog should be closed
             await waitFor(() => {
-              expect(screen.queryByText('datasetDocuments.list.delete.title')).not.toBeInTheDocument()
+              expect(
+                screen.queryByText('datasetDocuments.list.delete.title'),
+              ).not.toBeInTheDocument()
             })
           }
           break
@@ -2207,14 +2157,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Wait for component to render
       await waitFor(() => {
@@ -2222,7 +2167,9 @@ describe('Authorized Component', () => {
       })
 
       // Find edit button in action area
-      const actionButtons = Array.from(document.querySelectorAll('.hidden button, [class*="group-hover"] button'))
+      const actionButtons = Array.from(
+        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
+      )
 
       for (const btn of actionButtons) {
         const svg = btn.querySelector('svg')
@@ -2242,12 +2189,15 @@ describe('Authorized Component', () => {
               })
 
               // handleRemove sets deleteCredentialId, which should show confirm dialog
-              await waitFor(() => {
-                const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
-                if (confirmTitle) {
-                  expect(confirmTitle)!.toBeInTheDocument()
-                }
-              }, { timeout: 2000 })
+              await waitFor(
+                () => {
+                  const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
+                  if (confirmTitle) {
+                    expect(confirmTitle)!.toBeInTheDocument()
+                  }
+                },
+                { timeout: 2000 },
+              )
             }
             break
           }
@@ -2269,14 +2219,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Wait for component to render
       await waitFor(() => {
@@ -2284,7 +2229,9 @@ describe('Authorized Component', () => {
       })
 
       // Find and click edit button to open ApiKeyModal
-      const actionButtons = Array.from(document.querySelectorAll('.hidden button, [class*="group-hover"] button'))
+      const actionButtons = Array.from(
+        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
+      )
 
       for (const btn of actionButtons) {
         const svg = btn.querySelector('svg')
@@ -2304,13 +2251,16 @@ describe('Authorized Component', () => {
               })
 
               // Verify confirm dialog appears (handleRemove was called)
-              await waitFor(() => {
-                const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
-                // If confirm dialog appears, handleRemove was called
-                if (confirmTitle) {
-                  expect(confirmTitle)!.toBeInTheDocument()
-                }
-              }, { timeout: 1000 })
+              await waitFor(
+                () => {
+                  const confirmTitle = screen.queryByText('datasetDocuments.list.delete.title')
+                  // If confirm dialog appears, handleRemove was called
+                  if (confirmTitle) {
+                    expect(confirmTitle)!.toBeInTheDocument()
+                  }
+                },
+                { timeout: 1000 },
+              )
             }
             break
           }
@@ -2335,17 +2285,12 @@ describe('Authorized Component', () => {
 
       // Make update very slow to keep doingAction true
       mockUpdatePluginCredential.mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 5000)),
+        () => new Promise((resolve) => setTimeout(resolve, 5000)),
       )
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Wait for component to render
       await waitFor(() => {
@@ -2353,7 +2298,9 @@ describe('Authorized Component', () => {
       })
 
       // Find rename button in action area
-      const actionButtons = Array.from(document.querySelectorAll('.hidden button, [class*="group-hover"] button'))
+      const actionButtons = Array.from(
+        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
+      )
 
       for (const btn of actionButtons) {
         await act(async () => {
@@ -2398,26 +2345,24 @@ describe('Authorized Component', () => {
       // Make the first update very slow
       let resolveUpdate: (value: unknown) => void
       mockUpdatePluginCredential.mockImplementation(
-        () => new Promise((resolve) => {
-          resolveUpdate = resolve
-        }),
+        () =>
+          new Promise((resolve) => {
+            resolveUpdate = resolve
+          }),
       )
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       await waitFor(() => {
         expect(screen.getByText('OAuth'))!.toBeInTheDocument()
       })
 
       // Find rename button
-      const actionButtons = Array.from(document.querySelectorAll('.hidden button, [class*="group-hover"] button'))
+      const actionButtons = Array.from(
+        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
+      )
 
       for (const btn of actionButtons) {
         await act(async () => {
@@ -2467,14 +2412,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Wait for component to render
       await waitFor(() => {
@@ -2482,7 +2422,9 @@ describe('Authorized Component', () => {
       })
 
       // Find and click edit button to open modal
-      const actionButtons = Array.from(document.querySelectorAll('.hidden button, [class*="group-hover"] button'))
+      const actionButtons = Array.from(
+        document.querySelectorAll('.hidden button, [class*="group-hover"] button'),
+      )
 
       for (const btn of actionButtons) {
         const svg = btn.querySelector('svg')
@@ -2524,14 +2466,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       await waitFor(() => {
         expect(screen.getByText('API Keys'))!.toBeInTheDocument()
@@ -2585,14 +2522,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Find and click edit button to open modal
       const editIcon = document.querySelector('svg.ri-equalizer-2-line')
@@ -2652,14 +2584,9 @@ describe('Authorized Component', () => {
         }),
       ]
 
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Click delete button which calls openConfirm with the credential id
       const deleteIcon = document.querySelector('svg.ri-delete-bin-line')

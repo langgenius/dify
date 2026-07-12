@@ -34,7 +34,7 @@ vi.mock('../plugin', () => ({
   } satisfies ActionItem,
 }))
 
-vi.mock('../commands', () => ({
+vi.mock('../commands/slash', () => ({
   slashAction: {
     key: '/',
     shortcut: '/',
@@ -173,33 +173,61 @@ describe('searchAnything', () => {
     ]
 
     const dynamicActions: Record<string, ActionItem> = {
-      slash: { key: '/', shortcut: '/', title: 'Slash', description: '', search: vi.fn().mockResolvedValue([]) },
-      app: { key: '@app', shortcut: '@app', title: 'App', description: '', search: vi.fn().mockResolvedValue(appResults) },
-      knowledge: { key: '@knowledge', shortcut: '@kb', title: 'KB', description: '', search: vi.fn().mockResolvedValue(kbResults) },
+      slash: {
+        key: '/',
+        shortcut: '/',
+        title: 'Slash',
+        description: '',
+        search: vi.fn().mockResolvedValue([]),
+      },
+      app: {
+        key: '@app',
+        shortcut: '@app',
+        title: 'App',
+        description: '',
+        search: vi.fn().mockResolvedValue(appResults),
+      },
+      knowledge: {
+        key: '@knowledge',
+        shortcut: '@kb',
+        title: 'KB',
+        description: '',
+        search: vi.fn().mockResolvedValue(kbResults),
+      },
     }
 
     const results = await searchAnything('en', 'my query', undefined, dynamicActions)
 
     expect(dynamicActions.slash!.search).not.toHaveBeenCalled()
     expect(results).toHaveLength(2)
-    expect(results).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'a1' }),
-      expect.objectContaining({ id: 'k1' }),
-    ]))
+    expect(results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'a1' }),
+        expect.objectContaining({ id: 'k1' }),
+      ]),
+    )
   })
 
   it('handles partial search failures in global search gracefully', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const dynamicActions: Record<string, ActionItem> = {
-      app: { key: '@app', shortcut: '@app', title: 'App', description: '', search: vi.fn().mockRejectedValue(new Error('fail')) },
+      app: {
+        key: '@app',
+        shortcut: '@app',
+        title: 'App',
+        description: '',
+        search: vi.fn().mockRejectedValue(new Error('fail')),
+      },
       knowledge: {
         key: '@knowledge',
         shortcut: '@kb',
         title: 'KB',
         description: '',
-        search: vi.fn().mockResolvedValue([
-          { id: 'k1', title: 'KB1', type: 'knowledge', data: {} as unknown as DataSet },
-        ]),
+        search: vi
+          .fn()
+          .mockResolvedValue([
+            { id: 'k1', title: 'KB1', type: 'knowledge', data: {} as unknown as DataSet },
+          ]),
       },
     }
 
@@ -215,8 +243,20 @@ describe('searchAnything', () => {
 describe('matchAction', () => {
   const actions: Record<string, ActionItem> = {
     app: { key: '@app', shortcut: '@app', title: 'App', description: '', search: vi.fn() },
-    knowledge: { key: '@knowledge', shortcut: '@kb', title: 'KB', description: '', search: vi.fn() },
-    plugin: { key: '@plugin', shortcut: '@plugin', title: 'Plugin', description: '', search: vi.fn() },
+    knowledge: {
+      key: '@knowledge',
+      shortcut: '@kb',
+      title: 'KB',
+      description: '',
+      search: vi.fn(),
+    },
+    plugin: {
+      key: '@plugin',
+      shortcut: '@plugin',
+      title: 'Plugin',
+      description: '',
+      search: vi.fn(),
+    },
     slash: { key: '/', shortcut: '/', title: 'Slash', description: '', search: vi.fn() },
   }
 

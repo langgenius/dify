@@ -16,7 +16,7 @@ import NormalForm from './normalForm'
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
+  const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -28,7 +28,7 @@ const WebSSOForm: FC = () => {
     return `/webapp-signin?${params.toString()}`
   }, [redirectUrl])
 
-  const shareCode = useWebAppStore(s => s.shareCode)
+  const shareCode = useWebAppStore((s) => s.shareCode)
   const backToHome = useCallback(async () => {
     await webAppLogout(shareCode!)
     const url = getSigninUrl()
@@ -38,7 +38,10 @@ const WebSSOForm: FC = () => {
   if (!redirectUrl) {
     return (
       <div className="flex h-full items-center justify-center">
-        <AppUnavailable code={t('common.appUnavailable', { ns: 'share' })} unknownReason="redirect url is invalid." />
+        <AppUnavailable
+          code={t(($) => $['common.appUnavailable'], { ns: 'share' })}
+          unknownReason="redirect url is invalid."
+        />
       </div>
     )
   }
@@ -46,11 +49,17 @@ const WebSSOForm: FC = () => {
   if (!systemFeatures.webapp_auth.enabled) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="system-xs-regular text-text-tertiary">{t('webapp.disabled', { ns: 'login' })}</p>
+        <p className="system-xs-regular text-text-tertiary">
+          {t(($) => $['webapp.disabled'], { ns: 'login' })}
+        </p>
       </div>
     )
   }
-  if (webAppAccessMode && (webAppAccessMode === AccessMode.ORGANIZATION || webAppAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS)) {
+  if (
+    webAppAccessMode &&
+    (webAppAccessMode === AccessMode.ORGANIZATION ||
+      webAppAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  ) {
     return (
       <div className="w-full max-w-[400px]">
         <NormalForm />
@@ -64,7 +73,9 @@ const WebSSOForm: FC = () => {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-y-4">
       <AppUnavailable className="size-auto" isUnknownReason={true} />
-      <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>{t('login.backToHome', { ns: 'share' })}</span>
+      <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>
+        {t(($) => $['login.backToHome'], { ns: 'share' })}
+      </span>
     </div>
   )
 }

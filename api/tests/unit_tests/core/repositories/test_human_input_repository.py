@@ -29,8 +29,8 @@ from core.workflow.human_input_adapter import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from graphon.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputFormRecipient, RecipientType
 
@@ -73,6 +73,7 @@ class _DummyForm:
     form_definition: str
     rendered_content: str
     expiration_time: datetime
+    conversation_id: str | None = None
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
     created_at: datetime = dataclasses.field(default_factory=naive_utc_now)
     selected_action_id: str | None = None

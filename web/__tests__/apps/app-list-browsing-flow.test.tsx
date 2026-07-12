@@ -17,9 +17,8 @@ import { AccessMode } from '@/models/access-control'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
-let mockIsCurrentWorkspaceEditor = true
-let mockIsCurrentWorkspaceDatasetOperator = false
 let mockIsLoadingCurrentWorkspace = false
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 
 let mockSystemFeatures = {
   branding: { enabled: false },
@@ -59,13 +58,68 @@ vi.mock('@/next/dynamic', () => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
-    isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
-  }),
-}))
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -89,6 +143,17 @@ vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([]),
 }))
 
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({
+    data: {
+      accounts: [
+        { id: 'member-1', name: 'Alice', avatar_url: null, status: 'active' },
+        { id: 'member-2', name: 'Bob', avatar_url: null, status: 'active' },
+      ],
+    },
+  }),
+}))
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
@@ -110,7 +175,12 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-apps', () => ({
+  normalizeAppPagination: <T,>(response: T) => response,
   useDeleteAppMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useToggleAppStarMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
@@ -157,11 +227,11 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   api_rpm: overrides.api_rpm ?? 60,
   api_rph: overrides.api_rph ?? 3600,
   is_demo: overrides.is_demo ?? false,
-  model_config: overrides.model_config ?? {} as App['model_config'],
-  app_model_config: overrides.app_model_config ?? {} as App['app_model_config'],
+  model_config: overrides.model_config ?? ({} as App['model_config']),
+  app_model_config: overrides.app_model_config ?? ({} as App['app_model_config']),
   created_at: overrides.created_at ?? 1700000000,
   updated_at: overrides.updated_at ?? 1700001000,
-  site: overrides.site ?? {} as App['site'],
+  site: overrides.site ?? ({} as App['site']),
   api_base_url: overrides.api_base_url ?? 'https://api.example.com',
   tags: overrides.tags ?? [],
   access_mode: overrides.access_mode ?? AccessMode.PUBLIC,
@@ -196,9 +266,8 @@ const renderList = (searchParams?: Record<string, string>) => {
 describe('App List Browsing Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceEditor = true
-    mockIsCurrentWorkspaceDatasetOperator = false
     mockIsLoadingCurrentWorkspace = false
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSystemFeatures = {
       branding: { enabled: false },
       webapp_auth: { enabled: false },
@@ -229,7 +298,7 @@ describe('App List Browsing Flow', () => {
       mockPages = [createPage([])]
       renderList()
 
-      expect(screen.getByText('app.newApp.noAppsFound')).toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.title')).toBeInTheDocument()
     })
 
     it('should transition from loading to content when data loads', () => {
@@ -241,9 +310,7 @@ describe('App List Browsing Flow', () => {
 
       // Data loads
       mockIsLoading = false
-      mockPages = [createPage([
-        createMockApp({ id: 'app-1', name: 'Loaded App' }),
-      ])]
+      mockPages = [createPage([createMockApp({ id: 'app-1', name: 'Loaded App' })])]
 
       rerender(<List controlRefreshList={0} />)
 
@@ -254,11 +321,13 @@ describe('App List Browsing Flow', () => {
   // -- Rendering apps --
   describe('App List Rendering', () => {
     it('should render all app cards from the data', () => {
-      mockPages = [createPage([
-        createMockApp({ id: 'app-1', name: 'Chat Bot' }),
-        createMockApp({ id: 'app-2', name: 'Workflow Engine', mode: AppModeEnum.WORKFLOW }),
-        createMockApp({ id: 'app-3', name: 'Completion Tool', mode: AppModeEnum.COMPLETION }),
-      ])]
+      mockPages = [
+        createPage([
+          createMockApp({ id: 'app-1', name: 'Chat Bot' }),
+          createMockApp({ id: 'app-2', name: 'Workflow Engine', mode: AppModeEnum.WORKFLOW }),
+          createMockApp({ id: 'app-3', name: 'Completion Tool', mode: AppModeEnum.COMPLETION }),
+        ]),
+      ]
 
       renderList()
 
@@ -268,47 +337,52 @@ describe('App List Browsing Flow', () => {
     })
 
     it('should display app descriptions', () => {
-      mockPages = [createPage([
-        createMockApp({ name: 'My App', description: 'A powerful AI assistant' }),
-      ])]
+      mockPages = [
+        createPage([createMockApp({ name: 'My App', description: 'A powerful AI assistant' })]),
+      ]
 
       renderList()
 
       expect(screen.getByText('A powerful AI assistant')).toBeInTheDocument()
     })
 
-    it('should show the NewAppCard for workspace editors', () => {
-      mockPages = [createPage([
-        createMockApp({ name: 'Test App' }),
-      ])]
+    it('should show the create menu for workspace editors', () => {
+      mockPages = [createPage([createMockApp({ name: 'Test App' })])]
 
       renderList()
 
-      expect(screen.getByText('app.createApp')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeInTheDocument()
     })
 
-    it('should hide NewAppCard when user is not a workspace editor', () => {
-      mockIsCurrentWorkspaceEditor = false
-      mockPages = [createPage([
-        createMockApp({ name: 'Test App' }),
-      ])]
+    it('should hide the create menu when user lacks app creation permission', () => {
+      mockWorkspacePermissionKeys = []
+      mockPages = [createPage([createMockApp({ name: 'Test App' })])]
 
       renderList()
 
-      expect(screen.queryByText('app.createApp')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.create' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'app.newApp.startFromBlank' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'app.newApp.startFromTemplate' }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.importDSL' })).not.toBeInTheDocument()
     })
   })
 
-  // -- Footer visibility --
-  describe('Footer Visibility', () => {
-    it('should show footer when branding is disabled', () => {
+  // -- Legacy footer removal --
+  describe('Legacy Footer', () => {
+    it('should not show the legacy footer when branding is disabled', () => {
       mockSystemFeatures = { ...mockSystemFeatures, branding: { enabled: false } }
       mockPages = [createPage([createMockApp()])]
 
       renderList()
 
-      expect(screen.getByText('app.join')).toBeInTheDocument()
-      expect(screen.getByText('app.communityIntro')).toBeInTheDocument()
+      expect(screen.queryByText('app.join')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.communityIntro')).not.toBeInTheDocument()
     })
 
     it('should hide footer when branding is enabled', () => {
@@ -330,8 +404,8 @@ describe('App List Browsing Flow', () => {
       expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
     })
 
-    it('should hide drag-drop hint for non-editors', () => {
-      mockIsCurrentWorkspaceEditor = false
+    it('should hide drag-drop hint without app creation permission', () => {
+      mockWorkspacePermissionKeys = []
       mockPages = [createPage([createMockApp()])]
       renderList()
 
@@ -341,11 +415,30 @@ describe('App List Browsing Flow', () => {
 
   // -- Tab navigation --
   describe('Tab Navigation', () => {
-    it('should render the app type dropdown trigger', () => {
+    it('should render all category options', async () => {
       mockPages = [createPage([createMockApp()])]
       renderList()
 
-      expect(screen.getByText('app.studio.filters.types')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.types' }))
+
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.all' }),
+      ).toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }),
+      ).toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }),
+      ).toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }),
+      ).toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.agent' }),
+      ).toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }),
+      ).toBeInTheDocument()
     })
   })
 
@@ -374,21 +467,22 @@ describe('App List Browsing Flow', () => {
     })
   })
 
-  // -- "Created by me" filter --
-  describe('Created By Me Filter', () => {
-    it('should not render a standalone "created by me" checkbox in the current header layout', () => {
+  // -- Creators filter --
+  describe('Creators Filter', () => {
+    it('should render the creators filter', () => {
       mockPages = [createPage([createMockApp()])]
       renderList()
 
-      expect(screen.queryByText('app.showMyCreatedAppsOnly')).not.toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
     })
 
-    it('should keep the current layout stable without a "created by me" control', () => {
+    it('should open the creators filter menu', () => {
       mockPages = [createPage([createMockApp()])]
       renderList()
 
-      expect(screen.getByText('app.studio.filters.types')).toBeInTheDocument()
-      expect(screen.queryByText('app.showMyCreatedAppsOnly')).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.creators' }))
+
+      expect(screen.getByRole('button', { name: /Bob/ })).toBeInTheDocument()
     })
   })
 
@@ -408,7 +502,6 @@ describe('App List Browsing Flow', () => {
   // -- Dataset operator behavior --
   describe('Dataset Operator Behavior', () => {
     it('should not redirect at list component level for dataset operators', () => {
-      mockIsCurrentWorkspaceDatasetOperator = true
       renderList()
 
       expect(mockRouterReplace).not.toHaveBeenCalled()
@@ -419,12 +512,8 @@ describe('App List Browsing Flow', () => {
   describe('Multi-page Data', () => {
     it('should render apps from multiple pages', () => {
       mockPages = [
-        createPage([
-          createMockApp({ id: 'app-1', name: 'Page One App' }),
-        ], true, 1),
-        createPage([
-          createMockApp({ id: 'app-2', name: 'Page Two App' }),
-        ], false, 2),
+        createPage([createMockApp({ id: 'app-1', name: 'Page One App' })], true, 1),
+        createPage([createMockApp({ id: 'app-2', name: 'Page Two App' })], false, 2),
       ]
 
       renderList()

@@ -33,56 +33,62 @@ describe('app-card-utils', () => {
   } as AppDetailResponse
 
   it('should detect whether the workflow includes a start node', () => {
-    expect(hasWorkflowStartNode({
-      graph: {
-        nodes: [{ data: { type: BlockEnum.Start } }],
-      },
-    })).toBe(true)
+    expect(
+      hasWorkflowStartNode({
+        graph: {
+          nodes: [{ data: { type: BlockEnum.Start } }],
+        },
+      }),
+    ).toBe(true)
 
-    expect(hasWorkflowStartNode({
-      graph: {
-        nodes: [{ data: { type: BlockEnum.Answer } }],
-      },
-    })).toBe(false)
+    expect(
+      hasWorkflowStartNode({
+        graph: {
+          nodes: [{ data: { type: BlockEnum.Answer } }],
+        },
+      }),
+    ).toBe(false)
   })
 
   it('should return hidden workflow start variables and their initial launch values', () => {
     const hiddenVariables = getWorkflowHiddenStartVariables({
       graph: {
-        nodes: [{
-          data: {
-            type: BlockEnum.Start,
-            variables: [
-              {
-                variable: 'visible',
-                label: 'Visible',
-                type: InputVarType.textInput,
-                hide: false,
-                required: false,
-              },
-              {
-                variable: 'secret',
-                label: 'Secret',
-                type: InputVarType.textInput,
-                hide: true,
-                default: 'prefilled',
-                required: false,
-              },
-              {
-                variable: 'enabled',
-                label: 'Enabled',
-                type: InputVarType.checkbox,
-                hide: true,
-                default: true,
-                required: false,
-              },
-            ],
+        nodes: [
+          {
+            data: {
+              type: BlockEnum.Start,
+              variables: [
+                {
+                  variable: 'visible',
+                  label: 'Visible',
+                  type: InputVarType.textInput,
+                  hide: false,
+                  required: false,
+                },
+                {
+                  variable: 'secret',
+                  label: 'Secret',
+                  type: InputVarType.textInput,
+                  hide: true,
+                  default: 'prefilled',
+                  required: false,
+                },
+                {
+                  variable: 'enabled',
+                  label: 'Enabled',
+                  type: InputVarType.checkbox,
+                  hide: true,
+                  default: true,
+                  required: false,
+                },
+              ],
+            },
           },
-        }],
+        ],
       },
     })
 
-    expect(hiddenVariables.map(variable => variable.variable)).toEqual(['secret', 'enabled'])
+    expect(hiddenVariables.map((variable) => variable.variable)).toEqual(['secret', 'enabled'])
     expect(createWorkflowLaunchInitialValues(hiddenVariables)).toEqual({
       secret: 'prefilled',
       enabled: true,
@@ -120,21 +126,23 @@ describe('app-card-utils', () => {
       } as AppDetailResponse,
       currentWorkflow: {
         graph: {
-          nodes: [{
-            data: {
-              type: BlockEnum.Start,
-              variables: [
-                {
-                  variable: 'start_secret',
-                  label: 'Start Secret',
-                  type: InputVarType.textInput,
-                  hide: true,
-                  default: 'from-start',
-                  required: false,
-                },
-              ],
+          nodes: [
+            {
+              data: {
+                type: BlockEnum.Start,
+                variables: [
+                  {
+                    variable: 'start_secret',
+                    label: 'Start Secret',
+                    type: InputVarType.textInput,
+                    hide: true,
+                    default: 'from-start',
+                    required: false,
+                  },
+                ],
+              },
             },
-          }],
+          ],
         },
       },
     })
@@ -153,8 +161,8 @@ describe('app-card-utils', () => {
       appInfo: baseAppInfo,
       cardType: 'webapp',
       currentWorkflow: null,
-      isCurrentWorkspaceEditor: true,
-      isCurrentWorkspaceManager: true,
+      canManageWebApp: true,
+      canManageApi: true,
     })
 
     expect(state.isApp).toBe(true)
@@ -168,8 +176,8 @@ describe('app-card-utils', () => {
       appInfo: { ...baseAppInfo, mode: AppModeEnum.WORKFLOW },
       cardType: 'webapp',
       currentWorkflow: null,
-      isCurrentWorkspaceEditor: true,
-      isCurrentWorkspaceManager: true,
+      canManageWebApp: true,
+      canManageApi: true,
     })
     expect(unpublishedState.appUnpublished).toBe(true)
     expect(unpublishedState.toggleDisabled).toBe(true)
@@ -182,50 +190,72 @@ describe('app-card-utils', () => {
           nodes: [{ data: { type: BlockEnum.Answer } }],
         },
       },
-      isCurrentWorkspaceEditor: true,
-      isCurrentWorkspaceManager: true,
+      canManageWebApp: true,
+      canManageApi: true,
     })
     expect(missingStartState.missingStartNode).toBe(true)
     expect(missingStartState.runningStatus).toBe(false)
   })
 
   it('should require specific access subjects only for the specific access mode', () => {
-    expect(isAppAccessConfigured(
-      { ...baseAppInfo, access_mode: AccessMode.PUBLIC },
-      { groups: [], members: [] },
-    )).toBe(true)
+    expect(
+      isAppAccessConfigured(
+        { ...baseAppInfo, access_mode: AccessMode.PUBLIC },
+        { groups: [], members: [] },
+      ),
+    ).toBe(true)
 
-    expect(isAppAccessConfigured(
-      { ...baseAppInfo, access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS },
-      { groups: [], members: [] },
-    )).toBe(false)
+    expect(
+      isAppAccessConfigured(
+        { ...baseAppInfo, access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS },
+        { groups: [], members: [] },
+      ),
+    ).toBe(false)
 
-    expect(isAppAccessConfigured(
-      { ...baseAppInfo, access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS },
-      { groups: [{ id: 'group-1' }], members: [] },
-    )).toBe(true)
+    expect(
+      isAppAccessConfigured(
+        { ...baseAppInfo, access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS },
+        { groups: [{ id: 'group-1' }], members: [] },
+      ),
+    ).toBe(true)
   })
 
   it('should derive operation keys for api and webapp cards', () => {
-    expect(getAppCardOperationKeys({
-      cardType: 'api',
-      appMode: AppModeEnum.COMPLETION,
-      isCurrentWorkspaceEditor: true,
-    })).toEqual(['develop'])
+    expect(
+      getAppCardOperationKeys({
+        cardType: 'api',
+        appMode: AppModeEnum.COMPLETION,
+        canManageSettings: true,
+      }),
+    ).toEqual(['develop'])
 
-    expect(getAppCardOperationKeys({
-      cardType: 'webapp',
-      appMode: AppModeEnum.CHAT,
-      isCurrentWorkspaceEditor: false,
-    })).toEqual(['launch', 'embedded', 'customize'])
+    expect(
+      getAppCardOperationKeys({
+        cardType: 'webapp',
+        appMode: AppModeEnum.CHAT,
+        canManageSettings: false,
+      }),
+    ).toEqual(['launch', 'embedded', 'customize'])
   })
 
   it('should build a workflow launch URL with serialized parameters', async () => {
     const url = await buildWorkflowLaunchUrl({
       accessibleUrl: 'https://example.com/app/workflow/token-1',
       variables: [
-        { variable: 'name', label: 'Name', type: InputVarType.textInput, hide: true, required: false },
-        { variable: 'enabled', label: 'Enabled', type: InputVarType.checkbox, hide: true, required: false },
+        {
+          variable: 'name',
+          label: 'Name',
+          type: InputVarType.textInput,
+          hide: true,
+          required: false,
+        },
+        {
+          variable: 'enabled',
+          label: 'Enabled',
+          type: InputVarType.checkbox,
+          hide: true,
+          required: false,
+        },
       ],
       values: { name: 'Alice', enabled: true },
     })
@@ -239,8 +269,20 @@ describe('app-card-utils', () => {
     const url = await buildWorkflowLaunchUrl({
       accessibleUrl: 'https://example.com/app/workflow/token-1',
       variables: [
-        { variable: 'flag', label: 'Flag', type: InputVarType.checkbox, hide: true, required: false },
-        { variable: 'empty', label: 'Empty', type: InputVarType.textInput, hide: true, required: false },
+        {
+          variable: 'flag',
+          label: 'Flag',
+          type: InputVarType.checkbox,
+          hide: true,
+          required: false,
+        },
+        {
+          variable: 'empty',
+          label: 'Empty',
+          type: InputVarType.textInput,
+          hide: true,
+          required: false,
+        },
       ],
       values: { flag: false, empty: '' },
     })
@@ -266,7 +308,7 @@ describe('app-card-utils', () => {
       inputValues: { name: 'Alice', count: '5' },
     })
 
-    expect(snippet).toContain('token: \'abc123\'')
+    expect(snippet).toContain("token: 'abc123'")
     expect(snippet).toContain('isDev: true')
     expect(snippet).toContain('name: "Alice"')
     expect(snippet).toContain('count: "5"')
@@ -283,6 +325,18 @@ describe('app-card-utils', () => {
 
     expect(snippet).toContain('// You can define the inputs from the Start node here')
     expect(snippet).not.toContain('isDev: true')
+  })
+
+  it('should generate an agent embedded script route when requested', () => {
+    const snippet = getEmbeddedScriptSnippet({
+      url: 'https://example.com',
+      token: 'agent-token',
+      webAppRoute: 'agent',
+      primaryColor: '#1C64F2',
+      inputValues: {},
+    })
+
+    expect(snippet).toContain("routeSegment: 'agent'")
   })
 
   it('should compress and encode base64 using CompressionStream when available', async () => {
@@ -303,22 +357,115 @@ describe('app-card-utils', () => {
   })
 
   it('should identify supported workflow launch input types', () => {
-    expect(isWorkflowLaunchInputSupported({ variable: 'v', label: 'V', type: InputVarType.textInput, hide: true, required: false })).toBe(true)
-    expect(isWorkflowLaunchInputSupported({ variable: 'v', label: 'V', type: InputVarType.paragraph, hide: true, required: false })).toBe(true)
-    expect(isWorkflowLaunchInputSupported({ variable: 'v', label: 'V', type: InputVarType.select, hide: true, required: false })).toBe(true)
-    expect(isWorkflowLaunchInputSupported({ variable: 'v', label: 'V', type: InputVarType.number, hide: true, required: false })).toBe(true)
-    expect(isWorkflowLaunchInputSupported({ variable: 'v', label: 'V', type: InputVarType.checkbox, hide: true, required: false })).toBe(true)
-    expect(isWorkflowLaunchInputSupported({ variable: 'v', label: 'V', type: InputVarType.json, hide: true, required: false })).toBe(true)
-    expect(isWorkflowLaunchInputSupported({ variable: 'v', label: 'V', type: InputVarType.jsonObject, hide: true, required: false })).toBe(true)
-    expect(isWorkflowLaunchInputSupported({ variable: 'v', label: 'V', type: InputVarType.url, hide: true, required: false })).toBe(true)
-    expect(isWorkflowLaunchInputSupported({ variable: 'v', label: 'V', type: InputVarType.files, hide: true, required: false })).toBe(false)
-    expect(isWorkflowLaunchInputSupported({ variable: 'v', label: 'V', type: InputVarType.singleFile, hide: true, required: false })).toBe(false)
+    expect(
+      isWorkflowLaunchInputSupported({
+        variable: 'v',
+        label: 'V',
+        type: InputVarType.textInput,
+        hide: true,
+        required: false,
+      }),
+    ).toBe(true)
+    expect(
+      isWorkflowLaunchInputSupported({
+        variable: 'v',
+        label: 'V',
+        type: InputVarType.paragraph,
+        hide: true,
+        required: false,
+      }),
+    ).toBe(true)
+    expect(
+      isWorkflowLaunchInputSupported({
+        variable: 'v',
+        label: 'V',
+        type: InputVarType.select,
+        hide: true,
+        required: false,
+      }),
+    ).toBe(true)
+    expect(
+      isWorkflowLaunchInputSupported({
+        variable: 'v',
+        label: 'V',
+        type: InputVarType.number,
+        hide: true,
+        required: false,
+      }),
+    ).toBe(true)
+    expect(
+      isWorkflowLaunchInputSupported({
+        variable: 'v',
+        label: 'V',
+        type: InputVarType.checkbox,
+        hide: true,
+        required: false,
+      }),
+    ).toBe(true)
+    expect(
+      isWorkflowLaunchInputSupported({
+        variable: 'v',
+        label: 'V',
+        type: InputVarType.json,
+        hide: true,
+        required: false,
+      }),
+    ).toBe(true)
+    expect(
+      isWorkflowLaunchInputSupported({
+        variable: 'v',
+        label: 'V',
+        type: InputVarType.jsonObject,
+        hide: true,
+        required: false,
+      }),
+    ).toBe(true)
+    expect(
+      isWorkflowLaunchInputSupported({
+        variable: 'v',
+        label: 'V',
+        type: InputVarType.url,
+        hide: true,
+        required: false,
+      }),
+    ).toBe(true)
+    expect(
+      isWorkflowLaunchInputSupported({
+        variable: 'v',
+        label: 'V',
+        type: InputVarType.files,
+        hide: true,
+        required: false,
+      }),
+    ).toBe(false)
+    expect(
+      isWorkflowLaunchInputSupported({
+        variable: 'v',
+        label: 'V',
+        type: InputVarType.singleFile,
+        hide: true,
+        required: false,
+      }),
+    ).toBe(false)
   })
 
   it('should coerce numeric defaults to string in createWorkflowLaunchInitialValues', () => {
     const result = createWorkflowLaunchInitialValues([
-      { variable: 'count', label: 'Count', type: InputVarType.number, hide: true, required: false, default: 42 },
-      { variable: 'empty', label: 'Empty', type: InputVarType.textInput, hide: true, required: false },
+      {
+        variable: 'count',
+        label: 'Count',
+        type: InputVarType.number,
+        hide: true,
+        required: false,
+        default: 42,
+      },
+      {
+        variable: 'empty',
+        label: 'Empty',
+        type: InputVarType.textInput,
+        hide: true,
+        required: false,
+      },
     ])
 
     expect(result).toEqual({ count: '42', empty: '' })

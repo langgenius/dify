@@ -9,11 +9,17 @@ type WorkflowGeneratorStore = {
   intent: WorkflowGeneratorIntent
   currentAppId: string | null
   currentAppMode: WorkflowGeneratorMode | null
+  /** Pre-filled instruction from the palette's inline capture (`/create workflow <text>`). */
+  initialInstruction: string
+  /** When true the request uses `mode: 'auto'` so the planner picks Workflow vs Chatflow. */
+  autoMode: boolean
   openGenerator: (params: {
     mode: WorkflowGeneratorMode
     intent?: WorkflowGeneratorIntent
     currentAppId?: string | null
     currentAppMode?: WorkflowGeneratorMode | null
+    initialInstruction?: string
+    autoMode?: boolean
   }) => void
   closeGenerator: () => void
 }
@@ -30,29 +36,35 @@ type WorkflowGeneratorStore = {
  * the versions they were comparing.
  */
 const resetNewAppHistory = (mode: WorkflowGeneratorMode) => {
-  if (typeof window === 'undefined')
-    return
+  if (typeof window === 'undefined') return
   const storageKey = `${mode}-new`
   try {
     sessionStorage.removeItem(`workflow-gen-${storageKey}-versions`)
     sessionStorage.removeItem(`workflow-gen-${storageKey}-version-index`)
-  }
-  catch {
+  } catch {
     // sessionStorage can throw in privacy-restricted contexts; the stale
     // state will still flush on tab close, so swallowing here is fine.
   }
 }
 
-export const useWorkflowGeneratorStore = create<WorkflowGeneratorStore>(set => ({
+export const useWorkflowGeneratorStore = create<WorkflowGeneratorStore>((set) => ({
   isOpen: false,
   mode: 'workflow',
   intent: 'create',
   currentAppId: null,
   currentAppMode: null,
-  openGenerator: ({ mode, intent = 'create', currentAppId = null, currentAppMode = null }) => {
-    if (!currentAppId)
-      resetNewAppHistory(mode)
-    set({ isOpen: true, mode, intent, currentAppId, currentAppMode })
+  initialInstruction: '',
+  autoMode: false,
+  openGenerator: ({
+    mode,
+    intent = 'create',
+    currentAppId = null,
+    currentAppMode = null,
+    initialInstruction = '',
+    autoMode = false,
+  }) => {
+    if (!currentAppId) resetNewAppHistory(mode)
+    set({ isOpen: true, mode, intent, currentAppId, currentAppMode, initialInstruction, autoMode })
   },
   closeGenerator: () => set({ isOpen: false }),
 }))

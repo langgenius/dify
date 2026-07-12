@@ -11,18 +11,6 @@ vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: vi.fn().mockResolvedValue({ url: 'https://example.com/icon.png' }),
 }))
 
-// Mock the plugins service to avoid React Query issues from TabSlider
-vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => ({
-    data: { pages: [] },
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
-    isLoading: false,
-    isSuccess: true,
-  }),
-}))
-
 const mockToastError = vi.hoisted(() => vi.fn())
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -147,7 +135,9 @@ describe('MCPModal', () => {
     it('should update server identifier input value', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
       fireEvent.change(identifierInput, { target: { value: 'my-server' } })
 
       expect(identifierInput)!.toHaveValue('my-server')
@@ -237,7 +227,9 @@ describe('MCPModal', () => {
       // Fill required fields
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -256,7 +248,9 @@ describe('MCPModal', () => {
       // Fill required fields
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -283,7 +277,9 @@ describe('MCPModal', () => {
       // Fill fields with invalid URL
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'not-a-valid-url' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -293,7 +289,7 @@ describe('MCPModal', () => {
       fireEvent.click(confirmButton)
 
       // Wait a bit and verify onConfirm was not called
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       expect(onConfirm).not.toHaveBeenCalled()
       expect(mockToastError).toHaveBeenCalledWith('tools.mcp.modal.invalidServerUrl')
     })
@@ -305,7 +301,9 @@ describe('MCPModal', () => {
       // Fill fields with invalid server identifier
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -315,7 +313,7 @@ describe('MCPModal', () => {
       fireEvent.click(confirmButton)
 
       // Wait a bit and verify onConfirm was not called
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       expect(onConfirm).not.toHaveBeenCalled()
       expect(mockToastError).toHaveBeenCalledWith('tools.mcp.modal.invalidServerIdentifier')
     })
@@ -450,7 +448,9 @@ describe('MCPModal', () => {
       // Fill required fields
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -485,7 +485,9 @@ describe('MCPModal', () => {
       // Fill required fields
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -516,12 +518,14 @@ describe('MCPModal', () => {
         server_identifier: 'test-server',
         icon: { content: '🔗', background: '#6366F1' },
         masked_headers: {
-          'Authorization': 'Bearer token',
+          Authorization: 'Bearer token',
           'X-Custom': 'value',
         },
       } as unknown as ToolWithProvider
 
-      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, { wrapper: createWrapper() })
+      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, {
+        wrapper: createWrapper(),
+      })
 
       // Switch to headers tab
       const headersTab = screen.getByText('tools.mcp.modal.headers')
@@ -558,7 +562,9 @@ describe('MCPModal', () => {
         icon: { content: '🚀', background: '#FF0000' },
       } as unknown as ToolWithProvider
 
-      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, { wrapper: createWrapper() })
+      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, {
+        wrapper: createWrapper(),
+      })
 
       // Don't change the URL, just submit
       const saveButton = screen.getByText('tools.mcp.modal.save')
@@ -583,7 +589,9 @@ describe('MCPModal', () => {
         icon: { content: '🚀', background: '#FF0000' },
       } as unknown as ToolWithProvider
 
-      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, { wrapper: createWrapper() })
+      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, {
+        wrapper: createWrapper(),
+      })
 
       // Change the URL
       const urlInput = screen.getByDisplayValue('https://existing.com/mcp')
@@ -610,7 +618,9 @@ describe('MCPModal', () => {
       // Fill required fields
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -638,7 +648,9 @@ describe('MCPModal', () => {
       // Fill required fields
       const urlInput = screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder')
       const nameInput = screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder')
-      const identifierInput = screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder')
+      const identifierInput = screen.getByPlaceholderText(
+        'tools.mcp.modal.serverIdentifierPlaceholder',
+      )
 
       fireEvent.change(urlInput, { target: { value: 'https://example.com/mcp' } })
       fireEvent.change(nameInput, { target: { value: 'Test Server' } })
@@ -683,7 +695,9 @@ describe('MCPModal', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
       // Find the app icon container with cursor-pointer and rounded-2xl classes
-      const appIconContainer = document.querySelector('[class*="rounded-2xl"][class*="cursor-pointer"]')
+      const appIconContainer = document.querySelector(
+        '[class*="rounded-2xl"][class*="cursor-pointer"]',
+      )
 
       if (appIconContainer) {
         fireEvent.click(appIconContainer)
@@ -698,7 +712,9 @@ describe('MCPModal', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
       // Open the icon picker
-      const appIconContainer = document.querySelector('[class*="rounded-2xl"][class*="cursor-pointer"]')
+      const appIconContainer = document.querySelector(
+        '[class*="rounded-2xl"][class*="cursor-pointer"]',
+      )
 
       if (appIconContainer) {
         fireEvent.click(appIconContainer)
@@ -720,7 +736,9 @@ describe('MCPModal', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
       // Open the icon picker
-      const appIconContainer = document.querySelector('[class*="rounded-2xl"][class*="cursor-pointer"]')
+      const appIconContainer = document.querySelector(
+        '[class*="rounded-2xl"][class*="cursor-pointer"]',
+      )
 
       if (appIconContainer) {
         fireEvent.click(appIconContainer)
@@ -753,18 +771,15 @@ describe('MCPModal', () => {
     }
 
     const fillRequiredFields = () => {
-      fireEvent.change(
-        screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder'),
-        { target: { value: 'https://example.com/mcp' } },
-      )
-      fireEvent.change(
-        screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder'),
-        { target: { value: 'srv' } },
-      )
-      fireEvent.change(
-        screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder'),
-        { target: { value: 'srv-id' } },
-      )
+      fireEvent.change(screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder'), {
+        target: { value: 'https://example.com/mcp' },
+      })
+      fireEvent.change(screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder'), {
+        target: { value: 'srv' },
+      })
+      fireEvent.change(screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder'), {
+        target: { value: 'srv-id' },
+      })
     }
 
     it('does not render the toggle when SSO is not configured', () => {
@@ -797,10 +812,7 @@ describe('MCPModal', () => {
     it('submits identity_mode="off" by default (toggle off)', async () => {
       enableRefreshCapableSSO()
       const onConfirm = vi.fn()
-      render(
-        <MCPModal {...defaultProps} onConfirm={onConfirm} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPModal {...defaultProps} onConfirm={onConfirm} />, { wrapper: createWrapper() })
 
       fillRequiredFields()
       fireEvent.click(screen.getByText('tools.mcp.modal.confirm'))
@@ -817,10 +829,7 @@ describe('MCPModal', () => {
     it('submits identity_mode="idp_token" when toggle is flipped on', async () => {
       enableRefreshCapableSSO()
       const onConfirm = vi.fn()
-      render(
-        <MCPModal {...defaultProps} onConfirm={onConfirm} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPModal {...defaultProps} onConfirm={onConfirm} />, { wrapper: createWrapper() })
 
       fillRequiredFields()
       const fwdSwitch = screen.getByRole('switch', {
@@ -850,10 +859,9 @@ describe('MCPModal', () => {
         identity_mode: 'idp_token',
       } as unknown as ToolWithProvider
 
-      render(
-        <MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />, {
+        wrapper: createWrapper(),
+      })
       fireEvent.click(screen.getByText('tools.mcp.modal.save'))
 
       await waitFor(() => {
@@ -878,10 +886,7 @@ describe('MCPModal', () => {
         identity_mode: 'idp_token',
       } as unknown as ToolWithProvider
 
-      render(
-        <MCPModal {...defaultProps} data={mockData} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
 
       expect(
         screen.getByRole('switch', { name: 'tools.mcp.modal.forwardUserIdentity' }),
@@ -899,10 +904,7 @@ describe('MCPModal', () => {
         identity_mode: 'off',
       } as unknown as ToolWithProvider
 
-      render(
-        <MCPModal {...defaultProps} data={mockData} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
 
       expect(
         screen.getByRole('switch', { name: 'tools.mcp.modal.forwardUserIdentity' }),

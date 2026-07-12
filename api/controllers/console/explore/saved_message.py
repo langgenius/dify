@@ -11,6 +11,7 @@ from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import with_current_user
+from extensions.ext_database import db
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
 from models import Account
@@ -37,10 +38,7 @@ class SavedMessageListApi(InstalledAppResource):
         args = SavedMessageListQuery.model_validate(request.args.to_dict())
 
         pagination = SavedMessageService.pagination_by_last_id(
-            app_model,
-            current_user,
-            str(args.last_id) if args.last_id else None,
-            args.limit,
+            app_model, current_user, str(args.last_id) if args.last_id else None, args.limit, session=db.session()
         )
         adapter = TypeAdapter(SavedMessageItem)
         items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
@@ -63,7 +61,7 @@ class SavedMessageListApi(InstalledAppResource):
         payload = SavedMessageCreatePayload.model_validate(console_ns.payload or {})
 
         try:
-            SavedMessageService.save(app_model, current_user, str(payload.message_id))
+            SavedMessageService.save(app_model, current_user, str(payload.message_id), session=db.session())
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
@@ -86,6 +84,6 @@ class SavedMessageApi(InstalledAppResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        SavedMessageService.delete(app_model, current_user, message_id_str)
+        SavedMessageService.delete(app_model, current_user, message_id_str, session=db.session())
 
         return "", 204

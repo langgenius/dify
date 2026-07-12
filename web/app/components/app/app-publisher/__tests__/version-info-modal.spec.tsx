@@ -3,12 +3,6 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import VersionInfoModal from '../version-info-modal'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
@@ -24,11 +18,13 @@ describe('VersionInfoModal', () => {
     render(
       <VersionInfoModal
         isOpen
-        versionInfo={{
-          id: 'version-1',
-          marked_name: 'Release 1',
-          marked_comment: 'Initial release',
-        } as any}
+        versionInfo={
+          {
+            id: 'version-1',
+            marked_name: 'Release 1',
+            marked_comment: 'Initial release',
+          } as any
+        }
         onClose={vi.fn()}
         onPublish={vi.fn()}
       />,
@@ -41,19 +37,15 @@ describe('VersionInfoModal', () => {
   it('should reject overlong titles', () => {
     const handlePublish = vi.fn()
 
-    render(
-      <VersionInfoModal
-        isOpen
-        onClose={vi.fn()}
-        onPublish={handlePublish}
-      />,
-    )
+    render(<VersionInfoModal isOpen onClose={vi.fn()} onPublish={handlePublish} />)
 
     const [titleInput] = screen.getAllByRole('textbox')
     fireEvent.change(titleInput!, { target: { value: 'a'.repeat(16) } })
-    fireEvent.click(screen.getByRole('button', { name: 'common.publish' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)common\.publish(?=$|:)/ }))
 
-    expect(toast.error).toHaveBeenCalledWith('versionHistory.editField.titleLengthLimit')
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringMatching(/(?:^|\.)versionHistory\.editField\.titleLengthLimit(?=$|:)/),
+    )
     expect(handlePublish).not.toHaveBeenCalled()
   })
 
@@ -64,11 +56,13 @@ describe('VersionInfoModal', () => {
     render(
       <VersionInfoModal
         isOpen
-        versionInfo={{
-          id: 'version-2',
-          marked_name: 'Old title',
-          marked_comment: 'Old notes',
-        } as any}
+        versionInfo={
+          {
+            id: 'version-2',
+            marked_name: 'Old title',
+            marked_comment: 'Old notes',
+          } as any
+        }
         onClose={handleClose}
         onPublish={handlePublish}
       />,
@@ -77,7 +71,7 @@ describe('VersionInfoModal', () => {
     const [titleInput, notesInput] = screen.getAllByRole('textbox')
     fireEvent.change(titleInput!, { target: { value: 'Release 2' } })
     fireEvent.change(notesInput!, { target: { value: 'Updated notes' } })
-    fireEvent.click(screen.getByRole('button', { name: 'common.publish' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)common\.publish(?=$|:)/ }))
 
     expect(handlePublish).toHaveBeenCalledWith({
       title: 'Release 2',
@@ -90,13 +84,7 @@ describe('VersionInfoModal', () => {
   it('should close when the dialog requests close', () => {
     const handleClose = vi.fn()
 
-    render(
-      <VersionInfoModal
-        isOpen
-        onClose={handleClose}
-        onPublish={vi.fn()}
-      />,
-    )
+    render(<VersionInfoModal isOpen onClose={handleClose} onPublish={vi.fn()} />)
 
     fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
@@ -106,15 +94,9 @@ describe('VersionInfoModal', () => {
   it('should close when the close button is clicked', () => {
     const handleClose = vi.fn()
 
-    render(
-      <VersionInfoModal
-        isOpen
-        onClose={handleClose}
-        onPublish={vi.fn()}
-      />,
-    )
+    render(<VersionInfoModal isOpen onClose={handleClose} onPublish={vi.fn()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.close' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
 
     expect(handleClose).toHaveBeenCalledTimes(1)
   })
@@ -126,11 +108,13 @@ describe('VersionInfoModal', () => {
     render(
       <VersionInfoModal
         isOpen
-        versionInfo={{
-          id: 'version-3',
-          marked_name: 'Old title',
-          marked_comment: 'Old notes',
-        } as any}
+        versionInfo={
+          {
+            id: 'version-3',
+            marked_name: 'Old title',
+            marked_comment: 'Old notes',
+          } as any
+        }
         onClose={handleClose}
         onPublish={handlePublish}
       />,
@@ -139,16 +123,20 @@ describe('VersionInfoModal', () => {
     const [titleInput, notesInput] = screen.getAllByRole('textbox')
 
     fireEvent.change(titleInput!, { target: { value: 'a'.repeat(16) } })
-    fireEvent.click(screen.getByRole('button', { name: 'common.publish' }))
-    expect(toast.error).toHaveBeenCalledWith('versionHistory.editField.titleLengthLimit')
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)common\.publish(?=$|:)/ }))
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringMatching(/(?:^|\.)versionHistory\.editField\.titleLengthLimit(?=$|:)/),
+    )
 
     fireEvent.change(titleInput!, { target: { value: 'Release 3' } })
     fireEvent.change(notesInput!, { target: { value: 'b'.repeat(101) } })
-    fireEvent.click(screen.getByRole('button', { name: 'common.publish' }))
-    expect(toast.error).toHaveBeenCalledWith('versionHistory.editField.releaseNotesLengthLimit')
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)common\.publish(?=$|:)/ }))
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringMatching(/(?:^|\.)versionHistory\.editField\.releaseNotesLengthLimit(?=$|:)/),
+    )
 
     fireEvent.change(notesInput!, { target: { value: 'Stable release notes' } })
-    fireEvent.click(screen.getByRole('button', { name: 'common.publish' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)common\.publish(?=$|:)/ }))
 
     expect(handlePublish).toHaveBeenCalledWith({
       title: 'Release 3',

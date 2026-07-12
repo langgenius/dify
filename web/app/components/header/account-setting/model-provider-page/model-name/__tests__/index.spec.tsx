@@ -69,6 +69,14 @@ describe('ModelName', () => {
 
       expect(container).toBeEmptyDOMElement()
     })
+
+    it('should apply custom class to model name only', () => {
+      const modelItem = createModelItem()
+
+      render(<ModelName modelItem={modelItem} nameClassName="line-through" showMode />)
+
+      expect(screen.getByText('English Model')).toHaveClass('line-through')
+    })
   })
 
   // Badges that surface model metadata to the user.
@@ -82,14 +90,7 @@ describe('ModelName', () => {
         },
       })
 
-      render(
-        <ModelName
-          modelItem={modelItem}
-          showModelType
-          showMode
-          showContextSize
-        />,
-      )
+      render(<ModelName modelItem={modelItem} showModelType showMode showContextSize />)
 
       expect(screen.getByText('TEXT EMBEDDING')).toBeInTheDocument()
       expect(screen.getByText('CHAT')).toBeInTheDocument()
@@ -101,13 +102,7 @@ describe('ModelName', () => {
         features: [ModelFeatureEnum.vision, ModelFeatureEnum.audio],
       })
 
-      render(
-        <ModelName
-          modelItem={modelItem}
-          showFeatures
-          showFeaturesLabel
-        />,
-      )
+      render(<ModelName modelItem={modelItem} showFeatures showFeaturesLabel />)
 
       expect(screen.getByText('Vision')).toBeInTheDocument()
       expect(screen.getByText('Audio')).toBeInTheDocument()

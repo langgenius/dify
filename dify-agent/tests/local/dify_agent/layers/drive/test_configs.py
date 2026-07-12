@@ -5,12 +5,10 @@ from pydantic import ValidationError
 
 from dify_agent.layers.drive import (
     DIFY_DRIVE_LAYER_TYPE_ID,
-    DifyDriveFileConfig,
     DifyDriveLayerConfig,
     DifyDriveSkillConfig,
 )
 from dify_agent.layers.drive.layer import DifyDriveLayer
-from dify_agent.runtime.compositor_factory import create_default_layer_providers
 
 
 def test_type_id_is_frozen_contract() -> None:
@@ -24,23 +22,24 @@ def test_layer_config_round_trips_manifest_entries() -> None:
             "drive_ref": "agent-019e9112",
             "skills": [
                 {
+                    "path": "tender-analyzer",
                     "name": "Tender Analyzer",
                     "description": "Parses RFP documents step by step.",
                     "skill_md_key": "tender-analyzer/SKILL.md",
                     "archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
                 }
             ],
-            "files": [{"name": "sample.pdf", "key": "files/sample.pdf", "size": 1024, "mime_type": "application/pdf"}],
+            "mentioned_skill_keys": ["tender-analyzer/SKILL.md"],
+            "mentioned_file_keys": ["files/sample.pdf"],
         }
     )
 
     dumped = config.model_dump(mode="json")
     assert dumped["drive_ref"] == "agent-019e9112"
+    assert "drive_base" not in dumped
     assert dumped["skills"][0]["skill_md_key"] == "tender-analyzer/SKILL.md"
-    assert dumped["files"][0]["key"] == "files/sample.pdf"
-    # the declaration is an index only — there is no field that could carry file content
+    assert dumped["mentioned_file_keys"] == ["files/sample.pdf"]
     assert "content" not in DifyDriveSkillConfig.model_fields
-    assert "content" not in DifyDriveFileConfig.model_fields
 
 
 def test_layer_config_rejects_unknown_fields() -> None:
@@ -48,11 +47,11 @@ def test_layer_config_rejects_unknown_fields() -> None:
         DifyDriveLayerConfig.model_validate({"drive_ref": "agent-1", "skill_md_body": "# inline content"})
 
 
-def test_inert_layer_is_registered_and_constructible_from_config() -> None:
-    providers = create_default_layer_providers()
-    provider = next(p for p in providers if p.type_id == DIFY_DRIVE_LAYER_TYPE_ID)
-
-    layer = provider.create_layer({"drive_ref": "agent-1", "skills": [], "files": []})
+def test_drive_layer_is_registered_and_constructible_from_config() -> None:
+    layer = DifyDriveLayer.from_config(
+        DifyDriveLayerConfig(drive_ref="agent-1", skills=[], mentioned_skill_keys=[], mentioned_file_keys=[]),
+    )
 
     assert isinstance(layer, DifyDriveLayer)
     assert layer.config.drive_ref == "agent-1"
+    assert not hasattr(layer, "local_drive_base")

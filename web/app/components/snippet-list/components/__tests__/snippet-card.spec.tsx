@@ -7,7 +7,9 @@ const {
   mockDownloadBlob,
   mockExportMutateAsync,
   mockOnRefresh,
+  mockRenderTagSelector,
   mockIsCurrentWorkspaceEditor,
+  mockWorkspacePermissionKeys,
   mockToastError,
   mockToastSuccess,
   mockUpdateMutate,
@@ -16,24 +18,88 @@ const {
   mockDownloadBlob: vi.fn(),
   mockExportMutateAsync: vi.fn(),
   mockIsCurrentWorkspaceEditor: vi.fn(() => true),
+  mockWorkspacePermissionKeys: vi.fn(() => ['snippets.create_and_modify', 'snippets.management']),
   mockOnRefresh: vi.fn(),
+  mockRenderTagSelector: vi.fn(),
   mockToastError: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockUpdateMutate: vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-  }),
-}))
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
     data: {
       accounts: [
-        { id: 'creator-id', name: 'Creator', email: 'creator@example.com', avatar: '', avatar_url: null, role: 'editor', last_login_at: '', created_at: '', status: 'active' },
-        { id: 'updater-id', name: 'Updater', email: 'updater@example.com', avatar: '', avatar_url: null, role: 'editor', last_login_at: '', created_at: '', status: 'active' },
+        {
+          id: 'creator-id',
+          name: 'Creator',
+          email: 'creator@example.com',
+          avatar: '',
+          avatar_url: null,
+          role: 'editor',
+          last_login_at: '',
+          created_at: '',
+          status: 'active',
+        },
+        {
+          id: 'updater-id',
+          name: 'Updater',
+          email: 'updater@example.com',
+          avatar: '',
+          avatar_url: null,
+          role: 'editor',
+          last_login_at: '',
+          created_at: '',
+          status: 'active',
+        },
       ],
     },
   }),
@@ -69,21 +135,27 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/features/tag-management/components/tag-selector', () => ({
-  TagSelector: ({
-    onOpenTagManagement,
-    onTagsChange,
-    value,
-  }: {
+  TagSelector: (props: {
     onOpenTagManagement: () => void
     onTagsChange: () => void
     value: Array<{ name: string }>
-  }) => (
-    <div data-testid="snippet-tags">
-      <span>{value.map(tag => tag.name).join(', ')}</span>
-      <button type="button" onClick={onOpenTagManagement}>manage tags</button>
-      <button type="button" onClick={onTagsChange}>sync tags</button>
-    </div>
-  ),
+    canBindOrUnbindTags?: boolean
+  }) => {
+    mockRenderTagSelector(props)
+    const { onOpenTagManagement, onTagsChange, value } = props
+
+    return (
+      <div data-testid="snippet-tags">
+        <span>{value.map((tag) => tag.name).join(', ')}</span>
+        <button type="button" onClick={onOpenTagManagement}>
+          manage tags
+        </button>
+        <button type="button" onClick={onTagsChange}>
+          sync tags
+        </button>
+      </div>
+    )
+  },
 }))
 
 const createSnippet = (overrides: Partial<SnippetListItem> = {}): SnippetListItem => ({
@@ -99,12 +171,17 @@ const createSnippet = (overrides: Partial<SnippetListItem> = {}): SnippetListIte
   updated_at: 1_704_153_600,
   updated_by: 'updater-id',
   ...overrides,
+  version: overrides.version ?? 1,
 })
 
 describe('SnippetCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
+    mockWorkspacePermissionKeys.mockReturnValue([
+      'snippets.create_and_modify',
+      'snippets.management',
+    ])
   })
 
   describe('Rendering', () => {
@@ -127,7 +204,11 @@ describe('SnippetCard', () => {
     })
 
     it('should fall back to unknown user when creator and updater are unavailable', () => {
-      render(<SnippetCard snippet={createSnippet({ created_by: 'missing-creator', updated_by: 'missing-updater' })} />)
+      render(
+        <SnippetCard
+          snippet={createSnippet({ created_by: 'missing-creator', updated_by: 'missing-updater' })}
+        />,
+      )
 
       expect(screen.getByText('snippet.unknownUser')).toBeInTheDocument()
     })
@@ -143,18 +224,92 @@ describe('SnippetCard', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
-      expect(await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' })).toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: 'snippet.menu.exportSnippet' })).toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: 'snippet.menu.deleteSnippet' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('menuitem', { name: 'snippet.menu.exportSnippet' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('menuitem', { name: 'snippet.menu.deleteSnippet' }),
+      ).toBeInTheDocument()
       expect(screen.queryByRole('menuitem', { name: /duplicate/i })).not.toBeInTheDocument()
     })
 
-    it('should hide operations for users without editor permission', () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+    it('should hide operations for users without snippet permissions', () => {
+      mockWorkspacePermissionKeys.mockReturnValue([])
 
       render(<SnippetCard snippet={createSnippet()} />)
 
-      expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.more' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should show edit info with create-and-modify permission without management actions', async () => {
+      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
+
+      render(<SnippetCard snippet={createSnippet()} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+
+      expect(
+        await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('menuitem', { name: 'snippet.menu.exportSnippet' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: 'snippet.menu.deleteSnippet' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should show delete with snippet management permission without create-and-modify actions', async () => {
+      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
+
+      render(<SnippetCard snippet={createSnippet()} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+
+      expect(
+        screen.queryByRole('menuitem', { name: 'snippet.menu.editInfo' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: 'snippet.menu.exportSnippet' }),
+      ).not.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitem', { name: 'snippet.menu.deleteSnippet' }),
+      ).toBeInTheDocument()
+    })
+
+    it('should pass snippet management permission to tag binding capability', () => {
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
+
+      render(<SnippetCard snippet={createSnippet()} />)
+
+      expect(mockRenderTagSelector).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'snippet',
+          targetId: 'snippet-1',
+          canBindOrUnbindTags: true,
+        }),
+      )
+    })
+
+    it('should disable tag binding capability without snippet management permission', () => {
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
+
+      render(<SnippetCard snippet={createSnippet()} />)
+
+      expect(mockRenderTagSelector).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'snippet',
+          targetId: 'snippet-1',
+          canBindOrUnbindTags: false,
+        }),
+      )
     })
 
     it('should forward tag selector actions without navigating the card link', () => {
@@ -163,7 +318,9 @@ describe('SnippetCard', () => {
 
       render(
         <SnippetCard
-          snippet={createSnippet({ tags: [{ id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: 1 }] })}
+          snippet={createSnippet({
+            tags: [{ id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: '' }],
+          })}
           onOpenTagManagement={onOpenTagManagement}
           onTagsChange={onTagsChange}
         />,
@@ -178,6 +335,7 @@ describe('SnippetCard', () => {
     })
 
     it('should export a snippet from the operations menu', async () => {
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
       mockExportMutateAsync.mockResolvedValue('snippet-yaml')
 
       render(<SnippetCard snippet={createSnippet()} />)
@@ -187,13 +345,16 @@ describe('SnippetCard', () => {
 
       await waitFor(() => {
         expect(mockExportMutateAsync).toHaveBeenCalledWith({ snippetId: 'snippet-1' })
-        expect(mockDownloadBlob).toHaveBeenCalledWith(expect.objectContaining({
-          fileName: 'Tone Rewriter.yml',
-        }))
+        expect(mockDownloadBlob).toHaveBeenCalledWith(
+          expect.objectContaining({
+            fileName: 'Tone Rewriter.yml',
+          }),
+        )
       })
     })
 
     it('should show an error toast when snippet export fails', async () => {
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
       mockExportMutateAsync.mockRejectedValue(new Error('export failed'))
 
       render(<SnippetCard snippet={createSnippet()} />)
@@ -222,24 +383,29 @@ describe('SnippetCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
       await waitFor(() => {
-        expect(mockUpdateMutate).toHaveBeenCalledWith({
-          params: { snippetId: 'snippet-1' },
-          body: {
-            name: 'Updated Snippet',
-            description: 'Rewrites rough drafts.',
+        expect(mockUpdateMutate).toHaveBeenCalledWith(
+          {
+            params: { snippetId: 'snippet-1' },
+            body: {
+              name: 'Updated Snippet',
+              description: 'Rewrites rough drafts.',
+            },
           },
-        }, expect.objectContaining({
-          onSuccess: expect.any(Function),
-          onError: expect.any(Function),
-        }))
+          expect.objectContaining({
+            onSuccess: expect.any(Function),
+            onError: expect.any(Function),
+          }),
+        )
         expect(mockOnRefresh).toHaveBeenCalled()
       })
     })
 
     it('should show update errors from the mutation callback', async () => {
-      mockUpdateMutate.mockImplementation((_payload, options?: { onError?: (error: Error) => void }) => {
-        options?.onError?.(new Error('Update failed'))
-      })
+      mockUpdateMutate.mockImplementation(
+        (_payload, options?: { onError?: (error: Error) => void }) => {
+          options?.onError?.(new Error('Update failed'))
+        },
+      )
 
       render(<SnippetCard snippet={createSnippet({ description: '' })} onRefresh={mockOnRefresh} />)
 
@@ -251,12 +417,15 @@ describe('SnippetCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
       await waitFor(() => {
-        expect(mockUpdateMutate).toHaveBeenCalledWith(expect.objectContaining({
-          body: {
-            name: 'Updated Snippet',
-            description: undefined,
-          },
-        }), expect.any(Object))
+        expect(mockUpdateMutate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            body: {
+              name: 'Updated Snippet',
+              description: '',
+            },
+          }),
+          expect.any(Object),
+        )
         expect(mockToastError).toHaveBeenCalledWith('Update failed')
       })
       expect(mockOnRefresh).not.toHaveBeenCalled()
@@ -274,20 +443,25 @@ describe('SnippetCard', () => {
       fireEvent.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 
       await waitFor(() => {
-        expect(mockDeleteMutate).toHaveBeenCalledWith({
-          params: { snippetId: 'snippet-1' },
-        }, expect.objectContaining({
-          onSuccess: expect.any(Function),
-          onError: expect.any(Function),
-        }))
+        expect(mockDeleteMutate).toHaveBeenCalledWith(
+          {
+            params: { snippetId: 'snippet-1' },
+          },
+          expect.objectContaining({
+            onSuccess: expect.any(Function),
+            onError: expect.any(Function),
+          }),
+        )
         expect(mockOnRefresh).toHaveBeenCalled()
       })
     })
 
     it('should show delete errors from the mutation callback', async () => {
-      mockDeleteMutate.mockImplementation((_payload, options?: { onError?: (error: Error) => void }) => {
-        options?.onError?.(new Error('Delete failed'))
-      })
+      mockDeleteMutate.mockImplementation(
+        (_payload, options?: { onError?: (error: Error) => void }) => {
+          options?.onError?.(new Error('Delete failed'))
+        },
+      )
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 

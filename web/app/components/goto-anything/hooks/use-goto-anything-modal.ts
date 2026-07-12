@@ -16,12 +16,16 @@ export const useGotoAnythingModal = (): UseGotoAnythingModalReturn => {
   const setOpen = useSetGotoAnythingOpen()
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useHotkey('Mod+K', (e) => {
-    e.preventDefault()
-    setOpen(prev => !prev)
-  }, {
-    ignoreInputs: !open,
-  })
+  useHotkey(
+    'Mod+K',
+    (e) => {
+      e.preventDefault()
+      setOpen((prev) => !prev)
+    },
+    {
+      ignoreInputs: !open,
+    },
+  )
 
   useEffect(() => {
     if (open) {

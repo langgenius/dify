@@ -8,12 +8,13 @@ import useWebAppBrand from '@/app/components/custom/custom-web-app-brand/hooks/u
 
 const mockSetShowPricingModal = vi.fn()
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
@@ -34,7 +35,9 @@ const { useProviderContext } = await import('@/context/provider-context')
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseWebAppBrand = vi.mocked(useWebAppBrand)
 
-const createBrandState = (overrides: Partial<ReturnType<typeof useWebAppBrand>> = {}): ReturnType<typeof useWebAppBrand> => ({
+const createBrandState = (
+  overrides: Partial<ReturnType<typeof useWebAppBrand>> = {},
+): ReturnType<typeof useWebAppBrand> => ({
   fileId: '',
   imgKey: 1,
   uploadProgress: 0,
@@ -43,7 +46,7 @@ const createBrandState = (overrides: Partial<ReturnType<typeof useWebAppBrand>> 
   webappBrandRemoved: false,
   uploadDisabled: false,
   workspaceLogo: 'https://example.com/workspace-logo.png',
-  isCurrentWorkspaceManager: true,
+  canManageCustomBrand: true,
   isSandbox: false,
   handleApply: vi.fn(),
   handleCancel: vi.fn(),
@@ -54,13 +57,15 @@ const createBrandState = (overrides: Partial<ReturnType<typeof useWebAppBrand>> 
 })
 
 const setProviderPlan = (planType: Plan, enableBilling = true) => {
-  mockUseProviderContext.mockReturnValue(createMockProviderContextValue({
-    enableBilling,
-    plan: {
-      ...defaultPlan,
-      type: planType,
-    },
-  }))
+  mockUseProviderContext.mockReturnValue(
+    createMockProviderContextValue({
+      enableBilling,
+      plan: {
+        ...defaultPlan,
+        type: planType,
+      },
+    }),
+  )
 }
 
 describe('Custom Page Flow', () => {

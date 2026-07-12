@@ -13,13 +13,7 @@ type ICollapse = {
   onSelect?: (item: IItem) => void
   wrapperClassName?: string
 }
-const Collapse = ({
-  title,
-  items,
-  renderItem,
-  onSelect,
-  wrapperClassName,
-}: ICollapse) => {
+const Collapse = ({ title, items, renderItem, onSelect, wrapperClassName }: ICollapse) => {
   const [open, setOpen] = useState(false)
 
   const toggle = () => setOpen(!open)
@@ -32,30 +26,32 @@ const Collapse = ({
         onClick={toggle}
       >
         {title}
-        {
-          open
-            ? <ChevronDownIcon className="size-3 text-components-button-tertiary-text" aria-hidden="true" />
-            : <ChevronRightIcon className="size-3 text-components-button-tertiary-text" aria-hidden="true" />
-        }
+        {open ? (
+          <ChevronDownIcon
+            className="size-3 text-components-button-tertiary-text"
+            aria-hidden="true"
+          />
+        ) : (
+          <ChevronRightIcon
+            className="size-3 text-components-button-tertiary-text"
+            aria-hidden="true"
+          />
+        )}
       </button>
-      {
-        open && (
-          <div className="mx-1 mb-1 rounded-lg border-t border-divider-subtle bg-components-panel-on-panel-item-bg py-1">
-            {
-              items.map(item => (
-                <button
-                  key={item.key}
-                  type="button"
-                  className="block w-full border-none bg-transparent p-0 text-left"
-                  onClick={() => onSelect?.(item)}
-                >
-                  {renderItem(item)}
-                </button>
-              ))
-            }
-          </div>
-        )
-      }
+      {open && (
+        <div className="mx-1 mb-1 rounded-lg border-t border-divider-subtle bg-components-panel-on-panel-item-bg py-1">
+          {items.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className="block w-full border-none bg-transparent p-0 text-left"
+              onClick={() => onSelect?.(item)}
+            >
+              {renderItem(item)}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

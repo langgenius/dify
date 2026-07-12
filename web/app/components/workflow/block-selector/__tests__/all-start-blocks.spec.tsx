@@ -50,7 +50,14 @@ vi.mock('@/utils/var', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils/var')>()
   return {
     ...actual,
-    getMarketplaceUrl: (path: string) => `https://marketplace.test${path}`,
+    getMarketplaceUrl: (path = '', params?: Record<string, string | undefined>) => {
+      const searchParams = new URLSearchParams()
+      Object.entries(params || {}).forEach(([key, value]) => {
+        if (value) searchParams.set(key, value)
+      })
+      const query = searchParams.toString()
+      return `https://marketplace.test${path}${query ? `?${query}` : ''}`
+    },
   }
 })
 
@@ -66,9 +73,13 @@ const mockUseAvailableNodesMetaData = vi.mocked(useAvailableNodesMetaData)
 
 type UseMarketplacePluginsReturn = ReturnType<typeof useMarketplacePlugins>
 type UseAllTriggerPluginsReturn = ReturnType<typeof useAllTriggerPlugins>
-type UseFeaturedTriggersRecommendationsReturn = ReturnType<typeof useFeaturedTriggersRecommendations>
+type UseFeaturedTriggersRecommendationsReturn = ReturnType<
+  typeof useFeaturedTriggersRecommendations
+>
 
-const createTriggerProvider = (overrides: Partial<TriggerWithProvider> = {}): TriggerWithProvider => ({
+const createTriggerProvider = (
+  overrides: Partial<TriggerWithProvider> = {},
+): TriggerWithProvider => ({
   id: 'provider-1',
   name: 'provider-one',
   author: 'Provider Author',
@@ -104,7 +115,9 @@ const createTriggerProvider = (overrides: Partial<TriggerWithProvider> = {}): Tr
 
 let enableMarketplaceForRender = false
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: enableMarketplaceForRender } })
+  renderWithSystemFeatures(ui, {
+    systemFeatures: { enable_marketplace: enableMarketplaceForRender },
+  })
 
 const createMarketplacePluginsMock = (
   overrides: Partial<UseMarketplacePluginsReturn> = {},
@@ -123,36 +136,35 @@ const createMarketplacePluginsMock = (
   ...overrides,
 })
 
-const createTriggerPluginsQueryResult = (
-  data: TriggerWithProvider[],
-): UseAllTriggerPluginsReturn => ({
-  data,
-  error: null,
-  isError: false,
-  isPending: false,
-  isLoading: false,
-  isSuccess: true,
-  isFetching: false,
-  isRefetching: false,
-  isLoadingError: false,
-  isRefetchError: false,
-  isInitialLoading: false,
-  isPaused: false,
-  isEnabled: true,
-  status: 'success',
-  fetchStatus: 'idle',
-  dataUpdatedAt: Date.now(),
-  errorUpdatedAt: 0,
-  failureCount: 0,
-  failureReason: null,
-  errorUpdateCount: 0,
-  isFetched: true,
-  isFetchedAfterMount: true,
-  isPlaceholderData: false,
-  isStale: false,
-  refetch: vi.fn(),
-  promise: Promise.resolve(data),
-} as UseAllTriggerPluginsReturn)
+const createTriggerPluginsQueryResult = (data: TriggerWithProvider[]): UseAllTriggerPluginsReturn =>
+  ({
+    data,
+    error: null,
+    isError: false,
+    isPending: false,
+    isLoading: false,
+    isSuccess: true,
+    isFetching: false,
+    isRefetching: false,
+    isLoadingError: false,
+    isRefetchError: false,
+    isInitialLoading: false,
+    isPaused: false,
+    isEnabled: true,
+    status: 'success',
+    fetchStatus: 'idle',
+    dataUpdatedAt: Date.now(),
+    errorUpdatedAt: 0,
+    failureCount: 0,
+    failureReason: null,
+    errorUpdateCount: 0,
+    isFetched: true,
+    isFetchedAfterMount: true,
+    isPlaceholderData: false,
+    isStale: false,
+    refetch: vi.fn(),
+    promise: Promise.resolve(data),
+  }) as UseAllTriggerPluginsReturn
 
 const createFeaturedTriggersRecommendationsMock = (
   overrides: Partial<UseFeaturedTriggersRecommendationsReturn> = {},
@@ -162,9 +174,10 @@ const createFeaturedTriggersRecommendationsMock = (
   ...overrides,
 })
 
-const createAvailableNodesMetaData = (): ReturnType<typeof useAvailableNodesMetaData> => ({
-  nodes: [],
-} as unknown as ReturnType<typeof useAvailableNodesMetaData>)
+const createAvailableNodesMetaData = (): ReturnType<typeof useAvailableNodesMetaData> =>
+  ({
+    nodes: [],
+  }) as unknown as ReturnType<typeof useAvailableNodesMetaData>
 
 describe('AllStartBlocks', () => {
   beforeEach(() => {
@@ -174,9 +187,13 @@ describe('AllStartBlocks', () => {
     mockUseLocale.mockReturnValue('en_US')
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
     mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock())
-    mockUseAllTriggerPlugins.mockReturnValue(createTriggerPluginsQueryResult([createTriggerProvider()]))
+    mockUseAllTriggerPlugins.mockReturnValue(
+      createTriggerPluginsQueryResult([createTriggerProvider()]),
+    )
     mockUseInvalidateAllTriggerPlugins.mockReturnValue(vi.fn())
-    mockUseFeaturedTriggersRecommendations.mockReturnValue(createFeaturedTriggersRecommendationsMock())
+    mockUseFeaturedTriggersRecommendations.mockReturnValue(
+      createFeaturedTriggersRecommendationsMock(),
+    )
     mockUseNodes.mockReturnValue([])
     mockUseAvailableNodesMetaData.mockReturnValue(createAvailableNodesMetaData())
   })
@@ -212,10 +229,13 @@ describe('AllStartBlocks', () => {
       await user.click(screen.getByText('Provider One'))
       await user.click(screen.getByText('Created'))
 
-      expect(onSelect).toHaveBeenCalledWith(BlockEnum.TriggerPlugin, expect.objectContaining({
-        provider_id: 'provider-one',
-        event_name: 'created',
-      }))
+      expect(onSelect).toHaveBeenCalledWith(
+        BlockEnum.TriggerPlugin,
+        expect.objectContaining({
+          provider_id: 'provider-one',
+          event_name: 'created',
+        }),
+      )
     })
 
     it('should show marketplace footer when marketplace is enabled without filters', async () => {
@@ -231,7 +251,14 @@ describe('AllStartBlocks', () => {
 
       const footer = await screen.findByRole('link', { name: /plugin\.findMoreInMarketplace/ })
       expect(footer).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
-      expect(footer).toHaveClass('system-sm-medium', 'h-8', 'rounded-b-lg', 'bg-components-panel-bg-blur', 'text-text-accent-light-mode-only', 'shadow-lg')
+      expect(footer).toHaveClass(
+        'system-sm-medium',
+        'h-8',
+        'rounded-b-lg',
+        'bg-components-panel-bg-blur',
+        'text-text-accent-light-mode-only',
+        'shadow-lg',
+      )
       expect(footer.querySelector('.i-custom-vender-main-nav-marketplace')).not.toBeInTheDocument()
       expect(footer.querySelector('svg')).toBeInTheDocument()
     })
@@ -248,7 +275,9 @@ describe('AllStartBlocks', () => {
         />,
       )
 
-      const footer = await screen.findByRole('link', { name: /workflow\.nodes\.startPlaceholder\.browseMoreOnMarketplace/ })
+      const footer = await screen.findByRole('link', {
+        name: /workflow\.nodes\.startPlaceholder\.browseMoreOnMarketplace/,
+      })
       expect(footer).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
       expect(footer).toHaveClass('flex-col')
       expect(footer.querySelector('.w-8 .bg-divider-subtle')).toBeInTheDocument()
@@ -276,19 +305,23 @@ describe('AllStartBlocks', () => {
 
     it('should render searched marketplace results after built-in and installed trigger options', async () => {
       enableMarketplaceForRender = true
-      mockUseAllTriggerPlugins.mockReturnValue(createTriggerPluginsQueryResult([
-        createTriggerProvider({
-          label: { en_US: 'Start Provider', zh_Hans: 'Start Provider' },
-        }),
-      ]))
-      mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock({
-        plugins: [
-          createPlugin({
-            name: 'start-marketplace',
-            label: { en_US: 'Start Marketplace', zh_Hans: 'Start Marketplace' },
+      mockUseAllTriggerPlugins.mockReturnValue(
+        createTriggerPluginsQueryResult([
+          createTriggerProvider({
+            label: { en_US: 'Start Provider', zh_Hans: 'Start Provider' },
           }),
-        ],
-      }))
+        ]),
+      )
+      mockUseMarketplacePlugins.mockReturnValue(
+        createMarketplacePluginsMock({
+          plugins: [
+            createPlugin({
+              name: 'start-marketplace',
+              label: { en_US: 'Start Marketplace', zh_Hans: 'Start Marketplace' },
+            }),
+          ],
+        }),
+      )
 
       const { container } = render(
         <AllStartBlocks
@@ -331,12 +364,21 @@ describe('AllStartBlocks', () => {
         />,
       )
 
-      expect(screen.getByText('workflow.nodes.startPlaceholder.userInputConflictTip')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflow.nodes.startPlaceholder.userInputConflictTip'),
+      ).toBeInTheDocument()
       expect(screen.queryByText('workflow.tabs.allTriggers')).not.toBeInTheDocument()
       expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
       expect(screen.getByText('common.operation.added')).toBeInTheDocument()
       const footer = screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/ })
-      expect(footer).toHaveClass('system-sm-medium', 'h-8', 'rounded-b-lg', 'bg-components-panel-bg-blur', 'text-text-accent-light-mode-only', 'shadow-lg')
+      expect(footer).toHaveClass(
+        'system-sm-medium',
+        'h-8',
+        'rounded-b-lg',
+        'bg-components-panel-bg-blur',
+        'text-text-accent-light-mode-only',
+        'shadow-lg',
+      )
       expect(footer.querySelector('.i-custom-vender-main-nav-marketplace')).not.toBeInTheDocument()
       expect(footer.querySelector('svg')).toBeInTheDocument()
 
@@ -361,12 +403,18 @@ describe('AllStartBlocks', () => {
 
       expect(screen.queryByText('workflow.tabs.allTriggers')).not.toBeInTheDocument()
       expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
-      expect(screen.getByText('workflow.blocks.mostCommon').closest('.opacity-30')).toBeInTheDocument()
-      expect(screen.getByText('workflow.blocks.start').closest('.cursor-not-allowed')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflow.blocks.mostCommon').closest('.opacity-30'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText('workflow.blocks.start').closest('.cursor-not-allowed'),
+      ).toBeInTheDocument()
 
       await user.hover(screen.getByText('workflow.blocks.start'))
 
-      expect(await screen.findByText('workflow.nodes.startPlaceholder.userInputConflictTip')).toBeInTheDocument()
+      expect(
+        await screen.findByText('workflow.nodes.startPlaceholder.userInputConflictTip'),
+      ).toBeInTheDocument()
 
       fireEvent.click(screen.getByText('workflow.blocks.start'))
       expect(onSelect).not.toHaveBeenCalled()
@@ -381,9 +429,11 @@ describe('AllStartBlocks', () => {
     it('should query marketplace and show the no-results state when filters have no matches', async () => {
       const queryPluginsWithDebounced = vi.fn()
       enableMarketplaceForRender = true
-      mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock({
-        queryPluginsWithDebounced,
-      }))
+      mockUseMarketplacePlugins.mockReturnValue(
+        createMarketplacePluginsMock({
+          queryPluginsWithDebounced,
+        }),
+      )
       mockUseAllTriggerPlugins.mockReturnValue(createTriggerPluginsQueryResult([]))
 
       render(
@@ -403,8 +453,12 @@ describe('AllStartBlocks', () => {
         })
       })
 
-      expect(screen.getByText('workflow.nodes.startPlaceholder.noTriggersFound')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'workflow.tabs.requestToCommunity' })).toHaveAttribute(
+      expect(
+        screen.getByText('workflow.nodes.startPlaceholder.noTriggersFound'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('link', { name: 'workflow.tabs.requestToCommunity' }),
+      ).toHaveAttribute(
         'href',
         'https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml',
       )

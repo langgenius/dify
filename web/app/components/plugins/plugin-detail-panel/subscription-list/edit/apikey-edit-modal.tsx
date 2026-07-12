@@ -28,7 +28,7 @@ const EditStep = {
   EditConfiguration: 'edit_configuration',
 } as const
 
-type EditStep = typeof EditStep[keyof typeof EditStep]
+type EditStep = (typeof EditStep)[keyof typeof EditStep]
 
 const normalizeFormType = (type: string): FormTypeEnum => {
   switch (type) {
@@ -46,8 +46,7 @@ const normalizeFormType = (type: string): FormTypeEnum => {
     case 'select':
       return FormTypeEnum.select
     default:
-      if (Object.values(FormTypeEnum).includes(type as FormTypeEnum))
-        return type as FormTypeEnum
+      if (Object.values(FormTypeEnum).includes(type as FormTypeEnum)) return type as FormTypeEnum
       return FormTypeEnum.textInput
   }
 }
@@ -55,63 +54,62 @@ const normalizeFormType = (type: string): FormTypeEnum => {
 const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
 
 const areAllCredentialsHidden = (credentials: Record<string, unknown>): boolean => {
-  return Object.values(credentials).every(value => value === HIDDEN_SECRET_VALUE)
+  return Object.values(credentials).every((value) => value === HIDDEN_SECRET_VALUE)
 }
 
-const StatusStep = ({ isActive, text, onClick, clickable }: {
+const StatusStep = ({
+  isActive,
+  text,
+  onClick,
+  clickable,
+}: {
   isActive: boolean
   text: string
   onClick?: () => void
   clickable?: boolean
 }) => {
-  const className = `flex items-center gap-1 system-2xs-semibold-uppercase ${isActive
-    ? 'text-state-accent-solid'
-    : 'text-text-tertiary'} ${clickable ? 'cursor-pointer rounded bg-transparent p-0 text-left hover:text-text-secondary focus-visible:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden' : ''}`
+  const className = `flex items-center gap-1 system-2xs-semibold-uppercase ${
+    isActive ? 'text-state-accent-solid' : 'text-text-tertiary'
+  } ${clickable ? 'cursor-pointer rounded bg-transparent p-0 text-left hover:text-text-secondary focus-visible:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden' : ''}`
 
   const content = (
     <>
-      {isActive
-        ? (
-            <div className="size-1 rounded-full bg-state-accent-solid"></div>
-          )
-        : null}
+      {isActive ? <div className="size-1 rounded-full bg-state-accent-solid"></div> : null}
       {text}
     </>
   )
 
   if (clickable) {
     return (
-      <button
-        type="button"
-        className={className}
-        onClick={onClick}
-      >
+      <button type="button" className={className} onClick={onClick}>
         {content}
       </button>
     )
   }
 
-  return (
-    <div className={className}>
-      {content}
-    </div>
-  )
+  return <div className={className}>{content}</div>
 }
 
-const MultiSteps = ({ currentStep, onStepClick }: { currentStep: EditStep, onStepClick?: (step: EditStep) => void }) => {
+const MultiSteps = ({
+  currentStep,
+  onStepClick,
+}: {
+  currentStep: EditStep
+  onStepClick?: (step: EditStep) => void
+}) => {
   const { t } = useTranslation()
   return (
     <div className="mb-6 flex w-1/3 items-center gap-2">
       <StatusStep
         isActive={currentStep === EditStep.EditCredentials}
-        text={t('modal.steps.verify', { ns: 'pluginTrigger' })}
+        text={t(($) => $['modal.steps.verify'], { ns: 'pluginTrigger' })}
         onClick={() => onStepClick?.(EditStep.EditCredentials)}
         clickable={currentStep === EditStep.EditConfiguration}
       />
       <div className="h-px w-3 shrink-0 bg-divider-deep"></div>
       <StatusStep
         isActive={currentStep === EditStep.EditConfiguration}
-        text={t('modal.steps.configuration', { ns: 'pluginTrigger' })}
+        text={t(($) => $['modal.steps.configuration'], { ns: 'pluginTrigger' })}
       />
     </div>
   )
@@ -119,11 +117,13 @@ const MultiSteps = ({ currentStep, onStepClick }: { currentStep: EditStep, onSte
 
 export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) => {
   const { t } = useTranslation()
-  const detail = usePluginStore(state => state.detail)
+  const detail = usePluginStore((state) => state.detail)
   const { refetch } = useSubscriptionList()
 
   const [currentStep, setCurrentStep] = useState<EditStep>(EditStep.EditCredentials)
-  const [verifiedCredentials, setVerifiedCredentials] = useState<Record<string, unknown> | null>(null)
+  const [verifiedCredentials, setVerifiedCredentials] = useState<Record<string, unknown> | null>(
+    null,
+  )
 
   const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription()
   const { mutate: verifyCredentials, isPending: isVerifying } = useVerifyTriggerSubscription()
@@ -134,8 +134,9 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
   )
 
   const apiKeyCredentialsSchema = useMemo(() => {
-    const rawSchema = detail?.declaration?.trigger?.subscription_constructor?.credentials_schema || []
-    return rawSchema.map(schema => ({
+    const rawSchema =
+      detail?.declaration?.trigger?.subscription_constructor?.credentials_schema || []
+    return rawSchema.map((schema) => ({
       ...schema,
       tooltip: schema.help,
     }))
@@ -150,8 +151,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       needTransformWhenSecretFieldIsPristine: true,
     }) || { values: {}, isCheckValidated: false }
 
-    if (!credentialsFormValues.isCheckValidated)
-      return
+    if (!credentialsFormValues.isCheckValidated) return
 
     const credentials = credentialsFormValues.values
 
@@ -163,13 +163,15 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       },
       {
         onSuccess: () => {
-          toast.success(t('modal.apiKey.verify.success', { ns: 'pluginTrigger' }))
+          toast.success(t(($) => $['modal.apiKey.verify.success'], { ns: 'pluginTrigger' }))
           // Only save credentials if any field was modified (not all hidden)
           setVerifiedCredentials(areAllCredentialsHidden(credentials) ? null : credentials)
           setCurrentStep(EditStep.EditConfiguration)
         },
         onError: async (error: unknown) => {
-          const errorMessage = await parsePluginErrorMessage(error) || t('modal.apiKey.verify.error', { ns: 'pluginTrigger' })
+          const errorMessage =
+            (await parsePluginErrorMessage(error)) ||
+            t(($) => $['modal.apiKey.verify.error'], { ns: 'pluginTrigger' })
           toast.error(errorMessage)
         },
       },
@@ -178,8 +180,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
 
   const handleUpdate = () => {
     const basicFormValues = basicFormRef.current?.getFormValues({})
-    if (!basicFormValues?.isCheckValidated)
-      return
+    if (!basicFormValues?.isCheckValidated) return
 
     const name = basicFormValues.values.subscription_name as string
 
@@ -189,8 +190,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       const paramsFormValues = parametersFormRef.current?.getFormValues({
         needTransformWhenSecretFieldIsPristine: true,
       })
-      if (!paramsFormValues?.isCheckValidated)
-        return
+      if (!paramsFormValues?.isCheckValidated) return
 
       // Only send parameters if changed
       const hasChanged = !isEqual(paramsFormValues.values, subscription.parameters || {})
@@ -206,12 +206,16 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       },
       {
         onSuccess: () => {
-          toast.success(t('subscription.list.item.actions.edit.success', { ns: 'pluginTrigger' }))
+          toast.success(
+            t(($) => $['subscription.list.item.actions.edit.success'], { ns: 'pluginTrigger' }),
+          )
           refetch?.()
           onClose()
         },
         onError: async (error: unknown) => {
-          const errorMessage = await parsePluginErrorMessage(error) || t('subscription.list.item.actions.edit.error', { ns: 'pluginTrigger' })
+          const errorMessage =
+            (await parsePluginErrorMessage(error)) ||
+            t(($) => $['subscription.list.item.actions.edit.error'], { ns: 'pluginTrigger' })
           toast.error(errorMessage)
         },
       },
@@ -219,36 +223,39 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
   }
 
   const handleConfirm = () => {
-    if (currentStep === EditStep.EditCredentials)
-      handleVerifyCredentials()
-    else
-      handleUpdate()
+    if (currentStep === EditStep.EditCredentials) handleVerifyCredentials()
+    else handleUpdate()
   }
 
-  const basicFormSchemas: FormSchema[] = useMemo(() => [
-    {
-      name: 'subscription_name',
-      label: t('modal.form.subscriptionName.label', { ns: 'pluginTrigger' }),
-      placeholder: t('modal.form.subscriptionName.placeholder', { ns: 'pluginTrigger' }),
-      type: FormTypeEnum.textInput,
-      required: true,
-      default: subscription.name,
-    },
-    {
-      name: 'callback_url',
-      label: t('modal.form.callbackUrl.label', { ns: 'pluginTrigger' }),
-      placeholder: t('modal.form.callbackUrl.placeholder', { ns: 'pluginTrigger' }),
-      type: FormTypeEnum.textInput,
-      required: false,
-      default: subscription.endpoint || '',
-      disabled: true,
-      tooltip: t('modal.form.callbackUrl.tooltip', { ns: 'pluginTrigger' }),
-      showCopy: true,
-    },
-  ], [t, subscription.name, subscription.endpoint])
+  const basicFormSchemas: FormSchema[] = useMemo(
+    () => [
+      {
+        name: 'subscription_name',
+        label: t(($) => $['modal.form.subscriptionName.label'], { ns: 'pluginTrigger' }),
+        placeholder: t(($) => $['modal.form.subscriptionName.placeholder'], {
+          ns: 'pluginTrigger',
+        }),
+        type: FormTypeEnum.textInput,
+        required: true,
+        default: subscription.name,
+      },
+      {
+        name: 'callback_url',
+        label: t(($) => $['modal.form.callbackUrl.label'], { ns: 'pluginTrigger' }),
+        placeholder: t(($) => $['modal.form.callbackUrl.placeholder'], { ns: 'pluginTrigger' }),
+        type: FormTypeEnum.textInput,
+        required: false,
+        default: subscription.endpoint || '',
+        disabled: true,
+        tooltip: t(($) => $['modal.form.callbackUrl.tooltip'], { ns: 'pluginTrigger' }),
+        showCopy: true,
+      },
+    ],
+    [t, subscription.name, subscription.endpoint],
+  )
 
   const credentialsFormSchemas: FormSchema[] = useMemo(() => {
-    return apiKeyCredentialsSchema.map(schema => ({
+    return apiKeyCredentialsSchema.map((schema) => ({
       ...schema,
       type: normalizeFormType(schema.type as string),
       tooltip: schema.help,
@@ -264,27 +271,40 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         type: normalizedType,
         tooltip: schema.description,
         default: subscription.parameters?.[schema.name] || schema.default,
-        dynamicSelectParams: normalizedType === FormTypeEnum.dynamicSelect
-          ? {
-              plugin_id: detail?.plugin_id || '',
-              provider: detail?.provider || '',
-              action: 'provider',
-              parameter: schema.name,
-              credential_id: subscription.id,
-              credentials: verifiedCredentials || undefined,
-            }
-          : undefined,
-        fieldClassName: schema.type === FormTypeEnum.boolean ? 'flex items-center justify-between' : undefined,
+        dynamicSelectParams:
+          normalizedType === FormTypeEnum.dynamicSelect
+            ? {
+                plugin_id: detail?.plugin_id || '',
+                provider: detail?.provider || '',
+                action: 'provider',
+                parameter: schema.name,
+                credential_id: subscription.id,
+                credentials: verifiedCredentials || undefined,
+              }
+            : undefined,
+        fieldClassName:
+          schema.type === FormTypeEnum.boolean ? 'flex items-center justify-between' : undefined,
         labelClassName: schema.type === FormTypeEnum.boolean ? 'mb-0' : undefined,
       }
     })
-  }, [parametersSchema, subscription.parameters, subscription.id, detail?.plugin_id, detail?.provider, verifiedCredentials])
+  }, [
+    parametersSchema,
+    subscription.parameters,
+    subscription.id,
+    detail?.plugin_id,
+    detail?.provider,
+    verifiedCredentials,
+  ])
 
   const confirmButtonText = (() => {
     if (currentStep === EditStep.EditCredentials)
-      return isVerifying ? t('modal.common.verifying', { ns: 'pluginTrigger' }) : t('modal.common.verify', { ns: 'pluginTrigger' })
+      return isVerifying
+        ? t(($) => $['modal.common.verifying'], { ns: 'pluginTrigger' })
+        : t(($) => $['modal.common.verify'], { ns: 'pluginTrigger' })
 
-    return isUpdating ? t('operation.saving', { ns: 'common' }) : t('operation.save', { ns: 'common' })
+    return isUpdating
+      ? t(($) => $['operation.saving'], { ns: 'common' })
+      : t(($) => $['operation.save'], { ns: 'common' })
   })()
 
   const handleBack = () => {
@@ -293,89 +313,82 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
   }
 
   const isDisabled = isUpdating || isVerifying
-  const title = t('subscription.list.item.actions.edit.title', { ns: 'pluginTrigger' })
+  const title = t(($) => $['subscription.list.item.actions.edit.title'], { ns: 'pluginTrigger' })
 
   return (
     <Dialog
       open
       disablePointerDismissal
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
     >
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className="p-0"
-      >
-        <div data-testid="modal" data-title={title} data-disabled={isDisabled} className="flex max-h-[80dvh] flex-col">
+      <DialogContent backdropProps={{ forceRender: true }} className="p-0">
+        <div
+          data-testid="modal"
+          data-title={title}
+          data-disabled={isDisabled}
+          className="flex max-h-[80dvh] flex-col"
+        >
           <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle data-testid="modal-title" className="title-2xl-semi-bold text-text-primary">
+            <DialogTitle
+              data-testid="modal-title"
+              className="title-2xl-semi-bold text-text-primary"
+            >
               {title}
             </DialogTitle>
             <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
           </div>
           <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
-            {pluginDetail && (
-              <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />
-            )}
+            {pluginDetail && <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />}
 
             <MultiSteps currentStep={currentStep} onStepClick={handleBack} />
 
-            {currentStep === EditStep.EditCredentials
-              ? (
-                  <div className="mb-4">
-                    {credentialsFormSchemas.length > 0 && (
-                      <BaseForm
-                        formSchemas={credentialsFormSchemas}
-                        ref={credentialsFormRef}
-                        labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
-                        formClassName="space-y-4"
-                        preventDefaultSubmit={true}
-                      />
-                    )}
-                  </div>
-                )
-              : (
-                  <div className="max-h-[70vh]">
-                    <BaseForm
-                      formSchemas={basicFormSchemas}
-                      ref={basicFormRef}
-                      labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
-                      formClassName="space-y-4 mb-4"
-                    />
-
-                    {parametersFormSchemas.length > 0 && (
-                      <BaseForm
-                        formSchemas={parametersFormSchemas}
-                        ref={parametersFormRef}
-                        labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
-                        formClassName="space-y-4"
-                      />
-                    )}
-                  </div>
+            {currentStep === EditStep.EditCredentials ? (
+              <div className="mb-4">
+                {credentialsFormSchemas.length > 0 && (
+                  <BaseForm
+                    formSchemas={credentialsFormSchemas}
+                    ref={credentialsFormRef}
+                    labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+                    formClassName="space-y-4"
+                    preventDefaultSubmit={true}
+                  />
                 )}
+              </div>
+            ) : (
+              <div className="max-h-[70vh]">
+                <BaseForm
+                  formSchemas={basicFormSchemas}
+                  ref={basicFormRef}
+                  labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+                  formClassName="space-y-4 mb-4"
+                />
+
+                {parametersFormSchemas.length > 0 && (
+                  <BaseForm
+                    formSchemas={parametersFormSchemas}
+                    ref={parametersFormRef}
+                    labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+                    formClassName="space-y-4"
+                  />
+                )}
+              </div>
+            )}
           </div>
           <div className="flex shrink-0 justify-between p-6 pt-5">
             <div />
             <div className="flex items-center">
               {currentStep === EditStep.EditConfiguration && (
                 <>
-                  <Button
-                    variant="secondary"
-                    onClick={handleBack}
-                    disabled={isDisabled}
-                  >
-                    {t('modal.common.back', { ns: 'pluginTrigger' })}
+                  <Button variant="secondary" onClick={handleBack} disabled={isDisabled}>
+                    {t(($) => $['modal.common.back'], { ns: 'pluginTrigger' })}
                   </Button>
                   <div className="mx-3 h-4 w-px bg-divider-regular"></div>
                 </>
               )}
-              <Button
-                onClick={onClose}
-                disabled={isDisabled}
-              >
-                {t('operation.cancel', { ns: 'common' })}
+              <Button onClick={onClose} disabled={isDisabled}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <Button
                 className="ml-2"

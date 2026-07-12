@@ -13,6 +13,11 @@ export const zTagResponse = z.object({
 })
 
 /**
+ * TagListResponse
+ */
+export const zTagListResponse = z.array(zTagResponse)
+
+/**
  * TagUpdateRequestPayload
  */
 export const zTagUpdateRequestPayload = z.object({
@@ -42,7 +47,7 @@ export const zGetTagsQuery = z.object({
 /**
  * Success
  */
-export const zGetTagsResponse = z.array(zTagResponse)
+export const zGetTagsResponse = zTagListResponse
 
 export const zPostTagsBody = zTagBasePayload
 
@@ -52,7 +57,7 @@ export const zPostTagsBody = zTagBasePayload
 export const zPostTagsResponse = zTagResponse
 
 export const zDeleteTagsByTagIdPath = z.object({
-  tag_id: z.string(),
+  tag_id: z.uuid(),
 })
 
 /**
@@ -63,7 +68,7 @@ export const zDeleteTagsByTagIdResponse = z.void()
 export const zPatchTagsByTagIdBody = zTagUpdateRequestPayload
 
 export const zPatchTagsByTagIdPath = z.object({
-  tag_id: z.string(),
+  tag_id: z.uuid(),
 })
 
 /**

@@ -12,17 +12,21 @@ from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
 )
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.helper import to_timestamp
+from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models.enums import AppMCPServerStatus
 from models.model import App, AppMCPServer
+from services.app_ref_service import AppRefService
 
 
 class MCPServerCreatePayload(BaseModel):
@@ -83,12 +87,13 @@ class AppMCPServerController(Resource):
     @login_required
     @account_initialization_required
     @setup_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model
     def get(self, app_model: App):
         server = db.session.scalar(select(AppMCPServer).where(AppMCPServer.app_id == app_model.id).limit(1))
         if server is None:
             return {}
-        return AppMCPServerResponse.model_validate(server, from_attributes=True).model_dump(mode="json")
+        return dump_response(AppMCPServerResponse, server)
 
     @console_ns.doc("create_app_mcp_server")
     @console_ns.doc(description="Create MCP server configuration for an application")
@@ -99,11 +104,12 @@ class AppMCPServerController(Resource):
     )
     @console_ns.response(403, "Insufficient permissions")
     @account_initialization_required
-    @get_app_model
     @login_required
     @setup_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_tenant_id
+    @get_app_model
     def post(self, current_tenant_id: str, app_model: App):
         payload = MCPServerCreatePayload.model_validate(console_ns.payload or {})
 
@@ -122,7 +128,7 @@ class AppMCPServerController(Resource):
         )
         db.session.add(server)
         db.session.commit()
-        return AppMCPServerResponse.model_validate(server, from_attributes=True).model_dump(mode="json"), 201
+        return dump_response(AppMCPServerResponse, server), 201
 
     @console_ns.doc("update_app_mcp_server")
     @console_ns.doc(description="Update MCP server configuration for an application")
@@ -133,14 +139,25 @@ class AppMCPServerController(Resource):
     )
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "Server not found")
-    @get_app_model
     @login_required
     @setup_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @get_app_model
     def put(self, app_model: App):
         payload = MCPServerUpdatePayload.model_validate(console_ns.payload or {})
-        server = db.session.get(AppMCPServer, payload.id)
+        app_ref = AppRefService.create_app_ref(app_model)
+        server_ref = AppRefService.create_mcp_server_ref(app_ref, payload.id)
+        server = db.session.scalar(
+            select(AppMCPServer)
+            .where(
+                AppMCPServer.id == server_ref.server_id,
+                AppMCPServer.tenant_id == server_ref.tenant_id,
+                AppMCPServer.app_id == server_ref.app_id,
+            )
+            .limit(1)
+        )
         if not server:
             raise NotFound()
 
@@ -159,7 +176,7 @@ class AppMCPServerController(Resource):
             except ValueError:
                 raise ValueError("Invalid status")
         db.session.commit()
-        return AppMCPServerResponse.model_validate(server, from_attributes=True).model_dump(mode="json")
+        return dump_response(AppMCPServerResponse, server)
 
 
 @console_ns.route("/apps/<uuid:server_id>/server/refresh")
@@ -174,6 +191,7 @@ class AppMCPServerRefreshController(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
     def get(self, current_tenant_id: str, server_id: UUID):
         server = db.session.scalar(
@@ -185,4 +203,4 @@ class AppMCPServerRefreshController(Resource):
             raise NotFound()
         server.server_code = AppMCPServer.generate_server_code(16)
         db.session.commit()
-        return AppMCPServerResponse.model_validate(server, from_attributes=True).model_dump(mode="json")
+        return dump_response(AppMCPServerResponse, server)

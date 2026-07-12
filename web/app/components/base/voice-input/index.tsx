@@ -3,6 +3,7 @@ import { useRafInterval } from 'ahooks'
 import Recorder from 'js-audio-recorder'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { useParams, usePathname } from '@/next/navigation'
 import { AppSourceType, audioToText } from '@/service/share'
 import s from './index.module.css'
@@ -14,18 +15,16 @@ type VoiceInputTypes = {
   wordTimestamps?: string
 }
 
-const VoiceInput = ({
-  onCancel,
-  onConverted,
-  wordTimestamps,
-}: VoiceInputTypes) => {
+const VoiceInput = ({ onCancel, onConverted, wordTimestamps }: VoiceInputTypes) => {
   const { t } = useTranslation()
-  const recorder = useRef(new Recorder({
-    sampleBits: 16,
-    sampleRate: 16000,
-    numChannels: 1,
-    compiling: false,
-  }))
+  const recorder = useRef(
+    new Recorder({
+      sampleBits: 16,
+      sampleRate: 16000,
+      numChannels: 1,
+      compiling: false,
+    }),
+  )
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
   const drawRecordId = useRef<number | null>(null)
@@ -51,21 +50,18 @@ const VoiceInput = ({
     ctx.beginPath()
     let x = 0
     for (let i = 0; i < lineLength; i++) {
-      let v = dataArray.slice(i * gap, i * gap + gap).reduce((prev: number, next: number) => {
-        return prev + next
-      }, 0) / gap
+      let v =
+        dataArray.slice(i * gap, i * gap + gap).reduce((prev: number, next: number) => {
+          return prev + next
+        }, 0) / gap
 
-      if (v < 128)
-        v = 128
-      if (v > 178)
-        v = 178
-      const y = (v - 128) / 50 * canvas.height
+      if (v < 128) v = 128
+      if (v > 178) v = 178
+      const y = ((v - 128) / 50) * canvas.height
 
       ctx.moveTo(x, 16)
-      if (ctx.roundRect)
-        ctx.roundRect(x, 16 - y, 2, y, [1, 1, 0, 0])
-      else
-        ctx.rect(x, 16 - y, 2, y)
+      if (ctx.roundRect) ctx.roundRect(x, 16 - y, 2, y, [1, 1, 0, 0])
+      else ctx.rect(x, 16 - y, 2, y)
       ctx.fill()
       x += 3
     }
@@ -76,8 +72,7 @@ const VoiceInput = ({
     setStartRecord(false)
     setStartConvert(true)
     recorder.current.stop()
-    if (drawRecordId.current)
-      cancelAnimationFrame(drawRecordId.current)
+    if (drawRecordId.current) cancelAnimationFrame(drawRecordId.current)
     drawRecordId.current = null
     const canvas = canvasRef.current!
     const ctx = ctxRef.current!
@@ -94,20 +89,20 @@ const VoiceInput = ({
     if (params.token) {
       url = '/audio-to-text'
       isPublic = true
-    }
-    else if (params.appId) {
-      if (pathname.search('explore/installed') > -1)
-        url = `/installed-apps/${params.appId}/audio-to-text`
-      else
-        url = `/apps/${params.appId}/audio-to-text`
+    } else if (params.appId) {
+      if (isInstalledAppPath(pathname)) url = `/installed-apps/${params.appId}/audio-to-text`
+      else url = `/apps/${params.appId}/audio-to-text`
     }
 
     try {
-      const audioResponse = await audioToText(url, isPublic ? AppSourceType.webApp : AppSourceType.installedApp, formData)
+      const audioResponse = await audioToText(
+        url,
+        isPublic ? AppSourceType.webApp : AppSourceType.installedApp,
+        formData,
+      )
       onConverted(audioResponse.text)
       onCancel()
-    }
-    catch {
+    } catch {
       onConverted('')
       onCancel()
     }
@@ -118,10 +113,8 @@ const VoiceInput = ({
       setStartRecord(true)
       setStartConvert(false)
 
-      if (canvasRef.current && ctxRef.current)
-        drawRecord()
-    }
-    catch {
+      if (canvasRef.current && ctxRef.current) drawRecord()
+    } catch {
       onCancel()
     }
   }, [drawRecord, onCancel, setStartRecord, setStartConvert])
@@ -144,8 +137,7 @@ const VoiceInput = ({
       }
     }
   }, [])
-  if (originDuration >= 600 && startRecord)
-    handleStopRecorder()
+  if (originDuration >= 600 && startRecord) handleStopRecorder()
 
   useEffect(() => {
     initCanvas()
@@ -163,48 +155,46 @@ const VoiceInput = ({
     <div className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
       <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pr-[6.5px] pl-[14.5px]">
         <canvas id="voice-input-record" className="absolute bottom-0 left-0 h-4 w-full" />
-        {
-          startConvert && <div className="mr-2 i-ri-loader-2-line size-4 animate-spin text-primary-700" data-testid="voice-input-loader" />
-        }
+        {startConvert && (
+          <div
+            className="mr-2 i-ri-loader-2-line size-4 animate-spin text-primary-700"
+            data-testid="voice-input-loader"
+          />
+        )}
         <div className="grow">
-          {
-            startRecord && (
-              <div className="text-sm text-gray-500">
-                {t('voiceInput.speaking', { ns: 'common' })}
-              </div>
-            )
-          }
-          {
-            startConvert && (
-              <div className={cn(s.convert, 'text-sm')} data-testid="voice-input-converting-text">
-                {t('voiceInput.converting', { ns: 'common' })}
-              </div>
-            )
-          }
+          {startRecord && (
+            <div className="text-sm text-gray-500">
+              {t(($) => $['voiceInput.speaking'], { ns: 'common' })}
+            </div>
+          )}
+          {startConvert && (
+            <div className={cn(s.convert, 'text-sm')} data-testid="voice-input-converting-text">
+              {t(($) => $['voiceInput.converting'], { ns: 'common' })}
+            </div>
+          )}
         </div>
-        {
-          startRecord && (
-            <div
-              className="mr-1 flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-primary-100"
-              onClick={handleStopRecorder}
-              data-testid="voice-input-stop"
-            >
-              <div className="i-ri-stop-circle-line size-5 text-primary-600" />
-            </div>
-          )
-        }
-        {
-          startConvert && (
-            <div
-              className="mr-1 flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-gray-200"
-              onClick={onCancel}
-              data-testid="voice-input-cancel"
-            >
-              <div className="i-ri-close-line size-4 text-gray-500" />
-            </div>
-          )
-        }
-        <div className={`w-[45px] pl-1 text-xs font-medium ${originDuration > 500 ? 'text-[#F04438]' : 'text-gray-700'}`} data-testid="voice-input-timer">{`0${minutes.toFixed(0)}:${seconds >= 10 ? seconds : `0${seconds}`}`}</div>
+        {startRecord && (
+          <div
+            className="mr-1 flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-primary-100"
+            onClick={handleStopRecorder}
+            data-testid="voice-input-stop"
+          >
+            <div className="i-ri-stop-circle-line size-5 text-primary-600" />
+          </div>
+        )}
+        {startConvert && (
+          <div
+            className="mr-1 flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-gray-200"
+            onClick={onCancel}
+            data-testid="voice-input-cancel"
+          >
+            <div className="i-ri-close-line size-4 text-gray-500" />
+          </div>
+        )}
+        <div
+          className={`w-[45px] pl-1 text-xs font-medium ${originDuration > 500 ? 'text-[#F04438]' : 'text-gray-700'}`}
+          data-testid="voice-input-timer"
+        >{`0${minutes.toFixed(0)}:${seconds >= 10 ? seconds : `0${seconds}`}`}</div>
       </div>
     </div>
   )

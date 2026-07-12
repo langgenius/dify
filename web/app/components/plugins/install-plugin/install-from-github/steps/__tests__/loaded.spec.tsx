@@ -7,7 +7,7 @@ import Loaded from '../loaded'
 // Mock dependencies
 const mockUseCheckInstalled = vi.fn()
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () => ({
-  default: (params: { pluginIds: string[], enabled: boolean }) => mockUseCheckInstalled(params),
+  default: (params: { pluginIds: string[]; enabled: boolean }) => mockUseCheckInstalled(params),
 }))
 
 const mockUpdateFromGitHub = vi.fn()
@@ -16,10 +16,10 @@ vi.mock('@/service/plugins', () => ({
 }))
 
 const mockInstallPackageFromGitHub = vi.fn()
-const mockHandleRefetch = vi.fn()
+const mockHandleInstallTaskStart = vi.fn()
 vi.mock('@/service/use-plugins', () => ({
   useInstallPackageFromGitHub: () => ({ mutateAsync: mockInstallPackageFromGitHub }),
-  usePluginTaskList: () => ({ handleRefetch: mockHandleRefetch }),
+  usePluginTaskList: () => ({ handleInstallTaskStart: mockHandleInstallTaskStart }),
 }))
 
 const mockCheck = vi.fn()
@@ -29,7 +29,7 @@ vi.mock('../../../base/check-task-status', () => ({
 
 // Mock Card component
 vi.mock('../../../../card', () => ({
-  default: ({ payload, titleLeft }: { payload: Plugin, titleLeft?: React.ReactNode }) => (
+  default: ({ payload, titleLeft }: { payload: Plugin; titleLeft?: React.ReactNode }) => (
     <div data-testid="plugin-card">
       <span data-testid="card-name">{payload.name}</span>
       {!!titleLeft && <span data-testid="title-left">{titleLeft}</span>}
@@ -39,13 +39,19 @@ vi.mock('../../../../card', () => ({
 
 // Mock Version component
 vi.mock('../../../base/version', () => ({
-  default: ({ hasInstalled, installedVersion, toInstallVersion }: {
+  default: ({
+    hasInstalled,
+    installedVersion,
+    toInstallVersion,
+  }: {
     hasInstalled: boolean
     installedVersion?: string
     toInstallVersion: string
   }) => (
     <span data-testid="version-info">
-      {hasInstalled ? `Update from ${installedVersion} to ${toInstallVersion}` : `Install ${toInstallVersion}`}
+      {hasInstalled
+        ? `Update from ${installedVersion} to ${toInstallVersion}`
+        : `Install ${toInstallVersion}`}
     </span>
   ),
 }))
@@ -158,7 +164,9 @@ describe('Loaded', () => {
     it('should render install button', () => {
       render(<Loaded {...defaultProps} />)
 
-      expect(screen.getByRole('button', { name: /plugin.installModal.install/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /plugin.installModal.install/i }),
+      ).toBeInTheDocument()
     })
 
     it('should show version info in card title', () => {
@@ -203,7 +211,9 @@ describe('Loaded', () => {
     it('should enable install button when not loading', () => {
       render(<Loaded {...defaultProps} />)
 
-      expect(screen.getByRole('button', { name: /plugin.installModal.install/i })).not.toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: /plugin.installModal.install/i }),
+      ).not.toBeDisabled()
     })
   })
 
@@ -316,7 +326,10 @@ describe('Loaded', () => {
       fireEvent.click(screen.getByRole('button', { name: /plugin.installModal.install/i }))
 
       await waitFor(() => {
-        expect(mockHandleRefetch).toHaveBeenCalled()
+        expect(mockHandleInstallTaskStart).toHaveBeenCalledWith({
+          all_installed: false,
+          task_id: 'task-1',
+        })
         expect(mockCheck).toHaveBeenCalledWith({
           taskId: 'task-1',
           pluginUniqueIdentifier: 'test-unique-id',
@@ -400,7 +413,9 @@ describe('Loaded', () => {
       })
 
       const onInstalled = vi.fn()
-      render(<Loaded {...defaultProps} payload={createMockPluginPayload()} onInstalled={onInstalled} />)
+      render(
+        <Loaded {...defaultProps} payload={createMockPluginPayload()} onInstalled={onInstalled} />,
+      )
 
       expect(onInstalled).toHaveBeenCalled()
     })
@@ -417,7 +432,9 @@ describe('Loaded', () => {
       })
 
       const onInstalled = vi.fn()
-      render(<Loaded {...defaultProps} payload={createMockPluginPayload()} onInstalled={onInstalled} />)
+      render(
+        <Loaded {...defaultProps} payload={createMockPluginPayload()} onInstalled={onInstalled} />,
+      )
 
       expect(onInstalled).not.toHaveBeenCalled()
     })
@@ -428,27 +445,35 @@ describe('Loaded', () => {
   // ================================
   describe('Installing State', () => {
     it('should hide back button while installing', async () => {
-      let resolveInstall: (value: { all_installed: boolean, task_id: string }) => void
-      mockInstallPackageFromGitHub.mockImplementation(() => new Promise((resolve) => {
-        resolveInstall = resolve
-      }))
+      let resolveInstall: (value: { all_installed: boolean; task_id: string }) => void
+      mockInstallPackageFromGitHub.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveInstall = resolve
+          }),
+      )
 
       render(<Loaded {...defaultProps} />)
 
       fireEvent.click(screen.getByRole('button', { name: /plugin.installModal.install/i }))
 
       await waitFor(() => {
-        expect(screen.queryByRole('button', { name: 'plugin.installModal.back' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('button', { name: 'plugin.installModal.back' }),
+        ).not.toBeInTheDocument()
       })
 
       resolveInstall!({ all_installed: true, task_id: 'task-1' })
     })
 
     it('should show installing text while installing', async () => {
-      let resolveInstall: (value: { all_installed: boolean, task_id: string }) => void
-      mockInstallPackageFromGitHub.mockImplementation(() => new Promise((resolve) => {
-        resolveInstall = resolve
-      }))
+      let resolveInstall: (value: { all_installed: boolean; task_id: string }) => void
+      mockInstallPackageFromGitHub.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveInstall = resolve
+          }),
+      )
 
       render(<Loaded {...defaultProps} />)
 
@@ -462,10 +487,13 @@ describe('Loaded', () => {
     })
 
     it('should not trigger install twice when already installing', async () => {
-      let resolveInstall: (value: { all_installed: boolean, task_id: string }) => void
-      mockInstallPackageFromGitHub.mockImplementation(() => new Promise((resolve) => {
-        resolveInstall = resolve
-      }))
+      let resolveInstall: (value: { all_installed: boolean; task_id: string }) => void
+      mockInstallPackageFromGitHub.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveInstall = resolve
+          }),
+      )
 
       render(<Loaded {...defaultProps} />)
 

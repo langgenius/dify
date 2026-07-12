@@ -9,11 +9,12 @@ vi.mock('../../../hooks', () => ({
       { name: 'rag', label: 'RAG' },
       { name: 'search', label: 'Search' },
     ],
-    getTagLabel: (name: string) => ({
-      agent: 'Agent',
-      rag: 'RAG',
-      search: 'Search',
-    }[name] ?? name),
+    getTagLabel: (name: string) =>
+      ({
+        agent: 'Agent',
+        rag: 'RAG',
+        search: 'Search',
+      })[name] ?? name,
   }),
 }))
 
@@ -24,10 +25,10 @@ describe('TagFilter', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the all tags placeholder when nothing is selected', () => {
+  it('renders the tags placeholder when nothing is selected', () => {
     render(<TagFilter value={[]} onChange={vi.fn()} />)
 
-    expect(screen.getByText('pluginTags.allTags')).toBeInTheDocument()
+    expect(screen.getByText('common.tag.tags')).toBeInTheDocument()
   })
 
   it('renders selected tag labels and the overflow counter', () => {
@@ -44,7 +45,9 @@ describe('TagFilter', () => {
     fireEvent.click(screen.getByTestId('popover-trigger'))
     const portal = screen.getByTestId('popover-content')
 
-    fireEvent.change(screen.getByPlaceholderText('pluginTags.searchTags'), { target: { value: 'ra' } })
+    fireEvent.change(screen.getByPlaceholderText('pluginTags.searchTags'), {
+      target: { value: 'ra' },
+    })
 
     expect(within(portal).queryByText('Agent')).not.toBeInTheDocument()
     expect(within(portal).getByText('RAG')).toBeInTheDocument()
@@ -59,7 +62,7 @@ describe('TagFilter', () => {
     render(<TagFilter value={['agent']} onChange={onChange} />)
 
     const trigger = screen.getByTestId('popover-trigger')
-    fireEvent.click(trigger.querySelector('svg')!)
+    fireEvent.click(trigger.querySelector('.i-ri-close-circle-fill')!)
 
     expect(onChange).toHaveBeenCalledWith([])
   })

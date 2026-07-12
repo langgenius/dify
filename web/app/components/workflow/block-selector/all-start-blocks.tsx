@@ -1,7 +1,5 @@
 'use client'
-import type {
-  RefObject,
-} from 'react'
+import type { RefObject } from 'react'
 import type { BlockEnum, OnSelectBlock } from '../types'
 import type { ListRef } from './market-place-plugin/list'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
@@ -9,21 +7,15 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
-import { getMarketplaceUrl } from '@/utils/var'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum as BlockEnumValue } from '../types'
@@ -33,8 +25,10 @@ import PluginList from './market-place-plugin/list'
 import StartBlocks from './start-blocks'
 import TriggerPluginList from './trigger-plugin/list'
 
-const popoverMarketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
-const panelMarketplaceFooterClassName = 'system-xs-regular z-10 flex flex-none cursor-pointer flex-col items-start gap-2 px-4 pt-2 pb-4 text-text-tertiary hover:text-text-secondary'
+const popoverMarketplaceFooterClassName =
+  'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
+const panelMarketplaceFooterClassName =
+  'system-xs-regular z-10 flex flex-none cursor-pointer flex-col items-start gap-2 px-4 pt-2 pb-4 text-text-tertiary hover:text-text-secondary'
 
 const SectionDivider = () => (
   <div className="px-4 py-1" aria-hidden>
@@ -76,29 +70,24 @@ const AllStartBlocks = ({
   const [hasPluginContent, setHasPluginContent] = useState(false)
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
+    select: (s) => s.enable_marketplace,
   })
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
 
   const entryNodeTypes = useMemo(() => {
-    return availableBlocksTypes?.length
-      ? availableBlocksTypes
-      : [...ENTRY_NODE_TYPES]
+    return availableBlocksTypes?.length ? availableBlocksTypes : [...ENTRY_NODE_TYPES]
   }, [availableBlocksTypes])
   const enableTriggerPlugin = entryNodeTypes.includes(BlockEnumValue.TriggerPlugin)
   const { data: triggerProviders = [] } = useAllTriggerPlugins(enableTriggerPlugin)
   const providerMap = useMemo(() => {
     const map = new Map<string, TriggerWithProvider>()
     triggerProviders.forEach((provider) => {
-      const keys = [
-        provider.plugin_id,
-        provider.plugin_unique_identifier,
-        provider.id,
-      ].filter(Boolean) as string[]
+      const keys = [provider.plugin_id, provider.plugin_unique_identifier, provider.id].filter(
+        Boolean,
+      ) as string[]
       keys.forEach((key) => {
-        if (!map.has(key))
-          map.set(key, provider)
+        if (!map.has(key)) map.set(key, provider)
       })
     })
     return map
@@ -107,18 +96,12 @@ const AllStartBlocks = ({
   const trimmedSearchText = searchText.trim()
   const hasSearchText = trimmedSearchText.length > 0
   const hasFilter = hasSearchText || tags.length > 0
-  const {
-    plugins: featuredPlugins = [],
-    isLoading: featuredLoading,
-  } = useFeaturedTriggersRecommendations(enableTriggerPlugin && enable_marketplace && !hasFilter)
-  const {
-    queryPluginsWithDebounced: fetchPlugins,
-    plugins: marketplacePlugins = [],
-  } = useMarketplacePlugins()
+  const { plugins: featuredPlugins = [], isLoading: featuredLoading } =
+    useFeaturedTriggersRecommendations(enableTriggerPlugin && enable_marketplace && !hasFilter)
+  const { queryPluginsWithDebounced: fetchPlugins, plugins: marketplacePlugins = [] } =
+    useMarketplacePlugins()
 
-  const shouldShowFeatured = enableTriggerPlugin
-    && enable_marketplace
-    && !hasFilter
+  const shouldShowFeatured = enableTriggerPlugin && enable_marketplace && !hasFilter
   const shouldShowMarketplaceFooter = enable_marketplace
   const isPanelVariant = variant === 'panel'
 
@@ -130,23 +113,25 @@ const AllStartBlocks = ({
     setHasPluginContent(hasContent)
   }, [])
 
-  const hasMarketplaceContent = enableTriggerPlugin && enable_marketplace && marketplacePlugins.length > 0
-  const hasAnyContent = hasStartBlocksContent || hasPluginContent || shouldShowFeatured || hasMarketplaceContent
+  const hasMarketplaceContent =
+    enableTriggerPlugin && enable_marketplace && marketplacePlugins.length > 0
+  const hasAnyContent =
+    hasStartBlocksContent || hasPluginContent || shouldShowFeatured || hasMarketplaceContent
   const shouldShowEmptyState = hasFilter && !hasAnyContent
-  const shouldShowInstalledTriggersDivider = isPanelVariant && hasStartBlocksContent && enableTriggerPlugin && hasPluginContent
-  const shouldShowMarketplaceSectionDivider = enableTriggerPlugin
-    && enable_marketplace
-    && (hasStartBlocksContent || hasPluginContent)
-    && (shouldShowFeatured || hasMarketplaceContent)
+  const shouldShowInstalledTriggersDivider =
+    isPanelVariant && hasStartBlocksContent && enableTriggerPlugin && hasPluginContent
+  const shouldShowMarketplaceSectionDivider =
+    enableTriggerPlugin &&
+    enable_marketplace &&
+    (hasStartBlocksContent || hasPluginContent) &&
+    (shouldShowFeatured || hasMarketplaceContent)
 
   useEffect(() => {
-    if (!enableTriggerPlugin && hasPluginContent)
-      setHasPluginContent(false)
+    if (!enableTriggerPlugin && hasPluginContent) setHasPluginContent(false)
   }, [enableTriggerPlugin, hasPluginContent])
 
   useEffect(() => {
-    if (!enableTriggerPlugin || !enable_marketplace)
-      return
+    if (!enableTriggerPlugin || !enable_marketplace) return
     if (hasFilter) {
       fetchPlugins({
         query: searchText,
@@ -157,8 +142,16 @@ const AllStartBlocks = ({
   }, [enableTriggerPlugin, enable_marketplace, hasFilter, fetchPlugins, searchText, tags])
 
   return (
-    <div className={cn('max-w-[500px] min-w-[400px]', variant === 'panel' && 'h-full max-w-none min-w-0', className)}>
-      <div className={cn('flex max-h-[640px] flex-col', variant === 'panel' && 'h-full max-h-none')}>
+    <div
+      className={cn(
+        'max-w-[500px] min-w-[400px]',
+        variant === 'panel' && 'h-full max-w-none min-w-0',
+        className,
+      )}
+    >
+      <div
+        className={cn('flex max-h-[640px] flex-col', variant === 'panel' && 'h-full max-h-none')}
+      >
         <div
           ref={wrapElemRef}
           className="flex-1 overflow-y-auto"
@@ -167,12 +160,18 @@ const AllStartBlocks = ({
           <div className={cn(shouldShowEmptyState && 'hidden')}>
             {hasUserInputNode && (
               <div className="relative flex items-start gap-0.5 overflow-hidden border-b-[0.5px] border-divider-subtle bg-components-panel-bg-blur px-3 py-2">
-                <div className="absolute inset-0 bg-linear-to-r from-util-colors-blue-light-blue-light-500/20 to-transparent opacity-40" aria-hidden />
-                <span className="relative flex shrink-0 items-center justify-center p-1" aria-hidden>
+                <div
+                  className="absolute inset-0 bg-linear-to-r from-util-colors-blue-light-blue-light-500/20 to-transparent opacity-40"
+                  aria-hidden
+                />
+                <span
+                  className="relative flex shrink-0 items-center justify-center p-1"
+                  aria-hidden
+                >
                   <span className="i-ri-information-fill size-4 text-text-accent" />
                 </span>
                 <div className="relative py-1 system-xs-regular text-text-secondary">
-                  {t('nodes.startPlaceholder.userInputConflictTip', { ns: 'workflow' })}
+                  {t(($) => $['nodes.startPlaceholder.userInputConflictTip'], { ns: 'workflow' })}
                 </div>
               </div>
             )}
@@ -190,9 +189,7 @@ const AllStartBlocks = ({
                 onContentStateChange={handleStartBlocksContentChange}
               />
 
-              {shouldShowInstalledTriggersDivider && (
-                <SectionDivider />
-              )}
+              {shouldShowInstalledTriggersDivider && <SectionDivider />}
 
               {enableTriggerPlugin && (
                 <TriggerPluginList
@@ -204,9 +201,7 @@ const AllStartBlocks = ({
                 />
               )}
 
-              {shouldShowMarketplaceSectionDivider && (
-                <SectionDivider />
-              )}
+              {shouldShowMarketplaceSectionDivider && <SectionDivider />}
 
               {shouldShowFeatured && (
                 <FeaturedTriggers
@@ -237,7 +232,7 @@ const AllStartBlocks = ({
             <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
               <SearchMenu className="size-8 text-text-quaternary" />
               <div className="text-sm font-medium text-text-secondary">
-                {t('nodes.startPlaceholder.noTriggersFound', { ns: 'workflow' })}
+                {t(($) => $['nodes.startPlaceholder.noTriggersFound'], { ns: 'workflow' })}
               </div>
               <Link
                 href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
@@ -248,7 +243,7 @@ const AllStartBlocks = ({
                   variant="secondary-accent"
                   className="h-6 cursor-pointer px-3 text-xs"
                 >
-                  {t('tabs.requestToCommunity', { ns: 'workflow' })}
+                  {t(($) => $['tabs.requestToCommunity'], { ns: 'workflow' })}
                 </Button>
               </Link>
             </div>
@@ -257,26 +252,33 @@ const AllStartBlocks = ({
 
         {shouldShowMarketplaceFooter && (
           <Link
-            className={isPanelVariant ? panelMarketplaceFooterClassName : popoverMarketplaceFooterClassName}
-            href={getMarketplaceUrl('/plugins/trigger')}
+            className={
+              isPanelVariant ? panelMarketplaceFooterClassName : popoverMarketplaceFooterClassName
+            }
+            href={getMarketplaceCategoryUrl(PluginCategoryEnum.trigger)}
             target="_blank"
           >
-            {isPanelVariant
-              ? (
-                  <>
-                    <MarketplaceFooterDivider />
-                    <span className="flex items-center gap-1">
-                      <span className="i-custom-vender-workflow-marketplace size-3 shrink-0" aria-hidden />
-                      <span>{t('nodes.startPlaceholder.browseMoreOnMarketplace', { ns: 'workflow' })}</span>
-                    </span>
-                  </>
-                )
-              : (
-                  <>
-                    <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
-                    <RiArrowRightUpLine className="ml-0.5 size-3" />
-                  </>
-                )}
+            {isPanelVariant ? (
+              <>
+                <MarketplaceFooterDivider />
+                <span className="flex items-center gap-1">
+                  <span
+                    className="i-custom-vender-workflow-marketplace size-3 shrink-0"
+                    aria-hidden
+                  />
+                  <span>
+                    {t(($) => $['nodes.startPlaceholder.browseMoreOnMarketplace'], {
+                      ns: 'workflow',
+                    })}
+                  </span>
+                </span>
+              </>
+            ) : (
+              <>
+                <span>{t(($) => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
+                <RiArrowRightUpLine className="ml-0.5 size-3" />
+              </>
+            )}
           </Link>
         )}
       </div>

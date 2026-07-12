@@ -48,7 +48,7 @@ export const zNotionIntegrateInfoListResponse = z.object({
 })
 
 export const zGetNotionPagesByPageIdByPageTypePreviewPath = z.object({
-  page_id: z.string(),
+  page_id: z.uuid(),
   page_type: z.string(),
 })
 

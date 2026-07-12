@@ -25,7 +25,7 @@ const mockTriggerEvents = [
   },
 ] as unknown as TriggerEvent[]
 
-let mockDetail: { plugin_id: string, provider: string } | undefined
+let mockDetail: { plugin_id: string; provider: string } | undefined
 let mockProviderInfo: { events: TriggerEvent[] } | undefined
 
 vi.mock('../../store', () => ({
@@ -40,7 +40,9 @@ vi.mock('@/service/use-triggers', () => ({
 vi.mock('../event-detail-drawer', () => ({
   EventDetailDrawer: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="event-detail-drawer">
-      <button data-testid="close-drawer" onClick={onClose}>Close</button>
+      <button data-testid="close-drawer" onClick={onClose}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -56,7 +58,11 @@ describe('TriggerEventsList', () => {
     it('should render event count', () => {
       render(<TriggerEventsList />)
 
-      expect(screen.getByText('pluginTrigger.events.actionNum:{"num":1,"event":"pluginTrigger.events.event"}')).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'pluginTrigger.events.actionNum:{"num":1,"event":"pluginTrigger.events.event"}',
+        ),
+      ).toBeInTheDocument()
     })
 
     it('should render event cards', () => {
@@ -130,7 +136,11 @@ describe('TriggerEventsList', () => {
 
       expect(screen.getByText('Event One')).toBeInTheDocument()
       expect(screen.getByText('Event Two')).toBeInTheDocument()
-      expect(screen.getByText('pluginTrigger.events.actionNum:{"num":2,"event":"pluginTrigger.events.events"}')).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'pluginTrigger.events.actionNum:{"num":2,"event":"pluginTrigger.events.events"}',
+        ),
+      ).toBeInTheDocument()
     })
   })
 })

@@ -9,12 +9,7 @@ type OperationsProps = {
   onClose?: () => void
 }
 
-const Operations = ({
-  openEditModal,
-  onDelete,
-  onExport,
-  onClose,
-}: OperationsProps) => {
+const Operations = ({ openEditModal, onDelete, onExport, onClose }: OperationsProps) => {
   const { t } = useTranslation()
 
   const onClickEdit = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -46,7 +41,7 @@ const Operations = ({
           onClick={onClickEdit}
         >
           <span className="px-1 system-md-regular text-text-secondary">
-            {t('operations.editInfo', { ns: 'datasetPipeline' })}
+            {t(($) => $['operations.editInfo'], { ns: 'datasetPipeline' })}
           </span>
         </div>
         <div
@@ -54,7 +49,7 @@ const Operations = ({
           onClick={onClickExport}
         >
           <span className="px-1 system-md-regular text-text-secondary">
-            {t('operations.exportPipeline', { ns: 'datasetPipeline' })}
+            {t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
           </span>
         </div>
       </div>
@@ -65,7 +60,7 @@ const Operations = ({
           onClick={onClickDelete}
         >
           <span className="px-1 system-md-regular text-text-secondary group-hover:text-text-destructive">
-            {t('operation.delete', { ns: 'common' })}
+            {t(($) => $['operation.delete'], { ns: 'common' })}
           </span>
         </div>
       </div>

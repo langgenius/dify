@@ -2,9 +2,7 @@ import type { PluginDeclaration, PluginDetail } from '../../../types'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
-
 // ==================== Imports (after mocks) ====================
-
 import PluginList from '../index'
 
 // ==================== Mock Setup ====================
@@ -12,11 +10,7 @@ import PluginList from '../index'
 // Mock PluginItem component to avoid complex dependency chain
 vi.mock('../../../plugin-item', () => ({
   default: ({ plugin }: { plugin: PluginDetail }) => (
-    <div
-      data-testid="plugin-item"
-      data-plugin-id={plugin.plugin_id}
-      data-plugin-name={plugin.name}
-    >
+    <div data-testid="plugin-item" data-plugin-id={plugin.plugin_id} data-plugin-name={plugin.name}>
       {plugin.name}
     </div>
   ),
@@ -27,7 +21,9 @@ vi.mock('../../../plugin-item', () => ({
 /**
  * Factory function to create a PluginDeclaration with defaults
  */
-const createPluginDeclaration = (overrides: Partial<PluginDeclaration> = {}): PluginDeclaration => ({
+const createPluginDeclaration = (
+  overrides: Partial<PluginDeclaration> = {},
+): PluginDeclaration => ({
   plugin_unique_identifier: 'test-plugin-id',
   version: '1.0.0',
   author: 'test-author',
@@ -86,14 +82,19 @@ const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail
 /**
  * Factory function to create a list of plugins
  */
-const createPluginList = (count: number, baseOverrides: Partial<PluginDetail> = {}): PluginDetail[] => {
-  return Array.from({ length: count }, (_, index) => createPluginDetail({
-    id: `plugin-${index + 1}`,
-    plugin_id: `plugin-${index + 1}`,
-    name: `plugin-${index + 1}`,
-    plugin_unique_identifier: `test-author/plugin-${index + 1}@1.0.0`,
-    ...baseOverrides,
-  }))
+const createPluginList = (
+  count: number,
+  baseOverrides: Partial<PluginDetail> = {},
+): PluginDetail[] => {
+  return Array.from({ length: count }, (_, index) =>
+    createPluginDetail({
+      id: `plugin-${index + 1}`,
+      plugin_id: `plugin-${index + 1}`,
+      name: `plugin-${index + 1}`,
+      plugin_unique_identifier: `test-author/plugin-${index + 1}@1.0.0`,
+      ...baseOverrides,
+    }),
+  )
 }
 
 // ==================== Tests ====================
@@ -129,7 +130,7 @@ describe('PluginList', () => {
       expect(outerDiv)!.toHaveClass('pb-3')
 
       const gridDiv = outerDiv.firstChild as HTMLElement
-      expect(gridDiv)!.toHaveClass('grid', 'grid-cols-2', 'gap-3')
+      expect(gridDiv)!.toHaveClass('grid', 'grid-cols-1', 'gap-3', 'lg:grid-cols-2')
     })
 
     it('should render single plugin correctly', () => {
@@ -375,7 +376,7 @@ describe('PluginList', () => {
 
   // ==================== Grid Layout Tests ====================
   describe('Grid Layout', () => {
-    it('should render with 2-column grid', () => {
+    it('should render with responsive 2-column max grid', () => {
       // Arrange
       const pluginList = createPluginList(4)
 
@@ -384,7 +385,7 @@ describe('PluginList', () => {
 
       // Assert
       const gridDiv = container.querySelector('.grid')
-      expect(gridDiv)!.toHaveClass('grid-cols-2')
+      expect(gridDiv)!.toHaveClass('grid-cols-1', 'lg:grid-cols-2')
     })
 
     it('should have proper gap between items', () => {

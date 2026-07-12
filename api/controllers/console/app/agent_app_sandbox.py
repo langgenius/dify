@@ -22,8 +22,10 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
+from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
 from models.model import App, AppMode
@@ -41,6 +43,10 @@ _NODE_EXECUTION_ID_DESCRIPTION = (
 class AgentSandboxListQuery(BaseModel):
     conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
     path: str = Field(default=".", description="Directory path relative to the sandbox workspace")
+
+
+class AgentSandboxInfoQuery(BaseModel):
+    conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
 
 
 class AgentSandboxFileQuery(BaseModel):
@@ -90,6 +96,11 @@ class SandboxListResponse(ResponseModel):
     truncated: bool = False
 
 
+class SandboxInfoResponse(ResponseModel):
+    session_id: str
+    workspace_cwd: str
+
+
 class SandboxReadResponse(ResponseModel):
     path: str
     size: int | None = None
@@ -98,14 +109,8 @@ class SandboxReadResponse(ResponseModel):
     text: str | None = None
 
 
-class SandboxToolFileResponse(ResponseModel):
-    transfer_method: Literal["tool_file"] = "tool_file"
-    reference: str
-
-
 class SandboxUploadResponse(ResponseModel):
-    path: str
-    file: SandboxToolFileResponse
+    url: str
 
 
 register_schema_models(
@@ -113,7 +118,13 @@ register_schema_models(
     AgentSandboxUploadPayload,
     WorkflowAgentSandboxUploadPayload,
 )
-register_response_schema_models(console_ns, SandboxListResponse, SandboxReadResponse, SandboxUploadResponse)
+register_response_schema_models(
+    console_ns,
+    SandboxInfoResponse,
+    SandboxListResponse,
+    SandboxReadResponse,
+    SandboxUploadResponse,
+)
 
 
 def _handle(exc: Exception) -> tuple[dict[str, object], int]:
@@ -132,18 +143,42 @@ def _handle(exc: Exception) -> tuple[dict[str, object], int]:
     raise exc
 
 
-@console_ns.route("/apps/<uuid:app_id>/agent-sandbox/files")
+@console_ns.route("/agent/<uuid:agent_id>/sandbox")
+class AgentAppSandboxInfoResource(Resource):
+    @console_ns.doc("get_agent_app_sandbox_info")
+    @console_ns.doc(description="Get basic information for an Agent App conversation sandbox")
+    @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxInfoQuery)})
+    @console_ns.response(200, "Sandbox information returned", console_ns.models[SandboxInfoResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        query = query_params_from_request(AgentSandboxInfoQuery)
+        try:
+            result = AgentAppSandboxService().get_info(
+                tenant_id=tenant_id,
+                app_id=app_model.id,
+                conversation_id=query.conversation_id,
+            )
+        except Exception as exc:
+            return _handle(exc)
+        return result.model_dump()
+
+
+@console_ns.route("/agent/<uuid:agent_id>/sandbox/files")
 class AgentAppSandboxListResource(Resource):
     @console_ns.doc("list_agent_app_sandbox_files")
     @console_ns.doc(description="List a directory in an Agent App conversation sandbox")
-    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentSandboxListQuery)})
+    @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxListQuery)})
     @console_ns.response(200, "Listing returned", console_ns.models[SandboxListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.AGENT])
     @with_current_tenant_id
-    def get(self, tenant_id: str, app_model: App):
+    def get(self, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxListQuery)
         try:
             result = AgentAppSandboxService().list_files(
@@ -157,18 +192,18 @@ class AgentAppSandboxListResource(Resource):
         return result.model_dump()
 
 
-@console_ns.route("/apps/<uuid:app_id>/agent-sandbox/files/read")
+@console_ns.route("/agent/<uuid:agent_id>/sandbox/files/read")
 class AgentAppSandboxReadResource(Resource):
     @console_ns.doc("read_agent_app_sandbox_file")
     @console_ns.doc(description="Read a text/binary preview file in an Agent App conversation sandbox")
-    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentSandboxFileQuery)})
+    @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxFileQuery)})
     @console_ns.response(200, "Preview returned", console_ns.models[SandboxReadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.AGENT])
     @with_current_tenant_id
-    def get(self, tenant_id: str, app_model: App):
+    def get(self, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxFileQuery)
         try:
             result = AgentAppSandboxService().read_file(
@@ -182,18 +217,18 @@ class AgentAppSandboxReadResource(Resource):
         return result.model_dump()
 
 
-@console_ns.route("/apps/<uuid:app_id>/agent-sandbox/files/upload")
+@console_ns.route("/agent/<uuid:agent_id>/sandbox/files/upload")
 class AgentAppSandboxUploadResource(Resource):
     @console_ns.doc("upload_agent_app_sandbox_file")
-    @console_ns.doc(description="Upload one Agent App sandbox file as a Dify ToolFile mapping")
+    @console_ns.doc(description="Upload one Agent App sandbox file and return a signed download URL")
     @console_ns.expect(console_ns.models[AgentSandboxUploadPayload.__name__])
     @console_ns.response(200, "Uploaded", console_ns.models[SandboxUploadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.AGENT])
     @with_current_tenant_id
-    def post(self, tenant_id: str, app_model: App):
+    def post(self, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         payload = AgentSandboxUploadPayload.model_validate(request.get_json(silent=True) or {})
         try:
             result = AgentAppSandboxService().upload_file(
@@ -235,6 +270,7 @@ class WorkflowAgentSandboxListResource(Resource):
                 node_id=node_id,
                 node_execution_id=query.node_execution_id,
                 path=query.path,
+                session=db.session(),
             )
         except Exception as exc:
             return _handle(exc)
@@ -271,6 +307,7 @@ class WorkflowAgentSandboxReadResource(Resource):
                 node_id=node_id,
                 node_execution_id=query.node_execution_id,
                 path=query.path,
+                session=db.session(),
             )
         except Exception as exc:
             return _handle(exc)
@@ -282,7 +319,7 @@ class WorkflowAgentSandboxReadResource(Resource):
 )
 class WorkflowAgentSandboxUploadResource(Resource):
     @console_ns.doc("upload_workflow_agent_sandbox_file")
-    @console_ns.doc(description="Upload one workflow Agent sandbox file as a Dify ToolFile mapping")
+    @console_ns.doc(description="Upload one workflow Agent sandbox file and return a signed download URL")
     @console_ns.expect(console_ns.models[WorkflowAgentSandboxUploadPayload.__name__])
     @console_ns.response(200, "Uploaded", console_ns.models[SandboxUploadResponse.__name__])
     @setup_required
@@ -300,6 +337,7 @@ class WorkflowAgentSandboxUploadResource(Resource):
                 node_id=node_id,
                 node_execution_id=payload.node_execution_id,
                 path=payload.path,
+                session=db.session(),
             )
         except Exception as exc:
             return _handle(exc)

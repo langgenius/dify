@@ -4,15 +4,14 @@ import { act } from 'react'
 import ApiServer from '../ApiServer'
 
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (
-    isShow
-      ? (
-          <div role="dialog" aria-label="Secret key">
-            <button type="button" onClick={onClose}>Close Modal</button>
-          </div>
-        )
-      : null
-  ),
+  default: ({ isShow, onClose }: { isShow: boolean; onClose: () => void }) =>
+    isShow ? (
+      <div role="dialog" aria-label="Secret key">
+        <button type="button" onClick={onClose}>
+          Close Modal
+        </button>
+      </div>
+    ) : null,
 }))
 
 describe('ApiServer', () => {
@@ -80,7 +79,7 @@ describe('ApiServer', () => {
   describe('SecretKeyButton interaction', () => {
     it('should open modal when API key button is clicked', async () => {
       const user = userEvent.setup()
-      render(<ApiServer {...defaultProps} appId="app-123" />)
+      render(<ApiServer {...defaultProps} appId="app-123" canManageApiKey />)
 
       const apiKeyButton = screen.getByText('appApi.apiKey')
       await act(async () => {
@@ -92,7 +91,7 @@ describe('ApiServer', () => {
 
     it('should close modal when close button is clicked', async () => {
       const user = userEvent.setup()
-      render(<ApiServer {...defaultProps} appId="app-123" />)
+      render(<ApiServer {...defaultProps} appId="app-123" canManageApiKey />)
 
       const apiKeyButton = screen.getByText('appApi.apiKey')
       await act(async () => {
@@ -104,6 +103,20 @@ describe('ApiServer', () => {
       const closeButton = screen.getByRole('button', { name: 'Close Modal' })
       await act(async () => {
         await user.click(closeButton)
+      })
+
+      expect(screen.queryByRole('dialog', { name: 'Secret key' })).not.toBeInTheDocument()
+    })
+
+    it('should disable API key button by default', async () => {
+      const user = userEvent.setup()
+      render(<ApiServer {...defaultProps} appId="app-123" />)
+
+      const apiKeyButton = screen.getByRole('button', { name: /apiKey/i })
+      expect(apiKeyButton).toBeDisabled()
+
+      await act(async () => {
+        await user.click(apiKeyButton)
       })
 
       expect(screen.queryByRole('dialog', { name: 'Secret key' })).not.toBeInTheDocument()

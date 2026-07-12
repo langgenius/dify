@@ -18,7 +18,9 @@ vi.mock('@/next/headers', () => ({
   cookies: () => cookiesMock(),
 }))
 
-const createProfile = (overrides: Partial<GetAccountProfileResponse> = {}): GetAccountProfileResponse => ({
+const createProfile = (
+  overrides: Partial<GetAccountProfileResponse> = {},
+): GetAccountProfileResponse => ({
   id: 'account-id',
   name: 'Dify User',
   email: 'user@example.com',
@@ -38,14 +40,16 @@ describe('serverUserProfileQueryOptions', () => {
   })
 
   it('should reuse the client profile query key and return the same data shape', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(createProfile()), {
-      status: 200,
-      headers: {
-        'content-type': 'application/json',
-        'x-version': '1.2.3',
-        'x-env': 'DEVELOPMENT',
-      },
-    }))
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(createProfile()), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+          'x-version': '1.2.3',
+          'x-env': 'DEVELOPMENT',
+        },
+      }),
+    )
     vi.stubGlobal('fetch', fetchMock)
     const { serverUserProfileQueryOptions } = await import('../server')
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -72,10 +76,22 @@ describe('serverUserProfileQueryOptions', () => {
 
   it('should skip relative API prefixes unless a server API origin is configured', () => {
     expect(resolveServerConsoleApiUrl('/account/profile', undefined, '/console/api')).toBeNull()
-    expect(resolveServerConsoleApiUrl('/account/profile', 'https://console.example.com/console/api', '/console/api')).toBe('https://console.example.com/console/api/account/profile')
+    expect(
+      resolveServerConsoleApiUrl(
+        '/account/profile',
+        'https://console.example.com/console/api',
+        '/console/api',
+      ),
+    ).toBe('https://console.example.com/console/api/account/profile')
   })
 
   it('should preserve absolute API prefixes', () => {
-    expect(resolveServerConsoleApiUrl('/account/profile', undefined, 'https://console.example.com/console/api')).toBe('https://console.example.com/console/api/account/profile')
+    expect(
+      resolveServerConsoleApiUrl(
+        '/account/profile',
+        undefined,
+        'https://console.example.com/console/api',
+      ),
+    ).toBe('https://console.example.com/console/api/account/profile')
   })
 })

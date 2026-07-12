@@ -13,27 +13,53 @@ type MentionInputProps = {
   className?: string
 }
 
-const stableT = (key: string, options?: { ns?: string }) => (
+const stableT = (key: string, options?: { ns?: string }) =>
   options?.ns ? `${options.ns}.${key}` : key
-)
 
 let mentionInputProps: MentionInputProps | null = null
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: stableT,
-  }),
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: 'user-1',
+    name: 'Alice',
+    avatar_url: 'avatar',
+  },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: {
-      id: 'user-1',
-      name: 'Alice',
-      avatar_url: 'avatar',
-    },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return {
+    useTranslation: () => ({
+      t: withSelectorKey(stableT),
+    }),
+  }
+})
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@langgenius/dify-ui/avatar', () => ({
   Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
@@ -62,13 +88,7 @@ describe('CommentInput', () => {
   })
 
   it('passes translated placeholder to mention input', () => {
-    render(
-      <CommentInput
-        position={{ x: 0, y: 0 }}
-        onSubmit={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    )
+    render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={vi.fn()} onCancel={vi.fn()} />)
 
     expect(mentionInputProps?.placeholder).toBe('workflow.comments.placeholder.add')
     expect(mentionInputProps?.autoFocus).toBe(true)
@@ -78,13 +98,7 @@ describe('CommentInput', () => {
   it('calls onCancel when Escape is pressed', () => {
     const onCancel = vi.fn()
 
-    render(
-      <CommentInput
-        position={{ x: 0, y: 0 }}
-        onSubmit={vi.fn()}
-        onCancel={onCancel}
-      />,
-    )
+    render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={vi.fn()} onCancel={onCancel} />)
 
     fireEvent.keyDown(document, { key: 'Escape' })
 
@@ -94,13 +108,7 @@ describe('CommentInput', () => {
   it('forwards mention submit to onSubmit', () => {
     const onSubmit = vi.fn()
 
-    render(
-      <CommentInput
-        position={{ x: 0, y: 0 }}
-        onSubmit={onSubmit}
-        onCancel={vi.fn()}
-      />,
-    )
+    render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
     fireEvent.click(screen.getByTestId('mention-input'))
 

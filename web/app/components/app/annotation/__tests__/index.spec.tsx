@@ -21,6 +21,10 @@ import { AppModeEnum } from '@/types/app'
 import Annotation from '../index'
 import { AnnotationEnableStatus, JobStatus } from '../type'
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
 vi.mock('ahooks', () => ({
   useDebounce: (value: any) => value,
 }))
@@ -54,7 +58,10 @@ vi.mock('../empty-element', () => ({
 vi.mock('../header-opts', () => ({
   default: (props: any) => (
     <div data-testid="header-opts">
-      <button data-testid="trigger-add" onClick={() => props.onAdd({ question: 'new question', answer: 'new answer' })}>
+      <button
+        data-testid="trigger-add"
+        onClick={() => props.onAdd({ question: 'new question', answer: 'new answer' })}
+      >
         add
       </button>
       <button data-testid="trigger-added" onClick={() => props.onAdded()}>
@@ -69,13 +76,18 @@ let latestListProps: any
 vi.mock('../list', () => ({
   List: (props: any) => {
     latestListProps = props
-    if (!props.list.length)
-      return <div data-testid="list-empty" />
+    if (!props.list.length) return <div data-testid="list-empty" />
     return (
       <div data-testid="list">
-        <button data-testid="list-view" onClick={() => props.onView(props.list[0])}>view</button>
-        <button data-testid="list-remove" onClick={() => props.onRemove(props.list[0].id)}>remove</button>
-        <button data-testid="list-batch-delete" onClick={() => props.onBatchDelete()}>batch-delete</button>
+        <button data-testid="list-view" onClick={() => props.onView(props.list[0])}>
+          view
+        </button>
+        <button data-testid="list-remove" onClick={() => props.onRemove(props.list[0].id)}>
+          remove
+        </button>
+        <button data-testid="list-batch-delete" onClick={() => props.onBatchDelete()}>
+          batch-delete
+        </button>
       </div>
     )
   },
@@ -83,45 +95,63 @@ vi.mock('../list', () => ({
 
 vi.mock('../view-annotation-modal', () => ({
   default: (props: any) => {
-    if (!props.isShow)
-      return null
+    if (!props.isShow) return null
     return (
       <div data-testid="view-modal">
         <div>{props.item.question}</div>
-        <button data-testid="view-modal-remove" onClick={props.onRemove}>remove</button>
-        <button data-testid="view-modal-save" onClick={() => props.onSave('Edited question', 'Edited answer')}>save</button>
-        <button data-testid="view-modal-close" onClick={props.onHide}>close</button>
+        <button data-testid="view-modal-remove" onClick={props.onRemove}>
+          remove
+        </button>
+        <button
+          data-testid="view-modal-save"
+          onClick={() => props.onSave('Edited question', 'Edited answer')}
+        >
+          save
+        </button>
+        <button data-testid="view-modal-close" onClick={props.onHide}>
+          close
+        </button>
       </div>
     )
   },
 }))
 
-vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal', () => ({
-  default: (props: any) => props.isShow
-    ? (
+vi.mock(
+  '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal',
+  () => ({
+    default: (props: any) =>
+      props.isShow ? (
         <div data-testid="config-modal">
           <button
             data-testid="config-save"
-            onClick={() => props.onSave({
-              embedding_model_name: 'next-model',
-              embedding_provider_name: 'next-provider',
-            }, 0.7)}
+            onClick={() =>
+              props.onSave(
+                {
+                  embedding_model_name: 'next-model',
+                  embedding_provider_name: 'next-provider',
+                },
+                0.7,
+              )
+            }
           >
             save-config
           </button>
-          <button data-testid="config-hide" onClick={props.onHide}>hide-config</button>
+          <button data-testid="config-hide" onClick={props.onHide}>
+            hide-config
+          </button>
         </div>
-      )
-    : null,
-}))
+      ) : null,
+  }),
+)
 vi.mock('@/app/components/billing/annotation-full/modal', () => ({
-  default: (props: any) => props.show
-    ? (
-        <div data-testid="annotation-full-modal">
-          <button data-testid="hide-annotation-full-modal" onClick={props.onHide}>hide-full</button>
-        </div>
-      )
-    : null,
+  default: (props: any) =>
+    props.show ? (
+      <div data-testid="annotation-full-modal">
+        <button data-testid="hide-annotation-full-modal" onClick={props.onHide}>
+          hide-full
+        </button>
+      </div>
+    ) : null,
 }))
 
 const mockNotify = vi.fn()
@@ -197,11 +227,20 @@ describe('Annotation', () => {
   it('should render empty element when no annotations are returned', async () => {
     renderComponent()
 
+    expect(screen.getByRole('heading', { name: 'appAnnotation.title' })).toBeInTheDocument()
+    expect(screen.getByText('appAnnotation.noData.description')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.operation.learnMore' })).toHaveAttribute(
+      'href',
+      'https://docs.example.com/use-dify/monitor/annotation-reply',
+    )
     expect(await screen.findByTestId('empty-element')).toBeInTheDocument()
-    expect(fetchAnnotationListMock).toHaveBeenCalledWith(appDetail.id, expect.objectContaining({
-      page: 1,
-      keyword: '',
-    }))
+    expect(fetchAnnotationListMock).toHaveBeenCalledWith(
+      appDetail.id,
+      expect.objectContaining({
+        page: 1,
+        keyword: '',
+      }),
+    )
   })
 
   it('should handle annotation creation and refresh list data', async () => {
@@ -215,11 +254,16 @@ describe('Annotation', () => {
     fireEvent.click(screen.getByTestId('trigger-add'))
 
     await waitFor(() => {
-      expect(addAnnotationMock).toHaveBeenCalledWith(appDetail.id, { question: 'new question', answer: 'new answer' })
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        message: 'common.api.actionSuccess',
-        type: 'success',
-      }))
+      expect(addAnnotationMock).toHaveBeenCalledWith(appDetail.id, {
+        question: 'new question',
+        answer: 'new answer',
+      })
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'common.api.actionSuccess',
+          type: 'success',
+        }),
+      )
     })
     expect(fetchAnnotationListMock).toHaveBeenCalledTimes(2)
   })
@@ -245,9 +289,11 @@ describe('Annotation', () => {
     })
     await waitFor(() => {
       expect(delAnnotationsMock).toHaveBeenCalledWith(appDetail.id, [annotation.id])
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'success',
-      }))
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'success',
+        }),
+      )
       expect(latestListProps.selectedIds).toEqual([])
     })
 
@@ -312,23 +358,25 @@ describe('Annotation', () => {
   })
 
   it('should disable annotations and refetch config after the async job completes', async () => {
-    fetchAnnotationConfigMock.mockResolvedValueOnce({
-      id: 'config-id',
-      enabled: true,
-      embedding_model: {
-        embedding_model_name: 'model',
-        embedding_provider_name: 'provider',
-      },
-      score_threshold: 0.5,
-    }).mockResolvedValueOnce({
-      id: 'config-id',
-      enabled: false,
-      embedding_model: {
-        embedding_model_name: 'model',
-        embedding_provider_name: 'provider',
-      },
-      score_threshold: 0.5,
-    })
+    fetchAnnotationConfigMock
+      .mockResolvedValueOnce({
+        id: 'config-id',
+        enabled: true,
+        embedding_model: {
+          embedding_model_name: 'model',
+          embedding_provider_name: 'provider',
+        },
+        score_threshold: 0.5,
+      })
+      .mockResolvedValueOnce({
+        id: 'config-id',
+        enabled: false,
+        embedding_model: {
+          embedding_model_name: 'model',
+          embedding_provider_name: 'provider',
+        },
+        score_threshold: 0.5,
+      })
 
     renderComponent()
 
@@ -348,11 +396,17 @@ describe('Annotation', () => {
         }),
         0.5,
       )
-      expect(queryAnnotationJobStatusMock).toHaveBeenCalledWith(appDetail.id, AnnotationEnableStatus.disable, 'job-1')
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        message: 'common.api.actionSuccess',
-        type: 'success',
-      }))
+      expect(queryAnnotationJobStatusMock).toHaveBeenCalledWith(
+        appDetail.id,
+        AnnotationEnableStatus.disable,
+        'job-1',
+      )
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'common.api.actionSuccess',
+          type: 'success',
+        }),
+      )
     })
   })
 
@@ -386,10 +440,12 @@ describe('Annotation', () => {
         0.7,
       )
       expect(updateAnnotationScoreMock).toHaveBeenCalledWith(appDetail.id, 'config-id', 0.7)
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        message: 'common.api.actionSuccess',
-        type: 'success',
-      }))
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'common.api.actionSuccess',
+          type: 'success',
+        }),
+      )
     })
   })
 
