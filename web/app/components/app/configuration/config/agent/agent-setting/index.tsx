@@ -44,10 +44,7 @@ export function AgentSetting({
           onCancel()
       }}
     >
-      <DialogContent
-        backdropProps={{ style: { backgroundColor: 'rgba(16, 24, 40, 0.20)' } }}
-        className="top-2 right-2 bottom-2 left-auto flex h-auto max-h-none w-[640px] max-w-[calc(100vw-1rem)] translate-x-0 translate-y-0 flex-col overflow-hidden rounded-xl p-0"
-      >
+      <DialogContent className="top-2 right-2 bottom-2 left-auto flex h-auto max-h-none w-[640px] max-w-[calc(100vw-1rem)] translate-x-0 translate-y-0 flex-col overflow-hidden rounded-xl p-0">
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
           <DialogTitle className="text-base leading-6 font-semibold text-text-primary">
             {t($ => $['agent.setting.name'], { ns: 'appDebug' })}
