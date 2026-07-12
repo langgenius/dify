@@ -110,36 +110,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   },
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger', () => ({
-  default: ({ currentProvider, currentModel, providerName, modelId, isInWorkflow }: {
-    currentProvider?: Model
-    currentModel?: ModelItem
-    providerName?: string
-    modelId?: string
-    isInWorkflow?: boolean
-  }) => {
-    const hasDeprecated = !currentProvider || !currentModel
-    const modelDisabled = currentModel?.status !== ModelStatusEnum.active
-    const disabled = !mockProviderContextValue.isAPIKeySet || hasDeprecated || modelDisabled
-
-    return (
-      <div
-        data-testid="trigger"
-        data-disabled={disabled}
-        data-has-deprecated={hasDeprecated}
-        data-model-disabled={modelDisabled}
-        data-provider={providerName}
-        data-model={modelId}
-        data-in-workflow={isInWorkflow}
-        data-has-current-provider={!!currentProvider}
-        data-has-current-model={!!currentModel}
-      >
-        Trigger
-      </div>
-    )
-  },
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger', () => ({
   default: ({ disabled, hasDeprecated, currentProvider, currentModel, providerName, modelId, scope }: {
     disabled?: boolean

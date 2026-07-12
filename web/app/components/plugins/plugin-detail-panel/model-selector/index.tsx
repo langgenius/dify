@@ -7,7 +7,7 @@ import type {
   FormValue,
   ModelFeatureEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
+import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,

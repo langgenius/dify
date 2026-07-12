@@ -8,7 +8,7 @@ import type {
   ModelParameterRule,
 } from '../declarations'
 import type { ParameterValue } from './parameter-item'
-import type { TriggerProps } from './trigger'
+import type { TriggerProps } from './types'
 import type {
   Node,
   NodeOutPutVar,
