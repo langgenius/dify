@@ -1,8 +1,16 @@
 // @ts-check
 
-import antfu, { GLOB_MARKDOWN } from '@antfu/eslint-config'
+import antfu, {
+  GLOB_JS,
+  GLOB_JSX,
+  GLOB_MARKDOWN,
+  GLOB_MARKDOWN_CODE,
+  GLOB_TS,
+  GLOB_TSX,
+} from '@antfu/eslint-config'
 import md from 'eslint-markdown'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
+import { rulesMigratedToOxlint } from './eslint.migrated-rules.mjs'
 
 const GENERATED_IGNORES = [
   '**/storybook-static/',
@@ -48,6 +56,7 @@ export default antfu(
       '!web/**',
       '!e2e/**',
       '!eslint.config.mjs',
+      '!eslint.migrated-rules.mjs',
       '!package.json',
       '!pnpm-workspace.yaml',
       '!vite.config.ts',
@@ -92,6 +101,11 @@ export default antfu(
       'node/prefer-global/process': 'off',
       'unicorn/number-literal-case': 'off',
     },
+  },
+  {
+    files: [GLOB_JS, GLOB_JSX, GLOB_TS, GLOB_TSX],
+    ignores: [GLOB_MARKDOWN_CODE],
+    rules: rulesMigratedToOxlint,
   },
 ).override('antfu/sort/package-json', {
   rules: {

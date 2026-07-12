@@ -1,6 +1,6 @@
 # Format and Lint Guide
 
-We use Vite+ Oxfmt for formatting, ESLint for code-quality rules, and TypeScript for type safety.
+We use Vite+ Oxfmt for formatting, Vite+ Oxlint for selected performance-sensitive code-quality rules, ESLint for the remaining code-quality rules, and TypeScript for type safety.
 
 ## Format
 
@@ -19,7 +19,26 @@ vp fmt --check
 The shared formatter options and ignore boundaries live in the root `vite.config.ts`.
 Editor format-on-save must point Oxc at that file so local edits match the commit hook and CI.
 
-## ESLint
+## Lint
+
+Run the complete lint pipeline from the repository root:
+
+```sh
+pnpm lint
+```
+
+This runs `vp lint` first for the selected rules migrated to native Oxlint, then ESLint for all remaining rules. Oxlint configuration lives in the root `vite.config.ts`; migrated rules stay disabled in the corresponding ESLint configs so they are not evaluated twice. Package-specific lint scopes that are not part of the migration continue to use ESLint.
+
+Use the matching scripts when applying fixes or suppressing warning output:
+
+```sh
+pnpm lint:fix
+pnpm lint:quiet
+```
+
+Do not migrate the entire ESLint configuration. Before moving another rule, measure it with `TIMING=all npx eslint --quiet`, verify that Oxlint has a compatible native implementation, and compare diagnostics and fixes before disabling the ESLint rule.
+
+### ESLint
 
 ### Common Flags
 
@@ -39,7 +58,7 @@ Keep this enabled when linting multiple files.
 - [ESLint multi-thread linting blog post]
 
 **`--fix`**: Automatically fixes code-quality violations such as unused imports and preferred syntax.
-Run `vp fmt` after ESLint fixes so Oxfmt produces the final layout.
+Use `pnpm lint:fix` to apply Oxlint and ESLint fixes, then produce the final layout with Oxfmt.
 Always review the diff before committing to ensure no unintended changes.
 
 **`--quiet`**: Suppresses warnings and only shows errors.
@@ -55,8 +74,8 @@ Treat this as an escape hatch—fix these errors when time permits.
 ### The Auto-Fix Workflow and Suppression Strategy
 
 To streamline your development process, we recommend configuring your editor to automatically fix lint errors on save.
-Use Oxfmt for format-on-save and ESLint code actions for lint-only fixes.
-As a fallback, the commit hook runs `vp staged`, which applies ESLint fixes and then formats staged files with `vp fmt`.
+Use Oxfmt for format-on-save, with Oxc and ESLint code actions for their respective lint fixes.
+As a fallback, the commit hook runs `vp staged`, which applies Oxlint fixes, applies the remaining ESLint fixes, and then formats staged files with `vp fmt`.
 To prevent workflow disruptions, these commit hooks are intentionally bypassed when you are merging branches, rebasing, or cherry-picking.
 
 Additionally, we currently track many existing legacy errors in eslint-suppressions.json.

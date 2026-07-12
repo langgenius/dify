@@ -2,6 +2,8 @@
 
 import path from 'node:path'
 import antfu, {
+  GLOB_JS,
+  GLOB_JSX,
   GLOB_MARKDOWN,
   GLOB_MARKDOWN_CODE,
   GLOB_TESTS,
@@ -16,6 +18,7 @@ import jsxA11y from 'eslint-plugin-jsx-a11y'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
 import noBarrelFiles from 'eslint-plugin-no-barrel-files'
 import storybook from 'eslint-plugin-storybook'
+import { rulesMigratedToOxlint } from '../eslint.migrated-rules.mjs'
 import {
   GENERATED_IGNORES,
   HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
@@ -117,6 +120,11 @@ export default antfu(
       'node/prefer-global/process': 'off',
       'unicorn/number-literal-case': 'off',
     },
+  },
+  {
+    files: [GLOB_JS, GLOB_JSX, GLOB_TS, GLOB_TSX],
+    ignores: [GLOB_MARKDOWN_CODE],
+    rules: rulesMigratedToOxlint,
   },
   {
     files: ['**/*.ts', '**/*.tsx'],

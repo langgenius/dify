@@ -32,7 +32,7 @@ const AutoHeightTextarea = ({
 }: IProps & {
   ref?: React.RefObject<HTMLTextAreaElement>
 }) => {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // oxlint-disable-next-line react/rules-of-hooks -- Use the provided ref when available and create a local fallback otherwise.
   const ref = outerRef || useRef<HTMLTextAreaElement>(null)
 
   const doFocus = () => {

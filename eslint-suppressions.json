@@ -977,12 +977,6 @@
   "web/app/components/base/auto-height-textarea/index.tsx": {
     "jsx-a11y/no-autofocus": {
       "count": 1
-    },
-    "react-hooks/rules-of-hooks": {
-      "count": 1
-    },
-    "react/rules-of-hooks": {
-      "count": 1
     }
   },
   "web/app/components/base/badge/index.tsx": {
@@ -5655,11 +5649,6 @@
   "web/app/components/workflow/nodes/loop/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/__tests__/list.spec.tsx": {
-    "unused-imports/no-unused-vars": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/item.tsx": {

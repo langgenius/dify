@@ -30,6 +30,7 @@ describe('parameter-extractor/extract-parameter/list', () => {
   // TODO: Fix this test.
   // This test only failed in the merge queue, and I don't know why.
   it.skip('edits and deletes parameters through the real item and modal flow', async () => {
+    // oxlint-disable-next-line no-unused-vars -- Keep the interaction setup with the temporarily skipped test.
     const user = userEvent.setup()
     const handleChange = vi.fn()
     const { rerender } = render(

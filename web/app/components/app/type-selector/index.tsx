@@ -70,9 +70,9 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
               <AppTypeSelectorItem
                 key={mode}
                 type={mode}
-                checked={Boolean(value.length > 0 && value?.indexOf(mode) !== -1)}
+                checked={value.length > 0 && value.includes(mode)}
                 onClick={() => {
-                  if (value?.indexOf(mode) !== -1) onChange(value?.filter((v) => v !== mode) ?? [])
+                  if (value.includes(mode)) onChange(value.filter((v) => v !== mode))
                   else onChange([...(value || []), mode])
                 }}
               />

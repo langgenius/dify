@@ -1,8 +1,10 @@
 import { defineConfig } from 'vite-plus'
 
-const lintFiles = '*.{js,cjs,mjs,jsx,ts,cts,mts,tsx,json,jsonc,json5,md,yml,yaml,toml}'
+const codeFiles = '*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'
+const eslintOnlyFiles = '*.{json,jsonc,json5,md,yml,yaml,toml}'
 const formatOnlyFiles = '*.{mdx,css,scss,less,html,vue,svelte,gql,graphql,hbs,handlebars}'
-const lintFix = 'eslint --fix --pass-on-unpruned-suppressions --no-error-on-unmatched-pattern'
+const oxlintFix = 'vp lint --fix --no-error-on-unmatched-pattern'
+const eslintFix = 'eslint --fix --pass-on-unpruned-suppressions --no-error-on-unmatched-pattern'
 const format = 'vp fmt --no-error-on-unmatched-pattern'
 
 const nonFrontendIgnores = [
@@ -37,12 +39,53 @@ const generatedIgnores = [
   'web/public/vs/**',
 ]
 
+const lintIgnores = [
+  ...nonFrontendIgnores,
+  ...generatedIgnores,
+  '.claude/**',
+  'cli/**',
+  'packages/dify-ui/**',
+  'sdks/**',
+  'web/public/**',
+  'web/types/doc-paths.ts',
+]
+
 const formatterUnstableInputs = ['web/app/components/develop/template/*.mdx']
 
 export default defineConfig({
   staged: {
-    [lintFiles]: [lintFix, format],
+    [codeFiles]: [oxlintFix, eslintFix, format],
+    [eslintOnlyFiles]: [eslintFix, format],
     [formatOnlyFiles]: format,
+  },
+  lint: {
+    categories: {
+      correctness: 'off',
+    },
+    ignorePatterns: lintIgnores,
+    plugins: ['eslint', 'react', 'unicorn'],
+    rules: {
+      'no-unmodified-loop-condition': 'error',
+      'no-unused-vars': [
+        'error',
+        {
+          args: 'after-used',
+          argsIgnorePattern: '^_',
+          fix: {
+            imports: 'safe-fix',
+            variables: 'off',
+          },
+          ignoreRestSiblings: true,
+          vars: 'all',
+          varsIgnorePattern: '^_',
+        },
+      ],
+      'react/rules-of-hooks': 'error',
+      'unicorn/prefer-dom-node-text-content': 'error',
+      'unicorn/prefer-includes': 'error',
+      'unicorn/prefer-node-protocol': 'error',
+      'unicorn/prefer-string-starts-ends-with': 'error',
+    },
   },
   fmt: {
     ignorePatterns: [...nonFrontendIgnores, ...generatedIgnores, ...formatterUnstableInputs],

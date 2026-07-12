@@ -49,6 +49,7 @@ jobs:
             .nvmrc
             vite.config.ts
             eslint.config.mjs
+            eslint.migrated-rules.mjs
             .vscode/**
             .github/workflows/autofix.yml
             .github/workflows/style.yml
@@ -166,9 +167,10 @@ jobs:
         if: github.event_name != 'merge_group' && steps.frontend-contract-changes.outputs.any_changed == 'true'
         run: pnpm --dir packages/contracts gen-api-contract
 
-      - name: ESLint autofix
+      - name: Frontend lint autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
         run: |
+          vp lint --fix --quiet || true
           vp exec eslint --fix --concurrency=2 --prune-suppressions --quiet || true
 
       - name: Format frontend files
