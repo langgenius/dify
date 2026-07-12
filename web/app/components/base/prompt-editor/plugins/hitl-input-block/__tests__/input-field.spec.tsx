@@ -1,5 +1,5 @@
 import type { FormInputItem, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType, SupportUploadFileTypes, VarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
@@ -11,10 +11,12 @@ type VarReferencePickerProps = {
 }
 
 let lastVarReferencePickerProps: VarReferencePickerProps | undefined
+let firstVarReferencePickerProps: VarReferencePickerProps | undefined
 let fileUploadSettingMaxLength: number | undefined = 4
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   default: (props: VarReferencePickerProps) => {
+    firstVarReferencePickerProps ||= props
     lastVarReferencePickerProps = props
     return (
       <button type="button" onClick={() => props.onChange(['node-a', 'var-a'])}>
@@ -90,6 +92,7 @@ describe('InputField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     lastVarReferencePickerProps = undefined
+    firstVarReferencePickerProps = undefined
     fileUploadSettingMaxLength = 4
   })
 
@@ -353,6 +356,47 @@ describe('InputField', () => {
       type: 'variable',
       selector: ['node-a', 'var-a'],
       value: '',
+    })
+  })
+
+  it('should keep the typed variable name when a stale pre-populate selector callback updates later', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <InputField
+        nodeId="node-stale-selector"
+        isEdit={false}
+        payload={createPayload({
+          output_variable_name: '',
+          default: {
+            type: 'variable',
+            selector: ['node-old', 'text'],
+            value: '',
+          },
+        })}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    const staleSelectorCallback = firstVarReferencePickerProps?.onChange
+
+    await user.type(screen.getByRole('textbox'), 'reviewed_markdown')
+    act(() => {
+      staleSelectorCallback?.(['llm_node', 'text'])
+    })
+    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0]![0]).toEqual({
+      type: InputVarType.paragraph,
+      output_variable_name: 'reviewed_markdown',
+      default: {
+        type: 'variable',
+        selector: ['llm_node', 'text'],
+        value: '',
+      },
     })
   })
 
