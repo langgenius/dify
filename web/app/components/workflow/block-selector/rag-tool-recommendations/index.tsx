@@ -3,13 +3,13 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { ViewType } from '@/app/components/workflow/block-selector/view-type-select'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { RiMoreLine } from '@remixicon/react'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import { useRAGRecommendationsCollapsed } from '@/app/components/workflow/block-selector/storage'
 import Link from '@/next/link'
 import { useRAGRecommendedPlugins } from '@/service/use-tools'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -21,15 +21,13 @@ type RAGToolRecommendationsProps = {
   onTagsChange: Dispatch<SetStateAction<string[]>>
 }
 
-const STORAGE_KEY = 'workflow_rag_recommendations_collapsed'
-
 const RAGToolRecommendations = ({
   viewType,
   onSelect,
   onTagsChange,
 }: RAGToolRecommendationsProps) => {
   const { t } = useTranslation()
-  const [isCollapsed, setIsCollapsed] = useLocalStorage<boolean>(STORAGE_KEY, false)
+  const [isCollapsed, setIsCollapsed] = useRAGRecommendationsCollapsed()
 
   const {
     data: ragRecommendedPlugins,
@@ -38,21 +36,19 @@ const RAGToolRecommendations = ({
   } = useRAGRecommendedPlugins('tool')
 
   const recommendedPlugins = useMemo(() => {
-    if (ragRecommendedPlugins)
-      return ragRecommendedPlugins.installed_recommended_plugins
+    if (ragRecommendedPlugins) return ragRecommendedPlugins.installed_recommended_plugins
     return []
   }, [ragRecommendedPlugins])
 
   const unInstalledPlugins = useMemo(() => {
     if (ragRecommendedPlugins)
-      return (ragRecommendedPlugins.uninstalled_recommended_plugins).map(getFormattedPlugin)
+      return ragRecommendedPlugins.uninstalled_recommended_plugins.map(getFormattedPlugin)
     return []
   }, [ragRecommendedPlugins])
 
   const loadMore = useCallback(() => {
     onTagsChange((prev) => {
-      if (prev.includes('rag'))
-        return prev
+      if (prev.includes('rag')) return prev
       return [...prev, 'rag']
     })
   }, [onTagsChange])
@@ -62,10 +58,14 @@ const RAGToolRecommendations = ({
       <button
         type="button"
         className="flex w-full items-center rounded-md px-3 pt-1 pb-0.5 text-left text-text-tertiary"
-        onClick={() => setIsCollapsed(prev => !prev)}
+        onClick={() => setIsCollapsed((prev) => !prev)}
       >
-        <span className="system-xs-medium text-text-tertiary">{t('ragToolSuggestions.title', { ns: 'pipeline' })}</span>
-        <ArrowDownRoundFill className={`ml-1 size-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+        <span className="system-xs-medium text-text-tertiary">
+          {t(($) => $['ragToolSuggestions.title'], { ns: 'pipeline' })}
+        </span>
+        <ArrowDownRoundFill
+          className={`ml-1 size-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}
+        />
       </button>
       {!isCollapsed && (
         <>
@@ -75,24 +75,26 @@ const RAGToolRecommendations = ({
               <Loading type="app" />
             </div>
           )}
-          {!isFetchingRAGRecommendedPlugins && recommendedPlugins.length === 0 && unInstalledPlugins.length === 0 && (
-            <p className="px-3 py-1 system-xs-regular text-text-tertiary">
-              <Trans
-                i18nKey="ragToolSuggestions.noRecommendationPlugins"
-                ns="pipeline"
-                components={{
-                  CustomLink: (
-                    <Link
-                      className="text-text-accent"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      href={getMarketplaceUrl('', { tags: 'rag' })}
-                    />
-                  ),
-                }}
-              />
-            </p>
-          )}
+          {!isFetchingRAGRecommendedPlugins &&
+            recommendedPlugins.length === 0 &&
+            unInstalledPlugins.length === 0 && (
+              <p className="px-3 py-1 system-xs-regular text-text-tertiary">
+                <Trans
+                  i18nKey={($) => $['ragToolSuggestions.noRecommendationPlugins']}
+                  ns="pipeline"
+                  components={{
+                    CustomLink: (
+                      <Link
+                        className="text-text-accent"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        href={getMarketplaceUrl('', { tags: 'rag' })}
+                      />
+                    ),
+                  }}
+                />
+              </p>
+            )}
           {(recommendedPlugins.length > 0 || unInstalledPlugins.length > 0) && (
             <>
               <List
@@ -109,7 +111,7 @@ const RAGToolRecommendations = ({
                   <RiMoreLine className="size-4 text-text-tertiary" />
                 </div>
                 <div className="system-xs-regular text-text-tertiary">
-                  {t('operation.more', { ns: 'common' })}
+                  {t(($) => $['operation.more'], { ns: 'common' })}
                 </div>
               </div>
             </>

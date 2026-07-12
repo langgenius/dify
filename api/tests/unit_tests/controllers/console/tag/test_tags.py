@@ -2,15 +2,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
-from sqlalchemy.orm import Session
-
-
-class SessionMatcher:
-    def __eq__(self, other):
-        return isinstance(other, Session)
-
-
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import controllers.console.tag.tags as module
@@ -25,6 +18,11 @@ from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.enums import TagType
 from services.tag_service import UpdateTagPayload
+
+
+class SessionMatcher:
+    def __eq__(self, other):
+        return isinstance(other, Session)
 
 
 def unwrap(func):
@@ -133,7 +131,7 @@ class TestTagListApi:
             ):
                 result, status = method(api, "tenant-1")
 
-        get_tags_mock.assert_called_once_with(SessionMatcher(), "snippet", "tenant-1", None)
+        get_tags_mock.assert_called_once_with("snippet", "tenant-1", None, session=SessionMatcher())
         assert status == 200
         assert result == [{"id": "1", "name": "snippet-tag", "type": "snippet", "binding_count": "1"}]
 
@@ -156,6 +154,36 @@ class TestTagListApi:
         assert status == 200
         assert result["name"] == "test-tag"
         assert result["binding_count"] == "0"
+
+    def test_post_snippet_tag_checks_snippet_rbac_when_enabled(self, app: Flask, admin_user, tag, payload_patch):
+        api = TagListApi()
+        method = unwrap(api.post)
+
+        payload = {"name": "snippet-tag", "type": "snippet"}
+
+        with app.test_request_context("/", json=payload):
+            with (
+                payload_patch(payload),
+                patch("controllers.console.tag.tags.dify_config.RBAC_ENABLED", True),
+                patch(
+                    "controllers.console.tag.tags.current_account_with_tenant",
+                    return_value=(SimpleNamespace(id="user-1"), "tenant-1"),
+                ),
+                patch("controllers.console.tag.tags.enforce_rbac_access") as enforce_mock,
+                patch(
+                    "controllers.console.tag.tags.TagService.save_tags",
+                    return_value=tag,
+                ),
+            ):
+                method(api, admin_user)
+
+        enforce_mock.assert_called_once_with(
+            tenant_id="tenant-1",
+            account_id="user-1",
+            resource_type=module.RBACResourceScope.WORKSPACE,
+            scene=module.RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
+            resource_required=False,
+        )
 
     def test_post_forbidden(self, app: Flask, readonly_user, payload_patch):
         api = TagListApi()
@@ -193,9 +221,10 @@ class TestTagUpdateDeleteApi:
                 result, status = method(api, admin_user, "tag-1")
 
         assert status == 200
-        update_payload, tag_id = update_tags_mock.call_args.args
+        update_payload, tag_id, session = update_tags_mock.call_args.args
         assert update_payload == UpdateTagPayload(name="updated")
         assert tag_id == "tag-1"
+        assert session == SessionMatcher()
         assert result["binding_count"] == "3"
 
     def test_patch_forbidden(self, app: Flask, readonly_user, payload_patch):
@@ -221,7 +250,36 @@ class TestTagUpdateDeleteApi:
         ):
             result, status = method(api, "tag-1")
 
-        delete_mock.assert_called_once_with("tag-1")
+        delete_mock.assert_called_once_with("tag-1", SessionMatcher())
+        assert status == 204
+
+    def test_delete_snippet_tag_checks_type_in_current_tenant(self, app: Flask, admin_user):
+        api = TagUpdateDeleteApi()
+        method = unwrap(api.delete)
+
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.tag.tags.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.tag.tags.current_account_with_tenant",
+                return_value=(SimpleNamespace(id="user-1"), "tenant-1"),
+            ),
+            patch.object(module.db.session, "scalar", return_value=TagType.SNIPPET) as scalar_mock,
+            patch("controllers.console.tag.tags.enforce_rbac_access") as enforce_mock,
+            patch("controllers.console.tag.tags.TagService.delete_tag") as delete_mock,
+        ):
+            result, status = method(api, "tag-1")
+
+        scalar_mock.assert_called_once()
+        enforce_mock.assert_called_once_with(
+            tenant_id="tenant-1",
+            account_id="user-1",
+            resource_type=module.RBACResourceScope.WORKSPACE,
+            scene=module.RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
+            resource_required=False,
+        )
+        delete_mock.assert_called_once_with("tag-1", SessionMatcher())
+        assert result == ""
         assert status == 204
 
 

@@ -56,6 +56,7 @@ class TestCompletionAppGenerator:
     def test_generate_invalid_query_type(self, generator):
         with pytest.raises(ValueError):
             generator.generate(
+                session=MagicMock(),
                 app_model=_build_app_model(),
                 user=_build_user(),
                 args={"query": 123, "inputs": {}, "files": []},
@@ -66,6 +67,7 @@ class TestCompletionAppGenerator:
     def test_generate_override_not_debugger(self, generator):
         with pytest.raises(ValueError):
             generator.generate(
+                session=MagicMock(),
                 app_model=_build_app_model(),
                 user=_build_user(),
                 args={"query": "q", "inputs": {}, "files": [], "model_config": {}},
@@ -93,6 +95,7 @@ class TestCompletionAppGenerator:
         mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
 
         result = generator.generate(
+            session=MagicMock(),
             app_model=_build_app_model(),
             user=_build_user(),
             args={"query": "q", "inputs": {"a": 1}, "files": [], "trace_session_id": "session-1"},
@@ -126,6 +129,7 @@ class TestCompletionAppGenerator:
         mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
 
         result = generator.generate(
+            session=MagicMock(),
             app_model=_build_app_model(),
             user=_build_user(),
             args={"query": "q", "inputs": {"a": 1}, "files": [{"id": "f"}]},
@@ -161,6 +165,7 @@ class TestCompletionAppGenerator:
         mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
 
         generator.generate(
+            session=MagicMock(),
             app_model=_build_app_model(),
             user=_build_user(),
             args={"query": "q", "inputs": {}, "files": [], "model_config": override_config},
@@ -177,6 +182,7 @@ class TestCompletionAppGenerator:
 
         with pytest.raises(MessageNotExistsError):
             generator.generate_more_like_this(
+                session=session,
                 app_model=_build_app_model(),
                 message_id="msg",
                 user=_build_user(),
@@ -194,6 +200,7 @@ class TestCompletionAppGenerator:
 
         with pytest.raises(MoreLikeThisDisabledError):
             generator.generate_more_like_this(
+                session=session,
                 app_model=app_model,
                 message_id="msg",
                 user=_build_user(),
@@ -211,6 +218,7 @@ class TestCompletionAppGenerator:
 
         with pytest.raises(MoreLikeThisDisabledError):
             generator.generate_more_like_this(
+                session=session,
                 app_model=app_model,
                 message_id="msg",
                 user=_build_user(),
@@ -228,6 +236,7 @@ class TestCompletionAppGenerator:
 
         with pytest.raises(ValueError):
             generator.generate_more_like_this(
+                session=session,
                 app_model=app_model,
                 message_id="msg",
                 user=_build_user(),
@@ -275,6 +284,7 @@ class TestCompletionAppGenerator:
         mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
 
         result = generator.generate_more_like_this(
+            session=session,
             app_model=app_model,
             message_id="msg",
             user=_build_user(),
@@ -318,6 +328,7 @@ class TestCompletionAppGenerator:
         queue_manager = MagicMock()
         generator._generate_worker(
             flask_app=flask_app,
+            session=session,
             application_generate_entity=MagicMock(),
             queue_manager=queue_manager,
             message_id="msg",

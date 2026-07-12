@@ -3,10 +3,9 @@ import type { ToolsContentInset } from '../content-inset'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useMemo, useState } from 'react'
+import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
-import {
-  useAllToolProviders,
-} from '@/service/use-tools'
+import { useAllToolProviders } from '@/service/use-tools'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
 import NewMCPCard from './create-card'
 import MCPDetailPanel from './detail/provider-detail'
@@ -27,15 +26,17 @@ const MCPList = ({
   onCreatedProviderHandled,
   showCreateCard = true,
 }: Props) => {
+  const canManageMCP = useCanManageMCP()
   const { data: list = [] as ToolWithProvider[], isLoading, refetch } = useAllToolProviders()
   const [isTriggerAuthorize, setIsTriggerAuthorize] = useState<boolean>(false)
 
   const filteredList = useMemo(() => {
     return list.filter((collection) => {
-      if (collection.type !== 'mcp')
-        return false
+      if (collection.type !== 'mcp') return false
       if (searchText)
-        return Object.values(collection.name).some(value => (value as string).toLowerCase().includes(searchText.toLowerCase()))
+        return Object.values(collection.name).some((value) =>
+          (value as string).toLowerCase().includes(searchText.toLowerCase()),
+        )
       return true
     }) as ToolWithProvider[]
   }, [list, searchText])
@@ -43,33 +44,31 @@ const MCPList = ({
   const [currentProviderID, setCurrentProviderID] = useState<string>()
 
   const currentProvider = useMemo(() => {
-    return list.find(provider => provider.id === currentProviderID)
+    return list.find((provider) => provider.id === currentProviderID)
   }, [list, currentProviderID])
 
   const handleCreate = async (provider: ToolWithProvider) => {
+    if (!canManageMCP) return
+
     await refetch() // update list
     setCurrentProviderID(provider.id)
     setIsTriggerAuthorize(true)
   }
 
   useEffect(() => {
-    if (!createdProviderId)
-      return
+    if (!canManageMCP || !createdProviderId) return
 
     let isActive = true
 
     const openCreatedProvider = async () => {
       try {
         await refetch()
-        if (!isActive)
-          return
+        if (!isActive) return
 
         setCurrentProviderID(createdProviderId)
         setIsTriggerAuthorize(true)
-      }
-      finally {
-        if (isActive)
-          onCreatedProviderHandled?.()
+      } finally {
+        if (isActive) onCreatedProviderHandled?.()
       }
     }
 
@@ -78,9 +77,11 @@ const MCPList = ({
     return () => {
       isActive = false
     }
-  }, [createdProviderId, onCreatedProviderHandled, refetch])
+  }, [canManageMCP, createdProviderId, onCreatedProviderHandled, refetch])
 
   const handleUpdate = async (providerID: string) => {
+    if (!canManageMCP) return
+
     await refetch() // update list
     setCurrentProviderID(providerID)
     setIsTriggerAuthorize(true)
@@ -96,19 +97,21 @@ const MCPList = ({
           isLoading && 'h-[calc(100vh-136px)] overflow-hidden',
         )}
       >
-        {!isLoading && showCreateCard && <NewMCPCard handleCreate={handleCreate} />}
-        {isLoading
-          ? <ToolCardSkeletonGrid variant="mcp" />
-          : filteredList.map(provider => (
-              <MCPCard
-                key={provider.id}
-                data={provider}
-                currentProvider={currentProvider as ToolWithProvider}
-                handleSelect={setCurrentProviderID}
-                onUpdate={handleUpdate}
-                onDeleted={refetch}
-              />
-            ))}
+        {!isLoading && canManageMCP && showCreateCard && <NewMCPCard handleCreate={handleCreate} />}
+        {isLoading ? (
+          <ToolCardSkeletonGrid variant="mcp" />
+        ) : (
+          filteredList.map((provider) => (
+            <MCPCard
+              key={provider.id}
+              data={provider}
+              currentProvider={currentProvider as ToolWithProvider}
+              handleSelect={setCurrentProviderID}
+              onUpdate={handleUpdate}
+              onDeleted={refetch}
+            />
+          ))
+        )}
       </div>
       {currentProvider && (
         <MCPDetailPanel

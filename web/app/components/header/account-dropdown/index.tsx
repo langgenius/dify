@@ -8,11 +8,17 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
-import { useAppContext } from '@/context/app-context'
+import {
+  useSetEducationExpiredHasNoticed,
+  useSetEducationReverifyHasNoticed,
+  useSetEducationReverifyPrevExpireAt,
+} from '@/app/education-apply/storage'
+import { userProfileAtom } from '@/context/account-state'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import AccountAbout from '../account-about'
@@ -20,30 +26,23 @@ import { DefaultMenuContent } from './default-menu-content'
 import { MainNavMenuContent } from './main-nav-menu-content'
 
 type AccountDropdownProps = {
-  trigger?: (props: {
-    isOpen: boolean
-    ariaLabel: string
-  }) => ReactElement
+  trigger?: (props: { isOpen: boolean; ariaLabel: string }) => ReactElement
   variant?: 'default' | 'mainNav'
 }
 
-const EDUCATION_REVERIFY_PREV_EXPIRE_AT_KEY = 'education-reverify-prev-expire-at'
-const EDUCATION_REVERIFY_HAS_NOTICED_KEY = 'education-reverify-has-noticed'
-const EDUCATION_EXPIRED_HAS_NOTICED_KEY = 'education-expired-has-noticed'
-const mainNavMenuPopupClassName = 'w-60 max-w-80 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]'
+const mainNavMenuPopupClassName =
+  'w-60 max-w-80 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]'
 
-export default function AppSelector({
-  trigger,
-  variant = 'default',
-}: AccountDropdownProps = {}) {
+export default function AppSelector({ trigger, variant = 'default' }: AccountDropdownProps = {}) {
   const router = useRouter()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
   const { t } = useTranslation()
-  const { userProfile, langGeniusVersionInfo } = useAppContext()
-  const clearEducationReverifyPrevExpireAt = useSetLocalStorage<number>(EDUCATION_REVERIFY_PREV_EXPIRE_AT_KEY)
-  const clearEducationReverifyHasNoticed = useSetLocalStorage<boolean>(EDUCATION_REVERIFY_HAS_NOTICED_KEY)
-  const clearEducationExpiredHasNoticed = useSetLocalStorage<boolean>(EDUCATION_EXPIRED_HAS_NOTICED_KEY)
+  const userProfile = useAtomValue(userProfileAtom)
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const clearEducationReverifyPrevExpireAt = useSetEducationReverifyPrevExpireAt()
+  const clearEducationReverifyHasNoticed = useSetEducationReverifyHasNoticed()
+  const clearEducationExpiredHasNoticed = useSetEducationExpiredHasNoticed()
 
   const { mutateAsync: logout } = useLogout()
 
@@ -63,41 +62,51 @@ export default function AppSelector({
   return (
     <div>
       <DropdownMenu open={isAccountMenuOpen} onOpenChange={setIsAccountMenuOpen}>
-        {trigger
-          ? (
-              <DropdownMenuTrigger
-                render={trigger({
-                  isOpen: isAccountMenuOpen,
-                  ariaLabel: t('account.account', { ns: 'common' }),
-                })}
-              />
-            )
-          : (
-              <DropdownMenuTrigger
-                aria-label={t('account.account', { ns: 'common' })}
-                className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', isAccountMenuOpen && 'bg-background-default-dodge')}
-              >
-                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
-              </DropdownMenuTrigger>
+        {trigger ? (
+          <DropdownMenuTrigger
+            render={trigger({
+              isOpen: isAccountMenuOpen,
+              ariaLabel: t(($) => $['account.account'], { ns: 'common' }),
+            })}
+          />
+        ) : (
+          <DropdownMenuTrigger
+            aria-label={t(($) => $['account.account'], { ns: 'common' })}
+            className={cn(
+              'inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge',
+              isAccountMenuOpen && 'bg-background-default-dodge',
             )}
+          >
+            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
+          </DropdownMenuTrigger>
+        )}
         <DropdownMenuContent
           placement={variant === 'mainNav' ? 'top-start' : 'bottom-end'}
           sideOffset={6}
           alignOffset={variant === 'mainNav' ? 4 : 0}
-          popupClassName={variant === 'mainNav' ? mainNavMenuPopupClassName : 'w-60 max-w-80 bg-components-panel-bg-blur! py-0! backdrop-blur-xs'}
+          popupClassName={
+            variant === 'mainNav'
+              ? mainNavMenuPopupClassName
+              : 'w-60 max-w-80 bg-components-panel-bg-blur! py-0! backdrop-blur-xs'
+          }
         >
-          {variant === 'mainNav'
-            ? <MainNavMenuContent onLogout={handleLogout} />
-            : (
-                <DefaultMenuContent
-                  closeAccountDropdown={() => setIsAccountMenuOpen(false)}
-                  onShowAbout={() => setAboutVisible(true)}
-                  onLogout={handleLogout}
-                />
-              )}
+          {variant === 'mainNav' ? (
+            <MainNavMenuContent onLogout={handleLogout} />
+          ) : (
+            <DefaultMenuContent
+              closeAccountDropdown={() => setIsAccountMenuOpen(false)}
+              onShowAbout={() => setAboutVisible(true)}
+              onLogout={handleLogout}
+            />
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
-      {aboutVisible && <AccountAbout onCancel={() => setAboutVisible(false)} langGeniusVersionInfo={langGeniusVersionInfo} />}
+      {aboutVisible && (
+        <AccountAbout
+          onCancel={() => setAboutVisible(false)}
+          langGeniusVersionInfo={langGeniusVersionInfo}
+        />
+      )}
     </div>
   )
 }

@@ -1,7 +1,16 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import SnippetCreateButton from '../snippet-create-button'
 
-const { mockPush, mockCreateMutateAsync, mockSyncDraftWorkflow, mockImportMutateAsync, mockConfirmImportMutateAsync, mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+const {
+  mockPush,
+  mockCreateMutateAsync,
+  mockSyncDraftWorkflow,
+  mockImportMutateAsync,
+  mockConfirmImportMutateAsync,
+  mockToastSuccess,
+  mockToastError,
+  mockWorkspacePermissionKeys,
+} = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockCreateMutateAsync: vi.fn(),
   mockSyncDraftWorkflow: vi.fn(),
@@ -9,6 +18,7 @@ const { mockPush, mockCreateMutateAsync, mockSyncDraftWorkflow, mockImportMutate
   mockConfirmImportMutateAsync: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
+  mockWorkspacePermissionKeys: vi.fn(() => ['snippets.create_and_modify']),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -23,6 +33,49 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     error: mockToastError,
   },
 }))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/use-snippets', () => ({
   useCreateSnippetMutation: () => ({
@@ -42,7 +95,13 @@ vi.mock('@/service/use-snippets', () => ({
 vi.mock('@/service/client', () => ({
   consoleClient: {
     snippets: {
-      syncDraftWorkflow: mockSyncDraftWorkflow,
+      bySnippetId: {
+        workflows: {
+          draft: {
+            post: mockSyncDraftWorkflow,
+          },
+        },
+      },
     },
   },
 }))
@@ -50,11 +109,24 @@ vi.mock('@/service/client', () => ({
 describe('SnippetCreateButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
+  })
+
+  it('should not render without snippet create permission', () => {
+    mockWorkspacePermissionKeys.mockReturnValue([])
+
+    render(<SnippetCreateButton />)
+
+    expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
   })
 
   it('should open the create dialog and create a snippet from the modal', async () => {
     mockCreateMutateAsync.mockResolvedValue({ id: 'snippet-123' })
-    mockSyncDraftWorkflow.mockResolvedValue({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 })
+    mockSyncDraftWorkflow.mockResolvedValue({
+      result: 'success',
+      hash: 'draft-hash',
+      updated_at: 1704067200,
+    })
 
     render(<SnippetCreateButton />)
 
@@ -85,7 +157,7 @@ describe('SnippetCreateButton', () => {
       })
     })
     expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
-      params: { snippetId: 'snippet-123' },
+      params: { snippet_id: 'snippet-123' },
       body: {
         graph: {
           nodes: [],

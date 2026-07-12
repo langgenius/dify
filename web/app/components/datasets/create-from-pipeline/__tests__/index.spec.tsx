@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-
 import CreateFromPipeline from '../index'
 
 // Mock child components to isolate testing
@@ -18,7 +17,9 @@ vi.mock('../footer', () => ({
 
 vi.mock('../../../base/effect', () => ({
   default: ({ className }: { className?: string }) => (
-    <div data-testid="mock-effect" className={className}>Effect</div>
+    <div data-testid="mock-effect" className={className}>
+      Effect
+    </div>
   ),
 }))
 
@@ -56,7 +57,13 @@ describe('CreateFromPipeline', () => {
     it('should have proper container classes', () => {
       const { container } = render(<CreateFromPipeline />)
       const mainDiv = container.firstChild as HTMLElement
-      expect(mainDiv).toHaveClass('relative', 'flex', 'flex-col', 'overflow-hidden', 'rounded-t-2xl')
+      expect(mainDiv).toHaveClass(
+        'relative',
+        'flex',
+        'flex-col',
+        'overflow-hidden',
+        'rounded-t-2xl',
+      )
     })
 
     it('should have correct height calculation', () => {
@@ -68,7 +75,11 @@ describe('CreateFromPipeline', () => {
     it('should have border and background styling', () => {
       const { container } = render(<CreateFromPipeline />)
       const mainDiv = container.firstChild as HTMLElement
-      expect(mainDiv).toHaveClass('border-t', 'border-effects-highlight', 'bg-background-default-subtle')
+      expect(mainDiv).toHaveClass(
+        'border-t',
+        'border-effects-highlight',
+        'bg-background-default-subtle',
+      )
     })
 
     it('should position Effect component correctly', () => {

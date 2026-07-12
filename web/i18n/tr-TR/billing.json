@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "Toplu belge yüklemeyi açmak için yükseltin",
   "upgrade.uploadMultiplePages.description": "Yükleme sınırına ulaştınız — mevcut planınızda aynı anda yalnızca bir belge seçip yükleyebilirsiniz.",
   "upgrade.uploadMultiplePages.title": "Aynı anda birden fazla belge yüklemek için yükseltin",
+  "upgrade.workflowRestore.description": "İş akışı sürümü geri yükleme mevcut planınızda kullanılamaz.",
+  "upgrade.workflowRestore.title": "İş akışı sürümlerini geri yüklemek için yükseltin",
   "upgradeBtn.encourage": "Şimdi Yükselt",
   "upgradeBtn.encourageShort": "Yükselt",
   "upgradeBtn.plain": "Planı Yükselt",

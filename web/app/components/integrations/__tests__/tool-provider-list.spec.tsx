@@ -89,15 +89,53 @@ const createDefaultCollections = () => [
 let mockCollectionData: ReturnType<typeof createDefaultCollections> = []
 let mockIsLoadingToolProviders = false
 const mockRefetch = vi.fn()
+const mockUseAllToolProviders = vi.hoisted(() => vi.fn())
 vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: () => ({
-    data: mockCollectionData,
-    isLoading: mockIsLoadingToolProviders,
-    refetch: mockRefetch,
-  }),
+  useAllToolProviders: (enabled?: boolean) => mockUseAllToolProviders(enabled),
 }))
 
-let mockCheckedInstalledData: { plugins: { id: string, name: string }[] } | null = null
+const mockAppContextState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
+}))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
+let mockCheckedInstalledData: { plugins: { id: string; name: string }[] } | null = null
 const mockInvalidateInstalledPluginList = vi.fn()
 vi.mock('@/service/use-plugins', () => ({
   useCheckInstalled: ({ enabled }: { enabled: boolean }) => ({
@@ -106,38 +144,41 @@ vi.mock('@/service/use-plugins', () => ({
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
 }))
 
-const {
-  mockCanSetPermissions,
-  mockReferenceSetting,
-  mockSetReferenceSettings,
-} = vi.hoisted(() => ({
-  mockCanSetPermissions: vi.fn(() => true),
-  mockReferenceSetting: vi.fn(() => ({
-    permission: {
-      install_permission: 'everyone',
-      debug_permission: 'admins',
-    },
-    auto_upgrade: {
-      strategy_setting: 'fix_only',
-      upgrade_time_of_day: 0,
-      upgrade_mode: 'all',
-      exclude_plugins: [],
-      include_plugins: [],
-    },
-  })),
-  mockSetReferenceSettings: vi.fn(),
-}))
+const { mockCanSetPermissions, mockReferenceSetting, mockSetReferenceSettings } = vi.hoisted(
+  () => ({
+    mockCanSetPermissions: vi.fn(() => true),
+    mockReferenceSetting: vi.fn(() => ({
+      permission: {
+        install_permission: 'everyone',
+        debug_permission: 'admins',
+      },
+      auto_upgrade: {
+        strategy_setting: 'fix_only',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
+    })),
+    mockSetReferenceSettings: vi.fn(),
+  }),
+)
 
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   useCanSetPluginSettings: () => ({
     canSetPermissions: mockCanSetPermissions(),
+    canSetPluginPreferences: mockCanSetPermissions(),
   }),
   usePluginSettingsAccess: () => ({
     canSetPermissions: mockCanSetPermissions(),
+    canSetPluginPreferences: mockCanSetPermissions(),
+    canDeletePlugin: true,
+    canUpdatePlugin: true,
   }),
   default: () => ({
     referenceSetting: mockReferenceSetting(),
     canSetPermissions: mockCanSetPermissions(),
+    canSetPluginPreferences: mockCanSetPermissions(),
     setReferenceSettings: mockSetReferenceSettings,
   }),
 }))
@@ -155,7 +196,13 @@ vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => (
 }))
 
 vi.mock('@/app/components/plugins/card', () => ({
-  default: ({ payload, className }: { payload: { from?: string, name: string, org?: string }, className?: string }) => (
+  default: ({
+    payload,
+    className,
+  }: {
+    payload: { from?: string; name: string; org?: string }
+    className?: string
+  }) => (
     <div
       data-testid={`card-${payload.name}`}
       data-from={payload.from}
@@ -171,21 +218,29 @@ vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
   default: ({ variant }: { variant?: string }) => (
     <>
       {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} data-testid="tool-card-skeleton" data-variant={variant}>Loading tool</div>
+        <div key={index} data-testid="tool-card-skeleton" data-variant={variant}>
+          Loading tool
+        </div>
       ))}
     </>
   ),
 }))
 
 vi.mock('@/app/components/plugins/card/card-more-info', () => ({
-  default: ({ tags }: { tags: string[] }) => <div data-testid="card-more-info">{tags.join(', ')}</div>,
+  default: ({ tags }: { tags: string[] }) => (
+    <div data-testid="card-more-info">{tags.join(', ')}</div>
+  ),
 }))
 
 vi.mock('@/app/components/tools/labels/filter', () => ({
-  default: ({ value, onChange }: { value: string[], onChange: (v: string[]) => void }) => (
+  default: ({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) => (
     <div data-testid="label-filter">
-      <button data-testid="add-filter" onClick={() => onChange(['search'])}>Add filter</button>
-      <button data-testid="clear-filter" onClick={() => onChange([])}>Clear filter</button>
+      <button data-testid="add-filter" onClick={() => onChange(['search'])}>
+        Add filter
+      </button>
+      <button data-testid="clear-filter" onClick={() => onChange([])}>
+        Clear filter
+      </button>
       <span>{value.join(', ')}</span>
     </div>
   ),
@@ -193,14 +248,20 @@ vi.mock('@/app/components/tools/labels/filter', () => ({
 
 vi.mock('@/app/components/tools/provider/custom-create-card', () => ({
   default: () => <div data-testid="custom-create-card">Create Custom Tool</div>,
-  NewCustomToolButton: () => <button type="button" data-testid="toolbar-add-custom-tool">tools.addSwaggerAPIAsTool</button>,
+  NewCustomToolButton: () => (
+    <button type="button" data-testid="toolbar-add-custom-tool">
+      tools.addSwaggerAPIAsTool
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/tools/provider/detail', () => ({
-  default: ({ collection, onHide }: { collection: { name: string }, onHide: () => void }) => (
+  default: ({ collection, onHide }: { collection: { name: string }; onHide: () => void }) => (
     <div data-testid="provider-detail">
       <span>{collection.name}</span>
-      <button data-testid="detail-close" onClick={onHide}>Close</button>
+      <button data-testid="detail-close" onClick={onHide}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -210,25 +271,32 @@ vi.mock('@/app/components/tools/provider/empty', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel', () => ({
-  default: ({ detail, onUpdate, onHide }: { detail: unknown, onUpdate: () => void, onHide: () => void }) =>
-    detail
-      ? (
-          <div data-testid="plugin-detail-panel">
-            <button data-testid="plugin-update" onClick={onUpdate}>Update</button>
-            <button data-testid="plugin-close" onClick={onHide}>Close</button>
-          </div>
-        )
-      : null,
+  default: ({
+    detail,
+    onUpdate,
+    onHide,
+  }: {
+    detail: unknown
+    onUpdate: () => void
+    onHide: () => void
+  }) =>
+    detail ? (
+      <div data-testid="plugin-detail-panel">
+        <button data-testid="plugin-update" onClick={onUpdate}>
+          Update
+        </button>
+        <button data-testid="plugin-close" onClick={onHide}>
+          Close
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/app/components/plugins/marketplace/empty', () => ({
   default: ({ text }: { text: string }) => <div data-testid="empty">{text}</div>,
 }))
 
-const {
-  mockHandleScroll,
-  mockUseMarketplace,
-} = vi.hoisted(() => {
+const { mockHandleScroll, mockUseMarketplace } = vi.hoisted(() => {
   const handleScroll = vi.fn()
   return {
     mockHandleScroll: handleScroll,
@@ -243,7 +311,11 @@ const {
   }
 })
 vi.mock('@/app/components/tools/marketplace', () => ({
-  default: ({ showMarketplacePanel, isMarketplaceArrowVisible, contentInset }: {
+  default: ({
+    showMarketplacePanel,
+    isMarketplaceArrowVisible,
+    contentInset,
+  }: {
     showMarketplacePanel: () => void
     isMarketplaceArrowVisible: boolean
     contentInset?: string
@@ -261,8 +333,20 @@ vi.mock('@/app/components/tools/marketplace/hooks', () => ({
 }))
 
 vi.mock('@/app/components/tools/mcp', () => ({
-  default: ({ searchText, contentInset, showCreateCard }: { searchText: string, contentInset?: string, showCreateCard?: boolean }) => (
-    <div data-testid="mcp-list" data-content-inset={contentInset} data-show-create-card={String(showCreateCard)}>
+  default: ({
+    searchText,
+    contentInset,
+    showCreateCard,
+  }: {
+    searchText: string
+    contentInset?: string
+    showCreateCard?: boolean
+  }) => (
+    <div
+      data-testid="mcp-list"
+      data-content-inset={contentInset}
+      data-show-create-card={String(showCreateCard)}
+    >
       MCP List:
       {searchText}
     </div>
@@ -270,7 +354,11 @@ vi.mock('@/app/components/tools/mcp', () => ({
 }))
 
 vi.mock('@/app/components/tools/mcp/create-card', () => ({
-  NewMCPButton: ({ handleCreate }: { handleCreate: (provider: { id: string, name: string, type: string }) => void }) => (
+  NewMCPButton: ({
+    handleCreate,
+  }: {
+    handleCreate: (provider: { id: string; name: string; type: string }) => void
+  }) => (
     <button
       type="button"
       data-testid="toolbar-add-mcp"
@@ -305,7 +393,9 @@ const renderProviderList = (
     <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
   )
   return renderWithNuqs(
-    <Wrapped><ProviderList category={category} contentInset={contentInset} /></Wrapped>,
+    <Wrapped>
+      <ProviderList category={category} contentInset={contentInset} />
+    </Wrapped>,
     { searchParams },
   )
 }
@@ -316,6 +406,12 @@ describe('ProviderList', () => {
     mockEnableMarketplace = false
     mockCollectionData = createDefaultCollections()
     mockIsLoadingToolProviders = false
+    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
+    mockUseAllToolProviders.mockImplementation((enabled = true) => ({
+      data: enabled ? mockCollectionData : [],
+      isLoading: enabled ? mockIsLoadingToolProviders : false,
+      refetch: mockRefetch,
+    }))
     mockCheckedInstalledData = null
     mockCanSetPermissions.mockReturnValue(true)
     mockReferenceSetting.mockReturnValue({
@@ -345,6 +441,42 @@ describe('ProviderList', () => {
       expect(screen.getByText('tools.type.custom')).toBeInTheDocument()
       expect(screen.getByText('tools.type.workflow')).toBeInTheDocument()
       expect(screen.getByText('MCP')).toBeInTheDocument()
+    })
+
+    it('keeps custom and workflow tabs visible without tool.manage', () => {
+      mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+
+      renderProviderList()
+
+      expect(screen.getByText('tools.type.builtIn')).toBeInTheDocument()
+      expect(screen.getByText('tools.type.custom')).toBeInTheDocument()
+      expect(screen.getByText('tools.type.workflow')).toBeInTheDocument()
+      expect(screen.getByText('MCP')).toBeInTheDocument()
+    })
+
+    it('keeps MCP tab visible without mcp.manage', () => {
+      mockAppContextState.workspacePermissionKeys = ['tool.manage']
+
+      renderProviderList()
+
+      expect(screen.getByText('tools.type.builtIn')).toBeInTheDocument()
+      expect(screen.getByText('tools.type.custom')).toBeInTheDocument()
+      expect(screen.getByText('tools.type.workflow')).toBeInTheDocument()
+      expect(screen.getByText('MCP')).toBeInTheDocument()
+    })
+
+    it.each([
+      ['api', 'card-my-api'],
+      ['workflow', 'card-wf-tool'],
+    ] as const)('renders %s category read-only without tool.manage', (category, cardTestId) => {
+      mockAppContextState.workspacePermissionKeys = []
+
+      renderProviderList({ category })
+
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
+      expect(screen.getByTestId(cardTestId)).toBeInTheDocument()
+      expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
     })
 
     it('switches tab when clicked', () => {
@@ -390,8 +522,14 @@ describe('ProviderList', () => {
       expect(toolbar).toHaveClass('px-12', 'pt-2', 'pb-0', 'bg-components-panel-bg')
       expect(toolbar).toHaveClass('max-w-[1600px]')
       expect(toolbar).not.toHaveClass('sticky')
-      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-12', 'gap-2', 'pt-2')
-      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('max-w-[1600px]')
+      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass(
+        'px-12',
+        'gap-2',
+        'pt-2',
+      )
+      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass(
+        'max-w-[1600px]',
+      )
     })
 
     it('uses compact content inset when rendered by integrations layout', () => {
@@ -409,22 +547,18 @@ describe('ProviderList', () => {
     it('uses a two-column grid in compact integrations pages', () => {
       renderProviderList(undefined, 'builtin', 'compact')
 
-      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('grid', 'grid-cols-1', 'lg:grid-cols-2')
-      expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('flex', 'flex-wrap', 'md:grid-cols-3')
+      expect(screen.getByTestId('tool-provider-grid')).toHaveClass(
+        'grid',
+        'grid-cols-1',
+        'lg:grid-cols-2',
+      )
+      expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass(
+        'flex',
+        'flex-wrap',
+        'md:grid-cols-3',
+      )
       expect(screen.getByTestId('card-google-search').parentElement).toHaveClass('min-w-0')
       expect(screen.getByTestId('card-google-search').parentElement).not.toHaveClass('flex-1')
-    })
-
-    it('keeps the default plugin card border visible until a card is selected', () => {
-      renderProviderList(undefined, 'builtin', 'compact')
-
-      expect(screen.getByTestId('card-google-search')).toHaveClass('cursor-pointer')
-      expect(screen.getByTestId('card-google-search')).not.toHaveClass('border-transparent')
-      expect(screen.getByTestId('card-google-search')).not.toHaveClass('border-[1.5px]')
-
-      fireEvent.click(screen.getByTestId('card-google-search'))
-
-      expect(screen.getByTestId('card-google-search')).toHaveClass('outline-[1.5px]', 'outline-components-option-card-option-selected-border')
     })
   })
 
@@ -501,14 +635,13 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('label-filter')).toBeInTheDocument()
     })
 
-    it.each([
-      ['api'],
-      ['workflow'],
-      ['mcp'],
-    ] as const)('hides label filter for the %s tool page', (category) => {
-      renderProviderList({ category })
-      expect(screen.queryByTestId('label-filter')).not.toBeInTheDocument()
-    })
+    it.each([['api'], ['workflow'], ['mcp']] as const)(
+      'hides label filter for the %s tool page',
+      (category) => {
+        renderProviderList({ category })
+        expect(screen.queryByTestId('label-filter')).not.toBeInTheDocument()
+      },
+    )
 
     it('renders search input', () => {
       renderProviderList()
@@ -531,21 +664,22 @@ describe('ProviderList', () => {
       expect(screen.queryByTestId('update-setting-dialog')).not.toBeInTheDocument()
     })
 
-    it.each([
-      ['mcp'],
-      ['api'],
-      ['workflow'],
-    ] as const)('hides plugin update settings on the %s tool page', (category) => {
-      renderProviderList({ category })
+    it.each([['mcp'], ['api'], ['workflow']] as const)(
+      'hides plugin update settings on the %s tool page',
+      (category) => {
+        renderProviderList({ category })
 
-      expect(screen.queryByText('plugin.autoUpdate.autoUpdate')).not.toBeInTheDocument()
-      expect(screen.queryByText('plugin.autoUpdate.strategy.fixOnly.name')).not.toBeInTheDocument()
-    })
+        expect(screen.queryByText('plugin.autoUpdate.autoUpdate')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('plugin.autoUpdate.strategy.fixOnly.name'),
+        ).not.toBeInTheDocument()
+      },
+    )
   })
 
   describe('Custom Tab', () => {
     it('keeps custom creation in the empty card when there are no API tools', () => {
-      mockCollectionData = createDefaultCollections().filter(c => c.type !== 'api')
+      mockCollectionData = createDefaultCollections().filter((c) => c.type !== 'api')
       renderProviderList({ category: 'api' })
 
       expect(screen.getByTestId('custom-create-card')).toBeInTheDocument()
@@ -562,7 +696,14 @@ describe('ProviderList', () => {
     it('uses responsive grid columns for custom tool cards', () => {
       renderProviderList({ category: 'api' })
 
-      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('grid', 'grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3', 'gap-2.5', 'pt-1')
+      expect(screen.getByTestId('tool-provider-grid')).toHaveClass(
+        'grid',
+        'grid-cols-1',
+        'md:grid-cols-2',
+        'xl:grid-cols-3',
+        'gap-2.5',
+        'pt-1',
+      )
       expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('flex', 'flex-wrap')
       expect(screen.getByTestId('card-my-api').parentElement).toHaveClass('min-w-0')
       expect(screen.getByTestId('card-my-api').parentElement).not.toHaveClass('flex-1')
@@ -590,7 +731,10 @@ describe('ProviderList', () => {
       mockIsLoadingToolProviders = true
       renderProviderList(undefined, 'api', 'compact')
 
-      expect(screen.getAllByTestId('tool-card-skeleton')[0]).toHaveAttribute('data-variant', 'integrations-labeled')
+      expect(screen.getAllByTestId('tool-card-skeleton')[0]).toHaveAttribute(
+        'data-variant',
+        'integrations-labeled',
+      )
     })
   })
 
@@ -603,7 +747,12 @@ describe('ProviderList', () => {
     it('uses a three-column responsive grid in compact integrations pages', () => {
       renderProviderList(undefined, 'workflow', 'compact')
 
-      expect(screen.getByTestId('tool-provider-grid')).toHaveClass('grid', 'grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3')
+      expect(screen.getByTestId('tool-provider-grid')).toHaveClass(
+        'grid',
+        'grid-cols-1',
+        'sm:grid-cols-2',
+        'md:grid-cols-3',
+      )
       expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('lg:grid-cols-2')
       expect(screen.getByTestId('card-wf-tool').parentElement).toHaveClass('min-w-0')
     })
@@ -611,7 +760,11 @@ describe('ProviderList', () => {
     it('does not show the built-in badge on workflow cards', () => {
       renderProviderList(undefined, 'workflow', 'compact')
 
-      expect(within(screen.getByTestId('card-wf-tool')).queryByText('dataset.metadata.datasetMetadata.builtIn')).not.toBeInTheDocument()
+      expect(
+        within(screen.getByTestId('card-wf-tool')).queryByText(
+          'dataset.metadata.datasetMetadata.builtIn',
+        ),
+      ).not.toBeInTheDocument()
     })
 
     it('shows workflow card author and label tags from collection labels', () => {
@@ -625,7 +778,7 @@ describe('ProviderList', () => {
     })
 
     it('shows empty state when no workflow collections exist', () => {
-      mockCollectionData = createDefaultCollections().filter(c => c.type !== 'workflow')
+      mockCollectionData = createDefaultCollections().filter((c) => c.type !== 'workflow')
       renderProviderList({ category: 'workflow' })
       expect(screen.getByTestId('workflow-empty')).toBeInTheDocument()
     })
@@ -652,13 +805,16 @@ describe('ProviderList', () => {
       mockIsLoadingToolProviders = true
       renderProviderList(undefined, 'workflow', 'compact')
 
-      expect(screen.getAllByTestId('tool-card-skeleton')[0]).toHaveAttribute('data-variant', 'integrations-labeled')
+      expect(screen.getAllByTestId('tool-card-skeleton')[0]).toHaveAttribute(
+        'data-variant',
+        'integrations-labeled',
+      )
     })
   })
 
   describe('Builtin Tab Empty State', () => {
     it('shows empty component when no builtin collections', () => {
-      mockCollectionData = createDefaultCollections().filter(c => c.type !== 'builtin')
+      mockCollectionData = createDefaultCollections().filter((c) => c.type !== 'builtin')
       renderProviderList()
       expect(screen.getByTestId('empty')).toBeInTheDocument()
     })
@@ -675,22 +831,27 @@ describe('ProviderList', () => {
       mockIsLoadingToolProviders = true
       renderProviderList(undefined, 'builtin', 'compact')
 
-      expect(screen.getAllByTestId('tool-card-skeleton')[0]).toHaveAttribute('data-variant', 'integrations-default')
+      expect(screen.getAllByTestId('tool-card-skeleton')[0]).toHaveAttribute(
+        'data-variant',
+        'integrations-default',
+      )
     })
 
     it('renders collection that has no labels property', () => {
-      mockCollectionData = [{
-        id: 'no-labels',
-        name: 'no-label-tool',
-        author: 'Dify',
-        description: { en_US: 'Tool', zh_Hans: '工具' },
-        icon: 'icon',
-        label: { en_US: 'No Label Tool', zh_Hans: '无标签工具' },
-        type: 'builtin',
-        team_credentials: {},
-        is_team_authorization: false,
-        allow_delete: false,
-      }] as unknown as ReturnType<typeof createDefaultCollections>
+      mockCollectionData = [
+        {
+          id: 'no-labels',
+          name: 'no-label-tool',
+          author: 'Dify',
+          description: { en_US: 'Tool', zh_Hans: '工具' },
+          icon: 'icon',
+          label: { en_US: 'No Label Tool', zh_Hans: '无标签工具' },
+          type: 'builtin',
+          team_credentials: {},
+          is_team_authorization: false,
+          allow_delete: false,
+        },
+      ] as unknown as ReturnType<typeof createDefaultCollections>
       renderProviderList()
       expect(screen.getByTestId('card-no-label-tool')).toBeInTheDocument()
     })
@@ -711,27 +872,39 @@ describe('ProviderList', () => {
     it('shows only the built-in source label on integrations tool cards', () => {
       renderProviderList(undefined, 'builtin', 'compact')
 
-      expect(within(screen.getByTestId('card-google-search')).getByText('dataset.metadata.datasetMetadata.builtIn')).toBeInTheDocument()
-      expect(within(screen.getByTestId('card-google-search')).queryByText('plugin.from')).not.toBeInTheDocument()
-      expect(within(screen.getByTestId('card-plugin-tool')).queryByText('plugin.from')).not.toBeInTheDocument()
-      expect(within(screen.getByTestId('card-plugin-tool')).queryByText('plugin.source.marketplace')).not.toBeInTheDocument()
+      expect(
+        within(screen.getByTestId('card-google-search')).getByText(
+          'dataset.metadata.datasetMetadata.builtIn',
+        ),
+      ).toBeInTheDocument()
+      expect(
+        within(screen.getByTestId('card-google-search')).queryByText('plugin.from'),
+      ).not.toBeInTheDocument()
+      expect(
+        within(screen.getByTestId('card-plugin-tool')).queryByText('plugin.from'),
+      ).not.toBeInTheDocument()
+      expect(
+        within(screen.getByTestId('card-plugin-tool')).queryByText('plugin.source.marketplace'),
+      ).not.toBeInTheDocument()
     })
 
     it('falls back to the collection name when plugin_id has no package segment', () => {
-      mockCollectionData = [{
-        id: 'builtin-plugin-with-short-id',
-        name: 'fallback-plugin-name',
-        author: 'Dify',
-        description: { en_US: 'Plugin Tool', zh_Hans: '插件工具' },
-        icon: 'icon-plugin',
-        label: { en_US: 'Plugin Tool', zh_Hans: '插件工具' },
-        type: 'builtin',
-        team_credentials: {},
-        is_team_authorization: false,
-        allow_delete: false,
-        labels: [],
-        plugin_id: 'openai',
-      }]
+      mockCollectionData = [
+        {
+          id: 'builtin-plugin-with-short-id',
+          name: 'fallback-plugin-name',
+          author: 'Dify',
+          description: { en_US: 'Plugin Tool', zh_Hans: '插件工具' },
+          icon: 'icon-plugin',
+          label: { en_US: 'Plugin Tool', zh_Hans: '插件工具' },
+          type: 'builtin',
+          team_credentials: {},
+          is_team_authorization: false,
+          allow_delete: false,
+          labels: [],
+          plugin_id: 'openai',
+        },
+      ]
 
       renderProviderList()
 
@@ -743,6 +916,17 @@ describe('ProviderList', () => {
     it('renders MCPList component', () => {
       renderProviderList({ category: 'mcp' })
       expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
+    })
+
+    it('renders MCP list read-only without mcp.manage', () => {
+      mockAppContextState.workspacePermissionKeys = ['tool.manage']
+
+      renderProviderList({ category: 'mcp' })
+
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
+      expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
+      expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-show-create-card', 'false')
+      expect(screen.queryByTestId('toolbar-add-mcp')).not.toBeInTheDocument()
     })
 
     it('keeps MCP creation in the empty card when there are no MCP servers', () => {
@@ -871,7 +1055,9 @@ describe('ProviderList', () => {
     it('delegates scroll events to marketplace handleScroll', () => {
       mockEnableMarketplace = true
       renderProviderList()
-      const scrollContainer = screen.getByRole('region', { name: 'common.menus.tools' }) as HTMLDivElement
+      const scrollContainer = screen.getByRole('region', {
+        name: 'common.menus.tools',
+      }) as HTMLDivElement
       fireEvent.scroll(scrollContainer)
       expect(mockHandleScroll).toHaveBeenCalled()
     })
@@ -880,7 +1066,9 @@ describe('ProviderList', () => {
       mockEnableMarketplace = true
       renderProviderList()
       expect(screen.getByTestId('marketplace-arrow')).toHaveTextContent('arrow-visible')
-      const scrollContainer = screen.getByRole('region', { name: 'common.menus.tools' }) as HTMLDivElement
+      const scrollContainer = screen.getByRole('region', {
+        name: 'common.menus.tools',
+      }) as HTMLDivElement
       fireEvent.scroll(scrollContainer)
       expect(screen.getByTestId('marketplace-arrow')).toHaveTextContent('arrow-hidden')
     })

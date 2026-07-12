@@ -14,9 +14,10 @@ export type Contract = {
 }
 
 const EXIT_CODE_DESCRIPTIONS: Readonly<Record<number, string>> = {
-  [ExitCode.Success]: 'success',
+  [ExitCode.Success]:
+    'success (also a workflow paused for human input — check stdout for status "paused")',
   [ExitCode.Generic]: 'generic error',
-  [ExitCode.Usage]: 'usage error (bad flag / missing arg), or a workflow paused for human input',
+  [ExitCode.Usage]: 'usage error (bad flag / missing arg)',
   [ExitCode.Auth]: 'auth error (not logged in / token expired)',
   [ExitCode.VersionCompat]: 'version / compatibility error',
 }
@@ -38,11 +39,11 @@ export const CONTRACT: Contract = {
     description:
       'On failure the error goes to stderr. Under -o json/yaml it is a structured envelope; otherwise a human line.',
     shape:
-      '{ "error": { "code": string, "message": string, "hint"?: string, "http_status"?: number, "request"?: string } }',
+      '{ "error": { "code": string, "message": string, "hint"?: string, "http_status"?: number, "method"?: string, "url"?: string, "raw_response"?: string, "server"?: object } }',
   },
   hitl: {
     description:
-      'When a workflow pauses for human input, `run app` exits 2 and writes a JSON object to stdout with status "paused", form_token, workflow_run_id and resolved_default_values.',
+      'When a workflow pauses for human input, `run app` exits 0 (success-with-pending) and writes a JSON object to stdout with status "paused", form_token, workflow_run_id and resolved_default_values.',
     resume:
       'difyctl resume app <app_id> <form_token> --workflow-run-id <id> [--inputs \'{"key":"value"}\']',
   },
@@ -51,8 +52,14 @@ export const CONTRACT: Contract = {
 // Single source for the top-level GLOBAL FLAGS section: flags that work across
 // commands. `-o` is parsed globally (see sniffOutputFormat); its accepted values
 // come straight from CONTRACT.outputFormats so the two can never drift.
-export const GLOBAL_FLAG_HELP: ReadonlyArray<{ label: string, description: string }> = [
-  { label: '-o, --output <format>', description: `Output format: ${CONTRACT.outputFormats.join('|')}` },
+export const GLOBAL_FLAG_HELP: ReadonlyArray<{ label: string; description: string }> = [
+  {
+    label: '-o, --output <format>',
+    description: `Output format: ${CONTRACT.outputFormats.join('|')}`,
+  },
   { label: '-v, --verbose', description: 'Enable verbose logging' },
-  { label: '--http-retry <n>', description: 'Retry idempotent GET/PUT/DELETE on transient errors (0 disables)' },
+  {
+    label: '--http-retry <n>',
+    description: 'Retry idempotent GET/PUT/DELETE on transient errors (0 disables)',
+  },
 ]

@@ -115,9 +115,7 @@ describe('ImageLinkInput', () => {
       await user.type(screen.getByRole('textbox'), 'http://example.com/img.jpg')
       await user.click(screen.getByRole('button'))
 
-      expect(onUpload).toHaveBeenCalledWith(
-        expect.objectContaining({ progress: 0 }),
-      )
+      expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({ progress: 0 }))
     })
 
     it('should set progress 0 for ftp:// URLs', async () => {
@@ -128,9 +126,7 @@ describe('ImageLinkInput', () => {
       await user.type(screen.getByRole('textbox'), 'ftp://files.example.com/img.png')
       await user.click(screen.getByRole('button'))
 
-      expect(onUpload).toHaveBeenCalledWith(
-        expect.objectContaining({ progress: 0 }),
-      )
+      expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({ progress: 0 }))
     })
 
     it('should not call onUpload when disabled and button is clicked', async () => {
@@ -155,9 +151,7 @@ describe('ImageLinkInput', () => {
       render(<ImageLinkInput onUpload={onUpload} />)
       await user.type(screen.getByRole('textbox'), 'https://example.com/img.png')
       await user.click(screen.getByRole('button'))
-      expect(onUpload).toHaveBeenCalledWith(
-        expect.objectContaining({ _id: '1234567890' }),
-      )
+      expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({ _id: '1234567890' }))
       dateNowSpy.mockRestore()
     })
   })
@@ -178,9 +172,7 @@ describe('ImageLinkInput', () => {
       await user.type(screen.getByRole('textbox'), 'example.com/image.png')
       await user.click(screen.getByRole('button'))
 
-      expect(onUpload).toHaveBeenCalledWith(
-        expect.objectContaining({ progress: -1 }),
-      )
+      expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({ progress: -1 }))
     })
   })
 })

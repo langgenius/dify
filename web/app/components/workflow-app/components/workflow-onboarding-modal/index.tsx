@@ -1,7 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
-import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import type { BlockDefaultValue } from '@/app/components/workflow/block-selector/types'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 import { BlockEnum } from '@/app/components/workflow/types'
 import StartNodeSelectionPanel from './start-node-selection-panel'
@@ -9,7 +15,7 @@ import StartNodeSelectionPanel from './start-node-selection-panel'
 type WorkflowOnboardingModalProps = {
   isShow: boolean
   onClose: () => void
-  onSelectStartNode: (nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => void
+  onSelectStartNode: (nodeType: BlockEnum, toolConfig?: BlockDefaultValue) => void
 }
 
 const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
@@ -30,10 +36,10 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
         <div className="pb-4">
           <div className="mb-6">
             <DialogTitle className="mb-2 title-2xl-semi-bold text-text-primary">
-              {t('onboarding.title', { ns: 'workflow' })}
+              {t(($) => $['onboarding.title'], { ns: 'workflow' })}
             </DialogTitle>
             <DialogDescription className="body-xs-regular leading-4 text-text-tertiary">
-              {t('onboarding.description', { ns: 'workflow' })}
+              {t(($) => $['onboarding.description'], { ns: 'workflow' })}
             </DialogDescription>
           </div>
 

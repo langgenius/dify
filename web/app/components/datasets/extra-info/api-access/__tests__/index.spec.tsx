@@ -7,10 +7,6 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: vi.fn(() => 'test-dataset-id'),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn(() => true),
-}))
-
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: vi.fn(() => 'https://api.example.com/docs'),
 }))
@@ -130,7 +126,10 @@ describe('ApiAccess', () => {
       const { container } = render(<ApiAccess expand={true} apiEnabled={true} />)
 
       expect(container.firstChild).toHaveClass('px-1', 'py-2')
-      expect(screen.getByText('common.appMenus.apiAccess')).toHaveClass('system-sm-regular', 'truncate')
+      expect(screen.getByText('common.appMenus.apiAccess')).toHaveClass(
+        'system-sm-regular',
+        'truncate',
+      )
     })
   })
 })

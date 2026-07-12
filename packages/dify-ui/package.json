@@ -1,8 +1,8 @@
 {
   "name": "@langgenius/dify-ui",
-  "type": "module",
   "version": "0.0.1",
   "private": true,
+  "type": "module",
   "exports": {
     "./styles.css": "./src/styles/styles.css",
     "./cn": {
@@ -101,10 +101,6 @@
       "types": "./src/radio/index.tsx",
       "import": "./src/radio/index.tsx"
     },
-    "./radio-group": {
-      "types": "./src/radio-group/index.tsx",
-      "import": "./src/radio-group/index.tsx"
-    },
     "./popover": {
       "types": "./src/popover/index.tsx",
       "import": "./src/popover/index.tsx"
@@ -155,29 +151,25 @@
     }
   },
   "scripts": {
+    "lint": "eslint --cache --max-warnings=0 .",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
     "test": "vp test --project unit",
     "test:storybook": "vp test --project storybook --run",
     "test:watch": "vp test --project unit --watch",
-    "type-check": "tsgo"
-  },
-  "peerDependencies": {
-    "@base-ui/react": "catalog:",
-    "class-variance-authority": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "tailwindcss": "catalog:"
+    "type-check": "tsc"
   },
   "dependencies": {
     "clsx": "catalog:",
     "tailwind-merge": "catalog:"
   },
   "devDependencies": {
+    "@antfu/eslint-config": "catalog:",
     "@base-ui/react": "catalog:",
     "@chromatic-com/storybook": "catalog:",
     "@dify/tsconfig": "workspace:*",
     "@egoist/tailwindcss-icons": "catalog:",
+    "@eslint-react/eslint-plugin": "catalog:",
     "@iconify-json/ri": "catalog:",
     "@storybook/addon-a11y": "catalog:",
     "@storybook/addon-docs": "catalog:",
@@ -190,11 +182,17 @@
     "@tanstack/react-virtual": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@typescript/native-preview": "catalog:",
+    "@typescript/native": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "class-variance-authority": "catalog:",
+    "eslint": "catalog:",
+    "eslint-plugin-better-tailwindcss": "catalog:",
+    "eslint-plugin-jsx-a11y": "catalog:",
+    "eslint-plugin-react-refresh": "catalog:",
+    "eslint-plugin-storybook": "catalog:",
     "playwright": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
@@ -205,5 +203,12 @@
     "vite-plus": "catalog:",
     "vitest": "catalog:",
     "vitest-browser-react": "catalog:"
+  },
+  "peerDependencies": {
+    "@base-ui/react": "catalog:",
+    "class-variance-authority": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:"
   }
 }

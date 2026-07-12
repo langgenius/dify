@@ -5,6 +5,8 @@ from collections.abc import Generator, Mapping, Sequence
 from mimetypes import guess_extension
 from typing import TYPE_CHECKING, Any, Union
 
+from sqlalchemy.orm import sessionmaker
+
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -231,22 +233,23 @@ class AppRunner:
         :param tenant_id: tenant id for multimodal output
         :return:
         """
-        if not stream and isinstance(invoke_result, LLMResult):
-            self._handle_invoke_result_direct(
-                invoke_result=invoke_result,
-                queue_manager=queue_manager,
-            )
-        elif stream and isinstance(invoke_result, Generator):
-            self._handle_invoke_result_stream(
-                invoke_result=invoke_result,
-                queue_manager=queue_manager,
-                agent=agent,
-                message_id=message_id,
-                user_id=user_id,
-                tenant_id=tenant_id,
-            )
-        else:
-            raise NotImplementedError(f"unsupported invoke result type: {type(invoke_result)}")
+        match invoke_result:
+            case LLMResult() if not stream:
+                self._handle_invoke_result_direct(
+                    invoke_result=invoke_result,
+                    queue_manager=queue_manager,
+                )
+            case _ if stream and isinstance(invoke_result, Generator):
+                self._handle_invoke_result_stream(
+                    invoke_result=invoke_result,
+                    queue_manager=queue_manager,
+                    agent=agent,
+                    message_id=message_id,
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                )
+            case _:
+                raise NotImplementedError(f"unsupported invoke result type: {type(invoke_result)}")
 
     def _handle_invoke_result_direct(
         self,
@@ -422,7 +425,9 @@ class AppRunner:
             _logger.exception("Failed to save image file")
             return
 
-        # Create MessageFile record
+        # Create MessageFile record.
+        # Use an independent session so this side-effect write does not
+        # commit or close the caller's request-scoped session.
         message_file = MessageFile(
             message_id=message_id,
             type=FileType.IMAGE,
@@ -436,9 +441,8 @@ class AppRunner:
             created_by=user_id,
         )
 
-        db.session.add(message_file)
-        db.session.commit()
-        db.session.refresh(message_file)
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            session.add(message_file)
 
         # Publish QueueMessageFileEvent
         queue_manager.publish(

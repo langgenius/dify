@@ -1,11 +1,11 @@
 import type { ActiveContext } from '@/auth/hosts'
 import type { HttpClient } from '@/http/types'
 import type { IOStreams } from '@/sys/io/streams'
-import * as readline from 'node:readline'
 import { MembersClient } from '@/api/members'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { promptConfirm } from '@/sys/io/prompt'
 import { runWithSpinner } from '@/sys/io/spinner'
 import { nullStreams } from '@/sys/io/streams'
 import { resolveWorkspaceId } from '@/workspace/resolver'
@@ -65,26 +65,13 @@ export async function runDeleteMember(
     }
   }
 
-  await runWithSpinner(
-    { io, label: `Removing ${opts.memberId}` },
-    () => factory(deps.http).remove(wsId, opts.memberId),
+  await runWithSpinner({ io, label: `Removing ${opts.memberId}` }, () =>
+    factory(deps.http).remove(wsId, opts.memberId),
   )
 
   const textLine = `${cs.successIcon()} Removed ${opts.memberId}\n`
   return {
     data: new DeleteMemberOutput(opts.memberId, textLine),
     workspaceId: wsId,
-  }
-}
-
-async function promptConfirm(io: IOStreams, message: string): Promise<boolean> {
-  io.err.write(message)
-  const rl = readline.createInterface({ input: io.in, output: io.err, terminal: false })
-  try {
-    const line: string = await new Promise(resolve => rl.once('line', resolve))
-    return line.trim().toLowerCase() === 'y'
-  }
-  finally {
-    rl.close()
   }
 }

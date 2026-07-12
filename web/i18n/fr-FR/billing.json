@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "Passez à la version supérieure pour débloquer le téléchargement de documents en lot",
   "upgrade.uploadMultiplePages.description": "Vous avez atteint la limite de téléchargement — un seul document peut être sélectionné et téléchargé à la fois avec votre abonnement actuel.",
   "upgrade.uploadMultiplePages.title": "Passez à la version supérieure pour télécharger plusieurs documents à la fois",
+  "upgrade.workflowRestore.description": "La restauration des versions du workflow n'est pas disponible avec votre plan actuel.",
+  "upgrade.workflowRestore.title": "Mettez à niveau pour restaurer les versions du workflow",
   "upgradeBtn.encourage": "Mettre à niveau maintenant",
   "upgradeBtn.encourageShort": "Mise à niveau",
   "upgradeBtn.plain": "Mettre à jour le plan",

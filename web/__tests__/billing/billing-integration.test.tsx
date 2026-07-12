@@ -7,7 +7,6 @@ import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import Billing from '@/app/components/billing/billing-page'
 import { defaultPlan, NUM_INFINITE } from '@/app/components/billing/config'
-import HeaderBillingBtn from '@/app/components/billing/header-billing-btn'
 import PlanComp from '@/app/components/billing/plan'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import PriorityLabel from '@/app/components/billing/priority-label'
@@ -33,9 +32,32 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockAppCtx,
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -112,7 +134,10 @@ const createPlanData = (overrides: PlanOverrides = {}) => ({
   reset: { ...defaultPlan.reset, ...overrides.reset },
 })
 
-const setupProviderContext = (planOverrides: PlanOverrides = {}, extra: Record<string, unknown> = {}) => {
+const setupProviderContext = (
+  planOverrides: PlanOverrides = {},
+  extra: Record<string, unknown> = {},
+) => {
   mockProviderCtx = {
     plan: createPlanData(planOverrides),
     enableBilling: true,
@@ -127,6 +152,7 @@ const setupProviderContext = (planOverrides: PlanOverrides = {}, extra: Record<s
 const setupAppContext = (overrides: Record<string, unknown> = {}) => {
   mockAppCtx = {
     isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: ['billing.view', 'billing.manage', 'billing.subscription.manage'],
     userProfile: { email: 'test@example.com' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...overrides,
@@ -228,9 +254,12 @@ describe('Billing Page + Plan Integration', () => {
 
   // Verify billing URL button visibility and behavior
   describe('Billing URL button', () => {
-    it('should show billing button when enableBilling and isCurrentWorkspaceManager', () => {
+    it('should show billing button when manager has subscription management permission', () => {
       setupProviderContext({ type: Plan.sandbox })
-      setupAppContext({ isCurrentWorkspaceManager: true })
+      setupAppContext({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: ['billing.subscription.manage'],
+      })
 
       render(<Billing />)
 
@@ -238,9 +267,24 @@ describe('Billing Page + Plan Integration', () => {
       expect(screen.getByText(/viewBillingAction/i)).toBeInTheDocument()
     })
 
-    it('should hide billing button when user is not workspace manager', () => {
+    it('should hide billing button when subscription management permission is granted without manager role', () => {
       setupProviderContext({ type: Plan.sandbox })
-      setupAppContext({ isCurrentWorkspaceManager: false })
+      setupAppContext({
+        isCurrentWorkspaceManager: false,
+        workspacePermissionKeys: ['billing.subscription.manage'],
+      })
+
+      render(<Billing />)
+
+      expect(screen.queryByText(/viewBillingTitle/i)).not.toBeInTheDocument()
+    })
+
+    it('should hide billing button when subscription management permission is missing', () => {
+      setupProviderContext({ type: Plan.sandbox })
+      setupAppContext({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: ['billing.view', 'billing.manage'],
+      })
 
       render(<Billing />)
 
@@ -249,6 +293,17 @@ describe('Billing Page + Plan Integration', () => {
 
     it('should hide billing button when billing is disabled', () => {
       setupProviderContext({ type: Plan.sandbox }, { enableBilling: false })
+
+      render(<Billing />)
+
+      expect(screen.queryByText(/viewBillingTitle/i)).not.toBeInTheDocument()
+    })
+
+    it('should hide billing button when no billing permissions are granted', () => {
+      setupProviderContext({ type: Plan.sandbox })
+      setupAppContext({
+        workspacePermissionKeys: [],
+      })
 
       render(<Billing />)
 
@@ -308,10 +363,13 @@ describe('Plan Type Display Integration', () => {
   })
 
   it('should show education verify button when enableEducationPlan is true and not yet verified', () => {
-    setupProviderContext({ type: Plan.sandbox }, {
-      enableEducationPlan: true,
-      isEducationAccount: false,
-    })
+    setupProviderContext(
+      { type: Plan.sandbox },
+      {
+        enableEducationPlan: true,
+        isEducationAccount: false,
+      },
+    )
 
     render(<PlanComp loc="test" />)
 
@@ -440,14 +498,7 @@ describe('Upgrade Flow Integration', () => {
       const user = userEvent.setup()
       const onClose = vi.fn()
 
-      render(
-        <PlanUpgradeModal
-          show={true}
-          onClose={onClose}
-          title="Test"
-          description="Test"
-        />,
-      )
+      render(<PlanUpgradeModal show={true} onClose={onClose} title="Test" description="Test" />)
 
       const dismissBtn = screen.getByText(/triggerLimitModal\.dismiss/i)
       await user.click(dismissBtn)
@@ -674,83 +725,7 @@ describe('Capacity Full Components Integration', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 5. Header Billing Button Integration
-// Tests HeaderBillingBtn behavior for different plan states
-// ═══════════════════════════════════════════════════════════════════════════
-describe('Header Billing Button Integration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    setupAppContext()
-  })
-
-  it('should render UpgradeBtn (premium badge) for sandbox plan', () => {
-    setupProviderContext({ type: Plan.sandbox })
-
-    render(<HeaderBillingBtn />)
-
-    expect(screen.getByText(/upgradeBtn\.encourageShort/i)).toBeInTheDocument()
-  })
-
-  it('should render "pro" badge for professional plan', () => {
-    setupProviderContext({ type: Plan.professional })
-
-    render(<HeaderBillingBtn />)
-
-    expect(screen.getByText('pro')).toBeInTheDocument()
-    expect(screen.queryByText(/upgradeBtn/i)).not.toBeInTheDocument()
-  })
-
-  it('should render "team" badge for team plan', () => {
-    setupProviderContext({ type: Plan.team })
-
-    render(<HeaderBillingBtn />)
-
-    expect(screen.getByText('team')).toBeInTheDocument()
-  })
-
-  it('should return null when billing is disabled', () => {
-    setupProviderContext({ type: Plan.sandbox }, { enableBilling: false })
-
-    const { container } = render(<HeaderBillingBtn />)
-
-    expect(container.innerHTML).toBe('')
-  })
-
-  it('should return null when plan is not fetched yet', () => {
-    setupProviderContext({ type: Plan.sandbox }, { isFetchedPlan: false })
-
-    const { container } = render(<HeaderBillingBtn />)
-
-    expect(container.innerHTML).toBe('')
-  })
-
-  it('should call onClick when clicking pro/team badge in non-display-only mode', async () => {
-    const user = userEvent.setup()
-    const onClick = vi.fn()
-    setupProviderContext({ type: Plan.professional })
-
-    render(<HeaderBillingBtn onClick={onClick} />)
-
-    await user.click(screen.getByText('pro'))
-
-    expect(onClick).toHaveBeenCalledTimes(1)
-  })
-
-  it('should not call onClick when isDisplayOnly is true', async () => {
-    const user = userEvent.setup()
-    const onClick = vi.fn()
-    setupProviderContext({ type: Plan.professional })
-
-    render(<HeaderBillingBtn onClick={onClick} isDisplayOnly />)
-
-    await user.click(screen.getByText('pro'))
-
-    expect(onClick).not.toHaveBeenCalled()
-  })
-})
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 6. PriorityLabel Integration
+// 5. PriorityLabel Integration
 // Tests priority badge display for different plan types
 // ═══════════════════════════════════════════════════════════════════════════
 describe('PriorityLabel Integration', () => {
@@ -859,7 +834,9 @@ describe('Usage Display Edge Cases', () => {
       const { container } = render(<PlanComp loc="test" />)
 
       // 20% usage — at least one Meter indicator should carry the neutral tone
-      expect(container.querySelector('.bg-components-progress-bar-progress-solid')).toBeInTheDocument()
+      expect(
+        container.querySelector('.bg-components-progress-bar-progress-solid'),
+      ).toBeInTheDocument()
     })
   })
 

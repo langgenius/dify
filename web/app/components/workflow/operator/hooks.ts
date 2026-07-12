@@ -1,19 +1,17 @@
 import type { NoteNodeType } from '../note-node/types'
-import { useLocalStorage } from 'foxact/use-local-storage'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
-import { useAppContext } from '@/context/app-context'
-import {
-  CUSTOM_NOTE_NODE,
-  NOTE_SHOW_AUTHOR_STORAGE_KEY,
-} from '../note-node/constants'
+import { userProfileAtom } from '@/context/account-state'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { NoteTheme } from '../note-node/types'
+import { useWorkflowNoteShowAuthorValue } from '../persistence/local-storage-options'
 import { useWorkflowStore } from '../store'
 import { generateNewNode } from '../utils'
 
 export const useOperator = () => {
   const workflowStore = useWorkflowStore()
-  const { userProfile } = useAppContext()
-  const [showAuthorStorage] = useLocalStorage<string>(NOTE_SHOW_AUTHOR_STORAGE_KEY, 'true', { raw: true })
+  const userProfile = useAtomValue(userProfileAtom)
+  const showAuthorStorage = useWorkflowNoteShowAuthorValue()
 
   const handleAddNote = useCallback(() => {
     const { newNode } = generateNewNode({

@@ -71,7 +71,11 @@ describe('useWorkflowGeneratorStore', () => {
       const { result } = renderHook(() => useWorkflowGeneratorStore())
 
       act(() => {
-        result.current.openGenerator({ mode: 'workflow', currentAppId: 'app-1', currentAppMode: 'workflow' })
+        result.current.openGenerator({
+          mode: 'workflow',
+          currentAppId: 'app-1',
+          currentAppMode: 'workflow',
+        })
       })
       act(() => {
         result.current.openGenerator({ mode: 'advanced-chat' })
@@ -90,7 +94,11 @@ describe('useWorkflowGeneratorStore', () => {
       const { result } = renderHook(() => useWorkflowGeneratorStore())
 
       act(() => {
-        result.current.openGenerator({ mode: 'workflow', currentAppId: 'app-9', currentAppMode: 'workflow' })
+        result.current.openGenerator({
+          mode: 'workflow',
+          currentAppId: 'app-9',
+          currentAppMode: 'workflow',
+        })
       })
       act(() => {
         result.current.closeGenerator()
@@ -111,7 +119,10 @@ describe('useWorkflowGeneratorStore', () => {
     // their history so close+reopen of the toolbar Generate doesn't lose
     // the versions the user was comparing.
     it('should clear new-app sessionStorage keys when opened without a currentAppId', () => {
-      sessionStorage.setItem('workflow-gen-workflow-new-versions', JSON.stringify([{ ghost: true }]))
+      sessionStorage.setItem(
+        'workflow-gen-workflow-new-versions',
+        JSON.stringify([{ ghost: true }]),
+      )
       sessionStorage.setItem('workflow-gen-workflow-new-version-index', '3')
 
       const { result } = renderHook(() => useWorkflowGeneratorStore())
@@ -127,8 +138,11 @@ describe('useWorkflowGeneratorStore', () => {
     // workflow must not wipe a parallel advanced-chat /create session in
     // another tab's sessionStorage path (we share the same sessionStorage
     // namespace per tab, but only the corresponding mode key is wiped).
-    it('should leave the other mode\'s new-app history alone', () => {
-      sessionStorage.setItem('workflow-gen-advanced-chat-new-versions', JSON.stringify([{ keep: true }]))
+    it("should leave the other mode's new-app history alone", () => {
+      sessionStorage.setItem(
+        'workflow-gen-advanced-chat-new-versions',
+        JSON.stringify([{ keep: true }]),
+      )
 
       const { result } = renderHook(() => useWorkflowGeneratorStore())
       act(() => {
@@ -142,14 +156,52 @@ describe('useWorkflowGeneratorStore', () => {
     // history — the user expects to find their previous versions when they
     // reopen the toolbar Generate button.
     it('should NOT clear history when opened with a currentAppId', () => {
-      sessionStorage.setItem('workflow-gen-workflow-app-42-versions', JSON.stringify([{ keep: true }]))
+      sessionStorage.setItem(
+        'workflow-gen-workflow-app-42-versions',
+        JSON.stringify([{ keep: true }]),
+      )
 
       const { result } = renderHook(() => useWorkflowGeneratorStore())
       act(() => {
-        result.current.openGenerator({ mode: 'workflow', currentAppId: 'app-42', currentAppMode: 'workflow' })
+        result.current.openGenerator({
+          mode: 'workflow',
+          currentAppId: 'app-42',
+          currentAppMode: 'workflow',
+        })
       })
 
       expect(sessionStorage.getItem('workflow-gen-workflow-app-42-versions')).not.toBeNull()
+    })
+
+    it('should silently handle sessionStorage.removeItem throwing (e.g. privacy restrictions)', () => {
+      const { result } = renderHook(() => useWorkflowGeneratorStore())
+      const spy = vi.spyOn(sessionStorage, 'removeItem').mockImplementation(() => {
+        throw new Error('Access denied')
+      })
+
+      act(() => {
+        result.current.openGenerator({ mode: 'workflow' })
+      })
+
+      expect(spy).toHaveBeenCalled()
+      spy.mockRestore()
+    })
+
+    it('should exit early if window is undefined (e.g. SSR)', () => {
+      const originalWindow = globalThis.window
+      // @ts-expect-error - simulating SSR environment
+      delete globalThis.window
+
+      const spy = vi.spyOn(sessionStorage, 'removeItem')
+
+      // Call it directly without React's act to avoid React DOM crashing
+      useWorkflowGeneratorStore.getState().openGenerator({ mode: 'workflow' })
+
+      expect(useWorkflowGeneratorStore.getState().isOpen).toBe(true)
+      expect(spy).not.toHaveBeenCalled()
+
+      globalThis.window = originalWindow
+      spy.mockRestore()
     })
   })
 })

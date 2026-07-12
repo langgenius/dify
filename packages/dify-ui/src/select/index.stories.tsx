@@ -14,6 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '.'
+import { Button } from '../button'
+import { Field, FieldDescription } from '../field'
+import { Form } from '../form'
 
 const triggerWidth = 'w-64'
 
@@ -31,7 +34,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound select built on Base UI Select. Compose `SelectTrigger`, `SelectContent`, and `SelectItem` to build accessible single-value pickers with groups, labels, separators, and keyboard selection.',
+        component:
+          'Compound select built on Base UI Select. Compose `SelectTrigger`, `SelectContent`, and `SelectItem` to build accessible single-value pickers with groups, labels, separators, and keyboard selection.',
       },
     },
   },
@@ -144,7 +148,7 @@ export const WithPlaceholder: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="flex flex-col gap-3">
-      {(['small', 'medium', 'large'] as const).map(size => (
+      {(['small', 'medium', 'large'] as const).map((size) => (
         <div key={size} className={triggerWidth}>
           <Select defaultValue="seattle">
             <SelectTrigger aria-label={`${size} select`} size={size}>
@@ -326,40 +330,35 @@ export const Controlled: Story = {
 
 export const InForm: Story = {
   render: () => (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault()
-      }}
-      className="flex w-72 flex-col gap-3"
-    >
-      <label className="text-xs font-medium text-text-tertiary" htmlFor="timezone">
-        Timezone
-      </label>
-      <Select name="timezone" defaultValue="utc">
-        <SelectTrigger id="timezone" aria-label="Timezone">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="utc">
-            <SelectItemText>UTC</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-          <SelectItem value="pst">
-            <SelectItemText>Pacific (PST)</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-          <SelectItem value="jst">
-            <SelectItemText>Japan (JST)</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-        </SelectContent>
-      </Select>
-      <button
-        type="submit"
-        className="h-8 rounded-lg bg-components-button-primary-bg px-3 text-sm text-components-button-primary-text"
-      >
-        Submit
-      </button>
-    </form>
+    <Form aria-label="Timezone form" className="grid w-72 gap-3" onFormSubmit={() => undefined}>
+      <Field name="timezone">
+        <Select name="timezone" defaultValue="utc">
+          <SelectLabel>Timezone</SelectLabel>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="utc">
+              <SelectItemText>UTC</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            <SelectItem value="pst">
+              <SelectItemText>Pacific (PST)</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            <SelectItem value="jst">
+              <SelectItemText>Japan (JST)</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <FieldDescription>Used to schedule workflow runs.</FieldDescription>
+      </Field>
+      <div className="flex justify-end">
+        <Button type="submit" variant="primary">
+          Save
+        </Button>
+      </div>
+    </Form>
   ),
 }

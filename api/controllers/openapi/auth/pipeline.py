@@ -21,6 +21,7 @@ from controllers.openapi.auth.data import (
     AuthData,
     Edition,
     ExternalIdentity,
+    RBACRequirement,
     RequestContext,
     current_edition,
 )
@@ -59,6 +60,7 @@ class AuthPipeline:
         scope: Scope | None,
         workspace_membership: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
+        rbac: RBACRequirement | None = None,
     ) -> Any:
         req_ctx = RequestContext(
             token_type=identity.token_type,
@@ -66,6 +68,7 @@ class AuthPipeline:
             path_params=dict(request.view_args or {}),
             workspace_membership=workspace_membership,
             allowed_roles=allowed_roles,
+            rbac=rbac,
         )
 
         data = AuthData(
@@ -77,6 +80,7 @@ class AuthPipeline:
             tenants=dict(identity.verified_tenants),
             required_scope=scope,
             allowed_roles=allowed_roles,
+            rbac=rbac,
             path_params=dict(req_ctx.path_params),
             external_identity=(
                 ExternalIdentity(email=identity.subject_email, issuer=identity.subject_issuer)
@@ -129,6 +133,7 @@ class PipelineRouter:
         edition: frozenset[Edition] | None = None,
         workspace_membership: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
+        rbac: RBACRequirement | None = None,
     ) -> Callable:
         return self._make_decorator(
             scope=scope,
@@ -136,6 +141,7 @@ class PipelineRouter:
             edition=edition,
             workspace_membership=workspace_membership,
             allowed_roles=allowed_roles,
+            rbac=rbac,
         )
 
     def guard_workspace(
@@ -145,6 +151,7 @@ class PipelineRouter:
         allowed_token_types: frozenset[TokenType] | None = None,
         edition: frozenset[Edition] | None = None,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
+        rbac: RBACRequirement | None = None,
     ) -> Callable:
         return self._make_decorator(
             scope=scope,
@@ -152,6 +159,7 @@ class PipelineRouter:
             edition=edition,
             workspace_membership=True,
             allowed_roles=allowed_roles,
+            rbac=rbac,
         )
 
     def _make_decorator(
@@ -162,6 +170,7 @@ class PipelineRouter:
         edition: frozenset[Edition] | None,
         workspace_membership: bool,
         allowed_roles: frozenset[TenantAccountRole] | None,
+        rbac: RBACRequirement | None,
     ) -> Callable:
         def decorator(view: Callable) -> Callable:
             @wraps(view)
@@ -175,6 +184,7 @@ class PipelineRouter:
                     edition=edition,
                     workspace_membership=workspace_membership,
                     allowed_roles=allowed_roles,
+                    rbac=rbac,
                 )
 
             return decorated
@@ -192,6 +202,7 @@ class PipelineRouter:
         edition: frozenset[Edition] | None,
         workspace_membership: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
+        rbac: RBACRequirement | None = None,
     ) -> Any:
         # 404 not 403 — this edition doesn't expose the feature at all
         if edition is not None and current_edition() not in edition:
@@ -235,6 +246,7 @@ class PipelineRouter:
             scope=scope,
             workspace_membership=workspace_membership,
             allowed_roles=allowed_roles,
+            rbac=rbac,
         )
 
 

@@ -23,18 +23,22 @@ export const forumCommand: SlashCommandHandler<ForumDeps> = {
 
   async search(args: string, locale: string = 'en') {
     const i18n = getI18n()
-    return [{
-      id: 'forum',
-      title: i18n.t('userProfile.forum', { ns: 'common', lng: locale }),
-      description: i18n.t('gotoAnything.actions.feedbackDesc', { ns: 'app', lng: locale }) || 'Open community feedback discussions',
-      type: 'command' as const,
-      icon: (
-        <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-          <RiFeedbackLine className="size-4 text-text-tertiary" />
-        </div>
-      ),
-      data: { command: 'navigation.forum', args: { url: 'https://forum.dify.ai' } },
-    }]
+    return [
+      {
+        id: 'forum',
+        title: i18n.t(($) => $['userProfile.forum'], { ns: 'common', lng: locale }),
+        description:
+          i18n.t(($) => $['gotoAnything.actions.feedbackDesc'], { ns: 'app', lng: locale }) ||
+          'Open community feedback discussions',
+        type: 'command' as const,
+        icon: (
+          <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
+            <RiFeedbackLine className="size-4 text-text-tertiary" />
+          </div>
+        ),
+        data: { command: 'navigation.forum', args: { url: 'https://forum.dify.ai' } },
+      },
+    ]
   },
 
   register(_deps: ForumDeps) {

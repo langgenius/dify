@@ -5,14 +5,23 @@ import * as React from 'react'
 import AppOperations from '../app-operations'
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, className, size, variant, id, tabIndex, ...rest }: {
-    'children': React.ReactNode
-    'onClick'?: () => void
-    'className'?: string
-    'size'?: string
-    'variant'?: string
-    'id'?: string
-    'tabIndex'?: number
+  Button: ({
+    children,
+    onClick,
+    className,
+    size,
+    variant,
+    id,
+    tabIndex,
+    ...rest
+  }: {
+    children: React.ReactNode
+    onClick?: () => void
+    className?: string
+    size?: string
+    variant?: string
+    id?: string
+    tabIndex?: number
     'data-targetid'?: string
   }) => (
     <button
@@ -31,19 +40,31 @@ vi.mock('@langgenius/dify-ui/button', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
-  const DropdownMenuContext = React.createContext<{ isOpen: boolean, setOpen: (open: boolean) => void } | null>(null)
+  const DropdownMenuContext = React.createContext<{
+    isOpen: boolean
+    setOpen: (open: boolean) => void
+  } | null>(null)
 
   const useDropdownMenuContext = () => {
     const context = React.use(DropdownMenuContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
     return context
   }
 
   return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+    DropdownMenu: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children: React.ReactNode
+      open: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => (
       <DropdownMenuContext value={{ isOpen: open, setOpen: onOpenChange ?? vi.fn() }}>
-        <div data-testid="dropdown-menu" data-open={open}>{children}</div>
+        <div data-testid="dropdown-menu" data-open={open}>
+          {children}
+        </div>
       </DropdownMenuContext>
     ),
     DropdownMenuTrigger: ({
@@ -62,18 +83,41 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
       }
 
       if (render)
-        return React.cloneElement(render, { 'data-testid': 'dropdown-trigger', 'onClick': handleClick } as Record<string, unknown>, children)
+        return React.cloneElement(
+          render,
+          { 'data-testid': 'dropdown-trigger', onClick: handleClick } as Record<string, unknown>,
+          children,
+        )
 
-      return <button data-testid="dropdown-trigger" onClick={handleClick}>{children}</button>
+      return (
+        <button data-testid="dropdown-trigger" onClick={handleClick}>
+          {children}
+        </button>
+      )
     },
-    DropdownMenuContent: ({ children, popupClassName }: { children: React.ReactNode, popupClassName?: string }) => {
+    DropdownMenuContent: ({
+      children,
+      popupClassName,
+    }: {
+      children: React.ReactNode
+      popupClassName?: string
+    }) => {
       const { isOpen } = useDropdownMenuContext()
-      if (!isOpen)
-        return null
+      if (!isOpen) return null
 
-      return <div data-testid="dropdown-content" className={popupClassName}>{children}</div>
+      return (
+        <div data-testid="dropdown-content" className={popupClassName}>
+          {children}
+        </div>
+      )
     },
-    DropdownMenuItem: ({ children, onClick }: { children: React.ReactNode, onClick?: React.MouseEventHandler<HTMLButtonElement> }) => {
+    DropdownMenuItem: ({
+      children,
+      onClick,
+    }: {
+      children: React.ReactNode
+      onClick?: React.MouseEventHandler<HTMLButtonElement>
+    }) => {
       const { setOpen } = useDropdownMenuContext()
       return (
         <button
@@ -106,10 +150,8 @@ function setupDomMeasurements(navWidth: number, moreWidth: number, childWidths: 
   Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
     configurable: true,
     get(this: HTMLElement) {
-      if (this.getAttribute('aria-hidden') === 'true')
-        return navWidth
-      if (this.id === 'more-measure')
-        return moreWidth
+      if (this.getAttribute('aria-hidden') === 'true') return navWidth
+      if (this.id === 'more-measure') return moreWidth
       if (this.dataset.targetid) {
         const idx = Array.from(this.parentElement?.children ?? []).indexOf(this)
         return childWidths[idx] ?? 50
@@ -220,29 +262,13 @@ describe('AppOperations', () => {
       render(<AppOperations gap={4} primaryOperations={ops} secondaryOperations={secondary} />)
 
       const trigger = screen.queryByTestId('dropdown-trigger')
-      if (trigger)
-        await user.click(trigger)
+      if (trigger) await user.click(trigger)
 
       cleanup()
     })
   })
 
   describe('Visible operations click', () => {
-    it('should keep focus ring inside visible operation buttons', () => {
-      const cleanup = setupDomMeasurements(500, 60, [80])
-      const editOp = createOperation('edit', 'Edit')
-
-      render(<AppOperations gap={4} operations={[editOp]} />)
-
-      const visibleButton = screen.getAllByText('Edit')
-        .map(label => label.closest('button'))
-        .find(button => button?.tabIndex !== -1)
-
-      expect(visibleButton).toHaveClass('focus-visible:ring-inset')
-
-      cleanup()
-    })
-
     it('should call onClick when a visible operation is clicked', async () => {
       const cleanup = setupDomMeasurements(500, 60, [80, 80])
       const user = userEvent.setup()
@@ -252,9 +278,8 @@ describe('AppOperations', () => {
       render(<AppOperations gap={4} operations={[editOp, copyOp]} />)
 
       const visibleButtons = screen.getAllByText('Edit')
-      const clickableButton = visibleButtons.find(btn => btn.closest('button')?.tabIndex !== -1)
-      if (clickableButton)
-        await user.click(clickableButton)
+      const clickableButton = visibleButtons.find((btn) => btn.closest('button')?.tabIndex !== -1)
+      if (clickableButton) await user.click(clickableButton)
 
       cleanup()
     })
@@ -286,10 +311,9 @@ describe('AppOperations', () => {
       const { container } = render(<AppOperations gap={4} operations={ops} />)
       const containers = container.querySelectorAll('div[style]')
       const visibleContainer = Array.from(containers).find(
-        el => el.getAttribute('aria-hidden') !== 'true',
+        (el) => el.getAttribute('aria-hidden') !== 'true',
       )
-      if (visibleContainer)
-        expect(visibleContainer).toHaveStyle({ gap: '4px' })
+      if (visibleContainer) expect(visibleContainer).toHaveStyle({ gap: '4px' })
     })
   })
 

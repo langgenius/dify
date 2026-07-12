@@ -15,15 +15,18 @@ vi.mock('@/app/components/workflow-app/hooks/use-is-chat-mode', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: <T>(selector: (state: typeof appStoreState) => T): T =>
-    selector(appStoreState),
+  useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
 }))
 
 vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
   return {
     ...actual,
-    generateNewNode: (args: { id?: string, data: Record<string, unknown>, position: Record<string, unknown> }) => {
+    generateNewNode: (args: {
+      id?: string
+      data: Record<string, unknown>
+      position: Record<string, unknown>
+    }) => {
       generateNewNodeCalls.push(args)
       return {
         newNode: {
@@ -87,7 +90,7 @@ describe('useWorkflowTemplate', () => {
     const { result } = renderHook(() => useWorkflowTemplate())
 
     expect(result.current.nodes).toHaveLength(3)
-    expect(result.current.nodes.map(node => node.id)).toEqual(['generated-1', 'llm', 'answer'])
+    expect(result.current.nodes.map((node) => node.id)).toEqual(['generated-1', 'llm', 'answer'])
     expect(result.current.edges).toEqual([
       {
         id: 'generated-1-llm',

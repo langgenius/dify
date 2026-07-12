@@ -1,5 +1,6 @@
+import datetime
 import inspect
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -34,6 +35,7 @@ from controllers.console.datasets.error import (
     InvalidActionError,
     InvalidMetadataError,
 )
+from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
@@ -72,8 +74,46 @@ def make_serializable_document(**overrides):
     }
     attrs.update(overrides)
     document = MagicMock(spec_set=list(attrs))
-    for name, value in attrs.items():
-        setattr(document, name, value)
+    document.configure_mock(**attrs)
+    return document
+
+
+def make_document_detail(**overrides):
+    attrs = {
+        "id": "doc-1",
+        "position": 1,
+        "data_source_type": "upload_file",
+        "data_source_info_dict": {"upload_file_id": "file-1"},
+        "data_source_detail_dict": {},
+        "dataset_process_rule_id": None,
+        "dataset_process_rule": None,
+        "name": "Document",
+        "created_from": "web",
+        "created_by": "u1",
+        "created_at": datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
+        "tokens": 10,
+        "indexing_status": "completed",
+        "completed_at": None,
+        "updated_at": None,
+        "indexing_latency": None,
+        "error": None,
+        "enabled": True,
+        "disabled_at": None,
+        "disabled_by": None,
+        "archived": False,
+        "doc_type": "others",
+        "doc_metadata_details": [],
+        "segment_count": 0,
+        "average_segment_length": 0,
+        "hit_count": 0,
+        "display_status": "available",
+        "doc_form": "text_model",
+        "doc_language": "English",
+        "need_summary": False,
+    }
+    attrs.update(overrides)
+    document = MagicMock(spec_set=list(attrs))
+    document.configure_mock(**attrs)
     return document
 
 
@@ -83,6 +123,7 @@ def make_dataset(**overrides):
         "tenant_id": "tenant-1",
         "name": "Dataset",
         "indexing_technique": "economy",
+        "chunk_structure": IndexStructureType.PARAGRAPH_INDEX,
         "created_by": "u1",
         "summary_index_setting": {"enable": True},
     }
@@ -172,6 +213,42 @@ class TestGetProcessRuleApi:
 
         assert "rules" in response
 
+    def test_get_with_document_preserves_legacy_segmentation_delimiter(self, app: Flask, patch_tenant):
+        api = GetProcessRuleApi()
+        method = inspect.unwrap(api.get)
+        user, _ = patch_tenant
+
+        document = MagicMock(dataset_id="ds-1")
+        process_rule = MagicMock(
+            mode="custom",
+            rules_dict={"segmentation": {"delimiter": "---", "max_tokens": 123}},
+        )
+
+        with (
+            app.test_request_context("/?document_id=doc-1"),
+            patch(
+                "controllers.console.datasets.datasets_document.db.get_or_404",
+                return_value=document,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.db.session.scalar",
+                return_value=process_rule,
+            ),
+        ):
+            response = method(api, user)
+
+        assert response["rules"]["segmentation"]["separator"] == "---"
+        assert response["rules"]["segmentation"]["max_tokens"] == 123
+        assert "delimiter" not in response["rules"]["segmentation"]
+
     def test_get_with_document_dataset_not_found(self, app: Flask, patch_tenant):
         api = GetProcessRuleApi()
         method = inspect.unwrap(api.get)
@@ -206,7 +283,7 @@ class TestDatasetDocumentListApi:
         with (
             app.test_request_context("/?fetch=true"),
             patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
+                "controllers.console.datasets.datasets_document.paginate_query",
                 return_value=pagination,
             ),
             patch(
@@ -236,7 +313,7 @@ class TestDatasetDocumentListApi:
         with (
             app.test_request_context("/?keyword=test&status=enabled&sort=created_at"),
             patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
+                "controllers.console.datasets.datasets_document.paginate_query",
                 return_value=pagination,
             ),
             patch(
@@ -262,7 +339,7 @@ class TestDatasetDocumentListApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
+                "controllers.console.datasets.datasets_document.paginate_query",
                 return_value=pagination,
             ),
             patch(
@@ -340,7 +417,7 @@ class TestDatasetDocumentListApi:
         with (
             app.test_request_context("/?fetch=maybe"),
             patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
+                "controllers.console.datasets.datasets_document.paginate_query",
                 return_value=pagination,
             ),
             patch(
@@ -362,7 +439,7 @@ class TestDatasetDocumentListApi:
         with (
             app.test_request_context("/?sort=hit_count"),
             patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
+                "controllers.console.datasets.datasets_document.paginate_query",
                 return_value=pagination,
             ),
             patch(
@@ -413,7 +490,7 @@ class TestDocumentApi:
         method = inspect.unwrap(api.get)
         user, tenant_id = patch_tenant
 
-        document = MagicMock(dataset_process_rule=None)
+        document = make_document_detail()
 
         with (
             app.test_request_context("/"),
@@ -742,7 +819,7 @@ class TestDocumentRetryApi:
             resp, status = method(api, "ds-1")
 
         assert status == 204
-        retry_mock.assert_called_once_with("ds-1", [])
+        retry_mock.assert_called_once_with("ds-1", [], ANY)
 
     def test_retry_success(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentRetryApi()
@@ -771,7 +848,7 @@ class TestDocumentRetryApi:
             response, status = method(api, "ds-1")
 
         assert status == 204
-        retry_mock.assert_called_once_with("ds-1", [document])
+        retry_mock.assert_called_once_with("ds-1", [document], ANY)
 
     def test_retry_skips_completed_document(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentRetryApi()
@@ -796,7 +873,7 @@ class TestDocumentRetryApi:
             response, status = method(api, "ds-1")
 
         assert status == 204
-        retry_mock.assert_called_once_with("ds-1", [])
+        retry_mock.assert_called_once_with("ds-1", [], ANY)
 
 
 class TestDocumentPipelineExecutionLogApi:
@@ -925,12 +1002,24 @@ class TestDocumentSummaryStatusApi:
             ),
             patch(
                 "services.summary_index_service.SummaryIndexService.get_document_summary_status_detail",
-                return_value={"total_segments": 0},
+                return_value={
+                    "total_segments": 1,
+                    "summary_status": {"timeout": 1},
+                    "summaries": [
+                        {
+                            "segment_id": "segment-1",
+                            "segment_position": 1,
+                            "status": "timeout",
+                        }
+                    ],
+                },
             ),
         ):
             response, status = method(api, user, "ds-1", "doc-1")
 
         assert status == 200
+        assert response["summary_status"]["timeout"] == 1
+        assert response["summaries"][0]["status"] == "timeout"
 
 
 class TestDocumentIndexingEstimateApi:
@@ -1102,7 +1191,7 @@ class TestDocumentBatchIndexingEstimateApi:
             patch.object(api, "get_batch_documents", return_value=[doc]),
             patch(
                 "controllers.console.datasets.datasets_document.IndexingRunner.indexing_estimate",
-                return_value=MagicMock(model_dump=lambda: {"tokens": 2}),
+                return_value=IndexingEstimate(total_segments=2, preview=[]),
             ),
         ):
             resp, status = method(api, tenant_id, user, "ds-1", "batch-1")
@@ -1131,7 +1220,7 @@ class TestDocumentBatchIndexingEstimateApi:
             patch.object(api, "get_batch_documents", return_value=[doc]),
             patch(
                 "controllers.console.datasets.datasets_document.IndexingRunner.indexing_estimate",
-                return_value=MagicMock(model_dump=lambda: {"tokens": 1}),
+                return_value=IndexingEstimate(total_segments=1, preview=[]),
             ),
         ):
             resp, status = method(api, tenant_id, user, "ds-1", "batch-1")
@@ -1313,7 +1402,7 @@ class TestDocumentApiMetadata:
         method = inspect.unwrap(api.get)
         user, tenant_id = patch_tenant
 
-        document = MagicMock(dataset_process_rule=None, doc_metadata_details=[])
+        document = make_document_detail(doc_metadata_details=[])
 
         with (
             app.test_request_context("/?metadata=only"),
@@ -1333,7 +1422,7 @@ class TestDocumentApiMetadata:
         method = inspect.unwrap(api.get)
         user, tenant_id = patch_tenant
 
-        document = MagicMock(dataset_process_rule=None)
+        document = make_document_detail()
 
         with (
             app.test_request_context("/?metadata=without"),
@@ -1536,7 +1625,7 @@ class TestDocumentListAdvancedCases:
         with (
             app.test_request_context("/?sort=updated_at"),
             patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
+                "controllers.console.datasets.datasets_document.paginate_query",
                 return_value=pagination,
             ),
             patch(
@@ -1610,7 +1699,7 @@ class TestDocumentIndexingEdgeCases:
             ),
             patch(
                 "controllers.console.datasets.datasets_document.IndexingRunner.indexing_estimate",
-                return_value=MagicMock(model_dump=lambda: {"tokens": 5}),
+                return_value=IndexingEstimate(total_segments=5, preview=[]),
             ),
         ):
             response, status = method(api, tenant_id, user, "ds-1", "doc-1")

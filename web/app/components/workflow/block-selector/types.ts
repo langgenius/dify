@@ -1,4 +1,11 @@
-import type { ParametersSchema, PluginMeta, PluginTriggerSubscriptionConstructor, SupportedCreationMethods, TriggerEvent } from '../../plugins/types'
+import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  ParametersSchema,
+  PluginMeta,
+  PluginTriggerSubscriptionConstructor,
+  SupportedCreationMethods,
+  TriggerEvent,
+} from '../../plugins/types'
 import type { Collection, Event } from '../../tools/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
@@ -48,6 +55,7 @@ export type TriggerDefaultValue = PluginCommonDefaultValue & {
 }
 
 export type ToolDefaultValue = PluginCommonDefaultValue & {
+  provider_show_name?: string
   tool_name: string
   tool_label: string
   tool_description: string
@@ -75,7 +83,33 @@ export type DataSourceDefaultValue = Omit<PluginCommonDefaultValue, 'provider_id
   plugin_unique_identifier?: string
 }
 
+export type AgentRosterNodeData = Pick<
+  AgentInviteOptionResponse,
+  'description' | 'icon' | 'icon_background' | 'icon_type' | 'id' | 'name' | 'role'
+>
+
+type AgentRosterBinding = {
+  binding_type: 'roster_agent'
+  agent_id: string
+}
+
+export type AgentInlineBinding = {
+  binding_type: 'inline_agent'
+  agent_id?: string | null
+  current_snapshot_id?: string | null
+}
+
+export type AgentBinding = AgentRosterBinding | AgentInlineBinding
+
+type AgentDefaultValue = {
+  agent_binding: AgentBinding
+  agent_node_kind: 'dify_agent'
+  version: '2'
+}
+
 export type PluginDefaultValue = ToolDefaultValue | DataSourceDefaultValue | TriggerDefaultValue
+
+export type BlockDefaultValue = PluginDefaultValue | AgentDefaultValue
 
 export type ToolValue = {
   provider_name: string
@@ -102,7 +136,7 @@ export type DataSourceItem = {
     identity: {
       author: string
       description: TypeWithI18N
-      icon: string | { background: string, content: string }
+      icon: string | { background: string; content: string }
       label: TypeWithI18N
       name: string
       tags: string[]
@@ -111,7 +145,7 @@ export type DataSourceItem = {
       description: TypeWithI18N
       identity: {
         author: string
-        icon?: string | { background: string, content: string }
+        icon?: string | { background: string; content: string }
         label: TypeWithI18N
         name: string
         provider: string
@@ -127,8 +161,14 @@ export type DataSourceItem = {
 }
 
 type TriggerCredentialField = {
-  type: 'secret-input' | 'text-input' | 'select' | 'boolean'
-    | 'app-selector' | 'model-selector' | 'tools-selector'
+  type:
+    | 'secret-input'
+    | 'text-input'
+    | 'select'
+    | 'boolean'
+    | 'app-selector'
+    | 'model-selector'
+    | 'tools-selector'
   name: string
   scope?: string | null
   required: boolean
@@ -236,10 +276,10 @@ type LogRequest = {
 }
 
 type LogRequestHeaders = {
-  'Host': string
+  Host: string
   'User-Agent': string
   'Content-Length': string
-  'Accept': string
+  Accept: string
   'Content-Type': string
   'X-Forwarded-For': string
   'X-Forwarded-Host': string

@@ -14,11 +14,16 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.human_input_adapter import DeliveryMethodType
+from core.workflow.nodes.human_input.entities import (
+    FormDefinition,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+)
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities import WorkflowExecution
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
-from graphon.nodes.human_input.entities import FormDefinition, SelectInputConfig, StringListSource, UserActionConfig
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -222,7 +227,7 @@ def test_get_human_input_form_resolves_runtime_select_options(
     )
 
     def mock_get_features(tenant_id: str, exclude_vector_space: bool = False) -> FeatureModel:
-        features = FeatureModel(can_replace_logo=True)
+        features = FeatureModel(can_replace_logo=True, webapp_copyright_enabled=True)
         return features
 
     monkeypatch.setattr(

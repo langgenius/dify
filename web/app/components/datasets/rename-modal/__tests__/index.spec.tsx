@@ -30,8 +30,53 @@ vi.mock('@/service/datasets', () => ({
 // Mock AppIcon - simplified mock to enable testing onClick callback
 vi.mock('../../../base/app-icon', () => ({
   default: ({ onClick }: { onClick?: () => void }) => (
-    <button data-testid="app-icon" onClick={onClick}>Icon</button>
+    <button data-testid="app-icon" onClick={onClick}>
+      Icon
+    </button>
   ),
+}))
+
+vi.mock('@/app/components/base/app-icon-picker', () => ({
+  default: ({
+    onOpenChange,
+    onSelect,
+  }: {
+    onOpenChange: (open: boolean) => void
+    onSelect: (payload: { type: 'emoji'; icon: string; background: string }) => void
+  }) => {
+    let selectedBackground = '#FFEAD5'
+    return (
+      <div>
+        <input placeholder="Search emojis..." />
+        <button
+          type="button"
+          aria-label="#E4FBCC"
+          onClick={() => {
+            selectedBackground = '#E4FBCC'
+          }}
+        />
+        <button
+          type="button"
+          aria-label="#E0F2FE"
+          onClick={() => {
+            selectedBackground = '#E0F2FE'
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            onSelect({ type: 'emoji', icon: '📊', background: selectedBackground })
+            onOpenChange(false)
+          }}
+        >
+          iconPicker.ok
+        </button>
+        <button type="button" onClick={() => onOpenChange(false)}>
+          iconPicker.cancel
+        </button>
+      </div>
+    )
+  },
 }))
 
 // The mock returns 'ns.key' format, e.g., 'common.operation.cancel'
@@ -86,24 +131,26 @@ describe('RenameDatasetModal', () => {
   })
 
   // Create a dataset with image icon
-  const createMockDatasetWithImageIcon = (): DataSet => createMockDataset({
-    icon_info: {
-      icon: 'file-id-123',
-      icon_type: 'image',
-      icon_background: undefined,
-      icon_url: 'https://example.com/icon.png',
-    },
-  })
+  const createMockDatasetWithImageIcon = (): DataSet =>
+    createMockDataset({
+      icon_info: {
+        icon: 'file-id-123',
+        icon_type: 'image',
+        icon_background: undefined,
+        icon_url: 'https://example.com/icon.png',
+      },
+    })
 
   // Create a dataset with external knowledge info
-  const createMockExternalDataset = (): DataSet => createMockDataset({
-    external_knowledge_info: {
-      external_knowledge_id: 'ext-knowledge-1',
-      external_knowledge_api_id: 'ext-api-1',
-      external_knowledge_api_name: 'External API',
-      external_knowledge_api_endpoint: 'https://api.example.com',
-    },
-  })
+  const createMockExternalDataset = (): DataSet =>
+    createMockDataset({
+      external_knowledge_info: {
+        external_knowledge_id: 'ext-knowledge-1',
+        external_knowledge_api_id: 'ext-api-1',
+        external_knowledge_api_name: 'External API',
+        external_knowledge_api_endpoint: 'https://api.example.com',
+      },
+    })
 
   const defaultProps = {
     show: true,
@@ -177,7 +224,9 @@ describe('RenameDatasetModal', () => {
       const dataset = createMockDataset({ description: '' })
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
       // Find the textarea by its placeholder
-      const descriptionTextarea = screen.getByPlaceholderText('datasetSettings.form.descPlaceholder')
+      const descriptionTextarea = screen.getByPlaceholderText(
+        'datasetSettings.form.descPlaceholder',
+      )
       expect(descriptionTextarea)!.toHaveValue('')
     })
 
@@ -305,9 +354,12 @@ describe('RenameDatasetModal', () => {
     it('should disable save button while loading', async () => {
       // Create a promise that we can control
       let resolvePromise: (value: DataSet) => void
-      mockUpdateDatasetSetting.mockImplementation(() => new Promise((resolve) => {
-        resolvePromise = resolve
-      }))
+      mockUpdateDatasetSetting.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = resolve
+          }),
+      )
 
       render(<RenameDatasetModal {...defaultProps} />)
 
@@ -503,7 +555,9 @@ describe('RenameDatasetModal', () => {
     it('should call onSuccess and onClose after successful save', async () => {
       const handleSuccess = vi.fn()
       const handleClose = vi.fn()
-      render(<RenameDatasetModal {...defaultProps} onSuccess={handleSuccess} onClose={handleClose} />)
+      render(
+        <RenameDatasetModal {...defaultProps} onSuccess={handleSuccess} onClose={handleClose} />,
+      )
 
       const saveButton = screen.getByText('common.operation.save')
       await act(async () => {
@@ -1080,9 +1134,12 @@ describe('RenameDatasetModal', () => {
     it('should handle double click on save button', async () => {
       // Use a promise we can control to ensure the first click is still "loading"
       let resolvePromise: (value: DataSet) => void
-      mockUpdateDatasetSetting.mockImplementationOnce(() => new Promise((resolve) => {
-        resolvePromise = resolve
-      }))
+      mockUpdateDatasetSetting.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = resolve
+          }),
+      )
 
       render(<RenameDatasetModal {...defaultProps} />)
 
@@ -1146,7 +1203,10 @@ describe('RenameDatasetModal', () => {
 
       expect(screen.getByDisplayValue('Test Dataset'))!.toBeInTheDocument()
 
-      const newDataset = createMockDataset({ name: 'Different Dataset', description: 'Different description' })
+      const newDataset = createMockDataset({
+        name: 'Different Dataset',
+        description: 'Different description',
+      })
       rerender(<RenameDatasetModal {...defaultProps} dataset={newDataset} />)
 
       // Note: The component uses useState with initial value, so it won't update
@@ -1194,9 +1254,12 @@ describe('RenameDatasetModal', () => {
   describe('Loading State', () => {
     it('should show loading state during API call', async () => {
       let resolvePromise: (value: DataSet) => void
-      mockUpdateDatasetSetting.mockImplementation(() => new Promise((resolve) => {
-        resolvePromise = resolve
-      }))
+      mockUpdateDatasetSetting.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = resolve
+          }),
+      )
 
       render(<RenameDatasetModal {...defaultProps} />)
 

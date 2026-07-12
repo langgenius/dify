@@ -1,25 +1,25 @@
 """Controller decorators for console app resources.
 
-`with_session` opens one SQLAlchemy session for a request handler and injects it
-as the first argument after `self`. Handlers use a transaction by default so
-migrated write paths keep commit/rollback handling; pure read handlers may opt
-out with `write=False`. App-loading decorators prefer that injected session when
-present, while still supporting existing handlers that have not been migrated
-yet and still rely on Flask-SQLAlchemy's scoped `db.session`.
+App-loading decorators prefer a session injected by
+`controllers.common.session.with_session` when present, while still supporting
+existing handlers that have not been migrated yet and still rely on
+Flask-SQLAlchemy's scoped `db.session`.
 """
 
 from collections.abc import Callable
 from functools import wraps
-from typing import Concatenate, cast, overload
+from typing import cast, overload
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from controllers.common.session import with_session
 from controllers.console.app.error import AppNotFoundError
-from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models import App, AppMode
+
+__all__ = ["get_app_model", "get_app_model_with_trial", "with_session"]
 
 
 def _load_app_model(session: Session, app_id: str) -> App | None:
@@ -43,48 +43,6 @@ def _load_app_model_from_scoped_session(app_id: str) -> App | None:
 def _load_app_model_with_trial(app_id: str) -> App | None:
     app_model = db.session.scalar(select(App).where(App.id == app_id, App.status == "normal").limit(1))
     return app_model
-
-
-@overload
-def with_session[T, **P, R](
-    view: Callable[Concatenate[T, Session, P], R],
-    *,
-    write: bool = True,
-) -> Callable[Concatenate[T, P], R]: ...
-
-
-@overload
-def with_session[T, **P, R](
-    view: None = None,
-    *,
-    write: bool = True,
-) -> Callable[[Callable[Concatenate[T, Session, P], R]], Callable[Concatenate[T, P], R]]: ...
-
-
-def with_session[T, **P, R](
-    view: Callable[Concatenate[T, Session, P], R] | None = None,
-    *,
-    write: bool = True,
-) -> (
-    Callable[Concatenate[T, P], R] | Callable[[Callable[Concatenate[T, Session, P], R]], Callable[Concatenate[T, P], R]]
-):
-    """Inject a request-scoped session, using a transaction only for write handlers."""
-
-    def decorator(view: Callable[Concatenate[T, Session, P], R]) -> Callable[Concatenate[T, P], R]:
-        @wraps(view)
-        def wrapper(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
-            if write:
-                with session_factory.get_session_maker().begin() as session:
-                    return view(self, session, *args, **kwargs)
-
-            with session_factory.create_session() as session:
-                return view(self, session, *args, **kwargs)
-
-        return wrapper
-
-    if view is None:
-        return decorator
-    return decorator(view)
 
 
 def _get_injected_session(args: tuple[object, ...]) -> Session | None:

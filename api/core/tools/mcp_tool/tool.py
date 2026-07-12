@@ -6,6 +6,8 @@ import logging
 from collections.abc import Generator, Mapping
 from typing import Any, cast, override
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.entities.mcp_provider import IdentityMode
 from core.mcp.auth_client import MCPClientWithAuthRetry
@@ -65,6 +67,7 @@ class MCPTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -122,13 +125,14 @@ class MCPTool(Tool):
 
     def _process_json_content(self, content_json: Any) -> Generator[ToolInvokeMessage, None, None]:
         """Process JSON content based on its type."""
-        if isinstance(content_json, dict):
-            yield self.create_json_message(content_json)
-        elif isinstance(content_json, list):
-            yield from self._process_json_list(content_json)
-        else:
-            # For primitive types (str, int, bool, etc.), convert to string
-            yield self.create_text_message(str(content_json))
+        match content_json:
+            case dict():
+                yield self.create_json_message(content_json)
+            case list():
+                yield from self._process_json_list(content_json)
+            case _:
+                # For primitive types (str, int, bool, etc.), convert to string
+                yield self.create_text_message(str(content_json))
 
     def _process_json_list(self, json_list: list) -> Generator[ToolInvokeMessage, None, None]:
         """Process a list of JSON items."""
@@ -222,16 +226,17 @@ class MCPTool(Tool):
 
         # Recursively search through nested structures
         for value in payload.values():
-            if isinstance(value, Mapping):
-                found = cls._extract_usage_dict(value)
-                if found is not None:
-                    return found
-            elif isinstance(value, list) and not isinstance(value, (str, bytes, bytearray)):
-                for item in value:
-                    if isinstance(item, Mapping):
-                        found = cls._extract_usage_dict(item)
-                        if found is not None:
-                            return found
+            match value:
+                case _ if isinstance(value, Mapping):
+                    found = cls._extract_usage_dict(value)
+                    if found is not None:
+                        return found
+                case list() if not isinstance(value, (str, bytes, bytearray)):
+                    for item in value:
+                        if isinstance(item, Mapping):
+                            found = cls._extract_usage_dict(item)
+                            if found is not None:
+                                return found
         return None
 
     @override

@@ -3,7 +3,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import mocked services
 import { checkUsageExternalAPI, deleteExternalAPI, fetchExternalAPI } from '@/service/datasets'
-
 import ExternalKnowledgeAPICard from '../index'
 
 // Mock API services
@@ -47,6 +46,7 @@ describe('ExternalKnowledgeAPICard', () => {
 
   const defaultProps = {
     api: mockApi,
+    canManageExternalKnowledgeApi: true,
   }
 
   beforeEach(() => {
@@ -73,6 +73,14 @@ describe('ExternalKnowledgeAPICard', () => {
       const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
       const buttons = container.querySelectorAll('button')
       expect(buttons.length).toBe(2)
+    })
+
+    it('should hide edit and delete buttons when external knowledge API management is unavailable', () => {
+      const { container } = render(
+        <ExternalKnowledgeAPICard {...defaultProps} canManageExternalKnowledgeApi={false} />,
+      )
+
+      expect(container.querySelectorAll('button').length).toBe(0)
     })
 
     it('should render API connection icon', () => {
@@ -351,7 +359,12 @@ describe('ExternalKnowledgeAPICard', () => {
         ...mockApi,
         settings: { endpoint: '', api_key: 'key' },
       }
-      render(<ExternalKnowledgeAPICard api={apiWithEmptyEndpoint} />)
+      render(
+        <ExternalKnowledgeAPICard
+          api={apiWithEmptyEndpoint}
+          canManageExternalKnowledgeApi={true}
+        />,
+      )
       expect(screen.getByText('Test External API'))!.toBeInTheDocument()
     })
 

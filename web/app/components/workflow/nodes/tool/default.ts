@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault, ToolWithProvider, Var } from '../../types'
 import type { ToolNodeType } from './types'
 import { CollectionType } from '@/app/components/tools/types'
@@ -23,43 +24,68 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
     tool_configurations: {},
     tool_node_version: '2',
   },
-  checkValid(payload: ToolNodeType, t: any, moreDataForCheckValid: any) {
+  checkValid(payload: ToolNodeType, t: TFunction<'workflow'>, moreDataForCheckValid: any) {
     const { toolInputsSchema, toolSettingSchema, language, notAuthed } = moreDataForCheckValid
     let errorMessages = ''
-    if (notAuthed)
-      errorMessages = t(`${i18nPrefix}.authRequired`, { ns: 'workflow' })
+    if (notAuthed) errorMessages = t(($) => $[`${i18nPrefix}.authRequired`], { ns: 'workflow' })
 
     if (!errorMessages) {
-      toolInputsSchema.filter((field: any) => {
-        return field.required
-      }).forEach((field: any) => {
-        const targetVar = payload.tool_parameters[field.variable]
-        if (!targetVar) {
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
-          return
-        }
-        const { type: variable_type, value } = targetVar
-        if (variable_type === VarKindType.variable) {
-          if (!errorMessages && (!value || value.length === 0))
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
-        }
-        else {
-          if (!errorMessages && (value === undefined || value === null || value === ''))
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label })
-        }
-      })
+      toolInputsSchema
+        .filter((field: any) => {
+          return field.required
+        })
+        .forEach((field: any) => {
+          const targetVar = payload.tool_parameters[field.variable]
+          if (!targetVar) {
+            errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+              ns: 'workflow',
+              field: field.label,
+            })
+            return
+          }
+          const { type: variable_type, value } = targetVar
+          if (variable_type === VarKindType.variable) {
+            if (!errorMessages && (!value || value.length === 0))
+              errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+                ns: 'workflow',
+                field: field.label,
+              })
+          } else {
+            if (!errorMessages && (value === undefined || value === null || value === ''))
+              errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+                ns: 'workflow',
+                field: field.label,
+              })
+          }
+        })
     }
 
     if (!errorMessages) {
-      toolSettingSchema.filter((field: any) => {
-        return field.required
-      }).forEach((field: any) => {
-        const value = payload.tool_configurations[field.variable]
-        if (!errorMessages && (value === undefined || value === null || value === ''))
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label[language] })
-        if (!errorMessages && typeof value === 'object' && !!value.type && (value.value === undefined || value.value === null || value.value === '' || (Array.isArray(value.value) && value.value.length === 0)))
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: field.label[language] })
-      })
+      toolSettingSchema
+        .filter((field: any) => {
+          return field.required
+        })
+        .forEach((field: any) => {
+          const value = payload.tool_configurations[field.variable]
+          if (!errorMessages && (value === undefined || value === null || value === ''))
+            errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+              ns: 'workflow',
+              field: field.label[language],
+            })
+          if (
+            !errorMessages &&
+            typeof value === 'object' &&
+            !!value.type &&
+            (value.value === undefined ||
+              value.value === null ||
+              value.value === '' ||
+              (Array.isArray(value.value) && value.value.length === 0))
+          )
+            errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+              ns: 'workflow',
+              field: field.label[language],
+            })
+        })
     }
 
     return {
@@ -67,7 +93,12 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       errorMessage: errorMessages,
     }
   },
-  getOutputVars(payload: ToolNodeType, allPluginInfoList: Record<string, ToolWithProvider[]>, _ragVars: any, { schemaTypeDefinitions } = { schemaTypeDefinitions: [] }) {
+  getOutputVars(
+    payload: ToolNodeType,
+    allPluginInfoList: Record<string, ToolWithProvider[]>,
+    _ragVars: any,
+    { schemaTypeDefinitions } = { schemaTypeDefinitions: [] },
+  ) {
     const { provider_id, provider_type } = payload
     let currentTools: ToolWithProvider[] = []
     switch (provider_type) {
@@ -86,14 +117,13 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       default:
         currentTools = []
     }
-    const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
-    const currTool = currCollection?.tools.find(tool => tool.name === payload.tool_name)
+    const currCollection = currentTools.find((item) => canFindTool(item.id, provider_id))
+    const currTool = currCollection?.tools.find((tool) => tool.name === payload.tool_name)
     const output_schema = currTool?.output_schema
     let res: Var[] = []
     if (!output_schema || !output_schema.properties) {
       res = TOOL_OUTPUT_STRUCT
-    }
-    else {
+    } else {
       const outputSchema: Var[] = []
       Object.keys(output_schema.properties).forEach((outputKey) => {
         const output = output_schema.properties[outputKey]
@@ -104,21 +134,19 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
           type,
           des: output.description,
           schemaType,
-          children: output.type === 'object'
-            ? {
-                schema: {
-                  type: Type.object,
-                  properties: output.properties,
-                  additionalProperties: false,
-                },
-              }
-            : undefined,
+          children:
+            output.type === 'object'
+              ? {
+                  schema: {
+                    type: Type.object,
+                    properties: output.properties,
+                    additionalProperties: false,
+                  },
+                }
+              : undefined,
         })
       })
-      res = [
-        ...TOOL_OUTPUT_STRUCT,
-        ...outputSchema,
-      ]
+      res = [...TOOL_OUTPUT_STRUCT, ...outputSchema]
     }
     return res
   },

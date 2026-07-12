@@ -28,8 +28,7 @@ vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
 
 const triggerHotkey = (hotkey: string) => {
   const handler = hotkeyHandlers.get(hotkey)
-  if (!handler)
-    return
+  if (!handler) return
 
   act(() => {
     handler({ preventDefault: vi.fn() } as unknown as KeyboardEvent)
@@ -50,21 +49,35 @@ vi.mock('@langgenius/dify-ui/button', () => ({
   ),
 }))
 vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
-  AlertDialog: ({ children, open, onOpenChange }: { children: React.ReactNode, open?: boolean, onOpenChange?: (open: boolean) => void }) => (
-    open
-      ? (
-          <div role="alertdialog">
-            {children}
-            <button data-testid="alert-dialog-close" onClick={() => onOpenChange?.(false)}>
-              Close
-            </button>
-          </div>
-        )
-      : null
-  ),
+  AlertDialog: ({
+    children,
+    open,
+    onOpenChange,
+  }: {
+    children: React.ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+  }) =>
+    open ? (
+      <div role="alertdialog">
+        {children}
+        <button data-testid="alert-dialog-close" onClick={() => onOpenChange?.(false)}>
+          Close
+        </button>
+      </div>
+    ) : null,
   AlertDialogActions: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
-  AlertDialogConfirmButton: ({ children, onClick, disabled }: Record<string, unknown>) => <button onClick={onClick as (() => void) | undefined} disabled={disabled as boolean | undefined}>{children as React.ReactNode}</button>,
+  AlertDialogCancelButton: ({ children }: { children: React.ReactNode }) => (
+    <button>{children}</button>
+  ),
+  AlertDialogConfirmButton: ({ children, onClick, disabled }: Record<string, unknown>) => (
+    <button
+      onClick={onClick as (() => void) | undefined}
+      disabled={disabled as boolean | undefined}
+    >
+      {children as React.ReactNode}
+    </button>
+  ),
   AlertDialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   AlertDialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   AlertDialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -77,8 +90,10 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href, ...props }: { children: React.ReactNode, href: string }) => (
-    <a href={href} {...props}>{children}</a>
+  default: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
   ),
 }))
 
@@ -93,10 +108,24 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   }),
 }))
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: (
+    selector: (state: { accessControl: { canReleaseAndVersion: boolean } }) => unknown,
+  ) =>
+    selector({
+      accessControl: { canReleaseAndVersion: true },
+    }),
+}))
+
 const mockPublishedAt = vi.fn(() => null as number | null)
 const mockDraftUpdatedAt = vi.fn(() => 1700000000)
 const mockPipelineId = vi.fn(() => 'test-pipeline-id')
 const mockSetPublishedAt = vi.fn()
+let mockDatasetPermissionKeys = ['dataset.acl.use']
+let mockDatasetMaintainer: string | undefined
+let mockCurrentUserId = 'user-1'
+let mockIsLoadingWorkspacePermissionKeys = false
+let mockWorkspacePermissionKeys: string[] = []
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (s: Record<string, unknown>) => unknown) => {
@@ -117,24 +146,100 @@ vi.mock('@/app/components/workflow/store', () => ({
 const mockMutateDatasetRes = vi.fn()
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (s: Record<string, unknown>) => unknown) => {
-    const state = { mutateDatasetRes: mockMutateDatasetRes }
+    const state = {
+      dataset: {
+        permission_keys: mockDatasetPermissionKeys,
+        maintainer: mockDatasetMaintainer,
+      },
+      mutateDatasetRes: mockMutateDatasetRes,
+    }
     return selector(state)
   },
 }))
 
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
 const mockSetShowPricingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: <T,>(selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T): T =>
-    selector({ setShowPricingModal: mockSetShowPricingModal }),
+  useModalContextSelector: <T,>(
+    selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T,
+  ): T => selector({ setShowPricingModal: mockSetShowPricingModal }),
 }))
 
 const mockIsAllowPublishAsCustomKnowledgePipelineTemplate = vi.fn(() => true)
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
-    isAllowPublishAsCustomKnowledgePipelineTemplate: mockIsAllowPublishAsCustomKnowledgePipelineTemplate(),
+    isAllowPublishAsCustomKnowledgePipelineTemplate:
+      mockIsAllowPublishAsCustomKnowledgePipelineTemplate(),
   }),
-  useProviderContextSelector: <T,>(selector: (s: { isAllowPublishAsCustomKnowledgePipelineTemplate: boolean }) => T): T =>
-    selector({ isAllowPublishAsCustomKnowledgePipelineTemplate: mockIsAllowPublishAsCustomKnowledgePipelineTemplate() }),
+  useProviderContextSelector: <T,>(
+    selector: (s: { isAllowPublishAsCustomKnowledgePipelineTemplate: boolean }) => T,
+  ): T =>
+    selector({
+      isAllowPublishAsCustomKnowledgePipelineTemplate:
+        mockIsAllowPublishAsCustomKnowledgePipelineTemplate(),
+    }),
 }))
 
 const toastMocks = vi.hoisted(() => ({
@@ -146,10 +251,18 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'success', message, ...options }),
+    ),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'error', message, ...options }),
+    ),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'warning', message, ...options }),
+    ),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'info', message, ...options }),
+    ),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -163,10 +276,8 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
     formatTimeFromNow: (timestamp: number) => {
       const diff = Date.now() / 1000 - timestamp
-      if (diff < 60)
-        return 'just now'
-      if (diff < 3600)
-        return `${Math.floor(diff / 60)} minutes ago`
+      if (diff < 60) return 'just now'
+      if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`
       return new Date(timestamp * 1000).toLocaleDateString()
     },
   }),
@@ -201,7 +312,11 @@ vi.mock('@/service/use-workflow', () => ({
 }))
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
-  default: ({ confirmDisabled, onConfirm, onCancel }: {
+  default: ({
+    confirmDisabled,
+    onConfirm,
+    onCancel,
+  }: {
     confirmDisabled: boolean
     onConfirm: (name: string, icon: IconInfo, description?: string) => void
     onCancel: () => void
@@ -210,31 +325,35 @@ vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
       <button
         data-testid="modal-confirm"
         disabled={confirmDisabled}
-        onClick={() => onConfirm('Test Pipeline', { type: 'emoji', emoji: '📚', background: '#fff' } as unknown as IconInfo, 'Test description')}
+        onClick={() =>
+          onConfirm(
+            'Test Pipeline',
+            { type: 'emoji', emoji: '📚', background: '#fff' } as unknown as IconInfo,
+            'Test description',
+          )
+        }
       >
         Confirm
       </button>
-      <button data-testid="modal-cancel" onClick={onCancel}>Cancel</button>
+      <button data-testid="modal-cancel" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   ),
 }))
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
     },
-  },
-})
+  })
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
 describe('publisher', () => {
@@ -247,6 +366,11 @@ describe('publisher', () => {
     mockPipelineId.mockReturnValue('test-pipeline-id')
     mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
     mockHandleCheckBeforePublish.mockResolvedValue(true)
+    mockDatasetPermissionKeys = ['dataset.acl.use']
+    mockDatasetMaintainer = undefined
+    mockCurrentUserId = 'user-1'
+    mockIsLoadingWorkspacePermissionKeys = false
+    mockWorkspacePermissionKeys = []
   })
 
   describe('Publisher (index.tsx)', () => {
@@ -323,7 +447,9 @@ describe('publisher', () => {
 
       it('should be memoized with React.memo', () => {
         expect(Publisher).toBeDefined()
-        expect((Publisher as unknown as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
+        expect((Publisher as unknown as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
+          'Symbol',
+        )
       })
     })
 
@@ -401,9 +527,9 @@ describe('publisher', () => {
 
         renderWithQueryClient(<Popup />)
 
-        const addDocumentsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.goToAddDocuments'),
-        )
+        const addDocumentsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.goToAddDocuments'))
         expect(addDocumentsButton).toBeDisabled()
       })
 
@@ -412,9 +538,9 @@ describe('publisher', () => {
 
         renderWithQueryClient(<Popup />)
 
-        const addDocumentsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.goToAddDocuments'),
-        )
+        const addDocumentsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.goToAddDocuments'))
         expect(addDocumentsButton).not.toBeDisabled()
       })
 
@@ -472,7 +598,9 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(screen.getByRole('button', { name: /workflow.common.published/i })).toBeInTheDocument()
+          expect(
+            screen.getByRole('button', { name: /workflow.common.published/i }),
+          ).toBeInTheDocument()
         })
       })
     })
@@ -482,12 +610,14 @@ describe('publisher', () => {
         mockPublishedAt.mockReturnValue(1700000000)
         renderWithQueryClient(<Popup />)
 
-        const addDocumentsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.goToAddDocuments'),
-        )
+        const addDocumentsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.goToAddDocuments'))
         fireEvent.click(addDocumentsButton!)
 
-        expect(mockPush).toHaveBeenCalledWith('/datasets/test-dataset-id/documents/create-from-pipeline')
+        expect(mockPush).toHaveBeenCalledWith(
+          '/datasets/test-dataset-id/documents/create-from-pipeline',
+        )
       })
 
       it('should show pricing modal when publish as template is clicked without permission', async () => {
@@ -495,9 +625,9 @@ describe('publisher', () => {
         mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
         renderWithQueryClient(<Popup />)
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         expect(mockSetShowPricingModal).toHaveBeenCalled()
@@ -510,9 +640,9 @@ describe('publisher', () => {
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -527,9 +657,9 @@ describe('publisher', () => {
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -539,7 +669,9 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-cancel'))
 
         await waitFor(() => {
-          expect(screen.queryByTestId('publish-as-knowledge-pipeline-modal')).not.toBeInTheDocument()
+          expect(
+            screen.queryByTestId('publish-as-knowledge-pipeline-modal'),
+          ).not.toBeInTheDocument()
         })
       })
 
@@ -550,9 +682,9 @@ describe('publisher', () => {
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -579,9 +711,9 @@ describe('publisher', () => {
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -672,9 +804,9 @@ describe('publisher', () => {
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -700,9 +832,9 @@ describe('publisher', () => {
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -755,9 +887,9 @@ describe('publisher', () => {
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -781,9 +913,9 @@ describe('publisher', () => {
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
 
-        const publishAsButton = screen.getAllByRole('button').find(btn =>
-          btn.textContent?.includes('pipeline.common.publishAs'),
-        )
+        const publishAsButton = screen
+          .getAllByRole('button')
+          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
         await waitFor(() => {
@@ -793,7 +925,9 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-confirm'))
 
         await waitFor(() => {
-          expect(screen.queryByTestId('publish-as-knowledge-pipeline-modal')).not.toBeInTheDocument()
+          expect(
+            screen.queryByTestId('publish-as-knowledge-pipeline-modal'),
+          ).not.toBeInTheDocument()
         })
       })
     })
@@ -914,7 +1048,9 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(screen.getByRole('button', { name: /workflow.common.published/i })).toBeInTheDocument()
+          expect(
+            screen.getByRole('button', { name: /workflow.common.published/i }),
+          ).toBeInTheDocument()
         })
 
         vi.clearAllMocks()
@@ -938,15 +1074,20 @@ describe('publisher', () => {
       it('should not trigger duplicate publish via shortcut when already publishing', async () => {
         let resolvePublish: () => void = () => {}
         mockPublishedAt.mockReturnValue(1700000000)
-        mockPublishWorkflow.mockImplementation(() => new Promise((resolve) => {
-          resolvePublish = () => resolve({ created_at: 1700100000 })
-        }))
+        mockPublishWorkflow.mockImplementation(
+          () =>
+            new Promise((resolve) => {
+              resolvePublish = () => resolve({ created_at: 1700100000 })
+            }),
+        )
         renderWithQueryClient(<Popup />)
 
         triggerHotkey('Mod+Shift+P')
 
         await waitFor(() => {
-          const publishButton = screen.getByRole('button', { name: /workflow.common.publishUpdate/i })
+          const publishButton = screen.getByRole('button', {
+            name: /workflow.common.publishUpdate/i,
+          })
           expect(publishButton).toBeDisabled()
         })
 
@@ -968,7 +1109,9 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(screen.getByRole('button', { name: /workflow.common.published/i })).toBeInTheDocument()
+          expect(
+            screen.getByRole('button', { name: /workflow.common.published/i }),
+          ).toBeInTheDocument()
         })
       })
 
@@ -988,7 +1131,9 @@ describe('publisher', () => {
         })
 
         await waitFor(() => {
-          expect(screen.getByRole('button', { name: /workflow.common.publishUpdate/i })).toBeInTheDocument()
+          expect(
+            screen.getByRole('button', { name: /workflow.common.publishUpdate/i }),
+          ).toBeInTheDocument()
         })
       })
 
@@ -1007,7 +1152,9 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(screen.getByRole('button', { name: /workflow.common.published/i })).toBeInTheDocument()
+          expect(
+            screen.getByRole('button', { name: /workflow.common.published/i }),
+          ).toBeInTheDocument()
         })
       })
 
@@ -1124,9 +1271,9 @@ describe('publisher', () => {
 
       fireEvent.click(screen.getByText('workflow.common.publish'))
 
-      const publishAsButton = screen.getAllByRole('button').find(btn =>
-        btn.textContent?.includes('pipeline.common.publishAs'),
-      )
+      const publishAsButton = screen
+        .getAllByRole('button')
+        .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
       fireEvent.click(publishAsButton!)
 
       await waitFor(() => {

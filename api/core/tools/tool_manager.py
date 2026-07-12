@@ -16,30 +16,16 @@ from yarl import URL
 
 import contexts
 from configs import dify_config
-from core.entities import PluginCredentialType
-from core.helper.provider_cache import ToolProviderCredentialsCache
-from core.plugin.impl.tool import PluginToolManager
-from core.tools.__base.tool_provider import ToolProviderController
-from core.tools.__base.tool_runtime import ToolRuntime
-from core.tools.mcp_tool.provider import MCPToolProviderController
-from core.tools.mcp_tool.tool import MCPTool
-from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.plugin_tool.tool import PluginTool
-from core.tools.utils.uuid_utils import is_valid_uuid
-from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
-from extensions.ext_database import db
-from graphon.runtime import VariablePool
-from models.provider_ids import ToolProviderID
-from services.tools.mcp_tools_manage_service import MCPToolManageService
-
-if TYPE_CHECKING:
-    pass
-
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.entities import PluginCredentialType
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
+from core.helper.provider_cache import ToolProviderCredentialsCache
+from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool import Tool
+from core.tools.__base.tool_provider import ToolProviderController
+from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.builtin_tool.tool import BuiltinTool
@@ -49,6 +35,7 @@ from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    ApiProviderSchemaType,
     EmojiIconDict,
     ToolInvokeFrom,
     ToolParameter,
@@ -56,12 +43,21 @@ from core.tools.entities.tool_entities import (
     emoji_icon_adapter,
 )
 from core.tools.errors import ToolProviderNotFoundError
+from core.tools.mcp_tool.provider import MCPToolProviderController
+from core.tools.mcp_tool.tool import MCPTool
+from core.tools.plugin_tool.provider import PluginToolProviderController
+from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
+from core.tools.utils.uuid_utils import is_valid_uuid
+from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from graphon.model_runtime.utils.encoders import jsonable_encoder
+from extensions.ext_database import db
+from graphon.runtime import VariablePool
+from models.provider_ids import ToolProviderID
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
@@ -398,6 +394,8 @@ class ToolManager:
         user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: "VariablePool | None" = None,
+        allow_file_parameters: bool = False,
+        use_default_for_missing_form_parameters: bool = False,
     ) -> Tool:
         """
         get the agent tool runtime
@@ -415,7 +413,12 @@ class ToolManager:
         runtime_parameters: dict[str, Any] = {}
         parameters = tool_entity.get_merged_runtime_parameters()
         runtime_parameters = cls._convert_tool_parameters_type(
-            parameters, variable_pool, agent_tool.tool_parameters, typ="agent"
+            parameters,
+            variable_pool,
+            agent_tool.tool_parameters,
+            typ="agent",
+            allow_file_parameters=allow_file_parameters,
+            use_default_for_missing_form_parameters=use_default_for_missing_form_parameters,
         )
         # decrypt runtime parameters
         encryption_manager = ToolParameterConfigurationManager(
@@ -914,23 +917,20 @@ class ToolManager:
 
         # add tool labels
         labels = ToolLabelManager.get_tool_labels(controller)
+        schema_type = provider_obj.schema_type
+        schema_type_value = schema_type.value if isinstance(schema_type, ApiProviderSchemaType) else schema_type
 
-        return cast(
-            dict,
-            jsonable_encoder(
-                {
-                    "schema_type": provider_obj.schema_type,
-                    "schema": provider_obj.schema,
-                    "tools": provider_obj.tools,
-                    "icon": icon,
-                    "description": provider_obj.description,
-                    "credentials": masked_credentials,
-                    "privacy_policy": provider_obj.privacy_policy,
-                    "custom_disclaimer": provider_obj.custom_disclaimer,
-                    "labels": labels,
-                }
-            ),
-        )
+        return {
+            "schema_type": schema_type_value,
+            "schema": provider_obj.schema,
+            "tools": [tool.model_dump(mode="json") for tool in provider_obj.tools],
+            "icon": icon,
+            "description": provider_obj.description,
+            "credentials": masked_credentials,
+            "privacy_policy": provider_obj.privacy_policy,
+            "custom_disclaimer": provider_obj.custom_disclaimer,
+            "labels": labels,
+        }
 
     @classmethod
     def generate_builtin_tool_icon_url(cls, provider_id: str) -> str:
@@ -1063,6 +1063,8 @@ class ToolManager:
         variable_pool: "VariablePool | None",
         tool_configurations: Mapping[str, Any],
         typ: Literal["agent", "workflow", "tool"] = "workflow",
+        allow_file_parameters: bool = False,
+        use_default_for_missing_form_parameters: bool = False,
     ) -> dict[str, Any]:
         """
         Convert tool parameters type
@@ -1081,6 +1083,7 @@ class ToolManager:
                 }
                 and parameter.required
                 and typ == "agent"
+                and not allow_file_parameters
             ):
                 raise ValueError(f"file type parameter {parameter.name} not supported in agent")
             # save tool parameter to tool entity memory
@@ -1117,7 +1120,19 @@ class ToolManager:
                     runtime_parameters[parameter.name] = parameter_value
 
                 else:
-                    value = parameter.init_frontend_parameter(tool_configurations.get(parameter.name))
+                    parameter_value = tool_configurations.get(parameter.name)
+                    if use_default_for_missing_form_parameters and parameter_value is None:
+                        if parameter.default is not None:
+                            parameter_value = parameter.default
+                        elif (
+                            parameter.required
+                            and parameter.type == ToolParameter.ToolParameterType.SELECT
+                            and parameter.options
+                        ):
+                            parameter_value = parameter.options[0].value
+                        else:
+                            continue
+                    value = parameter.init_frontend_parameter(parameter_value)
                     runtime_parameters[parameter.name] = value
         return runtime_parameters
 

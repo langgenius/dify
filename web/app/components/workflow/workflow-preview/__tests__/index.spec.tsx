@@ -30,12 +30,7 @@ describe('WorkflowPreview', () => {
   it('should move the minimap to the right when requested', async () => {
     const { container } = render(
       <div style={{ width: 800, height: 600 }}>
-        <WorkflowPreview
-          nodes={[]}
-          edges={[]}
-          viewport={defaultViewport}
-          miniMapToRight
-        />
+        <WorkflowPreview nodes={[]} edges={[]} viewport={defaultViewport} miniMapToRight />
       </div>,
     )
 

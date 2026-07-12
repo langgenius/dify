@@ -1,14 +1,17 @@
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { CollectionType } from '@/app/components/tools/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
-import type { Tag } from '@/contract/console/tags'
 import type { LanguagesSupported } from '@/i18n-config/language'
 import type { AccessMode } from '@/models/access-control'
 import type { ExternalDataTool } from '@/models/common'
+import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import type {
-  RerankingModeEnum,
-  WeightedScoreEnum,
-} from '@/models/datasets'
-import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
+  AnnotationReplyConfig,
+  ChatPromptConfig,
+  CompletionPromptConfig,
+  DatasetConfigs,
+  PromptMode,
+} from '@/models/debug'
 import type { WorkflowKind } from '@/types/workflow'
 
 export type Theme = 'light' | 'dark' | 'system'
@@ -31,12 +34,12 @@ export const RETRIEVE_TYPE = {
   multiWay: 'multiple' as RETRIEVE_TYPE,
 } as const
 
-export type RETRIEVE_METHOD
-  = | 'semantic_search'
-    | 'full_text_search'
-    | 'hybrid_search'
-    | 'invertedIndex'
-    | 'keyword_search'
+export type RETRIEVE_METHOD =
+  | 'semantic_search'
+  | 'full_text_search'
+  | 'hybrid_search'
+  | 'invertedIndex'
+  | 'keyword_search'
 export const RETRIEVE_METHOD = {
   semantic: 'semantic_search' as RETRIEVE_METHOD,
   fullText: 'full_text_search' as RETRIEVE_METHOD,
@@ -48,12 +51,7 @@ export const RETRIEVE_METHOD = {
 /**
  * App modes
  */
-export type AppModeEnum
-  = | 'completion'
-    | 'workflow'
-    | 'chat'
-    | 'advanced-chat'
-    | 'agent-chat'
+export type AppModeEnum = 'completion' | 'workflow' | 'chat' | 'advanced-chat' | 'agent-chat'
 export const AppModeEnum = {
   COMPLETION: 'completion' as AppModeEnum,
   WORKFLOW: 'workflow' as AppModeEnum,
@@ -61,7 +59,13 @@ export const AppModeEnum = {
   ADVANCED_CHAT: 'advanced-chat' as AppModeEnum,
   AGENT_CHAT: 'agent-chat' as AppModeEnum,
 } as const
-export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEnum.CHAT, AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT] as const
+export const AppModes = [
+  AppModeEnum.COMPLETION,
+  AppModeEnum.WORKFLOW,
+  AppModeEnum.CHAT,
+  AppModeEnum.ADVANCED_CHAT,
+  AppModeEnum.AGENT_CHAT,
+] as const
 
 /**
  * Variable type
@@ -85,32 +89,79 @@ export type PromptVariable = {
 }
 
 type TextTypeFormItem = {
-  default: string
+  default?: string
   label: string
   variable: string
   required: boolean
-  max_length: number
-  hide: boolean
+  max_length?: number
+  hide?: boolean
 }
 
 type SelectTypeFormItem = {
-  default: string
+  default?: string
   label: string
   variable: string
   required: boolean
-  options: string[]
-  hide: boolean
+  options?: string[]
+  hide?: boolean
 }
+
+type NumberTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
+  default?: string | number
+  max_length?: number
+}
+
+type CheckboxTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
+  default?: string | boolean
+}
+
+type FileTypeFormItem = Omit<TextTypeFormItem, 'max_length'> &
+  Partial<UploadFileSetting> & {
+    max_length?: number
+  }
+
+type ExternalDataToolFormItem = ExternalDataTool & {
+  label: string
+  variable: string
+  required?: boolean
+  hide?: boolean
+}
+
+type JsonObjectFormItem = Omit<TextTypeFormItem, 'max_length'> & {
+  json_schema?: string | Record<string, unknown>
+}
+
 /**
  * User Input Form Item
  */
-export type UserInputFormItem = {
-  'text-input': TextTypeFormItem
-} | {
-  select: SelectTypeFormItem
-} | {
-  paragraph: TextTypeFormItem
-}
+export type UserInputFormItem =
+  | {
+      'text-input': TextTypeFormItem
+    }
+  | {
+      select: SelectTypeFormItem
+    }
+  | {
+      paragraph: TextTypeFormItem
+    }
+  | {
+      number: NumberTypeFormItem
+    }
+  | {
+      checkbox: CheckboxTypeFormItem
+    }
+  | {
+      file: FileTypeFormItem
+    }
+  | {
+      'file-list': FileTypeFormItem
+    }
+  | {
+      external_data_tool: ExternalDataToolFormItem
+    }
+  | {
+      json_object: JsonObjectFormItem
+    }
 
 export type AgentTool = {
   provider_id: string
@@ -118,25 +169,28 @@ export type AgentTool = {
   provider_name: string
   tool_name: string
   tool_label: string
-  tool_parameters: Record<string, any>
+  tool_parameters: Record<string, unknown>
   enabled: boolean
   isDeleted?: boolean
   notAuthor?: boolean
   credential_id?: string
 }
 
-export type ToolItem = {
-  dataset: {
-    enabled: boolean
-    id: string
-  }
-} | {
-  'sensitive-word-avoidance': {
-    enabled: boolean
-    words: string[]
-    canned_response: string
-  }
-} | AgentTool
+export type ToolItem =
+  | {
+      dataset: {
+        enabled: boolean
+        id: string
+      }
+    }
+  | {
+      'sensitive-word-avoidance': {
+        enabled: boolean
+        words: string[]
+        canned_response: string
+      }
+    }
+  | AgentTool
 
 export type AgentStrategy = 'function_call' | 'react'
 export const AgentStrategy = {
@@ -258,7 +312,7 @@ export type ModelConfig = {
   updated_at?: number
 }
 
-export type Language = typeof LanguagesSupported[number]
+export type Language = (typeof LanguagesSupported)[number]
 
 /**
  * Web Application Configuration
@@ -302,6 +356,8 @@ export type SiteConfig = {
   privacy_policy: string
   /** Custom Disclaimer */
   custom_disclaimer: string
+  /** Custom placeholder text for the chat input box. Empty means fall back to the default. */
+  input_placeholder: string
 
   icon_type: AppIconType | null
   icon: string
@@ -360,6 +416,10 @@ export type App = {
   app_model_config: ModelConfig
   /** Timestamp of creation */
   created_at: number
+  /** Creator account ID */
+  created_by?: string
+  /** Resource maintainer account ID */
+  maintainer?: string
   /** Timestamp of update */
   updated_at: number
   /** Web Application Configuration */
@@ -374,7 +434,7 @@ export type App = {
     updated_at: number
     updated_by?: string
   }
-  deleted_tools?: Array<{ id: string, tool_name: string }>
+  deleted_tools?: Array<{ type: string; provider_id: string; tool_name: string }>
   /** access control */
   access_mode: AccessMode
   max_active_requests?: number | null
@@ -382,6 +442,8 @@ export type App = {
   has_draft_trigger?: boolean
   /** Type */
   workflow_kind?: WorkflowKind | null
+  /** ACL permission keys */
+  permission_keys?: string[]
 }
 
 export type AppSSO = {

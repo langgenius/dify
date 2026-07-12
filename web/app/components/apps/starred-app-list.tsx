@@ -7,7 +7,6 @@ import { StarredAppCard } from './starred-app-card'
 
 type StarredAppListProps = {
   apps: App[]
-  isCurrentWorkspaceEditor: boolean
   onRefresh?: () => void
 }
 
@@ -21,30 +20,20 @@ function SectionDivider({ label }: { label: string }) {
   )
 }
 
-export function StarredAppList({
-  apps,
-  isCurrentWorkspaceEditor,
-  onRefresh,
-}: StarredAppListProps) {
+export function StarredAppList({ apps, onRefresh }: StarredAppListProps) {
   const { t } = useTranslation()
 
-  if (apps.length === 0)
-    return null
+  if (apps.length === 0) return null
 
   return (
     <>
-      <SectionDivider label={t('studio.starred', { ns: 'app' })} />
+      <SectionDivider label={t(($) => $['studio.starred'], { ns: 'app' })} />
       <div className={APP_LIST_GRID_CLASS_NAME}>
-        {apps.map(app => (
-          <StarredAppCard
-            key={app.id}
-            app={app}
-            isCurrentWorkspaceEditor={isCurrentWorkspaceEditor}
-            onRefresh={onRefresh}
-          />
+        {apps.map((app) => (
+          <StarredAppCard key={app.id} app={app} onRefresh={onRefresh} />
         ))}
       </div>
-      <SectionDivider label={t('studio.allApps', { ns: 'app' })} />
+      <SectionDivider label={t(($) => $['studio.allApps'], { ns: 'app' })} />
     </>
   )
 }

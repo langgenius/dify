@@ -6,46 +6,40 @@ type RoleSelectorProps = {
   value: string
 }
 
-const RoleSelector = ({
-  onChange,
-  value,
-}: RoleSelectorProps) => {
+const RoleSelector = ({ onChange, value }: RoleSelectorProps) => {
   const { t } = useTranslation()
   const options = [
     {
       key: 'Student',
-      value: t('form.schoolRole.option.student', { ns: 'education' }),
+      value: t(($) => $['form.schoolRole.option.student'], { ns: 'education' }),
     },
     {
       key: 'Teacher',
-      value: t('form.schoolRole.option.teacher', { ns: 'education' }),
+      value: t(($) => $['form.schoolRole.option.teacher'], { ns: 'education' }),
     },
     {
       key: 'School-Administrator',
-      value: t('form.schoolRole.option.administrator', { ns: 'education' }),
+      value: t(($) => $['form.schoolRole.option.administrator'], { ns: 'education' }),
     },
   ]
 
   return (
     <div className="flex">
-      {
-        options.map(option => (
+      {options.map((option) => (
+        <div
+          key={option.key}
+          className="mr-6 flex h-5 cursor-pointer items-center system-md-regular text-text-primary"
+          onClick={() => onChange(option.key)}
+        >
           <div
-            key={option.key}
-            className="mr-6 flex h-5 cursor-pointer items-center system-md-regular text-text-primary"
-            onClick={() => onChange(option.key)}
-          >
-            <div
-              className={cn(
-                'mr-2 size-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
-                option.key === value && 'border-[5px] border-components-radio-border-checked',
-              )}
-            >
-            </div>
-            {option.value}
-          </div>
-        ))
-      }
+            className={cn(
+              'mr-2 size-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
+              option.key === value && 'border-[5px] border-components-radio-border-checked',
+            )}
+          ></div>
+          {option.value}
+        </div>
+      ))}
     </div>
   )
 }

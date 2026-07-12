@@ -1,6 +1,5 @@
 import type { ErrorBody } from '@dify/contracts/api/openapi/types.gen'
 import { afterEach, describe, expect, it } from 'vitest'
-
 import { setVerbose } from '@/framework/context'
 import { HttpClientError } from './base'
 import { ErrorCode } from './codes'
@@ -13,12 +12,10 @@ type ValidationErrorOverrides = {
 }
 
 function validationError(overrides: ValidationErrorOverrides = {}): HttpClientError {
-  const details
-    = overrides.details
-      ?? [
-        { type: 'int_parsing', loc: ['page'], msg: 'must be >= 1' },
-        { type: 'missing', loc: ['inputs', 'query'], msg: 'field required' },
-      ]
+  const details = overrides.details ?? [
+    { type: 'int_parsing', loc: ['page'], msg: 'must be >= 1' },
+    { type: 'missing', loc: ['inputs', 'query'], msg: 'field required' },
+  ]
   return new HttpClientError({
     code: ErrorCode.Server4xxOther,
     message: 'Request validation failed',
@@ -40,7 +37,9 @@ afterEach(() => {
 
 describe('formatErrorForCli — human', () => {
   it('prints server code, message, and details without verbose', () => {
-    const out = formatErrorForCli(validationError({ serverHint: 'check the page parameter' }), { isErrTTY: false })
+    const out = formatErrorForCli(validationError({ serverHint: 'check the page parameter' }), {
+      isErrTTY: false,
+    })
 
     expect(out).toContain('invalid_param: Request validation failed')
     expect(out).toContain('- page: must be >= 1 (int_parsing)')
@@ -50,7 +49,11 @@ describe('formatErrorForCli — human', () => {
   })
 
   it('falls back to cli code when no server code', () => {
-    const err = new HttpClientError({ code: ErrorCode.Server5xx, message: 'server error (HTTP 502)', httpStatus: 502 })
+    const err = new HttpClientError({
+      code: ErrorCode.Server5xx,
+      message: 'server error (HTTP 502)',
+      httpStatus: 502,
+    })
 
     const out = formatErrorForCli(err, { isErrTTY: false })
 
@@ -58,9 +61,15 @@ describe('formatErrorForCli — human', () => {
   })
 
   it('cli hint wins over server hint; server hint fills when cli sent none', () => {
-    const withBothHints = validationError({ cliHint: 'cli local hint', serverHint: 'check the page parameter', details: [] })
+    const withBothHints = validationError({
+      cliHint: 'cli local hint',
+      serverHint: 'check the page parameter',
+      details: [],
+    })
     expect(formatErrorForCli(withBothHints, { isErrTTY: false })).toContain('cli local hint')
-    expect(formatErrorForCli(withBothHints, { isErrTTY: false })).not.toContain('check the page parameter')
+    expect(formatErrorForCli(withBothHints, { isErrTTY: false })).not.toContain(
+      'check the page parameter',
+    )
 
     // no cli hint → server hint shown
     const noCliHint = validationError({ serverHint: 'check the page parameter', details: [] })

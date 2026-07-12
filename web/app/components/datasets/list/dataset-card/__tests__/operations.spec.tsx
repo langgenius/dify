@@ -4,11 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import Operations from '../operations'
 
 function renderInMenu(ui: React.ReactElement) {
-  return render(
-    <DropdownMenu open>
-      {ui}
-    </DropdownMenu>,
-  )
+  return render(<DropdownMenu open>{ui}</DropdownMenu>)
 }
 
 describe('Operations', () => {
@@ -18,6 +14,7 @@ describe('Operations', () => {
     openRenameModal: vi.fn(),
     handleExportPipeline: vi.fn(),
     detectIsUsedByApp: vi.fn(),
+    openAccessConfig: vi.fn(),
   }
 
   beforeEach(() => {
@@ -79,6 +76,16 @@ describe('Operations', () => {
 
       fireEvent.click(screen.getByText(/operation\.delete/))
       expect(detectIsUsedByApp).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call openAccessConfig when access config is clicked', () => {
+      const openAccessConfig = vi.fn()
+      renderInMenu(
+        <Operations {...defaultProps} showAccessConfig openAccessConfig={openAccessConfig} />,
+      )
+
+      fireEvent.click(screen.getByText(/settings\.resourceAccess/))
+      expect(openAccessConfig).toHaveBeenCalledTimes(1)
     })
   })
 

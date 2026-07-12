@@ -11,6 +11,8 @@ import pytest
 from dify_agent.agent_stub.client._agent_stub import (
     connect_agent_stub_sync,
     download_file_bytes_from_signed_url_sync,
+    request_agent_stub_drive_commit_sync,
+    request_agent_stub_drive_manifest_sync,
     request_agent_stub_file_download_sync,
     request_agent_stub_file_upload_sync,
     upload_file_to_signed_url_sync,
@@ -23,7 +25,12 @@ from dify_agent.agent_stub.client._errors import (
     AgentStubTransferError,
     AgentStubValidationError,
 )
-from dify_agent.agent_stub.protocol.agent_stub import AgentStubFileMapping
+from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubDriveCommitItem,
+    AgentStubDriveCommitRequest,
+    AgentStubDriveFileRef,
+    AgentStubFileMapping,
+)
 
 
 def _reference(record_id: str) -> str:
@@ -59,7 +66,9 @@ def test_connect_agent_stub_sync_posts_connections_request_with_authorization() 
 
 
 def test_connect_agent_stub_sync_rejects_invalid_base_url() -> None:
-    with pytest.raises(AgentStubValidationError, match="invalid DIFY_AGENT_STUB_URL|invalid Agent Stub base URL"):
+    with pytest.raises(
+        AgentStubValidationError, match="invalid DIFY_AGENT_STUB_API_BASE_URL|invalid Agent Stub base URL"
+    ):
         _ = connect_agent_stub_sync(
             url="https://agent.example.com/agent-stub?x=1",
             auth_jwe="test-jwe",
@@ -148,7 +157,7 @@ def test_request_agent_stub_file_download_sync_posts_download_request() -> None:
         assert request.method == "POST"
         assert str(request.url) == "https://agent.example.com/agent-stub/files/download-request"
         assert json.loads(request.content) == {
-            "file": {"transfer_method": "tool_file", "reference": _reference("tool-file-1")}
+            "file": {"transfer_method": "tool_file", "reference": _reference("tool-file-1")},
         }
         return httpx.Response(
             200,
@@ -172,6 +181,175 @@ def test_request_agent_stub_file_download_sync_posts_download_request() -> None:
         http_client.close()
 
     assert response.download_url == "https://files.example.com/download"
+
+
+def test_request_agent_stub_file_download_sync_posts_internal_download_request() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert str(request.url) == "https://agent.example.com/agent-stub/files/download-request"
+        assert json.loads(request.content) == {
+            "file": {"transfer_method": "tool_file", "reference": _reference("tool-file-1")},
+            "for_external": False,
+        }
+        return httpx.Response(
+            200,
+            json={
+                "filename": "report.pdf",
+                "mime_type": "application/pdf",
+                "size": 123,
+                "download_url": "http://internal-files/report.pdf",
+            },
+        )
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    try:
+        response = request_agent_stub_file_download_sync(
+            url="https://agent.example.com/agent-stub",
+            auth_jwe="test-jwe",
+            file=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1")),
+            for_external=False,
+            sync_http_client=http_client,
+        )
+    finally:
+        http_client.close()
+
+    assert response.download_url == "http://internal-files/report.pdf"
+
+
+def test_request_agent_stub_drive_manifest_sync_gets_manifest_request() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
+        assert str(request.url) == (
+            "https://agent.example.com/agent-stub/drive/manifest?prefix=skills%2F&include_download_url=true"
+        )
+        assert request.headers["Authorization"] == "Bearer test-jwe"
+        return httpx.Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "key": "skills/example/SKILL.md",
+                        "name": "SKILL.md",
+                        "size": 12,
+                        "hash": "sha256:abc",
+                        "mime_type": "text/markdown",
+                        "file_kind": "tool_file",
+                        "file_id": "tool-file-1",
+                        "created_at": 123,
+                    }
+                ]
+            },
+        )
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    try:
+        response = request_agent_stub_drive_manifest_sync(
+            url="https://agent.example.com/agent-stub",
+            auth_jwe="test-jwe",
+            prefix="skills/",
+            include_download_url=True,
+            sync_http_client=http_client,
+        )
+    finally:
+        http_client.close()
+
+    assert response.items[0].key == "skills/example/SKILL.md"
+    assert response.items[0].model_extra == {"name": "SKILL.md"}
+
+
+def test_request_agent_stub_drive_commit_sync_posts_commit_request() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert str(request.url) == "https://agent.example.com/agent-stub/drive/commit"
+        assert request.headers["Authorization"] == "Bearer test-jwe"
+        assert json.loads(request.content) == {
+            "items": [
+                {
+                    "key": "skills/example/SKILL.md",
+                    "file_ref": {"kind": "tool_file", "id": "tool-file-1"},
+                    "value_owned_by_drive": True,
+                }
+            ]
+        }
+        return httpx.Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "key": "skills/example/SKILL.md",
+                        "size": 12,
+                        "mime_type": "text/markdown",
+                        "file_kind": "tool_file",
+                        "file_id": "tool-file-1",
+                        "value_owned_by_drive": True,
+                    }
+                ]
+            },
+        )
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    try:
+        response = request_agent_stub_drive_commit_sync(
+            url="https://agent.example.com/agent-stub",
+            auth_jwe="test-jwe",
+            request=AgentStubDriveCommitRequest(
+                items=[
+                    AgentStubDriveCommitItem(
+                        key="skills/example/SKILL.md",
+                        file_ref=AgentStubDriveFileRef(kind="tool_file", id="tool-file-1"),
+                    )
+                ]
+            ),
+            sync_http_client=http_client,
+        )
+    finally:
+        http_client.close()
+
+    assert response.items[0].file_id == "tool-file-1"
+
+
+def test_request_agent_stub_drive_manifest_sync_maps_invalid_json_to_client_error() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="not-json", headers={"Content-Type": "application/json"})
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    try:
+        with pytest.raises(AgentStubClientError, match="invalid JSON"):
+            _ = request_agent_stub_drive_manifest_sync(
+                url="https://agent.example.com/agent-stub",
+                auth_jwe="test-jwe",
+                prefix="",
+                include_download_url=False,
+                sync_http_client=http_client,
+            )
+    finally:
+        http_client.close()
+
+
+def test_request_agent_stub_drive_commit_sync_maps_non_2xx_to_http_error() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(403, json={"detail": "forbidden"})
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    try:
+        with pytest.raises(AgentStubHTTPError, match="403") as exc_info:
+            _ = request_agent_stub_drive_commit_sync(
+                url="https://agent.example.com/agent-stub",
+                auth_jwe="test-jwe",
+                request=AgentStubDriveCommitRequest(
+                    items=[
+                        AgentStubDriveCommitItem(
+                            key="skills/example/SKILL.md",
+                            file_ref=AgentStubDriveFileRef(kind="tool_file", id="tool-file-1"),
+                        )
+                    ]
+                ),
+                sync_http_client=http_client,
+            )
+    finally:
+        http_client.close()
+
+    assert exc_info.value.detail == "forbidden"
 
 
 def test_upload_file_to_signed_url_sync_posts_multipart_file() -> None:
@@ -311,15 +489,43 @@ def test_request_agent_stub_file_download_sync_dispatches_grpc_urls(monkeypatch:
         url="grpc://agent.example.com:9091",
         auth_jwe="token",
         file=file_mapping,
+        for_external=False,
     )
 
     assert captured == {
         "url": "grpc://agent.example.com:9091",
         "auth_jwe": "token",
         "file": file_mapping,
+        "for_external": False,
         "timeout": 30.0,
     }
     assert response.download_url == "https://files.example.com/download"
+
+
+def test_request_agent_stub_drive_manifest_sync_rejects_grpc_urls() -> None:
+    with pytest.raises(AgentStubValidationError, match="require an HTTP Agent Stub URL"):
+        _ = request_agent_stub_drive_manifest_sync(
+            url="grpc://agent.example.com:9091",
+            auth_jwe="token",
+            prefix="skills/",
+            include_download_url=False,
+        )
+
+
+def test_request_agent_stub_drive_commit_sync_rejects_grpc_urls() -> None:
+    with pytest.raises(AgentStubValidationError, match="require an HTTP Agent Stub URL"):
+        _ = request_agent_stub_drive_commit_sync(
+            url="grpc://agent.example.com:9091",
+            auth_jwe="token",
+            request=AgentStubDriveCommitRequest(
+                items=[
+                    AgentStubDriveCommitItem(
+                        key="skills/example/SKILL.md",
+                        file_ref=AgentStubDriveFileRef(kind="tool_file", id="tool-file-1"),
+                    )
+                ]
+            ),
+        )
 
 
 def test_request_agent_stub_file_upload_grpc_sync_attaches_bearer_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -442,7 +648,10 @@ def test_request_agent_stub_file_download_grpc_sync_maps_grpc_errors(monkeypatch
         grpc_module,
         "_require_conversions",
         lambda: SimpleNamespace(
-            proto_file_download_request=lambda _pb2, *, file: {"file": file},
+            proto_file_download_request=lambda _pb2, *, file, for_external: {
+                "file": file,
+                "for_external": for_external,
+            },
             file_download_response_from_proto=lambda response: response,
         ),
     )

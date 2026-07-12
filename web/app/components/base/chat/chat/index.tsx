@@ -1,19 +1,11 @@
-import type {
-  FC,
-  ReactNode,
-} from 'react'
+import type { FC, ReactNode } from 'react'
 import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
-import type {
-  ChatConfig,
-  ChatItem,
-  Feedback,
-  OnRegenerate,
-  OnSend,
-} from '../types'
+import type { ChatConfig, ChatItem, Feedback, OnRegenerate, OnSend } from '../types'
 import type { HumanInputFormSubmitData } from './answer/human-input-content/type'
 import type { InputForm } from './type'
-import type { Emoji } from '@/app/components/tools/types'
-import type { AppData } from '@/models/share'
+import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
+import type { Node } from '@/app/components/workflow/types'
+import type { AppData, ToolIcon } from '@/models/share'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
@@ -39,7 +31,7 @@ export type ChatProps = {
   onStopResponding?: () => void
   noChatInput?: boolean
   onSend?: OnSend
-  inputs?: Record<string, any>
+  inputs?: Record<string, unknown>
   inputsForm?: InputForm[]
   onRegenerate?: OnRegenerate
   chatContainerClassName?: string
@@ -50,9 +42,15 @@ export type ChatProps = {
   showPromptLog?: boolean
   questionIcon?: ReactNode
   answerIcon?: ReactNode
-  allToolIcons?: Record<string, string | Emoji>
+  allToolIcons?: Record<string, ToolIcon>
   onAnnotationEdited?: (question: string, answer: string, index: number) => void
-  onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string, index: number) => void
+  onAnnotationAdded?: (
+    annotationId: string,
+    authorName: string,
+    question: string,
+    answer: string,
+    index: number,
+  ) => void
   onAnnotationRemoved?: (index: number) => void
   chatNode?: ReactNode
   disableFeedback?: boolean
@@ -64,14 +62,26 @@ export type ChatProps = {
   switchSibling?: (siblingMessageId: string) => void
   showFeatureBar?: boolean
   showFileUpload?: boolean
+  featureBarReadonly?: boolean
   onFeatureBarClick?: (state: boolean) => void
   noSpacing?: boolean
   inputDisabled?: boolean
+  inputPlaceholder?: string
+  inputPlaceholderBotName?: string
+  sendButtonLabel?: string
+  sendButtonLoading?: boolean
+  footerNotice?: ReactNode
+  footerNoticeTooltip?: ReactNode
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
   sendOnEnter?: boolean
+  renderAgentContent?: (props: {
+    item: ChatItem
+    responding?: boolean
+    content?: string
+  }) => ReactNode
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
-  getHumanInputNodeData?: (nodeID: string) => any
+  getHumanInputNodeData?: (nodeID: string) => Node<HumanInputNodeType> | undefined
 }
 
 const Chat: FC<ChatProps> = ({
@@ -109,36 +119,49 @@ const Chat: FC<ChatProps> = ({
   switchSibling,
   showFeatureBar,
   showFileUpload,
+  featureBarReadonly,
   onFeatureBarClick,
   noSpacing,
   inputDisabled,
+  inputPlaceholder,
+  inputPlaceholderBotName,
+  sendButtonLabel,
+  sendButtonLoading,
+  footerNotice,
+  footerNoticeTooltip,
   sidebarCollapseState,
   hideAvatar,
   sendOnEnter,
+  renderAgentContent,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
   const { t } = useTranslation()
-  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
-    currentLogItem: state.currentLogItem,
-    setCurrentLogItem: state.setCurrentLogItem,
-    showPromptLogModal: state.showPromptLogModal,
-    setShowPromptLogModal: state.setShowPromptLogModal,
-    showAgentLogModal: state.showAgentLogModal,
-    setShowAgentLogModal: state.setShowAgentLogModal,
-  })))
   const {
-    width,
-    chatContainerRef,
-    chatContainerInnerRef,
-    chatFooterRef,
-    chatFooterInnerRef,
-  } = useChatLayout({
-    chatList,
-    sidebarCollapseState,
-  })
+    currentLogItem,
+    setCurrentLogItem,
+    showPromptLogModal,
+    setShowPromptLogModal,
+    showAgentLogModal,
+    setShowAgentLogModal,
+  } = useAppStore(
+    useShallow((state) => ({
+      currentLogItem: state.currentLogItem,
+      setCurrentLogItem: state.setCurrentLogItem,
+      showPromptLogModal: state.showPromptLogModal,
+      setShowPromptLogModal: state.setShowPromptLogModal,
+      showAgentLogModal: state.showAgentLogModal,
+      setShowAgentLogModal: state.setShowAgentLogModal,
+    })),
+  )
+  const { width, chatContainerRef, chatContainerInnerRef, chatFooterRef, chatFooterInnerRef } =
+    useChatLayout({
+      chatList,
+      sidebarCollapseState,
+    })
 
-  const hasTryToAsk = config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
+  const hasTryToAsk =
+    config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
 
   return (
     <ChatContextProvider
@@ -162,100 +185,115 @@ const Chat: FC<ChatProps> = ({
         <div
           data-testid="chat-container"
           ref={chatContainerRef}
-          className={cn('relative h-full overflow-x-hidden overflow-y-auto', isTryApp && 'h-0 grow', chatContainerClassName)}
+          className={cn(
+            'relative h-full overflow-x-hidden overflow-y-auto',
+            isTryApp && 'h-0 grow',
+            chatContainerClassName,
+          )}
         >
           {chatNode}
           <div
             ref={chatContainerInnerRef}
-            className={cn('w-full', !noSpacing && 'px-8', chatContainerInnerClassName, isTryApp && 'px-0')}
+            className={cn(
+              'w-full',
+              !noSpacing && 'px-8',
+              chatContainerInnerClassName,
+              isTryApp && 'px-0',
+            )}
           >
-            {
-              chatList.map((item, index) => {
-                if (item.isAnswer) {
-                  const isLast = item.id === chatList.at(-1)?.id
-                  return (
-                    <Answer
-                      appData={appData}
-                      key={item.id}
-                      item={item}
-                      question={chatList[index - 1]?.content!}
-                      index={index}
-                      config={config}
-                      answerIcon={answerIcon}
-                      responding={isLast && isResponding}
-                      showPromptLog={showPromptLog}
-                      chatAnswerContainerInner={chatAnswerContainerInner}
-                      hideProcessDetail={hideProcessDetail}
-                      noChatInput={noChatInput}
-                      switchSibling={switchSibling}
-                      hideAvatar={hideAvatar}
-                      onHumanInputFormSubmit={onHumanInputFormSubmit}
-                    />
-                  )
-                }
+            {chatList.map((item, index) => {
+              if (item.isAnswer) {
+                const isLast = item.id === chatList.at(-1)?.id
                 return (
-                  <Question
+                  <Answer
+                    appData={appData}
                     key={item.id}
                     item={item}
-                    questionIcon={questionIcon}
-                    theme={themeBuilder?.theme}
-                    enableEdit={config?.questionEditEnable}
+                    question={chatList[index - 1]?.content ?? ''}
+                    index={index}
+                    config={config}
+                    answerIcon={answerIcon}
+                    responding={isLast && isResponding}
+                    showPromptLog={showPromptLog}
+                    chatAnswerContainerInner={chatAnswerContainerInner}
+                    hideProcessDetail={hideProcessDetail}
+                    noChatInput={noChatInput}
                     switchSibling={switchSibling}
                     hideAvatar={hideAvatar}
+                    renderAgentContent={renderAgentContent}
+                    onHumanInputFormSubmit={onHumanInputFormSubmit}
                   />
                 )
-              })
-            }
+              }
+              return (
+                <Question
+                  key={item.id}
+                  item={item}
+                  questionIcon={questionIcon}
+                  theme={themeBuilder?.theme}
+                  enableEdit={config?.questionEditEnable}
+                  switchSibling={switchSibling}
+                  hideAvatar={hideAvatar}
+                />
+              )
+            })}
           </div>
         </div>
         <div
           data-testid="chat-footer"
-          className={`absolute bottom-0 z-10 flex justify-center bg-chat-input-mask ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
+          className={cn(
+            'pointer-events-none absolute bottom-0 z-10 flex justify-center bg-chat-input-mask',
+            (hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName,
+          )}
           ref={chatFooterRef}
         >
           <div
             ref={chatFooterInnerRef}
-            className={cn('relative', chatFooterInnerClassName, isTryApp && 'px-0')}
+            className={cn(
+              'pointer-events-none relative',
+              chatFooterInnerClassName,
+              isTryApp && 'px-0',
+            )}
           >
-            {
-              !noStopResponding && isResponding && (
-                <div data-testid="stop-responding-container" className="mb-2 flex justify-center">
-                  <Button className="border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
-                    <div className="mr-[5px] i-custom-vender-solid-mediaAndDevices-stop-circle h-3.5 w-3.5" />
-                    <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
-                  </Button>
-                </div>
-              )
-            }
-            {
-              hasTryToAsk && (
-                <TryToAsk
-                  suggestedQuestions={suggestedQuestions}
-                  onSend={onSend}
-                />
-              )
-            }
-            {
-              !noChatInput && (
-                <ChatInputArea
-                  botName={appData?.site?.title || 'Bot'}
-                  disabled={inputDisabled}
-                  showFeatureBar={showFeatureBar}
-                  showFileUpload={showFileUpload}
-                  featureBarDisabled={isResponding}
-                  onFeatureBarClick={onFeatureBarClick}
-                  visionConfig={config?.file_upload}
-                  speechToTextConfig={config?.speech_to_text}
-                  onSend={onSend}
-                  inputs={inputs}
-                  inputsForm={inputsForm}
-                  theme={themeBuilder?.theme}
-                  isResponding={isResponding}
-                  readonly={readonly}
-                  sendOnEnter={sendOnEnter}
-                />
-              )
-            }
+            {!noStopResponding && isResponding && (
+              <div data-testid="stop-responding-container" className="mb-2 flex justify-center">
+                <Button
+                  className="pointer-events-auto border-components-panel-border bg-components-panel-bg text-components-button-secondary-text"
+                  onClick={onStopResponding}
+                >
+                  <div className="mr-[5px] i-custom-vender-solid-mediaAndDevices-stop-circle h-3.5 w-3.5" />
+                  <span className="text-xs font-normal">
+                    {t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}
+                  </span>
+                </Button>
+              </div>
+            )}
+            {hasTryToAsk && <TryToAsk suggestedQuestions={suggestedQuestions} onSend={onSend} />}
+            {!noChatInput && (
+              <ChatInputArea
+                botName={inputPlaceholderBotName || appData?.site?.title || 'Bot'}
+                customPlaceholder={inputPlaceholder ?? appData?.site?.input_placeholder}
+                disabled={inputDisabled}
+                showFeatureBar={showFeatureBar}
+                showFileUpload={showFileUpload}
+                featureBarReadonly={featureBarReadonly}
+                featureBarDisabled={isResponding}
+                onFeatureBarClick={onFeatureBarClick}
+                visionConfig={config?.file_upload}
+                speechToTextConfig={config?.speech_to_text}
+                onSend={onSend}
+                inputs={inputs}
+                inputsForm={inputsForm}
+                theme={themeBuilder?.theme}
+                isResponding={isResponding}
+                readonly={readonly}
+                sendButtonLabel={sendButtonLabel}
+                sendButtonLoading={sendButtonLoading}
+                footerNotice={footerNotice}
+                footerNoticeTooltip={footerNoticeTooltip}
+                sendOnEnter={sendOnEnter}
+              />
+            )}
           </div>
         </div>
         <ChatLogModals

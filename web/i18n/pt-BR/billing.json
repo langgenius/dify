@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "Atualize para desbloquear o envio de documentos em lote",
   "upgrade.uploadMultiplePages.description": "Você atingiu o limite de upload — apenas um documento pode ser selecionado e enviado por vez no seu plano atual.",
   "upgrade.uploadMultiplePages.title": "Atualize para enviar vários documentos de uma vez",
+  "upgrade.workflowRestore.description": "A restauração de versões do fluxo de trabalho não está disponível no seu plano atual.",
+  "upgrade.workflowRestore.title": "Faça upgrade para restaurar versões do fluxo de trabalho",
   "upgradeBtn.encourage": "Fazer Upgrade Agora",
   "upgradeBtn.encourageShort": "Upgrade",
   "upgradeBtn.plain": "Fazer Upgrade do Plano",

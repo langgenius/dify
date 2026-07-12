@@ -5,7 +5,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
-import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
@@ -17,7 +17,8 @@ import Card from './card'
 import InstallFromMarketplace from './install-from-marketplace'
 
 type DataSourcePageProps = {
-  layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
+  layout?: (parts: { body: ReactNode; toolbar: ReactNode }) => ReactNode
+  onOpenMarketplace?: () => void
   stickyToolbar?: boolean
 }
 
@@ -43,7 +44,7 @@ function DataSourceListSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t('loading', { ns: 'common' })} className="space-y-2">
+    <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
       {Array.from({ length: 2 }, (_, index) => (
         <DataSourceCardSkeleton key={index} />
       ))}
@@ -51,19 +52,14 @@ function DataSourceListSkeleton() {
   )
 }
 
-const DataSourcePage = ({
-  layout,
-  stickyToolbar,
-}: DataSourcePageProps) => {
+const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSourcePageProps) => {
   const { t } = useTranslation()
   const renderI18nObject = useRenderI18nObject()
   const [searchText, setSearchText] = useState('')
-  const {
-    canSetPermissions,
-  } = useCanSetPluginSettings()
+  const { canSetPluginPreferences } = usePluginSettingsAccess()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
+    select: (s) => s.enable_marketplace,
   })
   const { data, isLoading: isDataSourceListLoading } = useGetDataSourceListAuth()
   const { data: installedPluginList } = useInstalledPluginList()
@@ -73,12 +69,13 @@ const DataSourcePage = ({
   const invalidateDataSourceList = useInvalidDataSourceList()
   const dataSources = useMemo(() => data?.result ?? [], [data?.result])
   const dataSourcePluginDetails = useMemo(() => {
-    return pluginListWithLatestVersion.filter(plugin => plugin.declaration.category === PluginCategoryEnum.datasource)
+    return pluginListWithLatestVersion.filter(
+      (plugin) => plugin.declaration.category === PluginCategoryEnum.datasource,
+    )
   }, [pluginListWithLatestVersion])
   const filteredDataSources = useMemo(() => {
     const normalizedSearchText = searchText.trim().toLowerCase()
-    if (!normalizedSearchText)
-      return dataSources
+    if (!normalizedSearchText) return dataSources
 
     return dataSources.filter((item) => {
       const searchableText = [
@@ -87,7 +84,9 @@ const DataSourcePage = ({
         item.author,
         renderI18nObject(item.label),
         renderI18nObject(item.description),
-      ].join(' ').toLowerCase()
+      ]
+        .join(' ')
+        .toLowerCase()
 
       return searchableText.includes(normalizedSearchText)
     })
@@ -99,23 +98,22 @@ const DataSourcePage = ({
   }, [invalidateDataSourceList, invalidateDataSourceListAuth, invalidateInstalledPluginList])
 
   const toolbar = (
-    <div className={stickyToolbar
-      ? layout
-        ? 'flex w-full items-center justify-between gap-3'
-        : 'sticky top-0 z-10 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
-      : 'mb-2 flex items-center justify-between gap-3'}
+    <div
+      className={
+        stickyToolbar
+          ? layout
+            ? 'flex w-full items-center justify-between gap-3'
+            : 'sticky top-0 z-10 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
+          : 'mb-2 flex items-center justify-between gap-3'
+      }
     >
       <SearchInput
         className="w-[200px]"
-        placeholder={t('operation.search', { ns: 'common' })}
+        placeholder={t(($) => $['operation.search'], { ns: 'common' })}
         value={searchText}
         onValueChange={setSearchText}
       />
-      {canSetPermissions && (
-        <UpdateSettingDialog
-          category={PluginCategoryEnum.datasource}
-        />
-      )}
+      {canSetPluginPreferences && <UpdateSettingDialog category={PluginCategoryEnum.datasource} />}
     </div>
   )
 
@@ -129,7 +127,7 @@ const DataSourcePage = ({
           </div>
           <div className="mt-2 system-sm-medium text-text-secondary">
             <Trans
-              i18nKey="dataSourcePage.notSetUpTitle"
+              i18nKey={($) => $['dataSourcePage.notSetUpTitle']}
               ns="common"
               components={{
                 highlight: <span className="text-text-primary" />,
@@ -137,36 +135,35 @@ const DataSourcePage = ({
             />
           </div>
           <div className="mt-1 system-xs-regular text-text-tertiary">
-            {t('dataSourcePage.installFirst', { ns: 'common' })}
+            {t(($) => $['dataSourcePage.installFirst'], { ns: 'common' })}
           </div>
         </div>
       )}
       {!isDataSourceListLoading && !!filteredDataSources.length && (
         <div className="space-y-2">
-          {
-            filteredDataSources.map((item) => {
-              const pluginDetail = dataSourcePluginDetails.find(plugin => plugin.plugin_id === item.plugin_id)
+          {filteredDataSources.map((item) => {
+            const pluginDetail = dataSourcePluginDetails.find(
+              (plugin) => plugin.plugin_id === item.plugin_id,
+            )
 
-              return (
-                <Card
-                  key={item.plugin_unique_identifier}
-                  item={item}
-                  pluginDetail={pluginDetail}
-                  onPluginUpdate={handlePluginUpdate}
-                />
-              )
-            })
-          }
+            return (
+              <Card
+                key={item.plugin_unique_identifier}
+                item={item}
+                pluginDetail={pluginDetail}
+                onPluginUpdate={handlePluginUpdate}
+              />
+            )
+          })}
         </div>
       )}
-      {
-        !isDataSourceListLoading && enable_marketplace && (
-          <InstallFromMarketplace
-            providers={dataSources}
-            searchText={searchText}
-          />
-        )
-      }
+      {!isDataSourceListLoading && enable_marketplace && (
+        <InstallFromMarketplace
+          providers={dataSources}
+          searchText={searchText}
+          onOpenMarketplace={onOpenMarketplace}
+        />
+      )}
     </>
   )
 

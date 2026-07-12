@@ -3,6 +3,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from models.agent_config_entities import AgentKnowledgeQueryMode
 from services.agent.errors import AgentSoulLockedError, InvalidComposerConfigError, PlaintextSecretNotAllowedError
 from services.agent.prompt_mentions import (
     MAX_MENTIONS_PER_PROMPT,
@@ -18,6 +19,7 @@ from services.agent.prompt_mentions import (
 from services.entities.agent_entities import (
     AgentSoulConfig,
     ComposerSavePayload,
+    ComposerSaveStrategy,
     ComposerVariant,
     WorkflowNodeJobConfig,
 )
@@ -49,10 +51,22 @@ _DANGEROUS_ACK_KEYS = (
 
 class ComposerConfigValidator:
     @classmethod
-    def validate_save_payload(cls, payload: ComposerSavePayload) -> None:
-        if payload.variant == ComposerVariant.WORKFLOW and payload.soul_lock.locked and payload.agent_soul is not None:
+    def validate_draft_save_payload(cls, payload: ComposerSavePayload) -> None:
+        if (
+            payload.variant == ComposerVariant.WORKFLOW
+            and payload.soul_lock.locked
+            and payload.agent_soul is not None
+            and payload.save_strategy != ComposerSaveStrategy.NODE_JOB_ONLY
+        ):
             raise AgentSoulLockedError()
 
+    @classmethod
+    def validate_save_payload(cls, payload: ComposerSavePayload) -> None:
+        cls.validate_publish_payload(payload)
+
+    @classmethod
+    def validate_publish_payload(cls, payload: ComposerSavePayload) -> None:
+        cls.validate_draft_save_payload(payload)
         if payload.agent_soul is not None:
             cls.validate_agent_soul(payload.agent_soul)
         if payload.node_job is not None:
@@ -135,15 +149,15 @@ class ComposerConfigValidator:
         cls,
         payload: ComposerSavePayload,
         *,
-        existing_dataset_ids: set[str] | None = None,
+        existing_knowledge_set_ids: set[str] | None = None,
     ) -> dict[str, Any]:
         """ENG-617 §5.3/§5.4 soft findings — never block save.
 
         ``warnings`` carries ``mention_target_missing`` / ``mention_malformed``
-        entries; ``knowledge_retrieval_placeholder`` keeps dangling knowledge
+        entries; ``knowledge_retrieval_placeholder`` keeps dangling knowledge-set
         mentions with a placeholder name (0522 consensus) instead of dropping or
-        rejecting them. With ``existing_dataset_ids`` provided, configured-but-
-        deleted datasets surface as placeholders too.
+        rejecting them. With ``existing_knowledge_set_ids`` provided, mentions
+        that no longer exist in the current Agent Soul surface as placeholders too.
         """
         warnings: list[dict[str, Any]] = []
         placeholders: list[dict[str, str]] = []
@@ -175,7 +189,7 @@ class ComposerConfigValidator:
                 resolved = resolver(mention)
                 if mention.kind == MentionKind.KNOWLEDGE:
                     dangling = resolved is None or (
-                        existing_dataset_ids is not None and mention.ref_id not in existing_dataset_ids
+                        existing_knowledge_set_ids is not None and mention.ref_id not in existing_knowledge_set_ids
                     )
                     if dangling:
                         placeholders.append(
@@ -184,6 +198,8 @@ class ComposerConfigValidator:
                                 "placeholder_name": mention.label or f"Knowledge {mention.ref_id[:8]}",
                             }
                         )
+                    continue
+                if mention.kind in {MentionKind.SKILL, MentionKind.FILE}:
                     continue
                 if resolved is None:
                     warnings.append(
@@ -213,8 +229,39 @@ class ComposerConfigValidator:
     @classmethod
     def validate_agent_soul(cls, agent_soul: AgentSoulConfig) -> None:
         dumped = agent_soul.model_dump(mode="json")
+        cls._validate_knowledge_runtime_config(agent_soul)
         cls._reject_plaintext_secrets(dumped, path="agent_soul")
         cls._validate_shell_config(dumped)
+
+    @classmethod
+    def _validate_knowledge_runtime_config(cls, agent_soul: AgentSoulConfig) -> None:
+        """Validate knowledge settings that are required only for publish/run.
+
+        Draft composer saves must be able to persist partially configured
+        knowledge sets while a user is still editing the panel. These checks
+        stay in the publish validator so invalid runtime configs are still
+        blocked before a version can be published or executed.
+        """
+        for knowledge_set in agent_soul.knowledge.sets:
+            if (
+                knowledge_set.query.mode == AgentKnowledgeQueryMode.USER_QUERY
+                and not (knowledge_set.query.value or "").strip()
+            ):
+                raise InvalidComposerConfigError("knowledge query.value is required for user_query mode")
+
+            retrieval = knowledge_set.retrieval
+            if retrieval.mode == "multiple" and retrieval.top_k is None:
+                raise InvalidComposerConfigError("knowledge retrieval.top_k is required for multiple mode")
+            if retrieval.mode == "single" and retrieval.model is None:
+                raise InvalidComposerConfigError("knowledge retrieval.model is required for single mode")
+
+            metadata_filtering = knowledge_set.metadata_filtering
+            if metadata_filtering.mode == "automatic" and metadata_filtering.metadata_model_config is None:
+                raise InvalidComposerConfigError("metadata_filtering.model_config is required for automatic mode")
+            if metadata_filtering.mode == "manual" and (
+                metadata_filtering.conditions is None or not metadata_filtering.conditions.conditions
+            ):
+                raise InvalidComposerConfigError("metadata_filtering.conditions is required for manual mode")
 
     @classmethod
     def validate_node_job(cls, node_job: WorkflowNodeJobConfig) -> None:
@@ -328,16 +375,17 @@ class ComposerConfigValidator:
 
     @classmethod
     def _reject_plaintext_secrets(cls, value: Any, *, path: str) -> None:
-        if isinstance(value, dict):
-            for key, nested in value.items():
-                normalized_key = key.lower().replace("-", "_")
-                nested_path = f"{path}.{key}"
-                if normalized_key in _PLAINTEXT_SECRET_KEYS and isinstance(nested, str) and nested:
-                    raise PlaintextSecretNotAllowedError(f"Plaintext secret is not allowed at {nested_path}")
-                cls._reject_plaintext_secrets(nested, path=nested_path)
-        elif isinstance(value, list):
-            for index, nested in enumerate(value):
-                cls._reject_plaintext_secrets(nested, path=f"{path}[{index}]")
+        match value:
+            case dict():
+                for key, nested in value.items():
+                    normalized_key = key.lower().replace("-", "_")
+                    nested_path = f"{path}.{key}"
+                    if normalized_key in _PLAINTEXT_SECRET_KEYS and isinstance(nested, str) and nested:
+                        raise PlaintextSecretNotAllowedError(f"Plaintext secret is not allowed at {nested_path}")
+                    cls._reject_plaintext_secrets(nested, path=nested_path)
+            case list():
+                for index, nested in enumerate(value):
+                    cls._reject_plaintext_secrets(nested, path=f"{path}[{index}]")
 
     @classmethod
     def _has_install_command(cls, entry: dict[str, Any]) -> bool:

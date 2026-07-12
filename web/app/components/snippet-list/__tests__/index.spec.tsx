@@ -34,7 +34,8 @@ vi.mock('@/service/use-snippets', () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
-  useInfiniteSnippetList: (params: unknown, options: unknown) => mockUseInfiniteSnippetList(params, options),
+  useInfiniteSnippetList: (params: unknown, options: unknown) =>
+    mockUseInfiniteSnippetList(params, options),
   useUpdateSnippetMutation: () => ({
     mutate: vi.fn(),
     isPending: false,
@@ -70,14 +71,65 @@ vi.mock('@/service/client', () => ({
 
 const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-    isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
-    isLoadingCurrentWorkspace: false,
+const mockWorkspacePermissionKeys = vi.fn(() => ['snippets.create_and_modify'])
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     userProfile: { id: 'creator-1' },
-  }),
-}))
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'creator-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'creator-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'creator-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'creator-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: false,
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
@@ -108,19 +160,23 @@ vi.mock('@/next/dynamic', () => ({
           'data-testid': 'tag-management-modal',
           'data-show': String(props.show),
         },
-        React.createElement('button', { type: 'button', onClick: props.onClose }, 'close tag modal'),
-        React.createElement('button', { type: 'button', onClick: props.onTagsChange }, 'refresh tags'),
+        React.createElement(
+          'button',
+          { type: 'button', onClick: props.onClose },
+          'close tag modal',
+        ),
+        React.createElement(
+          'button',
+          { type: 'button', onClick: props.onTagsChange },
+          'refresh tags',
+        ),
       )
     }
   },
 }))
 
 vi.mock('@/features/tag-management/components/tag-filter', () => ({
-  TagFilter: ({
-    onOpenTagManagement,
-  }: {
-    onOpenTagManagement: () => void
-  }) => (
+  TagFilter: ({ onOpenTagManagement }: { onOpenTagManagement: () => void }) => (
     <button type="button" onClick={onOpenTagManagement}>
       common.tag.placeholder
     </button>
@@ -140,8 +196,12 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
     onTagsChange: () => void
   }) => (
     <div data-testid="snippet-card-tags">
-      <button type="button" onClick={onOpenTagManagement}>open card tags</button>
-      <button type="button" onClick={onTagsChange}>refresh card tags</button>
+      <button type="button" onClick={onOpenTagManagement}>
+        open card tags
+      </button>
+      <button type="button" onClick={onTagsChange}>
+        refresh card tags
+      </button>
     </div>
   ),
 }))
@@ -175,27 +235,29 @@ const mockFetchNextPage = vi.fn()
 
 const mockSnippetListState = {
   data: {
-    pages: [{
-      data: [
-        {
-          id: 'snippet-1',
-          name: 'Sales Snippet',
-          description: 'Builds a sales follow-up.',
-          type: 'node',
-          is_published: true,
-          use_count: 12,
-          tags: [],
-          created_at: 1704067200,
-          created_by: 'creator-1',
-          updated_at: 1704153600,
-          updated_by: 'creator-2',
-        },
-      ],
-      page: 1,
-      limit: 30,
-      total: 1,
-      has_more: false,
-    }],
+    pages: [
+      {
+        data: [
+          {
+            id: 'snippet-1',
+            name: 'Sales Snippet',
+            description: 'Builds a sales follow-up.',
+            type: 'node',
+            is_published: true,
+            use_count: 12,
+            tags: [],
+            created_at: 1704067200,
+            created_by: 'creator-1',
+            updated_at: 1704153600,
+            updated_by: 'creator-2',
+          },
+        ],
+        page: 1,
+        limit: 30,
+        total: 1,
+        has_more: false,
+      },
+    ],
   },
   isLoading: false,
   isFetching: false,
@@ -228,6 +290,7 @@ describe('SnippetList', () => {
     mockQueryState.creatorIDs = []
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
+    mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
     mockUseInfiniteSnippetList.mockReturnValue({
       ...mockSnippetListState,
       refetch: mockRefetch,
@@ -242,11 +305,26 @@ describe('SnippetList', () => {
     expect(screen.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('heading', { name: 'workflow.tabs.snippets' })).toBeInTheDocument()
     expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
+    ).toBeInTheDocument()
     expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('workflow.tabs.searchSnippets')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'snippet.create' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Sales Snippet/ })).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
+    expect(screen.getByRole('link', { name: /Sales Snippet/ })).toHaveAttribute(
+      'href',
+      '/snippets/snippet-1/orchestrate',
+    )
     expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
+  })
+
+  it('lays out snippet cards with auto-fill grid columns', () => {
+    renderList()
+
+    const card = screen.getByRole('link', { name: /Sales Snippet/ }).closest('article')
+    const grid = card?.parentElement
+
+    expect(grid).toHaveClass('grid', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]')
   })
 
   it('passes creator, tag, and search filters to the snippets list query', () => {
@@ -256,15 +334,67 @@ describe('SnippetList', () => {
 
     renderList()
 
-    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith({
-      page: 1,
-      limit: 30,
-      keyword: 'sales',
-      tag_ids: ['tag-1', 'tag-2'],
-      creator_ids: ['creator-1', 'creator-2'],
-    }, {
-      enabled: true,
-    })
+    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(
+      {
+        page: 1,
+        limit: 30,
+        keyword: 'sales',
+        tag_ids: ['tag-1', 'tag-2'],
+        creator_ids: ['creator-1', 'creator-2'],
+      },
+      {
+        enabled: true,
+      },
+    )
+  })
+
+  it('does not pass published state to the snippets list query by default', () => {
+    renderList()
+
+    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        is_published: expect.any(Boolean),
+      }),
+      {
+        enabled: true,
+      },
+    )
+  })
+
+  it('passes published state when selecting the published filter', () => {
+    renderList()
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
+    )
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /workflow\.common\.published/i }))
+
+    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        is_published: true,
+      }),
+      {
+        enabled: true,
+      },
+    )
+  })
+
+  it('passes draft state when selecting the draft filter', () => {
+    renderList()
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
+    )
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /snippet\.draft/i }))
+
+    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        is_published: false,
+      }),
+      {
+        enabled: true,
+      },
+    )
   })
 
   it('updates the search query state from the search input', () => {
@@ -294,25 +424,60 @@ describe('SnippetList', () => {
     expect(mockSetCreatorIDs).toHaveBeenCalledWith(['creator-2'])
   })
 
-  it('hides the create button for non-editors', () => {
-    mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+  it('hides the create button without snippet create permission', () => {
+    mockWorkspacePermissionKeys.mockReturnValue([])
 
     renderList()
 
     expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
   })
 
+  it('fetches snippets without create action for users with snippet management permission', () => {
+    mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
+
+    renderList()
+
+    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
+      enabled: true,
+    })
+    expect(screen.getByRole('link', { name: /Sales Snippet/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
+  })
+
+  it('does not fetch or render snippets without snippet list permissions', () => {
+    mockWorkspacePermissionKeys.mockReturnValue([])
+
+    renderList()
+
+    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
+      enabled: false,
+    })
+    expect(screen.queryByRole('link', { name: /Sales Snippet/ })).not.toBeInTheDocument()
+    expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
+  })
+
+  it('shows the create button for users with snippet create permission even when they are not workspace editors', () => {
+    mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+    mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
+
+    renderList()
+
+    expect(screen.getByRole('button', { name: 'snippet.create' })).toBeInTheDocument()
+  })
+
   it('shows an empty state when no snippets are returned', () => {
     mockUseInfiniteSnippetList.mockReturnValue({
       ...mockSnippetListState,
       data: {
-        pages: [{
-          data: [],
-          page: 1,
-          limit: 30,
-          total: 0,
-          has_more: false,
-        }],
+        pages: [
+          {
+            data: [],
+            page: 1,
+            limit: 30,
+            total: 0,
+            has_more: false,
+          },
+        ],
       },
       refetch: mockRefetch,
       fetchNextPage: mockFetchNextPage,
@@ -348,24 +513,33 @@ describe('SnippetList', () => {
 
     renderList()
 
-    intersectionCallback?.([
-      { isIntersecting: true } as IntersectionObserverEntry,
-    ], {} as IntersectionObserver)
+    intersectionCallback?.(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
 
     expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
   })
 
-  it('does not fetch snippets or register infinite scroll for dataset operators', () => {
+  it('fetches snippets for dataset operators when they have snippet list permissions', () => {
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(true)
 
     renderList()
 
     expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
-      enabled: false,
+      enabled: true,
     })
-    intersectionCallback?.([
-      { isIntersecting: true } as IntersectionObserverEntry,
-    ], {} as IntersectionObserver)
+  })
+
+  it('does not register infinite scroll without snippet list permissions', () => {
+    mockWorkspacePermissionKeys.mockReturnValue([])
+
+    renderList()
+
+    intersectionCallback?.(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
     expect(mockFetchNextPage).not.toHaveBeenCalled()
   })
 

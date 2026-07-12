@@ -3,7 +3,6 @@ import type { CredentialFormSchemaBase } from '../header/account-setting/model-p
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { TypeWithI18N } from '@/app/components/base/form/types'
 import type { Collection, ToolCredential } from '@/app/components/tools/types'
-import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
 import type { Locale } from '@/i18n-config'
 
 export enum PluginCategoryEnum {
@@ -225,14 +224,16 @@ export type PluginDetail = {
   alternative_plugin_id: string
 }
 
-export type PluginInfoFromMarketPlace = {
-  category: PluginCategoryEnum
-  latest_package_identifier: string
-  latest_version: string
-}
-
 export type Plugin = {
-  type: 'plugin' | 'bundle' | 'model' | 'extension' | 'tool' | 'agent_strategy' | 'datasource' | 'trigger'
+  type:
+    | 'plugin'
+    | 'bundle'
+    | 'model'
+    | 'extension'
+    | 'tool'
+    | 'agent_strategy'
+    | 'datasource'
+    | 'trigger'
   org: string
   author?: string
   name: string
@@ -451,36 +452,8 @@ export type InstalledPluginCategoryListResponse = {
   has_more: boolean
 }
 
-export type InstalledLatestVersionResponse = {
-  versions: {
-    [plugin_id: string]: {
-      unique_identifier: string
-      version: string
-      status: 'active' | 'deleted'
-      deprecated_reason: string
-      alternative_plugin_id: string
-    } | null
-  }
-}
-
 export type UninstallPluginResponse = {
   success: boolean
-}
-
-export type PluginsFromMarketplaceResponse = {
-  plugins: Plugin[]
-  bundles?: Plugin[]
-  total: number
-}
-export type PluginsFromMarketplaceByInfoResponse = {
-  list: {
-    plugin: Plugin
-    version: {
-      plugin_name: string
-      plugin_org: string
-      unique_identifier: string
-    }
-  }[]
 }
 
 export type GitHubItemAndMarketPlaceDependency = {
@@ -566,6 +539,12 @@ export type StrategyDetail = {
   output_schema: Record<string, any>
   features: AgentFeature[]
 }
+
+const AgentFeature = {
+  HISTORY_MESSAGES: 'history-messages',
+} as const
+
+type AgentFeature = (typeof AgentFeature)[keyof typeof AgentFeature]
 
 type Identity = {
   author: string

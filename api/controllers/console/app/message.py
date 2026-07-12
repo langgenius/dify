@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -13,7 +12,7 @@ from controllers.common.controller_schemas import MessageFeedbackPayload as _Mes
 from controllers.common.fields import SimpleResultResponse, TextFileResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_app_model
+from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -23,8 +22,11 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDisabledError
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -35,21 +37,16 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.conversation_fields import (
-    AgentThought,
-    ConversationAnnotation,
-    ConversationAnnotationHitHistory,
-    Feedback,
-    JSONValue,
-    MessageFile,
-    format_files_contained,
+    MessageDetail as BaseMessageDetailResponse,
 )
 from graphon.model_runtime.errors.invoke import InvokeError
-from libs.helper import to_timestamp, uuid_value
+from libs.helper import dump_response, uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
 from models.account import Account
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
+from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService, attach_message_extra_contents
@@ -107,49 +104,16 @@ class FeedbackExportQuery(BaseModel):
         raise ValueError("has_comment must be a boolean value")
 
 
-class AnnotationCountResponse(BaseModel):
+class AnnotationCountResponse(ResponseModel):
     count: int = Field(description="Number of annotations")
 
 
-class SuggestedQuestionsResponse(BaseModel):
+class SuggestedQuestionsResponse(ResponseModel):
     data: list[str] = Field(description="Suggested question")
 
 
-class MessageDetailResponse(ResponseModel):
-    id: str
-    conversation_id: str
-    inputs: dict[str, JSONValue]
-    query: str
-    message: JSONValue | None = None
-    message_tokens: int | None = None
-    answer: str = Field(validation_alias="re_sign_file_url_answer")
-    answer_tokens: int | None = None
-    provider_response_latency: float | None = None
-    from_source: str
-    from_end_user_id: str | None = None
-    from_account_id: str | None = None
-    feedbacks: list[Feedback] = Field(default_factory=list)
-    workflow_run_id: str | None = None
-    annotation: ConversationAnnotation | None = None
-    annotation_hit_history: ConversationAnnotationHitHistory | None = None
-    created_at: int | None = None
-    agent_thoughts: list[AgentThought] = Field(default_factory=list)
-    message_files: list[MessageFile] = Field(default_factory=list)
+class MessageDetailResponse(BaseMessageDetailResponse):
     extra_contents: list[ExecutionExtraContentDomainModel] = Field(default_factory=list)
-    metadata: JSONValue | None = Field(default=None, validation_alias="message_metadata_dict")
-    status: str
-    error: str | None = None
-    parent_message_id: str | None = None
-
-    @field_validator("inputs", mode="before")
-    @classmethod
-    def _normalize_inputs(cls, value: JSONValue) -> JSONValue:
-        return format_files_contained(value)
-
-    @field_validator("created_at", mode="before")
-    @classmethod
-    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
 
 
 class MessageInfiniteScrollPaginationResponse(ResponseModel):
@@ -163,29 +127,34 @@ register_schema_models(
     ChatMessagesQuery,
     MessageFeedbackPayload,
     FeedbackExportQuery,
+)
+register_response_schema_models(
+    console_ns,
     AnnotationCountResponse,
     SuggestedQuestionsResponse,
     MessageDetailResponse,
     MessageInfiniteScrollPaginationResponse,
+    SimpleResultResponse,
+    TextFileResponse,
 )
-register_response_schema_models(console_ns, SimpleResultResponse, TextFileResponse)
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages")
 class ChatMessageListApi(Resource):
     @console_ns.doc("list_chat_messages")
     @console_ns.doc(description="Get chat messages for a conversation with pagination")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(ChatMessagesQuery))
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(ChatMessagesQuery)})
     @console_ns.response(200, "Success", console_ns.models[MessageInfiniteScrollPaginationResponse.__name__])
     @console_ns.response(404, "Conversation not found")
     @login_required
     @account_initialization_required
     @setup_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
-    def get(self, app_model: App):
-        return _list_chat_messages(app_model=app_model)
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
+    def get(self, current_user: Account, app_model: App):
+        return _list_chat_messages(app_model=app_model, current_user=current_user)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
@@ -200,10 +169,12 @@ class AgentChatMessageListApi(Resource):
     @account_initialization_required
     @setup_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
-        return _list_chat_messages(app_model=app_model)
+    def get(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        return _list_chat_messages(app_model=app_model, current_user=current_user)
 
 
 @console_ns.route("/apps/<uuid:app_id>/feedbacks")
@@ -215,11 +186,11 @@ class MessageFeedbackApi(Resource):
     @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Message not found")
     @console_ns.response(403, "Insufficient permissions")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @get_app_model
     def post(self, current_user: Account, app_model: App):
         return _update_message_feedback(current_user=current_user, app_model=app_model)
 
@@ -238,7 +209,7 @@ class AgentMessageFeedbackApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _update_message_feedback(current_user=current_user, app_model=app_model)
 
 
@@ -252,16 +223,17 @@ class MessageAnnotationCountApi(Resource):
         "Annotation count retrieved successfully",
         console_ns.models[AnnotationCountResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model
     def get(self, app_model: App):
         count = db.session.scalar(
             select(func.count(MessageAnnotation.id)).where(MessageAnnotation.app_id == app_model.id)
         )
 
-        return {"count": count}
+        return AnnotationCountResponse(count=count or 0).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<uuid:message_id>/suggested-questions")
@@ -278,8 +250,9 @@ class MessageSuggestedQuestionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, current_user: Account, app_model: App, message_id: UUID):
         return _get_message_suggested_questions(current_user=current_user, app_model=app_model, message_id=message_id)
 
@@ -301,7 +274,7 @@ class AgentMessageSuggestedQuestionApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account, agent_id: UUID, message_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _get_message_suggested_questions(current_user=current_user, app_model=app_model, message_id=message_id)
 
 
@@ -309,19 +282,19 @@ class AgentMessageSuggestedQuestionApi(Resource):
 class MessageFeedbackExportApi(Resource):
     @console_ns.doc("export_feedbacks")
     @console_ns.doc(description="Export user feedback data for Google Sheets")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(FeedbackExportQuery))
     @console_ns.response(
         200,
         "Feedback data exported successfully",
         console_ns.models[TextFileResponse.__name__],
     )
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(FeedbackExportQuery)})
     @console_ns.response(400, "Invalid parameters")
     @console_ns.response(500, "Internal server error")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model
     def get(self, app_model: App):
         args = FeedbackExportQuery.model_validate(request.args.to_dict())
 
@@ -330,7 +303,8 @@ class MessageFeedbackExportApi(Resource):
 
         try:
             export_data = FeedbackService.export_feedbacks(
-                app_id=app_model.id,
+                app_model.id,
+                session=db.session(),
                 from_source=args.from_source,
                 rating=args.rating,
                 has_comment=args.has_comment,
@@ -338,7 +312,6 @@ class MessageFeedbackExportApi(Resource):
                 end_date=args.end_date,
                 format_type=args.format,
             )
-
             return export_data
 
         except ValueError as e:
@@ -356,10 +329,11 @@ class MessageApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
     @console_ns.response(200, "Message retrieved successfully", console_ns.models[MessageDetailResponse.__name__])
     @console_ns.response(404, "Message not found")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model
     def get(self, app_model: App, message_id: UUID):
         return _get_message_detail(app_model=app_model, message_id=message_id)
 
@@ -376,18 +350,29 @@ class AgentMessageApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, current_tenant_id: str, agent_id: UUID, message_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _get_message_detail(app_model=app_model, message_id=message_id)
 
 
-def _list_chat_messages(*, app_model: App):
+def _list_chat_messages(*, app_model: App, current_user: Account | None = None):
     args = ChatMessagesQuery.model_validate(request.args.to_dict())
 
-    conversation = db.session.scalar(
-        select(Conversation)
-        .where(Conversation.id == args.conversation_id, Conversation.app_id == app_model.id)
-        .limit(1)
-    )
+    if AppMode.value_of(app_model.mode) == AppMode.AGENT and current_user is not None:
+        try:
+            conversation = ConversationService.get_conversation(
+                app_model=app_model,
+                conversation_id=args.conversation_id,
+                user=current_user,
+                session=db.session(),
+            )
+        except ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
+    else:
+        conversation = db.session.scalar(
+            select(Conversation)
+            .where(Conversation.id == args.conversation_id, Conversation.app_id == app_model.id)
+            .limit(1)
+        )
 
     if not conversation:
         raise NotFound("Conversation Not Exists.")
@@ -438,16 +423,16 @@ def _list_chat_messages(*, app_model: App):
     history_messages = list(reversed(history_messages))
     attach_message_extra_contents(history_messages)
 
-    return MessageInfiniteScrollPaginationResponse.model_validate(
+    return dump_response(
+        MessageInfiniteScrollPaginationResponse,
         InfiniteScrollPagination(data=history_messages, limit=args.limit, has_more=has_more),
-        from_attributes=True,
-    ).model_dump(mode="json")
+    )
 
 
 def _update_message_feedback(*, current_user: Account, app_model: App):
     args = MessageFeedbackPayload.model_validate(console_ns.payload)
 
-    message_id = str(args.message_id)
+    message_id = args.message_id
 
     message = db.session.scalar(
         select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1)
@@ -482,7 +467,7 @@ def _update_message_feedback(*, current_user: Account, app_model: App):
 
     db.session.commit()
 
-    return {"result": "success"}
+    return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 def _get_message_suggested_questions(*, current_user: Account, app_model: App, message_id: UUID):
@@ -490,7 +475,11 @@ def _get_message_suggested_questions(*, current_user: Account, app_model: App, m
 
     try:
         questions = MessageService.get_suggested_questions_after_answer(
-            app_model=app_model, message_id=message_id_str, user=current_user, invoke_from=InvokeFrom.DEBUGGER
+            app_model=app_model,
+            message_id=message_id_str,
+            user=current_user,
+            invoke_from=InvokeFrom.DEBUGGER,
+            session=db.session(),
         )
     except MessageNotExistsError:
         raise NotFound("Message not found")
@@ -510,7 +499,7 @@ def _get_message_suggested_questions(*, current_user: Account, app_model: App, m
         logger.exception("internal server error.")
         raise InternalServerError()
 
-    return {"data": questions}
+    return dump_response(SuggestedQuestionsResponse, {"data": questions})
 
 
 def _get_message_detail(*, app_model: App, message_id: UUID):
@@ -524,4 +513,4 @@ def _get_message_detail(*, app_model: App, message_id: UUID):
         raise NotFound("Message Not Exists.")
 
     attach_message_extra_contents([message])
-    return MessageDetailResponse.model_validate(message, from_attributes=True).model_dump(mode="json")
+    return dump_response(MessageDetailResponse, message)

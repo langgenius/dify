@@ -1,12 +1,11 @@
-import type {
-  Edge as ReactFlowEdge,
-  Node as ReactFlowNode,
-  Viewport,
-  XYPosition,
-} from 'reactflow'
+import type { Edge as ReactFlowEdge, Node as ReactFlowNode, Viewport, XYPosition } from 'reactflow'
 import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
-import type { BlockClassificationEnum, PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type {
+  BlockClassificationEnum,
+  BlockDefaultValue,
+  PluginDefaultValue,
+} from '@/app/components/workflow/block-selector/types'
 import type {
   DefaultValueForm,
   ErrorHandleTypeEnum,
@@ -47,6 +46,7 @@ export enum BlockEnum {
   IterationStart = 'iteration-start',
   Assigner = 'assigner', // is now named as VariableAssigner
   Agent = 'agent',
+  AgentV2 = 'agent-v2',
   Loop = 'loop',
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
@@ -84,7 +84,7 @@ export type CommonNodeType<T = {}> = {
   _singleRunningStatus?: NodeRunningStatus
   _isCandidate?: boolean
   _isBundled?: boolean
-  _children?: { nodeId: string, nodeType: BlockEnum }[]
+  _children?: { nodeId: string; nodeType: BlockEnum }[]
   _isEntering?: boolean
   _showAddVariablePopup?: boolean
   _holdAddVariablePopup?: boolean
@@ -94,6 +94,7 @@ export type CommonNodeType<T = {}> = {
   _retryIndex?: number
   _dataSourceStartToAdd?: boolean
   _isTempNode?: boolean
+  _openInlineAgentPanel?: boolean
   isInIteration?: boolean
   iteration_id?: string
   selected?: boolean
@@ -114,7 +115,8 @@ export type CommonNodeType<T = {}> = {
   subscription_id?: string
   provider_id?: string
   _dimmed?: boolean
-} & T & Partial<PluginDefaultValue>
+} & T &
+  Partial<PluginDefaultValue>
 
 export type CommonEdgeType = {
   _hovering?: boolean
@@ -134,7 +136,7 @@ export type CommonEdgeType = {
 }
 
 export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>
-export type NodeProps<T = unknown> = { id: string, data: CommonNodeType<T> }
+export type NodeProps<T = unknown> = { id: string; data: CommonNodeType<T> }
 export type NodePanelProps<T> = {
   id: string
   data: CommonNodeType<T>
@@ -152,11 +154,13 @@ export type ValueSelector = string[] // [nodeId, key | obj key path]
 
 export type Variable = {
   variable: string
-  label?: string | {
-    nodeType: BlockEnum
-    nodeName: string
-    variable: string
-  }
+  label?:
+    | string
+    | {
+        nodeType: BlockEnum
+        nodeName: string
+        variable: string
+      }
   value_selector: ValueSelector
   value_type?: VarType
   variable_type?: VarKindType
@@ -207,12 +211,14 @@ export enum InputVarType {
 
 export type InputVar = {
   type: InputVarType
-  label: string | {
-    nodeType: BlockEnum
-    nodeName: string
-    variable: string
-    isChatVar?: boolean
-  }
+  label:
+    | string
+    | {
+        nodeType: BlockEnum
+        nodeName: string
+        variable: string
+        isChatVar?: boolean
+      }
   variable: string
   max_length?: number
   default?: string | number | boolean
@@ -338,13 +344,22 @@ export type NodeDefault<T = {}> = {
   }
   defaultValue: Partial<T>
   defaultRunInputData?: Record<string, any>
-  checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean, errorMessage?: string }
-  getOutputVars?: (payload: T, allPluginInfoList: Record<string, ToolWithProvider[]>, ragVariables?: Var[], utils?: {
-    schemaTypeDefinitions?: SchemaTypeDefinition[]
-  }) => Var[]
+  checkValid: (
+    payload: T,
+    t: any,
+    moreDataForCheckValid?: any,
+  ) => { isValid: boolean; errorMessage?: string }
+  getOutputVars?: (
+    payload: T,
+    allPluginInfoList: Record<string, ToolWithProvider[]>,
+    ragVariables?: Var[],
+    utils?: {
+      schemaTypeDefinitions?: SchemaTypeDefinition[]
+    },
+  ) => Var[]
 }
 
-export type OnSelectBlock = (type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => void
+export type OnSelectBlock = (type: BlockEnum, defaultValue?: BlockDefaultValue) => void
 
 export enum WorkflowRunningStatus {
   Waiting = 'waiting',
@@ -378,7 +393,7 @@ export type OnNodeAdd = (
     nodeType: BlockEnum
     sourceHandle?: string
     targetHandle?: string
-    pluginDefaultValue?: PluginDefaultValue
+    pluginDefaultValue?: BlockDefaultValue
   },
   oldNodesPayload: {
     prevNodeId?: string
@@ -506,7 +521,7 @@ const TRIGGER_NODE_TYPES = [
 ] as const
 
 // Type-safe trigger node type extracted from TRIGGER_NODE_TYPES array
-export type TriggerNodeType = typeof TRIGGER_NODE_TYPES[number]
+export type TriggerNodeType = (typeof TRIGGER_NODE_TYPES)[number]
 
 export function isTriggerNode(nodeType: BlockEnum): boolean {
   return TRIGGER_NODE_TYPES.includes(nodeType as any)

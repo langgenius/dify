@@ -30,13 +30,17 @@ vi.mock('../description', () => ({
 
 vi.mock('../list/list-wrapper', () => ({
   default: ({ showInstallButton }: { showInstallButton: boolean }) => (
-    <div data-testid="list-wrapper" data-show-install={showInstallButton}>ListWrapper</div>
+    <div data-testid="list-wrapper" data-show-install={showInstallButton}>
+      ListWrapper
+    </div>
   ),
 }))
 
 vi.mock('../sticky-search-and-switch-wrapper', () => ({
   default: ({ pluginTypeSwitchClassName }: { pluginTypeSwitchClassName?: string }) => (
-    <div data-testid="sticky-wrapper" data-classname={pluginTypeSwitchClassName}>StickyWrapper</div>
+    <div data-testid="sticky-wrapper" data-classname={pluginTypeSwitchClassName}>
+      StickyWrapper
+    </div>
   ),
 }))
 
@@ -64,9 +68,19 @@ describe('Marketplace', () => {
     expect(getByTestId('list-wrapper')).toBeInTheDocument()
   })
 
-  it('should pass showInstallButton=true by default to ListWrapper', async () => {
+  it('should pass showInstallButton=false by default to ListWrapper', async () => {
     const Marketplace = (await import('../index')).default
     const element = await Marketplace({})
+
+    const { getByTestId } = render(element as React.ReactElement)
+
+    const listWrapper = getByTestId('list-wrapper')
+    expect(listWrapper.getAttribute('data-show-install')).toBe('false')
+  })
+
+  it('should pass showInstallButton=true when specified', async () => {
+    const Marketplace = (await import('../index')).default
+    const element = await Marketplace({ showInstallButton: true })
 
     const { getByTestId } = render(element as React.ReactElement)
 

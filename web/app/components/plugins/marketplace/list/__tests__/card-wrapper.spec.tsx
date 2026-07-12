@@ -6,13 +6,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import CardWrapper from '../card-wrapper'
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
     getTagLabel: (name: string) => `tag:${name}`,
@@ -20,7 +13,7 @@ vi.mock('@/app/components/plugins/hooks', () => ({
 }))
 
 vi.mock('@/app/components/plugins/card', () => ({
-  default: ({ payload, footer }: { payload: Plugin, footer?: React.ReactNode }) => (
+  default: ({ payload, footer }: { payload: Plugin; footer?: React.ReactNode }) => (
     <div data-testid="card">
       <span>{payload.name}</span>
       {footer}
@@ -29,11 +22,9 @@ vi.mock('@/app/components/plugins/card', () => ({
 }))
 
 vi.mock('@/app/components/plugins/card/card-more-info', () => ({
-  default: ({ downloadCount, tags }: { downloadCount: number, tags: string[] }) => (
+  default: ({ downloadCount, tags }: { downloadCount: number; tags: string[] }) => (
     <div data-testid="card-more-info">
-      {downloadCount}
-      :
-      {tags.join('|')}
+      {downloadCount}:{tags.join('|')}
     </div>
   ),
 }))
@@ -41,14 +32,22 @@ vi.mock('@/app/components/plugins/card/card-more-info', () => ({
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="install-modal">
-      <button data-testid="close-install-modal" onClick={onClose}>close</button>
+      <button data-testid="close-install-modal" onClick={onClose}>
+        close
+      </button>
     </div>
   ),
 }))
 
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission', () => ({
+  default: () => ({ canInstallPlugin: true }),
+  useOptionalPluginInstallPermission: () => ({ canInstallPlugin: true }),
+}))
+
 vi.mock('../../utils', () => ({
   getPluginDetailLinkInMarketplace: (plugin: Plugin) => `/detail/${plugin.org}/${plugin.name}`,
-  getPluginLinkInMarketplace: (plugin: Plugin, params: Record<string, string>) => `/marketplace/${plugin.org}/${plugin.name}?language=${params.language}&theme=${params.theme}`,
+  getPluginLinkInMarketplace: (plugin: Plugin, params: Record<string, string>) =>
+    `/marketplace/${plugin.org}/${plugin.name}?language=${params.language}&theme=${params.theme}`,
 }))
 
 const plugin = {
@@ -80,11 +79,12 @@ describe('CardWrapper', () => {
     vi.clearAllMocks()
   })
 
-  const renderCardWrapper = (props: Partial<ComponentProps<typeof CardWrapper>> = {}) => render(
-    <ThemeProvider forcedTheme="dark">
-      <CardWrapper plugin={plugin} {...props} />
-    </ThemeProvider>,
-  )
+  const renderCardWrapper = (props: Partial<ComponentProps<typeof CardWrapper>> = {}) =>
+    render(
+      <ThemeProvider forcedTheme="dark">
+        <CardWrapper plugin={plugin} {...props} />
+      </ThemeProvider>,
+    )
 
   it('renders a non-navigating card when install button is hidden', () => {
     renderCardWrapper()
@@ -96,8 +96,12 @@ describe('CardWrapper', () => {
   it('renders install and marketplace detail actions when install button is shown', () => {
     renderCardWrapper({ showInstallButton: true })
 
-    expect(screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }),
+    ).toBeInTheDocument()
   })
 
   it('opens marketplace detail from the detail action', () => {

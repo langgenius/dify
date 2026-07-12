@@ -1,22 +1,25 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { hasPermission } from '@/utils/permission'
 import Card from './card'
 
 type ServiceApiProps = {
   apiBaseUrl: string
 }
 
-const ServiceApi = ({
-  apiBaseUrl,
-}: ServiceApiProps) => {
+const ServiceApi = ({ apiBaseUrl }: ServiceApiProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canManageSecretKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
 
   const handleOpenSecretKeyModal = useCallback(() => {
     setIsSecretKeyModalVisible(true)
@@ -27,29 +30,24 @@ const ServiceApi = ({
   }, [])
 
   return (
-    <div>
-      <Popover
-        open={open}
-        onOpenChange={setOpen}
-      >
+    <div className="flex items-center">
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={(
+          render={
             <button type="button" className="w-full border-none bg-transparent p-0 text-left">
-              <div className={cn(
-                'relative flex h-6 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary',
-                open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
-              )}
+              <div
+                className={cn(
+                  'relative flex h-6 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary',
+                  open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+                )}
               >
-                <StatusDot
-                  className={cn('shrink-0')}
-                  status={
-                    apiBaseUrl ? 'success' : 'warning'
-                  }
-                />
-                <div className="px-0.5 system-xs-medium">{t('serviceApi.title', { ns: 'dataset' })}</div>
+                <StatusDot className={cn('shrink-0')} status={apiBaseUrl ? 'success' : 'warning'} />
+                <div className="px-0.5 system-xs-medium">
+                  {t(($) => $['serviceApi.title'], { ns: 'dataset' })}
+                </div>
               </div>
             </button>
-          )}
+          }
         />
         <PopoverContent
           placement="top-start"
@@ -60,12 +58,14 @@ const ServiceApi = ({
           <Card
             apiBaseUrl={apiBaseUrl}
             onOpenSecretKeyModal={handleOpenSecretKeyModal}
+            canManageSecretKey={canManageSecretKey}
           />
         </PopoverContent>
       </Popover>
       <SecretKeyModal
         isShow={isSecretKeyModalVisible}
         onClose={handleCloseSecretKeyModal}
+        canManage={canManageSecretKey}
       />
     </div>
   )

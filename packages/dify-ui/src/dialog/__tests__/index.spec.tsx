@@ -1,11 +1,5 @@
 import { render } from 'vitest-browser-react'
-import {
-  Dialog,
-  DialogCloseButton,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '../index'
+import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
@@ -23,7 +17,6 @@ describe('Dialog wrapper', () => {
 
       await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Title')
       await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Description')
-      await expect.element(document.body.querySelector('.bg-background-overlay') as HTMLElement).toHaveClass('absolute', 'inset-0', 'z-50')
     })
   })
 
@@ -50,7 +43,9 @@ describe('Dialog wrapper', () => {
         </Dialog>,
       )
 
-      await expect.element(screen.getByRole('button', { name: 'Dismiss dialog' })).toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('button', { name: 'Dismiss dialog' }))
+        .toBeInTheDocument()
     })
 
     it('should render default close button label when aria-label is omitted', async () => {

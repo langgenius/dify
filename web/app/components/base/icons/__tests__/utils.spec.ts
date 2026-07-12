@@ -33,8 +33,8 @@ describe('generate icon base utils', () => {
         'xmlns-inkscape': 'http...',
         'xmlns-sodipodi': 'http...',
         'xmlns-svg': 'http...',
-        'dataName': 'Layer 1',
-        'valid': 'value',
+        dataName: 'Layer 1',
+        valid: 'value',
       }
       expect(normalizeAttrs(attrs)).toEqual({ valid: 'value' })
     })

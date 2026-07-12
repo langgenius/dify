@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -5,12 +6,6 @@ import pytest
 import controllers.console.explore.parameter as module
 from controllers.console.app.error import AppUnavailableError
 from models.model import AppMode
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 class TestAppParameterApi:

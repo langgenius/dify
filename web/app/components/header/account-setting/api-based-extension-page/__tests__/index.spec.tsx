@@ -7,12 +7,53 @@ const {
   mockCreateApiBasedExtension,
   mockUpdateApiBasedExtension,
   mockDeleteApiBasedExtension,
+  mockWorkspacePermissionKeys,
 } = vi.hoisted(() => ({
   mockApiBasedExtensionsQuery: vi.fn(),
   mockCreateApiBasedExtension: vi.fn(),
   mockUpdateApiBasedExtension: vi.fn(),
   mockDeleteApiBasedExtension: vi.fn(),
+  mockWorkspacePermissionKeys: {
+    current: ['api_extension.manage'] as string[],
+  },
 }))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.current,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.current,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.current,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.current,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.current,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
@@ -40,7 +81,7 @@ vi.mock('@tanstack/react-query', () => ({
   useMutation: vi.fn((options: { mutationFn: (variables: unknown) => Promise<unknown> }) => ({
     isPending: false,
     mutate: (variables: unknown, mutationOptions?: { onSuccess?: (data: unknown) => void }) => {
-      options.mutationFn(variables).then(data => mutationOptions?.onSuccess?.(data))
+      options.mutationFn(variables).then((data) => mutationOptions?.onSuccess?.(data))
     },
   })),
 }))
@@ -48,6 +89,7 @@ vi.mock('@tanstack/react-query', () => ({
 describe('ApiBasedExtensionPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.current = ['api_extension.manage']
     mockApiBasedExtensionsQuery.mockReturnValue({
       data: [],
       isPending: false,
@@ -105,17 +147,20 @@ describe('ApiBasedExtensionPage', () => {
 
       // Act
       render(
-        <ApiBasedExtensionPage layout={({ body, toolbar }) => (
-          <>
-            <div data-testid="toolbar">{toolbar}</div>
-            <div>{body}</div>
-          </>
-        )}
+        <ApiBasedExtensionPage
+          layout={({ body, toolbar }) => (
+            <>
+              <div data-testid="toolbar">{toolbar}</div>
+              <div>{body}</div>
+            </>
+          )}
         />,
       )
 
       // Assert
-      expect(screen.getByTestId('toolbar')).toContainElement(screen.getByPlaceholderText('common.operation.search'))
+      expect(screen.getByTestId('toolbar')).toContainElement(
+        screen.getByPlaceholderText('common.operation.search'),
+      )
       expect(screen.getByTestId('toolbar')).toHaveTextContent('common.apiBasedExtension.add')
       expect(screen.getByText('Extension 1'))!.toBeInTheDocument()
     })
@@ -123,8 +168,18 @@ describe('ApiBasedExtensionPage', () => {
     it('should filter extensions by search keywords', () => {
       // Arrange
       const mockData: ApiBasedExtensionResponse[] = [
-        { id: '1', name: 'Alpha Extension', api_endpoint: 'https://alpha.example.com', api_key: 'key1' },
-        { id: '2', name: 'Beta Extension', api_endpoint: 'https://beta.example.com', api_key: 'key2' },
+        {
+          id: '1',
+          name: 'Alpha Extension',
+          api_endpoint: 'https://alpha.example.com',
+          api_key: 'key1',
+        },
+        {
+          id: '2',
+          name: 'Beta Extension',
+          api_endpoint: 'https://beta.example.com',
+          api_key: 'key2',
+        },
       ]
       mockApiBasedExtensionsQuery.mockReturnValue({
         data: mockData,
@@ -133,7 +188,9 @@ describe('ApiBasedExtensionPage', () => {
 
       // Act
       render(<ApiBasedExtensionPage />)
-      fireEvent.change(screen.getByPlaceholderText('common.operation.search'), { target: { value: 'alpha' } })
+      fireEvent.change(screen.getByPlaceholderText('common.operation.search'), {
+        target: { value: 'alpha' },
+      })
 
       // Assert
       expect(screen.getByText('Alpha Extension'))!.toBeInTheDocument()
@@ -143,7 +200,12 @@ describe('ApiBasedExtensionPage', () => {
     it('should render a search empty state without showing the onboarding empty state', () => {
       // Arrange
       const mockData: ApiBasedExtensionResponse[] = [
-        { id: '1', name: 'Alpha Extension', api_endpoint: 'https://alpha.example.com', api_key: 'key1' },
+        {
+          id: '1',
+          name: 'Alpha Extension',
+          api_endpoint: 'https://alpha.example.com',
+          api_key: 'key1',
+        },
       ]
       mockApiBasedExtensionsQuery.mockReturnValue({
         data: mockData,
@@ -152,10 +214,14 @@ describe('ApiBasedExtensionPage', () => {
 
       // Act
       render(<ApiBasedExtensionPage />)
-      fireEvent.change(screen.getByPlaceholderText('common.operation.search'), { target: { value: 'missing' } })
+      fireEvent.change(screen.getByPlaceholderText('common.operation.search'), {
+        target: { value: 'missing' },
+      })
 
       // Assert
-      expect(screen.getByText('common.dataSource.notion.selector.noSearchResult'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('common.dataSource.notion.selector.noSearchResult'),
+      )!.toBeInTheDocument()
       expect(screen.queryByText('common.apiBasedExtension.title')).not.toBeInTheDocument()
       expect(screen.queryByText('Alpha Extension')).not.toBeInTheDocument()
     })
@@ -175,6 +241,29 @@ describe('ApiBasedExtensionPage', () => {
       expect(screen.queryByText('common.apiBasedExtension.title')).not.toBeInTheDocument()
       expect(screen.getByText('common.apiBasedExtension.add'))!.toBeInTheDocument()
     })
+
+    it('should disable management actions when api extension permission is missing', () => {
+      // Arrange
+      mockWorkspacePermissionKeys.current = []
+      const extension: ApiBasedExtensionResponse = {
+        id: '1',
+        name: 'Extension 1',
+        api_endpoint: 'url1',
+        api_key: 'key1',
+      }
+      mockApiBasedExtensionsQuery.mockReturnValue({
+        data: [extension],
+        isPending: false,
+      })
+
+      // Act
+      render(<ApiBasedExtensionPage />)
+
+      // Assert
+      expect(screen.getByRole('button', { name: 'common.apiBasedExtension.add' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeDisabled()
+    })
   })
 
   describe('User Interactions', () => {
@@ -190,7 +279,9 @@ describe('ApiBasedExtensionPage', () => {
       fireEvent.click(screen.getByText('common.apiBasedExtension.add'))
 
       // Assert
-      expect(screen.getByRole('dialog', { name: 'common.apiBasedExtension.modal.title' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('dialog', { name: 'common.apiBasedExtension.modal.title' }),
+      ).toBeInTheDocument()
     })
 
     it('should close add modal when create mutation succeeds', async () => {
@@ -209,9 +300,18 @@ describe('ApiBasedExtensionPage', () => {
       // Act
       render(<ApiBasedExtensionPage />)
       fireEvent.click(screen.getByText('common.apiBasedExtension.add'))
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'), { target: { value: 'New Ext' } })
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'), { target: { value: 'https://api.test' } })
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'), { target: { value: 'secret-key' } })
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'),
+        { target: { value: 'New Ext' } },
+      )
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'),
+        { target: { value: 'https://api.test' } },
+      )
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'),
+        { target: { value: 'secret-key' } },
+      )
       fireEvent.click(screen.getByText('common.operation.save'))
 
       // Assert
@@ -223,13 +323,20 @@ describe('ApiBasedExtensionPage', () => {
             api_key: 'secret-key',
           },
         })
-        expect(screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.title' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.title' }),
+        ).not.toBeInTheDocument()
       })
     })
 
     it('should close edit modal when update mutation succeeds', async () => {
       // Arrange
-      const extension: ApiBasedExtensionResponse = { id: '1', name: 'Extension 1', api_endpoint: 'url1', api_key: 'long-api-key' }
+      const extension: ApiBasedExtensionResponse = {
+        id: '1',
+        name: 'Extension 1',
+        api_endpoint: 'url1',
+        api_key: 'long-api-key',
+      }
       mockUpdateApiBasedExtension.mockResolvedValue({ ...extension, name: 'Updated' })
       mockApiBasedExtensionsQuery.mockReturnValue({
         data: [extension],
@@ -254,7 +361,9 @@ describe('ApiBasedExtensionPage', () => {
             api_key: '[__HIDDEN__]',
           },
         })
-        expect(screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.editTitle' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.editTitle' }),
+        ).not.toBeInTheDocument()
       })
     })
   })

@@ -1009,8 +1009,7 @@ class TestExternalDatasetApi:
 # 4. Provide default values when parameters are missing
 # 5. Raise BadRequest exceptions when validation fails
 #
-# Response formatting is handled by Flask-RESTX's marshal_with decorator
-# or marshal function, which:
+# Response formatting is handled by controller response schemas, which:
 #
 # 1. Formats response data according to defined models
 # 2. Handles nested objects and lists

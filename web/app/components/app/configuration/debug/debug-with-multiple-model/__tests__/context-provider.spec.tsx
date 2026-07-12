@@ -7,8 +7,12 @@ const ContextConsumer = () => {
   return (
     <div>
       <div>{value.multipleModelConfigs.length}</div>
-      <button onClick={() => value.onMultipleModelConfigsChange(true, value.multipleModelConfigs)}>change-multiple</button>
-      <button onClick={() => value.onDebugWithMultipleModelChange(value.multipleModelConfigs[0]!)}>change-single</button>
+      <button onClick={() => value.onMultipleModelConfigsChange(true, value.multipleModelConfigs)}>
+        change-multiple
+      </button>
+      <button onClick={() => value.onDebugWithMultipleModelChange(value.multipleModelConfigs[0]!)}>
+        change-single
+      </button>
       <div>{String(value.checkCanSend?.())}</div>
     </div>
   )

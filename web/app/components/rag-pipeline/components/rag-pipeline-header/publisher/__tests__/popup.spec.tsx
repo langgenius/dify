@@ -1,28 +1,42 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 import Popup from '../popup'
 
 vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
-  AlertDialog: ({ children, open, onOpenChange }: { children: React.ReactNode, open?: boolean, onOpenChange?: (open: boolean) => void }) => (
-    open
-      ? (
-          <div role="alertdialog">
-            {children}
-            <button data-testid="alert-dialog-close" onClick={() => onOpenChange?.(false)}>
-              Close
-            </button>
-          </div>
-        )
-      : null
-  ),
+  AlertDialog: ({
+    children,
+    open,
+    onOpenChange,
+  }: {
+    children: React.ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+  }) =>
+    open ? (
+      <div role="alertdialog">
+        {children}
+        <button data-testid="alert-dialog-close" onClick={() => onOpenChange?.(false)}>
+          Close
+        </button>
+      </div>
+    ) : null,
   AlertDialogActions: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children?: React.ReactNode }) => <button>{children}</button>,
-  AlertDialogConfirmButton: ({ children, onClick, disabled }: {
+  AlertDialogCancelButton: ({ children }: { children?: React.ReactNode }) => (
+    <button>{children}</button>
+  ),
+  AlertDialogConfirmButton: ({
+    children,
+    onClick,
+    disabled,
+  }: {
     children?: React.ReactNode
     onClick?: () => void
     disabled?: boolean
-  }) => <button onClick={onClick} disabled={disabled}>{children}</button>,
+  }) => (
+    <button onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  ),
   AlertDialogContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   AlertDialogDescription: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   AlertDialogTitle: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
@@ -39,10 +53,18 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'success', message, ...options }),
+    ),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'error', message, ...options }),
+    ),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'warning', message, ...options }),
+    ),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'info', message, ...options }),
+    ),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -61,6 +83,11 @@ let mockPublishedAt: string | undefined = '2024-01-01T00:00:00Z'
 let mockDraftUpdatedAt: string | undefined = '2024-06-01T00:00:00Z'
 let mockPipelineId: string | undefined = 'pipeline-123'
 let mockIsAllowPublishAsCustom = true
+let mockDatasetPermissionKeys = ['dataset.acl.use']
+let mockDatasetMaintainer: string | undefined
+let mockCurrentUserId = 'user-1'
+let mockIsLoadingWorkspacePermissionKeys = false
+let mockWorkspacePermissionKeys: string[] = []
 const mockUseBoolean = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
@@ -68,7 +95,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => (
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
     <a href={href}>{children}</a>
   ),
 }))
@@ -127,11 +154,14 @@ vi.mock('@/app/components/base/icons/src/public/common', () => ({
 }))
 
 vi.mock('@/app/components/base/premium-badge', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <span data-testid="premium-badge">{children}</span>,
+  default: ({ children }: { children: React.ReactNode }) => (
+    <span data-testid="premium-badge">{children}</span>
+  ),
 }))
 
 vi.mock('@/config', () => ({
   IS_CLOUD_EDITION: true,
+  MARKETPLACE_API_PREFIX: '/marketplace/api',
 }))
 
 vi.mock('@/app/components/workflow/hooks', () => ({
@@ -141,16 +171,87 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: () => mockMutateDatasetRes,
+  useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      dataset: {
+        permission_keys: mockDatasetPermissionKeys,
+        maintainer: mockDatasetMaintainer,
+      },
+      mutateDatasetRes: mockMutateDatasetRes,
+    }),
 }))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => 'https://docs.dify.ai',
 }))
 
 vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: <T,>(selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T) =>
-    selector({ setShowPricingModal: mockSetShowPricingModal }),
+  useModalContextSelector: <T,>(
+    selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T,
+  ) => selector({ setShowPricingModal: mockSetShowPricingModal }),
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -194,12 +295,23 @@ vi.mock('@langgenius/dify-ui/cn', () => ({
 }))
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
-  default: ({ onConfirm, onCancel }: { onConfirm: (name: string, icon: unknown, desc: string) => void, onCancel: () => void }) => (
+  default: ({
+    onConfirm,
+    onCancel,
+  }: {
+    onConfirm: (name: string, icon: unknown, desc: string) => void
+    onCancel: () => void
+  }) => (
     <div data-testid="publish-as-modal">
-      <button data-testid="publish-as-confirm" onClick={() => onConfirm('My Pipeline', { icon_type: 'emoji' }, 'desc')}>
+      <button
+        data-testid="publish-as-confirm"
+        onClick={() => onConfirm('My Pipeline', { icon_type: 'emoji' }, 'desc')}
+      >
         Confirm
       </button>
-      <button data-testid="publish-as-cancel" onClick={onCancel}>Cancel</button>
+      <button data-testid="publish-as-cancel" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   ),
 }))
@@ -218,10 +330,18 @@ describe('Popup', () => {
     mockDraftUpdatedAt = '2024-06-01T00:00:00Z'
     mockPipelineId = 'pipeline-123'
     mockIsAllowPublishAsCustom = true
-    mockUseBoolean.mockImplementation((initial: boolean) => [initial, {
-      setFalse: vi.fn(),
-      setTrue: vi.fn(),
-    }])
+    mockDatasetPermissionKeys = ['dataset.acl.use']
+    mockDatasetMaintainer = undefined
+    mockCurrentUserId = 'user-1'
+    mockIsLoadingWorkspacePermissionKeys = false
+    mockWorkspacePermissionKeys = []
+    mockUseBoolean.mockImplementation((initial: boolean) => [
+      initial,
+      {
+        setFalse: vi.fn(),
+        setTrue: vi.fn(),
+      },
+    ])
   })
 
   afterEach(() => {
@@ -306,6 +426,14 @@ describe('Popup', () => {
       expect(btn).toBeDisabled()
     })
 
+    it('should disable add documents button when dataset cannot add documents', () => {
+      mockDatasetPermissionKeys = ['dataset.acl.edit']
+      render(<Popup />)
+
+      const btn = screen.getByText('pipeline.common.goToAddDocuments').closest('button')
+      expect(btn).toBeDisabled()
+    })
+
     it('should disable publish-as button when not published', () => {
       mockPublishedAt = undefined
       render(<Popup />)
@@ -349,9 +477,18 @@ describe('Popup', () => {
       const hideConfirm = vi.fn()
       mockUseBoolean
         .mockImplementationOnce(() => [true, { setFalse: hideConfirm, setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
+        .mockImplementationOnce((initial: boolean) => [
+          initial,
+          { setFalse: vi.fn(), setTrue: vi.fn() },
+        ])
+        .mockImplementationOnce((initial: boolean) => [
+          initial,
+          { setFalse: vi.fn(), setTrue: vi.fn() },
+        ])
+        .mockImplementationOnce((initial: boolean) => [
+          initial,
+          { setFalse: vi.fn(), setTrue: vi.fn() },
+        ])
 
       render(<Popup />)
 

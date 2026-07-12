@@ -27,11 +27,9 @@ let capturedChatProps: {
   allToolIcons: Record<string, string | undefined>
 } | null = null
 
-let eventSubscriptionCallback: ((v: { type: string, payload?: Record<string, unknown> }) => void) | null = null
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockUseAppContext(),
-}))
+let eventSubscriptionCallback:
+  | ((v: { type: string; payload?: Record<string, unknown> }) => void)
+  | null = null
 
 vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
@@ -47,7 +45,8 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 
 vi.mock('../../hooks', () => ({
   useConfigFromDebugContext: () => mockUseConfigFromDebugContext(),
-  useFormattingChangedSubscription: (chatList: ChatItemType[]) => mockUseFormattingChangedSubscription(chatList),
+  useFormattingChangedSubscription: (chatList: ChatItemType[]) =>
+    mockUseFormattingChangedSubscription(chatList),
 }))
 
 vi.mock('@/app/components/base/chat/chat/hooks', () => ({
@@ -65,7 +64,7 @@ vi.mock('@/service/debug', () => ({
 }))
 
 vi.mock('@/app/components/base/chat/utils', () => ({
-  getLastAnswer: (chatList: ChatItemType[]) => chatList.find(item => item.isAnswer),
+  getLastAnswer: (chatList: ChatItemType[]) => chatList.find((item) => item.isAnswer),
 }))
 
 vi.mock('@/utils', () => ({
@@ -81,7 +80,19 @@ vi.mock('@/app/components/base/chat/chat', () => ({
         <span data-testid="is-responding">{props?.isResponding ? 'yes' : 'no'}</span>
         <button
           data-testid="send-button"
-          onClick={() => props?.onSend?.('test message', [{ id: 'file-1', name: 'test.txt', size: 100, type: 'text/plain', progress: 100, transferMethod: TransferMethod.local_file, supportFileType: 'document' }])}
+          onClick={() =>
+            props?.onSend?.('test message', [
+              {
+                id: 'file-1',
+                name: 'test.txt',
+                size: 100,
+                type: 'text/plain',
+                progress: 100,
+                transferMethod: TransferMethod.local_file,
+                supportFileType: 'document',
+              },
+            ])
+          }
         >
           Send
         </button>
@@ -94,7 +105,9 @@ vi.mock('@langgenius/dify-ui/avatar', () => ({
   Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
 }))
 
-const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): ModelAndParameter => ({
+const createModelAndParameter = (
+  overrides: Partial<ModelAndParameter> = {},
+): ModelAndParameter => ({
   id: 'model-1',
   model: 'gpt-3.5-turbo',
   provider: 'openai',
@@ -115,6 +128,7 @@ const createDefaultMocks = () => {
     appId: 'app-123',
     inputs: { key: 'value' },
     collectionList: [],
+    canTestAndRun: true,
   })
 
   mockUseProviderContext.mockReturnValue({
@@ -163,7 +177,9 @@ const createDefaultMocks = () => {
 
   mockUseEventEmitterContextContext.mockReturnValue({
     eventEmitter: {
-      useSubscription: (callback: (v: { type: string, payload?: Record<string, unknown> }) => void) => {
+      useSubscription: (
+        callback: (v: { type: string; payload?: Record<string, unknown> }) => void,
+      ) => {
         eventSubscriptionCallback = callback
       },
     },
@@ -247,22 +263,24 @@ describe('ChatItem', () => {
     })
 
     it('should use empty opening statement when disabled', () => {
-      mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-        const state = {
-          features: {
-            moreLikeThis: { enabled: false },
-            opening: { enabled: false, opening_statement: 'Should not appear' },
-            moderation: { enabled: false },
-            speech2text: { enabled: false },
-            text2speech: { enabled: false },
-            file: { enabled: false },
-            suggested: { enabled: false },
-            citation: { enabled: false },
-            annotationReply: { enabled: false },
-          },
-        }
-        return selector(state)
-      })
+      mockUseFeatures.mockImplementation(
+        (selector: (state: Record<string, unknown>) => unknown) => {
+          const state = {
+            features: {
+              moreLikeThis: { enabled: false },
+              opening: { enabled: false, opening_statement: 'Should not appear' },
+              moderation: { enabled: false },
+              speech2text: { enabled: false },
+              text2speech: { enabled: false },
+              file: { enabled: false },
+              suggested: { enabled: false },
+              citation: { enabled: false },
+              annotationReply: { enabled: false },
+            },
+          }
+          return selector(state)
+        },
+      )
 
       renderComponent()
 
@@ -287,6 +305,7 @@ describe('ChatItem', () => {
         appId: 'app-123',
         inputs: {},
         collectionList: [],
+        canTestAndRun: true,
       })
 
       renderComponent()
@@ -522,6 +541,7 @@ describe('ChatItem', () => {
           { id: 'collection1', icon: 'icon1' },
           { id: 'collection2', icon: 'icon2' },
         ],
+        canTestAndRun: true,
       })
 
       renderComponent()
@@ -537,14 +557,13 @@ describe('ChatItem', () => {
         modelConfig: {
           configs: { prompt_variables: [] },
           agentConfig: {
-            tools: [
-              { tool_name: 'tool1', provider_id: 'nonexistent' },
-            ],
+            tools: [{ tool_name: 'tool1', provider_id: 'nonexistent' }],
           },
         },
         appId: 'app-123',
         inputs: {},
         collectionList: [],
+        canTestAndRun: true,
       })
 
       renderComponent()
@@ -563,6 +582,7 @@ describe('ChatItem', () => {
         appId: 'app-123',
         inputs: {},
         collectionList: [],
+        canTestAndRun: true,
       })
 
       renderComponent()
@@ -631,6 +651,7 @@ describe('ChatItem', () => {
         appId: 'app-123',
         inputs: {},
         collectionList: [],
+        canTestAndRun: true,
       })
 
       // This may throw since the code does agentConfig.tools?.forEach

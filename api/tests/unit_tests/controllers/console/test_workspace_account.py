@@ -1,6 +1,6 @@
 import inspect
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -102,10 +102,10 @@ class TestChangeEmailSend:
     @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
     def test_should_normalize_new_email_phase(
         self,
-        mock_extract_ip,
-        mock_is_ip_limit,
-        mock_send_email,
-        mock_get_change_data,
+        mock_extract_ip: MagicMock,
+        mock_is_ip_limit: MagicMock,
+        mock_send_email: MagicMock,
+        mock_get_change_data: MagicMock,
         app: Flask,
     ):
         mock_account = _build_account("current@example.com", "acc1")
@@ -143,10 +143,10 @@ class TestChangeEmailSend:
     @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
     def test_should_reject_new_email_phase_when_token_phase_is_not_old_verified(
         self,
-        mock_extract_ip,
-        mock_is_ip_limit,
-        mock_send_email,
-        mock_get_change_data,
+        mock_extract_ip: MagicMock,
+        mock_is_ip_limit: MagicMock,
+        mock_send_email: MagicMock,
+        mock_get_change_data: MagicMock,
         app: Flask,
     ):
         """GHSA-4q3w-q5mc-45rq: a phase-1 token must not unlock the new-email send step."""
@@ -178,10 +178,10 @@ class TestChangeEmailSend:
     @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
     def test_should_reject_new_email_phase_when_token_account_id_does_not_match_current_user(
         self,
-        mock_extract_ip,
-        mock_is_ip_limit,
-        mock_send_email,
-        mock_get_change_data,
+        mock_extract_ip: MagicMock,
+        mock_is_ip_limit: MagicMock,
+        mock_send_email: MagicMock,
+        mock_get_change_data: MagicMock,
         app: Flask,
     ):
         from controllers.console.auth.error import InvalidTokenError
@@ -394,12 +394,12 @@ class TestChangeEmailReset:
     @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
     def test_should_normalize_new_email_before_update(
         self,
-        mock_is_freeze,
-        mock_check_unique,
-        mock_get_data,
-        mock_revoke_token,
-        mock_update_account,
-        mock_send_notify,
+        mock_is_freeze: MagicMock,
+        mock_check_unique: MagicMock,
+        mock_get_data: MagicMock,
+        mock_revoke_token: MagicMock,
+        mock_update_account: MagicMock,
+        mock_send_notify: MagicMock,
         app: Flask,
     ):
         current_user = _build_account("old@example.com", "acc3")
@@ -424,9 +424,9 @@ class TestChangeEmailReset:
             method(api, current_user)
 
             mock_is_freeze.assert_called_once_with("new@example.com")
-            mock_check_unique.assert_called_once_with("new@example.com")
+            mock_check_unique.assert_called_once_with("new@example.com", session=ANY)
             mock_revoke_token.assert_called_once_with("token-123")
-            mock_update_account.assert_called_once_with(current_user, email="new@example.com")
+            mock_update_account.assert_called_once_with(current_user, email="new@example.com", session=ANY)
             mock_send_notify.assert_called_once_with(email="new@example.com")
 
     @patch("controllers.console.workspace.account.AccountService.send_change_email_completed_notify_email")
@@ -437,12 +437,12 @@ class TestChangeEmailReset:
     @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
     def test_should_reject_reset_when_token_phase_is_not_new_verified(
         self,
-        mock_is_freeze,
-        mock_check_unique,
-        mock_get_data,
-        mock_revoke_token,
-        mock_update_account,
-        mock_send_notify,
+        mock_is_freeze: MagicMock,
+        mock_check_unique: MagicMock,
+        mock_get_data: MagicMock,
+        mock_revoke_token: MagicMock,
+        mock_update_account: MagicMock,
+        mock_send_notify: MagicMock,
         app: Flask,
     ):
         """GHSA-4q3w-q5mc-45rq PoC: phase-1 token must not be usable against /reset."""
@@ -480,12 +480,12 @@ class TestChangeEmailReset:
     @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
     def test_should_reject_reset_when_token_email_differs_from_payload_new_email(
         self,
-        mock_is_freeze,
-        mock_check_unique,
-        mock_get_data,
-        mock_revoke_token,
-        mock_update_account,
-        mock_send_notify,
+        mock_is_freeze: MagicMock,
+        mock_check_unique: MagicMock,
+        mock_get_data: MagicMock,
+        mock_revoke_token: MagicMock,
+        mock_update_account: MagicMock,
+        mock_send_notify: MagicMock,
         app: Flask,
     ):
         """A verified token for address A must not be replayed to change to address B."""
@@ -523,12 +523,12 @@ class TestChangeEmailReset:
     @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
     def test_should_reject_reset_when_token_account_id_does_not_match_current_user(
         self,
-        mock_is_freeze,
-        mock_check_unique,
-        mock_get_data,
-        mock_revoke_token,
-        mock_update_account,
-        mock_send_notify,
+        mock_is_freeze: MagicMock,
+        mock_check_unique: MagicMock,
+        mock_get_data: MagicMock,
+        mock_revoke_token: MagicMock,
+        mock_update_account: MagicMock,
+        mock_send_notify: MagicMock,
         app: Flask,
     ):
         from controllers.console.auth.error import InvalidTokenError
@@ -575,9 +575,9 @@ class TestAccountServiceSendChangeEmailEmail:
     @patch("services.account_service.AccountService.generate_change_email_token")
     def test_should_bind_account_id_and_target_email_into_generated_token(
         self,
-        mock_generate_token,
-        mock_rate_limiter,
-        mock_mail_task,
+        mock_generate_token: MagicMock,
+        mock_rate_limiter: MagicMock,
+        mock_mail_task: MagicMock,
     ):
         mock_rate_limiter.is_rate_limited.return_value = False
         mock_generate_token.return_value = "the-token"
@@ -665,7 +665,7 @@ class TestAccountDeletionFeedback:
 class TestCheckEmailUnique:
     @patch("controllers.console.workspace.account.AccountService.check_email_unique")
     @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
-    def test_should_normalize_email(self, mock_is_freeze, mock_check_unique, app: Flask):
+    def test_should_normalize_email(self, mock_is_freeze: MagicMock, mock_check_unique: MagicMock, app: Flask):
         mock_is_freeze.return_value = False
         mock_check_unique.return_value = True
 
@@ -680,7 +680,7 @@ class TestCheckEmailUnique:
 
         assert response == {"result": "success"}
         mock_is_freeze.assert_called_once_with("case@test.com")
-        mock_check_unique.assert_called_once_with("case@test.com")
+        mock_check_unique.assert_called_once_with("case@test.com", session=ANY)
 
 
 def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup():
@@ -692,12 +692,7 @@ def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup():
     second.scalar_one_or_none.return_value = expected_account
     mock_session.execute.side_effect = [first, second]
 
-    mock_factory = MagicMock()
-    mock_factory.create_session.return_value.__enter__ = MagicMock(return_value=mock_session)
-    mock_factory.create_session.return_value.__exit__ = MagicMock(return_value=False)
-
-    with patch("services.account_service.session_factory", mock_factory):
-        result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com")
+    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=mock_session)
 
     assert result is expected_account
     assert mock_session.execute.call_count == 2

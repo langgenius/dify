@@ -51,17 +51,20 @@ from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.trigger_manager import TriggerManager
-from core.workflow.human_input_forms import load_form_tokens_by_form_id
+from core.workflow.human_input_forms import (
+    load_form_dispositions_by_form_id,
+)
 from core.workflow.human_input_policy import (
+    FormDisposition,
     HumanInputSurface,
     enrich_human_input_pause_reasons,
     resolve_human_input_pause_reason_inputs,
 )
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowExecutionStatus,
@@ -340,13 +343,14 @@ class WorkflowResponseConverter:
         human_input_form_ids = [reason.form_id for reason in resolved_reasons if isinstance(reason, HumanInputRequired)]
         expiration_times_by_form_id: dict[str, datetime] = {}
         display_in_ui_by_form_id: dict[str, bool] = {}
-        form_token_by_form_id: dict[str, str] = {}
+        dispositions_by_form_id: dict[str, FormDisposition] = {}
         if human_input_form_ids:
             stmt = select(
                 HumanInputForm.id,
                 HumanInputForm.expiration_time,
                 HumanInputForm.form_definition,
             ).where(HumanInputForm.id.in_(human_input_form_ids))
+            hitl_surface = _INVOKE_FROM_TO_HITL_SURFACE.get(self._application_generate_entity.invoke_from)
             with Session(bind=db.engine) as session:
                 for form_id, expiration_time, form_definition in session.execute(stmt):
                     expiration_times_by_form_id[str(form_id)] = expiration_time
@@ -355,17 +359,17 @@ class WorkflowResponseConverter:
                     except (TypeError, json.JSONDecodeError):
                         definition_payload = {}
                     display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
-                form_token_by_form_id = load_form_tokens_by_form_id(
+                dispositions_by_form_id = load_form_dispositions_by_form_id(
                     human_input_form_ids,
                     session=session,
-                    surface=_INVOKE_FROM_TO_HITL_SURFACE.get(self._application_generate_entity.invoke_from),
+                    surface=hitl_surface,
                 )
 
         # Reconnect paths must preserve the same pause-reason contract as live streams;
         # otherwise clients see schema drift after resume.
         pause_reasons = enrich_human_input_pause_reasons(
             pause_reasons,
-            form_tokens_by_form_id=form_token_by_form_id,
+            dispositions_by_form_id=dispositions_by_form_id,
             expiration_times_by_form_id={
                 form_id: int(expiration_time.timestamp())
                 for form_id, expiration_time in expiration_times_by_form_id.items()
@@ -379,6 +383,7 @@ class WorkflowResponseConverter:
                 expiration_time = expiration_times_by_form_id.get(reason.form_id)
                 if expiration_time is None:
                     raise ValueError(f"HumanInputForm not found for pause reason, form_id={reason.form_id}")
+                disposition = dispositions_by_form_id.get(reason.form_id)
                 responses.append(
                     HumanInputRequiredResponse(
                         task_id=task_id,
@@ -391,7 +396,8 @@ class WorkflowResponseConverter:
                             inputs=reason.inputs,
                             actions=reason.actions,
                             display_in_ui=display_in_ui_by_form_id.get(reason.form_id, False),
-                            form_token=form_token_by_form_id.get(reason.form_id),
+                            form_token=disposition.form_token if disposition else None,
+                            approval_channels=list(disposition.approval_channels) if disposition else [],
                             resolved_default_values=reason.resolved_default_values,
                             expiration_time=int(expiration_time.timestamp()),
                         ),
@@ -882,7 +888,7 @@ class WorkflowResponseConverter:
         return files
 
     @classmethod
-    def _get_file_var_from_value(cls, value: Union[dict, list]) -> Mapping[str, Any] | None:
+    def _get_file_var_from_value(cls, value: object) -> Mapping[str, Any] | None:
         """
         Get file var from value
         :param value: variable value
@@ -891,10 +897,11 @@ class WorkflowResponseConverter:
         if not value:
             return None
 
-        if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-            return value
-        elif isinstance(value, File):
-            return value.to_dict()
+        match value:
+            case dict() if value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                return value
+            case File():
+                return value.to_dict()
 
         return None
 

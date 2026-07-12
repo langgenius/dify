@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import RunMode from '../run-mode'
 
 const mockHandleWorkflowStartRunInWorkflow = vi.fn()
@@ -8,7 +7,7 @@ const mockHandleStopRun = vi.fn()
 const mockSetIsPreparingDataSource = vi.fn()
 const mockSetShowDebugAndPreviewPanel = vi.fn()
 
-let mockWorkflowRunningData: { task_id: string, result: { status: string } } | undefined
+let mockWorkflowRunningData: { task_id: string; result: { status: string } } | undefined
 let mockIsPreparingDataSource = false
 vi.mock('@/app/components/workflow/hooks', () => ({
   useWorkflowRun: () => ({
@@ -35,6 +34,13 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: (selector: (state: { accessControl: { canRun: boolean } }) => unknown) =>
+    selector({
+      accessControl: { canRun: true },
+    }),
+}))
+
 vi.mock('@/app/components/workflow/types', () => ({
   WorkflowRunningStatus: { Running: 'running' },
 }))
@@ -50,7 +56,7 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: unknown[]) => args.filter(a => typeof a === 'string').join(' '),
+  cn: (...args: unknown[]) => args.filter((a) => typeof a === 'string').join(' '),
 }))
 
 vi.mock('@remixicon/react', () => ({

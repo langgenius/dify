@@ -1,5 +1,4 @@
 'use client'
-import type { PropsWithChildren } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 
 type IChildrenProps = {
@@ -17,43 +16,48 @@ type IHeaderingProps = {
   name: string
 }
 
-export const Heading = function H2({
-  url,
-  method,
-  title,
-  name,
-}: IHeaderingProps) {
+export const Heading = function H2({ url, method, title, name }: IHeaderingProps) {
   let style = ''
   switch (method) {
     case 'PUT':
-      style = 'ring-amber-300 bg-amber-400/10 text-amber-500 dark:ring-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400'
+      style =
+        'ring-amber-300 bg-amber-400/10 text-amber-500 dark:ring-amber-400/30 dark:bg-amber-400/10 dark:text-amber-400'
       break
     case 'DELETE':
-      style = 'ring-rose-200 bg-rose-50 text-red-500 dark:ring-rose-500/20 dark:bg-rose-400/10 dark:text-rose-400'
+      style =
+        'ring-rose-200 bg-rose-50 text-red-500 dark:ring-rose-500/20 dark:bg-rose-400/10 dark:text-rose-400'
       break
     case 'POST':
-      style = 'ring-sky-300 bg-sky-400/10 text-sky-500 dark:ring-sky-400/30 dark:bg-sky-400/10 dark:text-sky-400'
+      style =
+        'ring-sky-300 bg-sky-400/10 text-sky-500 dark:ring-sky-400/30 dark:bg-sky-400/10 dark:text-sky-400'
       break
     case 'PATCH':
-      style = 'ring-violet-300 bg-violet-400/10 text-violet-500 dark:ring-violet-400/30 dark:bg-violet-400/10 dark:text-violet-400'
+      style =
+        'ring-violet-300 bg-violet-400/10 text-violet-500 dark:ring-violet-400/30 dark:bg-violet-400/10 dark:text-violet-400'
       break
     default:
-      style = 'ring-emerald-300 dark:ring-emerald-400/30 bg-emerald-400/10 text-emerald-500 dark:text-emerald-400'
+      style =
+        'ring-emerald-300 dark:ring-emerald-400/30 bg-emerald-400/10 text-emerald-500 dark:text-emerald-400'
       break
   }
   return (
     <>
       <span id={name?.replace(/^#/, '')} className="relative -top-28" />
       <div className="flex items-center gap-x-3">
-        <span className={`rounded-lg px-1.5 font-mono text-2xs/6 font-semibold ring-1 ring-inset ${style}`}>{method}</span>
+        <span
+          className={`rounded-lg px-1.5 font-mono text-2xs/6 font-semibold ring-1 ring-inset ${style}`}
+        >
+          {method}
+        </span>
         {/* <span className="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span> */}
         <span className="font-mono text-xs text-zinc-400">{url}</span>
       </div>
       <h2 className="mt-2 scroll-mt-32">
-        <a href={name} className="group text-inherit no-underline hover:text-inherit">{title}</a>
+        <a href={name} className="group text-inherit no-underline hover:text-inherit">
+          {title}
+        </a>
       </h2>
     </>
-
   )
 }
 
@@ -70,9 +74,7 @@ type IColProps = IChildrenProps & {
 }
 export function Col({ children, sticky = false }: IColProps) {
   return (
-    <div
-      className={cn('*:first:mt-0 *:last:mb-0', sticky && 'xl:sticky xl:top-24')}
-    >
+    <div className={cn('*:first:mt-0 *:last:mb-0', sticky && 'xl:sticky xl:top-24')}>
       {children}
     </div>
   )
@@ -104,13 +106,9 @@ export function Property({ name, type, children }: IProperty) {
           <code>{name}</code>
         </dd>
         <dt className="sr-only">Type</dt>
-        <dd className="font-mono text-xs text-zinc-400 dark:text-zinc-500">
-          {type}
-        </dd>
+        <dd className="font-mono text-xs text-zinc-400 dark:text-zinc-500">{type}</dd>
         <dt className="sr-only">Description</dt>
-        <dd className="w-full flex-none *:first:mt-0 *:last:mb-0">
-          {children}
-        </dd>
+        <dd className="w-full flex-none *:first:mt-0 *:last:mb-0">{children}</dd>
       </dl>
     </li>
   )
@@ -129,20 +127,10 @@ export function SubProperty({ name, type, children }: ISubProperty) {
           <code>{name}</code>
         </dd>
         <dt className="sr-only">Type</dt>
-        <dd className="font-mono text-xs text-zinc-400 dark:text-zinc-500">
-          {type}
-        </dd>
+        <dd className="font-mono text-xs text-zinc-400 dark:text-zinc-500">{type}</dd>
         <dt className="sr-only">Description</dt>
-        <dd className="w-full flex-none *:first:mt-0 *:last:mb-0">
-          {children}
-        </dd>
+        <dd className="w-full flex-none *:first:mt-0 *:last:mb-0">{children}</dd>
       </dl>
     </li>
-  )
-}
-
-export function PropertyInstruction({ children }: PropsWithChildren<{ }>) {
-  return (
-    <li className="m-0 px-0 py-4 italic first:pt-0">{children}</li>
   )
 }

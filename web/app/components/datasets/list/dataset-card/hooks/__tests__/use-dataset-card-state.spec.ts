@@ -20,6 +20,13 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 const mockCheckUsage = vi.fn()
 const mockDeleteDataset = vi.fn()
 const mockExportPipeline = vi.fn()
+const mockPush = vi.fn()
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}))
 
 vi.mock('@/service/use-dataset-card', () => ({
   useCheckDatasetUsage: () => ({ mutateAsync: mockCheckUsage }),
@@ -31,28 +38,29 @@ vi.mock('@/service/use-pipeline', () => ({
 }))
 
 describe('useDatasetCardState', () => {
-  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-    id: 'dataset-1',
-    name: 'Test Dataset',
-    description: 'Test description',
-    provider: 'vendor',
-    permission: DatasetPermission.allTeamMembers,
-    data_source_type: DataSourceType.FILE,
-    indexing_technique: IndexingType.QUALIFIED,
-    embedding_available: true,
-    app_count: 5,
-    document_count: 10,
-    word_count: 1000,
-    created_at: 1609459200,
-    updated_at: 1609545600,
-    tags: [{ id: 'tag-1', name: 'Tag 1', type: 'knowledge', binding_count: 0 }],
-    embedding_model: 'text-embedding-ada-002',
-    embedding_model_provider: 'openai',
-    created_by: 'user-1',
-    doc_form: ChunkingMode.text,
-    pipeline_id: 'pipeline-1',
-    ...overrides,
-  } as DataSet)
+  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+    ({
+      id: 'dataset-1',
+      name: 'Test Dataset',
+      description: 'Test description',
+      provider: 'vendor',
+      permission: DatasetPermission.allTeamMembers,
+      data_source_type: DataSourceType.FILE,
+      indexing_technique: IndexingType.QUALIFIED,
+      embedding_available: true,
+      app_count: 5,
+      document_count: 10,
+      word_count: 1000,
+      created_at: 1609459200,
+      updated_at: 1609545600,
+      tags: [{ id: 'tag-1', name: 'Tag 1', type: 'knowledge', binding_count: '' }],
+      embedding_model: 'text-embedding-ada-002',
+      embedding_model_provider: 'openai',
+      created_by: 'user-1',
+      doc_form: ChunkingMode.text,
+      pipeline_id: 'pipeline-1',
+      ...overrides,
+    }) as DataSet
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -68,9 +76,7 @@ describe('useDatasetCardState', () => {
   describe('Initial State', () => {
     it('should have initial modal state closed', () => {
       const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       expect(result.current.modalState.showRenameModal).toBe(false)
       expect(result.current.modalState.showConfirmDelete).toBe(false)
@@ -79,9 +85,7 @@ describe('useDatasetCardState', () => {
 
     it('should not be exporting initially', () => {
       const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       expect(result.current.exporting).toBe(false)
     })
@@ -90,9 +94,7 @@ describe('useDatasetCardState', () => {
   describe('Modal Handlers', () => {
     it('should open rename modal when openRenameModal is called', () => {
       const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       act(() => {
         result.current.openRenameModal()
@@ -103,9 +105,7 @@ describe('useDatasetCardState', () => {
 
     it('should close rename modal when closeRenameModal is called', () => {
       const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       act(() => {
         result.current.openRenameModal()
@@ -120,9 +120,7 @@ describe('useDatasetCardState', () => {
 
     it('should close confirm delete modal when closeConfirmDelete is called', async () => {
       const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       // First trigger show confirm delete
       act(() => {
@@ -145,9 +143,7 @@ describe('useDatasetCardState', () => {
     it('should check usage and show confirm modal with not-in-use message', async () => {
       mockCheckUsage.mockResolvedValue({ is_using: false })
       const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       await act(async () => {
         await result.current.detectIsUsedByApp()
@@ -161,9 +157,7 @@ describe('useDatasetCardState', () => {
     it('should show in-use message when dataset is used by app', async () => {
       mockCheckUsage.mockResolvedValue({ is_using: true })
       const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       await act(async () => {
         await result.current.detectIsUsedByApp()
@@ -177,9 +171,7 @@ describe('useDatasetCardState', () => {
     it('should delete dataset and call onSuccess', async () => {
       const onSuccess = vi.fn()
       const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess }))
 
       await act(async () => {
         await result.current.onConfirmDelete()
@@ -191,9 +183,7 @@ describe('useDatasetCardState', () => {
 
     it('should close confirm modal after delete', async () => {
       const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       // First open confirm modal
       await act(async () => {
@@ -211,9 +201,7 @@ describe('useDatasetCardState', () => {
   describe('handleExportPipeline', () => {
     it('should not export if pipeline_id is missing', async () => {
       const dataset = createMockDataset({ pipeline_id: undefined })
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       await act(async () => {
         await result.current.handleExportPipeline()
@@ -224,9 +212,7 @@ describe('useDatasetCardState', () => {
 
     it('should export pipeline with correct parameters', async () => {
       const dataset = createMockDataset({ pipeline_id: 'pipeline-1', name: 'Test Pipeline' })
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       await act(async () => {
         await result.current.handleExportPipeline(true)
@@ -242,9 +228,7 @@ describe('useDatasetCardState', () => {
   describe('Edge Cases', () => {
     it('should handle undefined onSuccess', async () => {
       const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset }))
 
       // Should not throw when onSuccess is undefined
       await act(async () => {
@@ -261,9 +245,7 @@ describe('useDatasetCardState', () => {
       mockExportPipeline.mockRejectedValue(new Error('Export failed'))
 
       const dataset = createMockDataset({ pipeline_id: 'pipeline-1' })
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       await act(async () => {
         await result.current.handleExportPipeline()
@@ -280,9 +262,7 @@ describe('useDatasetCardState', () => {
       mockCheckUsage.mockRejectedValue(mockResponse)
 
       const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       await act(async () => {
         await result.current.detectIsUsedByApp()
@@ -296,9 +276,7 @@ describe('useDatasetCardState', () => {
       mockCheckUsage.mockRejectedValue(new Error('Network error'))
 
       const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       await act(async () => {
         await result.current.detectIsUsedByApp()
@@ -312,9 +290,7 @@ describe('useDatasetCardState', () => {
       mockCheckUsage.mockRejectedValue({})
 
       const dataset = createMockDataset()
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       await act(async () => {
         await result.current.detectIsUsedByApp()
@@ -325,9 +301,7 @@ describe('useDatasetCardState', () => {
 
     it('should handle exporting state correctly', async () => {
       const dataset = createMockDataset({ pipeline_id: 'pipeline-1' })
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       // Exporting should initially be false
       expect(result.current.exporting).toBe(false)
@@ -342,9 +316,7 @@ describe('useDatasetCardState', () => {
 
     it('should reset exporting state after export completes', async () => {
       const dataset = createMockDataset({ pipeline_id: 'pipeline-1' })
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       await act(async () => {
         await result.current.handleExportPipeline()
@@ -357,9 +329,7 @@ describe('useDatasetCardState', () => {
       mockExportPipeline.mockRejectedValue(new Error('Export failed'))
 
       const dataset = createMockDataset({ pipeline_id: 'pipeline-1' })
-      const { result } = renderHook(() =>
-        useDatasetCardState({ dataset, onSuccess: vi.fn() }),
-      )
+      const { result } = renderHook(() => useDatasetCardState({ dataset, onSuccess: vi.fn() }))
 
       await act(async () => {
         await result.current.handleExportPipeline()

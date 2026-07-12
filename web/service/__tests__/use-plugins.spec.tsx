@@ -1,11 +1,22 @@
+import type { PluginInstallationItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Permissions, PluginTaskStart } from '@/app/components/plugins/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
-import { PermissionType, PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
+import { FormTypeEnum } from '@/app/components/base/form/types'
 import {
+  AUTO_UPDATE_MODE,
+  AUTO_UPDATE_STRATEGY,
+} from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
+import {
+  PermissionType,
+  PluginCategoryEnum,
+  PluginSource,
+  TaskStatus,
+} from '@/app/components/plugins/types'
+import {
+  normalizeInstalledPluginDetail,
   useInstalledPluginList,
   useMutationPluginAutoUpgradeSettings,
   useMutationPluginPermissionSettings,
@@ -13,12 +24,10 @@ import {
   usePluginTaskList,
 } from '../use-plugins'
 
-const {
-  mockGet,
-  mockPost,
-} = vi.hoisted(() => ({
+const { mockGet, mockPost, mockWorkspacePermissionKeysAtom } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockPost: vi.fn(),
+  mockWorkspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
 }))
 
 vi.mock('@/service/base', () => ({
@@ -34,37 +43,224 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list',
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceOwner: false,
-  }),
+vi.mock('@/context/account-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+vi.mock('@/context/workspace-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+vi.mock('@/context/permission-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+vi.mock('@/context/version-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+vi.mock('@/context/system-features-state', () => ({
+  workspacePermissionKeysAtom: mockWorkspacePermissionKeysAtom,
+}))
+
+vi.mock('jotai', () => ({
+  useAtomValue: (atom: unknown) => {
+    if (atom === mockWorkspacePermissionKeysAtom) return ['plugin.install']
+
+    throw new Error('Unexpected atom')
+  },
 }))
 
 vi.mock('../use-tools', () => ({
   useInvalidateAllBuiltInTools: () => vi.fn(),
 }))
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
     },
-    mutations: {
-      retry: false,
+  })
+
+const createWrapper = (queryClient: QueryClient) => {
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  }
+}
+
+const createPluginInstallation = (): PluginInstallationItemResponse => ({
+  id: 'installation-row-id',
+  created_at: '2026-06-01T00:00:00Z',
+  updated_at: '2026-06-02T00:00:00Z',
+  plugin_id: 'langgenius/full-declaration',
+  plugin_unique_identifier: 'langgenius/full-declaration:1.0.0@test',
+  tenant_id: 'tenant-id',
+  endpoints_setups: 1,
+  endpoints_active: 1,
+  version: '1.0.0',
+  source: PluginSource.marketplace,
+  runtime_type: 'local',
+  checksum: 'checksum',
+  meta: {
+    repo: 'langgenius/full-declaration',
+    version: '1.0.0',
+    package: 'full-declaration.difypkg',
+  },
+  declaration: {
+    version: '1.0.0',
+    author: 'Dify',
+    icon: 'icon.svg',
+    icon_dark: 'icon-dark.svg',
+    name: 'full-declaration',
+    category: PluginCategoryEnum.trigger,
+    label: { en_US: 'Full declaration', zh_Hans: 'Full declaration' },
+    description: { en_US: 'Full declaration plugin', zh_Hans: 'Full declaration plugin' },
+    created_at: '2026-06-01T00:00:00Z',
+    resource: {},
+    plugins: {},
+    verified: true,
+    tags: ['automation'],
+    meta: {
+      version: '1.0.0',
+      minimum_dify_version: '1.4.0',
+    },
+    tool: {
+      identity: {
+        author: 'Dify',
+        name: 'tool-provider',
+        description: { en_US: 'Tool provider' },
+        icon: 'tool.svg',
+        label: { en_US: 'Tool provider' },
+        tags: ['tool'],
+      },
+      credentials_schema: [
+        {
+          name: 'api_key',
+          label: { en_US: 'API key' },
+          type: 'secret-input',
+          required: true,
+          default: 'token',
+        },
+      ],
+    },
+    datasource: {
+      identity: {
+        author: 'Dify',
+        name: 'datasource-provider',
+        description: { en_US: 'Datasource provider' },
+        icon: 'datasource.svg',
+        label: { en_US: 'Datasource provider' },
+        tags: ['datasource'],
+      },
+      credentials_schema: [],
+    },
+    endpoint: {
+      settings: [
+        {
+          name: 'endpoint_secret',
+          label: { en_US: 'Endpoint secret' },
+          type: 'secret-input',
+          required: true,
+          default: '',
+        },
+      ],
+      endpoints: [
+        {
+          path: '/webhook',
+          method: 'POST',
+          hidden: false,
+        },
+      ],
+    },
+    trigger: {
+      events: [
+        {
+          name: 'issue_created',
+          identity: {
+            author: 'Dify',
+            name: 'issue_created',
+            label: { en_US: 'Issue created' },
+            provider: 'github',
+          },
+          description: { en_US: 'Issue created event' },
+          parameters: [
+            {
+              name: 'retry_count',
+              label: { en_US: 'Retry count' },
+              type: 'number',
+              default: 0,
+              required: false,
+              multiple: false,
+            },
+          ],
+          output_schema: {
+            type: 'object',
+          },
+        },
+      ],
+      identity: {
+        author: 'Dify',
+        name: 'github-trigger',
+        label: { en_US: 'GitHub trigger' },
+        description: { en_US: 'GitHub trigger provider' },
+        icon: 'trigger.svg',
+        tags: ['trigger'],
+      },
+      subscription_constructor: {
+        credentials_schema: [],
+        oauth_schema: {
+          client_schema: [],
+          credentials_schema: [],
+        },
+        parameters: [
+          {
+            name: 'max_retries',
+            label: { en_US: 'Max retries' },
+            type: 'number',
+            default: 3,
+            required: false,
+            multiple: false,
+          },
+        ],
+      },
+      subscription_schema: [
+        {
+          name: 'repository',
+          label: { en_US: 'Repository' },
+          type: 'text-input',
+          required: true,
+        },
+      ],
     },
   },
 })
 
-const createWrapper = (queryClient: QueryClient) => {
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
+describe('normalizeInstalledPluginDetail', () => {
+  it('should preserve generated plugin declaration capabilities', () => {
+    const detail = normalizeInstalledPluginDetail(createPluginInstallation())
+
+    expect(detail.name).toBe('full-declaration')
+    expect(detail.installation_id).toBe('installation-row-id')
+    expect(detail.latest_version).toBe('1.0.0')
+    expect(detail.latest_unique_identifier).toBe('langgenius/full-declaration:1.0.0@test')
+    expect(detail.status).toBe('active')
+    expect(detail.declaration.tool?.identity.name).toBe('tool-provider')
+    expect(detail.declaration.tool?.credentials_schema[0]?.name).toBe('api_key')
+    expect(detail.declaration.datasource?.identity.name).toBe('datasource-provider')
+    expect(detail.declaration.endpoint?.endpoints?.[0]).toEqual({
+      path: '/webhook',
+      method: 'POST',
+      hidden: false,
+    })
+    expect(detail.declaration.trigger.identity.name).toBe('github-trigger')
+    expect(detail.declaration.trigger.events[0]?.parameters[0]?.default).toBe(0)
+    expect(detail.declaration.trigger.subscription_constructor.parameters[0]?.type).toBe(
+      FormTypeEnum.textNumber,
     )
-  }
-}
+    expect(detail.declaration.trigger.subscription_schema[0]?.name).toBe('repository')
+  })
+})
 
 describe('use-plugins mutations', () => {
   beforeEach(() => {
@@ -86,9 +282,11 @@ describe('use-plugins mutations', () => {
       upgrade_time_of_day: 3600,
     }
     let resolvePost: (value: unknown) => void = () => {}
-    mockPost.mockReturnValue(new Promise((resolve) => {
-      resolvePost = resolve
-    }))
+    mockPost.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePost = resolve
+      }),
+    )
     queryClient.setQueryData(queryKey, {
       category: PluginCategoryEnum.model,
       auto_upgrade: previousAutoUpgrade,
@@ -133,15 +331,16 @@ describe('use-plugins mutations', () => {
       debug_permission: PermissionType.admin,
     }
     let resolvePost: (value: unknown) => void = () => {}
-    mockPost.mockReturnValue(new Promise((resolve) => {
-      resolvePost = resolve
-    }))
+    mockPost.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePost = resolve
+      }),
+    )
     queryClient.setQueryData(queryKey, previousPermission)
 
-    const { result } = renderHook(
-      () => useMutationPluginPermissionSettings(),
-      { wrapper: createWrapper(queryClient) },
-    )
+    const { result } = renderHook(() => useMutationPluginPermissionSettings(), {
+      wrapper: createWrapper(queryClient),
+    })
 
     act(() => {
       result.current.mutate(nextPermission)
@@ -174,9 +373,11 @@ describe('use-plugins mutations', () => {
       upgrade_time_of_day: 3600,
     }
     let rejectPost: (reason?: unknown) => void = () => {}
-    mockPost.mockReturnValue(new Promise((_resolve, reject) => {
-      rejectPost = reject
-    }))
+    mockPost.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectPost = reject
+      }),
+    )
     queryClient.setQueryData(queryKey, {
       category: PluginCategoryEnum.model,
       auto_upgrade: previousAutoUpgrade,
@@ -218,9 +419,11 @@ describe('use-plugins mutations', () => {
       include_plugins: [],
     }
     let rejectPost: (reason?: unknown) => void = () => {}
-    mockPost.mockReturnValue(new Promise((_resolve, reject) => {
-      rejectPost = reject
-    }))
+    mockPost.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectPost = reject
+      }),
+    )
 
     const { result } = renderHook(
       () => useMutationPluginAutoUpgradeSettings({ category: PluginCategoryEnum.model }),
@@ -256,15 +459,16 @@ describe('use-plugins mutations', () => {
       debug_permission: PermissionType.admin,
     }
     let rejectPost: (reason?: unknown) => void = () => {}
-    mockPost.mockReturnValue(new Promise((_resolve, reject) => {
-      rejectPost = reject
-    }))
+    mockPost.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectPost = reject
+      }),
+    )
     queryClient.setQueryData(queryKey, previousPermission)
 
-    const { result } = renderHook(
-      () => useMutationPluginPermissionSettings(),
-      { wrapper: createWrapper(queryClient) },
-    )
+    const { result } = renderHook(() => useMutationPluginPermissionSettings(), {
+      wrapper: createWrapper(queryClient),
+    })
 
     const mutation = result.current.mutateAsync(nextPermission).catch(() => undefined)
 
@@ -290,10 +494,7 @@ describe('useInstalledPluginList', () => {
     const queryClient = createQueryClient()
     mockGet.mockResolvedValue({ plugins: [], total: 0 })
 
-    renderHook(
-      () => useInstalledPluginList(false, 100),
-      { wrapper: createWrapper(queryClient) },
-    )
+    renderHook(() => useInstalledPluginList(false, 100), { wrapper: createWrapper(queryClient) })
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith('/workspaces/current/plugin/list?page=1&page_size=100')
@@ -304,13 +505,14 @@ describe('useInstalledPluginList', () => {
     const queryClient = createQueryClient()
     mockGet.mockResolvedValue({ plugins: [], has_more: false })
 
-    renderHook(
-      () => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.trigger }),
-      { wrapper: createWrapper(queryClient) },
-    )
+    renderHook(() => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.trigger }), {
+      wrapper: createWrapper(queryClient),
+    })
 
     await waitFor(() => {
-      expect(mockGet).toHaveBeenCalledWith('/workspaces/current/plugin/trigger/list?page=1&page_size=100')
+      expect(mockGet).toHaveBeenCalledWith(
+        '/workspaces/current/plugin/trigger/list?page=1&page_size=100',
+      )
     })
   })
 
@@ -347,15 +549,11 @@ describe('useInstalledPluginList', () => {
     const queryClient = createQueryClient()
     mockGet
       .mockResolvedValueOnce({
-        plugins: [
-          { plugin_id: 'trigger-plugin-1' },
-        ],
+        plugins: [{ plugin_id: 'trigger-plugin-1' }],
         has_more: true,
       })
       .mockResolvedValueOnce({
-        plugins: [
-          { plugin_id: 'trigger-plugin-2' },
-        ],
+        plugins: [{ plugin_id: 'trigger-plugin-2' }],
         has_more: false,
       })
 
@@ -373,7 +571,9 @@ describe('useInstalledPluginList', () => {
     })
 
     await waitFor(() => {
-      expect(mockGet).toHaveBeenCalledWith('/workspaces/current/plugin/trigger/list?page=2&page_size=100')
+      expect(mockGet).toHaveBeenCalledWith(
+        '/workspaces/current/plugin/trigger/list?page=2&page_size=100',
+      )
     })
     await waitFor(() => {
       expect(result.current.isLastPage).toBe(true)
@@ -399,16 +599,12 @@ describe('useInstalledPluginList', () => {
     ]
     mockGet
       .mockResolvedValueOnce({
-        plugins: [
-          { plugin_id: 'tool-plugin-1' },
-        ],
+        plugins: [{ plugin_id: 'tool-plugin-1' }],
         builtin_tools: builtinTools,
         has_more: true,
       })
       .mockResolvedValueOnce({
-        plugins: [
-          { plugin_id: 'tool-plugin-2' },
-        ],
+        plugins: [{ plugin_id: 'tool-plugin-2' }],
         builtin_tools: builtinTools,
         has_more: false,
       })
@@ -471,10 +667,9 @@ describe('usePluginTaskList', () => {
       ],
     }
 
-    const { result } = renderHook(
-      () => usePluginTaskList(PluginCategoryEnum.tool),
-      { wrapper: createWrapper(queryClient) },
-    )
+    const { result } = renderHook(() => usePluginTaskList(PluginCategoryEnum.tool), {
+      wrapper: createWrapper(queryClient),
+    })
 
     act(() => {
       result.current.handleInstallTaskStart({
@@ -530,10 +725,9 @@ describe('usePluginTaskList', () => {
     })
     mockGet.mockResolvedValue({ tasks: [] })
 
-    const { result } = renderHook(
-      () => usePluginTaskList(PluginCategoryEnum.tool),
-      { wrapper: createWrapper(queryClient) },
-    )
+    const { result } = renderHook(() => usePluginTaskList(PluginCategoryEnum.tool), {
+      wrapper: createWrapper(queryClient),
+    })
 
     act(() => {
       result.current.handleInstallTaskStart({
@@ -614,13 +808,14 @@ describe('usePluginTaskList', () => {
       ],
     }
 
-    const { result } = renderHook(
-      () => usePluginTaskList(PluginCategoryEnum.tool),
-      { wrapper: createWrapper(queryClient) },
-    )
+    const { result } = renderHook(() => usePluginTaskList(PluginCategoryEnum.tool), {
+      wrapper: createWrapper(queryClient),
+    })
 
     await waitFor(() => {
-      expect(queryClient.getQueryData(['plugins', 'pluginTaskList'])).toEqual({ tasks: [staleTask] })
+      expect(queryClient.getQueryData(['plugins', 'pluginTaskList'])).toEqual({
+        tasks: [staleTask],
+      })
     })
 
     act(() => {
@@ -659,10 +854,9 @@ describe('usePluginAutoUpgradeSettings', () => {
     const queryClient = createQueryClient()
     mockGet.mockReturnValue(new Promise(() => {}))
 
-    const { result } = renderHook(
-      () => usePluginAutoUpgradeSettings(PluginCategoryEnum.model),
-      { wrapper: createWrapper(queryClient) },
-    )
+    const { result } = renderHook(() => usePluginAutoUpgradeSettings(PluginCategoryEnum.model), {
+      wrapper: createWrapper(queryClient),
+    })
 
     expect(result.current.data).toBeUndefined()
     expect(mockGet).toHaveBeenCalledWith('/workspaces/current/plugin/auto-upgrade/fetch', {
@@ -686,10 +880,9 @@ describe('usePluginAutoUpgradeSettings', () => {
       auto_upgrade: backendAutoUpgrade,
     })
 
-    const { result } = renderHook(
-      () => usePluginAutoUpgradeSettings(PluginCategoryEnum.tool),
-      { wrapper: createWrapper(queryClient) },
-    )
+    const { result } = renderHook(() => usePluginAutoUpgradeSettings(PluginCategoryEnum.tool), {
+      wrapper: createWrapper(queryClient),
+    })
 
     await waitFor(() => {
       expect(result.current.data).toEqual({

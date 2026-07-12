@@ -1,5 +1,8 @@
 import type { FC } from 'react'
-import type { CursorPosition, OnlineUser } from '@/app/components/workflow/collaboration/types/collaboration'
+import type {
+  CursorPosition,
+  OnlineUser,
+} from '@/app/components/workflow/collaboration/types/collaboration'
 import { useViewport } from 'reactflow'
 import { getUserColor } from '../utils/user-color'
 
@@ -9,11 +12,7 @@ type UserCursorsProps = {
   onlineUsers: OnlineUser[]
 }
 
-const UserCursors: FC<UserCursorsProps> = ({
-  cursors,
-  myUserId,
-  onlineUsers,
-}) => {
+const UserCursors: FC<UserCursorsProps> = ({ cursors, myUserId, onlineUsers }) => {
   const viewport = useViewport()
 
   const convertToScreenCoordinates = (cursor: CursorPosition) => {
@@ -26,10 +25,9 @@ const UserCursors: FC<UserCursorsProps> = ({
   return (
     <>
       {Object.entries(cursors || {}).map(([userId, cursor]) => {
-        if (userId === myUserId)
-          return null
+        if (userId === myUserId) return null
 
-        const userInfo = onlineUsers.find(user => user.user_id === userId)
+        const userInfo = onlineUsers.find((user) => user.user_id === userId)
         const userName = userInfo?.username || `User ${userId.slice(-4)}`
         const userColor = getUserColor(userId)
         const screenPos = convertToScreenCoordinates(cursor)

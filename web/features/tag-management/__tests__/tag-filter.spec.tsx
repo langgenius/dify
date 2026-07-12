@@ -1,4 +1,4 @@
-import type { Tag } from '@/contract/console/tags'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TagFilter } from '../components/tag-filter'
@@ -7,15 +7,62 @@ const { mockUseQueryData } = vi.hoisted(() => ({
   mockUseQueryData: { current: [] as Tag[] },
 }))
 
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
+}))
+
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
 }))
 
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
 const mockTags: Tag[] = [
-  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: 3 },
-  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: 5 },
-  { id: 'tag-3', name: 'Database', type: 'knowledge', binding_count: 2 },
-  { id: 'tag-4', name: 'API Design', type: 'app', binding_count: 1 },
+  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
+  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
+  { id: 'tag-3', name: 'Database', type: 'knowledge', binding_count: '' },
+  { id: 'tag-4', name: 'API Design', type: 'app', binding_count: '' },
 ]
 
 const defaultProps = {
@@ -37,6 +84,7 @@ describe('TagFilter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseQueryData.current = mockTags
+    mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage']
   })
 
   describe('Rendering', () => {
@@ -82,6 +130,11 @@ describe('TagFilter', () => {
     it('should hide the leading tag icon when disabled', () => {
       const { container } = render(<TagFilter {...defaultProps} showLeadingIcon={false} />)
       expect(container.querySelector('svg')).not.toBeInTheDocument()
+    })
+
+    it('should apply custom trigger class names', () => {
+      render(<TagFilter {...defaultProps} triggerClassName="min-w-0" />)
+      expect(screen.getByRole('combobox', { name: i18n.placeholder })).toHaveClass('min-w-0')
     })
 
     it('should filter tags by type prop', async () => {
@@ -203,6 +256,18 @@ describe('TagFilter', () => {
       await user.click(screen.getByText(i18n.manageTags))
 
       expect(onOpenTagManagement).toHaveBeenCalledTimes(1)
+    })
+
+    it('should hide tag management action without tag management permission', async () => {
+      const user = userEvent.setup()
+      mockWorkspacePermissionKeys.value = []
+
+      render(<TagFilter {...defaultProps} />)
+
+      await user.click(screen.getByText(i18n.placeholder))
+
+      expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
+      expect(screen.getByRole('option', { name: /Frontend/i })).toBeInTheDocument()
     })
   })
 
