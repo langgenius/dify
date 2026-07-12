@@ -9,7 +9,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -73,7 +73,7 @@ function EditReleaseForm({
 
   return (
     <Form<EditReleaseFormValues> className="flex flex-col gap-4" onFormSubmit={handleSubmit}>
-      <FieldRoot name="name" className="gap-2">
+      <Field name="name" className="gap-2">
         <FieldLabel className="system-xs-medium-uppercase text-text-tertiary">
           {nameLabel}
         </FieldLabel>
@@ -86,8 +86,8 @@ function EditReleaseForm({
           className="h-8"
         />
         <FieldError match="valueMissing">{t($ => $['versions.releaseNameRequired'])}</FieldError>
-      </FieldRoot>
-      <FieldRoot name="description" className="gap-2">
+      </Field>
+      <Field name="description" className="gap-2">
         <FieldLabel className="system-xs-medium-uppercase text-text-tertiary">
           {t($ => $['versions.releaseDescriptionLabel'])}
           <span className="ml-1.5 system-xs-regular text-text-quaternary">{t($ => $['versions.optional'])}</span>
@@ -98,7 +98,7 @@ function EditReleaseForm({
           autoComplete="off"
           className="min-h-24"
         />
-      </FieldRoot>
+      </Field>
       <div className="flex justify-end gap-2 pt-2">
         <Button
           type="button"

@@ -25,11 +25,6 @@ vi.mock('@tanstack/react-query', () => ({
   queryOptions: (options: unknown) => options,
   useSuspenseQuery: () => ({ data: true }),
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
 vi.mock('@/i18n-config', () => ({
   renderI18nObject: (value: Record<string, string>, locale: string) => value[locale] || '',
 }))

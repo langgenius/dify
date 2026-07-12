@@ -12,16 +12,6 @@ import ConfigModal from '../index'
 
 const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 let latestFormProps: Record<string, any> | null = null
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('../form-fields', () => ({
   default: (props: Record<string, any>) => {
     latestFormProps = props

@@ -45,14 +45,14 @@ function fileTreeRowClassName({
   )
 }
 
-export type FileTreeRootProps = useRender.ComponentProps<'section'>
+export type FileTreeProps = useRender.ComponentProps<'section'>
 
-export function FileTreeRoot({
+export function FileTree({
   render,
   className,
   children,
   ...props
-}: FileTreeRootProps) {
+}: FileTreeProps) {
   const defaultProps: useRender.ElementProps<'section'> = {
     className: cn('flex min-w-0 flex-col gap-px p-1', className),
     children: (

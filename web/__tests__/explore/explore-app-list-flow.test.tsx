@@ -21,7 +21,7 @@ type MockAppContext = {
 
 const mockUseAppContext = vi.hoisted(() => vi.fn<() => MockAppContext>())
 
-const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en"}'
+const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en-US"}'
 let mockTabValue = allCategoriesEn
 const mockSetTab = vi.fn()
 let mockExploreData: { categories: string[], allList: App[] } | undefined
@@ -235,8 +235,8 @@ const mockMemberRole = (hasEditPermission: boolean) => {
   } as unknown as ReturnType<typeof useMembers>)
 }
 
-const localeInput = { query: { language: 'en' } }
-const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en']
+const localeInput = { query: { language: 'en-US' } }
+const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en-US']
 const homeContinueWorkAppsInput = {
   query: {
     page: 1,

@@ -3,8 +3,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldDescription, FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Field, FieldDescription, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -69,8 +69,8 @@ export const CheckboxList = ({
   )
 
   return (
-    <FieldRoot name={name} className={cn('flex w-full flex-col gap-1', containerClassName)}>
-      <FieldsetRoot
+    <Field name={name} className={cn('flex w-full flex-col gap-1', containerClassName)}>
+      <Fieldset
         render={(
           <CheckboxGroup
             aria-label={!label && title ? title : undefined}
@@ -191,7 +191,7 @@ export const CheckboxList = ({
                 )}
           </div>
         </div>
-      </FieldsetRoot>
-    </FieldRoot>
+      </Fieldset>
+    </Field>
   )
 }

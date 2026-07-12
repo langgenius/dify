@@ -11,16 +11,6 @@ const mockSetShowPromptLogModal = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSubmitHumanInputFormWorkflow = vi.fn()
 const mockToastWarning = vi.fn()
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({
     appId: 'app-1',
@@ -121,7 +111,7 @@ describe('GenerationItem', () => {
     expect(screen.getByText('markdown:hello world')).toBeInTheDocument()
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'feature.moreLikeThis.title' }))
+      fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }))
     })
 
     await waitFor(() => {
@@ -130,7 +120,7 @@ describe('GenerationItem', () => {
     expect(mockFetchMoreLikeThis).toHaveBeenCalledWith('msg-1', AppSourceType.webApp, undefined)
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'operation.agree' }).at(-1)!)
+      fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)operation\.agree(?=$|:)/ }).at(-1)!)
     })
 
     expect(mockUpdateFeedback).toHaveBeenCalledWith({
@@ -158,7 +148,7 @@ describe('GenerationItem', () => {
     )
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'operation.log' }))
+      fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.log(?=$|:)/ }))
     })
 
     expect(mockFetchTextGenerationMessage).toHaveBeenCalledWith({
@@ -258,7 +248,7 @@ describe('GenerationItem', () => {
     )
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'feature.moreLikeThis.title' }))
+      fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }))
     })
 
     await waitFor(() => {
@@ -316,10 +306,10 @@ describe('GenerationItem', () => {
     )
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'feature.moreLikeThis.title' }))
+      fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }))
     })
 
-    expect(mockToastWarning).toHaveBeenCalledWith('errorMessage.waitForResponse')
+    expect(mockToastWarning).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)errorMessage\.waitForResponse(?=$|:)/))
     expect(mockFetchMoreLikeThis).not.toHaveBeenCalled()
   })
 })

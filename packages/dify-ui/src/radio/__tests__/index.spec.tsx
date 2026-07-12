@@ -1,8 +1,8 @@
 import type { RadioGroupProps } from '../index'
 import * as React from 'react'
 import { render } from 'vitest-browser-react'
-import { FieldItem, FieldLabel, FieldRoot } from '../../field'
-import { FieldsetLegend, FieldsetRoot } from '../../fieldset'
+import { Field, FieldItem, FieldLabel } from '../../field'
+import { Fieldset, FieldsetLegend } from '../../fieldset'
 import { Radio, RadioControl, RadioGroup, RadioItem, RadioSkeleton } from '../index'
 
 const clickElement = (element: HTMLElement | SVGElement) => {
@@ -22,12 +22,12 @@ function TestRadioGroup<Value = string>({
   ...props
 }: TestRadioGroupProps<Value>) {
   return (
-    <FieldRoot name={name}>
-      <FieldsetRoot render={<RadioGroup<Value> {...props} />}>
+    <Field name={name}>
+      <Fieldset render={<RadioGroup<Value> {...props} />}>
         <FieldsetLegend>{label}</FieldsetLegend>
         {children}
-      </FieldsetRoot>
-    </FieldRoot>
+      </Fieldset>
+    </Field>
   )
 }
 

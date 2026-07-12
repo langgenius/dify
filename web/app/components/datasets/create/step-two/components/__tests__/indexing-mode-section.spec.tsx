@@ -35,10 +35,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   ),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
-
 const ns = 'datasetCreation'
 
 const createDefaultModel = (overrides?: Partial<DefaultModel>): DefaultModel => ({

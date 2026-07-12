@@ -1,25 +1,25 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Checkbox } from '../checkbox'
 import { CheckboxGroup } from '../checkbox-group'
-import { FieldItem, FieldLabel, FieldRoot } from '../field'
+import { Field, FieldItem, FieldLabel } from '../field'
 import {
+  Fieldset,
   FieldsetLegend,
-  FieldsetRoot,
 } from './index'
 
 const meta = {
   title: 'Base/Form/Fieldset',
-  component: FieldsetRoot,
+  component: Fieldset,
   parameters: {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Fieldset primitives built on Base UI Fieldset. Use FieldsetRoot and FieldsetLegend when one field is represented by a group of related controls such as checkbox groups, radio groups, or multi-thumb sliders. Fieldset provides group semantics and labeling; pass interactive state such as disabled and value to the actual group primitive.',
+        component: 'Fieldset primitives built on Base UI Fieldset. Use Fieldset and FieldsetLegend when one field is represented by a group of related controls such as checkbox groups, radio groups, or multi-thumb sliders. Fieldset provides group semantics and labeling; pass interactive state such as disabled and value to the actual group primitive.',
       },
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof FieldsetRoot>
+} satisfies Meta<typeof Fieldset>
 
 export default meta
 
@@ -27,8 +27,8 @@ type Story = StoryObj<typeof meta>
 
 export const CheckboxGroupField: Story = {
   render: () => (
-    <FieldRoot name="scopes" className="w-80">
-      <FieldsetRoot render={<CheckboxGroup defaultValue={['read']} />}>
+    <Field name="scopes" className="w-80">
+      <Fieldset render={<CheckboxGroup defaultValue={['read']} />}>
         <FieldsetLegend>Scopes</FieldsetLegend>
         <div className="grid gap-2">
           <FieldItem>
@@ -50,7 +50,7 @@ export const CheckboxGroupField: Story = {
             </FieldLabel>
           </FieldItem>
         </div>
-      </FieldsetRoot>
-    </FieldRoot>
+      </Fieldset>
+    </Field>
   ),
 }

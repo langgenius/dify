@@ -1,15 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import ModelInfo from '../model-info'
 
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
     currentModel: {
@@ -153,7 +144,7 @@ describe('ModelInfo', () => {
       render(<ModelInfo model={defaultModel} />)
       fireEvent.click(screen.getByRole('button'))
 
-      expect(screen.getByText('detail.modelParams')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should render temperature parameter', () => {

@@ -1,5 +1,5 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
-import type { ComboboxRootProps } from '@langgenius/dify-ui/combobox'
+import type { ComboboxProps } from '@langgenius/dify-ui/combobox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { useQuery } from '@tanstack/react-query'
@@ -9,7 +9,7 @@ import XCircleIcon from '@/app/components/base/icons/src/vender/solid/general/XC
 import { consoleQuery } from '@/service/client'
 import { TagSearchContent } from './tag-search-content'
 
-const tagFilterComboboxFilter: NonNullable<ComboboxRootProps<Tag, true>['filter']> = (tag, query) => tag.name.includes(query)
+const tagFilterComboboxFilter: NonNullable<ComboboxProps<Tag, true>['filter']> = (tag, query) => tag.name.includes(query)
 const tagToString = (tag: Tag) => tag.name
 const isSameTag = (item: Tag, value: Tag) => item.id === value.id
 

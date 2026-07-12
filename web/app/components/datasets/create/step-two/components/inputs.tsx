@@ -1,4 +1,4 @@
-import type { NumberFieldInputProps, NumberFieldRootProps, NumberFieldSize } from '@langgenius/dify-ui/number-field'
+import type { NumberFieldInputProps, NumberFieldProps, NumberFieldSize } from '@langgenius/dify-ui/number-field'
 import type { FC, PropsWithChildren, ReactNode } from 'react'
 import type { InputProps } from '@/app/components/base/input'
 import {
@@ -71,7 +71,7 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({ tooltip,
   )
 }
 
-type CompoundNumberInputProps = Omit<NumberFieldRootProps, 'children' | 'className' | 'onValueChange'> & Omit<NumberFieldInputProps, 'children' | 'size' | 'onChange'> & {
+type CompoundNumberInputProps = Omit<NumberFieldProps, 'children' | 'className' | 'onValueChange'> & Omit<NumberFieldInputProps, 'children' | 'size' | 'onChange'> & {
   label: string
   unit?: ReactNode
   size?: NumberFieldSize

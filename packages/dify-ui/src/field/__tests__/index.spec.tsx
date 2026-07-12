@@ -1,15 +1,15 @@
 import { render } from 'vitest-browser-react'
 import { Checkbox } from '../../checkbox'
 import { CheckboxGroup } from '../../checkbox-group'
-import { FieldsetLegend, FieldsetRoot } from '../../fieldset'
+import { Fieldset, FieldsetLegend } from '../../fieldset'
 import { Form } from '../../form'
 import {
+  Field,
   FieldControl,
   FieldDescription,
   FieldError,
   FieldItem,
   FieldLabel,
-  FieldRoot,
 } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
@@ -19,12 +19,12 @@ describe('Field primitives', () => {
     const onFormSubmit = vi.fn()
     const screen = await render(
       <Form aria-label="profile form" onFormSubmit={onFormSubmit}>
-        <FieldRoot name="email">
+        <Field name="email">
           <FieldLabel>Email</FieldLabel>
           <FieldControl type="email" required />
           <FieldDescription>Used for account notifications.</FieldDescription>
           <FieldError match="valueMissing">Email is required.</FieldError>
-        </FieldRoot>
+        </Field>
         <button type="submit">Save</button>
       </Form>,
     )
@@ -55,10 +55,10 @@ describe('Field primitives', () => {
     const onFormSubmit = vi.fn()
     const screen = await render(
       <Form aria-label="settings form" onFormSubmit={onFormSubmit}>
-        <FieldRoot name="apiKey">
+        <Field name="apiKey">
           <FieldLabel>API key</FieldLabel>
           <FieldControl defaultValue="sk-test" required />
-        </FieldRoot>
+        </Field>
         <button type="submit">Save</button>
       </Form>,
     )
@@ -71,8 +71,8 @@ describe('Field primitives', () => {
 
   it('should support external invalid state without requiring FieldControl', async () => {
     const screen = await render(
-      <FieldRoot name="features" invalid>
-        <FieldsetRoot render={<CheckboxGroup value={['search']} />}>
+      <Field name="features" invalid>
+        <Fieldset render={<CheckboxGroup value={['search']} />}>
           <FieldsetLegend>Features</FieldsetLegend>
           <FieldItem>
             <FieldLabel className="flex items-center gap-2">
@@ -81,8 +81,8 @@ describe('Field primitives', () => {
             </FieldLabel>
           </FieldItem>
           <FieldError match>Choose at least one feature.</FieldError>
-        </FieldsetRoot>
-      </FieldRoot>,
+        </Fieldset>
+      </Field>,
     )
 
     await expect.element(screen.getByRole('group', { name: 'Features' })).toBeInTheDocument()
@@ -91,10 +91,10 @@ describe('Field primitives', () => {
 
   it('should expose the read-only state', async () => {
     const screen = await render(
-      <FieldRoot name="token">
+      <Field name="token">
         <FieldLabel>Token</FieldLabel>
         <FieldControl readOnly defaultValue="readonly-token" />
-      </FieldRoot>,
+      </Field>,
     )
 
     await expect.element(screen.getByRole('textbox', { name: 'Token' })).toHaveAttribute('readonly')

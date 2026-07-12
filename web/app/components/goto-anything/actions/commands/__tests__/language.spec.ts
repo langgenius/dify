@@ -2,16 +2,6 @@ import { registerCommands, unregisterCommands } from '../command-bus'
 import { languageCommand } from '../language'
 
 vi.mock('../command-bus')
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    getI18n: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('@/i18n-config/language', () => ({
   languages: [
     { value: 'en-US', name: 'English', supported: true },

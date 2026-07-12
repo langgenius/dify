@@ -1,5 +1,5 @@
 'use client'
-import type { DrawerRootProps } from '@langgenius/dify-ui/drawer'
+import type { DrawerProps } from '@langgenius/dify-ui/drawer'
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -83,7 +83,7 @@ const InfoTooltip = ({ children }: { children: string }) => {
 }
 
 const WorkflowToolDrawerFrame = ({ title, closeLabel, onHide, children }: WorkflowToolDrawerFrameProps) => {
-  const handleOpenChange = React.useCallback<NonNullable<DrawerRootProps['onOpenChange']>>((open) => {
+  const handleOpenChange = React.useCallback<NonNullable<DrawerProps['onOpenChange']>>((open) => {
     if (!open)
       onHide()
   }, [onHide])

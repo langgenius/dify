@@ -3,7 +3,7 @@ import type { AgentV2NodeType } from '../types'
 import type { AgentOutputTypeOptionValue } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useBoolean } from 'ahooks'
 import { $insertNodes } from 'lexical'
@@ -101,7 +101,7 @@ export function AgentTaskField({
   }, {})
 
   return (
-    <FieldRoot name="agent_task" className="gap-1 px-4 py-2">
+    <Field name="agent_task" className="gap-1 px-4 py-2">
       <div className="flex h-6 items-center gap-1">
         <FieldLabel className="min-w-0 py-1 system-sm-semibold-uppercase! text-text-secondary">
           {t($ => $[`${i18nPrefix}.task.label`], { ns: 'workflow' })}
@@ -156,6 +156,6 @@ export function AgentTaskField({
           </PromptEditor>
         </div>
       </div>
-    </FieldRoot>
+    </Field>
   )
 }

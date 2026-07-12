@@ -1,5 +1,5 @@
 'use client'
-import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { ParentMode, SimpleDocumentDetail } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -119,7 +119,7 @@ export function DocumentPicker({
   })
   const documentsList = data?.data ?? []
 
-  const handleInputValueChange = (inputValue: string, details: ComboboxRootChangeEventDetails) => {
+  const handleInputValueChange = (inputValue: string, details: ComboboxChangeEventDetails) => {
     if (details.reason !== 'item-press')
       setSearchValue(inputValue)
   }

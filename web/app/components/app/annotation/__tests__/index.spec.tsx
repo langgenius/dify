@@ -21,6 +21,10 @@ import { AppModeEnum } from '@/types/app'
 import Annotation from '../index'
 import { AnnotationEnableStatus, JobStatus } from '../type'
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
 vi.mock('ahooks', () => ({
   useDebounce: (value: any) => value,
 }))
@@ -39,10 +43,6 @@ vi.mock('@/service/annotation', () => ({
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
 vi.mock('../filter', () => ({

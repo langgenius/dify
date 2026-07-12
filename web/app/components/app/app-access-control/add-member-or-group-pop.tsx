@@ -1,5 +1,5 @@
 'use client'
-import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { AccessControlAccount, AccessControlGroup, Subject, SubjectAccount, SubjectGroup } from '@/models/access-control'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
@@ -71,7 +71,7 @@ export default function AddMemberOrGroupDialog() {
     setOpen(nextOpen)
   }
 
-  const handleInputValueChange = (inputValue: string, details: ComboboxRootChangeEventDetails) => {
+  const handleInputValueChange = (inputValue: string, details: ComboboxChangeEventDetails) => {
     if (details.reason !== 'item-press')
       setKeyword(inputValue)
   }

@@ -4,10 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthType, CollectionType } from '../../types'
 import ProviderDetail from '../detail'
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/i18n-config/language', () => ({
   getLanguage: () => 'en_US',
 }))

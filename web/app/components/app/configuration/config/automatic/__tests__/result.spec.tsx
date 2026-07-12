@@ -8,16 +8,6 @@ const mockPromptRes = vi.fn()
 const mockPromptResInWorkflow = vi.fn()
 const mockSetCurrentVersionIndex = vi.fn()
 const mockOnApply = vi.fn()
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('copy-to-clipboard', () => ({
   default: (...args: unknown[]) => mockCopy(...args),
 }))
@@ -89,11 +79,11 @@ describe('Result', () => {
 
     fireEvent.click(screen.getByTestId('version-selector'))
     fireEvent.click(screen.getAllByRole('button')[1]!)
-    fireEvent.click(screen.getByText('generate.apply'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.apply(?=$|:)/))
 
     expect(mockSetCurrentVersionIndex).toHaveBeenCalledWith(1)
     expect(mockCopy).toHaveBeenCalledWith('generated output')
-    expect(toast.success).toHaveBeenCalledWith('actionMsg.copySuccessfully')
+    expect(toast.success).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)actionMsg\.copySuccessfully(?=$|:)/))
     expect(mockOnApply).toHaveBeenCalled()
     expect(mockPromptRes).toHaveBeenCalledWith(expect.objectContaining({
       workflowVariableBlock: { show: false },
