@@ -143,7 +143,6 @@ export default antfu(
       tailwindcss,
     },
     rules: {
-      'tailwindcss/no-duplicate-classes': 'error',
       'tailwindcss/no-unknown-classes': 'warn',
     },
     settings: {
