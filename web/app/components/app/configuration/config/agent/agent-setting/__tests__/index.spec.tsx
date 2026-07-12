@@ -1,16 +1,7 @@
 import type { AgentConfig } from '@/models/debug'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
 import { MAX_ITERATIONS_NUM } from '@/config'
-import AgentSetting from '../index'
-
-vi.mock('ahooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('ahooks')>()
-  return {
-    ...actual,
-    useClickAway: vi.fn(),
-  }
-})
+import { AgentSetting } from '../index'
 
 vi.mock('@langgenius/dify-ui/slider', () => ({
   Slider: (props: { className?: string, min?: number, max?: number, value: number, onValueChange: (value: number) => void }) => (
@@ -65,8 +56,8 @@ describe('AgentSetting', () => {
   })
 
   it('should update iteration via slider and number input', () => {
-    const { container } = renderModal()
-    const slider = container.querySelector('.slider') as HTMLInputElement
+    renderModal()
+    const slider = screen.getByRole('slider')
     const numberInput = screen.getByRole('spinbutton')
 
     fireEvent.change(slider, { target: { value: '7' } })
@@ -92,6 +83,34 @@ describe('AgentSetting', () => {
     const { onCancel } = renderModal()
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     expect(onCancel).toHaveBeenCalled()
+  })
+
+  it('should call onCancel when Escape is pressed', () => {
+    const { onCancel } = renderModal()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('should call onCancel when the backdrop is clicked', () => {
+    const { onCancel } = renderModal()
+    const dialog = screen.getByRole('dialog')
+
+    fireEvent.pointerDown(document.body, { target: document.body })
+    fireEvent.mouseDown(document.body, { target: document.body })
+    fireEvent.click(document.body, { target: document.body })
+
+    expect(dialog).toBeInTheDocument()
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('should call onCancel when close button clicked', () => {
+    const { onCancel } = renderModal()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
   it('should call onSave with updated payload', async () => {

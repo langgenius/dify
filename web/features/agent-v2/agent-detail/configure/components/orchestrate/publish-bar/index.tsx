@@ -3,7 +3,7 @@
 import type { AgentConfigSnapshotSummaryResponse, AgentReferencingWorkflowResponse, AgentReferencingWorkflowsResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import { Button } from '@langgenius/dify-ui/button'
-import { CollapsiblePanel, CollapsibleRoot } from '@langgenius/dify-ui/collapsible'
+import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -282,7 +282,7 @@ export function AgentConfigurePublishBar({
   const impactReferences = publishBarMode.status === 'confirmingImpact' ? publishBarMode.references : []
 
   return (
-    <CollapsibleRoot
+    <Collapsible
       open={isConfirmingImpact}
       className="group/publish-bar pointer-events-auto w-full overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
     >
@@ -306,7 +306,7 @@ export function AgentConfigurePublishBar({
         onOpenVersions={() => onOpenVersions?.()}
         onPublishRequest={handlePublishRequest}
       />
-    </CollapsibleRoot>
+    </Collapsible>
   )
 }
 

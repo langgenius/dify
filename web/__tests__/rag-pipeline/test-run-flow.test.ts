@@ -8,15 +8,6 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 // Mutable holder so mock data can reference BlockEnum after imports
 const mockNodesHolder = vi.hoisted(() => ({ value: [] as Record<string, unknown>[] }))
 

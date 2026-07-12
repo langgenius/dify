@@ -2,7 +2,7 @@
 
 import type { AgentBuildDraftChangeSummary } from './build-draft-changes-context'
 import { Button } from '@langgenius/dify-ui/button'
-import { CollapsiblePanel, CollapsibleRoot } from '@langgenius/dify-ui/collapsible'
+import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentBuildGridTexture } from '../build-grid-texture'
@@ -53,7 +53,7 @@ export function AgentBuildDraftBar({
   }
 
   return (
-    <CollapsibleRoot
+    <Collapsible
       open={open}
       onOpenChange={handleOpenChange}
       role="group"
@@ -115,6 +115,6 @@ export function AgentBuildDraftBar({
           {tCustom($ => $.apply)}
         </Button>
       </div>
-    </CollapsibleRoot>
+    </Collapsible>
   )
 }

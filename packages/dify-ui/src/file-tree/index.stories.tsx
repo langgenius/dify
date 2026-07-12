@@ -3,6 +3,7 @@ import type { FileTreeIconType } from '.'
 import * as React from 'react'
 import { expect } from 'storybook/test'
 import {
+  FileTree,
   FileTreeBadge,
   FileTreeFile,
   FileTreeFolder,
@@ -12,12 +13,11 @@ import {
   FileTreeLabel,
   FileTreeList,
   FileTreeMeta,
-  FileTreeRoot,
 } from '.'
 
 const meta = {
   title: 'Base/UI/FileTree',
-  component: FileTreeRoot,
+  component: FileTree,
   parameters: {
     layout: 'centered',
     docs: {
@@ -28,7 +28,7 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof FileTreeRoot>
+} satisfies Meta<typeof FileTree>
 
 export default meta
 type Story = StoryObj<typeof meta>
@@ -121,7 +121,7 @@ function ComposedFileTree() {
   const [selectedItemId, setSelectedItemId] = React.useState<string | null>('button')
 
   return (
-    <FileTreeRoot
+    <FileTree
       aria-label="Project files"
       className="w-80 rounded-lg border border-divider-subtle bg-background-default-subtle"
     >
@@ -172,7 +172,7 @@ function ComposedFileTree() {
           <FileTreeMeta>root</FileTreeMeta>
         </FileTreeFile>
       </FileTreeList>
-    </FileTreeRoot>
+    </FileTree>
   )
 }
 
@@ -180,7 +180,7 @@ function DataDrivenFileTree() {
   const [selectedItemId, setSelectedItemId] = React.useState<string | null>('app-components-file-tree')
 
   return (
-    <FileTreeRoot
+    <FileTree
       aria-label="Data-driven project files"
       className="w-80 rounded-lg border border-divider-subtle bg-background-default-subtle"
     >
@@ -191,7 +191,7 @@ function DataDrivenFileTree() {
           onPreview={setSelectedItemId}
         />
       </FileTreeList>
-    </FileTreeRoot>
+    </FileTree>
   )
 }
 
@@ -211,7 +211,7 @@ function IconGallery() {
   ] as const
 
   return (
-    <FileTreeRoot aria-label="File icon examples" className="w-64 rounded-lg border border-divider-subtle bg-background-default-subtle">
+    <FileTree aria-label="File icon examples" className="w-64 rounded-lg border border-divider-subtle bg-background-default-subtle">
       <FileTreeList>
         {iconTypes.map(type => (
           type === 'folder'
@@ -232,7 +232,7 @@ function IconGallery() {
               )
         ))}
       </FileTreeList>
-    </FileTreeRoot>
+    </FileTree>
   )
 }
 
@@ -246,11 +246,11 @@ function StateFrame({
   return (
     <div className="w-80 min-w-0 space-y-1">
       <div className="system-xs-medium-uppercase text-text-tertiary">{label}</div>
-      <FileTreeRoot aria-label={label} className="rounded-lg border border-divider-subtle bg-background-default-subtle">
+      <FileTree aria-label={label} className="rounded-lg border border-divider-subtle bg-background-default-subtle">
         <FileTreeList>
           {children}
         </FileTreeList>
-      </FileTreeRoot>
+      </FileTree>
     </div>
   )
 }

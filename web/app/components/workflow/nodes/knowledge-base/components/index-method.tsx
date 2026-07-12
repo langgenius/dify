@@ -1,5 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
 import {
   memo,
@@ -93,7 +93,7 @@ const IndexMethod = ({
               onClick={handleIndexMethodChange}
               effectColor="blue"
             >
-              <FieldsetRoot className="flex items-center">
+              <Fieldset className="flex items-center">
                 <FieldsetLegend className="sr-only">{keywordNumberLabel}</FieldsetLegend>
                 <div className="flex grow items-center">
                   <div className="truncate system-xs-medium text-text-secondary">
@@ -122,7 +122,7 @@ const IndexMethod = ({
                   value={keywordNumber}
                   onChange={handleInputChange}
                 />
-              </FieldsetRoot>
+              </Fieldset>
             </OptionCard>
           )
         }

@@ -6,10 +6,6 @@ import { AppModeEnum } from '@/types/app'
 import { fetchAppList } from '../explore'
 import { useExploreAppList } from '../use-explore'
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('../explore', () => ({
   fetchAppList: vi.fn(),
 }))

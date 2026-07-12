@@ -45,14 +45,14 @@ function fileTreeRowClassName({
   )
 }
 
-export type FileTreeRootProps = useRender.ComponentProps<'section'>
+export type FileTreeProps = useRender.ComponentProps<'section'>
 
-export function FileTreeRoot({
+export function FileTree({
   render,
   className,
   children,
   ...props
-}: FileTreeRootProps) {
+}: FileTreeProps) {
   const defaultProps: useRender.ElementProps<'section'> = {
     className: cn('flex min-w-0 flex-col gap-px p-1', className),
     children: (
@@ -226,7 +226,7 @@ export function FileTreeGuide({
   const defaultProps: useRender.ElementProps<'span'> = {
     'aria-hidden': true,
     'className': cn(
-      'relative h-6 w-5 shrink-0 before:absolute before:bottom-[-1px] before:left-1/2 before:top-0 before:w-px before:-translate-x-1/2 before:bg-divider-subtle',
+      'relative h-6 w-5 shrink-0 before:absolute before:top-0 before:bottom-[-1px] before:left-1/2 before:w-px before:-translate-x-1/2 before:bg-divider-subtle',
       className,
     ),
   }
@@ -287,8 +287,8 @@ export function FileTreeIcon({
           type === 'folder'
             ? (
                 <React.Fragment>
-                  <span className="size-4 i-ri-folder-line group-data-panel-open/file-tree-row:hidden" />
-                  <span className="hidden size-4 text-text-secondary i-ri-folder-open-line group-data-panel-open/file-tree-row:block" />
+                  <span className="i-ri-folder-line size-4 group-data-panel-open/file-tree-row:hidden" />
+                  <span className="i-ri-folder-open-line hidden size-4 text-text-secondary group-data-panel-open/file-tree-row:block" />
                 </React.Fragment>
               )
             : <span className={cn('size-4', fileTreeIconClassNames[type])} />

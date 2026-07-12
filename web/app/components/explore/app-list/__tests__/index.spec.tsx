@@ -315,9 +315,9 @@ type RenderOptions = {
   isCloudEdition?: boolean
 }
 
-const localeInput = { query: { language: 'en' } }
-const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en']
-const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput, 'en']
+const localeInput = { query: { language: 'en-US' } }
+const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en-US']
+const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput, 'en-US']
 
 const renderAppList = (
   hasEditPermission = false,

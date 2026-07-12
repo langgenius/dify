@@ -8,8 +8,8 @@ import type {
 import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
+  Field,
   FieldLabel,
-  FieldRoot,
 } from '../../field'
 import {
   NumberField,
@@ -79,14 +79,14 @@ describe('NumberField wrapper', () => {
 
     it('should surface field invalid state on the visual group', async () => {
       const screen = await render(
-        <FieldRoot name="amount" invalid>
+        <Field name="amount" invalid>
           <FieldLabel>Amount</FieldLabel>
           <NumberField defaultValue={8}>
             <NumberFieldGroup data-testid="group">
               <NumberFieldInput />
             </NumberFieldGroup>
           </NumberField>
-        </FieldRoot>,
+        </Field>,
       )
 
       await expect.element(screen.getByTestId('group')).toHaveAttribute('data-invalid')

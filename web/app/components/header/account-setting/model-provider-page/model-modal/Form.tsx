@@ -13,8 +13,8 @@ import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useCallback, useState } from 'react'
@@ -223,8 +223,8 @@ function Form<
       const translatedLabel = label[language] || label.en_US
 
       return (
-        <FieldRoot key={variable} name={variable} className="contents">
-          <FieldsetRoot
+        <Field key={variable} name={variable} className="contents">
+          <Fieldset
             render={(
               <RadioGroup
                 value={selectedValue}
@@ -264,8 +264,8 @@ function Form<
               {fieldMoreInfo?.(formSchema)}
               {validating && changeKey === variable && <ValidatingTip />}
             </div>
-          </FieldsetRoot>
-        </FieldRoot>
+          </Fieldset>
+        </Field>
       )
     }
 
@@ -347,8 +347,8 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <FieldRoot name={variable} className="contents">
-            <FieldsetRoot
+          <Field name={variable} className="contents">
+            <Fieldset
               render={(
                 <RadioGroup<boolean>
                   className="flex items-center justify-between gap-3 py-2"
@@ -378,8 +378,8 @@ function Form<
                   </FieldLabel>
                 </FieldItem>
               </div>
-            </FieldsetRoot>
-          </FieldRoot>
+            </Fieldset>
+          </Field>
           {fieldMoreInfo?.(formSchema)}
         </div>
       )

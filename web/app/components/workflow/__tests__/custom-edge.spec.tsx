@@ -141,6 +141,7 @@ describe('CustomEdge', () => {
     expect(screen.getByTestId('block-selector').parentElement).toHaveStyle({
       transform: 'translate(-50%, -50%) translate(24px, 48px)',
       opacity: '0.7',
+      zIndex: '1001',
     })
 
     fireEvent.click(screen.getByTestId('block-selector'))

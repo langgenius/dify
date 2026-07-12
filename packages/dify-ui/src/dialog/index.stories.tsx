@@ -14,7 +14,7 @@ import {
   DialogViewport,
 } from '.'
 import { Button } from '../button'
-import { FieldControl, FieldDescription, FieldError, FieldLabel, FieldRoot } from '../field'
+import { Field, FieldControl, FieldDescription, FieldError, FieldLabel } from '../field'
 import { Form } from '../form'
 import { Input } from '../input'
 import {
@@ -251,12 +251,12 @@ const FormDialogDemo = () => {
           className="grid gap-4 pt-5"
           onFormSubmit={() => setOpen(false)}
         >
-          <FieldRoot name="name">
+          <Field name="name">
             <FieldLabel>Name</FieldLabel>
             <FieldControl required placeholder="Production API" />
             <FieldError match="valueMissing">Name is required.</FieldError>
-          </FieldRoot>
-          <FieldRoot name="endpoint">
+          </Field>
+          <Field name="endpoint">
             <FieldLabel>Endpoint</FieldLabel>
             <FieldControl type="url" required placeholder="https://api.example.com" />
             <FieldDescription>
@@ -271,8 +271,8 @@ const FormDialogDemo = () => {
             </FieldDescription>
             <FieldError match="valueMissing">Endpoint is required.</FieldError>
             <FieldError match="typeMismatch">Enter a valid URL.</FieldError>
-          </FieldRoot>
-          <FieldRoot
+          </Field>
+          <Field
             name="apiKey"
             validate={(value) => {
               if (typeof value === 'string' && value.length > 0 && value.length < 5)
@@ -285,7 +285,7 @@ const FormDialogDemo = () => {
             <FieldControl required placeholder="sk-..." />
             <FieldError match="valueMissing">API key is required.</FieldError>
             <FieldError match="customError" />
-          </FieldRoot>
+          </Field>
           <div className="mt-2 flex items-center justify-end gap-2">
             <Button type="button" onClick={() => setOpen(false)}>
               Cancel
@@ -324,7 +324,7 @@ const OutsideScrollingContentDemo = () => {
                 <DialogPopup
                   ref={popupRef}
                   initialFocus={popupRef}
-                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden outline-hidden transition-[translate] duration-[700ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] data-starting-style:translate-y-[100dvh] data-starting-style:scale-100 data-starting-style:opacity-100 data-ending-style:translate-y-[max(100dvh,100%)] data-ending-style:scale-100 data-ending-style:opacity-100 data-ending-style:duration-[350ms] data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]"
+                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden outline-hidden transition-[translate] duration-[700ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] data-ending-style:translate-y-[max(100dvh,100%)] data-ending-style:scale-100 data-ending-style:opacity-100 data-ending-style:duration-[350ms] data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] data-starting-style:translate-y-[100dvh] data-starting-style:scale-100 data-starting-style:opacity-100"
                 >
                   <DialogCloseButton />
                   <ReleaseNoteHeader
@@ -361,10 +361,10 @@ export const OutsidePopupElements: Story = {
       <DialogPortal>
         <DialogBackdrop className="min-h-dvh" />
         <DialogViewport className="grid place-items-center px-4 py-12 xl:py-6">
-          <DialogPopup className="group/popup relative flex h-full w-full max-w-[70rem] justify-center border-0 bg-transparent shadow-none pointer-events-none transition-opacity data-starting-style:scale-100 data-starting-style:opacity-0 data-ending-style:scale-100 data-ending-style:opacity-0">
+          <DialogPopup className="group/popup pointer-events-none relative flex h-full w-full max-w-[70rem] justify-center border-0 bg-transparent shadow-none transition-opacity data-ending-style:scale-100 data-ending-style:opacity-0 data-starting-style:scale-100 data-starting-style:opacity-0">
             <DialogCloseButton
               aria-label="Close"
-              className="pointer-events-auto absolute right-0 -top-10 z-10 flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-text-tertiary shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid xl:top-0"
+              className="pointer-events-auto absolute -top-10 right-0 z-10 flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-text-tertiary shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid xl:top-0"
             >
             </DialogCloseButton>
             <div className="pointer-events-auto flex h-full w-full max-w-[70rem] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-[scale] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-starting-style/popup:scale-105">
@@ -401,7 +401,7 @@ const InsideScrollingContentDemo = () => {
         <DialogBackdrop />
         <DialogViewport className="flex items-center justify-center overflow-hidden p-4">
           <DialogPopup
-            className="relative flex h-[min(44rem,calc(100dvh-2rem))] w-120 max-w-[calc(100vw-2rem)] min-h-0 flex-col overflow-hidden"
+            className="relative flex h-[min(44rem,calc(100dvh-2rem))] min-h-0 w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden"
           >
             <DialogCloseButton />
             <ReleaseNoteHeader

@@ -66,11 +66,6 @@ let mockQueryResult = { data: [] as TestSearchResult[], isLoading: false, isErro
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => mockQueryResult,
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
   default: () => ({
     canInstallPlugin: true,

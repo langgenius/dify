@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import {
   NumberField,
   NumberFieldControls,
@@ -32,7 +32,7 @@ type Props = Readonly<{
 
 const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, disabled = false, hasSwitch, onSwitchChange }) => {
   return (
-    <FieldsetRoot className={className}>
+    <Fieldset className={className}>
       <FieldsetLegend className="sr-only">{name}</FieldsetLegend>
       <div className="flex items-center justify-between">
         <div className="flex h-6 items-center">
@@ -86,7 +86,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
           />
         </div>
       </div>
-    </FieldsetRoot>
+    </Fieldset>
   )
 }
 export default ParamItem

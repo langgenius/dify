@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { AccessSubjectSelectionProps } from './types'
 import type { AccessControlGroup, Subject } from '@/models/access-control'
 import {
@@ -91,7 +91,7 @@ export function AccessSubjectAddButton({
     setOpen(true)
   }
 
-  const handleInputValueChange = (inputValue: string, details: ComboboxRootChangeEventDetails) => {
+  const handleInputValueChange = (inputValue: string, details: ComboboxChangeEventDetails) => {
     if (!disabled && details.reason !== 'item-press')
       setKeyword(inputValue)
   }

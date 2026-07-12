@@ -31,16 +31,6 @@ let mockPlanUsage = 0
 let mockPlanTotal = 10
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 const mockUserProfile = { id: 'user-1' }
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('ahooks', () => ({
   useDebounceFn: (fn: (...args: any[]) => any) => ({
     run: fn,
@@ -202,10 +192,10 @@ describe('CreateFromDSLModal', () => {
       />,
     )
 
-    expect(screen.getByText('importApp'))!.toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)importApp(?=$|:)/))!.toBeInTheDocument()
 
     await waitFor(() => {
-      expect(screen.getByText('demo.yml'))!.toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)demo\.yml(?=$|:)/))!.toBeInTheDocument()
     })
   })
 
@@ -217,14 +207,14 @@ describe('CreateFromDSLModal', () => {
     expect(mockImportDSL).not.toHaveBeenCalled()
 
     await act(async () => {
-      fireEvent.click(screen.getByText('importFromDSLUrl'))
+      fireEvent.click(screen.getByText(/(?:^|\.)importFromDSLUrl(?=$|:)/))
     })
     expect(
-      screen.getByPlaceholderText('importFromDSLUrlPlaceholder'),
+      screen.getByPlaceholderText(/(?:^|\.)importFromDSLUrlPlaceholder(?=$|:)/),
     )!.toBeInTheDocument()
 
     const closeTrigger = screen
-      .getByText('importApp')
+      .getByText(/(?:^|\.)importApp(?=$|:)/)
       .parentElement
       ?.querySelector(
         '.cursor-pointer.items-center',
@@ -268,7 +258,7 @@ describe('CreateFromDSLModal', () => {
     )
 
     fireEvent.change(
-      screen.getByPlaceholderText('importFromDSLUrlPlaceholder'),
+      screen.getByPlaceholderText(/(?:^|\.)importFromDSLUrlPlaceholder(?=$|:)/),
       {
         target: { value: 'https://example.com/app.yml' },
       },
@@ -354,7 +344,7 @@ describe('CreateFromDSLModal', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('demo.yml'))!.toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)demo\.yml(?=$|:)/))!.toBeInTheDocument()
     })
 
     await act(async () => {
@@ -377,11 +367,11 @@ describe('CreateFromDSLModal', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('demo.yml'))!.toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)demo\.yml(?=$|:)/))!.toBeInTheDocument()
     })
 
     const removeButton = screen
-      .getByText('demo.yml')
+      .getByText(/(?:^|\.)demo\.yml(?=$|:)/)
       .closest('.group')
       ?.querySelector('button') as HTMLButtonElement
     await act(async () => {
@@ -389,7 +379,7 @@ describe('CreateFromDSLModal', () => {
     })
 
     await waitFor(() => {
-      expect(screen.queryByText('demo.yml')).not.toBeInTheDocument()
+      expect(screen.queryByText(/(?:^|\.)demo\.yml(?=$|:)/)).not.toBeInTheDocument()
       expect(getCreateButton())!.toBeDisabled()
     })
 
@@ -431,12 +421,12 @@ describe('CreateFromDSLModal', () => {
     })
 
     expect(
-      screen.getAllByText('newApp.appCreateDSLErrorTitle')[0],
+      screen.getAllByText(/(?:^|\.)newApp\.appCreateDSLErrorTitle(?=$|:)/)[0],
     )!.toBeInTheDocument()
 
     await act(async () => {
       fireEvent.click(
-        screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!,
+        screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Confirm(?=$|:)/ })[0]!,
       )
     })
 
@@ -487,7 +477,7 @@ describe('CreateFromDSLModal', () => {
     })
 
     expect(
-      screen.getByText('newApp.appCreateDSLErrorTitle'),
+      screen.getByText(/(?:^|\.)newApp\.appCreateDSLErrorTitle(?=$|:)/),
     )!.toBeInTheDocument()
 
     vi.useRealTimers()
@@ -495,7 +485,7 @@ describe('CreateFromDSLModal', () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByText('newApp.appCreateDSLErrorTitle'),
+        screen.queryByText(/(?:^|\.)newApp\.appCreateDSLErrorTitle(?=$|:)/),
       ).not.toBeInTheDocument()
     })
   })
@@ -527,17 +517,17 @@ describe('CreateFromDSLModal', () => {
     })
 
     expect(
-      screen.getByText('newApp.appCreateDSLErrorTitle'),
+      screen.getByText(/(?:^|\.)newApp\.appCreateDSLErrorTitle(?=$|:)/),
     )!.toBeInTheDocument()
 
     vi.useRealTimers()
     fireEvent.click(
-      screen.getAllByRole('button', { name: 'newApp.Cancel' }).at(-1)!,
+      screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Cancel(?=$|:)/ }).at(-1)!,
     )
 
     await waitFor(() => {
       expect(
-        screen.queryByText('newApp.appCreateDSLErrorTitle'),
+        screen.queryByText(/(?:^|\.)newApp\.appCreateDSLErrorTitle(?=$|:)/),
       ).not.toBeInTheDocument()
     })
   })
@@ -670,7 +660,7 @@ describe('CreateFromDSLModal', () => {
       fireEvent.click(getCreateButton())
     })
     expect(toastMocks.error).toHaveBeenCalledTimes(2)
-    expect(toastMocks.error).toHaveBeenLastCalledWith('newApp.appCreateFailed')
+    expect(toastMocks.error).toHaveBeenLastCalledWith(expect.stringMatching(/(?:^|\.)newApp\.appCreateFailed(?=$|:)/))
   })
 
   it('should handle pending import confirmation failures and cancellation', async () => {
@@ -703,10 +693,10 @@ describe('CreateFromDSLModal', () => {
     })
 
     fireEvent.click(
-      screen.getAllByRole('button', { name: 'newApp.Cancel' }).at(-1)!,
+      screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Cancel(?=$|:)/ }).at(-1)!,
     )
     expect(
-      screen.queryByText('newApp.appCreateDSLErrorTitle'),
+      screen.queryByText(/(?:^|\.)newApp\.appCreateDSLErrorTitle(?=$|:)/),
     ).not.toBeInTheDocument()
 
     await act(async () => {
@@ -715,17 +705,17 @@ describe('CreateFromDSLModal', () => {
     })
     await act(async () => {
       fireEvent.click(
-        screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!,
+        screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Confirm(?=$|:)/ })[0]!,
       )
     })
     expect(toastMocks.error).toHaveBeenCalledWith('Confirm failed')
 
     await act(async () => {
       fireEvent.click(
-        screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!,
+        screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Confirm(?=$|:)/ })[0]!,
       )
     })
     expect(toastMocks.error).toHaveBeenCalledTimes(2)
-    expect(toastMocks.error).toHaveBeenLastCalledWith('newApp.appCreateFailed')
+    expect(toastMocks.error).toHaveBeenLastCalledWith(expect.stringMatching(/(?:^|\.)newApp\.appCreateFailed(?=$|:)/))
   })
 })

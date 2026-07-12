@@ -123,6 +123,7 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 describe('ModelParameterModal', () => {
+  const openSettings = () => fireEvent.click(screen.getByRole('button', { name: /modelProvider\.modelSettings/i }))
   const defaultProps = {
     isAdvancedMode: false,
     modelId: 'gpt-3.5-turbo',
@@ -179,14 +180,42 @@ describe('ModelParameterModal', () => {
   it('should render trigger and open modal content when trigger is clicked', () => {
     render(<ModelParameterModal {...defaultProps} />)
 
-    fireEvent.click(screen.getByText('Open Settings'))
+    openSettings()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
     expect(screen.getByTestId('param-temperature')).toBeInTheDocument()
   })
 
+  it('should keep model selection and model settings as separate actions', () => {
+    render(<ModelParameterModal {...defaultProps} />)
+
+    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+    expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Select GPT-4.1'))
+
+    expect(defaultProps.setModel).toHaveBeenCalledWith({
+      modelId: 'gpt-4.1',
+      provider: 'openai',
+      mode: 'chat',
+      features: ['vision', 'tool-call'],
+    })
+    expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /modelProvider\.modelSettings/i }))
+
+    expect(screen.getByTestId('param-temperature')).toBeInTheDocument()
+  })
+
+  it('should disable model settings when no model is selected', () => {
+    render(<ModelParameterModal {...defaultProps} provider="" modelId="" />)
+
+    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
+  })
+
   it('should call onCompletionParamsChange when parameter changes and switch actions happen', () => {
     render(<ModelParameterModal {...defaultProps} />)
-    fireEvent.click(screen.getByText('Open Settings'))
+    openSettings()
 
     fireEvent.click(screen.getByText('Change'))
     expect(defaultProps.onCompletionParamsChange).toHaveBeenCalledWith({
@@ -206,7 +235,7 @@ describe('ModelParameterModal', () => {
 
   it('should call onCompletionParamsChange when preset is selected', () => {
     render(<ModelParameterModal {...defaultProps} />)
-    fireEvent.click(screen.getByText('Open Settings'))
+    openSettings()
     fireEvent.click(screen.getByText('Preset 1'))
     expect(defaultProps.onCompletionParamsChange).toHaveBeenCalledWith({
       ...defaultProps.completionParams,
@@ -227,14 +256,14 @@ describe('ModelParameterModal', () => {
     ]
 
     render(<ModelParameterModal {...defaultProps} />)
-    fireEvent.click(screen.getByText('Open Settings'))
+    openSettings()
 
     expect(screen.queryByText('Preset 1')).not.toBeInTheDocument()
   })
 
   it('should call setModel when model selector picks another model', () => {
     render(<ModelParameterModal {...defaultProps} />)
-    fireEvent.click(screen.getByText('Open Settings'))
+    openSettings()
     fireEvent.click(screen.getByText('Select GPT-4.1'))
 
     expect(defaultProps.setModel).toHaveBeenCalledWith({
@@ -247,7 +276,7 @@ describe('ModelParameterModal', () => {
 
   it('should toggle debug mode when debug footer is clicked', () => {
     render(<ModelParameterModal {...defaultProps} />)
-    fireEvent.click(screen.getByText('Open Settings'))
+    openSettings()
     fireEvent.click(screen.getByText(/debugAsMultipleModel/i))
     expect(defaultProps.onDebugWithMultipleModelChange).toHaveBeenCalled()
   })
@@ -256,7 +285,7 @@ describe('ModelParameterModal', () => {
     isRulesLoading = true
     isRulesPending = true
     render(<ModelParameterModal {...defaultProps} />)
-    fireEvent.click(screen.getByText('Open Settings'))
+    openSettings()
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
@@ -271,7 +300,7 @@ describe('ModelParameterModal', () => {
         modelId=""
       />,
     )
-    fireEvent.click(screen.getByText('Open Settings'))
+    openSettings()
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
@@ -279,14 +308,14 @@ describe('ModelParameterModal', () => {
 
   it('should not open content when readonly is true', () => {
     render(<ModelParameterModal {...defaultProps} readonly />)
-    fireEvent.click(screen.getByText('Open Settings'))
-    expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
+    expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
   })
 
   it('should render no parameter items when rules are undefined', () => {
     parameterRules = undefined
     render(<ModelParameterModal {...defaultProps} />)
-    fireEvent.click(screen.getByText('Open Settings'))
+    openSettings()
     expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
   })
@@ -304,7 +333,7 @@ describe('ModelParameterModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('Open Settings'))
+    openSettings()
 
     const paramEl = screen.getByTestId('param-temperature')
     expect(paramEl).toHaveAttribute('data-has-nodes-output-vars', 'true')
@@ -343,7 +372,7 @@ describe('ModelParameterModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('Open Settings'))
+    openSettings()
 
     expect(screen.getByTestId('param-stop')).toBeInTheDocument()
     expect(screen.getByText(/debugAsSingleModel/i)).toBeInTheDocument()
@@ -355,7 +384,7 @@ describe('ModelParameterModal', () => {
     isRulesPending = true
 
     render(<ModelParameterModal {...defaultProps} />)
-    fireEvent.click(screen.getByText('Open Settings'))
+    openSettings()
 
     expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()

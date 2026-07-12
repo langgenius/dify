@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import {
   Popover,
   PopoverContent,
@@ -369,7 +369,7 @@ export function AgentRosterField({
   )
 
   return (
-    <FieldRoot name="agent_binding" className="gap-1 px-4 py-2">
+    <Field name="agent_binding" className="gap-1 px-4 py-2">
       <div className="flex h-6 items-center gap-2">
         <FieldLabel className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase! text-text-secondary">
           {t($ => $['nodes.agent.roster.label'], { ns: 'workflow' })}
@@ -476,6 +476,6 @@ export function AgentRosterField({
                 </span>
               </div>
             )}
-    </FieldRoot>
+    </Field>
   )
 }

@@ -17,11 +17,11 @@ import { parsePlacement } from '../placement'
 
 export type { Placement }
 
-export type ComboboxRootProps<Value, Multiple extends boolean | undefined = false>
+export type ComboboxProps<Value, Multiple extends boolean | undefined = false>
   = BaseCombobox.Root.Props<Value, Multiple>
 
 export function Combobox<Value, Multiple extends boolean | undefined = false>(
-  props: ComboboxRootProps<Value, Multiple>,
+  props: ComboboxProps<Value, Multiple>,
 ): React.JSX.Element {
   return <BaseCombobox.Root {...props} />
 }
@@ -33,8 +33,8 @@ export const ComboboxRow = BaseCombobox.Row
 export const useComboboxFilter = BaseCombobox.useFilter
 export const useComboboxFilteredItems = BaseCombobox.useFilteredItems
 
-export type ComboboxRootChangeEventDetails = BaseCombobox.Root.ChangeEventDetails
-export type ComboboxRootHighlightEventDetails = BaseCombobox.Root.HighlightEventDetails
+export type ComboboxChangeEventDetails = BaseCombobox.Root.ChangeEventDetails
+export type ComboboxHighlightEventDetails = BaseCombobox.Root.HighlightEventDetails
 
 const comboboxPopupClassName = [
   'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
@@ -478,7 +478,7 @@ export function ComboboxChip({
 }: BaseCombobox.Chip.Props) {
   return (
     <BaseCombobox.Chip
-      className={cn('inline-flex max-w-full min-w-0 items-center gap-1 rounded-md bg-state-base-hover px-1.5 py-0.5 text-text-secondary system-xs-medium', className)}
+      className={cn('inline-flex max-w-full min-w-0 items-center gap-1 rounded-md bg-state-base-hover px-1.5 py-0.5 system-xs-medium text-text-secondary', className)}
       {...props}
     />
   )

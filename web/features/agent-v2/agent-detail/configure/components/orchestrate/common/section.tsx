@@ -4,8 +4,8 @@ import type { ReactNode } from 'react'
 import type { AgentBuildDraftChangeSection } from '../build-draft-changes-context'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Collapsible,
   CollapsiblePanel,
-  CollapsibleRoot,
   CollapsibleTrigger,
 } from '@langgenius/dify-ui/collapsible'
 import { Infotip } from '@/app/components/base/infotip'
@@ -62,7 +62,7 @@ export function ConfigureSection({
   const isBuildDraftChanged = useIsAgentBuildDraftSectionChanged(buildDraftChangeSection)
 
   return (
-    <CollapsibleRoot
+    <Collapsible
       render={<section />}
       defaultOpen={defaultOpen}
       className={rootClassName}
@@ -109,6 +109,6 @@ export function ConfigureSection({
           {children}
         </div>
       </CollapsiblePanel>
-    </CollapsibleRoot>
+    </Collapsible>
   )
 }

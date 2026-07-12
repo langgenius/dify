@@ -1112,6 +1112,7 @@ describe('useNodesInteractions', () => {
           createNode({
             id: nodeId,
             position: { x: 120, y: 120 },
+            zIndex: 1002,
             data: {
               type: containerType,
               title: containerType === BlockEnum.Iteration ? 'Iteration' : 'Loop',
@@ -1136,6 +1137,7 @@ describe('useNodesInteractions', () => {
 
       expect(newContainer).toBeDefined()
       expect(newContainer?.parentId).toBeUndefined()
+      expect(newContainer?.zIndex).toBe(0)
       expect(newContainer?.data.isInIteration).toBeFalsy()
       expect(newContainer?.data.isInLoop).toBeFalsy()
     })

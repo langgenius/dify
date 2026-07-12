@@ -1,13 +1,10 @@
 'use client'
-import type { FC } from 'react'
 import type { AgentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
-import { RiCloseLine } from '@remixicon/react'
-import { useClickAway } from 'ahooks'
-import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
@@ -19,60 +16,43 @@ type Props = Readonly<{
   payload: AgentConfig
   isFunctionCall: boolean
   onCancel: () => void
-  onSave: (payload: any) => void
+  onSave: (payload: AgentConfig) => void
 }>
 
 const maxIterationsMin = 1
 
-const AgentSetting: FC<Props> = ({
+export function AgentSetting({
   isChatModel,
   payload,
   isFunctionCall,
   onCancel,
   onSave,
-}) => {
+}: Props) {
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState(payload)
-  const ref = useRef(null)
-  const [mounted, setMounted] = useState(false)
   const maximumIterationsLabel = t($ => $['agent.setting.maximumIterations.name'], { ns: 'appDebug' })
-
-  useClickAway(() => {
-    if (mounted)
-      onCancel()
-  }, ref)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   const handleSave = () => {
     onSave(tempPayload)
   }
 
   return (
-    <div
-      className="fixed inset-0 z-100 flex justify-end overflow-hidden p-2"
-      style={{
-        backgroundColor: 'rgba(16, 24, 40, 0.20)',
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open)
+          onCancel()
       }}
     >
-      <div
-        ref={ref}
-        className="flex h-full w-[640px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
-      >
+      <DialogContent className="top-2 right-2 bottom-2 left-auto flex h-auto max-h-none w-[640px] max-w-[calc(100vw-1rem)] translate-x-0 translate-y-0 flex-col overflow-hidden rounded-xl p-0">
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
-          <div className="flex flex-col text-base font-semibold text-text-primary">
-            <div className="leading-6">{t($ => $['agent.setting.name'], { ns: 'appDebug' })}</div>
-          </div>
-          <div className="flex items-center">
-            <div
-              onClick={onCancel}
-              className="flex size-6 cursor-pointer items-center justify-center"
-            >
-              <RiCloseLine className="size-4 text-text-tertiary" />
-            </div>
-          </div>
+          <DialogTitle className="text-base leading-6 font-semibold text-text-primary">
+            {t($ => $['agent.setting.name'], { ns: 'appDebug' })}
+          </DialogTitle>
+          <DialogCloseButton
+            className="static z-auto size-6 shrink-0"
+            aria-label={t($ => $['operation.close'], { ns: 'common' })}
+          />
         </div>
         {/* Body */}
         <div
@@ -101,7 +81,7 @@ const AgentSetting: FC<Props> = ({
             name={maximumIterationsLabel}
             description={t($ => $['agent.setting.maximumIterations.description'], { ns: 'appDebug' })}
           >
-            <FieldsetRoot className="flex items-center">
+            <Fieldset className="flex items-center">
               <FieldsetLegend className="sr-only">{maximumIterationsLabel}</FieldsetLegend>
               <Slider
                 className="mr-3 w-[156px]"
@@ -138,7 +118,7 @@ const AgentSetting: FC<Props> = ({
                   })
                 }}
               />
-            </FieldsetRoot>
+            </Fieldset>
           </ItemPanel>
 
           {!isFunctionCall && (
@@ -158,20 +138,21 @@ const AgentSetting: FC<Props> = ({
           className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section-burn px-6 py-4"
         >
           <Button
+            type="button"
             onClick={onCancel}
             className="mr-2"
           >
             {t($ => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button
+            type="button"
             variant="primary"
             onClick={handleSave}
           >
             {t($ => $['operation.save'], { ns: 'common' })}
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
-export default React.memo(AgentSetting)

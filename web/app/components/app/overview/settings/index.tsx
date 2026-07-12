@@ -5,7 +5,7 @@ import type { AppIconType, Language, SiteConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
@@ -360,14 +360,14 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             >
               {/* name & icon */}
               <div className="flex gap-4">
-                <FieldRoot name="title" className="grow">
+                <Field name="title" className="grow">
                   <FieldLabel>{t($ => $[`${prefixSettings}.webName`], { ns: 'appOverview' })}</FieldLabel>
                   <FieldControl
                     value={inputInfo.title}
                     onValueChange={value => setInputInfo(item => ({ ...item, title: value }))}
                     placeholder={t($ => $.appNamePlaceholder, { ns: 'app' }) || ''}
                   />
-                </FieldRoot>
+                </Field>
                 <AppIcon
                   size="xxl"
                   onClick={() => { setShowAppIconPicker(true) }}
@@ -379,7 +379,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 />
               </div>
               {/* description */}
-              <FieldRoot name="description">
+              <Field name="description">
                 <FieldLabel>{t($ => $[`${prefixSettings}.webDesc`], { ns: 'appOverview' })}</FieldLabel>
                 <Textarea
                   value={inputInfo.desc}
@@ -387,11 +387,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   placeholder={t($ => $[`${prefixSettings}.webDescPlaceholder`], { ns: 'appOverview' }) as string}
                 />
                 <FieldDescription>{t($ => $[`${prefixSettings}.webDescTip`], { ns: 'appOverview' })}</FieldDescription>
-              </FieldRoot>
+              </Field>
               <Divider className="my-0 h-px" />
               {/* answer icon */}
               {isChat && (
-                <FieldRoot name="use_icon_as_answer_icon" className="w-full">
+                <Field name="use_icon_as_answer_icon" className="w-full">
                   <div className="flex items-center justify-between gap-3">
                     <FieldLabel>{t($ => $['answerIcon.title'], { ns: 'app' })}</FieldLabel>
                     <Switch
@@ -400,7 +400,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     />
                   </div>
                   <FieldDescription>{t($ => $['answerIcon.description'], { ns: 'app' })}</FieldDescription>
-                </FieldRoot>
+                </Field>
               )}
               {/* language */}
               <div className="flex items-center">
@@ -433,7 +433,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t($ => $[`${prefixSettings}.chatColorTheme`], { ns: 'appOverview' })}</div>
                     <div className="pb-0.5 body-xs-regular text-text-tertiary">{t($ => $[`${prefixSettings}.chatColorThemeDesc`], { ns: 'appOverview' })}</div>
                   </div>
-                  <FieldRoot name="chat_color_theme" className="w-[200px] shrink-0">
+                  <Field name="chat_color_theme" className="w-[200px] shrink-0">
                     <FieldControl
                       className="mb-1"
                       value={inputInfo.chatColorTheme ?? ''}
@@ -444,11 +444,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       <span>{t($ => $[`${prefixSettings}.chatColorThemeInverted`], { ns: 'appOverview' })}</span>
                       <Switch checked={inputInfo.chatColorThemeInverted} onCheckedChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
                     </div>
-                  </FieldRoot>
+                  </Field>
                 </div>
               )}
               {/* workflow detail */}
-              <FieldRoot name="show_workflow_steps" className="w-full">
+              <Field name="show_workflow_steps" className="w-full">
                 <div className="flex items-center justify-between gap-3">
                   <FieldLabel>{t($ => $[`${prefixSettings}.workflow.subTitle`], { ns: 'appOverview' })}</FieldLabel>
                   <Switch
@@ -458,7 +458,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   />
                 </div>
                 <FieldDescription>{t($ => $[`${prefixSettings}.workflow.showDesc`], { ns: 'appOverview' })}</FieldDescription>
-              </FieldRoot>
+              </Field>
               <Divider className="my-0 h-px" />
               <div className="space-y-5">
                 {INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode) && (

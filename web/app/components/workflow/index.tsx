@@ -73,7 +73,6 @@ import { CommentThread } from './comment/thread'
 import {
   CUSTOM_EDGE,
   CUSTOM_NODE,
-  ITERATION_CHILDREN_Z_INDEX,
   WORKFLOW_DATA_UPDATE,
 } from './constants'
 import CustomConnectionLine from './custom-connection-line'
@@ -618,13 +617,12 @@ export const Workflow: FC<WorkflowProps> = memo(({
     <div
       id="workflow-container"
       className={cn(
-        'relative h-full w-full min-w-[960px] overflow-hidden',
+        'relative isolate h-full w-full min-w-[960px] overflow-hidden',
         workflowReadOnly && 'workflow-panel-animation',
         nodeAnimation && 'workflow-node-animation',
       )}
       ref={workflowContainerRef}
     >
-      <SyncingDataModal />
       <CandidateNode />
       <CommentManager />
       <div
@@ -750,8 +748,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
           onPaneContextMenu={handlePaneContextMenu}
           onSelectionContextMenu={handleSelectionContextMenu}
           connectionLineComponent={CustomConnectionLine}
-          // NOTE: For LOOP node, how to distinguish between ITERATION and LOOP here? Maybe both are the same?
-          connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
           defaultViewport={viewport}
           multiSelectionKeyCode={null}
           deleteKeyCode={null}
@@ -785,6 +781,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
           )}
         </ReactFlow>
       </WorkflowContextmenu>
+      <SyncingDataModal />
     </div>
   )
 })

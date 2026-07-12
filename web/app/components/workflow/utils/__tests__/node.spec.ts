@@ -1,7 +1,7 @@
 import type { IterationNodeType } from '../../nodes/iteration/types'
 import type { LoopNodeType } from '../../nodes/loop/types'
 import type { CommonNodeType, Node } from '../../types'
-import { CUSTOM_NODE, ITERATION_CHILDREN_Z_INDEX, ITERATION_NODE_Z_INDEX, LOOP_CHILDREN_Z_INDEX, LOOP_NODE_Z_INDEX } from '../../constants'
+import { CUSTOM_NODE, NESTED_ELEMENT_Z_INDEX } from '../../constants'
 import { CUSTOM_ITERATION_START_NODE } from '../../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../../nodes/loop-start/constants'
 import { CUSTOM_SIMPLE_NODE } from '../../simple-node/constants'
@@ -17,6 +17,13 @@ import {
   getTopLeftNodePosition,
   hasRetryNode,
 } from '../node'
+
+describe('nested workflow node layering', () => {
+  it('should keep nested elements above React Flow selected nodes', () => {
+    expect(NESTED_ELEMENT_Z_INDEX).toBe(1001)
+    expect(NESTED_ELEMENT_Z_INDEX).toBeGreaterThan(1000)
+  })
+})
 
 describe('getNodeCatalogType', () => {
   it('should use Agent V2 catalog type for graph agent nodes with the Agent V2 discriminator', () => {
@@ -67,22 +74,22 @@ describe('generateNewNode', () => {
     expect(newNode.id).toBe('custom-id')
   })
 
-  it('should set ITERATION_NODE_Z_INDEX for iteration nodes', () => {
+  it('should use the default layer for iteration nodes', () => {
     const { newNode } = generateNewNode({
       data: { title: 'Iter', desc: '', type: BlockEnum.Iteration } as CommonNodeType,
       position: { x: 0, y: 0 },
     })
 
-    expect(newNode.zIndex).toBe(ITERATION_NODE_Z_INDEX)
+    expect(newNode.zIndex).toBe(0)
   })
 
-  it('should set LOOP_NODE_Z_INDEX for loop nodes', () => {
+  it('should use the default layer for loop nodes', () => {
     const { newNode } = generateNewNode({
       data: { title: 'Loop', desc: '', type: BlockEnum.Loop } as CommonNodeType,
       position: { x: 0, y: 0 },
     })
 
-    expect(newNode.zIndex).toBe(LOOP_NODE_Z_INDEX)
+    expect(newNode.zIndex).toBe(0)
   })
 
   it('should create an iteration start node for iteration type', () => {
@@ -139,7 +146,7 @@ describe('getIterationStartNode', () => {
     expect(node.parentId).toBe('parent-iter')
     expect(node.selectable).toBe(false)
     expect(node.draggable).toBe(false)
-    expect(node.zIndex).toBe(ITERATION_CHILDREN_Z_INDEX)
+    expect(node.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
     expect(node.position).toEqual({ x: 24, y: 68 })
   })
 })
@@ -155,7 +162,7 @@ describe('getLoopStartNode', () => {
     expect(node.parentId).toBe('parent-loop')
     expect(node.selectable).toBe(false)
     expect(node.draggable).toBe(false)
-    expect(node.zIndex).toBe(LOOP_CHILDREN_Z_INDEX)
+    expect(node.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
     expect(node.position).toEqual({ x: 24, y: 68 })
   })
 })

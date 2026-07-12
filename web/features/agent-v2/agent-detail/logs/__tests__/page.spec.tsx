@@ -31,10 +31,6 @@ const mocks = vi.hoisted(() => ({
   })),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
-
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: (value: number) => `formatted-${value}`,

@@ -4,7 +4,7 @@ import type { AgentAppCopyPayload, AgentAppPartial } from '@dify/contracts/api/c
 import type { AgentFormValues, AgentIconSelection } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -147,7 +147,7 @@ export function DuplicateAgentDialog({
                   />
                 </button>
                 <div className="flex min-w-0 flex-1 gap-3 pb-1">
-                  <FieldRoot name="name" className="relative min-w-0 flex-1">
+                  <Field name="name" className="relative min-w-0 flex-1">
                     <FieldLabel>
                       {t($ => $['roster.createForm.nameLabel'])}
                       <span className="ml-1 system-xs-regular text-text-tertiary">
@@ -163,8 +163,8 @@ export function DuplicateAgentDialog({
                       placeholder={defaultCopyName}
                       value={name}
                     />
-                  </FieldRoot>
-                  <FieldRoot
+                  </Field>
+                  <Field
                     name="role"
                     className="relative min-w-0 flex-1"
                   >
@@ -181,10 +181,10 @@ export function DuplicateAgentDialog({
                       placeholder={t($ => $['roster.createForm.rolePlaceholder'])}
                       value={role}
                     />
-                  </FieldRoot>
+                  </Field>
                 </div>
               </div>
-              <FieldRoot name="description">
+              <Field name="description">
                 <FieldLabel>
                   {t($ => $['roster.createForm.descriptionLabel'])}
                   <span className="ml-1 system-xs-regular text-text-tertiary">
@@ -198,7 +198,7 @@ export function DuplicateAgentDialog({
                   placeholder={t($ => $['roster.createForm.descriptionPlaceholder'])}
                   value={description}
                 />
-              </FieldRoot>
+              </Field>
             </div>
             <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
               <Button type="button" className="min-w-18" onClick={() => handleOpenChange(false)} disabled={duplicateAgentMutation.isPending}>

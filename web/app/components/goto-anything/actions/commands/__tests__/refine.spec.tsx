@@ -5,16 +5,6 @@ import { refineCommand } from '../refine'
 vi.mock('@remixicon/react', () => ({
   RiSparkling2Line: () => null,
 }))
-
-// search() localises its title/description via getI18n(); echo the key back
-// so assertions stay deterministic without a real i18n init.
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    getI18n: () => ({ t: withSelectorKey((key: string) => key) }),
-  })
-})
-
 // Spy on the generator store so we can observe what /refine opens it with.
 const mockOpenGenerator = vi.fn()
 vi.mock('@/app/components/workflow/workflow-generator/store', () => ({

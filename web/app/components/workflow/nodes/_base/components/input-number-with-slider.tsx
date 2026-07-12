@@ -1,5 +1,5 @@
 'use client'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -41,7 +41,7 @@ function InputNumberWithSlider({
   }, [onChange])
 
   return (
-    <FieldsetRoot>
+    <Fieldset>
       <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
       <div className="flex h-8 items-center justify-between space-x-2">
         <input
@@ -67,7 +67,7 @@ function InputNumberWithSlider({
           aria-label={label}
         />
       </div>
-    </FieldsetRoot>
+    </Fieldset>
   )
 }
 export default React.memo(InputNumberWithSlider)

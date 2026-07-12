@@ -5,6 +5,7 @@ import type {
 } from '../../types'
 import {
   ITERATION_PADDING,
+  NESTED_ELEMENT_Z_INDEX,
 } from '../../constants'
 import { CUSTOM_ITERATION_START_NODE } from '../iteration-start/constants'
 
@@ -108,6 +109,6 @@ export const buildIterationChildCopy = ({
     positionAbsolute: child.positionAbsolute,
     parentId: newNodeId,
     extent: child.extent,
-    zIndex: child.zIndex,
+    zIndex: NESTED_ELEMENT_Z_INDEX,
   }
 }

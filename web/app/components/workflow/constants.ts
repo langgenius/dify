@@ -9,8 +9,8 @@ export const X_OFFSET = 60
 export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET
 export const Y_OFFSET = 39
 export const START_INITIAL_POSITION = { x: 80, y: 282 }
-export const ITERATION_NODE_Z_INDEX = 1
-export const ITERATION_CHILDREN_Z_INDEX = 1002
+// React Flow elevates selected nodes by 1000, so nested graph elements use the next layer.
+export const NESTED_ELEMENT_Z_INDEX = 1001
 export const ITERATION_PADDING = {
   top: 65,
   right: 16,
@@ -18,8 +18,6 @@ export const ITERATION_PADDING = {
   left: 16,
 }
 
-export const LOOP_NODE_Z_INDEX = 1
-export const LOOP_CHILDREN_Z_INDEX = 1002
 export const LOOP_PADDING = {
   top: 65,
   right: 16,

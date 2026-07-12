@@ -81,7 +81,7 @@ describe('InstallForm', () => {
           email: 'admin@example.com',
           name: 'Admin',
           password: 'Password123',
-          language: 'en',
+          language: 'en-US',
         },
       })
     })

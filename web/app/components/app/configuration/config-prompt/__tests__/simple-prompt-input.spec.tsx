@@ -14,16 +14,6 @@ const mockSetPrevPromptConfig = vi.fn()
 const mockSetIntroduction = vi.fn()
 const mockOnChange = vi.fn()
 const mockToastError = vi.fn()
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('@/hooks/use-breakpoints', () => ({
   __esModule: true,
   default: () => 'desktop',
@@ -154,9 +144,9 @@ describe('SimplePromptInput', () => {
 
     fireEvent.click(screen.getByText('blur-prompt'))
 
-    expect(screen.getByText('autoAddVar'))!.toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)autoAddVar(?=$|:)/))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('operation.add'))
+    fireEvent.click(screen.getByText(/(?:^|\.)operation\.add(?=$|:)/))
 
     expect(mockOnChange).toHaveBeenCalledWith('Hello {{new_var}}', [
       expect.objectContaining({
@@ -186,7 +176,7 @@ describe('SimplePromptInput', () => {
     const modalConfig = mockSetShowExternalDataToolModal.mock.calls[0]![0]
 
     expect(modalConfig.onValidateBeforeSaveCallback({ variable: 'existing_var' })).toBe(false)
-    expect(mockToastError).toHaveBeenCalledWith('varKeyError.keyAlreadyExists')
+    expect(mockToastError).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)varKeyError\.keyAlreadyExists(?=$|:)/))
     expect(modalConfig.onValidateBeforeSaveCallback({ variable: 'fresh_var' })).toBe(true)
 
     modalConfig.onSaveCallback(undefined)
@@ -315,9 +305,9 @@ describe('SimplePromptInput', () => {
     )
 
     fireEvent.click(screen.getByText('blur-prompt'))
-    expect(screen.getByText('autoAddVar'))!.toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)autoAddVar(?=$|:)/))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('operation.cancel'))
+    fireEvent.click(screen.getByText(/(?:^|\.)operation\.cancel(?=$|:)/))
     expect(mockOnChange).toHaveBeenCalledWith('Hello {{existing_var}}', [])
   })
 })

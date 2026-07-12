@@ -3,8 +3,8 @@ import type {
   Node,
 } from '../../types'
 import {
-  LOOP_CHILDREN_Z_INDEX,
   LOOP_PADDING,
+  NESTED_ELEMENT_Z_INDEX,
 } from '../../constants'
 import { CUSTOM_LOOP_START_NODE } from '../loop-start/constants'
 
@@ -99,7 +99,7 @@ export const buildLoopChildCopy = ({
     positionAbsolute: child.positionAbsolute,
     parentId: newNodeId,
     extent: child.extent,
-    zIndex: LOOP_CHILDREN_Z_INDEX,
+    zIndex: NESTED_ELEMENT_Z_INDEX,
   }
 
   return {

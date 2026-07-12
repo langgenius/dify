@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
+import { NESTED_ELEMENT_Z_INDEX } from '../../../constants'
 import { useInsertSnippet } from '../use-insert-snippet'
 
 type TestNode = {
@@ -6,7 +7,9 @@ type TestNode = {
   position: { x: number, y: number }
   selected?: boolean
   parentId?: string
+  zIndex?: number
   data: {
+    type?: string
     selected?: boolean
     _children?: { nodeId: string, nodeType: string }[]
     _connectedSourceHandleIds?: string[]
@@ -20,6 +23,13 @@ type TestEdge = {
   sourceHandle?: string
   target: string
   targetHandle?: string
+  zIndex?: number
+  data?: {
+    isInIteration?: boolean
+    iteration_id?: string
+    isInLoop?: boolean
+    loop_id?: string
+  }
 }
 
 const mockFetchQuery = vi.fn()
@@ -93,14 +103,16 @@ describe('useInsertSnippet', () => {
           nodes: [
             {
               id: 'snippet-node-1',
+              zIndex: 1,
               position: { x: 10, y: 20 },
-              data: { selected: false, _children: [{ nodeId: 'snippet-node-2', nodeType: 'code' }] },
+              data: { type: 'iteration', selected: false, _children: [{ nodeId: 'snippet-node-2', nodeType: 'code' }] },
             },
             {
               id: 'snippet-node-2',
               parentId: 'snippet-node-1',
+              zIndex: 1002,
               position: { x: 30, y: 40 },
-              data: { selected: false },
+              data: { type: 'code', selected: false },
             },
           ],
           edges: [
@@ -110,6 +122,7 @@ describe('useInsertSnippet', () => {
               sourceHandle: 'source',
               target: 'snippet-node-2',
               targetHandle: 'target',
+              zIndex: 1002,
               data: {},
             },
           ],
@@ -132,12 +145,15 @@ describe('useInsertSnippet', () => {
       expect(nextNodes).toHaveLength(3)
       expect(nextNodes[1]!.id).not.toBe('snippet-node-1')
       expect(nextNodes[2]!.parentId).toBe(nextNodes[1]!.id)
+      expect(nextNodes[1]!.zIndex).toBe(0)
+      expect(nextNodes[2]!.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
       expect(nextNodes[1]!.data._children![0]!.nodeId).toBe(nextNodes[2]!.id)
 
       const nextEdges = mockSetEdges.mock.calls[0]![0] as TestEdge[]
       expect(nextEdges).toHaveLength(2)
       expect(nextEdges[1]!.source).toBe(nextNodes[1]!.id)
       expect(nextEdges[1]!.target).toBe(nextNodes[2]!.id)
+      expect(nextEdges[1]!.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
 
       expect(mockSaveStateToHistory).toHaveBeenCalledWith('NodePaste', {
         nodeId: nextNodes[1]!.id,
@@ -148,18 +164,32 @@ describe('useInsertSnippet', () => {
       })
     })
 
-    it('should connect inserted snippet nodes to the requested edge position', async () => {
+    it.each(['iteration', 'loop'] as const)('should connect inserted snippet nodes inside the %s container', async (containerType) => {
       mockGetNodes.mockReturnValue([
         {
+          id: 'container-node',
+          position: { x: 0, y: 0 },
+          data: {
+            type: containerType,
+            selected: false,
+            _children: [
+              { nodeId: 'prev-node', nodeType: 'code' },
+              { nodeId: 'next-node', nodeType: 'code' },
+            ],
+          },
+        },
+        {
           id: 'prev-node',
+          parentId: 'container-node',
           position: { x: 0, y: 0 },
           width: 240,
-          data: { type: 'start', selected: true, _connectedSourceHandleIds: ['source'] },
+          data: { type: 'code', selected: true, _connectedSourceHandleIds: ['source'] },
         },
         {
           id: 'next-node',
+          parentId: 'container-node',
           position: { x: 300, y: 0 },
-          data: { type: 'answer', selected: false, _connectedTargetHandleIds: ['target'] },
+          data: { type: 'code', selected: false, _connectedTargetHandleIds: ['target'] },
         },
       ])
       mockEdges = [
@@ -170,8 +200,8 @@ describe('useInsertSnippet', () => {
           target: 'next-node',
           targetHandle: 'target',
           data: {
-            sourceType: 'start',
-            targetType: 'answer',
+            sourceType: 'code',
+            targetType: 'code',
           },
         },
       ]
@@ -221,6 +251,8 @@ describe('useInsertSnippet', () => {
       const insertedExit = nextNodes.find(node => node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-exit'))!
       const shiftedNextNode = nextNodes.find(node => node.id === 'next-node')!
       expect(insertedEntry.position).toEqual({ x: 300, y: 0 })
+      expect(insertedEntry.parentId).toBe('container-node')
+      expect(insertedExit.parentId).toBe('container-node')
       expect(shiftedNextNode.position.x).toBe(600)
       expect(nextNodes.find(node => node.id === 'prev-node')!.data._connectedSourceHandleIds).toEqual(['source'])
       expect(insertedEntry.data._connectedTargetHandleIds).toEqual(['target'])
@@ -248,6 +280,18 @@ describe('useInsertSnippet', () => {
           targetHandle: 'target',
         }),
       ]))
+      const incomingEdge = nextEdges.find(edge => edge.source === 'prev-node' && edge.target === insertedEntry.id)
+      const insertedInternalEdge = nextEdges.find(edge => edge.source === insertedEntry.id && edge.target === insertedExit.id)
+      const outgoingEdge = nextEdges.find(edge => edge.source === insertedExit.id && edge.target === 'next-node')
+      expect(incomingEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+      expect(insertedInternalEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+      expect(outgoingEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+      expect(insertedInternalEdge?.data).toEqual(expect.objectContaining({
+        isInIteration: containerType === 'iteration',
+        iteration_id: containerType === 'iteration' ? 'container-node' : undefined,
+        isInLoop: containerType === 'loop',
+        loop_id: containerType === 'loop' ? 'container-node' : undefined,
+      }))
       expect(mockIncrementSnippetUseCount).toHaveBeenCalledWith({
         params: { snippetId: 'snippet-1' },
       })

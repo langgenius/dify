@@ -21,16 +21,6 @@ vi.mock('@/app/components/header', () => ({
 vi.mock('@/app/components/header/header-wrapper', () => ({
   default: ({ children }: { children: ReactNode }) => <div data-testid="header-wrapper">{children}</div>,
 }))
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
@@ -130,7 +120,7 @@ describe('MainNavLayout', () => {
   it('renders skip navigation before the repeated main navigation', () => {
     const { container } = render(<MainNavLayout><div>content</div></MainNavLayout>)
 
-    const skipLink = screen.getByRole('link', { name: 'navigation.skipToMain' })
+    const skipLink = screen.getByRole('link', { name: /(?:^|\.)navigation\.skipToMain(?=$|:)/ })
 
     expect(skipLink).toHaveAttribute('href', '#main-content')
     expect(skipLink).toHaveClass('outline-hidden', 'focus-visible:ring-2', 'focus-visible:ring-state-accent-solid')
@@ -140,7 +130,7 @@ describe('MainNavLayout', () => {
   it('moves focus to the main content when skip navigation is activated', () => {
     render(<MainNavLayout><div>content</div></MainNavLayout>)
 
-    const skipLink = screen.getByRole('link', { name: 'navigation.skipToMain' })
+    const skipLink = screen.getByRole('link', { name: /(?:^|\.)navigation\.skipToMain(?=$|:)/ })
     const main = screen.getByRole('main')
 
     fireEvent.click(skipLink)

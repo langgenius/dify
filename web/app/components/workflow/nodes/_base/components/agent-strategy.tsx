@@ -4,7 +4,7 @@ import type { NodeOutPutVar } from '../../../types'
 import type { ToolVarInputs } from '../../tool/types'
 import type { CredentialFormSchema, CredentialFormSchemaNumberInput, CredentialFormSchemaTextInput } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PluginMeta } from '@/app/components/plugins/types'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import {
   NumberField,
   NumberFieldControls,
@@ -146,7 +146,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               tooltip={def.tooltip && renderI18nObject(def.tooltip)}
               inline
             >
-              <FieldsetRoot className="flex w-[200px] items-center gap-3">
+              <Fieldset className="flex w-[200px] items-center gap-3">
                 <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
                 <Slider
                   value={value}
@@ -170,7 +170,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                     </NumberFieldControls>
                   </NumberFieldGroup>
                 </NumberField>
-              </FieldsetRoot>
+              </Fieldset>
             </Field>
           )
         }

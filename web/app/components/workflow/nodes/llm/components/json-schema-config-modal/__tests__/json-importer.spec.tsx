@@ -11,16 +11,6 @@ const visualEditorState = {
   advancedEditing: false,
   isAddingNewField: false,
 }
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('../visual-editor/context', () => ({
   useMittContext: () => ({
     emit: mockEmit,
@@ -151,7 +141,7 @@ describe('JsonImporter', () => {
 
     expect(mockUpdateBtnWidth).toHaveBeenCalledWith(88)
 
-    await user.click(screen.getByRole('button', { name: 'nodes.llm.jsonSchema.import' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
 
     expect(screen.getByTestId('popover-content')).toBeInTheDocument()
     expect(mockEmit).not.toHaveBeenCalled()
@@ -168,7 +158,7 @@ describe('JsonImporter', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'nodes.llm.jsonSchema.import' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
 
     expect(mockEmit).toHaveBeenCalledWith('quitEditing', {})
   })
@@ -183,9 +173,9 @@ describe('JsonImporter', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'nodes.llm.jsonSchema.import' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
     fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '[]' } })
-    await user.click(screen.getByRole('button', { name: 'operation.submit' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
     expect(screen.getByTestId('error-message')).toHaveTextContent('Root must be an object, not an array or primitive value.')
     expect(mockOnSubmit).not.toHaveBeenCalled()
@@ -202,9 +192,9 @@ describe('JsonImporter', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'nodes.llm.jsonSchema.import' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
     fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '{"foo":{"bar":1}}' } })
-    await user.click(screen.getByRole('button', { name: 'operation.submit' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
     expect(screen.getByTestId('error-message')).toHaveTextContent(`Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`)
     expect(mockOnSubmit).not.toHaveBeenCalled()
@@ -223,9 +213,9 @@ describe('JsonImporter', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'nodes.llm.jsonSchema.import' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
     fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '{"foo":1}' } })
-    await user.click(screen.getByRole('button', { name: 'operation.submit' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
     expect(screen.getByTestId('error-message')).toHaveTextContent('Malformed JSON payload')
     expect(mockOnSubmit).not.toHaveBeenCalled()
@@ -244,9 +234,9 @@ describe('JsonImporter', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'nodes.llm.jsonSchema.import' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
     fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '{"foo":1}' } })
-    await user.click(screen.getByRole('button', { name: 'operation.submit' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
     expect(screen.getByTestId('error-message')).toHaveTextContent('Invalid JSON')
     expect(mockOnSubmit).not.toHaveBeenCalled()
@@ -264,15 +254,15 @@ describe('JsonImporter', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'nodes.llm.jsonSchema.import' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
     fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '{"foo":"bar"}' } })
-    await user.click(screen.getByRole('button', { name: 'operation.submit' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
     expect(mockOnSubmit).toHaveBeenCalledWith({ foo: 'bar' })
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'nodes.llm.jsonSchema.import' }))
-    await user.click(screen.getByRole('button', { name: 'operation.cancel' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.cancel(?=$|:)/ }))
 
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
   })

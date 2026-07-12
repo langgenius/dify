@@ -14,16 +14,6 @@ let mockDefaultModel: {
 } | null = null
 
 let mockInstructionTemplate: { data: string } | undefined
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
@@ -161,7 +151,7 @@ describe('GetAutomaticRes', () => {
       expect(screen.getByTestId('basic-editor')).toHaveTextContent('template instruction')
     })
 
-    fireEvent.click(screen.getByText('generate.template.pythonDebugger.name'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.template\.pythonDebugger\.name(?=$|:)/))
 
     await waitFor(() => {
       expect(screen.getByTestId('basic-editor')).toHaveTextContent('generate.template.pythonDebugger.instruction')
@@ -186,9 +176,9 @@ describe('GetAutomaticRes', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('generate.generate'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
 
-    expect(mockToastError).toHaveBeenCalledWith('errorMsg.fieldRequired')
+    expect(mockToastError).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)errorMsg\.fieldRequired(?=$|:)/))
     expect(mockGenerateBasicAppFirstTimeRule).not.toHaveBeenCalled()
     expect(screen.getByText('result-placeholder')).toBeInTheDocument()
   })
@@ -212,7 +202,7 @@ describe('GetAutomaticRes', () => {
     )
 
     fireEvent.click(screen.getByText('set-basic-instruction'))
-    fireEvent.click(screen.getByText('generate.generate'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
 
     await waitFor(() => {
       expect(mockGenerateBasicAppFirstTimeRule).toHaveBeenCalledWith(expect.objectContaining({
@@ -228,10 +218,10 @@ describe('GetAutomaticRes', () => {
     fireEvent.click(screen.getByText('apply-result'))
 
     await waitFor(() => {
-      expect(screen.getByText('generate.overwriteTitle')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)generate\.overwriteTitle(?=$|:)/)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.confirm' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.confirm(?=$|:)/ }))
 
     expect(mockOnFinished).toHaveBeenCalledWith(expect.objectContaining({
       modified: 'generated prompt',
@@ -259,7 +249,7 @@ describe('GetAutomaticRes', () => {
     )
 
     fireEvent.click(screen.getByText('set-basic-instruction'))
-    fireEvent.click(screen.getByText('generate.generate'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
 
     await waitFor(() => {
       expect(screen.getByTestId('result-panel')).toHaveTextContent('generated prompt')
@@ -268,7 +258,7 @@ describe('GetAutomaticRes', () => {
     fireEvent.click(screen.getByText('apply-result'))
     const dialog = await screen.findByRole('alertdialog')
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'operation.cancel' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: /(?:^|\.)operation\.cancel(?=$|:)/ }))
 
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
@@ -298,7 +288,7 @@ describe('GetAutomaticRes', () => {
 
     fireEvent.click(screen.getByText('set-workflow-instruction'))
     fireEvent.click(screen.getByText('set-idea-output'))
-    fireEvent.click(screen.getByText('generate.generate'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
 
     await waitFor(() => {
       expect(mockGenerateRule).toHaveBeenCalledWith(expect.objectContaining({

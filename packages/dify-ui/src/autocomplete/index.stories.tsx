@@ -254,7 +254,7 @@ const BasicTagAutocomplete = ({
     openOnInputClick
   >
     <AutocompleteInputGroup size={size}>
-      <span className="i-ri-search-line ml-2 size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+      <span className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
       <AutocompleteInput size={size} placeholder="Search tags or type a new one…" aria-label="Search tags or type a new one" />
       <AutocompleteClear size={size} />
       <AutocompleteTrigger size={size} />
@@ -396,7 +396,7 @@ const AsyncSearchDemo = () => {
         mode="list"
       >
         <AutocompleteInputGroup>
-          <span className="i-ri-cloud-line ml-2 size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span className="ml-2 i-ri-cloud-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
           <AutocompleteInput placeholder="Search remote resources…" aria-label="Search remote resources" />
           <AutocompleteClear />
           <AutocompleteTrigger />
@@ -441,7 +441,7 @@ const VirtualizedSuggestionList = ({
   return (
     <div
       ref={scrollRef}
-      className="max-h-[min(22rem,var(--available-height))] overflow-y-auto overflow-x-hidden overscroll-contain outline-hidden"
+      className="max-h-[min(22rem,var(--available-height))] overflow-x-hidden overflow-y-auto overscroll-contain outline-hidden"
     >
       <AutocompleteList
         className="relative max-h-none overflow-visible p-0"
@@ -504,6 +504,7 @@ const FuzzyHighlight = ({
     <React.Fragment>
       {parts.map((part, index) => (
         part.toLowerCase() === query.trim().toLowerCase()
+          // eslint-disable-next-line react/no-array-index-key -- Repeated text fragments have no stable identity and never preserve state.
           ? <mark key={`${part}-${index}`} className="bg-transparent text-text-accent">{part}</mark>
           : part
       ))}
@@ -527,7 +528,7 @@ const FuzzyMatchingDemo = () => {
         openOnInputClick
       >
         <AutocompleteInputGroup>
-          <span className="i-ri-sparkling-2-line ml-2 size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span className="ml-2 i-ri-sparkling-2-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
           <AutocompleteInput placeholder="Fuzzy search workflow suggestions…" aria-label="Fuzzy search workflow suggestions" />
           <AutocompleteClear />
           <AutocompleteTrigger />
@@ -600,7 +601,7 @@ export const InlineAutocomplete: Story = {
         openOnInputClick
       >
         <AutocompleteInputGroup>
-          <span className="i-ri-text-snippet ml-2 size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span className="ml-2 i-ri-text-snippet size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
           <AutocompleteInput placeholder="Type a prompt starter…" aria-label="Type a prompt starter" />
           <AutocompleteClear />
           <AutocompleteTrigger />
@@ -628,7 +629,7 @@ export const GroupedSuggestions: Story = {
         openOnInputClick
       >
         <AutocompleteInputGroup>
-          <span className="i-ri-command-line ml-2 size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span className="ml-2 i-ri-command-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
           <AutocompleteInput placeholder="Search tags, nodes, or prompt starters…" aria-label="Search tags, nodes, or prompt starters" />
           <AutocompleteClear />
           <AutocompleteTrigger />
@@ -657,7 +658,7 @@ export const LimitResults: Story = {
         openOnInputClick
       >
         <AutocompleteInputGroup>
-          <span className="i-ri-tools-line ml-2 size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span className="ml-2 i-ri-tools-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
           <AutocompleteInput placeholder="Search workflow suggestions…" aria-label="Search workflow suggestions" />
           <AutocompleteClear />
           <AutocompleteTrigger />
@@ -691,7 +692,7 @@ export const CommandPalette: Story = {
         keepHighlight
       >
         <AutocompleteInputGroup className="mb-2">
-          <span className="i-ri-search-line ml-2 size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
           <AutocompleteInput placeholder="Run a command…" aria-label="Run a command" aria-expanded="true" />
           <AutocompleteClear />
         </AutocompleteInputGroup>
@@ -717,7 +718,7 @@ const VirtualizedLongSuggestionsDemo = () => {
         }}
       >
         <AutocompleteInputGroup>
-          <span className="i-ri-search-line ml-2 size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
           <AutocompleteInput placeholder="Search 1,000 workspace suggestions…" aria-label="Search 1,000 workspace suggestions" />
           <AutocompleteClear />
           <AutocompleteTrigger />
@@ -751,7 +752,7 @@ export const Empty: Story = {
         openOnInputClick
       >
         <AutocompleteInputGroup>
-          <span className="i-ri-search-line ml-2 size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
           <AutocompleteInput placeholder="Search tags or type a new one…" aria-label="Search tags or type a new one" />
           <AutocompleteClear />
           <AutocompleteTrigger />

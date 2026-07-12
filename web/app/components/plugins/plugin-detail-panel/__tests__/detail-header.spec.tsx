@@ -78,12 +78,6 @@ vi.mock('ahooks', async () => {
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-  useLocale: () => 'en-US',
-}))
-
 // Global mock state for enable_marketplace seeded into the QueryClient via the local render helper.
 
 vi.mock('@/context/modal-context', () => ({

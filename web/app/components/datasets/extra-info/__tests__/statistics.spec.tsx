@@ -1,13 +1,10 @@
 import type { RelatedApp, RelatedAppResponse } from '@/models/datasets'
 import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { AppModeEnum } from '@/types/app'
 import Statistics from '../statistics'
 
 // Mock useDocLink
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
 
 afterEach(() => {
   cleanup()

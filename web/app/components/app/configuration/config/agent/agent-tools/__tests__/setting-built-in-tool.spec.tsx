@@ -55,10 +55,6 @@ vi.mock('@/app/components/plugins/readme-panel/entrance', () => ({
   ReadmeEntrance: ({ className }: { className?: string }) => <div className={className}>readme</div>,
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: vi.fn(() => 'en-US'),
-}))
-
 const createParameter = (overrides?: Partial<ToolParameter>): ToolParameter => ({
   name: 'settingParam',
   label: {

@@ -34,11 +34,6 @@ vi.mock('@/app/components/app/store', () => ({
     return selector({ appDetail: storeAppDetail })
   },
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: Theme.light }),
 }))
