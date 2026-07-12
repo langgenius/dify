@@ -399,8 +399,7 @@ export const useChat = (
                     (suggestedQuestionsAbortControllerRef.current = newAbortController),
                 )
                 setSuggestedQuestions(data)
-              } catch (error) {
-                // eslint-disable-next-line unused-imports/no-unused-vars
+              } catch {
                 setSuggestedQuestions([])
               }
             }

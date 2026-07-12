@@ -15,8 +15,8 @@ function RadioCardTypeExamples() {
         title="Advanced"
         description="Typed option"
       />
-      {/* @ts-expect-error RadioCard values should stay within the selected RadioGroup value type */}
       <RadioCard<ExampleMode>
+        // @ts-expect-error RadioCard values should stay within the selected RadioGroup value type
         value="invalid"
         icon={<span>i</span>}
         title="Invalid"

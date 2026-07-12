@@ -28,7 +28,7 @@ const IconBase = ({
     'data-icon': data.name,
     'aria-hidden': 'true',
     ...restProps,
-    ref: ref,
+    ref,
   })
 }
 

@@ -955,8 +955,7 @@ export const useInstallOrUpdate = ({
                 uniqueIdentifier,
               }
             }
-          } catch (e) {
-            // eslint-disable-next-line unused-imports/no-unused-vars
+          } catch {
             return Promise.resolve({ status: TaskStatus.failed, taskId: '', uniqueIdentifier: '' })
           }
         }),

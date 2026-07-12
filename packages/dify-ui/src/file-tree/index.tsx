@@ -151,7 +151,7 @@ export function FileTreeFile({
   }
   const defaultProps = {
     type: 'button',
-    disabled: disabled,
+    disabled,
     'data-selected': selected || undefined,
     'data-disabled': disabled || undefined,
     'aria-current': selected ? 'true' : undefined,

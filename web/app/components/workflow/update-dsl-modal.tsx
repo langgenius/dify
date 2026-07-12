@@ -146,8 +146,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
       } else if (fileContent) {
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
       }
-    } catch (e) {
-      // eslint-disable-next-line unused-imports/no-unused-vars
+    } catch {
       setLoading(false)
       toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
     }
@@ -169,8 +168,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         setLoading(false)
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
       }
-    } catch (e) {
-      // eslint-disable-next-line unused-imports/no-unused-vars
+    } catch {
       setLoading(false)
       toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
     }

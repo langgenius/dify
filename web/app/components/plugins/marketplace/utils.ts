@@ -88,8 +88,7 @@ export const getMarketplacePluginsByCollectionId = async (
     plugins = (marketplaceCollectionPluginsDataJson.data?.plugins || []).map((plugin) =>
       getFormattedPlugin(plugin),
     )
-  } catch (e) {
-    // eslint-disable-next-line unused-imports/no-unused-vars
+  } catch {
     plugins = []
   }
 
@@ -123,8 +122,7 @@ export const getMarketplaceCollectionsAndPlugins = async (
         marketplaceCollectionPluginsMap[collection.name] = plugins
       }),
     )
-  } catch (e) {
-    // eslint-disable-next-line unused-imports/no-unused-vars
+  } catch {
     marketplaceCollections = []
     marketplaceCollectionPluginsMap = {}
   }

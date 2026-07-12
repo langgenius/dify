@@ -12,6 +12,30 @@ const TEST_FILES = ['**/__tests__/**/*.{ts,tsx}', '**/*.spec.{ts,tsx}']
 export default antfu(
   {
     ignores: ['coverage/', 'dist/', 'storybook-static/'],
+    stylistic: false,
+    perfectionist: {
+      overrides: {
+        'perfectionist/sort-imports': 'off',
+      },
+    },
+    jsonc: {
+      overrides: {
+        'jsonc/space-unary-ops': 'off',
+      },
+    },
+    yaml: {
+      overrides: {
+        'yaml/block-mapping': 'off',
+        'yaml/block-sequence': 'off',
+        'yaml/plain-scalar': 'off',
+      },
+    },
+    toml: {
+      overrides: {
+        'toml/comma-style': 'off',
+        'toml/no-space-dots': 'off',
+      },
+    },
     react: {
       overrides: {
         'react/exhaustive-deps': ['error', { additionalHooks: 'useIsoLayoutEffect' }],
@@ -36,11 +60,6 @@ export default antfu(
     test: {
       overrides: {
         'test/prefer-lowercase-title': 'off',
-      },
-    },
-    stylistic: {
-      overrides: {
-        'antfu/top-level-function': 'off',
       },
     },
     e18e: false,
@@ -76,11 +95,9 @@ export default antfu(
       tailwindcss,
     },
     rules: {
-      'tailwindcss/enforce-consistent-class-order': 'error',
       'tailwindcss/no-duplicate-classes': 'error',
       'tailwindcss/no-deprecated-classes': 'error',
       'tailwindcss/no-unknown-classes': 'error',
-      'tailwindcss/no-unnecessary-whitespace': 'error',
     },
     settings: {
       'better-tailwindcss': {
@@ -98,6 +115,7 @@ export default antfu(
   {
     rules: {
       'node/prefer-global/process': 'off',
+      'unicorn/number-literal-case': 'off',
     },
   },
   {
@@ -105,4 +123,8 @@ export default antfu(
       reportUnusedDisableDirectives: 'error',
     },
   },
-)
+).override('antfu/sort/package-json', {
+  rules: {
+    'jsonc/sort-keys': 'off',
+  },
+})

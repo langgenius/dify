@@ -115,8 +115,7 @@ const UpdatePluginModal = ({
           return
         }
         onSave()
-      } catch (e) {
-        // eslint-disable-next-line unused-imports/no-unused-vars
+      } catch {
         setUploadStep(UploadStep.notStarted)
       }
       return

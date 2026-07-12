@@ -204,7 +204,7 @@ vi.mock('@/config', async () => {
 
 // Mock PreviewDocumentPicker to allow testing handlePickerChange
 vi.mock('@/app/components/datasets/common/document-picker/preview-document-picker', () => ({
-  // eslint-disable-next-line ts/no-explicit-any
+  /* eslint-disable ts/no-explicit-any */
   default: ({
     onChange,
     value,
@@ -223,6 +223,7 @@ vi.mock('@/app/components/datasets/common/document-picker/preview-document-picke
       ))}
     </div>
   ),
+  /* eslint-enable ts/no-explicit-any */
 }))
 
 vi.mock('@/app/components/datasets/settings/utils', () => ({
