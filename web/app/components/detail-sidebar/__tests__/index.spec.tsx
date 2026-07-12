@@ -3,10 +3,13 @@ import { DetailSidebarFrame } from '..'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
 
 const { hotkeyRegistrations } = vi.hoisted(() => ({
-  hotkeyRegistrations: new Map<string, {
-    handler: (event: { preventDefault: () => void }) => void
-    options?: { ignoreInputs?: boolean }
-  }>(),
+  hotkeyRegistrations: new Map<
+    string,
+    {
+      handler: (event: { preventDefault: () => void }) => void
+      options?: { ignoreInputs?: boolean }
+    }
+  >(),
 }))
 const mockAppContextState = vi.hoisted(() => ({
   current: {
@@ -52,19 +55,24 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/app/components/main-nav/components/account-section', () => ({
   default: ({ compact }: { compact?: boolean }) => (
-    <button type="button" aria-label="account">{compact ? 'Compact account' : 'Expanded account'}</button>
+    <button type="button" aria-label="account">
+      {compact ? 'Compact account' : 'Expanded account'}
+    </button>
   ),
 }))
 
 vi.mock('@/app/components/main-nav/components/help-menu', () => ({
   default: ({ triggerClassName }: { triggerClassName?: string }) => (
-    <button type="button" aria-label="help" className={triggerClassName}>Help</button>
+    <button type="button" aria-label="help" className={triggerClassName}>
+      Help
+    </button>
   ),
 }))
 
@@ -77,11 +85,15 @@ function renderDetailSidebarFrame() {
     <DetailSidebarFrame
       renderTop={({ expand, onToggle }) => (
         <div data-testid="detail-top" data-expand={expand}>
-          <button type="button" data-testid="detail-toggle" onClick={onToggle}>Toggle</button>
+          <button type="button" data-testid="detail-toggle" onClick={onToggle}>
+            Toggle
+          </button>
         </div>
       )}
       renderSection={({ expand }) => (
-        <div data-testid="detail-section" data-expand={expand}>Section</div>
+        <div data-testid="detail-section" data-expand={expand}>
+          Section
+        </div>
       )}
     />,
   )

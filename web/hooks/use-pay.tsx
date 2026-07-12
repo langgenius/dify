@@ -26,10 +26,16 @@ const useAnthropicCheckPay = () => {
   const paymentResult = searchParams.get('payment_result')
 
   useEffect(() => {
-    if (providerName === 'anthropic' && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
+    if (
+      providerName === 'anthropic' &&
+      (paymentResult === 'succeeded' || paymentResult === 'cancelled')
+    ) {
       setConfirm({
         type: paymentResult === 'succeeded' ? 'info' : 'warning',
-        title: paymentResult === 'succeeded' ? t($ => $['actionMsg.paySucceeded'], { ns: 'common' }) : t($ => $['actionMsg.payCancelled'], { ns: 'common' }),
+        title:
+          paymentResult === 'succeeded'
+            ? t(($) => $['actionMsg.paySucceeded'], { ns: 'common' })
+            : t(($) => $['actionMsg.payCancelled'], { ns: 'common' }),
       })
     }
   }, [providerName, paymentResult, t])
@@ -45,10 +51,16 @@ const useBillingPay = () => {
   const paymentResult = searchParams.get('payment_result')
 
   useEffect(() => {
-    if (paymentType === 'billing' && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
+    if (
+      paymentType === 'billing' &&
+      (paymentResult === 'succeeded' || paymentResult === 'cancelled')
+    ) {
       setConfirm({
         type: paymentResult === 'succeeded' ? 'info' : 'warning',
-        title: paymentResult === 'succeeded' ? t($ => $['actionMsg.paySucceeded'], { ns: 'common' }) : t($ => $['actionMsg.payCancelled'], { ns: 'common' }),
+        title:
+          paymentResult === 'succeeded'
+            ? t(($) => $['actionMsg.paySucceeded'], { ns: 'common' })
+            : t(($) => $['actionMsg.payCancelled'], { ns: 'common' }),
       })
     }
   }, [paymentType, paymentResult, t])
@@ -67,8 +79,7 @@ const useCheckNotion = () => {
   const { data } = useNotionBinding(notionCode, canBinding)
 
   useEffect(() => {
-    if (data)
-      router.replace('/')
+    if (data) router.replace('/')
   }, [data, router])
   useEffect(() => {
     if (type === 'notion') {
@@ -77,8 +88,7 @@ const useCheckNotion = () => {
           type: 'warning',
           title: notionError,
         })
-      }
-      else if (notionCode) {
+      } else if (notionCode) {
         setCanBinding(true)
       }
     }
@@ -102,13 +112,15 @@ export const CheckModal = () => {
 
   const confirmInfo = anthropicConfirmInfo || notionConfirmInfo || billingConfirmInfo
 
-  if (!confirmInfo)
-    return null
+  if (!confirmInfo) return null
 
   const description = (confirmInfo as { desc?: string }).desc || ''
 
   return (
-    <AlertDialog open={showPayStatusModal} onOpenChange={open => !open && handleCancelShowPayStatusModal()}>
+    <AlertDialog
+      open={showPayStatusModal}
+      onOpenChange={(open) => !open && handleCancelShowPayStatusModal()}
+    >
       <AlertDialogContent>
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
           <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
@@ -126,8 +138,8 @@ export const CheckModal = () => {
             onClick={handleCancelShowPayStatusModal}
           >
             {confirmInfo.type === 'info'
-              ? t($ => $['operation.ok'], { ns: 'common' })
-              : t($ => $['operation.confirm'], { ns: 'common' })}
+              ? t(($) => $['operation.ok'], { ns: 'common' })
+              : t(($) => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

@@ -1,6 +1,5 @@
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-
 import { ChunkingMode } from '@/models/datasets'
 import { useChunkStructureConfig } from '../hooks'
 import { EffectColor } from '../types'

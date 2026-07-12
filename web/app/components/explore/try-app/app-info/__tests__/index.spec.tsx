@@ -10,36 +10,37 @@ vi.mock('../use-get-requirements', () => ({
   default: (...args: unknown[]) => mockUseGetRequirements(...args),
 }))
 
-const createMockAppDetail = (mode: string, overrides: Partial<TryAppInfo> = {}): TryAppInfo => ({
-  id: 'test-app-id',
-  name: 'Test App Name',
-  description: 'Test App Description',
-  mode,
-  site: {
-    title: 'Test Site Title',
-    icon: '🚀',
-    icon_type: 'emoji',
-    icon_background: '#FFFFFF',
-    icon_url: '',
-  },
-  model_config: {
-    model: {
-      provider: 'langgenius/openai/openai',
-      name: 'gpt-4',
-      mode: 'chat',
+const createMockAppDetail = (mode: string, overrides: Partial<TryAppInfo> = {}): TryAppInfo =>
+  ({
+    id: 'test-app-id',
+    name: 'Test App Name',
+    description: 'Test App Description',
+    mode,
+    site: {
+      title: 'Test Site Title',
+      icon: '🚀',
+      icon_type: 'emoji',
+      icon_background: '#FFFFFF',
+      icon_url: '',
     },
-    dataset_configs: {
-      datasets: {
-        datasets: [],
+    model_config: {
+      model: {
+        provider: 'langgenius/openai/openai',
+        name: 'gpt-4',
+        mode: 'chat',
       },
+      dataset_configs: {
+        datasets: {
+          datasets: [],
+        },
+      },
+      agent_mode: {
+        tools: [],
+      },
+      user_input_form: [],
     },
-    agent_mode: {
-      tools: [],
-    },
-    user_input_form: [],
-  },
-  ...overrides,
-} as unknown as TryAppInfo)
+    ...overrides,
+  }) as unknown as TryAppInfo
 
 describe('AppInfo', () => {
   beforeEach(() => {
@@ -58,13 +59,7 @@ describe('AppInfo', () => {
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       expect(screen.getByText('Test App Name')).toBeInTheDocument()
     })
@@ -75,13 +70,7 @@ describe('AppInfo', () => {
       } as Partial<TryAppInfo>)
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       const nameElement = screen.getByText('Very Long App Name That Should Be Truncated')
       expect(nameElement).toHaveAttribute('title', 'Very Long App Name That Should Be Truncated')
@@ -93,13 +82,7 @@ describe('AppInfo', () => {
       const appDetail = createMockAppDetail('advanced-chat')
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       expect(screen.getByText('APP.TYPES.ADVANCED')).toBeInTheDocument()
     })
@@ -108,13 +91,7 @@ describe('AppInfo', () => {
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       expect(screen.getByText('APP.TYPES.CHATBOT')).toBeInTheDocument()
     })
@@ -123,13 +100,7 @@ describe('AppInfo', () => {
       const appDetail = createMockAppDetail('agent-chat')
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       expect(screen.getByText('APP.TYPES.AGENT')).toBeInTheDocument()
     })
@@ -138,13 +109,7 @@ describe('AppInfo', () => {
       const appDetail = createMockAppDetail('workflow')
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       expect(screen.getByText('APP.TYPES.WORKFLOW')).toBeInTheDocument()
     })
@@ -153,13 +118,7 @@ describe('AppInfo', () => {
       const appDetail = createMockAppDetail('completion')
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       expect(screen.getByText('APP.TYPES.COMPLETION')).toBeInTheDocument()
     })
@@ -172,13 +131,7 @@ describe('AppInfo', () => {
       } as Partial<TryAppInfo>)
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       expect(screen.getByText('This is a test description')).toBeInTheDocument()
     })
@@ -190,11 +143,7 @@ describe('AppInfo', () => {
       const mockOnCreate = vi.fn()
 
       const { container } = render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
+        <AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />,
       )
 
       const descriptionElements = container.querySelectorAll('.system-sm-regular.mt-\\[14px\\]')
@@ -207,13 +156,7 @@ describe('AppInfo', () => {
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       expect(screen.getByText('explore.tryApp.createFromSampleApp')).toBeInTheDocument()
     })
@@ -222,13 +165,7 @@ describe('AppInfo', () => {
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       fireEvent.click(screen.getByText('explore.tryApp.createFromSampleApp'))
       expect(mockOnCreate).toHaveBeenCalledTimes(1)
@@ -258,13 +195,7 @@ describe('AppInfo', () => {
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       expect(screen.queryByText('explore.tryApp.category')).not.toBeInTheDocument()
     })
@@ -282,13 +213,7 @@ describe('AppInfo', () => {
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       expect(screen.getByText('explore.tryApp.requirements')).toBeInTheDocument()
       expect(screen.getByText('OpenAI GPT-4')).toBeInTheDocument()
@@ -303,33 +228,21 @@ describe('AppInfo', () => {
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       expect(screen.queryByText('explore.tryApp.requirements')).not.toBeInTheDocument()
     })
 
     it('renders requirement icons with correct image src', () => {
       mockUseGetRequirements.mockReturnValue({
-        requirements: [
-          { name: 'Test Tool', iconUrl: 'https://example.com/test-icon.png' },
-        ],
+        requirements: [{ name: 'Test Tool', iconUrl: 'https://example.com/test-icon.png' }],
       })
 
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 
       const { container } = render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
+        <AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />,
       )
 
       const iconElement = container.querySelector('img[src="https://example.com/test-icon.png"]')
@@ -338,21 +251,13 @@ describe('AppInfo', () => {
 
     it('falls back to default icon when requirement image fails to load', () => {
       mockUseGetRequirements.mockReturnValue({
-        requirements: [
-          { name: 'Broken Tool', iconUrl: 'https://example.com/broken-icon.png' },
-        ],
+        requirements: [{ name: 'Broken Tool', iconUrl: 'https://example.com/broken-icon.png' }],
       })
 
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       const requirementRow = screen.getByText('Broken Tool').parentElement as HTMLElement
       const iconImage = requirementRow.querySelector('img') as HTMLImageElement
@@ -361,7 +266,9 @@ describe('AppInfo', () => {
       fireEvent.error(iconImage)
 
       expect(requirementRow.querySelector('img')).not.toBeInTheDocument()
-      expect(requirementRow.querySelector('.i-custom-public-other-default-tool-icon')).toBeInTheDocument()
+      expect(
+        requirementRow.querySelector('.i-custom-public-other-default-tool-icon'),
+      ).toBeInTheDocument()
     })
   })
 
@@ -388,13 +295,7 @@ describe('AppInfo', () => {
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 
-      render(
-        <AppInfo
-          appId="my-app-id"
-          appDetail={appDetail}
-          onCreate={mockOnCreate}
-        />,
-      )
+      render(<AppInfo appId="my-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
       expect(mockUseGetRequirements).toHaveBeenCalledWith({
         appDetail,

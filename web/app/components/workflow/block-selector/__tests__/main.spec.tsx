@@ -73,7 +73,6 @@ const renderNodeSelector = (ui: ReactElement, options?: RenderNodeSelectorOption
         flowType: FlowType.appFlow,
         fileSettings: {} as never,
         ...options?.hooksStoreProps?.configsMap,
-
       },
     },
   })
@@ -87,15 +86,10 @@ describe('NodeSelector', () => {
     renderNodeSelector(
       <NodeSelector
         onSelect={onSelect}
-        blocks={[
-          createBlock(BlockEnum.LLM, 'LLM'),
-          createBlock(BlockEnum.End, 'End'),
-        ]}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM'), createBlock(BlockEnum.End, 'End')]}
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.End]}
-        trigger={open => (
-          <button type="button">
-            {open ? 'selector-open' : 'selector-closed'}
-          </button>
+        trigger={(open) => (
+          <button type="button">{open ? 'selector-open' : 'selector-closed'}</button>
         )}
       />,
     )
@@ -122,7 +116,9 @@ describe('NodeSelector', () => {
 
     await user.click(screen.getByRole('button', { name: 'selector-closed' }))
 
-    const reopenedInput = screen.getByPlaceholderText('workflow.tabs.searchBlock') as HTMLInputElement
+    const reopenedInput = screen.getByPlaceholderText(
+      'workflow.tabs.searchBlock',
+    ) as HTMLInputElement
     expect(reopenedInput.value).toBe('')
     expect(screen.getByText('End')).toBeInTheDocument()
   })
@@ -133,15 +129,11 @@ describe('NodeSelector', () => {
     renderNodeSelector(
       <NodeSelector
         onSelect={vi.fn()}
-        blocks={[
-          createBlock(BlockEnum.LLM, 'LLM'),
-        ]}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start]}
         showStartTab
-        trigger={open => (
-          <button type="button">
-            {open ? 'selector-open' : 'selector-closed'}
-          </button>
+        trigger={(open) => (
+          <button type="button">{open ? 'selector-open' : 'selector-closed'}</button>
         )}
       />,
     )
@@ -172,10 +164,8 @@ describe('NodeSelector', () => {
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM]}
-        trigger={open => (
-          <button type="button">
-            {open ? 'selector-open' : 'selector-closed'}
-          </button>
+        trigger={(open) => (
+          <button type="button">{open ? 'selector-open' : 'selector-closed'}</button>
         )}
       />,
     )
@@ -213,11 +203,7 @@ describe('NodeSelector', () => {
     const user = userEvent.setup()
 
     function TriggerShell() {
-      return (
-        <span>
-          open-from-shell
-        </span>
-      )
+      return <span>open-from-shell</span>
     }
 
     renderNodeSelector(
@@ -271,11 +257,7 @@ describe('NodeSelector', () => {
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM]}
         renderTriggerAsButtonRoot
-        trigger={() => (
-          <Button variant="primary">
-            open-shared-button-trigger
-          </Button>
-        )}
+        trigger={() => <Button variant="primary">open-shared-button-trigger</Button>}
       />,
     )
 
@@ -295,10 +277,7 @@ describe('NodeSelector', () => {
         open
         isolateKeyboardEvents
         onSelect={vi.fn()}
-        blocks={[
-          createBlock(BlockEnum.LLM, 'LLM'),
-          createBlock(BlockEnum.End, 'End'),
-        ]}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM'), createBlock(BlockEnum.End, 'End')]}
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.End]}
       />,
     )
@@ -308,8 +287,7 @@ describe('NodeSelector', () => {
 
     try {
       await user.type(searchInput, 'LLM')
-    }
-    finally {
+    } finally {
       document.body.removeEventListener('keydown', handleParentKeyDown)
     }
 
@@ -347,11 +325,12 @@ describe('NodeSelector', () => {
 
     await user.hover(screen.getByText('workflow.tabs.start'))
 
-    expect(await screen.findByText('workflow.tabs.unconfiguredStartDisabledTip')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'workflow.tabs.startDisabledTipLearnMore' })).toHaveAttribute(
-      'href',
-      'https://docs.dify.ai/en/self-host/use-dify/nodes/trigger/overview',
-    )
+    expect(
+      await screen.findByText('workflow.tabs.unconfiguredStartDisabledTip'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'workflow.tabs.startDisabledTipLearnMore' }),
+    ).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/nodes/trigger/overview')
     expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
   })
 
@@ -380,6 +359,8 @@ describe('NodeSelector', () => {
     )
 
     expect(screen.getByText('workflow.tabs.start')).toHaveAttribute('aria-disabled', 'false')
-    expect(screen.getByText('workflow.nodes.startPlaceholder.userInputConflictTip')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.nodes.startPlaceholder.userInputConflictTip'),
+    ).toBeInTheDocument()
   })
 })

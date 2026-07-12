@@ -16,8 +16,8 @@ For a new workspace consumer, add:
 ```jsonc
 {
   "dependencies": {
-    "@langgenius/dify-ui": "workspace:*"
-  }
+    "@langgenius/dify-ui": "workspace:*",
+  },
 }
 ```
 
@@ -215,7 +215,7 @@ Base UI can wait for `element.getAnimations()` to finish before it unmounts over
 Set the Base UI test flag in a Vitest setup file to skip those waits:
 
 ```ts
-(
+;(
   globalThis as typeof globalThis & {
     BASE_UI_ANIMATIONS_DISABLED: boolean
   }
@@ -227,7 +227,7 @@ Set the Base UI test flag in a Vitest setup file to skip those waits:
 See `[AGENTS.md](./AGENTS.md)` for:
 
 - Component authoring rules (one-component-per-folder, `cva` + `cn`, relative imports inside the package, subpath imports from consumers).
-- Figma `--radius/`* token → Tailwind `rounded-*` class mapping.
+- Figma `--radius/`_ token → Tailwind `rounded-_` class mapping.
 
 ## Not part of this package
 

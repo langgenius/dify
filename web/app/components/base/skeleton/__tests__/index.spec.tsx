@@ -1,12 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import {
-  SkeletonContainer,
-  SkeletonPoint,
-  SkeletonRectangle,
-  SkeletonRow,
-} from '../index'
+import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '../index'
 
 describe('Skeleton Components', () => {
   describe('Individual Components', () => {

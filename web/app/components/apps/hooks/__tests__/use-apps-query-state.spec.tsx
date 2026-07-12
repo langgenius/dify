@@ -28,9 +28,7 @@ describe('useAppsQueryState', () => {
   })
 
   it('should parse app list filters from URL', () => {
-    const { result } = renderWithAdapter(
-      '?category=workflow&tagIDs=tag1;tag2&keywords=search+term',
-    )
+    const { result } = renderWithAdapter('?category=workflow&tagIDs=tag1;tag2&keywords=search+term')
 
     expect(result.current.query).toEqual({
       category: AppModeEnum.WORKFLOW,
@@ -85,8 +83,7 @@ describe('useAppsQueryState', () => {
       expect(onUrlUpdate).toHaveBeenCalled()
       const update = onUrlUpdate.mock.calls.at(-1)![0]
       expect(update.searchParams.get('keywords')).toBe('search')
-    }
-    finally {
+    } finally {
       vi.useRealTimers()
     }
   })
@@ -109,8 +106,7 @@ describe('useAppsQueryState', () => {
       expect(onUrlUpdate).toHaveBeenCalled()
       const update = onUrlUpdate.mock.calls.at(-1)![0]
       expect(update.searchParams.has('keywords')).toBe(false)
-    }
-    finally {
+    } finally {
       vi.useRealTimers()
     }
   })

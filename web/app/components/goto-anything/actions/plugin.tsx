@@ -26,24 +26,26 @@ export const pluginAction: ActionItem = {
   description: 'Search and navigate to your plugins',
   search: async (_, searchTerm = '', locale) => {
     try {
-      const response = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/search/advanced', {
-        body: {
-          page: 1,
-          page_size: 10,
-          query: searchTerm,
-          type: 'plugin',
+      const response = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>(
+        '/plugins/search/advanced',
+        {
+          body: {
+            page: 1,
+            page_size: 10,
+            query: searchTerm,
+            type: 'plugin',
+          },
         },
-      })
+      )
 
       if (!response?.data?.plugins) {
         console.warn('Plugin search: Unexpected response structure', response)
         return []
       }
 
-      const list = response.data.plugins.map(plugin => getFormattedPlugin(plugin))
+      const list = response.data.plugins.map((plugin) => getFormattedPlugin(plugin))
       return parser(list, locale!)
-    }
-    catch (error) {
+    } catch (error) {
       console.warn('Plugin search failed:', error)
       return []
     }

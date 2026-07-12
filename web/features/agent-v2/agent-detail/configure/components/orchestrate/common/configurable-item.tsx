@@ -27,9 +27,7 @@ export function ConfigureSectionConfigurableItem({
     <div className="group relative flex min-h-8 items-center gap-1 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1.5 pr-1.5 pl-2 shadow-xs shadow-shadow-shadow-3 focus-within:border-components-panel-border focus-within:bg-components-panel-on-panel-item-bg-hover focus-within:shadow-sm hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm">
       <div className="flex min-w-0 flex-1 items-center gap-2 py-0.5 pr-1">
         {icon}
-        <span className="min-w-0 truncate system-sm-medium text-text-primary">
-          {label}
-        </span>
+        <span className="min-w-0 truncate system-sm-medium text-text-primary">{label}</span>
       </div>
       {!readOnly && (
         <div className="pointer-events-none absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center gap-1 bg-components-panel-on-panel-item-bg-hover opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">

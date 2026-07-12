@@ -1,7 +1,4 @@
-import type {
-  IterationDurationMap,
-  NodeTracing,
-} from '@/types/workflow'
+import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowRightSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +8,10 @@ import { NodeRunningStatus } from '@/app/components/workflow/types'
 type IterationLogTriggerProps = {
   nodeInfo: NodeTracing
   allExecutions?: NodeTracing[]
-  onShowIterationResultList: (iterationResultList: NodeTracing[][], iterationResultDurationMap: IterationDurationMap) => void
+  onShowIterationResultList: (
+    iterationResultList: NodeTracing[][],
+    iterationResultDurationMap: IterationDurationMap,
+  ) => void
 }
 
 const getIterationDurationMap = (nodeInfo: NodeTracing) => {
@@ -20,10 +20,8 @@ const getIterationDurationMap = (nodeInfo: NodeTracing) => {
 
 const getDisplayIterationCount = (nodeInfo: NodeTracing) => {
   const iterationDurationMap = nodeInfo.execution_metadata?.iteration_duration_map
-  if (iterationDurationMap)
-    return Object.keys(iterationDurationMap).length
-  if (nodeInfo.details?.length)
-    return nodeInfo.details.length
+  if (iterationDurationMap) return Object.keys(iterationDurationMap).length
+  if (nodeInfo.details?.length) return nodeInfo.details.length
   return nodeInfo.metadata?.iterator_length ?? 0
 }
 
@@ -32,14 +30,12 @@ const getFailedIterationIndices = (
   nodeInfo: NodeTracing,
   allExecutions?: NodeTracing[],
 ) => {
-  if (!details?.length)
-    return new Set<number>()
+  if (!details?.length) return new Set<number>()
 
   const failedIterationIndices = new Set<number>()
 
   details.forEach((iteration, index) => {
-    if (!iteration.some(item => item.status === NodeRunningStatus.Failed))
-      return
+    if (!iteration.some((item) => item.status === NodeRunningStatus.Failed)) return
 
     const iterationIndex = iteration[0]?.execution_metadata?.iteration_index ?? index
     failedIterationIndices.add(iterationIndex)
@@ -50,9 +46,9 @@ const getFailedIterationIndices = (
 
   allExecutions.forEach((execution) => {
     if (
-      execution.execution_metadata?.iteration_id === nodeInfo.node_id
-      && execution.status === NodeRunningStatus.Failed
-      && execution.execution_metadata?.iteration_index !== undefined
+      execution.execution_metadata?.iteration_id === nodeInfo.node_id &&
+      execution.status === NodeRunningStatus.Failed &&
+      execution.execution_metadata?.iteration_index !== undefined
     ) {
       failedIterationIndices.add(execution.execution_metadata.iteration_index)
     }
@@ -69,23 +65,21 @@ const IterationLogTrigger = ({
   const { t } = useTranslation()
 
   const getNodesForInstance = (key: string): NodeTracing[] => {
-    if (!allExecutions)
-      return []
+    if (!allExecutions) return []
 
-    const parallelNodes = allExecutions.filter(exec =>
-      exec.execution_metadata?.parallel_mode_run_id === key,
+    const parallelNodes = allExecutions.filter(
+      (exec) => exec.execution_metadata?.parallel_mode_run_id === key,
     )
-    if (parallelNodes.length > 0)
-      return parallelNodes
+    if (parallelNodes.length > 0) return parallelNodes
 
     const serialIndex = Number.parseInt(key, 10)
     if (!isNaN(serialIndex)) {
-      const serialNodes = allExecutions.filter(exec =>
-        exec.execution_metadata?.iteration_id === nodeInfo.node_id
-        && exec.execution_metadata?.iteration_index === serialIndex,
+      const serialNodes = allExecutions.filter(
+        (exec) =>
+          exec.execution_metadata?.iteration_id === nodeInfo.node_id &&
+          exec.execution_metadata?.iteration_index === serialIndex,
       )
-      if (serialNodes.length > 0)
-        return serialNodes
+      if (serialNodes.length > 0) return serialNodes
     }
 
     return []
@@ -94,15 +88,13 @@ const IterationLogTrigger = ({
   const getStructuredIterationList = () => {
     const iterationNodeMeta = nodeInfo.execution_metadata
 
-    if (!iterationNodeMeta?.iteration_duration_map)
-      return nodeInfo.details || []
+    if (!iterationNodeMeta?.iteration_duration_map) return nodeInfo.details || []
 
     const structuredList = Object.keys(iterationNodeMeta.iteration_duration_map)
       .map(getNodesForInstance)
-      .filter(branchNodes => branchNodes.length > 0)
+      .filter((branchNodes) => branchNodes.length > 0)
 
-    if (!allExecutions || !nodeInfo.details?.length)
-      return structuredList
+    if (!allExecutions || !nodeInfo.details?.length) return structuredList
 
     const existingIterationIndices = new Set<number>()
     structuredList.forEach((iteration) => {
@@ -114,8 +106,8 @@ const IterationLogTrigger = ({
 
     nodeInfo.details.forEach((iteration, index) => {
       if (
-        !existingIterationIndices.has(index)
-        && iteration.some(node => node.status === NodeRunningStatus.Failed)
+        !existingIterationIndices.has(index) &&
+        iteration.some((node) => node.status === NodeRunningStatus.Failed)
       ) {
         structuredList.push(iteration)
       }
@@ -146,11 +138,11 @@ const IterationLogTrigger = ({
       {/* eslint-disable-next-line hyoban/prefer-tailwind-icons */}
       <Iteration className="size-4 shrink-0 text-components-button-tertiary-text" />
       <div className="flex-1 text-left system-sm-medium text-components-button-tertiary-text">
-        {t($ => $['nodes.iteration.iteration'], { ns: 'workflow', count: displayIterationCount })}
+        {t(($) => $['nodes.iteration.iteration'], { ns: 'workflow', count: displayIterationCount })}
         {errorCount > 0 && (
           <>
-            {t($ => $['nodes.iteration.comma'], { ns: 'workflow' })}
-            {t($ => $['nodes.iteration.error'], { ns: 'workflow', count: errorCount })}
+            {t(($) => $['nodes.iteration.comma'], { ns: 'workflow' })}
+            {t(($) => $['nodes.iteration.error'], { ns: 'workflow', count: errorCount })}
           </>
         )}
       </div>

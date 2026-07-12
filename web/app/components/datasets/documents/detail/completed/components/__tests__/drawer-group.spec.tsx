@@ -5,9 +5,20 @@ import { ChunkingMode } from '@/models/datasets'
 import { DrawerGroup } from '../drawer-group'
 
 vi.mock('../../common/full-screen-drawer', () => ({
-  DocumentDetailDrawer: ({ open, children, modal = false }: { open: boolean, children: React.ReactNode, modal?: boolean }) => (
-    open ? <div data-testid="document-detail-drawer" data-modal={modal}>{children}</div> : null
-  ),
+  DocumentDetailDrawer: ({
+    open,
+    children,
+    modal = false,
+  }: {
+    open: boolean
+    children: React.ReactNode
+    modal?: boolean
+  }) =>
+    open ? (
+      <div data-testid="document-detail-drawer" data-modal={modal}>
+        {children}
+      </div>
+    ) : null,
 }))
 
 vi.mock('../../segment-detail', () => ({
@@ -60,7 +71,11 @@ describe('DrawerGroup', () => {
     render(
       <DrawerGroup
         {...defaultProps}
-        currSegment={{ segInfo: { id: 'seg-1' } as SegmentDetailModel, showModal: true, isEditMode: true }}
+        currSegment={{
+          segInfo: { id: 'seg-1' } as SegmentDetailModel,
+          showModal: true,
+          isEditMode: true,
+        }}
       />,
     )
     expect(screen.getByTestId('segment-detail')).toBeInTheDocument()
@@ -68,9 +83,7 @@ describe('DrawerGroup', () => {
   })
 
   it('should render new segment modal when showNewSegmentModal is true', () => {
-    render(
-      <DrawerGroup {...defaultProps} showNewSegmentModal={true} />,
-    )
+    render(<DrawerGroup {...defaultProps} showNewSegmentModal={true} />)
     expect(screen.getByTestId('new-segment')).toBeInTheDocument()
     expect(screen.getByTestId('document-detail-drawer')).toHaveAttribute('data-modal', 'true')
   })
@@ -87,9 +100,7 @@ describe('DrawerGroup', () => {
   })
 
   it('should render new child segment modal when showNewChildSegmentModal is true', () => {
-    render(
-      <DrawerGroup {...defaultProps} showNewChildSegmentModal={true} />,
-    )
+    render(<DrawerGroup {...defaultProps} showNewChildSegmentModal={true} />)
     expect(screen.getByTestId('new-child-segment')).toBeInTheDocument()
     expect(screen.getByTestId('document-detail-drawer')).toHaveAttribute('data-modal', 'true')
   })

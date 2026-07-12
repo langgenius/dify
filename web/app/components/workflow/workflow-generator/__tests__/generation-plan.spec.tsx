@@ -37,9 +37,7 @@ describe('GenerationPlan', () => {
   it('renders correctly when plan has no icon, app_name, or title', () => {
     const plan: WorkflowGenPlan = {
       mode: 'workflow',
-      nodes: [
-        { label: 'Start', node_type: 'start' },
-      ],
+      nodes: [{ label: 'Start', node_type: 'start' }],
       start_inputs: [],
     } as unknown as WorkflowGenPlan
     render(<GenerationPlan plan={plan} />)

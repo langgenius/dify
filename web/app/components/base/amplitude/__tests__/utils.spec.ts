@@ -10,15 +10,16 @@ const mockSetUserId = vi.hoisted(() => vi.fn())
 const mockIdentify = vi.hoisted(() => vi.fn())
 const mockReset = vi.hoisted(() => vi.fn())
 
-const MockIdentify = vi.hoisted(() =>
-  class {
-    setCalls: Array<[string, unknown]> = []
+const MockIdentify = vi.hoisted(
+  () =>
+    class {
+      setCalls: Array<[string, unknown]> = []
 
-    set(key: string, value: unknown) {
-      this.setCalls.push([key, value])
-      return this
-    }
-  },
+      set(key: string, value: unknown) {
+        this.setCalls.push([key, value])
+        return this
+      }
+    },
 )
 
 vi.mock('@/config', () => ({

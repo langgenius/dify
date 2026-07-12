@@ -17,19 +17,20 @@ export type WorkflowSliceShape = {
   setHasShownOnboarding: (hasShownOnboarding: boolean) => void
 }
 
-export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
+export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = (set) => ({
   appId: '',
   appName: '',
   notInitialWorkflow: false,
-  setNotInitialWorkflow: notInitialWorkflow => set(() => ({ notInitialWorkflow })),
+  setNotInitialWorkflow: (notInitialWorkflow) => set(() => ({ notInitialWorkflow })),
   shouldAutoOpenStartNodeSelector: false,
-  setShouldAutoOpenStartNodeSelector: shouldAutoOpenStartNodeSelector => set(() => ({ shouldAutoOpenStartNodeSelector })),
+  setShouldAutoOpenStartNodeSelector: (shouldAutoOpenStartNodeSelector) =>
+    set(() => ({ shouldAutoOpenStartNodeSelector })),
   nodesDefaultConfigs: {},
-  setNodesDefaultConfigs: nodesDefaultConfigs => set(() => ({ nodesDefaultConfigs })),
+  setNodesDefaultConfigs: (nodesDefaultConfigs) => set(() => ({ nodesDefaultConfigs })),
   showOnboarding: false,
-  setShowOnboarding: showOnboarding => set(() => ({ showOnboarding })),
+  setShowOnboarding: (showOnboarding) => set(() => ({ showOnboarding })),
   hasSelectedStartNode: false,
-  setHasSelectedStartNode: hasSelectedStartNode => set(() => ({ hasSelectedStartNode })),
+  setHasSelectedStartNode: (hasSelectedStartNode) => set(() => ({ hasSelectedStartNode })),
   hasShownOnboarding: false,
-  setHasShownOnboarding: hasShownOnboarding => set(() => ({ hasShownOnboarding })),
+  setHasShownOnboarding: (hasShownOnboarding) => set(() => ({ hasShownOnboarding })),
 })

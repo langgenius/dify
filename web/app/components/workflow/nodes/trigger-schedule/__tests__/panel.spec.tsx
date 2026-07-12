@@ -91,9 +91,8 @@ const panelProps: PanelProps = {
   runResult: null,
 }
 
-const renderPanel = (id: string, data: ScheduleTriggerNodeType) => (
+const renderPanel = (id: string, data: ScheduleTriggerNodeType) =>
   render(<Panel id={id} data={data} panelProps={panelProps} />)
-)
 
 describe('TriggerSchedulePanel', () => {
   const setInputs = vi.fn()
@@ -229,7 +228,11 @@ describe('TriggerSchedulePanel', () => {
 
       mockUseConfig.mockReturnValueOnce({
         readOnly: false,
-        inputs: createData({ mode: 'cron', frequency: undefined, cron_expression: undefined as any }),
+        inputs: createData({
+          mode: 'cron',
+          frequency: undefined,
+          cron_expression: undefined as any,
+        }),
         setInputs,
         handleModeChange,
         handleFrequencyChange,
@@ -239,7 +242,19 @@ describe('TriggerSchedulePanel', () => {
         handleOnMinuteChange,
       })
 
-      rerender(<Panel id="node-7" data={createData({ mode: 'cron', frequency: undefined, cron_expression: undefined as any }) as any} panelProps={panelProps} />)
+      rerender(
+        <Panel
+          id="node-7"
+          data={
+            createData({
+              mode: 'cron',
+              frequency: undefined,
+              cron_expression: undefined as any,
+            }) as any
+          }
+          panelProps={panelProps}
+        />,
+      )
       expect(screen.getByRole('textbox')).toHaveValue('')
     })
 

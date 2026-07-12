@@ -50,88 +50,89 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
 
   const getTitle = useCallback(() => {
     if (isBundle && step === InstallStep.installed)
-      return t($ => $[`${i18nPrefix}.installedSuccessfully`], { ns: 'plugin' })
+      return t(($) => $[`${i18nPrefix}.installedSuccessfully`], { ns: 'plugin' })
     if (step === InstallStep.installed)
-      return t($ => $[`${i18nPrefix}.installedSuccessfully`], { ns: 'plugin' })
+      return t(($) => $[`${i18nPrefix}.installedSuccessfully`], { ns: 'plugin' })
     if (step === InstallStep.installFailed)
-      return t($ => $[`${i18nPrefix}.installFailed`], { ns: 'plugin' })
-    return t($ => $[`${i18nPrefix}.installPlugin`], { ns: 'plugin' })
+      return t(($) => $[`${i18nPrefix}.installFailed`], { ns: 'plugin' })
+    return t(($) => $[`${i18nPrefix}.installPlugin`], { ns: 'plugin' })
   }, [isBundle, step, t])
 
-  const handleInstalled = useCallback((notRefresh?: boolean) => {
-    setStep(InstallStep.installed)
-    if (!notRefresh)
-      refreshPluginList(manifest)
-    setIsInstalling(false)
-  }, [manifest, refreshPluginList, setIsInstalling])
+  const handleInstalled = useCallback(
+    (notRefresh?: boolean) => {
+      setStep(InstallStep.installed)
+      if (!notRefresh) refreshPluginList(manifest)
+      setIsInstalling(false)
+    },
+    [manifest, refreshPluginList, setIsInstalling],
+  )
 
-  const handleFailed = useCallback((errorMsg?: string) => {
-    setStep(InstallStep.installFailed)
-    setIsInstalling(false)
-    if (errorMsg)
-      setErrorMsg(errorMsg)
-  }, [setIsInstalling])
+  const handleFailed = useCallback(
+    (errorMsg?: string) => {
+      setStep(InstallStep.installFailed)
+      setIsInstalling(false)
+      if (errorMsg) setErrorMsg(errorMsg)
+    },
+    [setIsInstalling],
+  )
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          foldAnimInto()
+        if (!open) foldAnimInto()
       }}
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className={cn('w-[560px] max-w-none! overflow-hidden! text-left align-middle', cn(modalClassName, 'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0'))}
+        className={cn(
+          'w-[560px] max-w-none! overflow-hidden! text-left align-middle',
+          cn(
+            modalClassName,
+            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
+          ),
+        )}
       >
         <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
           <DialogTitle className="self-stretch title-2xl-semi-bold text-text-primary">
             {getTitle()}
           </DialogTitle>
         </div>
-        {
-          isBundle
-            ? (
-                <ReadyToInstallBundle
-                  step={step}
-                  onStepChange={setStep}
-                  onStartToInstall={handleStartToInstall}
-                  setIsInstalling={setIsInstalling}
-                  onClose={onClose}
-                  allPlugins={dependencies!}
-                  isFromMarketPlace
-                />
-              )
-            : (
-                <>
-                  {
-                    step === InstallStep.readyToInstall && (
-                      <Install
-                        uniqueIdentifier={uniqueIdentifier}
-                        payload={manifest!}
-                        onCancel={onClose}
-                        onInstalled={handleInstalled}
-                        onFailed={handleFailed}
-                        onStartToInstall={handleStartToInstall}
-                        onTaskStarted={foldIntoTaskTrigger}
-                      />
-                    )
-                  }
-                  {
-                    [InstallStep.installed, InstallStep.installFailed].includes(step) && (
-                      <Installed
-                        payload={manifest!}
-                        isMarketPayload
-                        isFailed={step === InstallStep.installFailed}
-                        errMsg={errorMsg}
-                        installContextCategory={installContextCategory}
-                        onCancel={onSuccess}
-                      />
-                    )
-                  }
-                </>
-              )
-        }
+        {isBundle ? (
+          <ReadyToInstallBundle
+            step={step}
+            onStepChange={setStep}
+            onStartToInstall={handleStartToInstall}
+            setIsInstalling={setIsInstalling}
+            onClose={onClose}
+            allPlugins={dependencies!}
+            isFromMarketPlace
+          />
+        ) : (
+          <>
+            {step === InstallStep.readyToInstall && (
+              <Install
+                uniqueIdentifier={uniqueIdentifier}
+                payload={manifest!}
+                onCancel={onClose}
+                onInstalled={handleInstalled}
+                onFailed={handleFailed}
+                onStartToInstall={handleStartToInstall}
+                onTaskStarted={foldIntoTaskTrigger}
+              />
+            )}
+            {[InstallStep.installed, InstallStep.installFailed].includes(step) && (
+              <Installed
+                payload={manifest!}
+                isMarketPayload
+                isFailed={step === InstallStep.installFailed}
+                errMsg={errorMsg}
+                installContextCategory={installContextCategory}
+                onCancel={onSuccess}
+              />
+            )}
+          </>
+        )}
         <DialogCloseButton />
       </DialogContent>
     </Dialog>

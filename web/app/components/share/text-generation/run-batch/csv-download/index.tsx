@@ -2,18 +2,14 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useCSVDownloader,
-} from 'react-papaparse'
+import { useCSVDownloader } from 'react-papaparse'
 import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
 
 type ICSVDownloadProps = {
   vars: { name: string }[]
 }
 
-const CSVDownload: FC<ICSVDownloadProps> = ({
-  vars,
-}) => {
+const CSVDownload: FC<ICSVDownloadProps> = ({ vars }) => {
   const { t } = useTranslation()
   const { CSVDownloader, Type } = useCSVDownloader()
   const addQueryContentVars = [...vars]
@@ -27,13 +23,17 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
 
   return (
     <div className="mt-6">
-      <div className="system-sm-medium text-text-primary">{t($ => $['generation.csvStructureTitle'], { ns: 'share' })}</div>
+      <div className="system-sm-medium text-text-primary">
+        {t(($) => $['generation.csvStructureTitle'], { ns: 'share' })}
+      </div>
       <div className="mt-2 max-h-[500px] overflow-auto">
         <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-regular text-xs">
           <thead className="text-text-tertiary">
             <tr>
               {addQueryContentVars.map((item, i) => (
-                <td key={i} className="h-9 border-b border-divider-regular pr-2 pl-3">{item.name}</td>
+                <td key={i} className="h-9 border-b border-divider-regular pr-2 pl-3">
+                  {item.name}
+                </td>
               ))}
             </tr>
           </thead>
@@ -41,9 +41,7 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
             <tr>
               {addQueryContentVars.map((item, i) => (
                 <td key={i} className="h-9 pl-4">
-                  {item.name}
-                  {' '}
-                  {t($ => $['generation.field'], { ns: 'share' })}
+                  {item.name} {t(($) => $['generation.field'], { ns: 'share' })}
                 </td>
               ))}
             </tr>
@@ -58,17 +56,14 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
         config={{
           // delimiter: ';',
         }}
-        data={[
-          template,
-        ]}
+        data={[template]}
       >
         <div className="flex h-[18px] items-center space-x-1 system-xs-medium text-text-accent">
           <DownloadIcon className="size-3" />
-          <span>{t($ => $['generation.downloadTemplate'], { ns: 'share' })}</span>
+          <span>{t(($) => $['generation.downloadTemplate'], { ns: 'share' })}</span>
         </div>
       </CSVDownloader>
     </div>
-
   )
 }
 export default React.memo(CSVDownload)

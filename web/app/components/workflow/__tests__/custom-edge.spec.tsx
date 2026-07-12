@@ -31,7 +31,9 @@ vi.mock('reactflow', () => ({
       data-dasharray={props.style.strokeDasharray}
     />
   ),
-  EdgeLabelRenderer: ({ children }: { children?: ReactNode }) => <div data-testid="edge-label">{children}</div>,
+  EdgeLabelRenderer: ({ children }: { children?: ReactNode }) => (
+    <div data-testid="edge-label">{children}</div>
+  ),
   getBezierPath: () => ['M 0 0', 24, 48],
   Position: {
     Right: 'right',
@@ -72,11 +74,7 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
 
 vi.mock('@/app/components/workflow/custom-edge-linear-gradient-render', () => ({
   __esModule: true,
-  default: (props: {
-    id: string
-    startColor: string
-    stopColor: string
-  }) => {
+  default: (props: { id: string; startColor: string; stopColor: string }) => {
     mockGradientRender(props)
     return <div data-testid="edge-gradient">{props.id}</div>
   },
@@ -91,8 +89,7 @@ describe('CustomEdge', () => {
       handleNodeAdd: mockHandleNodeAdd,
     })
     mockUseAvailableBlocks.mockImplementation((nodeType: BlockEnum) => {
-      if (nodeType === BlockEnum.Code)
-        return { availablePrevBlocks: ['code', 'llm'] }
+      if (nodeType === BlockEnum.Code) return { availablePrevBlocks: ['code', 'llm'] }
 
       return { availableNextBlocks: ['llm', 'tool'] }
     })
@@ -113,27 +110,31 @@ describe('CustomEdge', () => {
         targetY={220}
         targetPosition={Position.Left}
         selected={false}
-        data={{
-          sourceType: BlockEnum.Start,
-          targetType: BlockEnum.Code,
-          _sourceRunningStatus: NodeRunningStatus.Succeeded,
-          _targetRunningStatus: NodeRunningStatus.Failed,
-          _hovering: true,
-          _waitingRun: true,
-          _dimmed: true,
-          _isTemp: true,
-          isInIteration: true,
-          isInLoop: true,
-        } as never}
+        data={
+          {
+            sourceType: BlockEnum.Start,
+            targetType: BlockEnum.Code,
+            _sourceRunningStatus: NodeRunningStatus.Succeeded,
+            _targetRunningStatus: NodeRunningStatus.Failed,
+            _hovering: true,
+            _waitingRun: true,
+            _dimmed: true,
+            _isTemp: true,
+            isInIteration: true,
+            isInLoop: true,
+          } as never
+        }
       />,
     )
 
     expect(screen.getByTestId('edge-gradient')).toHaveTextContent('edge-1')
-    expect(mockGradientRender).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'edge-1',
-      startColor: 'var(--color-workflow-link-line-success-handle)',
-      stopColor: 'var(--color-workflow-link-line-error-handle)',
-    }))
+    expect(mockGradientRender).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'edge-1',
+        startColor: 'var(--color-workflow-link-line-success-handle)',
+        stopColor: 'var(--color-workflow-link-line-error-handle)',
+      }),
+    )
     expect(screen.getByTestId('base-edge')).toHaveAttribute('data-stroke', 'url(#edge-1)')
     expect(screen.getByTestId('base-edge')).toHaveAttribute('data-opacity', '0.3')
     expect(screen.getByTestId('base-edge')).toHaveAttribute('data-dasharray', '8 8')
@@ -173,16 +174,21 @@ describe('CustomEdge', () => {
         targetY={100}
         targetPosition={Position.Left}
         selected
-        data={{
-          sourceType: BlockEnum.Start,
-          targetType: BlockEnum.Code,
-          _sourceRunningStatus: NodeRunningStatus.Succeeded,
-          _targetRunningStatus: NodeRunningStatus.Running,
-        } as never}
+        data={
+          {
+            sourceType: BlockEnum.Start,
+            targetType: BlockEnum.Code,
+            _sourceRunningStatus: NodeRunningStatus.Succeeded,
+            _targetRunningStatus: NodeRunningStatus.Running,
+          } as never
+        }
       />,
     )
 
-    expect(screen.getByTestId('base-edge')).toHaveAttribute('data-stroke', 'var(--color-workflow-link-line-handle)')
+    expect(screen.getByTestId('base-edge')).toHaveAttribute(
+      'data-stroke',
+      'var(--color-workflow-link-line-handle)',
+    )
   })
 
   it('should use the fail-branch running color while the connected node is hovering', () => {
@@ -199,15 +205,20 @@ describe('CustomEdge', () => {
         targetY={100}
         targetPosition={Position.Left}
         selected={false}
-        data={{
-          sourceType: BlockEnum.Start,
-          targetType: BlockEnum.Code,
-          _connectedNodeIsHovering: true,
-        } as never}
+        data={
+          {
+            sourceType: BlockEnum.Start,
+            targetType: BlockEnum.Code,
+            _connectedNodeIsHovering: true,
+          } as never
+        }
       />,
     )
 
-    expect(screen.getByTestId('base-edge')).toHaveAttribute('data-stroke', 'var(--color-workflow-link-line-failure-handle)')
+    expect(screen.getByTestId('base-edge')).toHaveAttribute(
+      'data-stroke',
+      'var(--color-workflow-link-line-failure-handle)',
+    )
   })
 
   it('should fall back to the default edge color when no highlight state is active', () => {
@@ -223,15 +234,23 @@ describe('CustomEdge', () => {
         targetY={100}
         targetPosition={Position.Left}
         selected={false}
-        data={{
-          sourceType: BlockEnum.Start,
-          targetType: BlockEnum.Code,
-        } as never}
+        data={
+          {
+            sourceType: BlockEnum.Start,
+            targetType: BlockEnum.Code,
+          } as never
+        }
       />,
     )
 
-    expect(screen.getByTestId('base-edge')).toHaveAttribute('data-stroke', 'var(--color-workflow-link-line-normal)')
-    expect(screen.getByTestId('block-selector')).toHaveAttribute('data-trigger-class', 'hover:scale-150 transition-all')
+    expect(screen.getByTestId('base-edge')).toHaveAttribute(
+      'data-stroke',
+      'var(--color-workflow-link-line-normal)',
+    )
+    expect(screen.getByTestId('block-selector')).toHaveAttribute(
+      'data-trigger-class',
+      'hover:scale-150 transition-all',
+    )
     expect(screen.getByTestId('block-selector').parentElement).toHaveStyle({
       opacity: '0',
       pointerEvents: 'none',

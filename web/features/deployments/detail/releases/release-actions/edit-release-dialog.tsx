@@ -17,10 +17,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useAtom, useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import {
-  editReleaseDialogOpenAtom,
-  releaseActionItemAtom,
-} from './state'
+import { editReleaseDialogOpenAtom, releaseActionItemAtom } from './state'
 
 type EditReleaseFormValues = {
   name: string
@@ -34,15 +31,16 @@ function normalizedEditReleaseFormValues(value: EditReleaseFormValues) {
   }
 }
 
-function canSubmitEditReleaseForm(initialValues: EditReleaseFormValues, value: EditReleaseFormValues) {
+function canSubmitEditReleaseForm(
+  initialValues: EditReleaseFormValues,
+  value: EditReleaseFormValues,
+) {
   const normalizedValues = normalizedEditReleaseFormValues(value)
 
   return Boolean(
-    normalizedValues.name
-    && (
-      normalizedValues.name !== initialValues.name
-      || normalizedValues.description !== initialValues.description
-    ),
+    normalizedValues.name &&
+    (normalizedValues.name !== initialValues.name ||
+      normalizedValues.description !== initialValues.description),
   )
 }
 
@@ -58,15 +56,14 @@ function EditReleaseForm({
   onSubmit: (values: EditReleaseFormValues) => void
 }) {
   const { t } = useTranslation('deployments')
-  const nameLabel = t($ => $['versions.releaseNameLabel'])
+  const nameLabel = t(($) => $['versions.releaseNameLabel'])
   const initialValues = {
     name: release.displayName,
     description: release.description,
   }
 
   function handleSubmit(values: EditReleaseFormValues) {
-    if (!canSubmitEditReleaseForm(initialValues, values))
-      return
+    if (!canSubmitEditReleaseForm(initialValues, values)) return
 
     onSubmit(normalizedEditReleaseFormValues(values))
   }
@@ -85,12 +82,14 @@ function EditReleaseForm({
           autoComplete="off"
           className="h-8"
         />
-        <FieldError match="valueMissing">{t($ => $['versions.releaseNameRequired'])}</FieldError>
+        <FieldError match="valueMissing">{t(($) => $['versions.releaseNameRequired'])}</FieldError>
       </Field>
       <Field name="description" className="gap-2">
         <FieldLabel className="system-xs-medium-uppercase text-text-tertiary">
-          {t($ => $['versions.releaseDescriptionLabel'])}
-          <span className="ml-1.5 system-xs-regular text-text-quaternary">{t($ => $['versions.optional'])}</span>
+          {t(($) => $['versions.releaseDescriptionLabel'])}
+          <span className="ml-1.5 system-xs-regular text-text-quaternary">
+            {t(($) => $['versions.optional'])}
+          </span>
         </FieldLabel>
         <Textarea
           defaultValue={initialValues.description}
@@ -100,21 +99,11 @@ function EditReleaseForm({
         />
       </Field>
       <div className="flex justify-end gap-2 pt-2">
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={isSaving}
-          onClick={onClose}
-        >
-          {t($ => $['versions.cancelEdit'])}
+        <Button type="button" variant="secondary" disabled={isSaving} onClick={onClose}>
+          {t(($) => $['versions.cancelEdit'])}
         </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={isSaving}
-          loading={isSaving}
-        >
-          {t($ => $['versions.saveEdit'])}
+        <Button type="submit" variant="primary" disabled={isSaving} loading={isSaving}>
+          {t(($) => $['versions.saveEdit'])}
         </Button>
       </div>
     </Form>
@@ -125,17 +114,17 @@ export function EditReleaseDialog() {
   const { t } = useTranslation('deployments')
   const { releaseId, releaseRows } = useAtomValue(releaseActionItemAtom)
   const [open, setOpen] = useAtom(editReleaseDialogOpenAtom)
-  const updateRelease = useMutation(consoleQuery.enterprise.releaseService.updateRelease.mutationOptions())
-  const targetRelease = releaseRows.find(release => release.id === releaseId)
-  if (!targetRelease)
-    return null
+  const updateRelease = useMutation(
+    consoleQuery.enterprise.releaseService.updateRelease.mutationOptions(),
+  )
+  const targetRelease = releaseRows.find((release) => release.id === releaseId)
+  if (!targetRelease) return null
 
   const release = targetRelease
   const formKey = `${release.id}-${release.displayName}-${release.description}`
 
   function handleOpenChange(nextOpen: boolean) {
-    if (!nextOpen && updateRelease.isPending)
-      return
+    if (!nextOpen && updateRelease.isPending) return
     setOpen(nextOpen)
   }
 
@@ -154,11 +143,11 @@ export function EditReleaseDialog() {
       {
         onSuccess: (data) => {
           const updatedName = data.release.displayName
-          toast.success(t($ => $['versions.editSuccess'], { name: updatedName }))
+          toast.success(t(($) => $['versions.editSuccess'], { name: updatedName }))
           handleOpenChange(false)
         },
         onError: () => {
-          toast.error(t($ => $['versions.editFailed']))
+          toast.error(t(($) => $['versions.editFailed']))
         },
       },
     )
@@ -170,10 +159,10 @@ export function EditReleaseDialog() {
         <DialogCloseButton disabled={updateRelease.isPending} />
         <div className="border-b border-divider-subtle px-6 py-5 pr-14">
           <DialogTitle className="title-xl-semi-bold text-text-primary">
-            {t($ => $['versions.editRelease'])}
+            {t(($) => $['versions.editRelease'])}
           </DialogTitle>
           <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-            {t($ => $['versions.editReleaseDescription'])}
+            {t(($) => $['versions.editReleaseDescription'])}
           </DialogDescription>
         </div>
         <div className="px-6 py-5">

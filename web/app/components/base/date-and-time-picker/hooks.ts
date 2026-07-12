@@ -8,7 +8,7 @@ const daysInWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
 export const useDaysOfWeek = () => {
   const { t } = useTranslation()
-  return daysInWeek.map(day => t($ => $[`daysInWeek.${day}`], { ns: 'time' }))
+  return daysInWeek.map((day) => t(($) => $[`daysInWeek.${day}`], { ns: 'time' }))
 }
 
 const monthNames = [
@@ -28,7 +28,7 @@ const monthNames = [
 
 export const useMonths = () => {
   const { t } = useTranslation()
-  return monthNames.map(month => t($ => $[`months.${month}`], { ns: 'time' }))
+  return monthNames.map((month) => t(($) => $[`months.${month}`], { ns: 'time' }))
 }
 
 export const useYearOptions = () => {

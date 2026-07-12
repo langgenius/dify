@@ -11,11 +11,7 @@ const TEST_FILES = ['**/__tests__/**/*.{ts,tsx}', '**/*.spec.{ts,tsx}']
 
 export default antfu(
   {
-    ignores: [
-      'coverage/',
-      'dist/',
-      'storybook-static/',
-    ],
+    ignores: ['coverage/', 'dist/', 'storybook-static/'],
     react: {
       overrides: {
         'react/exhaustive-deps': ['error', { additionalHooks: 'useIsoLayoutEffect' }],
@@ -64,9 +60,12 @@ export default antfu(
     name: 'dify-ui/storybook',
     files: ['**/.storybook/main.{js,cjs,mjs,ts}'],
     rules: {
-      'storybook/no-uninstalled-addons': ['error', {
-        packageJsonLocation: path.resolve(import.meta.dirname, 'package.json'),
-      }],
+      'storybook/no-uninstalled-addons': [
+        'error',
+        {
+          packageJsonLocation: path.resolve(import.meta.dirname, 'package.json'),
+        },
+      ],
     },
   },
   {

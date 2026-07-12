@@ -30,11 +30,7 @@ import {
   useComboboxFilteredItems,
 } from '.'
 import { cn } from '../cn'
-import {
-  Field,
-  FieldDescription,
-  FieldLabel,
-} from '../field'
+import { Field, FieldDescription, FieldLabel } from '../field'
 
 type Option = {
   value: string
@@ -64,8 +60,7 @@ const scrollHighlightedVirtualItem = (
   },
   virtualizer: StoryVirtualizer | null,
 ) => {
-  if (!item || !virtualizer)
-    return
+  if (!item || !virtualizer) return
 
   const isStart = index === 0
   const isEnd = index === virtualizer.options.count - 1
@@ -80,14 +75,35 @@ const scrollHighlightedVirtualItem = (
 
 const providerOptions: Option[] = [
   { value: 'openai', label: 'OpenAI', meta: 'GPT-5, GPT-4.1', icon: 'i-ri-openai-fill' },
-  { value: 'anthropic', label: 'Anthropic', meta: 'Claude Opus, Sonnet', icon: 'i-ri-sparkling-2-line' },
+  {
+    value: 'anthropic',
+    label: 'Anthropic',
+    meta: 'Claude Opus, Sonnet',
+    icon: 'i-ri-sparkling-2-line',
+  },
   { value: 'google', label: 'Google', meta: 'Gemini 2.5', icon: 'i-ri-google-fill' },
-  { value: 'azure-openai', label: 'Azure OpenAI', meta: 'Enterprise workspace', icon: 'i-ri-microsoft-fill' },
-  { value: 'localai', label: 'LocalAI', meta: 'Self-hosted endpoint', icon: 'i-ri-server-line', disabled: true },
+  {
+    value: 'azure-openai',
+    label: 'Azure OpenAI',
+    meta: 'Enterprise workspace',
+    icon: 'i-ri-microsoft-fill',
+  },
+  {
+    value: 'localai',
+    label: 'LocalAI',
+    meta: 'Self-hosted endpoint',
+    icon: 'i-ri-server-line',
+    disabled: true,
+  },
 ]
 
 const dataSourceOptions: Option[] = [
-  { value: 'knowledge-base', label: 'Knowledge Base', meta: 'Vector index', icon: 'i-ri-database-2-line' },
+  {
+    value: 'knowledge-base',
+    label: 'Knowledge Base',
+    meta: 'Vector index',
+    icon: 'i-ri-database-2-line',
+  },
   { value: 'notion', label: 'Notion', meta: 'Synced pages', icon: 'i-ri-notion-fill' },
   { value: 'website', label: 'Website crawler', meta: 'Public URLs', icon: 'i-ri-global-line' },
   { value: 's3', label: 'S3 bucket', meta: 'Private files', icon: 'i-ri-cloud-line' },
@@ -106,22 +122,52 @@ const toolGroups: OptionGroup[] = [
   {
     label: 'Retrieval',
     items: [
-      { value: 'dataset-search', label: 'Dataset search', meta: 'Search workspace knowledge', icon: 'i-ri-search-eye-line' },
-      { value: 'web-scraper', label: 'Web scraper', meta: 'Fetch public pages', icon: 'i-ri-global-line' },
+      {
+        value: 'dataset-search',
+        label: 'Dataset search',
+        meta: 'Search workspace knowledge',
+        icon: 'i-ri-search-eye-line',
+      },
+      {
+        value: 'web-scraper',
+        label: 'Web scraper',
+        meta: 'Fetch public pages',
+        icon: 'i-ri-global-line',
+      },
     ],
   },
   {
     label: 'Actions',
     items: [
-      { value: 'http-request', label: 'HTTP request', meta: 'Call external APIs', icon: 'i-ri-terminal-box-line' },
-      { value: 'code-runner', label: 'Code runner', meta: 'Execute sandboxed scripts', icon: 'i-ri-code-s-slash-line' },
+      {
+        value: 'http-request',
+        label: 'HTTP request',
+        meta: 'Call external APIs',
+        icon: 'i-ri-terminal-box-line',
+      },
+      {
+        value: 'code-runner',
+        label: 'Code runner',
+        meta: 'Execute sandboxed scripts',
+        icon: 'i-ri-code-s-slash-line',
+      },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { value: 'human-review', label: 'Human review', meta: 'Assign approval task', icon: 'i-ri-user-voice-line' },
-      { value: 'audit-log', label: 'Audit log', meta: 'Record workflow events', icon: 'i-ri-file-list-3-line' },
+      {
+        value: 'human-review',
+        label: 'Human review',
+        meta: 'Assign approval task',
+        icon: 'i-ri-user-voice-line',
+      },
+      {
+        value: 'audit-log',
+        label: 'Audit log',
+        meta: 'Record workflow events',
+        icon: 'i-ri-file-list-3-line',
+      },
     ],
   },
 ]
@@ -136,12 +182,42 @@ const tagOptions: Option[] = [
 ]
 
 const directoryOptions: Option[] = [
-  { value: 'maya-chen', label: 'Maya Chen', meta: 'Product owner · maya@example.com', icon: 'i-ri-user-3-line' },
-  { value: 'liam-brooks', label: 'Liam Brooks', meta: 'Prompt engineer · liam@example.com', icon: 'i-ri-user-3-line' },
-  { value: 'nora-park', label: 'Nora Park', meta: 'Data steward · nora@example.com', icon: 'i-ri-user-3-line' },
-  { value: 'owen-reed', label: 'Owen Reed', meta: 'Security reviewer · owen@example.com', icon: 'i-ri-shield-user-line' },
-  { value: 'yuki-tanaka', label: 'Yuki Tanaka', meta: 'ML engineer · yuki@example.com', icon: 'i-ri-user-3-line' },
-  { value: 'ava-martin', label: 'Ava Martin', meta: 'Support lead · ava@example.com', icon: 'i-ri-customer-service-2-line' },
+  {
+    value: 'maya-chen',
+    label: 'Maya Chen',
+    meta: 'Product owner · maya@example.com',
+    icon: 'i-ri-user-3-line',
+  },
+  {
+    value: 'liam-brooks',
+    label: 'Liam Brooks',
+    meta: 'Prompt engineer · liam@example.com',
+    icon: 'i-ri-user-3-line',
+  },
+  {
+    value: 'nora-park',
+    label: 'Nora Park',
+    meta: 'Data steward · nora@example.com',
+    icon: 'i-ri-user-3-line',
+  },
+  {
+    value: 'owen-reed',
+    label: 'Owen Reed',
+    meta: 'Security reviewer · owen@example.com',
+    icon: 'i-ri-shield-user-line',
+  },
+  {
+    value: 'yuki-tanaka',
+    label: 'Yuki Tanaka',
+    meta: 'ML engineer · yuki@example.com',
+    icon: 'i-ri-user-3-line',
+  },
+  {
+    value: 'ava-martin',
+    label: 'Ava Martin',
+    meta: 'Support lead · ava@example.com',
+    icon: 'i-ri-customer-service-2-line',
+  },
 ]
 
 const emptyOptions: Option[] = [
@@ -161,13 +237,14 @@ const modelCatalogOptions: Option[] = Array.from({ length: 1000 }, (_, index) =>
     value: `model-${index + 1}`,
     label: `${provider} ${family} ${number}`,
     meta: `${provider} provider · ${family}`,
-    icon: family === 'embedding'
-      ? 'i-ri-vector-triangle'
-      : family === 'vision'
-        ? 'i-ri-image-circle-line'
-        : family === 'reasoning'
-          ? 'i-ri-brain-line'
-          : 'i-ri-chat-1-line',
+    icon:
+      family === 'embedding'
+        ? 'i-ri-vector-triangle'
+        : family === 'vision'
+          ? 'i-ri-image-circle-line'
+          : family === 'reasoning'
+            ? 'i-ri-brain-line'
+            : 'i-ri-chat-1-line',
   }
 })
 
@@ -188,8 +265,8 @@ async function searchOptions(
   options: Option[],
   query: string,
   filter: (item: string, query: string) => boolean,
-): Promise<{ items: Option[], error: string | null }> {
-  await new Promise(resolve => window.setTimeout(resolve, 450))
+): Promise<{ items: Option[]; error: string | null }> {
+  await new Promise((resolve) => window.setTimeout(resolve, 450))
 
   if (query === 'will_error') {
     return {
@@ -199,21 +276,29 @@ async function searchOptions(
   }
 
   return {
-    items: options.filter(option => (
-      filter(option.label, query)
-      || (option.meta ? filter(option.meta, query) : false)
-    )),
+    items: options.filter(
+      (option) => filter(option.label, query) || (option.meta ? filter(option.meta, query) : false),
+    ),
     error: null,
   }
 }
 
 const renderOptionItem = (option: Option) => (
-  <ComboboxItem key={option.value} value={option} disabled={option.disabled} className="h-auto min-h-8 py-1.5">
+  <ComboboxItem
+    key={option.value}
+    value={option}
+    disabled={option.disabled}
+    className="h-auto min-h-8 py-1.5"
+  >
     <ComboboxItemText className="flex items-center gap-2 px-0">
-      {option.icon && <span aria-hidden className={cn(option.icon, 'size-4 shrink-0 text-text-tertiary')} />}
+      {option.icon && (
+        <span aria-hidden className={cn(option.icon, 'size-4 shrink-0 text-text-tertiary')} />
+      )}
       <span className="min-w-0 flex-1">
         <span className="block truncate system-sm-medium text-text-secondary">{option.label}</span>
-        {option.meta && <span className="block truncate system-xs-regular text-text-tertiary">{option.meta}</span>}
+        {option.meta && (
+          <span className="block truncate system-xs-regular text-text-tertiary">{option.meta}</span>
+        )}
       </span>
     </ComboboxItemText>
     <ComboboxItemIndicator />
@@ -229,29 +314,40 @@ const renderSimpleOptionItem = (option: Option) => (
 
 // Only virtualized items receive an explicit index; ordinary lists must let Base UI register items by DOM order for keyboard navigation.
 const renderVirtualizedOptionItem = (option: Option, index: number) => (
-  <ComboboxItem key={option.value} value={option} index={index} disabled={option.disabled} className="h-auto min-h-8 py-1.5">
+  <ComboboxItem
+    key={option.value}
+    value={option}
+    index={index}
+    disabled={option.disabled}
+    className="h-auto min-h-8 py-1.5"
+  >
     <ComboboxItemText className="flex items-center gap-2 px-0">
-      {option.icon && <span aria-hidden className={cn(option.icon, 'size-4 shrink-0 text-text-tertiary')} />}
+      {option.icon && (
+        <span aria-hidden className={cn(option.icon, 'size-4 shrink-0 text-text-tertiary')} />
+      )}
       <span className="min-w-0 flex-1">
         <span className="block truncate system-sm-medium text-text-secondary">{option.label}</span>
-        {option.meta && <span className="block truncate system-xs-regular text-text-tertiary">{option.meta}</span>}
+        {option.meta && (
+          <span className="block truncate system-xs-regular text-text-tertiary">{option.meta}</span>
+        )}
       </span>
     </ComboboxItemText>
     <ComboboxItemIndicator />
   </ComboboxItem>
 )
 
-const PopupSearchInput = ({
-  label,
-  placeholder,
-}: {
-  label: string
-  placeholder: string
-}) => (
+const PopupSearchInput = ({ label, placeholder }: { label: string; placeholder: string }) => (
   <div className="p-1 pb-0">
     <ComboboxInputGroup className="h-8 min-h-8 px-2">
-      <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
-      <ComboboxInput aria-label={label} placeholder={`${placeholder}…`} className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled" />
+      <span
+        aria-hidden
+        className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+      />
+      <ComboboxInput
+        aria-label={label}
+        placeholder={`${placeholder}…`}
+        className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
+      />
       <ComboboxClear className="mr-0" />
     </ComboboxInputGroup>
   </div>
@@ -266,9 +362,7 @@ const GroupedToolList = () => {
         <ComboboxGroup key={group.label} items={group.items}>
           {groupIndex > 0 && <ComboboxSeparator />}
           <ComboboxGroupLabel>{group.label}</ComboboxGroupLabel>
-          <ComboboxCollection>
-            {(option: Option) => renderOptionItem(option)}
-          </ComboboxCollection>
+          <ComboboxCollection>{(option: Option) => renderOptionItem(option)}</ComboboxCollection>
         </ComboboxGroup>
       ))}
     </ComboboxList>
@@ -311,8 +405,7 @@ const VirtualizedModelList = ({
         {virtualizer.getVirtualItems().map((virtualItem) => {
           const option = filteredItems[virtualItem.index]
 
-          if (!option)
-            return null
+          if (!option) return null
 
           return (
             <div
@@ -337,9 +430,7 @@ const FilteredModelStatus = () => {
 
   return (
     <ComboboxStatus className="border-y border-divider-subtle px-2 py-1 text-text-quaternary tabular-nums">
-      {filteredItems.length}
-      {' '}
-      matching models
+      {filteredItems.length} matching models
     </ComboboxStatus>
   )
 }
@@ -384,31 +475,28 @@ const AsyncDirectoryDemo = () => {
   const abortControllerRef = React.useRef<AbortController | null>(null)
   const trimmedSearchValue = searchValue.trim()
   const items = React.useMemo(() => {
-    if (!selectedValue || searchResults.some(option => option.value === selectedValue.value))
+    if (!selectedValue || searchResults.some((option) => option.value === selectedValue.value))
       return searchResults
 
     return [...searchResults, selectedValue]
   }, [searchResults, selectedValue])
 
   const status = (() => {
-    if (isPending)
-      return 'Searching directory matches…'
+    if (isPending) return 'Searching directory matches…'
 
-    if (error)
-      return error
+    if (error) return error
 
-    if (trimmedSearchValue === '')
-      return selectedValue ? null : 'Start typing to search owners…'
+    if (trimmedSearchValue === '') return selectedValue ? null : 'Start typing to search owners…'
 
-    if (searchResults.length === 0)
-      return `No matches for "${trimmedSearchValue}".`
+    if (searchResults.length === 0) return `No matches for "${trimmedSearchValue}".`
 
     return `${searchResults.length} owner${searchResults.length === 1 ? '' : 's'} found`
   })()
 
-  const emptyMessage = trimmedSearchValue === '' || isPending || searchResults.length > 0 || error
-    ? null
-    : 'Try a different owner search.'
+  const emptyMessage =
+    trimmedSearchValue === '' || isPending || searchResults.length > 0 || error
+      ? null
+      : 'Try a different owner search.'
 
   return (
     <Field name="owner" className={fieldWidth}>
@@ -419,8 +507,7 @@ const AsyncDirectoryDemo = () => {
         filter={null}
         value={selectedValue}
         onOpenChangeComplete={(open) => {
-          if (!open && selectedValue)
-            setSearchResults([selectedValue])
+          if (!open && selectedValue) setSearchResults([selectedValue])
         }}
         onValueChange={(nextSelectedValue) => {
           setSelectedValue(nextSelectedValue)
@@ -436,8 +523,7 @@ const AsyncDirectoryDemo = () => {
             return
           }
 
-          if (reason === 'item-press')
-            return
+          if (reason === 'item-press') return
 
           const controller = new AbortController()
           abortControllerRef.current?.abort()
@@ -448,8 +534,7 @@ const AsyncDirectoryDemo = () => {
 
             const result = await searchOptions(directoryOptions, nextSearchValue, contains)
 
-            if (controller.signal.aborted)
-              return
+            if (controller.signal.aborted) return
 
             startTransition(() => {
               setSearchResults(result.items)
@@ -459,15 +544,22 @@ const AsyncDirectoryDemo = () => {
         }}
       >
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
-          <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
-          <ComboboxInput placeholder="Search owners…" className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled" />
+          <span
+            aria-hidden
+            className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+          />
+          <ComboboxInput
+            placeholder="Search owners…"
+            className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
+          />
           <ComboboxClear className="mr-0.5" />
           <ComboboxInputTrigger className="mr-0" />
         </ComboboxInputGroup>
-        <ComboboxContent popupClassName="w-[420px]" popupProps={{ 'aria-busy': isPending || undefined }}>
-          <ComboboxStatus className="border-b border-divider-subtle">
-            {status}
-          </ComboboxStatus>
+        <ComboboxContent
+          popupClassName="w-[420px]"
+          popupProps={{ 'aria-busy': isPending || undefined }}
+        >
+          <ComboboxStatus className="border-b border-divider-subtle">{status}</ComboboxStatus>
           <ComboboxList>{renderOptionItem}</ComboboxList>
           <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
         </ComboboxContent>
@@ -489,25 +581,21 @@ const AsyncReviewerDemo = () => {
   const trimmedSearchValue = searchValue.trim()
 
   const items = React.useMemo(() => {
-    if (selectedValues.length === 0)
-      return searchResults
+    if (selectedValues.length === 0) return searchResults
 
     const merged = [...searchResults]
 
     selectedValues.forEach((selected) => {
-      if (!searchResults.some(result => result.value === selected.value))
-        merged.push(selected)
+      if (!searchResults.some((result) => result.value === selected.value)) merged.push(selected)
     })
 
     return merged
   }, [searchResults, selectedValues])
 
   const status = (() => {
-    if (isPending)
-      return 'Searching reviewer matches…'
+    if (isPending) return 'Searching reviewer matches…'
 
-    if (error)
-      return error
+    if (error) return error
 
     if (trimmedSearchValue === '' && !blockStartStatus)
       return selectedValues.length > 0 ? null : 'Start typing to search reviewers…'
@@ -518,9 +606,10 @@ const AsyncReviewerDemo = () => {
     return `${searchResults.length} reviewer${searchResults.length === 1 ? '' : 's'} found`
   })()
 
-  const emptyMessage = trimmedSearchValue === '' || isPending || searchResults.length > 0 || error
-    ? null
-    : 'Try a different reviewer search.'
+  const emptyMessage =
+    trimmedSearchValue === '' || isPending || searchResults.length > 0 || error
+      ? null
+      : 'Try a different reviewer search.'
 
   return (
     <Field name="asyncReviewers" className={fieldWidth}>
@@ -546,8 +635,7 @@ const AsyncReviewerDemo = () => {
           if (nextSelectedValues.length === 0) {
             setSearchResults([])
             setBlockStartStatus(false)
-          }
-          else {
+          } else {
             setBlockStartStatus(true)
           }
         }}
@@ -565,16 +653,14 @@ const AsyncReviewerDemo = () => {
             return
           }
 
-          if (reason === 'item-press')
-            return
+          if (reason === 'item-press') return
 
           startTransition(async () => {
             setError(null)
 
             const result = await searchOptions(reviewerOptions, nextSearchValue, contains)
 
-            if (controller.signal.aborted)
-              return
+            if (controller.signal.aborted) return
 
             startTransition(() => {
               setSearchResults(result.items)
@@ -588,27 +674,33 @@ const AsyncReviewerDemo = () => {
             <ComboboxValue>
               {(selectedValue: Option[]) => (
                 <React.Fragment>
-                  {selectedValue.map(item => (
+                  {selectedValue.map((item) => (
                     <ComboboxChip key={item.value} aria-label={item.label}>
                       <span className="max-w-32 truncate">{item.label}</span>
                       <ComboboxChipRemove aria-label={`Remove ${item.label}`} />
                     </ComboboxChip>
                   ))}
-                  <ComboboxInput placeholder={selectedValue.length ? '' : 'Search reviewers…'} className="min-w-24 px-1 py-0.5" />
+                  <ComboboxInput
+                    placeholder={selectedValue.length ? '' : 'Search reviewers…'}
+                    className="min-w-24 px-1 py-0.5"
+                  />
                 </React.Fragment>
               )}
             </ComboboxValue>
           </ComboboxChips>
         </ComboboxInputGroup>
-        <ComboboxContent popupClassName="w-[420px]" popupProps={{ 'aria-busy': isPending || undefined }}>
-          <ComboboxStatus className="border-b border-divider-subtle">
-            {status}
-          </ComboboxStatus>
+        <ComboboxContent
+          popupClassName="w-[420px]"
+          popupProps={{ 'aria-busy': isPending || undefined }}
+        >
+          <ComboboxStatus className="border-b border-divider-subtle">{status}</ComboboxStatus>
           <ComboboxList>{renderOptionItem}</ComboboxList>
           <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
         </ComboboxContent>
       </Combobox>
-      <FieldDescription>Selected reviewers stay available while async matches change.</FieldDescription>
+      <FieldDescription>
+        Selected reviewers stay available while async matches change.
+      </FieldDescription>
     </Field>
   )
 }
@@ -620,7 +712,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound combobox built on Base UI Combobox for searchable predefined selections. Compose triggers, inputs, lists, groups, status, empty states, and chips without importing Base UI primitives directly.',
+        component:
+          'Compound combobox built on Base UI Combobox for searchable predefined selections. Compose triggers, inputs, lists, groups, status, empty states, and chips without importing Base UI primitives directly.',
       },
     },
   },
@@ -636,8 +729,14 @@ export const Default: Story = {
       <FieldLabel>Connect source</FieldLabel>
       <Combobox items={dataSourceOptions} defaultValue={defaultDataSource}>
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
-          <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
-          <ComboboxInput placeholder="Search data sources…" className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled" />
+          <span
+            aria-hidden
+            className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+          />
+          <ComboboxInput
+            placeholder="Search data sources…"
+            className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
+          />
           <ComboboxClear className="mr-0.5" />
           <ComboboxInputTrigger className="mr-0" />
         </ComboboxInputGroup>
@@ -655,8 +754,14 @@ export const FormField: Story = {
       <FieldLabel>Connect source</FieldLabel>
       <Combobox items={dataSourceOptions} defaultValue={defaultDataSource}>
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
-          <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
-          <ComboboxInput placeholder="Search data sources…" className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled" />
+          <span
+            aria-hidden
+            className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+          />
+          <ComboboxInput
+            placeholder="Search data sources…"
+            className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
+          />
           <ComboboxClear className="mr-0.5" />
           <ComboboxInputTrigger className="mr-0" />
         </ComboboxInputGroup>
@@ -697,12 +802,15 @@ export const AsyncSearchMultiple: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="flex w-80 flex-col gap-3">
-      {(['small', 'medium', 'large'] as const).map(size => (
+      {(['small', 'medium', 'large'] as const).map((size) => (
         <Field key={size} name={`provider-${size}`}>
           <FieldLabel>{`${size[0]!.toUpperCase()}${size.slice(1)}`}</FieldLabel>
           <Combobox items={sizeOptions} defaultValue={defaultProvider}>
             <ComboboxInputGroup size={size} className="px-2">
-              <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
+              <span
+                aria-hidden
+                className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+              />
               <ComboboxInput size={size} placeholder="Search providers…" className="px-1" />
               <ComboboxClear size={size} className="mr-0.5" />
               <ComboboxInputTrigger size={size} className="mr-0" />
@@ -746,13 +854,16 @@ const MultipleChipsDemo = () => {
             <ComboboxValue>
               {(selectedValue: Option[]) => (
                 <React.Fragment>
-                  {selectedValue.map(item => (
+                  {selectedValue.map((item) => (
                     <ComboboxChip key={item.value}>
                       <span className="max-w-32 truncate">{item.label}</span>
                       <ComboboxChipRemove aria-label={`Remove ${item.label}`} />
                     </ComboboxChip>
                   ))}
-                  <ComboboxInput placeholder={selectedValue.length ? '' : 'Assign reviewers…'} className="min-w-24 px-1 py-0.5" />
+                  <ComboboxInput
+                    placeholder={selectedValue.length ? '' : 'Assign reviewers…'}
+                    className="min-w-24 px-1 py-0.5"
+                  />
                 </React.Fragment>
               )}
             </ComboboxValue>
@@ -762,7 +873,9 @@ const MultipleChipsDemo = () => {
           <ComboboxList>{renderOptionItem}</ComboboxList>
         </ComboboxContent>
       </Combobox>
-      <FieldDescription>Selected reviewers wrap inside the input instead of scrolling horizontally.</FieldDescription>
+      <FieldDescription>
+        Selected reviewers wrap inside the input instead of scrolling horizontally.
+      </FieldDescription>
     </Field>
   )
 }
@@ -790,8 +903,14 @@ export const EmptyAndStatus: Story = {
       <FieldLabel>Connector</FieldLabel>
       <Combobox items={emptyOptions} defaultInputValue="salesforce">
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
-          <span aria-hidden className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder" />
-          <ComboboxInput placeholder="Search connectors…" className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled" />
+          <span
+            aria-hidden
+            className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+          />
+          <ComboboxInput
+            placeholder="Search connectors…"
+            className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
+          />
           <ComboboxClear className="mr-0.5" />
           <ComboboxInputTrigger className="mr-0" />
         </ComboboxInputGroup>
@@ -824,7 +943,10 @@ export const DisabledAndReadOnly: Story = {
         <FieldLabel>Read-only source</FieldLabel>
         <Combobox items={dataSourceOptions} defaultValue={readOnlyDataSource} readOnly>
           <ComboboxInputGroup className="h-8 min-h-8 px-2">
-            <ComboboxInput placeholder="Read-only data source…" className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled" />
+            <ComboboxInput
+              placeholder="Read-only data source…"
+              className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
+            />
             <ComboboxClear className="mr-0.5" />
             <ComboboxInputTrigger className="mr-0" />
           </ComboboxInputGroup>
@@ -855,9 +977,7 @@ const ControlledDemo = () => {
         </Combobox>
       </div>
       <span className="rounded-md border border-divider-subtle bg-components-panel-bg px-2 py-1 system-xs-regular text-text-tertiary">
-        Selected:
-        {' '}
-        {value?.label ?? 'None'}
+        Selected: {value?.label ?? 'None'}
       </span>
     </div>
   )

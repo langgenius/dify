@@ -42,9 +42,7 @@ vi.mock('@/service/use-tools', () => ({
 
 vi.mock('@/service/use-triggers', () => ({
   useAllTriggerPlugins: () => ({
-    data: [
-      { id: 'plugin-1', name: 'Test Plugin', icon: 'test-icon' },
-    ],
+    data: [{ id: 'plugin-1', name: 'Test Plugin', icon: 'test-icon' }],
   }),
 }))
 
@@ -54,12 +52,22 @@ vi.mock('@/utils', () => ({
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: ({ type }: { type: string }) => (
-    <div data-testid="block-icon" data-type={type}>BlockIcon</div>
+    <div data-testid="block-icon" data-type={type}>
+      BlockIcon
+    </div>
   ),
 }))
 
 vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({ checked, onCheckedChange, disabled }: { checked: boolean, onCheckedChange: (v: boolean) => void, disabled: boolean }) => (
+  Switch: ({
+    checked,
+    onCheckedChange,
+    disabled,
+  }: {
+    checked: boolean
+    onCheckedChange: (v: boolean) => void
+    disabled: boolean
+  }) => (
     <button
       data-testid="switch"
       data-checked={checked ? 'true' : 'false'}
@@ -115,7 +123,9 @@ describe('TriggerCard', () => {
 
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      expect(screen.getByText(/(?:^|\.)overview\.triggerInfo\.noTriggerAdded(?=$|:)/)).toBeInTheDocument()
+      expect(
+        screen.getByText(/(?:^|\.)overview\.triggerInfo\.noTriggerAdded(?=$|:)/),
+      ).toBeInTheDocument()
     })
 
     it('should show trigger status description when no triggers', () => {
@@ -123,7 +133,9 @@ describe('TriggerCard', () => {
 
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      expect(screen.getByText(/(?:^|\.)overview\.triggerInfo\.triggerStatusDescription(?=$|:)/)).toBeInTheDocument()
+      expect(
+        screen.getByText(/(?:^|\.)overview\.triggerInfo\.triggerStatusDescription(?=$|:)/),
+      ).toBeInTheDocument()
     })
 
     it('should show learn more link when no triggers', () => {
@@ -131,9 +143,14 @@ describe('TriggerCard', () => {
 
       render(<TriggerCard appInfo={mockAppInfo} onToggleResult={mockOnToggleResult} />)
 
-      const learnMoreLink = screen.getByText(/(?:^|\.)overview\.triggerInfo\.learnAboutTriggers(?=$|:)/)
+      const learnMoreLink = screen.getByText(
+        /(?:^|\.)overview\.triggerInfo\.learnAboutTriggers(?=$|:)/,
+      )
       expect(learnMoreLink).toBeInTheDocument()
-      expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example.com/use-dify/nodes/trigger/overview')
+      expect(learnMoreLink).toHaveAttribute(
+        'href',
+        'https://docs.example.com/use-dify/nodes/trigger/overview',
+      )
     })
   })
 
@@ -361,7 +378,9 @@ describe('TriggerCard', () => {
         permission_keys: [],
       } as AppDetailResponse
 
-      render(<TriggerCard appInfo={appInfoWithoutEditPermission} onToggleResult={mockOnToggleResult} />)
+      render(
+        <TriggerCard appInfo={appInfoWithoutEditPermission} onToggleResult={mockOnToggleResult} />,
+      )
 
       const switchBtn = screen.getByTestId('switch')
       expect(switchBtn).toHaveAttribute('data-disabled', 'true')

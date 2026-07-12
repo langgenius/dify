@@ -25,8 +25,7 @@ class MockImage {
     this._src = value
     // Trigger onload after a microtask
     setTimeout(() => {
-      if (this.onload)
-        this.onload()
+      if (this.onload) this.onload()
     }, 0)
   }
 
@@ -160,9 +159,7 @@ describe('ImagePreviewer', () => {
 
       // Find and click next button (right arrow)
       const buttons = document.querySelectorAll('button')
-      const nextButton = Array.from(buttons).find(btn =>
-        btn.className.includes('right-8'),
-      )
+      const nextButton = Array.from(buttons).find((btn) => btn.className.includes('right-8'))
 
       if (nextButton) {
         await act(async () => {
@@ -189,9 +186,7 @@ describe('ImagePreviewer', () => {
 
       // Find and click prev button (left arrow)
       const buttons = document.querySelectorAll('button')
-      const prevButton = Array.from(buttons).find(btn =>
-        btn.className.includes('left-8'),
-      )
+      const prevButton = Array.from(buttons).find((btn) => btn.className.includes('left-8'))
 
       if (prevButton) {
         await act(async () => {
@@ -213,9 +208,7 @@ describe('ImagePreviewer', () => {
       })
 
       const buttons = document.querySelectorAll('button')
-      const prevButton = Array.from(buttons).find(btn =>
-        btn.className.includes('left-8'),
-      )
+      const prevButton = Array.from(buttons).find((btn) => btn.className.includes('left-8'))
 
       expect(prevButton)!.toBeDisabled()
     })
@@ -229,9 +222,7 @@ describe('ImagePreviewer', () => {
       })
 
       const buttons = document.querySelectorAll('button')
-      const nextButton = Array.from(buttons).find(btn =>
-        btn.className.includes('right-8'),
-      )
+      const nextButton = Array.from(buttons).find((btn) => btn.className.includes('right-8'))
 
       expect(nextButton)!.toBeDisabled()
     })
@@ -298,9 +289,7 @@ describe('ImagePreviewer', () => {
       })
 
       const buttons = document.querySelectorAll('button')
-      const prevButton = Array.from(buttons).find(btn =>
-        btn.className.includes('left-8'),
-      )
+      const prevButton = Array.from(buttons).find((btn) => btn.className.includes('left-8'))
 
       if (prevButton) {
         await act(async () => {
@@ -328,9 +317,7 @@ describe('ImagePreviewer', () => {
       })
 
       const buttons = document.querySelectorAll('button')
-      const nextButton = Array.from(buttons).find(btn =>
-        btn.className.includes('right-8'),
-      )
+      const nextButton = Array.from(buttons).find((btn) => btn.className.includes('right-8'))
 
       if (nextButton) {
         await act(async () => {
@@ -402,8 +389,11 @@ describe('ImagePreviewer', () => {
 
       // Find and click the retry button (not the nav buttons)
       const allButtons = document.querySelectorAll('button')
-      const retryButton = Array.from(allButtons).find(btn =>
-        btn.className.includes('rounded-full') && !btn.className.includes('left-8') && !btn.className.includes('right-8'),
+      const retryButton = Array.from(allButtons).find(
+        (btn) =>
+          btn.className.includes('rounded-full') &&
+          !btn.className.includes('left-8') &&
+          !btn.className.includes('right-8'),
       )
 
       expect(retryButton)!.toBeInTheDocument()
@@ -463,12 +453,8 @@ describe('ImagePreviewer', () => {
 
       // Both navigation buttons should be disabled
       const buttons = document.querySelectorAll('button')
-      const prevButton = Array.from(buttons).find(btn =>
-        btn.className.includes('left-8'),
-      )
-      const nextButton = Array.from(buttons).find(btn =>
-        btn.className.includes('right-8'),
-      )
+      const prevButton = Array.from(buttons).find((btn) => btn.className.includes('left-8'))
+      const nextButton = Array.from(buttons).find((btn) => btn.className.includes('right-8'))
 
       expect(prevButton)!.toBeDisabled()
       expect(nextButton)!.toBeDisabled()

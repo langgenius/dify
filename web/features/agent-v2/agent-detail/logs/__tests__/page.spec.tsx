@@ -1,4 +1,8 @@
-import type { AgentLogListResponse, AgentLogMessageListResponse, AgentLogSourceListResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentLogListResponse,
+  AgentLogMessageListResponse,
+  AgentLogSourceListResponse,
+} from '@dify/contracts/api/console/agent/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -190,8 +194,7 @@ const renderPage = () => {
 const getLatestLogsQueryInput = () => {
   const latestCall = mocks.logsQueryOptions.mock.calls.at(-1)
 
-  if (!latestCall)
-    throw new Error('Expected logs query options to be called')
+  if (!latestCall) throw new Error('Expected logs query options to be called')
 
   return latestCall[0]
 }
@@ -235,17 +238,23 @@ describe('AgentLogsPage', () => {
 
       renderPage()
 
-      await user.click(await screen.findByRole('combobox', { name: 'agentV2.agentDetail.logs.filters.source.label' }))
+      await user.click(
+        await screen.findByRole('combobox', {
+          name: 'agentV2.agentDetail.logs.filters.source.label',
+        }),
+      )
       await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
       await user.click(await screen.findByRole('option', { name: /SVG Logo Design/ }))
 
       await waitFor(() => {
-        expect(getLatestLogsQueryInput().input.query).toEqual(expect.objectContaining({
-          sources: [
-            'webapp:webapp-app-id',
-            'workflow:workflow-app-id:workflow-id:v3:agent-node-id',
-          ],
-        }))
+        expect(getLatestLogsQueryInput().input.query).toEqual(
+          expect.objectContaining({
+            sources: [
+              'webapp:webapp-app-id',
+              'workflow:workflow-app-id:workflow-id:v3:agent-node-id',
+            ],
+          }),
+        )
       })
 
       expect(getLatestLogsQueryInput().input.query).not.toHaveProperty('source')
@@ -257,22 +266,30 @@ describe('AgentLogsPage', () => {
       renderPage()
 
       await user.click(screen.getByRole('button', { name: /appLog\.filter\.sortBy/ }))
-      await user.click(await screen.findByRole('menuitemradio', { name: 'agentV2.agentDetail.logs.filters.sort.lastUpdatedTime' }))
+      await user.click(
+        await screen.findByRole('menuitemradio', {
+          name: 'agentV2.agentDetail.logs.filters.sort.lastUpdatedTime',
+        }),
+      )
 
       await waitFor(() => {
-        expect(getLatestLogsQueryInput().input.query).toEqual(expect.objectContaining({
-          sort_by: 'updated_at',
-          sort_order: 'desc',
-        }))
+        expect(getLatestLogsQueryInput().input.query).toEqual(
+          expect.objectContaining({
+            sort_by: 'updated_at',
+            sort_order: 'desc',
+          }),
+        )
       })
 
       await user.click(screen.getByRole('button', { name: 'appLog.filter.ascending' }))
 
       await waitFor(() => {
-        expect(getLatestLogsQueryInput().input.query).toEqual(expect.objectContaining({
-          sort_by: 'updated_at',
-          sort_order: 'asc',
-        }))
+        expect(getLatestLogsQueryInput().input.query).toEqual(
+          expect.objectContaining({
+            sort_by: 'updated_at',
+            sort_order: 'asc',
+          }),
+        )
       })
     })
 
@@ -290,13 +307,19 @@ describe('AgentLogsPage', () => {
 
       expect(await screen.findByText('Previous conversation')).toBeInTheDocument()
 
-      await user.click(await screen.findByRole('combobox', { name: 'agentV2.agentDetail.logs.filters.source.label' }))
+      await user.click(
+        await screen.findByRole('combobox', {
+          name: 'agentV2.agentDetail.logs.filters.source.label',
+        }),
+      )
       await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
 
       await waitFor(() => {
-        expect(getLatestLogsQueryInput().input.query).toEqual(expect.objectContaining({
-          sources: ['webapp:webapp-app-id'],
-        }))
+        expect(getLatestLogsQueryInput().input.query).toEqual(
+          expect.objectContaining({
+            sources: ['webapp:webapp-app-id'],
+          }),
+        )
         expect(mocks.logsQueryFn).toHaveBeenCalledTimes(2)
       })
 

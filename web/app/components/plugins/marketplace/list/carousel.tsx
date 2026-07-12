@@ -24,12 +24,7 @@ type NavButtonProps = {
   iconClassName: string
 }
 
-const NavButton = ({
-  direction,
-  disabled,
-  onClick,
-  iconClassName,
-}: NavButtonProps) => (
+const NavButton = ({ direction, disabled, onClick, iconClassName }: NavButtonProps) => (
   <button
     className={cn(
       'flex cursor-pointer items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] transition-all hover:bg-components-button-secondary-bg-hover',
@@ -39,7 +34,10 @@ const NavButton = ({
     disabled={disabled}
     aria-label={`Scroll ${direction}`}
   >
-    <span aria-hidden className={cn('size-4 text-components-button-secondary-text', iconClassName)} />
+    <span
+      aria-hidden
+      className={cn('size-4 text-components-button-secondary-text', iconClassName)}
+    />
   </button>
 )
 
@@ -66,8 +64,7 @@ const CarouselControls = ({
   }))
   const totalPages = scrollSnaps.length
 
-  if (totalPages <= 1)
-    return null
+  if (totalPages <= 1) return null
 
   return (
     <div className="absolute -top-10 right-0 flex items-center gap-3">
@@ -115,8 +112,7 @@ const Carousel = ({
   autoPlayInterval = 5000,
 }: CarouselProps) => {
   const plugins = useMemo(() => {
-    if (!autoPlay)
-      return []
+    if (!autoPlay) return []
 
     return [
       Autoplay({
@@ -140,8 +136,7 @@ const Carousel = ({
   }, [api])
 
   useEffect(() => {
-    if (!api)
-      return
+    if (!api) return
 
     const handleSelect = () => {
       setSelectedIndex(api.selectedScrollSnap())
@@ -159,11 +154,7 @@ const Carousel = ({
   }, [api])
 
   return (
-    <div
-      className={cn('relative', className)}
-      role="region"
-      aria-roledescription="carousel"
-    >
+    <div className={cn('relative', className)} role="region" aria-roledescription="carousel">
       {showNavigation && (
         <CarouselControls
           api={api}
@@ -174,10 +165,7 @@ const Carousel = ({
           scrollSnaps={scrollSnaps}
         />
       )}
-      <div
-        ref={carouselRef}
-        className="overflow-hidden [border-radius:inherit]"
-      >
+      <div ref={carouselRef} className="overflow-hidden [border-radius:inherit]">
         <div className="flex" style={{ columnGap: '12px' }}>
           {children}
         </div>

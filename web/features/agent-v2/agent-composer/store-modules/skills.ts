@@ -6,7 +6,7 @@ import { agentComposerDraftAtom } from '../store'
 import { resolveDraftFieldUpdate } from './utils'
 
 export const agentComposerSkillsAtom = atom<AgentSkill[], [DraftFieldUpdate<AgentSkill[]>], void>(
-  get => get(agentComposerDraftAtom).skills,
+  (get) => get(agentComposerDraftAtom).skills,
   (get, set, skillsUpdate: DraftFieldUpdate<AgentSkill[]>) => {
     const draft = get(agentComposerDraftAtom)
     const skills = resolveDraftFieldUpdate(draft.skills, skillsUpdate)
@@ -24,12 +24,12 @@ export const agentComposerSkillsAtom = atom<AgentSkill[], [DraftFieldUpdate<Agen
 )
 
 export const upsertAgentSkillAtom = atom(null, (_get, set, skill: AgentSkill) => {
-  set(agentComposerSkillsAtom, skills => [
-    ...skills.filter(item => item.id !== skill.id),
+  set(agentComposerSkillsAtom, (skills) => [
+    ...skills.filter((item) => item.id !== skill.id),
     skill,
   ])
 })
 
 export const removeAgentSkillAtom = atom(null, (_get, set, skillId: string) => {
-  set(agentComposerSkillsAtom, skills => skills.filter(item => item.id !== skillId))
+  set(agentComposerSkillsAtom, (skills) => skills.filter((item) => item.id !== skillId))
 })

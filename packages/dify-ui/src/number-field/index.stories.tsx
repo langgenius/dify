@@ -1,12 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { Button } from '../button'
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '../field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '../field'
 import { Form } from '../form'
 import {
   NumberField,
@@ -25,7 +20,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound numeric input built on Base UI NumberField. Use it with Field for labelled, described, and validated form fields.',
+        component:
+          'Compound numeric input built on Base UI NumberField. Use it with Field for labelled, described, and validated form fields.',
       },
     },
   },
@@ -234,9 +230,7 @@ function ControlledDemo() {
         </NumberFieldGroup>
       </NumberField>
       <FieldDescription>
-        Current value:
-        {' '}
-        {value === null ? 'Empty' : value.toFixed(2)}
+        Current value: {value === null ? 'Empty' : value.toFixed(2)}
       </FieldDescription>
     </Field>
   )
@@ -278,13 +272,13 @@ function FormDemo() {
         <FieldError match="rangeOverflow">Use 10 or fewer.</FieldError>
       </Field>
       <div className="flex justify-end">
-        <Button type="submit" variant="primary">Save Settings</Button>
+        <Button type="submit" variant="primary">
+          Save Settings
+        </Button>
       </div>
       {savedValue && (
         <div className="rounded-lg bg-background-section px-3 py-2 system-xs-regular text-text-secondary">
-          Saved:
-          {' '}
-          {savedValue}
+          Saved: {savedValue}
         </div>
       )}
     </Form>

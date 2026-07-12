@@ -9,10 +9,10 @@ const meta = {
     docs: {
       description: {
         component:
-          'A graphical display of a numeric value within a known range. '
-          + 'Use the compound primitives (`Meter / MeterTrack / MeterIndicator / '
-          + 'MeterValue / MeterLabel`) for quota, capacity, or score indicators; do '
-          + 'not use for task-completion progress.',
+          'A graphical display of a numeric value within a known range. ' +
+          'Use the compound primitives (`Meter / MeterTrack / MeterIndicator / ' +
+          'MeterValue / MeterLabel`) for quota, capacity, or score indicators; do ' +
+          'not use for task-completion progress.',
       },
     },
   },
@@ -25,10 +25,10 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
   args: {
-    'value': 42,
+    value: 42,
     'aria-label': 'Quota used',
   },
-  render: args => (
+  render: (args) => (
     <div className="w-[320px]">
       <Meter {...args}>
         <MeterTrack>
@@ -41,10 +41,10 @@ export const Default: Story = {
 
 export const Warning: Story = {
   args: {
-    'value': 85,
+    value: 85,
     'aria-label': 'Quota used',
   },
-  render: args => (
+  render: (args) => (
     <div className="w-[320px]">
       <Meter {...args}>
         <MeterTrack>
@@ -57,10 +57,10 @@ export const Warning: Story = {
 
 export const Error: Story = {
   args: {
-    'value': 100,
+    value: 100,
     'aria-label': 'Quota used',
   },
-  render: args => (
+  render: (args) => (
     <div className="w-[320px]">
       <Meter {...args}>
         <MeterTrack>
@@ -73,10 +73,10 @@ export const Error: Story = {
 
 export const ComposedWithLabelAndValue: Story = {
   args: {
-    'value': 62,
+    value: 62,
     'aria-label': 'Storage used',
   },
-  render: args => (
+  render: (args) => (
     <div className="w-[320px] space-y-2 rounded-xl bg-components-panel-bg p-4">
       <Meter {...args}>
         <div className="flex items-center justify-between">
@@ -93,13 +93,13 @@ export const ComposedWithLabelAndValue: Story = {
 
 export const PercentFormatted: Story = {
   args: {
-    'value': 0.73,
-    'min': 0,
-    'max': 1,
-    'format': { style: 'percent', maximumFractionDigits: 0 },
+    value: 0.73,
+    min: 0,
+    max: 1,
+    format: { style: 'percent', maximumFractionDigits: 0 },
     'aria-label': 'Retrieval score',
   },
-  render: args => (
+  render: (args) => (
     <div className="w-[320px] space-y-2">
       <Meter {...args}>
         <div className="flex items-center justify-between">

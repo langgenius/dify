@@ -2,14 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Button } from '../button'
 import { Checkbox } from '../checkbox'
 import { CheckboxGroup } from '../checkbox-group'
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldItem,
-  FieldLabel,
-} from '../field'
+import { Field, FieldControl, FieldDescription, FieldError, FieldItem, FieldLabel } from '../field'
 import { Fieldset, FieldsetLegend } from '../fieldset'
 import { Form } from './index'
 
@@ -63,7 +56,9 @@ export const Basic: Story = {
       </Field>
 
       <div className="flex justify-end">
-        <Button type="submit" variant="primary">Save</Button>
+        <Button type="submit" variant="primary">
+          Save
+        </Button>
       </div>
     </Form>
   ),

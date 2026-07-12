@@ -19,8 +19,7 @@ export default {
       },
     ],
     messages: {
-      noAsAnyInT:
-        'Avoid using "as any" in t() function calls. Use proper i18n key types instead.',
+      noAsAnyInT: 'Avoid using "as any" in t() function calls. Use proper i18n key types instead.',
       noAsInT:
         'Avoid using type assertions in t() function calls. Use proper i18n key types instead.',
     },
@@ -31,13 +30,12 @@ export default {
 
     function isTCall(node) {
       // Direct t() call
-      if (node.callee.type === 'Identifier' && node.callee.name === 't')
-        return true
+      if (node.callee.type === 'Identifier' && node.callee.name === 't') return true
       // i18n.t() or similar member expression
       if (
-        node.callee.type === 'MemberExpression'
-        && node.callee.property.type === 'Identifier'
-        && node.callee.property.name === 't'
+        node.callee.type === 'MemberExpression' &&
+        node.callee.property.type === 'Identifier' &&
+        node.callee.property.name === 't'
       ) {
         return true
       }
@@ -51,9 +49,9 @@ export default {
      */
     function isAsAny(node) {
       return (
-        node.type === 'TSAsExpression'
-        && node.typeAnnotation
-        && node.typeAnnotation.type === 'TSAnyKeyword'
+        node.type === 'TSAsExpression' &&
+        node.typeAnnotation &&
+        node.typeAnnotation.type === 'TSAnyKeyword'
       )
     }
 
@@ -63,21 +61,18 @@ export default {
      * @returns {boolean}
      */
     function isAsExpression(node) {
-      if (node.type !== 'TSAsExpression')
-        return false
+      if (node.type !== 'TSAsExpression') return false
       // Ignore "as const"
       if (node.typeAnnotation && node.typeAnnotation.type === 'TSTypeReference') {
         const typeName = node.typeAnnotation.typeName
-        if (typeName && typeName.type === 'Identifier' && typeName.name === 'const')
-          return false
+        if (typeName && typeName.type === 'Identifier' && typeName.name === 'const') return false
       }
       return true
     }
 
     return {
       CallExpression(node) {
-        if (!isTCall(node) || node.arguments.length === 0)
-          return
+        if (!isTCall(node) || node.arguments.length === 0) return
 
         const firstArg = node.arguments[0]
 
@@ -89,8 +84,7 @@ export default {
               messageId: 'noAsInT',
             })
           }
-        }
-        else {
+        } else {
           // Check only for "as any"
           if (isAsAny(firstArg)) {
             context.report({

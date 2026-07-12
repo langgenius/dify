@@ -39,25 +39,13 @@ function CreateReleaseScopedControl({
       return
     }
 
-    if (!isCreatingRelease)
-      requestCloseDialog()
+    if (!isCreatingRelease) requestCloseDialog()
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={handleDialogOpenChange}
-    >
-      <DialogTrigger
-        render={(
-          <Button
-            size={size}
-            variant={variant}
-            className={className}
-          />
-        )}
-      >
-        {label ?? t($ => $['versions.createRelease'])}
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+      <DialogTrigger render={<Button size={size} variant={variant} className={className} />}>
+        {label ?? t(($) => $['versions.createRelease'])}
       </DialogTrigger>
       <CreateReleaseDialogContent />
     </Dialog>
@@ -80,10 +68,7 @@ export function CreateReleaseControl({
   return (
     <ScopeProvider
       key={appInstanceId}
-      atoms={[
-        [createReleaseAppInstanceIdAtom, appInstanceId],
-        ...createReleaseLocalAtoms,
-      ]}
+      atoms={[[createReleaseAppInstanceIdAtom, appInstanceId], ...createReleaseLocalAtoms]}
       name="CreateRelease"
     >
       <CreateReleaseScopedControl

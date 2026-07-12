@@ -17,8 +17,7 @@ const { mockState, MockRecorder, rafState } = vi.hoisted(() => {
 
   class MockRecorderClass {
     start = vi.fn((..._args: unknown[]) => {
-      if (state.startOverride)
-        return state.startOverride()
+      if (state.startOverride) return state.startOverride()
       return Promise.resolve()
     })
 
@@ -93,7 +92,7 @@ describe('VoiceInput', () => {
     }))
 
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1)
-    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => { })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
   })
 
   it('should start recording on mount and show speaking state', async () => {
@@ -154,7 +153,7 @@ describe('VoiceInput', () => {
 
   it('should show cancel button during conversion and cancel on click', async () => {
     const user = userEvent.setup()
-    vi.mocked(audioToText).mockImplementation(() => new Promise(() => { }))
+    vi.mocked(audioToText).mockImplementation(() => new Promise(() => {}))
     mockState.params = { token: 'abc' }
 
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
@@ -173,8 +172,7 @@ describe('VoiceInput', () => {
     let rafCalls = 0
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
       rafCalls++
-      if (rafCalls <= 2)
-        cb(0)
+      if (rafCalls <= 2) cb(0)
       return rafCalls
     })
 
@@ -192,8 +190,7 @@ describe('VoiceInput', () => {
     let rafCalls = 0
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
       rafCalls++
-      if (rafCalls <= 2)
-        cb(0)
+      if (rafCalls <= 2) cb(0)
       return rafCalls
     })
 
@@ -292,8 +289,7 @@ describe('VoiceInput', () => {
     let rafCalls = 0
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
       rafCalls++
-      if (rafCalls <= 1)
-        cb(0)
+      if (rafCalls <= 1) cb(0)
       return rafCalls
     })
 
@@ -314,15 +310,13 @@ describe('VoiceInput', () => {
     expect(timer)!.toHaveTextContent('00:00')
 
     await act(async () => {
-      if (rafState.callback)
-        rafState.callback()
+      if (rafState.callback) rafState.callback()
     })
     expect(timer)!.toHaveTextContent('00:01')
 
     for (let i = 0; i < 9; i++) {
       await act(async () => {
-        if (rafState.callback)
-          rafState.callback()
+        if (rafState.callback) rafState.callback()
       })
     }
     expect(timer)!.toHaveTextContent('00:10')
@@ -344,8 +338,7 @@ describe('VoiceInput', () => {
     let rafCalls = 0
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
       rafCalls++
-      if (rafCalls <= 2)
-        cb(0)
+      if (rafCalls <= 2) cb(0)
       return rafCalls
     })
 
@@ -410,8 +403,7 @@ describe('VoiceInput', () => {
     let rafCalls = 0
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
       rafCalls++
-      if (rafCalls <= 2)
-        cb(0)
+      if (rafCalls <= 2) cb(0)
       return rafCalls
     })
 
@@ -428,13 +420,7 @@ describe('VoiceInput', () => {
     vi.mocked(audioToText).mockResolvedValueOnce({ text: 'test' })
     mockState.params = { token: 'token123' }
 
-    render(
-      <VoiceInput
-        onConverted={onConverted}
-        onCancel={onCancel}
-        wordTimestamps="enabled"
-      />,
-    )
+    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} wordTimestamps="enabled" />)
 
     const stopBtn = await screen.findByTestId('voice-input-stop')
     await user.click(stopBtn)
@@ -481,7 +467,7 @@ describe('VoiceInput', () => {
 
   it('should render converting UI after stopping', async () => {
     const user = userEvent.setup()
-    vi.mocked(audioToText).mockImplementation(() => new Promise(() => { }))
+    vi.mocked(audioToText).mockImplementation(() => new Promise(() => {}))
     mockState.params = { token: 'abc' }
 
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
@@ -502,8 +488,7 @@ describe('VoiceInput', () => {
 
     for (let i = 0; i < 601; i++) {
       await act(async () => {
-        if (rafState.callback)
-          rafState.callback()
+        if (rafState.callback) rafState.callback()
       })
     }
 

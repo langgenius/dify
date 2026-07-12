@@ -1,8 +1,15 @@
-import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  DefaultModel,
+  Model,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet, SummaryIndexSetting } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  ConfigurationMethodEnum,
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
@@ -86,7 +93,10 @@ vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
     summaryIndexSetting?: SummaryIndexSetting
     onSummaryIndexSettingChange?: (payload: SummaryIndexSetting) => void
   }) => (
-    <div data-testid="summary-index-setting" data-enabled={summaryIndexSetting?.enable ? 'true' : 'false'}>
+    <div
+      data-testid="summary-index-setting"
+      data-enabled={summaryIndexSetting?.enable ? 'true' : 'false'}
+    >
       <button type="button" onClick={() => onSummaryIndexSettingChange?.({ enable: true })}>
         summary-enable
       </button>
@@ -112,7 +122,8 @@ vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
           onChange({
             ...value,
             top_k: 6,
-          })}
+          })
+        }
       >
         update-retrieval
       </button>
@@ -135,7 +146,8 @@ vi.mock('@/app/components/datasets/common/economical-retrieval-method-config', (
           onChange({
             ...value,
             search_method: RETRIEVE_METHOD.keywordSearch,
-          })}
+          })
+        }
       >
         update-economy-retrieval
       </button>
@@ -274,7 +286,10 @@ describe('IndexingSection', () => {
       renderComponent()
 
       expect(screen.getByText(/(?:^|\.)form\.embeddingModel(?=$|:)/)).toBeInTheDocument()
-      expect(screen.getByTestId('model-selector')).toHaveAttribute('data-model', 'text-embedding-ada-002')
+      expect(screen.getByTestId('model-selector')).toHaveAttribute(
+        'data-model',
+        'text-embedding-ada-002',
+      )
     })
   })
 
@@ -287,16 +302,25 @@ describe('IndexingSection', () => {
         },
       })
 
-      expect(screen.queryByText(/(?:^|\.)form\.chunkStructure\.title(?=$|:)/)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(/(?:^|\.)form\.chunkStructure\.title(?=$|:)/),
+      ).not.toBeInTheDocument()
       expect(screen.queryByTestId('chunk-structure')).not.toBeInTheDocument()
     })
 
     it('should render the chunk structure learn more link and description', () => {
       renderComponent()
 
-      const learnMoreLink = screen.getByRole('link', { name: /(?:^|\.)form\.chunkStructure\.learnMore(?=$|:)/ })
-      expect(learnMoreLink).toHaveAttribute('href', expect.stringContaining('chunking-and-cleaning-text'))
-      expect(screen.getByText(/(?:^|\.)form\.chunkStructure\.description(?=$|:)/)).toBeInTheDocument()
+      const learnMoreLink = screen.getByRole('link', {
+        name: /(?:^|\.)form\.chunkStructure\.learnMore(?=$|:)/,
+      })
+      expect(learnMoreLink).toHaveAttribute(
+        'href',
+        expect.stringContaining('chunking-and-cleaning-text'),
+      )
+      expect(
+        screen.getByText(/(?:^|\.)form\.chunkStructure\.description(?=$|:)/),
+      ).toBeInTheDocument()
     })
   })
 
@@ -316,15 +340,21 @@ describe('IndexingSection', () => {
     it('should render both index method options', () => {
       renderComponent()
 
-      expect(screen.getByRole('button', { name: /(?:^|\.)stepTwo\.qualified(?=$|:)/ })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /(?:^|\.)form\.indexMethodEconomy(?=$|:)/ })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /(?:^|\.)stepTwo\.qualified(?=$|:)/ }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /(?:^|\.)form\.indexMethodEconomy(?=$|:)/ }),
+      ).toBeInTheDocument()
     })
 
     it('should call setIndexMethod when the user selects a new index method', () => {
       const setIndexMethod = vi.fn()
       renderComponent({ setIndexMethod })
 
-      fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)form\.indexMethodEconomy(?=$|:)/ }))
+      fireEvent.click(
+        screen.getByRole('button', { name: /(?:^|\.)form\.indexMethodEconomy(?=$|:)/ }),
+      )
 
       expect(setIndexMethod).toHaveBeenCalledWith(IndexingType.ECONOMICAL)
     })
@@ -412,9 +442,16 @@ describe('IndexingSection', () => {
     it('should render the retrieval learn more link', () => {
       renderComponent()
 
-      const learnMoreLink = screen.getByRole('link', { name: /(?:^|\.)form\.retrievalSetting\.learnMore(?=$|:)/ })
-      expect(learnMoreLink).toHaveAttribute('href', expect.stringContaining('setting-indexing-methods'))
-      expect(screen.getByText(/(?:^|\.)form\.retrievalSetting\.description(?=$|:)/)).toBeInTheDocument()
+      const learnMoreLink = screen.getByRole('link', {
+        name: /(?:^|\.)form\.retrievalSetting\.learnMore(?=$|:)/,
+      })
+      expect(learnMoreLink).toHaveAttribute(
+        'href',
+        expect.stringContaining('setting-indexing-methods'),
+      )
+      expect(
+        screen.getByText(/(?:^|\.)form\.retrievalSetting\.description(?=$|:)/),
+      ).toBeInTheDocument()
     })
 
     it('should render the high-quality retrieval config and propagate changes', () => {
@@ -462,7 +499,9 @@ describe('IndexingSection', () => {
         },
       })
 
-      expect(screen.queryByText(/(?:^|\.)form\.retrievalSetting\.title(?=$|:)/)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(/(?:^|\.)form\.retrievalSetting\.title(?=$|:)/),
+      ).not.toBeInTheDocument()
       expect(screen.queryByTestId('retrieval-method-config')).not.toBeInTheDocument()
       expect(screen.queryByTestId('economical-retrieval-method-config')).not.toBeInTheDocument()
     })

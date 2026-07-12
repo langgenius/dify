@@ -43,25 +43,30 @@ describe('PromptResInWorkflow', () => {
     render(<PromptResInWorkflow value="prompt" nodeId="node-a" />)
 
     expect(screen.getByTestId('prompt-res')).toHaveTextContent('prompt')
-    expect(mockUseAvailableVarList).toHaveBeenCalledWith('node-a', expect.objectContaining({
-      onlyLeafNodeVar: false,
-    }))
-    expect(mockPromptRes).toHaveBeenCalledWith(expect.objectContaining({
-      workflowVariableBlock: expect.objectContaining({
-        show: true,
-        variables: [{ variable: 'query' }],
-        workflowNodesMap: expect.objectContaining({
-          'node-1': expect.objectContaining({
-            title: 'Retriever',
-            type: BlockEnum.KnowledgeRetrieval,
-          }),
-          'sys': expect.objectContaining({
-            title: 'workflow.blocks.start',
-            type: BlockEnum.Start,
+    expect(mockUseAvailableVarList).toHaveBeenCalledWith(
+      'node-a',
+      expect.objectContaining({
+        onlyLeafNodeVar: false,
+      }),
+    )
+    expect(mockPromptRes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflowVariableBlock: expect.objectContaining({
+          show: true,
+          variables: [{ variable: 'query' }],
+          workflowNodesMap: expect.objectContaining({
+            'node-1': expect.objectContaining({
+              title: 'Retriever',
+              type: BlockEnum.KnowledgeRetrieval,
+            }),
+            sys: expect.objectContaining({
+              title: 'workflow.blocks.start',
+              type: BlockEnum.Start,
+            }),
           }),
         }),
       }),
-    }))
+    )
   })
 
   it('should fall back to an empty variable list when the workflow hook returns no variables', () => {
@@ -72,11 +77,13 @@ describe('PromptResInWorkflow', () => {
 
     render(<PromptResInWorkflow value="fallback" nodeId="node-b" />)
 
-    expect(mockPromptRes).toHaveBeenCalledWith(expect.objectContaining({
-      workflowVariableBlock: expect.objectContaining({
-        variables: [],
-        workflowNodesMap: {},
+    expect(mockPromptRes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflowVariableBlock: expect.objectContaining({
+          variables: [],
+          workflowNodesMap: {},
+        }),
       }),
-    }))
+    )
   })
 })

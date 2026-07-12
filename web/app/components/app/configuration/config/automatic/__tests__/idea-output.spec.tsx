@@ -6,7 +6,9 @@ describe('IdeaOutput', () => {
     const onChange = vi.fn()
     render(<IdeaOutput value="Initial idea" onChange={onChange} />)
 
-    expect(screen.queryByPlaceholderText(/(?:^|\.)generate\.idealOutputPlaceholder(?=$|:)/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByPlaceholderText(/(?:^|\.)generate\.idealOutputPlaceholder(?=$|:)/),
+    ).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText(/(?:^|\.)generate\.idealOutput(?=$|:)/))
 
@@ -17,6 +19,8 @@ describe('IdeaOutput', () => {
 
     fireEvent.click(screen.getByText(/(?:^|\.)generate\.idealOutput(?=$|:)/))
 
-    expect(screen.queryByPlaceholderText(/(?:^|\.)generate\.idealOutputPlaceholder(?=$|:)/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByPlaceholderText(/(?:^|\.)generate\.idealOutputPlaceholder(?=$|:)/),
+    ).not.toBeInTheDocument()
   })
 })

@@ -14,10 +14,7 @@ type DialogBackdropProps = Omit<BaseDialog.Backdrop.Props, 'className'> & {
   className?: string
 }
 
-export function DialogBackdrop({
-  className,
-  ...props
-}: DialogBackdropProps) {
+export function DialogBackdrop({ className, ...props }: DialogBackdropProps) {
   return (
     <BaseDialog.Backdrop
       {...props}
@@ -34,26 +31,15 @@ type DialogViewportProps = Omit<BaseDialog.Viewport.Props, 'className'> & {
   className?: string
 }
 
-export function DialogViewport({
-  className,
-  ...props
-}: DialogViewportProps) {
-  return (
-    <BaseDialog.Viewport
-      className={cn('fixed inset-0 z-50', className)}
-      {...props}
-    />
-  )
+export function DialogViewport({ className, ...props }: DialogViewportProps) {
+  return <BaseDialog.Viewport className={cn('fixed inset-0 z-50', className)} {...props} />
 }
 
 type DialogPopupProps = Omit<BaseDialog.Popup.Props, 'className'> & {
   className?: string
 }
 
-export function DialogPopup({
-  className,
-  ...props
-}: DialogPopupProps) {
+export function DialogPopup({ className, ...props }: DialogPopupProps) {
   return (
     <BaseDialog.Popup
       className={cn(

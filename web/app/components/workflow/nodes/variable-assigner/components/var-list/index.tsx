@@ -20,41 +20,43 @@ type Props = Readonly<{
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
 }>
 
-const VarList: FC<Props> = ({
-  readonly,
-  nodeId,
-  list,
-  onChange,
-  onOpen = noop,
-  filterVar,
-}) => {
+const VarList: FC<Props> = ({ readonly, nodeId, list, onChange, onOpen = noop, filterVar }) => {
   const { t } = useTranslation()
-  const handleVarReferenceChange = useCallback((index: number) => {
-    return (value: ValueSelector | string) => {
-      const newList = produce(list, (draft) => {
-        draft[index] = value as ValueSelector
-      })
-      onChange(newList, value as ValueSelector)
-    }
-  }, [list, onChange])
+  const handleVarReferenceChange = useCallback(
+    (index: number) => {
+      return (value: ValueSelector | string) => {
+        const newList = produce(list, (draft) => {
+          draft[index] = value as ValueSelector
+        })
+        onChange(newList, value as ValueSelector)
+      }
+    },
+    [list, onChange],
+  )
 
-  const handleVarRemove = useCallback((index: number) => {
-    return () => {
-      const newList = produce(list, (draft) => {
-        draft.splice(index, 1)
-      })
-      onChange(newList)
-    }
-  }, [list, onChange])
+  const handleVarRemove = useCallback(
+    (index: number) => {
+      return () => {
+        const newList = produce(list, (draft) => {
+          draft.splice(index, 1)
+        })
+        onChange(newList)
+      }
+    },
+    [list, onChange],
+  )
 
-  const handleOpen = useCallback((index: number) => {
-    return () => onOpen(index)
-  }, [onOpen])
+  const handleOpen = useCallback(
+    (index: number) => {
+      return () => onOpen(index)
+    },
+    [onOpen],
+  )
 
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder>
-        {t($ => $['nodes.variableAssigner.noVarTip'], { ns: 'workflow' })}
+        {t(($) => $['nodes.variableAssigner.noVarTip'], { ns: 'workflow' })}
       </ListNoDataPlaceholder>
     )
   }
@@ -74,11 +76,7 @@ const VarList: FC<Props> = ({
             filterVar={filterVar}
             defaultVarKindType={VarKindType.variable}
           />
-          {!readonly && (
-            <RemoveButton
-              onClick={handleVarRemove(index)}
-            />
-          )}
+          {!readonly && <RemoveButton onClick={handleVarRemove(index)} />}
         </div>
       ))}
     </div>

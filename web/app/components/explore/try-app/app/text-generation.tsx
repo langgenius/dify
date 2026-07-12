@@ -32,12 +32,7 @@ type Props = Readonly<{
   appData: AppData | null
 }>
 
-const TextGeneration: FC<Props> = ({
-  appId,
-  className,
-  isWorkflow,
-  appData,
-}) => {
+const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) => {
   const { t } = useTranslation()
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
@@ -54,14 +49,16 @@ const TextGeneration: FC<Props> = ({
     inputsRef.current = newInputs
   }, [])
 
-  const updateAppInfo = useWebAppStore(s => s.updateAppInfo)
+  const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
   const { data: tryAppParams } = useGetTryAppParams(appId)
 
-  const updateAppParams = useWebAppStore(s => s.updateAppParams)
-  const appParams = useWebAppStore(s => s.appParams)
+  const updateAppParams = useWebAppStore((s) => s.updateAppParams)
+  const appParams = useWebAppStore((s) => s.appParams)
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
-  const [customConfig, setCustomConfig] = useState<Record<string, CustomConfigValueType> | null>(null)
+  const [customConfig, setCustomConfig] = useState<Record<string, CustomConfigValueType> | null>(
+    null,
+  )
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
   const [controlSend, setControlSend] = useState(0)
@@ -72,7 +69,8 @@ const TextGeneration: FC<Props> = ({
     transfer_methods: [TransferMethod.local_file],
   })
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
-  const [isShowResultPanel, { setTrue: doShowResultPanel, setFalse: hideResultPanel }] = useBoolean(false)
+  const [isShowResultPanel, { setTrue: doShowResultPanel, setFalse: hideResultPanel }] =
+    useBoolean(false)
   const showResultPanel = () => {
     // fix: useClickAway hideResSidebar will close sidebar
     setTimeout(() => {
@@ -88,21 +86,18 @@ const TextGeneration: FC<Props> = ({
   const [resultExisted, setResultExisted] = useState(false)
 
   useEffect(() => {
-    if (!appData)
-      return
+    if (!appData) return
     updateAppInfo(appData)
   }, [appData, updateAppInfo])
 
   useEffect(() => {
-    if (!tryAppParams)
-      return
+    if (!tryAppParams) return
     updateAppParams(tryAppParams)
   }, [tryAppParams, updateAppParams])
 
   useEffect(() => {
-    (async () => {
-      if (!appData || !appParams)
-        return
+    ;(async () => {
+      if (!appData || !appParams) return
       const { site: siteInfo, custom_config } = appData
       setSiteInfo(siteInfo as SiteInfo)
       setCustomConfig(custom_config)
@@ -111,7 +106,8 @@ const TextGeneration: FC<Props> = ({
       setVisionConfig({
         // legacy of image upload compatible
         ...file_upload,
-        transfer_methods: file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
+        transfer_methods:
+          file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
         // legacy of image upload compatible
         image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
@@ -131,9 +127,7 @@ const TextGeneration: FC<Props> = ({
   const handleCompleted = useCallback(() => {
     setIsCompleted(true)
   }, [])
-  const [isHideTryNotice, {
-    setTrue: hideTryNotice,
-  }] = useBoolean(false)
+  const [isHideTryNotice, { setTrue: hideTryNotice }] = useBoolean(false)
 
   const renderRes = (task?: Task) => (
     <Res
@@ -162,18 +156,14 @@ const TextGeneration: FC<Props> = ({
   )
 
   const renderResWrap = (
-    <div
-      className={cn(
-        'relative flex h-full flex-col',
-        'rounded-r-2xl bg-chatbot-bg',
-      )}
-    >
-      <div className={cn(
-        'flex h-0 grow flex-col overflow-y-auto p-6',
-      )}
-      >
+    <div className={cn('relative flex h-full flex-col', 'rounded-r-2xl bg-chatbot-bg')}>
+      <div className={cn('flex h-0 grow flex-col overflow-y-auto p-6')}>
         {isCompleted && !isHideTryNotice && (
-          <Alert className="mb-3 shrink-0" message={t($ => $['tryApp.tryInfo'], { ns: 'explore' })} onHide={hideTryNotice} />
+          <Alert
+            className="mb-3 shrink-0"
+            message={t(($) => $['tryApp.tryInfo'], { ns: 'explore' })}
+            onHide={hideTryNotice}
+          />
         )}
         {renderRes()}
       </div>
@@ -189,20 +179,22 @@ const TextGeneration: FC<Props> = ({
   }
 
   return (
-    <div className={cn(
-      'rounded-2xl border border-components-panel-border bg-background-section-burn',
-      isPC && 'flex',
-      !isPC && 'flex-col',
-      'h-full rounded-2xl shadow-md',
-      className,
-    )}
+    <div
+      className={cn(
+        'rounded-2xl border border-components-panel-border bg-background-section-burn',
+        isPC && 'flex',
+        !isPC && 'flex-col',
+        'h-full rounded-2xl shadow-md',
+        className,
+      )}
     >
       {/* Left */}
-      <div className={cn(
-        'relative flex h-full shrink-0 flex-col',
-        isPC && 'w-[600px] max-w-[50%]',
-        'rounded-l-2xl bg-components-panel-bg',
-      )}
+      <div
+        className={cn(
+          'relative flex h-full shrink-0 flex-col',
+          isPC && 'w-[600px] max-w-[50%]',
+          'rounded-l-2xl bg-components-panel-bg',
+        )}
       >
         {/* Header */}
         <div className={cn('shrink-0 space-y-4 pb-2', isPC ? 'p-8 pb-0' : 'p-4 pb-0')}>
@@ -214,7 +206,9 @@ const TextGeneration: FC<Props> = ({
               background={siteInfo.icon_background || appDefaultIconBackground}
               imageUrl={siteInfo.icon_url}
             />
-            <div className="grow truncate system-md-semibold text-text-secondary">{siteInfo.title}</div>
+            <div className="grow truncate system-md-semibold text-text-secondary">
+              {siteInfo.title}
+            </div>
           </div>
           {siteInfo.description && (
             <div>
@@ -235,32 +229,34 @@ const TextGeneration: FC<Props> = ({
                 <button
                   type="button"
                   className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
-                  onClick={() => setDescExpanded(v => !v)}
+                  onClick={() => setDescExpanded((v) => !v)}
                 >
-                  {descExpanded
-                    ? (
-                        <>
-                          <RiArrowUpSLine className="size-3" />
-                          {t($ => $['chat.collapse'], { ns: 'share' })}
-                        </>
-                      )
-                    : (
-                        <>
-                          <RiArrowDownSLine className="size-3" />
-                          {t($ => $['chat.expand'], { ns: 'share' })}
-                        </>
-                      )}
+                  {descExpanded ? (
+                    <>
+                      <RiArrowUpSLine className="size-3" />
+                      {t(($) => $['chat.collapse'], { ns: 'share' })}
+                    </>
+                  ) : (
+                    <>
+                      <RiArrowDownSLine className="size-3" />
+                      {t(($) => $['chat.expand'], { ns: 'share' })}
+                    </>
+                  )}
                 </button>
               )}
             </div>
           )}
         </div>
         {/* form */}
-        <div className={cn(
-          'h-0 grow overflow-y-auto',
-          isPC ? 'px-8' : 'px-4',
-          !isPC && resultExisted && customConfig?.remove_webapp_brand && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
-        )}
+        <div
+          className={cn(
+            'h-0 grow overflow-y-auto',
+            isPC ? 'px-8' : 'px-4',
+            !isPC &&
+              resultExisted &&
+              customConfig?.remove_webapp_brand &&
+              'rounded-b-2xl border-b-[0.5px] border-divider-regular',
+          )}
         >
           <RunOnce
             siteInfo={siteInfo}
@@ -285,10 +281,8 @@ const TextGeneration: FC<Props> = ({
                 : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-[3px] pb-[57px]',
             )}
             onClick={() => {
-              if (isShowResultPanel)
-                hideResultPanel()
-              else
-                showResultPanel()
+              if (isShowResultPanel) hideResultPanel()
+              else showResultPanel()
             }}
           >
             <div className="h-1 w-8 cursor-grab rounded-sm bg-divider-solid" />

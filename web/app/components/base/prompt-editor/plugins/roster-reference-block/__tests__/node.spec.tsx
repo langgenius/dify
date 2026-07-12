@@ -1,21 +1,11 @@
-import type {
-  Klass,
-  LexicalEditor,
-  LexicalNode,
-} from 'lexical'
+import type { Klass, LexicalEditor, LexicalNode } from 'lexical'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createEditor } from 'lexical'
 import RosterReferenceBlockComponent from '../component'
 import { RosterReferenceBlockContext } from '../context'
-import {
-  $createRosterReferenceBlockNode,
-  RosterReferenceBlockNode,
-} from '../node'
-import {
-  getRosterReferenceFileIconType,
-  parseRosterReferenceToken,
-} from '../utils'
+import { $createRosterReferenceBlockNode, RosterReferenceBlockNode } from '../node'
+import { getRosterReferenceFileIconType, parseRosterReferenceToken } from '../utils'
 
 describe('RosterReferenceBlockNode', () => {
   let editor: LexicalEditor
@@ -75,9 +65,10 @@ describe('RosterReferenceBlockNode', () => {
   it('should render warning state for missing references', async () => {
     const user = userEvent.setup()
     render(
-      <RosterReferenceBlockContext value={{
-        getWarning: token => `${token.label} does not exist`,
-      }}
+      <RosterReferenceBlockContext
+        value={{
+          getWarning: (token) => `${token.label} does not exist`,
+        }}
       >
         <RosterReferenceBlockComponent text="[§skill:playwright:Playwright§]" />
       </RosterReferenceBlockContext>,

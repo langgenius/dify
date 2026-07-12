@@ -3,7 +3,6 @@ import { render, screen } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContextSelector } from 'use-context-selector'
 import { describe, expect, it, vi } from 'vitest'
-
 import ChunkContent from '../chunk-content'
 
 // Create mock context matching the actual SegmentListContextValue
@@ -55,19 +54,17 @@ describe('ChunkContent', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      const { container } = render(
-        <ChunkContent detail={defaultDetail} isFullDocMode={false} />,
-        { wrapper: createWrapper() },
-      )
+      const { container } = render(<ChunkContent detail={defaultDetail} isFullDocMode={false} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(container.firstChild).toBeInTheDocument()
     })
 
     it('should render content in non-QA mode', () => {
-      const { container } = render(
-        <ChunkContent detail={defaultDetail} isFullDocMode={false} />,
-        { wrapper: createWrapper() },
-      )
+      const { container } = render(<ChunkContent detail={defaultDetail} isFullDocMode={false} />, {
+        wrapper: createWrapper(),
+      })
 
       // Assert - should render without Q and A labels
       expect(container.textContent).not.toContain('Q')
@@ -84,20 +81,16 @@ describe('ChunkContent', () => {
         answer: 'Answer content',
       }
 
-      render(
-        <ChunkContent detail={qaDetail} isFullDocMode={false} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ChunkContent detail={qaDetail} isFullDocMode={false} />, { wrapper: createWrapper() })
 
       expect(screen.getByText('Q')).toBeInTheDocument()
       expect(screen.getByText('A')).toBeInTheDocument()
     })
 
     it('should not render Q and A labels when answer is undefined', () => {
-      render(
-        <ChunkContent detail={defaultDetail} isFullDocMode={false} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ChunkContent detail={defaultDetail} isFullDocMode={false} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.queryByText('Q')).not.toBeInTheDocument()
       expect(screen.queryByText('A')).not.toBeInTheDocument()
@@ -107,11 +100,7 @@ describe('ChunkContent', () => {
   describe('Props', () => {
     it('should apply custom className', () => {
       const { container } = render(
-        <ChunkContent
-          detail={defaultDetail}
-          isFullDocMode={false}
-          className="custom-class"
-        />,
+        <ChunkContent detail={defaultDetail} isFullDocMode={false} className="custom-class" />,
         { wrapper: createWrapper() },
       )
 
@@ -119,30 +108,27 @@ describe('ChunkContent', () => {
     })
 
     it('should handle isFullDocMode=true', () => {
-      const { container } = render(
-        <ChunkContent detail={defaultDetail} isFullDocMode={true} />,
-        { wrapper: createWrapper() },
-      )
+      const { container } = render(<ChunkContent detail={defaultDetail} isFullDocMode={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Assert - should have line-clamp-3 class
       expect(container.querySelector('.line-clamp-3')).toBeInTheDocument()
     })
 
     it('should handle isFullDocMode=false with isCollapsed=true', () => {
-      const { container } = render(
-        <ChunkContent detail={defaultDetail} isFullDocMode={false} />,
-        { wrapper: createWrapper(true) },
-      )
+      const { container } = render(<ChunkContent detail={defaultDetail} isFullDocMode={false} />, {
+        wrapper: createWrapper(true),
+      })
 
       // Assert - should have line-clamp-2 class
       expect(container.querySelector('.line-clamp-2')).toBeInTheDocument()
     })
 
     it('should handle isFullDocMode=false with isCollapsed=false', () => {
-      const { container } = render(
-        <ChunkContent detail={defaultDetail} isFullDocMode={false} />,
-        { wrapper: createWrapper(false) },
-      )
+      const { container } = render(<ChunkContent detail={defaultDetail} isFullDocMode={false} />, {
+        wrapper: createWrapper(false),
+      })
 
       // Assert - should have line-clamp-20 class
       expect(container.querySelector('.line-clamp-20')).toBeInTheDocument()
@@ -157,10 +143,9 @@ describe('ChunkContent', () => {
         sign_content: 'Sign content',
       }
 
-      const { container } = render(
-        <ChunkContent detail={detail} isFullDocMode={false} />,
-        { wrapper: createWrapper() },
-      )
+      const { container } = render(<ChunkContent detail={detail} isFullDocMode={false} />, {
+        wrapper: createWrapper(),
+      })
 
       // Assert - The component uses sign_content || content
       expect(container.firstChild).toBeInTheDocument()
@@ -172,10 +157,9 @@ describe('ChunkContent', () => {
         sign_content: '',
       }
 
-      const { container } = render(
-        <ChunkContent detail={detail} isFullDocMode={false} />,
-        { wrapper: createWrapper() },
-      )
+      const { container } = render(<ChunkContent detail={detail} isFullDocMode={false} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(container.firstChild).toBeInTheDocument()
     })
@@ -188,10 +172,9 @@ describe('ChunkContent', () => {
         sign_content: '',
       }
 
-      const { container } = render(
-        <ChunkContent detail={emptyDetail} isFullDocMode={false} />,
-        { wrapper: createWrapper() },
-      )
+      const { container } = render(<ChunkContent detail={emptyDetail} isFullDocMode={false} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(container.firstChild).toBeInTheDocument()
     })
@@ -204,10 +187,7 @@ describe('ChunkContent', () => {
       }
 
       // Act - empty answer is falsy, so QA mode won't render
-      render(
-        <ChunkContent detail={qaDetail} isFullDocMode={false} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ChunkContent detail={qaDetail} isFullDocMode={false} />, { wrapper: createWrapper() })
 
       // Assert - should not show Q and A labels since answer is empty string (falsy)
       expect(screen.queryByText('Q')).not.toBeInTheDocument()

@@ -10,24 +10,24 @@ type HeadersSectionProps = {
   isCreate: boolean
 }
 
-const HeadersSection: FC<HeadersSectionProps> = ({
-  headers,
-  onHeadersChange,
-  isCreate,
-}) => {
+const HeadersSection: FC<HeadersSectionProps> = ({ headers, onHeadersChange, isCreate }) => {
   const { t } = useTranslation()
 
   return (
     <div>
       <div className="mb-1 flex h-6 items-center">
-        <span className="system-sm-medium text-text-secondary">{t($ => $['mcp.modal.headers'], { ns: 'tools' })}</span>
+        <span className="system-sm-medium text-text-secondary">
+          {t(($) => $['mcp.modal.headers'], { ns: 'tools' })}
+        </span>
       </div>
-      <div className="mb-2 body-xs-regular text-text-tertiary">{t($ => $['mcp.modal.headersTip'], { ns: 'tools' })}</div>
+      <div className="mb-2 body-xs-regular text-text-tertiary">
+        {t(($) => $['mcp.modal.headersTip'], { ns: 'tools' })}
+      </div>
       <HeadersInput
         headersItems={headers}
         onChange={onHeadersChange}
         readonly={false}
-        isMasked={!isCreate && headers.filter(item => item.key.trim()).length > 0}
+        isMasked={!isCreate && headers.filter((item) => item.key.trim()).length > 0}
       />
     </div>
   )

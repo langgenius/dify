@@ -16,12 +16,14 @@ vi.mock('react-i18next', async () => {
       }),
       i18n: { language: 'en', changeLanguage: vi.fn() },
     }),
-    Trans: withSelectorKeyProps(({ i18nKey, components }: { i18nKey: string, components?: Record<string, ReactNode> }) => (
-      <span data-i18n-key={i18nKey}>
-        {i18nKey}
-        {components?.docLink}
-      </span>
-    )),
+    Trans: withSelectorKeyProps(
+      ({ i18nKey, components }: { i18nKey: string; components?: Record<string, ReactNode> }) => (
+        <span data-i18n-key={i18nKey}>
+          {i18nKey}
+          {components?.docLink}
+        </span>
+      ),
+    ),
   }
 })
 
@@ -44,10 +46,12 @@ vi.mock('@/app/components/base/file-uploader', () => ({
       <span data-testid="file-uploader-config">{JSON.stringify(fileConfig)}</span>
       <button
         type="button"
-        onClick={() => onChange([
-          { fileId: 'file-1', type: 'local_file', url: 'https://example.com/file.png' },
-          { fileId: 'file-2', type: 'remote_url', url: 'https://example.com/file-2.png' },
-        ])}
+        onClick={() =>
+          onChange([
+            { fileId: 'file-1', type: 'local_file', url: 'https://example.com/file.png' },
+            { fileId: 'file-2', type: 'remote_url', url: 'https://example.com/file-2.png' },
+          ])
+        }
       >
         upload-file
       </button>
@@ -59,7 +63,13 @@ vi.mock('@/app/components/base/file-uploader', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', () => ({
-  default: ({ onChange, isMultiple }: { onChange: (payload: Record<string, unknown>) => void, isMultiple: boolean }) => (
+  default: ({
+    onChange,
+    isMultiple,
+  }: {
+    onChange: (payload: Record<string, unknown>) => void
+    isMultiple: boolean
+  }) => (
     <button type="button" onClick={() => onChange({ number_limits: isMultiple ? 3 : 1 })}>
       {isMultiple ? 'multi-file-setting' : 'single-file-setting'}
     </button>
@@ -68,7 +78,9 @@ vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', 
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ onChange }: { onChange: (value: string) => void }) => (
-    <button type="button" onClick={() => onChange('{\n  "type": "object"\n}')}>json-editor</button>
+    <button type="button" onClick={() => onChange('{\n  "type": "object"\n}')}>
+      json-editor
+    </button>
   ),
 }))
 
@@ -77,10 +89,23 @@ vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
 
   return {
     ...actual,
-    Select: ({ value, onValueChange, children }: { value: string, onValueChange: (value: string) => void, children: ReactNode }) => (
+    Select: ({
+      value,
+      onValueChange,
+      children,
+    }: {
+      value: string
+      onValueChange: (value: string) => void
+      children: ReactNode
+    }) => (
       <div>
-        <button type="button" onClick={() => onValueChange(value === 'true' ? 'false' : 'beta')}>{`ui-select:${value}`}</button>
-        <button type="button" onClick={() => onValueChange('__empty__')}>ui-select-empty</button>
+        <button
+          type="button"
+          onClick={() => onValueChange(value === 'true' ? 'false' : 'beta')}
+        >{`ui-select:${value}`}</button>
+        <button type="button" onClick={() => onValueChange('__empty__')}>
+          ui-select-empty
+        </button>
         {children}
       </div>
     ),
@@ -100,7 +125,7 @@ vi.mock('@langgenius/dify-ui/tooltip', () => ({
 }))
 
 vi.mock('../field', () => ({
-  default: ({ children, title }: { children: ReactNode, title: string }) => (
+  default: ({ children, title }: { children: ReactNode; title: string }) => (
     <div>
       <span>{title}</span>
       {children}
@@ -110,19 +135,25 @@ vi.mock('../field', () => ({
 
 vi.mock('../type-select', () => ({
   default: ({ onSelect }: { onSelect: (item: { value: InputVarType }) => void }) => (
-    <button type="button" onClick={() => onSelect({ value: InputVarType.select })}>type-selector</button>
+    <button type="button" onClick={() => onSelect({ value: InputVarType.select })}>
+      type-selector
+    </button>
   ),
 }))
 
 vi.mock('../../config-select', () => ({
   default: ({ onChange }: { onChange: (value: string[]) => void }) => (
-    <button type="button" onClick={() => onChange(['alpha', 'beta'])}>config-select</button>
+    <button type="button" onClick={() => onChange(['alpha', 'beta'])}>
+      config-select
+    </button>
   ),
 }))
 
 vi.mock('../../config-string', () => ({
-  default: ({ onChange, maxLength }: { onChange: (value: number) => void, maxLength: number }) => (
-    <button type="button" data-max-length={String(maxLength)} onClick={() => onChange(64)}>config-string</button>
+  default: ({ onChange, maxLength }: { onChange: (value: number) => void; maxLength: number }) => (
+    <button type="button" data-max-length={String(maxLength)} onClick={() => onChange(64)}>
+      config-string
+    </button>
   ),
 }))
 
@@ -149,8 +180,7 @@ const createBaseProps = () => {
     onFilePayloadChange: vi.fn(),
     onJSONSchemaChange: vi.fn(),
     onPayloadChange: (key: string) => {
-      if (!payloadChangeHandlers[key])
-        payloadChangeHandlers[key] = createPayloadChangeHandler()
+      if (!payloadChangeHandlers[key]) payloadChangeHandlers[key] = createPayloadChangeHandler()
       return payloadChangeHandlers[key]
     },
     onTypeChange: vi.fn(),
@@ -173,26 +203,42 @@ const createBaseProps = () => {
 describe('ConfigModalFormFields', () => {
   it('should update paragraph, number, checkbox, and select defaults', () => {
     const paragraphProps = createBaseProps()
-    paragraphProps.tempPayload = { ...paragraphProps.tempPayload, type: InputVarType.paragraph, default: 'hello' }
+    paragraphProps.tempPayload = {
+      ...paragraphProps.tempPayload,
+      type: InputVarType.paragraph,
+      default: 'hello',
+    }
     render(<ConfigModalFormFields {...paragraphProps} />)
     fireEvent.change(screen.getByDisplayValue('hello'), { target: { value: 'updated paragraph' } })
     expect(paragraphProps.payloadChangeHandlers.default).toHaveBeenCalledWith('updated paragraph')
 
     const numberProps = createBaseProps()
-    numberProps.tempPayload = { ...numberProps.tempPayload, type: InputVarType.number, default: '1' }
+    numberProps.tempPayload = {
+      ...numberProps.tempPayload,
+      type: InputVarType.number,
+      default: '1',
+    }
     render(<ConfigModalFormFields {...numberProps} />)
     fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '2' } })
     expect(numberProps.payloadChangeHandlers.default).toHaveBeenCalledWith('2')
 
     const checkboxProps = createBaseProps()
-    checkboxProps.tempPayload = { ...checkboxProps.tempPayload, type: InputVarType.checkbox, default: false }
+    checkboxProps.tempPayload = {
+      ...checkboxProps.tempPayload,
+      type: InputVarType.checkbox,
+      default: false,
+    }
     checkboxProps.checkboxDefaultSelectValue = 'true'
     render(<ConfigModalFormFields {...checkboxProps} />)
     fireEvent.click(screen.getByText('ui-select:true'))
     expect(checkboxProps.payloadChangeHandlers.default).toHaveBeenCalledWith(false)
 
     const selectProps = createBaseProps()
-    selectProps.tempPayload = { ...selectProps.tempPayload, type: InputVarType.select, default: 'alpha' }
+    selectProps.tempPayload = {
+      ...selectProps.tempPayload,
+      type: InputVarType.select,
+      default: 'alpha',
+    }
     selectProps.options = ['alpha', 'beta']
     render(<ConfigModalFormFields {...selectProps} />)
     fireEvent.click(screen.getByText('config-select'))
@@ -208,13 +254,18 @@ describe('ConfigModalFormFields', () => {
     fireEvent.click(screen.getByRole('button', { name: 'variableConfig.hiddenDescription' }))
     expect(await screen.findByText('variableConfig.hiddenDescription')).toBeInTheDocument()
     const docLink = await screen.findByRole('link')
-    expect(docLink).toHaveAttribute('href', 'https://docs.example.com/use-dify/nodes/user-input#hide-and-pre-fill-input-fields')
+    expect(docLink).toHaveAttribute(
+      'href',
+      'https://docs.example.com/use-dify/nodes/user-input#hide-and-pre-fill-input-fields',
+    )
     expect(docLink).toHaveAttribute('target', '_blank')
     expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
     textInputView.unmount()
 
     const hiddenFieldDisabledProps = createBaseProps()
-    const hiddenFieldDisabledView = render(<ConfigModalFormFields {...hiddenFieldDisabledProps} showHiddenField={false} />)
+    const hiddenFieldDisabledView = render(
+      <ConfigModalFormFields {...hiddenFieldDisabledProps} showHiddenField={false} />,
+    )
     expect(screen.queryByText('variableConfig.hidden')).not.toBeInTheDocument()
     expect(screen.queryByText('variableConfig.hiddenDescription')).not.toBeInTheDocument()
     hiddenFieldDisabledView.unmount()
@@ -235,9 +286,11 @@ describe('ConfigModalFormFields', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'variableConfig.required' }))
 
     expect(singleFileProps.onFilePayloadChange).toHaveBeenCalledWith({ number_limits: 1 })
-    expect(singleFileProps.payloadChangeHandlers.default).toHaveBeenCalledWith(expect.objectContaining({
-      fileId: 'file-1',
-    }))
+    expect(singleFileProps.payloadChangeHandlers.default).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileId: 'file-1',
+      }),
+    )
     expect(singleFileProps.payloadChangeHandlers.required).toHaveBeenCalledWith(true)
     expect(singleFileProps.payloadChangeHandlers.hide).not.toHaveBeenCalled()
     singleFileView.unmount()
@@ -297,7 +350,11 @@ describe('ConfigModalFormFields', () => {
 
   it('should clear select defaults and apply uploader fallback values', () => {
     const selectProps = createBaseProps()
-    selectProps.tempPayload = { ...selectProps.tempPayload, type: InputVarType.select, default: 'alpha' }
+    selectProps.tempPayload = {
+      ...selectProps.tempPayload,
+      type: InputVarType.select,
+      default: 'alpha',
+    }
     selectProps.options = ['alpha', ' ', 'beta']
     render(<ConfigModalFormFields {...selectProps} />)
 
@@ -313,8 +370,12 @@ describe('ConfigModalFormFields', () => {
     render(<ConfigModalFormFields {...singleFallbackProps} />)
 
     expect(screen.getAllByTestId('file-uploader-value')[0]).toHaveTextContent('[]')
-    expect(screen.getAllByTestId('file-uploader-config')[0]).toHaveTextContent('"allowed_file_types":["document"]')
-    expect(screen.getAllByTestId('file-uploader-config')[0]).toHaveTextContent('"allowed_file_upload_methods":["remote_url"]')
+    expect(screen.getAllByTestId('file-uploader-config')[0]).toHaveTextContent(
+      '"allowed_file_types":["document"]',
+    )
+    expect(screen.getAllByTestId('file-uploader-config')[0]).toHaveTextContent(
+      '"allowed_file_upload_methods":["remote_url"]',
+    )
     expect(screen.getAllByTestId('file-uploader-config')[0]).toHaveTextContent('"number_limits":1')
     fireEvent.click(screen.getAllByTestId('upload-empty-file')[0]!)
     expect(singleFallbackProps.payloadChangeHandlers.default).toHaveBeenCalledWith(undefined)
@@ -336,14 +397,21 @@ describe('ConfigModalFormFields', () => {
 
   it('should clear number defaults and skip rendering the default selector when options are missing', () => {
     const numberProps = createBaseProps()
-    numberProps.tempPayload = { ...numberProps.tempPayload, type: InputVarType.number, default: '9' }
+    numberProps.tempPayload = {
+      ...numberProps.tempPayload,
+      type: InputVarType.number,
+      default: '9',
+    }
     render(<ConfigModalFormFields {...numberProps} />)
 
     fireEvent.change(screen.getByDisplayValue('9'), { target: { value: '' } })
     expect(numberProps.payloadChangeHandlers.default).toHaveBeenCalledWith(undefined)
 
     const selectWithoutOptionsProps = createBaseProps()
-    selectWithoutOptionsProps.tempPayload = { ...selectWithoutOptionsProps.tempPayload, type: InputVarType.select }
+    selectWithoutOptionsProps.tempPayload = {
+      ...selectWithoutOptionsProps.tempPayload,
+      type: InputVarType.select,
+    }
     selectWithoutOptionsProps.options = undefined
     render(<ConfigModalFormFields {...selectWithoutOptionsProps} />)
 
@@ -353,13 +421,21 @@ describe('ConfigModalFormFields', () => {
 
   it('should preserve existing select and file defaults when present', () => {
     const selectProps = createBaseProps()
-    selectProps.tempPayload = { ...selectProps.tempPayload, type: InputVarType.select, default: undefined }
+    selectProps.tempPayload = {
+      ...selectProps.tempPayload,
+      type: InputVarType.select,
+      default: undefined,
+    }
     selectProps.options = ['alpha', 'beta']
     render(<ConfigModalFormFields {...selectProps} />)
 
     expect(screen.getByText('ui-select:__empty__')).toBeInTheDocument()
 
-    const existingFile = { fileId: 'existing-file', type: 'local_file', url: 'https://example.com/existing.png' }
+    const existingFile = {
+      fileId: 'existing-file',
+      type: 'local_file',
+      url: 'https://example.com/existing.png',
+    }
     const singleFileProps = createBaseProps()
     singleFileProps.tempPayload = {
       ...singleFileProps.tempPayload,
@@ -368,7 +444,9 @@ describe('ConfigModalFormFields', () => {
     }
     render(<ConfigModalFormFields {...singleFileProps} />)
 
-    expect(screen.getAllByTestId('file-uploader-value')[0]).toHaveTextContent('"fileId":"existing-file"')
+    expect(screen.getAllByTestId('file-uploader-value')[0]).toHaveTextContent(
+      '"fileId":"existing-file"',
+    )
 
     const existingFiles = [
       { fileId: 'file-1', type: 'local_file', url: 'https://example.com/1.png' },
@@ -390,7 +468,11 @@ describe('ConfigModalFormFields', () => {
   it('should render empty fallback values for text, paragraph, and number defaults', () => {
     const textProps = createBaseProps()
     textProps.isStringInput = true
-    textProps.tempPayload = { ...textProps.tempPayload, type: InputVarType.textInput, default: undefined }
+    textProps.tempPayload = {
+      ...textProps.tempPayload,
+      type: InputVarType.textInput,
+      default: undefined,
+    }
     const textView = render(<ConfigModalFormFields {...textProps} />)
 
     expect(screen.getAllByPlaceholderText('variableConfig.inputPlaceholder')[2]).toHaveValue('')
@@ -399,7 +481,11 @@ describe('ConfigModalFormFields', () => {
 
     const paragraphProps = createBaseProps()
     paragraphProps.isStringInput = true
-    paragraphProps.tempPayload = { ...paragraphProps.tempPayload, type: InputVarType.paragraph, default: undefined }
+    paragraphProps.tempPayload = {
+      ...paragraphProps.tempPayload,
+      type: InputVarType.paragraph,
+      default: undefined,
+    }
     const paragraphView = render(<ConfigModalFormFields {...paragraphProps} />)
 
     expect(screen.getByText('config-string')).toHaveAttribute('data-max-length', 'Infinity')
@@ -407,7 +493,11 @@ describe('ConfigModalFormFields', () => {
     paragraphView.unmount()
 
     const numberProps = createBaseProps()
-    numberProps.tempPayload = { ...numberProps.tempPayload, type: InputVarType.number, default: undefined }
+    numberProps.tempPayload = {
+      ...numberProps.tempPayload,
+      type: InputVarType.number,
+      default: undefined,
+    }
     render(<ConfigModalFormFields {...numberProps} />)
 
     expect(screen.getByRole('spinbutton')).toHaveValue(null)
@@ -415,17 +505,36 @@ describe('ConfigModalFormFields', () => {
 
   it('should disable hide checkbox when required is true and disable required when hide is true', () => {
     const requiredProps = createBaseProps()
-    requiredProps.tempPayload = { ...requiredProps.tempPayload, type: InputVarType.textInput, required: true, hide: false }
+    requiredProps.tempPayload = {
+      ...requiredProps.tempPayload,
+      type: InputVarType.textInput,
+      required: true,
+      hide: false,
+    }
     const { unmount } = render(<ConfigModalFormFields {...requiredProps} />)
 
-    expect(screen.getByRole('checkbox', { name: 'variableConfig.hidden' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('checkbox', { name: 'variableConfig.hidden' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     unmount()
 
     const hideProps = createBaseProps()
-    hideProps.tempPayload = { ...hideProps.tempPayload, type: InputVarType.textInput, required: false, hide: true }
+    hideProps.tempPayload = {
+      ...hideProps.tempPayload,
+      type: InputVarType.textInput,
+      required: false,
+      hide: true,
+    }
     render(<ConfigModalFormFields {...hideProps} />)
 
-    expect(screen.getByRole('checkbox', { name: 'variableConfig.required' })).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByRole('checkbox', { name: 'variableConfig.hidden' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('checkbox', { name: 'variableConfig.required' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('checkbox', { name: 'variableConfig.hidden' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
   })
 })

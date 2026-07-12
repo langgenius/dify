@@ -52,12 +52,15 @@ vi.mock('../../../../hooks', () => ({
 }))
 
 vi.mock('../../../../hooks-store', () => ({
-  useHooksStore: (selector: (state: { configsMap: null, accessControl: { canRun: boolean } }) => unknown) => selector({
-    configsMap: null,
-    accessControl: {
-      canRun: mockHooksStoreState.canRun,
-    },
-  }),
+  useHooksStore: (
+    selector: (state: { configsMap: null; accessControl: { canRun: boolean } }) => unknown,
+  ) =>
+    selector({
+      configsMap: null,
+      accessControl: {
+        canRun: mockHooksStoreState.canRun,
+      },
+    }),
 }))
 
 vi.mock('../../../../store', () => ({
@@ -142,12 +145,12 @@ describe('useChat – handleSend', () => {
       result.current.handleSend({ query: 'test question' }, {})
     })
 
-    const questionItem = result.current.chatList.find(item => item.content === 'test question')
+    const questionItem = result.current.chatList.find((item) => item.content === 'test question')
     expect(questionItem).toBeDefined()
     expect(questionItem!.isAnswer).toBe(false)
 
     const answerPlaceholder = result.current.chatList.find(
-      item => item.isAnswer && !item.isOpeningStatement && item.content === '',
+      (item) => item.isAnswer && !item.isOpeningStatement && item.content === '',
     )
     expect(answerPlaceholder).toBeDefined()
   })
