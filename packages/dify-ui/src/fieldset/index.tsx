@@ -34,7 +34,7 @@ export function FieldsetLegend({
 }: FieldsetLegendProps) {
   return (
     <BaseFieldset.Legend
-      className={cn('mb-1 py-1 text-text-secondary system-sm-medium', className)}
+      className={cn('mb-1 py-1 system-sm-medium text-text-secondary', className)}
       {...props}
     />
   )

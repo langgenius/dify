@@ -478,7 +478,7 @@ export function ComboboxChip({
 }: BaseCombobox.Chip.Props) {
   return (
     <BaseCombobox.Chip
-      className={cn('inline-flex max-w-full min-w-0 items-center gap-1 rounded-md bg-state-base-hover px-1.5 py-0.5 text-text-secondary system-xs-medium', className)}
+      className={cn('inline-flex max-w-full min-w-0 items-center gap-1 rounded-md bg-state-base-hover px-1.5 py-0.5 system-xs-medium text-text-secondary', className)}
       {...props}
     />
   )

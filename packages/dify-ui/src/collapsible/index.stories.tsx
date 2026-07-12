@@ -89,25 +89,27 @@ export const DefaultOpen: Story = {
   ),
 }
 
-export const Controlled: Story = {
-  render: () => {
-    const [open, setOpen] = React.useState(true)
+function ControlledDemo() {
+  const [open, setOpen] = React.useState(true)
 
-    return (
-      <div className="flex flex-col items-start gap-3">
-        <button
-          type="button"
-          className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 system-sm-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          onClick={() => setOpen(value => !value)}
-        >
-          {open ? 'Close panel' : 'Open panel'}
-        </button>
-        <Collapsible open={open} onOpenChange={setOpen} className={rootClassName}>
-          <RecoveryKeys />
-        </Collapsible>
-      </div>
-    )
-  },
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <button
+        type="button"
+        className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 system-sm-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        onClick={() => setOpen(value => !value)}
+      >
+        {open ? 'Close panel' : 'Open panel'}
+      </button>
+      <Collapsible open={open} onOpenChange={setOpen} className={rootClassName}>
+        <RecoveryKeys />
+      </Collapsible>
+    </div>
+  )
+}
+
+export const Controlled: Story = {
+  render: () => <ControlledDemo />,
 }
 
 export const Disabled: Story = {
@@ -172,7 +174,7 @@ export const SettingsSections: Story = {
             <TriggerIcon />
           </CollapsibleTrigger>
           <CollapsiblePanel className={sectionPanelClassName}>
-            <div className="px-3 pb-3 pt-1 system-sm-regular text-text-secondary">
+            <div className="px-3 pt-1 pb-3 system-sm-regular text-text-secondary">
               {section.description}
             </div>
           </CollapsiblePanel>

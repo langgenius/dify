@@ -212,8 +212,8 @@ const renderOptionItem = (option: Option) => (
     <ComboboxItemText className="flex items-center gap-2 px-0">
       {option.icon && <span aria-hidden className={cn(option.icon, 'size-4 shrink-0 text-text-tertiary')} />}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-text-secondary system-sm-medium">{option.label}</span>
-        {option.meta && <span className="block truncate text-text-tertiary system-xs-regular">{option.meta}</span>}
+        <span className="block truncate system-sm-medium text-text-secondary">{option.label}</span>
+        {option.meta && <span className="block truncate system-xs-regular text-text-tertiary">{option.meta}</span>}
       </span>
     </ComboboxItemText>
     <ComboboxItemIndicator />
@@ -233,8 +233,8 @@ const renderVirtualizedOptionItem = (option: Option, index: number) => (
     <ComboboxItemText className="flex items-center gap-2 px-0">
       {option.icon && <span aria-hidden className={cn(option.icon, 'size-4 shrink-0 text-text-tertiary')} />}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-text-secondary system-sm-medium">{option.label}</span>
-        {option.meta && <span className="block truncate text-text-tertiary system-xs-regular">{option.meta}</span>}
+        <span className="block truncate system-sm-medium text-text-secondary">{option.label}</span>
+        {option.meta && <span className="block truncate system-xs-regular text-text-tertiary">{option.meta}</span>}
       </span>
     </ComboboxItemText>
     <ComboboxItemIndicator />
@@ -300,7 +300,7 @@ const VirtualizedModelList = ({
   return (
     <div
       ref={scrollRef}
-      className="max-h-[min(22rem,var(--available-height))] overflow-y-auto overflow-x-hidden overscroll-contain outline-hidden"
+      className="max-h-[min(22rem,var(--available-height))] overflow-x-hidden overflow-y-auto overscroll-contain outline-hidden"
     >
       <ComboboxList
         className="relative max-h-none overflow-visible p-0"
@@ -854,7 +854,7 @@ const ControlledDemo = () => {
           </ComboboxContent>
         </Combobox>
       </div>
-      <span className="rounded-md border border-divider-subtle bg-components-panel-bg px-2 py-1 text-text-tertiary system-xs-regular">
+      <span className="rounded-md border border-divider-subtle bg-components-panel-bg px-2 py-1 system-xs-regular text-text-tertiary">
         Selected:
         {' '}
         {value?.label ?? 'None'}

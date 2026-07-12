@@ -12,7 +12,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         'primary': [
-          'border-components-button-primary-border bg-components-button-primary-bg text-components-button-primary-text shadow',
+          'border-components-button-primary-border bg-components-button-primary-bg text-components-button-primary-text shadow-sm',
           'hover:border-components-button-primary-border-hover hover:bg-components-button-primary-bg-hover',
           'data-[disabled]:border-components-button-primary-border-disabled data-[disabled]:bg-components-button-primary-bg-disabled data-[disabled]:text-components-button-primary-text-disabled data-[disabled]:shadow-none',
         ],

@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Placement } from '.'
-import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import {
   Popover,
@@ -10,6 +9,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '.'
+import { Button } from '../button'
 import { Kbd, KbdGroup } from '../kbd'
 
 const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'

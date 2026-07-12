@@ -9,7 +9,7 @@ const checkboxRootClassName = cn(
   'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-sm shadow-xs shadow-shadow-shadow-3 transition-colors motion-reduce:transition-none',
   'border border-components-checkbox-border bg-components-checkbox-bg-unchecked text-components-checkbox-icon',
   'hover:border-components-checkbox-border-hover hover:bg-components-checkbox-bg-unchecked-hover',
-  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-offset-0',
+  'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-offset-0 focus-visible:outline-hidden',
   'data-checked:border-transparent data-checked:bg-components-checkbox-bg data-checked:hover:bg-components-checkbox-bg-hover',
   'data-indeterminate:border-transparent data-indeterminate:bg-components-checkbox-bg data-indeterminate:hover:bg-components-checkbox-bg-hover',
   'data-disabled:cursor-not-allowed data-disabled:border-components-checkbox-border-disabled data-disabled:bg-components-checkbox-bg-disabled',

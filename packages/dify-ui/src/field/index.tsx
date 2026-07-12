@@ -98,7 +98,7 @@ export function FieldDescription({
 }: FieldDescriptionProps) {
   return (
     <BaseField.Description
-      className={cn('py-0.5 text-text-tertiary body-xs-regular', className)}
+      className={cn('py-0.5 body-xs-regular text-text-tertiary', className)}
       {...props}
     />
   )
@@ -116,7 +116,7 @@ export function FieldError({
 }: FieldErrorProps) {
   return (
     <BaseField.Error
-      className={cn('py-0.5 text-text-destructive body-xs-regular', className)}
+      className={cn('py-0.5 body-xs-regular text-text-destructive', className)}
       {...props}
     />
   )

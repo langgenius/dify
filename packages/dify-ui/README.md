@@ -188,6 +188,7 @@ See `[web/docs/overlay.md](../../web/docs/overlay.md)` for the web app overlay b
 
 ## Development
 
+- `vp run @langgenius/dify-ui#lint` (from the repository root) — strict ESLint checks for component source, stories, tests, and package configuration.
 - `pnpm -C packages/dify-ui test` — Vitest unit tests for primitives.
 - `pnpm -C packages/dify-ui storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
 - `pnpm -C packages/dify-ui test:storybook` — Storybook component tests in Vitest browser mode. Stories without `play` are render and a11y smoke tests; stories with `play` should cover public UI contracts such as opening overlays, keyboard navigation, disabled/loading guards, form submission, and controlled state updates.
