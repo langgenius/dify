@@ -509,7 +509,7 @@ export class HttpClient {
     const { apiKey, enableLogging, maxRetries, retryDelay, timeout } = this.settings;
 
     if (query) {
-      validateParams(query as Record<string, unknown>);
+      validateParams(query);
     }
 
     if (isRecord(data) && !Array.isArray(data) && !isFormData(data) && !isPipeableStream(data)) {

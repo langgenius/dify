@@ -647,6 +647,12 @@ importers:
       '@antfu/eslint-config':
         specifier: 'catalog:'
         version: 9.1.0(fffcbddf9b9e5649ceb44b1934cdee79)
+      '@iconify-json/heroicons':
+        specifier: 'catalog:'
+        version: 1.2.3
+      '@iconify-json/ri':
+        specifier: 'catalog:'
+        version: 1.2.10
       '@typescript/native':
         specifier: 'catalog:'
         version: typescript@7.0.2

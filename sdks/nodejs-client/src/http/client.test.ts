@@ -28,6 +28,9 @@ const getFetchCall = (
   return call as [string, RequestInit | undefined];
 };
 
+const getDuplex = (init: RequestInit | undefined) =>
+  init && "duplex" in init ? init.duplex : undefined;
+
 const toHeaderRecord = (headers: HeadersInit | undefined): Record<string, string> =>
   Object.fromEntries(new Headers(headers).entries());
 
@@ -185,7 +188,7 @@ describe("HttpClient", () => {
       authorization: "Bearer test",
       "content-type": "multipart/form-data; boundary=test",
     });
-    expect((init as RequestInit & { duplex?: string } | undefined)?.duplex).toBe(
+    expect(getDuplex(init)).toBe(
       "half"
     );
     expect(init?.body).not.toBe(legacyForm);
@@ -241,7 +244,7 @@ describe("HttpClient", () => {
     });
 
     const [, init] = getFetchCall(fetchMock);
-    expect((init as RequestInit & { duplex?: string } | undefined)?.duplex).toBe(
+    expect(getDuplex(init)).toBe(
       "half"
     );
   });
@@ -392,7 +395,7 @@ describe("HttpClient", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [, init] = getFetchCall(fetchMock);
-    expect((init as RequestInit & { duplex?: string } | undefined)?.duplex).toBe(
+    expect(getDuplex(init)).toBe(
       "half"
     );
   });

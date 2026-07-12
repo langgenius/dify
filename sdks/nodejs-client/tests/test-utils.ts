@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 import { HttpClient } from "../src/http/client";
-import type { DifyClientConfig, DifyResponse } from "../src/types/common";
+import type { DifyClientConfig } from "../src/types/common";
 
 type FetchMock = ReturnType<typeof vi.fn>;
 type RequestSpy = ReturnType<typeof vi.fn>;
@@ -31,7 +31,7 @@ export const createHttpClientWithSpies = (
   const { client, fetchMock } = createHttpClient(configOverrides);
   const request = vi
     .spyOn(client, "request")
-    .mockResolvedValue({ data: "ok", status: 200, headers: {} } as DifyResponse<string>);
+    .mockResolvedValue({ data: "ok", status: 200, headers: {} });
   const requestStream = vi
     .spyOn(client, "requestStream")
     .mockResolvedValue({ data: null, status: 200, headers: {} } as never);

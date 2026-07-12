@@ -379,7 +379,6 @@ const BasicAppPreview: FC<Props> = ({
       system_parameters: DEFAULT_SYSTEM_PARAMETERS,
       dataSets,
       agentConfig: appDetail?.mode === 'agent-chat'
-        // eslint-disable-next-line style/multiline-ternary
         ? ({
             max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
             // remove dataset

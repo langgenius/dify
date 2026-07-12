@@ -1,6 +1,23 @@
-# Lint Guide
+# Format and Lint Guide
 
-We use ESLint and Typescript to maintain code quality and consistency across the project.
+We use Vite+ Oxfmt for formatting, ESLint for code-quality rules, and TypeScript for type safety.
+
+## Format
+
+Format the supported frontend and TypeScript workspace files from the repository root:
+
+```sh
+vp fmt
+```
+
+Check formatting without writing changes:
+
+```sh
+vp fmt --check
+```
+
+The shared formatter options and ignore boundaries live in the root `vite.config.ts`.
+Editor format-on-save must point Oxc at that file so local edits match the commit hook and CI.
 
 ## ESLint
 
@@ -21,8 +38,8 @@ Keep this enabled when linting multiple files.
 
 - [ESLint multi-thread linting blog post]
 
-**`--fix`**: Automatically fixes auto-fixable rule violations.
-Keep this enabled so that you do not have to care about auto-fixable errors (e.g., formatting issues) and can focus on more important errors.
+**`--fix`**: Automatically fixes code-quality violations such as unused imports and preferred syntax.
+Run `vp fmt` after ESLint fixes so Oxfmt produces the final layout.
 Always review the diff before committing to ensure no unintended changes.
 
 **`--quiet`**: Suppresses warnings and only shows errors.
@@ -38,7 +55,8 @@ Treat this as an escape hatch—fix these errors when time permits.
 ### The Auto-Fix Workflow and Suppression Strategy
 
 To streamline your development process, we recommend configuring your editor to automatically fix lint errors on save.
-As a fallback, the commit hook runs `vp staged`, which applies autofixable ESLint changes to staged files before the commit continues.
+Use Oxfmt for format-on-save and ESLint code actions for lint-only fixes.
+As a fallback, the commit hook runs `vp staged`, which applies ESLint fixes and then formats staged files with `vp fmt`.
 To prevent workflow disruptions, these commit hooks are intentionally bypassed when you are merging branches, rebasing, or cherry-picking.
 
 Additionally, we currently track many existing legacy errors in eslint-suppressions.json.
