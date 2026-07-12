@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AgentSetting from './agent/agent-setting'
+import { AgentSetting } from './agent/agent-setting'
 
 type Props = Readonly<{
   isFunctionCall: boolean

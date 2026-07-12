@@ -8,7 +8,7 @@ import AgentSettingButton from '../agent-setting-button'
 
 let latestAgentSettingProps: any
 vi.mock('../agent/agent-setting', () => ({
-  default: (props: any) => {
+  AgentSetting: (props: any) => {
     latestAgentSettingProps = props
     return (
       <div data-testid="agent-setting">

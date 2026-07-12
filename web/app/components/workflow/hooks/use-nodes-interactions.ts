@@ -27,10 +27,9 @@ import { consoleQuery } from '@/service/client'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   CUSTOM_EDGE,
-  ITERATION_CHILDREN_Z_INDEX,
   ITERATION_PADDING,
-  LOOP_CHILDREN_Z_INDEX,
   LOOP_PADDING,
+  NESTED_ELEMENT_Z_INDEX,
   NODE_WIDTH_X_OFFSET,
   X_OFFSET,
   Y_OFFSET,
@@ -597,11 +596,7 @@ export const useNodesInteractions = () => {
           isInLoop,
           loop_id: isInLoop ? targetNode?.parentId : undefined,
         },
-        zIndex: targetNode?.parentId
-          ? isInIteration
-            ? ITERATION_CHILDREN_Z_INDEX
-            : LOOP_CHILDREN_Z_INDEX
-          : 0,
+        zIndex: targetNode?.parentId ? NESTED_ELEMENT_Z_INDEX : 0,
       }
       const nodesConnectedSourceOrTargetHandleIdsMap
         = getNodesConnectedSourceOrTargetHandleIdsMap(
@@ -998,11 +993,11 @@ export const useNodesInteractions = () => {
           newNode.data.isInLoop = isInLoop
           if (isInIteration) {
             newNode.data.iteration_id = parentNode.id
-            newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
+            newNode.zIndex = NESTED_ELEMENT_Z_INDEX
           }
           if (isInLoop) {
             newNode.data.loop_id = parentNode.id
-            newNode.zIndex = LOOP_CHILDREN_Z_INDEX
+            newNode.zIndex = NESTED_ELEMENT_Z_INDEX
           }
           if (
             isInIteration
@@ -1042,11 +1037,7 @@ export const useNodesInteractions = () => {
               loop_id: isInLoop ? prevNode!.parentId : undefined,
               _connectedNodeIsSelected: true,
             },
-            zIndex: prevNode!.parentId
-              ? isInIteration
-                ? ITERATION_CHILDREN_Z_INDEX
-                : LOOP_CHILDREN_Z_INDEX
-              : 0,
+            zIndex: prevNode!.parentId ? NESTED_ELEMENT_Z_INDEX : 0,
           }
         }
 
@@ -1156,11 +1147,11 @@ export const useNodesInteractions = () => {
           newNode.data.isInLoop = isInLoop
           if (isInIteration) {
             newNode.data.iteration_id = parentNode.id
-            newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
+            newNode.zIndex = NESTED_ELEMENT_Z_INDEX
           }
           if (isInLoop) {
             newNode.data.loop_id = parentNode.id
-            newNode.zIndex = LOOP_CHILDREN_Z_INDEX
+            newNode.zIndex = NESTED_ELEMENT_Z_INDEX
           }
         }
 
@@ -1188,11 +1179,7 @@ export const useNodesInteractions = () => {
               loop_id: isInLoop ? nextNode.parentId : undefined,
               _connectedNodeIsSelected: true,
             },
-            zIndex: nextNode.parentId
-              ? isInIteration
-                ? ITERATION_CHILDREN_Z_INDEX
-                : LOOP_CHILDREN_Z_INDEX
-              : 0,
+            zIndex: nextNode.parentId ? NESTED_ELEMENT_Z_INDEX : 0,
           }
         }
 
@@ -1309,11 +1296,11 @@ export const useNodesInteractions = () => {
           newNode.data.isInLoop = isInLoop
           if (isInIteration) {
             newNode.data.iteration_id = parentNode.id
-            newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
+            newNode.zIndex = NESTED_ELEMENT_Z_INDEX
           }
           if (isInLoop) {
             newNode.data.loop_id = parentNode.id
-            newNode.zIndex = LOOP_CHILDREN_Z_INDEX
+            newNode.zIndex = NESTED_ELEMENT_Z_INDEX
           }
         }
 
@@ -1339,11 +1326,7 @@ export const useNodesInteractions = () => {
               loop_id: isInLoop ? prevNode.parentId : undefined,
               _connectedNodeIsSelected: true,
             },
-            zIndex: prevNode.parentId
-              ? isInIteration
-                ? ITERATION_CHILDREN_Z_INDEX
-                : LOOP_CHILDREN_Z_INDEX
-              : 0,
+            zIndex: prevNode.parentId ? NESTED_ELEMENT_Z_INDEX : 0,
           }
         }
 
@@ -1382,11 +1365,7 @@ export const useNodesInteractions = () => {
               loop_id: isNextNodeInLoop ? nextNode.parentId : undefined,
               _connectedNodeIsSelected: true,
             },
-            zIndex: nextNode.parentId
-              ? isNextNodeInIteration
-                ? ITERATION_CHILDREN_Z_INDEX
-                : LOOP_CHILDREN_Z_INDEX
-              : 0,
+            zIndex: nextNode.parentId ? NESTED_ELEMENT_Z_INDEX : 0,
           }
         }
         const nodesConnectedSourceOrTargetHandleIdsMap
@@ -1627,11 +1606,7 @@ export const useNodesInteractions = () => {
                 loop_id: isInLoop ? targetNodeForEdge.parentId : undefined,
                 _connectedNodeIsSelected: false,
               },
-              zIndex: targetNodeForEdge.parentId
-                ? isInIteration
-                  ? ITERATION_CHILDREN_Z_INDEX
-                  : LOOP_CHILDREN_Z_INDEX
-                : 0,
+              zIndex: targetNodeForEdge.parentId ? NESTED_ELEMENT_Z_INDEX : 0,
             })
           }
 
@@ -1667,11 +1642,7 @@ export const useNodesInteractions = () => {
                 loop_id: newNodeIsInLoop ? newCurrentNode.parentId : undefined,
                 _connectedNodeIsSelected: false,
               },
-              zIndex: newCurrentNode.parentId
-                ? newNodeIsInIteration
-                  ? ITERATION_CHILDREN_Z_INDEX
-                  : LOOP_CHILDREN_Z_INDEX
-                : 0,
+              zIndex: newCurrentNode.parentId ? NESTED_ELEMENT_Z_INDEX : 0,
             })
           }
 
@@ -2075,7 +2046,7 @@ export const useNodesInteractions = () => {
             y: nodeToPaste.position.y + offsetY,
           },
           extent: nodeToPaste.extent,
-          zIndex: nodeToPaste.zIndex,
+          zIndex: 0,
         })
       newNode.id = newNode.id + index
 
@@ -2145,7 +2116,7 @@ export const useNodesInteractions = () => {
               positionAbsolute: child.positionAbsolute,
               parentId: newNode.id,
               extent: child.extent,
-              zIndex: ITERATION_CHILDREN_Z_INDEX,
+              zIndex: NESTED_ELEMENT_Z_INDEX,
             })
             newChild.id = `${newNode.id}${newChild.id + childIndex}`
             idMapping[child.id] = newChild.id
@@ -2245,7 +2216,7 @@ export const useNodesInteractions = () => {
               positionAbsolute: child.positionAbsolute,
               parentId: newNode.id,
               extent: child.extent,
-              zIndex: LOOP_CHILDREN_Z_INDEX,
+              zIndex: NESTED_ELEMENT_Z_INDEX,
             })
             newChild.id = `${newNode.id}${newChild.id + childIndex}`
             idMapping[child.id] = newChild.id
@@ -2290,7 +2261,7 @@ export const useNodesInteractions = () => {
           newNode.data.loop_id = !isIteration ? selectedContainerNode.id : undefined
 
           newNode.parentId = selectedContainerNode.id
-          newNode.zIndex = isIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX
+          newNode.zIndex = NESTED_ELEMENT_Z_INDEX
           newNode.positionAbsolute = {
             x: newNode.position.x,
             y: newNode.position.y,
@@ -2348,13 +2319,7 @@ export const useNodesInteractions = () => {
             loop_id: isInLoop ? parentNode?.id : undefined,
             _connectedNodeIsSelected: false,
           },
-          zIndex: parentNode
-            ? isInIteration
-              ? ITERATION_CHILDREN_Z_INDEX
-              : isInLoop
-                ? LOOP_CHILDREN_Z_INDEX
-                : 0
-            : 0,
+          zIndex: parentNode && (isInIteration || isInLoop) ? NESTED_ELEMENT_Z_INDEX : 0,
         }
         edgesToPaste.push(newEdge)
       }

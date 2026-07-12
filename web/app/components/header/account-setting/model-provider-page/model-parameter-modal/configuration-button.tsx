@@ -13,7 +13,6 @@ const ConfigurationButton = ({ modelProvider, handleOpenModal }: ConfigurationBu
   return (
     <Button
       size="small"
-      className="z-100"
       onClick={(e) => {
         e.stopPropagation()
         handleOpenModal(modelProvider, ConfigurationMethodEnum.predefinedModel, undefined)

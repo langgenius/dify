@@ -227,18 +227,6 @@ export default function AccountSetting({
           </div>
         </div>
         <div className="relative flex min-h-0 w-[824px]">
-          <div className="fixed top-6 right-6 z-9999 flex flex-col items-center">
-            <Button
-              variant="tertiary"
-              size="large"
-              className="px-2"
-              aria-label={t($ => $['operation.close'], { ns: 'common' })}
-              onClick={handleClose}
-            >
-              <span className="i-ri-close-line size-5" />
-            </Button>
-            <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
-          </div>
           <ScrollArea
             ref={scrollContainerRef}
             className="h-full min-h-0 flex-1 bg-components-panel-bg"
@@ -253,6 +241,18 @@ export default function AccountSetting({
                 {activeItem?.description && (
                   <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">{activeItem?.description}</div>
                 )}
+              </div>
+              <div className="fixed top-6 right-6 flex shrink-0 flex-col items-center">
+                <Button
+                  variant="tertiary"
+                  size="large"
+                  className="px-2"
+                  aria-label={t($ => $['operation.close'], { ns: 'common' })}
+                  onClick={handleClose}
+                >
+                  <span className="i-ri-close-line size-5" />
+                </Button>
+                <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
               </div>
             </div>
             <div className="px-4 pt-6 sm:px-8">

@@ -414,7 +414,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
 
   return (
     <div
-      className="absolute z-50 w-[360px] max-w-[360px]"
+      className="absolute z-30 w-[360px] max-w-[360px]"
       style={{
         left: canvasPosition.x + 40,
         top: canvasPosition.y,

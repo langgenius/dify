@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { consoleQuery } from '@/service/client'
 import { useIncrementSnippetUseCountMutation } from '@/service/use-snippets'
-import { CUSTOM_EDGE, ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } from '../../constants'
+import { CUSTOM_EDGE, NESTED_ELEMENT_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } from '../../constants'
 import { useNodesSyncDraft, useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks'
 import { BlockEnum } from '../../types'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../../utils'
@@ -212,9 +212,7 @@ const createBoundaryEdges = ({
   const parentNode = getParentNode(currentNodes, insertPayload)
   const isInIteration = parentNode?.data.type === BlockEnum.Iteration
   const isInLoop = parentNode?.data.type === BlockEnum.Loop
-  const zIndex = parentNode
-    ? isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX
-    : 0
+  const zIndex = parentNode ? NESTED_ELEMENT_Z_INDEX : 0
   const incomingEdges: Edge[] = []
   const outgoingEdges: Edge[] = []
 
@@ -315,6 +313,7 @@ export const useInsertSnippet = () => {
         changes,
         [...currentNodes, ...remappedGraph.nodes],
       )
+      const remappedNodesById = new Map(remappedGraph.nodes.map(node => [node.id, node]))
       const firstEntryNode = entryNodes.find(canConnectToTarget) ?? entryNodes[0]
       const clearedNodes = currentNodes.map(node => ({
         ...node,
@@ -354,14 +353,15 @@ export const useInsertSnippet = () => {
         const shouldMoveIntoParent = !!parentNode && rootNodeIds.has(node.id)
         const isInIteration = parentNode?.data.type === BlockEnum.Iteration
         const isInLoop = parentNode?.data.type === BlockEnum.Loop
+        const snippetParentNode = node.parentId ? remappedNodesById.get(node.parentId) : undefined
+        const isNestedInSnippet = snippetParentNode?.data.type === BlockEnum.Iteration
+          || snippetParentNode?.data.type === BlockEnum.Loop
 
         return {
           ...node,
           parentId: shouldMoveIntoParent ? parentNode.id : node.parentId,
           extent: shouldMoveIntoParent ? parentNode.extent : node.extent,
-          zIndex: shouldMoveIntoParent
-            ? isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX
-            : node.zIndex,
+          zIndex: shouldMoveIntoParent || isNestedInSnippet ? NESTED_ELEMENT_Z_INDEX : 0,
           data: {
             ...node.data,
             ...(nodesConnectedSourceOrTargetHandleIdsMap[node.id] ?? {}),
@@ -372,8 +372,31 @@ export const useInsertSnippet = () => {
           },
         }
       })
+      const nextNodes = [...clearedNodes, ...insertedNodes]
+      const finalNodesById = new Map(nextNodes.map(node => [node.id, node]))
+      const insertedEdges = remappedGraph.edges.map((edge) => {
+        const sourceNode = finalNodesById.get(edge.source)
+        const targetNode = finalNodesById.get(edge.target)
+        const sourceParentNode = sourceNode?.parentId ? finalNodesById.get(sourceNode.parentId) : undefined
+        const targetParentNode = targetNode?.parentId ? finalNodesById.get(targetNode.parentId) : undefined
+        const nestedParentNode = [sourceParentNode, targetParentNode].find(node => node?.data.type === BlockEnum.Iteration || node?.data.type === BlockEnum.Loop)
+        const isInIteration = nestedParentNode?.data.type === BlockEnum.Iteration
+        const isInLoop = nestedParentNode?.data.type === BlockEnum.Loop
 
-      setNodes([...clearedNodes, ...insertedNodes])
+        return {
+          ...edge,
+          data: {
+            ...edge.data,
+            isInIteration,
+            iteration_id: isInIteration ? nestedParentNode.id : undefined,
+            isInLoop,
+            loop_id: isInLoop ? nestedParentNode.id : undefined,
+          },
+          zIndex: nestedParentNode ? NESTED_ELEMENT_Z_INDEX : 0,
+        }
+      })
+
+      setNodes(nextNodes)
       setEdges([
         ...edges
           .filter(edge => edge.id !== currentEdge?.id)
@@ -384,7 +407,7 @@ export const useInsertSnippet = () => {
               _connectedNodeIsSelected: false,
             },
           })),
-        ...remappedGraph.edges,
+        ...insertedEdges,
         ...boundaryEdges,
       ])
       saveStateToHistory(WorkflowHistoryEvent.NodePaste, {
