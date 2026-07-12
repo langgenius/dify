@@ -1,8 +1,4 @@
-import type {
-  Model,
-  ModelItem,
-  ModelProvider,
-} from '../declarations'
+import type { Model, ModelItem, ModelProvider } from '../declarations'
 
 export type TriggerProps = {
   open?: boolean

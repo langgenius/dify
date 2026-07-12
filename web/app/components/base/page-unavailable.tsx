@@ -20,7 +20,7 @@ const PageUnavailable = ({ className }: PageUnavailableProps) => {
       >
         404
       </h1>
-      <div className="text-sm">{t($ => $.pageUnavailable, { ns: 'common' })}</div>
+      <div className="text-sm">{t(($) => $.pageUnavailable, { ns: 'common' })}</div>
     </div>
   )
 }

@@ -1,8 +1,6 @@
 import type { FC, Ref } from 'react'
 import type { Theme } from '../../embedded-chatbot/theme/theme-context'
-import type {
-  EnableType,
-} from '../../types'
+import type { EnableType } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -38,36 +36,26 @@ const Operation: FC<OperationProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div
-      className={cn(
-        'flex shrink-0 items-center justify-end',
-      )}
-    >
-      <div
-        className="flex items-center pl-1"
-        ref={ref}
-      >
+    <div className={cn('flex shrink-0 items-center justify-end')}>
+      <div className="flex items-center pl-1" ref={ref}>
         <div className="flex items-center gap-1">
-          {fileConfig?.enabled && <FileUploaderInChatInput readonly={readonly} fileConfig={fileConfig} />}
-          {
-            speechToTextConfig?.enabled && (
-              <ActionButton
-                size="l"
-                aria-label={t($ => $['voiceInput.start'], { ns: 'common' })}
-                disabled={readonly}
-                onClick={onShowVoiceInput}
-              >
-                <span className="i-ri-mic-line size-5" aria-hidden="true" />
-              </ActionButton>
-            )
-          }
+          {fileConfig?.enabled && (
+            <FileUploaderInChatInput readonly={readonly} fileConfig={fileConfig} />
+          )}
+          {speechToTextConfig?.enabled && (
+            <ActionButton
+              size="l"
+              aria-label={t(($) => $['voiceInput.start'], { ns: 'common' })}
+              disabled={readonly}
+              onClick={onShowVoiceInput}
+            >
+              <span className="i-ri-mic-line size-5" aria-hidden="true" />
+            </ActionButton>
+          )}
         </div>
         <Button
-          aria-label={sendButtonLabel ? undefined : t($ => $['operation.send'], { ns: 'common' })}
-          className={cn(
-            'ml-3 focus-visible:ring-inset',
-            sendButtonLabel ? 'px-3' : 'w-8 px-0',
-          )}
+          aria-label={sendButtonLabel ? undefined : t(($) => $['operation.send'], { ns: 'common' })}
+          className={cn('ml-3 focus-visible:ring-inset', sendButtonLabel ? 'px-3' : 'w-8 px-0')}
           variant="primary"
           disabled={readonly || disabled}
           loading={sendButtonLoading}

@@ -36,7 +36,9 @@ vi.mock('@/app/components/app/app-publisher', () => ({
     mockAppPublisherProps.current = props
     return (
       <div>
-        <button onClick={() => props.onPublish?.({ id: 'model-1' })}>publish-through-wrapper</button>
+        <button onClick={() => props.onPublish?.({ id: 'model-1' })}>
+          publish-through-wrapper
+        </button>
         <button onClick={() => props.onRestore?.()}>restore-through-wrapper</button>
       </div>
     )
@@ -44,7 +46,8 @@ vi.mock('@/app/components/app/app-publisher', () => ({
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (state: { features: typeof mockFeatures }) => unknown) => selector({ features: mockFeatures }),
+  useFeatures: (selector: (state: { features: typeof mockFeatures }) => unknown) =>
+    selector({ features: mockFeatures }),
   useFeaturesStore: () => ({
     getState: () => ({
       features: mockFeatures,
@@ -103,45 +106,41 @@ describe('FeaturesWrappedAppPublisher', () => {
   })
 
   it('should restore published features after confirmation', async () => {
-    render(
-      <FeaturesWrappedAppPublisher
-        publishedConfig={publishedConfig as any}
-      />,
-    )
+    render(<FeaturesWrappedAppPublisher publishedConfig={publishedConfig as any} />)
 
     fireEvent.click(screen.getByText('restore-through-wrapper'))
     fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.confirm(?=$|:)/ }))
 
     await waitFor(() => {
       expect(publishedConfig.modelConfig.resetAppConfig).toHaveBeenCalledTimes(1)
-      expect(mockSetFeatures).toHaveBeenCalledWith(expect.objectContaining({
-        moreLikeThis: { enabled: true },
-        opening: {
-          enabled: true,
-          opening_statement: 'Hello there',
-          suggested_questions: ['Q1'],
-        },
-        moderation: { enabled: true },
-        speech2text: { enabled: true },
-        text2speech: { enabled: true },
-        suggested: { enabled: true },
-        citation: { enabled: true },
-        annotationReply: { enabled: true },
-      }))
+      expect(mockSetFeatures).toHaveBeenCalledWith(
+        expect.objectContaining({
+          moreLikeThis: { enabled: true },
+          opening: {
+            enabled: true,
+            opening_statement: 'Hello there',
+            suggested_questions: ['Q1'],
+          },
+          moderation: { enabled: true },
+          speech2text: { enabled: true },
+          text2speech: { enabled: true },
+          suggested: { enabled: true },
+          citation: { enabled: true },
+          annotationReply: { enabled: true },
+        }),
+      )
     })
   })
 
   it('should close restore confirmation without restoring when cancelled', async () => {
-    render(
-      <FeaturesWrappedAppPublisher
-        publishedConfig={publishedConfig as any}
-      />,
-    )
+    render(<FeaturesWrappedAppPublisher publishedConfig={publishedConfig as any} />)
 
     fireEvent.click(screen.getByText('restore-through-wrapper'))
     const dialog = screen.getByRole('alertdialog')
 
-    fireEvent.click(within(dialog).getByRole('button', { name: /(?:^|\.)operation\.cancel(?=$|:)/ }))
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: /(?:^|\.)operation\.cancel(?=$|:)/ }),
+    )
 
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()

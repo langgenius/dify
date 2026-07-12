@@ -1,23 +1,16 @@
 import type { ToolInfoInThought } from '../type'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiArrowDownSLine,
-  RiArrowRightSLine,
-  RiHammerFill,
-  RiLoader2Line,
-} from '@remixicon/react'
+import { RiArrowDownSLine, RiArrowRightSLine, RiHammerFill, RiLoader2Line } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type ToolDetailProps = {
   payload: ToolInfoInThought
 }
-const ToolDetail = ({
-  payload,
-}: ToolDetailProps) => {
+const ToolDetail = ({ payload }: ToolDetailProps) => {
   const { t } = useTranslation()
   const { name, label, input, isFinished, output } = payload
-  const toolLabel = name.startsWith('dataset_') ? t($ => $.knowledge, { ns: 'dataset' }) : label
+  const toolLabel = name.startsWith('dataset_') ? t(($) => $.knowledge, { ns: 'dataset' }) : label
   const [expand, setExpand] = useState(false)
 
   return (
@@ -37,33 +30,27 @@ const ToolDetail = ({
       >
         {isFinished && <RiHammerFill className="mr-1 size-3.5" />}
         {!isFinished && <RiLoader2Line className="mr-1 size-3.5 animate-spin" />}
-        {t($ => $[`thought.${isFinished ? 'used' : 'using'}`], { ns: 'tools' })}
+        {t(($) => $[`thought.${isFinished ? 'used' : 'using'}`], { ns: 'tools' })}
         <div className="mx-1 text-text-secondary">{toolLabel}</div>
         {!expand && <RiArrowRightSLine className="size-4" />}
         {expand && <RiArrowDownSLine className="ml-auto size-4" />}
       </div>
-      {
-        expand && (
-          <>
-            <div className="mx-1 mb-0.5 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary">
-              <div className="flex h-7 items-center justify-between px-2 pt-1 system-xs-semibold-uppercase">
-                {t($ => $['thought.requestTitle'], { ns: 'tools' })}
-              </div>
-              <div className="px-3 pt-1 pb-2 code-xs-regular wrap-break-word">
-                {input}
-              </div>
+      {expand && (
+        <>
+          <div className="mx-1 mb-0.5 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary">
+            <div className="flex h-7 items-center justify-between px-2 pt-1 system-xs-semibold-uppercase">
+              {t(($) => $['thought.requestTitle'], { ns: 'tools' })}
             </div>
-            <div className="mx-1 mb-1 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary">
-              <div className="flex h-7 items-center justify-between px-2 pt-1 system-xs-semibold-uppercase">
-                {t($ => $['thought.responseTitle'], { ns: 'tools' })}
-              </div>
-              <div className="px-3 pt-1 pb-2 code-xs-regular wrap-break-word">
-                {output}
-              </div>
+            <div className="px-3 pt-1 pb-2 code-xs-regular wrap-break-word">{input}</div>
+          </div>
+          <div className="mx-1 mb-1 rounded-[10px] bg-components-panel-on-panel-item-bg text-text-secondary">
+            <div className="flex h-7 items-center justify-between px-2 pt-1 system-xs-semibold-uppercase">
+              {t(($) => $['thought.responseTitle'], { ns: 'tools' })}
             </div>
-          </>
-        )
-      }
+            <div className="px-3 pt-1 pb-2 code-xs-regular wrap-break-word">{output}</div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

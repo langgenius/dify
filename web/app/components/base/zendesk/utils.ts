@@ -17,7 +17,10 @@ declare global {
   }
 }
 
-export const setZendeskConversationFields = (fields: ConversationField[], callback?: () => unknown) => {
+export const setZendeskConversationFields = (
+  fields: ConversationField[],
+  callback?: () => unknown,
+) => {
   if (!IS_CE_EDITION && window.zE)
     window.zE('messenger:set', 'conversationFields', fields, callback)
 }
@@ -28,8 +31,7 @@ type OpenZendeskWindowOptions = {
 }
 
 const openZendeskWindowOnce = () => {
-  if (IS_CE_EDITION || !window.zE)
-    return false
+  if (IS_CE_EDITION || !window.zE) return false
 
   window.zE('messenger', 'show')
   window.zE('messenger', 'open')
@@ -40,16 +42,13 @@ export const openZendeskWindow = ({
   interval = 100,
   retries = 20,
 }: OpenZendeskWindowOptions = {}) => {
-  if (IS_CE_EDITION)
-    return
+  if (IS_CE_EDITION) return
 
-  if (openZendeskWindowOnce())
-    return
+  if (openZendeskWindowOnce()) return
 
   let attempts = 0
   const timer = window.setInterval(() => {
     attempts += 1
-    if (openZendeskWindowOnce() || attempts >= retries)
-      window.clearInterval(timer)
+    if (openZendeskWindowOnce() || attempts >= retries) window.clearInterval(timer)
   }, interval)
 }

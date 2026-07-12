@@ -56,14 +56,16 @@ describe('MarketPlaceItem', () => {
     )
 
     expect(screen.getByTestId('loaded-item')).toBeInTheDocument()
-    expect(mockLoadedItem).toHaveBeenCalledWith(expect.objectContaining({
-      checked: true,
-      isFromMarketPlace: true,
-      versionInfo,
-      payload: expect.objectContaining({
-        ...payload,
-        version: '2.0.0',
+    expect(mockLoadedItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checked: true,
+        isFromMarketPlace: true,
+        versionInfo,
+        payload: expect.objectContaining({
+          ...payload,
+          version: '2.0.0',
+        }),
       }),
-    }))
+    )
   })
 })

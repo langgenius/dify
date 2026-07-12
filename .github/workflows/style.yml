@@ -173,10 +173,9 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
 
-      # TODO: Enable after the repository-wide vp fmt baseline lands.
-      # - name: Format check
-      #   if: steps.changed-files.outputs.any_changed == 'true'
-      #   run: vp fmt --check
+      - name: Format check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: vp fmt --check
 
       - name: Restore ESLint cache
         if: steps.changed-files.outputs.any_changed == 'true'

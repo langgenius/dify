@@ -1,8 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import {
-  RiExternalLinkLine,
-} from '@remixicon/react'
+import { RiExternalLinkLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
@@ -43,8 +41,7 @@ function Confirm({
     <Dialog
       open={isShow}
       onOpenChange={(open) => {
-        if (!open)
-          onCancel()
+        if (!open) onCancel()
       }}
       disablePointerDismissal={!maskClosable}
     >
@@ -56,20 +53,38 @@ function Confirm({
           </div>
           {email && (
             <div className="w-full space-y-1 px-6 py-3">
-              <div className="py-1 system-sm-semibold text-text-secondary">{t($ => $.emailLabel, { ns: 'education' })}</div>
-              <div className="rounded-lg bg-components-input-bg-disabled px-3 py-2 system-sm-regular text-components-input-text-filled-disabled">{email}</div>
+              <div className="py-1 system-sm-semibold text-text-secondary">
+                {t(($) => $.emailLabel, { ns: 'education' })}
+              </div>
+              <div className="rounded-lg bg-components-input-bg-disabled px-3 py-2 system-sm-regular text-components-input-text-filled-disabled">
+                {email}
+              </div>
             </div>
           )}
           <div className="flex items-center justify-between gap-2 self-stretch p-6">
             <div className="flex items-center gap-1">
               {showLink && (
                 <>
-                  <a onClick={handleClick} href={eduDocLink} target="_blank" rel="noopener noreferrer" className="cursor-pointer system-xs-regular text-text-accent">{t($ => $.learn, { ns: 'education' })}</a>
+                  <a
+                    onClick={handleClick}
+                    href={eduDocLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="cursor-pointer system-xs-regular text-text-accent"
+                  >
+                    {t(($) => $.learn, { ns: 'education' })}
+                  </a>
                   <RiExternalLinkLine className="size-3 text-text-accent" />
                 </>
               )}
             </div>
-            <Button variant="primary" className={confirmText ? 'min-w-20!' : 'w-20!'} onClick={onConfirm}>{confirmText || t($ => $['operation.ok'], { ns: 'common' })}</Button>
+            <Button
+              variant="primary"
+              className={confirmText ? 'min-w-20!' : 'w-20!'}
+              onClick={onConfirm}
+            >
+              {confirmText || t(($) => $['operation.ok'], { ns: 'common' })}
+            </Button>
           </div>
         </div>
       </DialogContent>

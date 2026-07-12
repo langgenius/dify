@@ -46,19 +46,15 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({
-    onClick,
-  }: {
-    onClick: () => void
-  }) => <button onClick={onClick}>open-emoji-picker</button>,
+  default: ({ onClick }: { onClick: () => void }) => (
+    <button onClick={onClick}>open-emoji-picker</button>
+  ),
 }))
 
 vi.mock('@/app/components/base/features/new-feature-panel/moderation/form-generation', () => ({
-  default: ({
-    onChange,
-  }: {
-    onChange: (value: Record<string, string>) => void
-  }) => <button onClick={() => onChange({ api_key: 'secret-key' })}>fill-form</button>,
+  default: ({ onChange }: { onChange: (value: Record<string, string>) => void }) => (
+    <button onClick={() => onChange({ api_key: 'secret-key' })}>fill-form</button>
+  ),
 }))
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page/selector', () => ({
@@ -68,9 +64,7 @@ vi.mock('@/app/components/header/account-setting/api-based-extension-page/select
   }: {
     onChange: (value: string) => void
     value: string
-  }) => (
-    <button onClick={() => onChange('extension-1')}>{value || 'pick-extension'}</button>
-  ),
+  }) => <button onClick={() => onChange('extension-1')}>{value || 'pick-extension'}</button>,
 }))
 
 describe('ExternalDataToolModal', () => {
@@ -84,23 +78,27 @@ describe('ExternalDataToolModal', () => {
   })
 
   it('should require an API extension before saving api-based tools', () => {
-    render(
-      <ExternalDataToolModal
-        data={{}}
-        onCancel={mockOnCancel}
-        onSave={mockOnSave}
-      />,
-    )
+    render(<ExternalDataToolModal data={{}} onCancel={mockOnCancel} onSave={mockOnSave} />)
 
-    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/), {
-      target: { value: 'Search' },
-    })
-    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.variableName\.placeholder(?=$|:)/), {
-      target: { value: 'search_api' },
-    })
+    fireEvent.change(
+      screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/),
+      {
+        target: { value: 'Search' },
+      },
+    )
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        /(?:^|\.)feature\.tools\.modal\.variableName\.placeholder(?=$|:)/,
+      ),
+      {
+        target: { value: 'search_api' },
+      },
+    )
     fireEvent.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
 
-    expect(mockToastError).toHaveBeenCalledWith(expect.stringMatching(/(?:^|\.)errorMessage\.valueOfVarRequired(?=$|:)/))
+    expect(mockToastError).toHaveBeenCalledWith(
+      expect.stringMatching(/(?:^|\.)errorMessage\.valueOfVarRequired(?=$|:)/),
+    )
     expect(mockOnSave).not.toHaveBeenCalled()
   })
 
@@ -116,12 +114,20 @@ describe('ExternalDataToolModal', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/), {
-      target: { value: 'Search' },
-    })
-    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.variableName\.placeholder(?=$|:)/), {
-      target: { value: 'search_api' },
-    })
+    fireEvent.change(
+      screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/),
+      {
+        target: { value: 'Search' },
+      },
+    )
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        /(?:^|\.)feature\.tools\.modal\.variableName\.placeholder(?=$|:)/,
+      ),
+      {
+        target: { value: 'search_api' },
+      },
+    )
     fireEvent.click(screen.getByText('pick-extension'))
     fireEvent.click(screen.getByText('open-emoji-picker'))
     await waitFor(() => {
@@ -135,7 +141,23 @@ describe('ExternalDataToolModal', () => {
     fireEvent.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
 
     await waitFor(() => {
-      expect(mockOnValidateBeforeSave).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mockOnValidateBeforeSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: {
+            api_based_extension_id: 'extension-1',
+          },
+          enabled: true,
+          icon: expect.any(String),
+          icon_background: '#E4FBCC',
+          label: 'Search',
+          type: 'api',
+          variable: 'search_api',
+        }),
+      )
+    })
+
+    expect(mockOnSave).toHaveBeenCalledWith(
+      expect.objectContaining({
         config: {
           api_based_extension_id: 'extension-1',
         },
@@ -145,22 +167,12 @@ describe('ExternalDataToolModal', () => {
         label: 'Search',
         type: 'api',
         variable: 'search_api',
-      }))
-    })
+      }),
+    )
 
-    expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
-      config: {
-        api_based_extension_id: 'extension-1',
-      },
-      enabled: true,
-      icon: expect.any(String),
-      icon_background: '#E4FBCC',
-      label: 'Search',
-      type: 'api',
-      variable: 'search_api',
-    }))
-
-    expect(screen.getByRole('link', { name: /(?:^|\.)apiBasedExtension\.link(?=$|:)/ })).toHaveAttribute(
+    expect(
+      screen.getByRole('link', { name: /(?:^|\.)apiBasedExtension\.link(?=$|:)/ }),
+    ).toHaveAttribute(
       'href',
       'https://docs.example.com/use-dify/workspace/api-extension/api-extension',
     )
@@ -181,25 +193,35 @@ describe('ExternalDataToolModal', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/), {
-      target: { value: 'Code Search' },
-    })
-    fireEvent.change(screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.variableName\.placeholder(?=$|:)/), {
-      target: { value: 'code_search' },
-    })
+    fireEvent.change(
+      screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/),
+      {
+        target: { value: 'Code Search' },
+      },
+    )
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        /(?:^|\.)feature\.tools\.modal\.variableName\.placeholder(?=$|:)/,
+      ),
+      {
+        target: { value: 'code_search' },
+      },
+    )
     fireEvent.click(screen.getByText('fill-form'))
     fireEvent.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
 
     await waitFor(() => {
-      expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
-        config: {
-          api_key: 'secret-key',
-        },
-        enabled: false,
-        label: 'Code Search',
-        type: 'code-tool',
-        variable: 'code_search',
-      }))
+      expect(mockOnSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: {
+            api_key: 'secret-key',
+          },
+          enabled: false,
+          label: 'Code Search',
+          type: 'code-tool',
+          variable: 'code_search',
+        }),
+      )
     })
 
     fireEvent.click(screen.getByText(/(?:^|\.)operation\.cancel(?=$|:)/))

@@ -15,8 +15,7 @@ vi.mock('@tanstack/react-form', async (importOriginal) => {
         // If the store is a mock with state, use it; otherwise provide a default
         try {
           return selector(store?.state || { values: {} })
-        }
-        catch {
+        } catch {
           return {}
         }
       }
@@ -81,11 +80,7 @@ describe('BaseForm', () => {
       expect(event.defaultPrevented).toBe(true)
     })
     const { container } = render(
-      <BaseForm
-        formSchemas={baseSchemas}
-        onSubmit={onSubmit}
-        preventDefaultSubmit
-      />,
+      <BaseForm formSchemas={baseSchemas} onSubmit={onSubmit} preventDefaultSubmit />,
     )
 
     await act(async () => {
@@ -98,12 +93,7 @@ describe('BaseForm', () => {
 
   it('should expose ref API for updating values and field states', async () => {
     const formRef = { current: null } as { current: FormRefObject | null }
-    render(
-      <BaseForm
-        formSchemas={baseSchemas}
-        ref={formRef}
-      />,
-    )
+    render(<BaseForm formSchemas={baseSchemas} ref={formRef} />)
 
     expect(formRef.current).not.toBeNull()
 
@@ -125,12 +115,7 @@ describe('BaseForm', () => {
 
   it('should derive warning status when setFields receives warnings only', async () => {
     const formRef = { current: null } as { current: FormRefObject | null }
-    render(
-      <BaseForm
-        formSchemas={baseSchemas}
-        ref={formRef}
-      />,
-    )
+    render(<BaseForm formSchemas={baseSchemas} ref={formRef} />)
 
     await act(async () => {
       formRef.current?.setFields([
@@ -152,11 +137,21 @@ describe('BaseForm', () => {
     vi.mocked(useStore).mockReturnValueOnce(mockState.values)
     const mockForm = {
       store: mockStore,
-      Field: ({ children, name }: { children: (field: AnyFieldApi) => React.ReactNode, name: string }) => children({
+      Field: ({
+        children,
         name,
-        state: { value: mockState.values[name as keyof typeof mockState.values], meta: { isTouched: false, errorMap: {} } },
-        form: { store: mockStore },
-      } as unknown as AnyFieldApi),
+      }: {
+        children: (field: AnyFieldApi) => React.ReactNode
+        name: string
+      }) =>
+        children({
+          name,
+          state: {
+            value: mockState.values[name as keyof typeof mockState.values],
+            meta: { isTouched: false, errorMap: {} },
+          },
+          form: { store: mockStore },
+        } as unknown as AnyFieldApi),
       setFieldValue: vi.fn(),
     }
     render(<BaseForm formSchemas={baseSchemas} formFromProps={mockForm as unknown as AnyFormApi} />)
@@ -168,11 +163,13 @@ describe('BaseForm', () => {
     render(<BaseForm formSchemas={baseSchemas} ref={formRef} />)
 
     await act(async () => {
-      formRef.current?.setFields([{
-        name: 'kind',
-        validateStatus: FormItemValidateStatusEnum.Error,
-        errors: ['Explicit error'],
-      }])
+      formRef.current?.setFields([
+        {
+          name: 'kind',
+          validateStatus: FormItemValidateStatusEnum.Error,
+          errors: ['Explicit error'],
+        },
+      ])
     })
     expect(screen.getByText('Explicit error'))!.toBeInTheDocument()
   })
@@ -182,10 +179,12 @@ describe('BaseForm', () => {
     render(<BaseForm formSchemas={baseSchemas} ref={formRef} />)
 
     await act(async () => {
-      formRef.current?.setFields([{
-        name: 'kind',
-        errors: ['Error only'],
-      }])
+      formRef.current?.setFields([
+        {
+          name: 'kind',
+          errors: ['Error only'],
+        },
+      ])
     })
     expect(screen.getByText('Error only'))!.toBeInTheDocument()
   })
@@ -212,11 +211,12 @@ describe('BaseForm', () => {
     vi.mocked(useStore).mockReturnValueOnce(mockState.values)
     const mockForm = {
       store: mockStore,
-      Field: ({ children }: { children: (field: AnyFieldApi) => React.ReactNode }) => children({
-        name: 'unknown', // field name not in baseSchemas
-        state: { value: 'value', meta: { isTouched: false, errorMap: {} } },
-        form: { store: mockStore },
-      } as unknown as AnyFieldApi),
+      Field: ({ children }: { children: (field: AnyFieldApi) => React.ReactNode }) =>
+        children({
+          name: 'unknown', // field name not in baseSchemas
+          state: { value: 'value', meta: { isTouched: false, errorMap: {} } },
+          form: { store: mockStore },
+        } as unknown as AnyFieldApi),
       setFieldValue: vi.fn(),
     }
     render(<BaseForm formSchemas={baseSchemas} formFromProps={mockForm as unknown as AnyFormApi} />)
@@ -234,11 +234,13 @@ describe('BaseForm', () => {
   })
 
   it('should fallback to schema class names if props are missing', () => {
-    const schemaWithClasses: FormSchema[] = [{
-      ...baseSchemas[0]!,
-      fieldClassName: 'schema-field',
-      labelClassName: 'schema-label',
-    }]
+    const schemaWithClasses: FormSchema[] = [
+      {
+        ...baseSchemas[0]!,
+        fieldClassName: 'schema-field',
+        labelClassName: 'schema-label',
+      },
+    ]
     render(<BaseForm formSchemas={schemaWithClasses} />)
     expect(screen.getByText('Kind'))!.toHaveClass('schema-label')
     expect(screen.getByText('Kind').parentElement)!.toHaveClass('schema-field')
@@ -247,11 +249,7 @@ describe('BaseForm', () => {
   it('should handle preventDefaultSubmit', async () => {
     const onSubmit = vi.fn()
     const { container } = render(
-      <BaseForm
-        formSchemas={baseSchemas}
-        onSubmit={onSubmit}
-        preventDefaultSubmit={true}
-      />,
+      <BaseForm formSchemas={baseSchemas} onSubmit={onSubmit} preventDefaultSubmit={true} />,
     )
     const event = new Event('submit', { cancelable: true, bubbles: true })
     const spy = vi.spyOn(event, 'preventDefault')
@@ -287,21 +285,25 @@ describe('BaseForm', () => {
     render(<BaseForm formSchemas={baseSchemas} ref={formRef} />)
 
     await act(async () => {
-      formRef.current?.setFields([{
-        name: 'kind',
-        value: 'new-show',
-      }])
+      formRef.current?.setFields([
+        {
+          name: 'kind',
+          value: 'new-show',
+        },
+      ])
     })
     expect(screen.getByDisplayValue('new-show'))!.toBeInTheDocument()
   })
 
   it('should handle schema without show_on in showOnValues', () => {
-    const schemaNoShowOn: FormSchema[] = [{
-      type: FormTypeEnum.textInput,
-      name: 'test',
-      label: 'Test',
-      required: false,
-    }]
+    const schemaNoShowOn: FormSchema[] = [
+      {
+        type: FormTypeEnum.textInput,
+        name: 'test',
+        label: 'Test',
+        required: false,
+      },
+    ]
     // Simply rendering should trigger showOnValues selector
     render(<BaseForm formSchemas={schemaNoShowOn} />)
     expect(screen.getByText('Test'))!.toBeInTheDocument()

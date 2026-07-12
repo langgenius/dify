@@ -1,11 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,11 +14,7 @@ type Props = Readonly<{
   exclude?: string[]
 }>
 
-const MemberSelector: FC<Props> = ({
-  value,
-  onSelect,
-  exclude = [],
-}) => {
+const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
@@ -30,46 +22,51 @@ const MemberSelector: FC<Props> = ({
   const { data } = useMembers()
 
   const currentValue = useMemo(() => {
-    if (!data?.accounts || !value)
-      return null
-    return data.accounts.find(account => account.id === value) ?? null
+    if (!data?.accounts || !value) return null
+    return data.accounts.find((account) => account.id === value) ?? null
   }, [data, value])
 
   const filteredList = useMemo(() => {
-    if (!data?.accounts)
-      return []
+    if (!data?.accounts) return []
     const accounts = data.accounts
-    if (!searchValue)
-      return accounts.filter(account => !exclude.includes(account.id))
-    return accounts.filter((account) => {
-      const name = account.name || ''
-      const email = account.email || ''
-      return name.toLowerCase().includes(searchValue.toLowerCase())
-        || email.toLowerCase().includes(searchValue.toLowerCase())
-    }).filter(account => !exclude.includes(account.id))
+    if (!searchValue) return accounts.filter((account) => !exclude.includes(account.id))
+    return accounts
+      .filter((account) => {
+        const name = account.name || ''
+        const email = account.email || ''
+        return (
+          name.toLowerCase().includes(searchValue.toLowerCase()) ||
+          email.toLowerCase().includes(searchValue.toLowerCase())
+        )
+      })
+      .filter((account) => !exclude.includes(account.id))
   }, [data, exclude, searchValue])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={(
+        render={
           <div
             data-testid="member-selector-trigger"
             className="group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
           >
             {!currentValue && (
-              <div className="grow p-1 system-sm-regular text-components-input-text-placeholder">{t($ => $['members.transferModal.transferPlaceholder'], { ns: 'common' })}</div>
+              <div className="grow p-1 system-sm-regular text-components-input-text-placeholder">
+                {t(($) => $['members.transferModal.transferPlaceholder'], { ns: 'common' })}
+              </div>
             )}
             {currentValue && (
               <>
                 <Avatar avatar={currentValue.avatar_url} size="sm" name={currentValue.name} />
-                <div className="grow truncate system-sm-medium text-text-secondary">{currentValue.name}</div>
+                <div className="grow truncate system-sm-medium text-text-secondary">
+                  {currentValue.name}
+                </div>
                 <div className="system-xs-regular text-text-quaternary">{currentValue.email}</div>
               </>
             )}
             <div className="i-ri-arrow-down-s-line size-4 text-text-quaternary group-hover:text-text-secondary group-data-popup-open:text-text-secondary" />
           </div>
-        )}
+        }
       />
       <PopoverContent
         placement="bottom"
@@ -82,11 +79,11 @@ const MemberSelector: FC<Props> = ({
               data-testid="member-selector-search"
               showLeftIcon
               value={searchValue}
-              onChange={e => setSearchValue(e.target.value)}
+              onChange={(e) => setSearchValue(e.target.value)}
             />
           </div>
           <div className="p-1">
-            {filteredList.map(account => (
+            {filteredList.map((account) => (
               <div
                 key={account.id}
                 data-testid="member-selector-item"
@@ -97,7 +94,9 @@ const MemberSelector: FC<Props> = ({
                 }}
               >
                 <Avatar avatar={account.avatar_url} size="sm" name={account.name} />
-                <div className="grow truncate system-sm-medium text-text-secondary">{account.name}</div>
+                <div className="grow truncate system-sm-medium text-text-secondary">
+                  {account.name}
+                </div>
                 <div className="system-xs-regular text-text-quaternary">{account.email}</div>
               </div>
             ))}

@@ -24,11 +24,8 @@ import {
   ComboboxValue,
 } from '../index'
 
-const renderWithSafeViewport = (ui: React.ReactNode) => render(
-  <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
-    {ui}
-  </div>,
-)
+const renderWithSafeViewport = (ui: React.ReactNode) =>
+  render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
@@ -38,40 +35,41 @@ const renderSelectLikeCombobox = ({
 }: {
   children?: React.ReactNode
   open?: boolean
-} = {}) => renderWithSafeViewport(
-  <Combobox open={open} defaultValue="workflow" items={['workflow', 'dataset']}>
-    {children ?? (
-      <React.Fragment>
-        <ComboboxLabel data-testid="label">Resource type</ComboboxLabel>
-        <ComboboxTrigger aria-label="Resource type" data-testid="trigger">
-          <ComboboxValue placeholder="Select resource" />
-        </ComboboxTrigger>
-        <ComboboxContent
-          positionerProps={{
-            'role': 'group',
-            'aria-label': 'combobox positioner',
-          }}
-          popupProps={{
-            'role': 'dialog',
-            'aria-label': 'combobox popup',
-          }}
-        >
-          <ComboboxStatus data-testid="status">2 options</ComboboxStatus>
-          <ComboboxList role="listbox" aria-label="combobox list" data-testid="list">
-            <ComboboxItem value="workflow">
-              <ComboboxItemText>Workflow</ComboboxItemText>
-              <ComboboxItemIndicator />
-            </ComboboxItem>
-            <ComboboxItem value="dataset">
-              <ComboboxItemText>Dataset</ComboboxItemText>
-            </ComboboxItem>
-          </ComboboxList>
-          <ComboboxEmpty data-testid="empty">No options</ComboboxEmpty>
-        </ComboboxContent>
-      </React.Fragment>
-    )}
-  </Combobox>,
-)
+} = {}) =>
+  renderWithSafeViewport(
+    <Combobox open={open} defaultValue="workflow" items={['workflow', 'dataset']}>
+      {children ?? (
+        <React.Fragment>
+          <ComboboxLabel data-testid="label">Resource type</ComboboxLabel>
+          <ComboboxTrigger aria-label="Resource type" data-testid="trigger">
+            <ComboboxValue placeholder="Select resource" />
+          </ComboboxTrigger>
+          <ComboboxContent
+            positionerProps={{
+              role: 'group',
+              'aria-label': 'combobox positioner',
+            }}
+            popupProps={{
+              role: 'dialog',
+              'aria-label': 'combobox popup',
+            }}
+          >
+            <ComboboxStatus data-testid="status">2 options</ComboboxStatus>
+            <ComboboxList role="listbox" aria-label="combobox list" data-testid="list">
+              <ComboboxItem value="workflow">
+                <ComboboxItemText>Workflow</ComboboxItemText>
+                <ComboboxItemIndicator />
+              </ComboboxItem>
+              <ComboboxItem value="dataset">
+                <ComboboxItemText>Dataset</ComboboxItemText>
+              </ComboboxItem>
+            </ComboboxList>
+            <ComboboxEmpty data-testid="empty">No options</ComboboxEmpty>
+          </ComboboxContent>
+        </React.Fragment>
+      )}
+    </Combobox>,
+  )
 
 const renderInputCombobox = ({
   children,
@@ -79,27 +77,28 @@ const renderInputCombobox = ({
 }: {
   children?: React.ReactNode
   open?: boolean
-} = {}) => renderWithSafeViewport(
-  <Combobox open={open} defaultValue="workflow" items={['workflow', 'dataset']}>
-    {children ?? (
-      <React.Fragment>
-        <ComboboxInputGroup data-testid="input-group">
-          <ComboboxInput aria-label="Search resources" data-testid="input" />
-          <ComboboxClear data-testid="clear" />
-          <ComboboxInputTrigger data-testid="input-trigger" />
-        </ComboboxInputGroup>
-        <ComboboxContent popupProps={{ 'role': 'dialog', 'aria-label': 'combobox popup' }}>
-          <ComboboxList role="listbox" aria-label="combobox list">
-            <ComboboxItem value="workflow">
-              <ComboboxItemText>Workflow</ComboboxItemText>
-              <ComboboxItemIndicator />
-            </ComboboxItem>
-          </ComboboxList>
-        </ComboboxContent>
-      </React.Fragment>
-    )}
-  </Combobox>,
-)
+} = {}) =>
+  renderWithSafeViewport(
+    <Combobox open={open} defaultValue="workflow" items={['workflow', 'dataset']}>
+      {children ?? (
+        <React.Fragment>
+          <ComboboxInputGroup data-testid="input-group">
+            <ComboboxInput aria-label="Search resources" data-testid="input" />
+            <ComboboxClear data-testid="clear" />
+            <ComboboxInputTrigger data-testid="input-trigger" />
+          </ComboboxInputGroup>
+          <ComboboxContent popupProps={{ role: 'dialog', 'aria-label': 'combobox popup' }}>
+            <ComboboxList role="listbox" aria-label="combobox list">
+              <ComboboxItem value="workflow">
+                <ComboboxItemText>Workflow</ComboboxItemText>
+                <ComboboxItemIndicator />
+              </ComboboxItem>
+            </ComboboxList>
+          </ComboboxContent>
+        </React.Fragment>
+      )}
+    </Combobox>,
+  )
 
 describe('Combobox wrappers', () => {
   describe('Select-like trigger', () => {
@@ -107,7 +106,9 @@ describe('Combobox wrappers', () => {
       const screen = await renderSelectLikeCombobox()
 
       await expect.element(screen.getByText('Resource type')).toBeInTheDocument()
-      await expect.element(screen.getByRole('combobox', { name: 'Resource type' })).toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('combobox', { name: 'Resource type' }))
+        .toBeInTheDocument()
     })
   })
 
@@ -126,18 +127,32 @@ describe('Combobox wrappers', () => {
         ),
       })
 
-      await expect.element(screen.getByRole('combobox', { name: 'Search resources' })).toHaveAttribute('autocomplete', 'off')
-      await expect.element(screen.getByRole('combobox', { name: 'Search resources' })).toHaveAttribute('type', 'text')
-      await expect.element(screen.getByRole('combobox', { name: 'Search resources' })).toHaveAttribute('placeholder', 'Find a resource')
-      await expect.element(screen.getByRole('combobox', { name: 'Search resources' })).toBeRequired()
-      await expect.element(screen.getByRole('combobox', { name: 'Search resources' })).toHaveClass('custom-input')
+      await expect
+        .element(screen.getByRole('combobox', { name: 'Search resources' }))
+        .toHaveAttribute('autocomplete', 'off')
+      await expect
+        .element(screen.getByRole('combobox', { name: 'Search resources' }))
+        .toHaveAttribute('type', 'text')
+      await expect
+        .element(screen.getByRole('combobox', { name: 'Search resources' }))
+        .toHaveAttribute('placeholder', 'Find a resource')
+      await expect
+        .element(screen.getByRole('combobox', { name: 'Search resources' }))
+        .toBeRequired()
+      await expect
+        .element(screen.getByRole('combobox', { name: 'Search resources' }))
+        .toHaveClass('custom-input')
     })
 
     it('should provide fallback aria labels and decorative icons for input controls', async () => {
       const screen = await renderInputCombobox()
 
-      await expect.element(screen.getByRole('button', { name: 'Clear combobox' })).toHaveAttribute('type', 'button')
-      await expect.element(screen.getByRole('button', { name: 'Open combobox options' })).toHaveAttribute('type', 'button')
+      await expect
+        .element(screen.getByRole('button', { name: 'Clear combobox' }))
+        .toHaveAttribute('type', 'button')
+      await expect
+        .element(screen.getByRole('button', { name: 'Open combobox options' }))
+        .toHaveAttribute('type', 'button')
     })
 
     it('should rely on aria-labelledby when provided instead of injecting fallback labels', async () => {
@@ -155,8 +170,12 @@ describe('Combobox wrappers', () => {
         ),
       })
 
-      await expect.element(screen.getByRole('button', { name: 'Clear from label' })).not.toHaveAttribute('aria-label')
-      await expect.element(screen.getByRole('button', { name: 'Trigger from label' })).not.toHaveAttribute('aria-label')
+      await expect
+        .element(screen.getByRole('button', { name: 'Clear from label' }))
+        .not.toHaveAttribute('aria-label')
+      await expect
+        .element(screen.getByRole('button', { name: 'Trigger from label' }))
+        .not.toHaveAttribute('aria-label')
     })
   })
 
@@ -164,8 +183,12 @@ describe('Combobox wrappers', () => {
     it('should use default overlay placement', async () => {
       const screen = await renderSelectLikeCombobox({ open: true })
 
-      await expect.element(screen.getByRole('group', { name: 'combobox positioner' })).toHaveAttribute('data-side', 'bottom')
-      await expect.element(screen.getByRole('group', { name: 'combobox positioner' })).toHaveAttribute('data-align', 'start')
+      await expect
+        .element(screen.getByRole('group', { name: 'combobox positioner' }))
+        .toHaveAttribute('data-side', 'bottom')
+      await expect
+        .element(screen.getByRole('group', { name: 'combobox positioner' }))
+        .toHaveAttribute('data-align', 'start')
     })
 
     it('should apply custom placement side and passthrough popup props', async () => {
@@ -179,11 +202,11 @@ describe('Combobox wrappers', () => {
             placement="top-end"
             sideOffset={12}
             alignOffset={6}
-            positionerProps={{ 'role': 'group', 'aria-label': 'combobox positioner' }}
+            positionerProps={{ role: 'group', 'aria-label': 'combobox positioner' }}
             popupProps={{
-              'role': 'dialog',
+              role: 'dialog',
               'aria-label': 'combobox popup',
-              'onClick': onPopupClick,
+              onClick: onPopupClick,
             }}
           >
             <ComboboxList role="listbox" aria-label="combobox list">
@@ -197,7 +220,9 @@ describe('Combobox wrappers', () => {
 
       asHTMLElement(screen.getByRole('dialog', { name: 'combobox popup' }).element()).click()
 
-      await expect.element(screen.getByRole('group', { name: 'combobox positioner' })).toHaveAttribute('data-side', 'top')
+      await expect
+        .element(screen.getByRole('group', { name: 'combobox positioner' }))
+        .toHaveAttribute('data-side', 'top')
       expect(onPopupClick).toHaveBeenCalledTimes(1)
     })
 
@@ -207,7 +232,7 @@ describe('Combobox wrappers', () => {
           <ComboboxTrigger aria-label="Resource type">
             <ComboboxValue />
           </ComboboxTrigger>
-          <ComboboxContent popupProps={{ 'role': 'dialog', 'aria-label': 'combobox popup' }}>
+          <ComboboxContent popupProps={{ role: 'dialog', 'aria-label': 'combobox popup' }}>
             <ComboboxList role="listbox" aria-label="combobox list" data-testid="custom-list">
               <ComboboxGroup items={['workflow']}>
                 <ComboboxGroupLabel className="custom-label">Resources</ComboboxGroupLabel>
@@ -224,8 +249,12 @@ describe('Combobox wrappers', () => {
 
       await expect.element(screen.getByText('Resources')).toHaveClass('custom-label')
       await expect.element(screen.getByTestId('separator')).toHaveClass('custom-separator')
-      await expect.element(screen.getByRole('option', { name: 'Workflow' })).toHaveClass('custom-item')
-      await expect.element(screen.getByTestId('custom-list').getByText('Workflow')).toHaveClass('custom-text')
+      await expect
+        .element(screen.getByRole('option', { name: 'Workflow' }))
+        .toHaveClass('custom-item')
+      await expect
+        .element(screen.getByTestId('custom-list').getByText('Workflow'))
+        .toHaveClass('custom-text')
       await expect.element(screen.getByTestId('indicator')).toHaveClass('custom-indicator')
     })
 
@@ -248,15 +277,25 @@ describe('Combobox wrappers', () => {
         </Combobox>,
       )
 
-      const input = asHTMLElement(screen.getByRole('combobox', { name: 'Search resources' }).element())
+      const input = asHTMLElement(
+        screen.getByRole('combobox', { name: 'Search resources' }).element(),
+      )
 
       input.focus()
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
-      await expect.element(screen.getByRole('option', { name: 'workflow' })).toHaveAttribute('data-highlighted')
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
+      )
+      await expect
+        .element(screen.getByRole('option', { name: 'workflow' }))
+        .toHaveAttribute('data-highlighted')
 
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
+      )
 
-      await expect.element(screen.getByRole('option', { name: 'dataset' })).toHaveAttribute('data-highlighted')
+      await expect
+        .element(screen.getByRole('option', { name: 'dataset' }))
+        .toHaveAttribute('data-highlighted')
     })
   })
 
@@ -269,7 +308,7 @@ describe('Combobox wrappers', () => {
               <ComboboxValue>
                 {(selectedValue: string[]) => (
                   <React.Fragment>
-                    {selectedValue.map(item => (
+                    {selectedValue.map((item) => (
                       <ComboboxChip key={item} className="custom-chip">
                         <span>{item}</span>
                         <ComboboxChipRemove data-testid="remove-chip" />
@@ -285,8 +324,12 @@ describe('Combobox wrappers', () => {
       )
 
       await expect.element(screen.getByTestId('chips')).toHaveClass('custom-chips')
-      await expect.element(screen.getByText('maya').element().parentElement!).toHaveClass('custom-chip')
-      await expect.element(screen.getByRole('button', { name: 'Remove selected item' })).toHaveAttribute('type', 'button')
+      await expect
+        .element(screen.getByText('maya').element().parentElement!)
+        .toHaveClass('custom-chip')
+      await expect
+        .element(screen.getByRole('button', { name: 'Remove selected item' }))
+        .toHaveAttribute('type', 'button')
     })
 
     it('should preserve chip remove aria-labelledby over fallback label', async () => {
@@ -297,7 +340,7 @@ describe('Combobox wrappers', () => {
               <ComboboxValue>
                 {(selectedValue: string[]) => (
                   <React.Fragment>
-                    {selectedValue.map(item => (
+                    {selectedValue.map((item) => (
                       <ComboboxChip key={item}>
                         <span id="remove-maya">Remove Maya</span>
                         <ComboboxChipRemove aria-labelledby="remove-maya" />
@@ -312,7 +355,9 @@ describe('Combobox wrappers', () => {
         </Combobox>,
       )
 
-      await expect.element(screen.getByRole('button', { name: 'Remove Maya' })).not.toHaveAttribute('aria-label')
+      await expect
+        .element(screen.getByRole('button', { name: 'Remove Maya' }))
+        .not.toHaveAttribute('aria-label')
     })
   })
 })

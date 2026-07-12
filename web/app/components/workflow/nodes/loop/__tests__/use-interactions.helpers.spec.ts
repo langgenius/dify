@@ -40,30 +40,41 @@ describe('loop interaction helpers', () => {
 
   it('restricts loop positions only for loop children and filters loop-start nodes', () => {
     const parent = createNode({ id: 'parent', width: 200, height: 180 })
-    expect(getRestrictedLoopPosition(createNode({ data: { isInLoop: false } }) as Node, parent as Node)).toEqual({ x: undefined, y: undefined })
-    expect(getRestrictedLoopPosition(
-      createNode({
-        position: { x: -10, y: 160 },
-        width: 80,
-        height: 40,
-        data: { isInLoop: true },
-      }),
-      parent as Node,
-    )).toEqual({ x: 16, y: 120 })
-    expect(getRestrictedLoopPosition(
-      createNode({
-        position: { x: 180, y: -4 },
-        width: 40,
-        height: 30,
-        data: { isInLoop: true },
-      }),
-      parent as Node,
-    )).toEqual({ x: 144, y: 65 })
-    expect(getLoopChildren([
-      createNode({ id: 'child', parentId: 'loop-1' }),
-      createNode({ id: 'start', parentId: 'loop-1', type: 'custom-loop-start' }),
-      createNode({ id: 'other', parentId: 'other-loop' }),
-    ] as Node[], 'loop-1').map(item => item.id)).toEqual(['child'])
+    expect(
+      getRestrictedLoopPosition(createNode({ data: { isInLoop: false } }) as Node, parent as Node),
+    ).toEqual({ x: undefined, y: undefined })
+    expect(
+      getRestrictedLoopPosition(
+        createNode({
+          position: { x: -10, y: 160 },
+          width: 80,
+          height: 40,
+          data: { isInLoop: true },
+        }),
+        parent as Node,
+      ),
+    ).toEqual({ x: 16, y: 120 })
+    expect(
+      getRestrictedLoopPosition(
+        createNode({
+          position: { x: 180, y: -4 },
+          width: 40,
+          height: 30,
+          data: { isInLoop: true },
+        }),
+        parent as Node,
+      ),
+    ).toEqual({ x: 144, y: 65 })
+    expect(
+      getLoopChildren(
+        [
+          createNode({ id: 'child', parentId: 'loop-1' }),
+          createNode({ id: 'start', parentId: 'loop-1', type: 'custom-loop-start' }),
+          createNode({ id: 'other', parentId: 'other-loop' }),
+        ] as Node[],
+        'loop-1',
+      ).map((item) => item.id),
+    ).toEqual(['child'])
   })
 
   it('builds copied loop children with derived title and loop metadata', () => {
@@ -85,16 +96,18 @@ describe('loop interaction helpers', () => {
     })
 
     expect(result.newId).toBe('loop-23')
-    expect(result.params).toEqual(expect.objectContaining({
-      parentId: 'loop-2',
-      zIndex: 1001,
-      data: expect.objectContaining({
-        title: 'Code 3',
-        isInLoop: true,
-        loop_id: 'loop-2',
-        selected: false,
-        _isBundled: false,
+    expect(result.params).toEqual(
+      expect.objectContaining({
+        parentId: 'loop-2',
+        zIndex: 1001,
+        data: expect.objectContaining({
+          title: 'Code 3',
+          isInLoop: true,
+          loop_id: 'loop-2',
+          selected: false,
+          _isBundled: false,
+        }),
       }),
-    }))
+    )
   })
 })

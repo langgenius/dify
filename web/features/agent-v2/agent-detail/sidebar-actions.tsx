@@ -27,11 +27,7 @@ type AgentDetailSidebarActionAgent = Pick<
   | 'role'
 >
 
-export function AgentDetailSidebarActions({
-  agent,
-}: {
-  agent: AgentDetailSidebarActionAgent
-}) {
+export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebarActionAgent }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -52,12 +48,12 @@ export function AgentDetailSidebarActions({
   }
 
   const handleEditOpen = () => {
-    setEditSessionKey(key => key + 1)
+    setEditSessionKey((key) => key + 1)
     setIsEditOpen(true)
   }
 
   const handleDuplicateOpen = () => {
-    setDuplicateSessionKey(key => key + 1)
+    setDuplicateSessionKey((key) => key + 1)
     setIsDuplicateOpen(true)
   }
 
@@ -65,7 +61,7 @@ export function AgentDetailSidebarActions({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
-          aria-label={t($ => $['roster.moreActions'], { name: agent.name })}
+          aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
           className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
@@ -73,14 +69,11 @@ export function AgentDetailSidebarActions({
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
           <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
             <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-            <span>{t($ => $['roster.editInfo'])}</span>
+            <span>{t(($) => $['roster.editInfo'])}</span>
           </DropdownMenuItem>
-          <DropdownMenuItem
-            className="gap-2"
-            onClick={handleDuplicateOpen}
-          >
+          <DropdownMenuItem className="gap-2" onClick={handleDuplicateOpen}>
             <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
-            <span>{tCommon($ => $['operation.duplicate'])}</span>
+            <span>{tCommon(($) => $['operation.duplicate'])}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -89,7 +82,7 @@ export function AgentDetailSidebarActions({
             onClick={() => setIsDeleteOpen(true)}
           >
             <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-            <span>{tCommon($ => $['operation.delete'])}</span>
+            <span>{tCommon(($) => $['operation.delete'])}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -105,7 +98,12 @@ export function AgentDetailSidebarActions({
         open={isDuplicateOpen}
         onOpenChange={setIsDuplicateOpen}
       />
-      <DeleteAgentDialog agentId={agent.id} agentName={agent.name} open={isDeleteOpen} onOpenChange={setIsDeleteOpen} />
+      <DeleteAgentDialog
+        agentId={agent.id}
+        agentName={agent.name}
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+      />
     </>
   )
 }

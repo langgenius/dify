@@ -11,7 +11,9 @@ describe('ConfigurationButton', () => {
 
     render(
       <ConfigurationButton
-        modelProvider={modelProvider as unknown as ComponentProps<typeof ConfigurationButton>['modelProvider']}
+        modelProvider={
+          modelProvider as unknown as ComponentProps<typeof ConfigurationButton>['modelProvider']
+        }
         handleOpenModal={handleOpenModal}
       />,
     )

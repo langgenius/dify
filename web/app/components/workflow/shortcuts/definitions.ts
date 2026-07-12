@@ -1,23 +1,23 @@
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 
-export type WorkflowCanvasShortcutId
-  = | 'workflow.delete'
-    | 'workflow.copy'
-    | 'workflow.paste'
-    | 'workflow.duplicate'
-    | 'workflow.undo'
-    | 'workflow.redo'
-    | 'workflow.pointer-mode'
-    | 'workflow.hand-mode'
-    | 'workflow.comment-mode'
-    | 'workflow.organize'
-    | 'workflow.zoom-to-fit'
-    | 'workflow.zoom-to-100'
-    | 'workflow.zoom-to-50'
-    | 'workflow.zoom-out'
-    | 'workflow.zoom-in'
-    | 'workflow.download-import-log'
-    | 'workflow.dim-other-nodes'
+export type WorkflowCanvasShortcutId =
+  | 'workflow.delete'
+  | 'workflow.copy'
+  | 'workflow.paste'
+  | 'workflow.duplicate'
+  | 'workflow.undo'
+  | 'workflow.redo'
+  | 'workflow.pointer-mode'
+  | 'workflow.hand-mode'
+  | 'workflow.comment-mode'
+  | 'workflow.organize'
+  | 'workflow.zoom-to-fit'
+  | 'workflow.zoom-to-100'
+  | 'workflow.zoom-to-50'
+  | 'workflow.zoom-out'
+  | 'workflow.zoom-in'
+  | 'workflow.download-import-log'
+  | 'workflow.dim-other-nodes'
 
 export type WorkflowCanvasHotkeyMeta = {
   id: WorkflowCanvasShortcutId
@@ -34,7 +34,10 @@ export type WorkflowCanvasShortcutDefinition = {
   description: string
 }
 
-export const WORKFLOW_CANVAS_SHORTCUTS: Record<WorkflowCanvasShortcutId, WorkflowCanvasShortcutDefinition> = {
+export const WORKFLOW_CANVAS_SHORTCUTS: Record<
+  WorkflowCanvasShortcutId,
+  WorkflowCanvasShortcutDefinition
+> = {
   'workflow.delete': {
     id: 'workflow.delete',
     hotkeys: ['Delete', 'Backspace'],
@@ -143,7 +146,9 @@ export const WORKFLOW_CANVAS_SHORTCUTS: Record<WorkflowCanvasShortcutId, Workflo
   },
 }
 
-export const getWorkflowCanvasShortcutDisplayHotkey = (id: WorkflowCanvasShortcutId): RegisterableHotkey | (string & {}) => {
+export const getWorkflowCanvasShortcutDisplayHotkey = (
+  id: WorkflowCanvasShortcutId,
+): RegisterableHotkey | (string & {}) => {
   const shortcut = WORKFLOW_CANVAS_SHORTCUTS[id]
   return shortcut.displayHotkey ?? shortcut.hotkeys[0]!
 }

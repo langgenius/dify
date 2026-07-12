@@ -23,7 +23,15 @@ import { ChangeBlockMenuTrigger } from '../change-block-menu-trigger'
 import { NodeActionsDropdownContent } from '../dropdown-content'
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({ trigger, onSelect, availableBlocksTypes, showStartTab, ignoreNodeIds, forceEnableStartTab, allowUserInputSelection }: any) => (
+  default: ({
+    trigger,
+    onSelect,
+    availableBlocksTypes,
+    showStartTab,
+    ignoreNodeIds,
+    forceEnableStartTab,
+    allowUserInputSelection,
+  }: any) => (
     <div>
       <div>{trigger()}</div>
       <div>{`available:${(availableBlocksTypes || []).join(',')}`}</div>
@@ -31,7 +39,9 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
       <div>{`ignore:${(ignoreNodeIds || []).join(',')}`}</div>
       <div>{`force-start:${String(forceEnableStartTab)}`}</div>
       <div>{`allow-start:${String(allowUserInputSelection)}`}</div>
-      <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>select-http</button>
+      <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>
+        select-http
+      </button>
     </div>
   ),
 }))
@@ -130,12 +140,18 @@ describe('node actions menu details', () => {
       handleNodeSelect,
       handleNodesCopy,
     } as unknown as ReturnType<typeof useNodesInteractions>)
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false } as ReturnType<typeof useNodesReadOnly>)
-    mockUseHooksStore.mockImplementation((selector: any) => selector({
-      configsMap: { flowType: FlowType.appFlow },
-      accessControl: { canRun: true },
-    }))
-    mockUseNodes.mockReturnValue([{ id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any }] as any)
+    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false } as ReturnType<
+      typeof useNodesReadOnly
+    >)
+    mockUseHooksStore.mockImplementation((selector: any) =>
+      selector({
+        configsMap: { flowType: FlowType.appFlow },
+        accessControl: { canRun: true },
+      }),
+    )
+    mockUseNodes.mockReturnValue([
+      { id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any },
+    ] as any)
     mockUseAllWorkflowTools.mockReturnValue({ data: [] } as any)
   })
 
@@ -156,7 +172,12 @@ describe('node actions menu details', () => {
     expect(screen.getByText('ignore:')).toBeInTheDocument()
     expect(screen.getByText('force-start:false')).toBeInTheDocument()
     expect(screen.getByText('allow-start:false')).toBeInTheDocument()
-    expect(handleNodeChange).toHaveBeenCalledWith('node-1', BlockEnum.HttpRequest, 'source', undefined)
+    expect(handleNodeChange).toHaveBeenCalledWith(
+      'node-1',
+      BlockEnum.HttpRequest,
+      'source',
+      undefined,
+    )
   })
 
   it('should expose trigger and start-node specific block selector options', () => {
@@ -169,7 +190,9 @@ describe('node actions menu details', () => {
       availableNextBlocks: [BlockEnum.HttpRequest],
     } as ReturnType<typeof useAvailableBlocks>)
     mockUseIsChatMode.mockReturnValueOnce(true)
-    mockUseHooksStore.mockImplementationOnce((selector: any) => selector({ configsMap: { flowType: FlowType.appFlow } }))
+    mockUseHooksStore.mockImplementationOnce((selector: any) =>
+      selector({ configsMap: { flowType: FlowType.appFlow } }),
+    )
     mockUseNodes.mockReturnValueOnce([] as any)
 
     const { rerender } = render(
@@ -193,8 +216,12 @@ describe('node actions menu details', () => {
       availablePrevBlocks: [BlockEnum.Code],
       availableNextBlocks: [],
     } as ReturnType<typeof useAvailableBlocks>)
-    mockUseHooksStore.mockImplementationOnce((selector: any) => selector({ configsMap: { flowType: FlowType.ragPipeline } }))
-    mockUseNodes.mockReturnValueOnce([{ id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any }] as any)
+    mockUseHooksStore.mockImplementationOnce((selector: any) =>
+      selector({ configsMap: { flowType: FlowType.ragPipeline } }),
+    )
+    mockUseNodes.mockReturnValueOnce([
+      { id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any },
+    ] as any)
 
     rerender(
       <ChangeBlockMenuTrigger
@@ -230,7 +257,10 @@ describe('node actions menu details', () => {
     expect(handleNodesCopy).toHaveBeenCalledWith('node-1')
     expect(handleNodesDuplicate).toHaveBeenCalledWith('node-1')
     expect(handleNodeDelete).toHaveBeenCalledWith('node-1')
-    expect(screen.getByRole('menuitem', { name: 'workflow.panel.helpLink' })).toHaveAttribute('href', 'https://docs.example.com/node')
+    expect(screen.getByRole('menuitem', { name: 'workflow.panel.helpLink' })).toHaveAttribute(
+      'href',
+      'https://docs.example.com/node',
+    )
   })
 
   it('should stop the current single run from the run action when the node is running', async () => {
@@ -275,7 +305,15 @@ describe('node actions menu details', () => {
         <DropdownMenuContent>
           <NodeActionsDropdownContent
             id="node-2"
-            data={{ type: BlockEnum.Tool, title: 'Workflow Tool', desc: '', provider_type: 'workflow', provider_id: 'workflow-tool' } as any}
+            data={
+              {
+                type: BlockEnum.Tool,
+                title: 'Workflow Tool',
+                desc: '',
+                provider_type: 'workflow',
+                provider_id: 'workflow-tool',
+              } as any
+            }
             onClose={vi.fn()}
             showHelpLink={false}
           />
@@ -287,9 +325,14 @@ describe('node actions menu details', () => {
       },
     )
 
-    expect(screen.getByRole('menuitem', { name: 'workflow.panel.openWorkflow' })).toHaveAttribute('href', '/app/app-123/workflow')
+    expect(screen.getByRole('menuitem', { name: 'workflow.panel.openWorkflow' })).toHaveAttribute(
+      'href',
+      '/app/app-123/workflow',
+    )
 
-    mockUseNodesReadOnly.mockReturnValueOnce({ nodesReadOnly: true } as ReturnType<typeof useNodesReadOnly>)
+    mockUseNodesReadOnly.mockReturnValueOnce({ nodesReadOnly: true } as ReturnType<
+      typeof useNodesReadOnly
+    >)
     mockUseNodeMetaData.mockReturnValueOnce({
       isTypeFixed: true,
       isSingleton: true,

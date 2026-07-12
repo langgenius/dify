@@ -79,8 +79,7 @@ const main = async () => {
 
   if (failures.length) {
     console.error('Icon dimension check failed:')
-    for (const failure of failures)
-      console.error(`- ${failure}`)
+    for (const failure of failures) console.error(`- ${failure}`)
     process.exitCode = 1
     return
   }

@@ -1,7 +1,4 @@
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -42,19 +39,22 @@ const MailBodyInput = ({
       workflowVariableBlock={{
         show: true,
         variables: nodesOutputVars || [],
-        workflowNodesMap: availableNodes.reduce((acc, node) => {
-          acc[node.id] = {
-            title: node.data.title,
-            type: node.data.type,
-          }
-          if (node.data.type === BlockEnum.Start) {
-            acc.sys = {
-              title: t($ => $['blocks.start'], { ns: 'workflow' }),
-              type: BlockEnum.Start,
+        workflowNodesMap: availableNodes.reduce(
+          (acc, node) => {
+            acc[node.id] = {
+              title: node.data.title,
+              type: node.data.type,
             }
-          }
-          return acc
-        }, {} as Record<string, Pick<Node['data'], 'title' | 'type'>>),
+            if (node.data.type === BlockEnum.Start) {
+              acc.sys = {
+                title: t(($) => $['blocks.start'], { ns: 'workflow' }),
+                type: BlockEnum.Start,
+              }
+            }
+            return acc
+          },
+          {} as Record<string, Pick<Node['data'], 'title' | 'type'>>,
+        ),
       }}
       placeholder={<Placeholder hideBadge />}
       onChange={onChange}

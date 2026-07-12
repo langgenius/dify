@@ -4,14 +4,14 @@ import { useInsertSnippet } from '../use-insert-snippet'
 
 type TestNode = {
   id: string
-  position: { x: number, y: number }
+  position: { x: number; y: number }
   selected?: boolean
   parentId?: string
   zIndex?: number
   data: {
     type?: string
     selected?: boolean
-    _children?: { nodeId: string, nodeType: string }[]
+    _children?: { nodeId: string; nodeType: string }[]
     _connectedSourceHandleIds?: string[]
     _connectedTargetHandleIds?: string[]
   }
@@ -105,7 +105,11 @@ describe('useInsertSnippet', () => {
               id: 'snippet-node-1',
               zIndex: 1,
               position: { x: 10, y: 20 },
-              data: { type: 'iteration', selected: false, _children: [{ nodeId: 'snippet-node-2', nodeType: 'code' }] },
+              data: {
+                type: 'iteration',
+                selected: false,
+                _children: [{ nodeId: 'snippet-node-2', nodeType: 'code' }],
+              },
             },
             {
               id: 'snippet-node-2',
@@ -164,138 +168,161 @@ describe('useInsertSnippet', () => {
       })
     })
 
-    it.each(['iteration', 'loop'] as const)('should connect inserted snippet nodes inside the %s container', async (containerType) => {
-      mockGetNodes.mockReturnValue([
-        {
-          id: 'container-node',
-          position: { x: 0, y: 0 },
-          data: {
-            type: containerType,
-            selected: false,
-            _children: [
-              { nodeId: 'prev-node', nodeType: 'code' },
-              { nodeId: 'next-node', nodeType: 'code' },
+    it.each(['iteration', 'loop'] as const)(
+      'should connect inserted snippet nodes inside the %s container',
+      async (containerType) => {
+        mockGetNodes.mockReturnValue([
+          {
+            id: 'container-node',
+            position: { x: 0, y: 0 },
+            data: {
+              type: containerType,
+              selected: false,
+              _children: [
+                { nodeId: 'prev-node', nodeType: 'code' },
+                { nodeId: 'next-node', nodeType: 'code' },
+              ],
+            },
+          },
+          {
+            id: 'prev-node',
+            parentId: 'container-node',
+            position: { x: 0, y: 0 },
+            width: 240,
+            data: { type: 'code', selected: true, _connectedSourceHandleIds: ['source'] },
+          },
+          {
+            id: 'next-node',
+            parentId: 'container-node',
+            position: { x: 300, y: 0 },
+            data: { type: 'code', selected: false, _connectedTargetHandleIds: ['target'] },
+          },
+        ])
+        mockEdges = [
+          {
+            id: 'prev-node-source-next-node-target',
+            source: 'prev-node',
+            sourceHandle: 'source',
+            target: 'next-node',
+            targetHandle: 'target',
+            data: {
+              sourceType: 'code',
+              targetType: 'code',
+            },
+          },
+        ]
+        mockFetchQuery.mockResolvedValue({
+          graph: {
+            nodes: [
+              {
+                id: 'snippet-entry',
+                position: { x: 0, y: 0 },
+                data: { type: 'llm', selected: false },
+              },
+              {
+                id: 'snippet-exit',
+                position: { x: 300, y: 0 },
+                data: { type: 'code', selected: false },
+              },
+            ],
+            edges: [
+              {
+                id: 'snippet-entry-source-snippet-exit-target',
+                source: 'snippet-entry',
+                sourceHandle: 'source',
+                target: 'snippet-exit',
+                targetHandle: 'target',
+                data: {
+                  sourceType: 'llm',
+                  targetType: 'code',
+                },
+              },
             ],
           },
-        },
-        {
-          id: 'prev-node',
-          parentId: 'container-node',
-          position: { x: 0, y: 0 },
-          width: 240,
-          data: { type: 'code', selected: true, _connectedSourceHandleIds: ['source'] },
-        },
-        {
-          id: 'next-node',
-          parentId: 'container-node',
-          position: { x: 300, y: 0 },
-          data: { type: 'code', selected: false, _connectedTargetHandleIds: ['target'] },
-        },
-      ])
-      mockEdges = [
-        {
-          id: 'prev-node-source-next-node-target',
-          source: 'prev-node',
-          sourceHandle: 'source',
-          target: 'next-node',
-          targetHandle: 'target',
-          data: {
-            sourceType: 'code',
-            targetType: 'code',
-          },
-        },
-      ]
-      mockFetchQuery.mockResolvedValue({
-        graph: {
-          nodes: [
-            {
-              id: 'snippet-entry',
-              position: { x: 0, y: 0 },
-              data: { type: 'llm', selected: false },
-            },
-            {
-              id: 'snippet-exit',
-              position: { x: 300, y: 0 },
-              data: { type: 'code', selected: false },
-            },
-          ],
-          edges: [
-            {
-              id: 'snippet-entry-source-snippet-exit-target',
-              source: 'snippet-entry',
-              sourceHandle: 'source',
-              target: 'snippet-exit',
-              targetHandle: 'target',
-              data: {
-                sourceType: 'llm',
-                targetType: 'code',
-              },
-            },
-          ],
-        },
-      })
-
-      const { result } = renderHook(() => useInsertSnippet())
-
-      await act(async () => {
-        await result.current.handleInsertSnippet('snippet-1', {
-          prevNodeId: 'prev-node',
-          prevNodeSourceHandle: 'source',
-          nextNodeId: 'next-node',
-          nextNodeTargetHandle: 'target',
         })
-      })
 
-      const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
-      const insertedEntry = nextNodes.find(node => node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-entry'))!
-      const insertedExit = nextNodes.find(node => node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-exit'))!
-      const shiftedNextNode = nextNodes.find(node => node.id === 'next-node')!
-      expect(insertedEntry.position).toEqual({ x: 300, y: 0 })
-      expect(insertedEntry.parentId).toBe('container-node')
-      expect(insertedExit.parentId).toBe('container-node')
-      expect(shiftedNextNode.position.x).toBe(600)
-      expect(nextNodes.find(node => node.id === 'prev-node')!.data._connectedSourceHandleIds).toEqual(['source'])
-      expect(insertedEntry.data._connectedTargetHandleIds).toEqual(['target'])
-      expect(insertedExit.data._connectedSourceHandleIds).toEqual(['source'])
-      expect(shiftedNextNode.data._connectedTargetHandleIds).toEqual(['target'])
+        const { result } = renderHook(() => useInsertSnippet())
 
-      const nextEdges = mockSetEdges.mock.calls[0]![0] as TestEdge[]
-      expect(nextEdges).toHaveLength(3)
-      expect(nextEdges.some(edge => edge.id === 'prev-node-source-next-node-target')).toBe(false)
-      expect(nextEdges).toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          source: 'prev-node',
-          sourceHandle: 'source',
-          target: insertedEntry.id,
-          targetHandle: 'target',
-        }),
-        expect.objectContaining({
-          source: insertedEntry.id,
-          target: insertedExit.id,
-        }),
-        expect.objectContaining({
-          source: insertedExit.id,
-          sourceHandle: 'source',
-          target: 'next-node',
-          targetHandle: 'target',
-        }),
-      ]))
-      const incomingEdge = nextEdges.find(edge => edge.source === 'prev-node' && edge.target === insertedEntry.id)
-      const insertedInternalEdge = nextEdges.find(edge => edge.source === insertedEntry.id && edge.target === insertedExit.id)
-      const outgoingEdge = nextEdges.find(edge => edge.source === insertedExit.id && edge.target === 'next-node')
-      expect(incomingEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
-      expect(insertedInternalEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
-      expect(outgoingEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
-      expect(insertedInternalEdge?.data).toEqual(expect.objectContaining({
-        isInIteration: containerType === 'iteration',
-        iteration_id: containerType === 'iteration' ? 'container-node' : undefined,
-        isInLoop: containerType === 'loop',
-        loop_id: containerType === 'loop' ? 'container-node' : undefined,
-      }))
-      expect(mockIncrementSnippetUseCount).toHaveBeenCalledWith({
-        params: { snippetId: 'snippet-1' },
-      })
-    })
+        await act(async () => {
+          await result.current.handleInsertSnippet('snippet-1', {
+            prevNodeId: 'prev-node',
+            prevNodeSourceHandle: 'source',
+            nextNodeId: 'next-node',
+            nextNodeTargetHandle: 'target',
+          })
+        })
+
+        const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
+        const insertedEntry = nextNodes.find(
+          (node) =>
+            node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-entry'),
+        )!
+        const insertedExit = nextNodes.find(
+          (node) =>
+            node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-exit'),
+        )!
+        const shiftedNextNode = nextNodes.find((node) => node.id === 'next-node')!
+        expect(insertedEntry.position).toEqual({ x: 300, y: 0 })
+        expect(insertedEntry.parentId).toBe('container-node')
+        expect(insertedExit.parentId).toBe('container-node')
+        expect(shiftedNextNode.position.x).toBe(600)
+        expect(
+          nextNodes.find((node) => node.id === 'prev-node')!.data._connectedSourceHandleIds,
+        ).toEqual(['source'])
+        expect(insertedEntry.data._connectedTargetHandleIds).toEqual(['target'])
+        expect(insertedExit.data._connectedSourceHandleIds).toEqual(['source'])
+        expect(shiftedNextNode.data._connectedTargetHandleIds).toEqual(['target'])
+
+        const nextEdges = mockSetEdges.mock.calls[0]![0] as TestEdge[]
+        expect(nextEdges).toHaveLength(3)
+        expect(nextEdges.some((edge) => edge.id === 'prev-node-source-next-node-target')).toBe(
+          false,
+        )
+        expect(nextEdges).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              source: 'prev-node',
+              sourceHandle: 'source',
+              target: insertedEntry.id,
+              targetHandle: 'target',
+            }),
+            expect.objectContaining({
+              source: insertedEntry.id,
+              target: insertedExit.id,
+            }),
+            expect.objectContaining({
+              source: insertedExit.id,
+              sourceHandle: 'source',
+              target: 'next-node',
+              targetHandle: 'target',
+            }),
+          ]),
+        )
+        const incomingEdge = nextEdges.find(
+          (edge) => edge.source === 'prev-node' && edge.target === insertedEntry.id,
+        )
+        const insertedInternalEdge = nextEdges.find(
+          (edge) => edge.source === insertedEntry.id && edge.target === insertedExit.id,
+        )
+        const outgoingEdge = nextEdges.find(
+          (edge) => edge.source === insertedExit.id && edge.target === 'next-node',
+        )
+        expect(incomingEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+        expect(insertedInternalEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+        expect(outgoingEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+        expect(insertedInternalEdge?.data).toEqual(
+          expect.objectContaining({
+            isInIteration: containerType === 'iteration',
+            iteration_id: containerType === 'iteration' ? 'container-node' : undefined,
+            isInLoop: containerType === 'loop',
+            loop_id: containerType === 'loop' ? 'container-node' : undefined,
+          }),
+        )
+        expect(mockIncrementSnippetUseCount).toHaveBeenCalledWith({
+          params: { snippetId: 'snippet-1' },
+        })
+      },
+    )
 
     it('should show error toast when fetching snippet workflow fails', async () => {
       mockFetchQuery.mockRejectedValue(new Error('insert failed'))

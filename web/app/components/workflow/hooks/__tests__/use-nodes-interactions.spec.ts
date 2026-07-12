@@ -12,14 +12,18 @@ const mockHandleSyncWorkflowDraft = vi.hoisted(() => vi.fn())
 const mockSaveStateToHistory = vi.hoisted(() => vi.fn())
 const mockUndo = vi.hoisted(() => vi.fn())
 const mockRedo = vi.hoisted(() => vi.fn())
-const mockHandleNodeIterationChildrenCopy = vi.hoisted(() => vi.fn(() => ({
-  copyChildren: [],
-  newIdMapping: {},
-})))
-const mockHandleNodeLoopChildrenCopy = vi.hoisted(() => vi.fn(() => ({
-  copyChildren: [],
-  newIdMapping: {},
-})))
+const mockHandleNodeIterationChildrenCopy = vi.hoisted(() =>
+  vi.fn(() => ({
+    copyChildren: [],
+    newIdMapping: {},
+  })),
+)
+const mockHandleNodeLoopChildrenCopy = vi.hoisted(() =>
+  vi.fn(() => ({
+    copyChildren: [],
+    newIdMapping: {},
+  })),
+)
 const mockCreateInlineAgentBinding = vi.hoisted(() => vi.fn())
 const runtimeNodesMetaDataMap = vi.hoisted(() => ({
   value: {} as Record<string, unknown>,
@@ -34,7 +38,8 @@ let currentNodes: Node[] = []
 let currentEdges: Edge[] = []
 
 vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
+  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
+)
 
 vi.mock('../use-workflow', () => ({
   useWorkflow: () => ({
@@ -99,7 +104,7 @@ vi.mock('../../nodes/loop/use-interactions', () => ({
   }),
 }))
 
-vi.mock('../use-workflow-history', async importOriginal => ({
+vi.mock('../use-workflow-history', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../use-workflow-history')>()),
   useWorkflowHistory: () => ({
     saveStateToHistory: mockSaveStateToHistory,
@@ -114,17 +119,24 @@ describe('useNodesInteractions', () => {
     resetReactFlowMockState()
     runtimeState.nodesReadOnly = false
     runtimeState.workflowReadOnly = false
-    mockCreateInlineAgentBinding.mockImplementation((_nodeId: string, options?: { onSuccess?: (binding: {
-      binding_type: 'inline_agent'
-      agent_id: string
-      current_snapshot_id: string
-    }) => void }) => {
-      options?.onSuccess?.({
-        binding_type: 'inline_agent',
-        agent_id: 'inline-agent-1',
-        current_snapshot_id: 'inline-snapshot-1',
-      })
-    })
+    mockCreateInlineAgentBinding.mockImplementation(
+      (
+        _nodeId: string,
+        options?: {
+          onSuccess?: (binding: {
+            binding_type: 'inline_agent'
+            agent_id: string
+            current_snapshot_id: string
+          }) => void
+        },
+      ) => {
+        options?.onSuccess?.({
+          binding_type: 'inline_agent',
+          agent_id: 'inline-agent-1',
+          current_snapshot_id: 'inline-snapshot-1',
+        })
+      },
+    )
     currentNodes = [
       createNode({
         id: 'node-1',
@@ -252,9 +264,15 @@ describe('useNodesInteractions', () => {
       }),
     ]
     const isConnectedSpy = vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(true)
-    const emitHistoryActionSpy = vi.spyOn(collaborationManager, 'emitHistoryAction').mockImplementation(() => undefined)
-    const collabSetNodesSpy = vi.spyOn(collaborationManager, 'setNodes').mockImplementation(() => undefined)
-    const collabSetEdgesSpy = vi.spyOn(collaborationManager, 'setEdges').mockImplementation(() => undefined)
+    const emitHistoryActionSpy = vi
+      .spyOn(collaborationManager, 'emitHistoryAction')
+      .mockImplementation(() => undefined)
+    const collabSetNodesSpy = vi
+      .spyOn(collaborationManager, 'setNodes')
+      .mockImplementation(() => undefined)
+    const collabSetEdgesSpy = vi
+      .spyOn(collaborationManager, 'setEdges')
+      .mockImplementation(() => undefined)
 
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
       historyStore: {
@@ -294,9 +312,15 @@ describe('useNodesInteractions', () => {
       }),
     ]
     vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(false)
-    const emitHistoryActionSpy = vi.spyOn(collaborationManager, 'emitHistoryAction').mockImplementation(() => undefined)
-    const collabSetNodesSpy = vi.spyOn(collaborationManager, 'setNodes').mockImplementation(() => undefined)
-    const collabSetEdgesSpy = vi.spyOn(collaborationManager, 'setEdges').mockImplementation(() => undefined)
+    const emitHistoryActionSpy = vi
+      .spyOn(collaborationManager, 'emitHistoryAction')
+      .mockImplementation(() => undefined)
+    const collabSetNodesSpy = vi
+      .spyOn(collaborationManager, 'setNodes')
+      .mockImplementation(() => undefined)
+    const collabSetEdgesSpy = vi
+      .spyOn(collaborationManager, 'setEdges')
+      .mockImplementation(() => undefined)
 
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
       historyStore: {
@@ -528,11 +552,15 @@ describe('useNodesInteractions', () => {
       )
     })
 
-    const agentNode = rfState.nodes.find(node => node.data.type === BlockEnum.AgentV2)
+    const agentNode = rfState.nodes.find((node) => node.data.type === BlockEnum.AgentV2)
     const firstSetNodesPayload = rfState.setNodes.mock.calls[0]?.[0]
-    const pendingAgentNode = firstSetNodesPayload.find((node: Node) => node.data.type === BlockEnum.AgentV2)
+    const pendingAgentNode = firstSetNodesPayload.find(
+      (node: Node) => node.data.type === BlockEnum.AgentV2,
+    )
     const finalSetNodesPayload = rfState.setNodes.mock.calls.at(-1)?.[0]
-    const finalAgentNode = finalSetNodesPayload.find((node: Node) => node.data.type === BlockEnum.AgentV2)
+    const finalAgentNode = finalSetNodesPayload.find(
+      (node: Node) => node.data.type === BlockEnum.AgentV2,
+    )
 
     expect(pendingAgentNode?.data._isTempNode).toBe(true)
     expect(agentNode?.data.agent_binding).toEqual({
@@ -541,9 +569,12 @@ describe('useNodesInteractions', () => {
       current_snapshot_id: 'inline-snapshot-1',
     })
     expect(finalAgentNode?.data._isTempNode).toBeUndefined()
-    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(agentNode?.id, expect.objectContaining({
-      onSuccess: expect.any(Function),
-    }))
+    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(
+      agentNode?.id,
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
     expect(store.getState().openInlineAgentPanelNodeId).toBe(agentNode?.id)
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
   })
@@ -599,9 +630,11 @@ describe('useNodesInteractions', () => {
       )
     })
 
-    const agentNode = rfState.nodes.find(node => node.data.type === BlockEnum.AgentV2)
+    const agentNode = rfState.nodes.find((node) => node.data.type === BlockEnum.AgentV2)
     const firstSetNodesPayload = rfState.setNodes.mock.calls[0]?.[0]
-    const pendingAgentNode = firstSetNodesPayload.find((node: Node) => node.data.type === BlockEnum.AgentV2)
+    const pendingAgentNode = firstSetNodesPayload.find(
+      (node: Node) => node.data.type === BlockEnum.AgentV2,
+    )
 
     expect(pendingAgentNode?.data._isTempNode).toBe(true)
     expect(agentNode?.data.agent_binding).toEqual({
@@ -609,9 +642,12 @@ describe('useNodesInteractions', () => {
       agent_id: 'inline-agent-1',
       current_snapshot_id: 'inline-snapshot-1',
     })
-    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(agentNode?.id, expect.objectContaining({
-      onSuccess: expect.any(Function),
-    }))
+    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(
+      agentNode?.id,
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
   })
 
@@ -681,8 +717,8 @@ describe('useNodesInteractions', () => {
     })
 
     const nodesArg = rfState.setNodes.mock.calls[0]?.[0] as Node[]
-    const knowledgeNode = nodesArg.find(node => node.id === 'knowledge-retrieval-node')
-    const answerNode = nodesArg.find(node => node.id === 'answer-node')
+    const knowledgeNode = nodesArg.find((node) => node.id === 'knowledge-retrieval-node')
+    const answerNode = nodesArg.find((node) => node.id === 'answer-node')
 
     expect(knowledgeNode?.selected).toBe(false)
     expect(knowledgeNode?.data.selected).toBe(false)
@@ -907,10 +943,7 @@ describe('useNodesInteractions', () => {
     })
 
     act(() => {
-      result.current.handleNodeAdd(
-        { nodeType: BlockEnum.Code },
-        { prevNodeId: 'meta-node-1' },
-      )
+      result.current.handleNodeAdd({ nodeType: BlockEnum.Code }, { prevNodeId: 'meta-node-1' })
       result.current.handleNodeChange('meta-node-1', BlockEnum.Answer, 'source')
       result.current.handleNodesPaste()
       result.current.handleNodeResize('meta-node-1', {
@@ -986,7 +1019,7 @@ describe('useNodesInteractions', () => {
       })
 
       const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
-      const newNode = pastedNodes.find(node => node.id !== 'existing-node')
+      const newNode = pastedNodes.find((node) => node.id !== 'existing-node')
 
       expect(newNode?.data.title).toBe('Clipboard')
     })
@@ -1044,7 +1077,9 @@ describe('useNodesInteractions', () => {
       })
 
       const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
-      const newNode = pastedNodes.find(node => !currentNodes.some(existingNode => existingNode.id === node.id))
+      const newNode = pastedNodes.find(
+        (node) => !currentNodes.some((existingNode) => existingNode.id === node.id),
+      )
 
       expect(newNode?.data.title).toBe('Clipboard (2)')
     })
@@ -1082,37 +1117,14 @@ describe('useNodesInteractions', () => {
     it.each([
       [BlockEnum.Iteration, 'iteration-source'],
       [BlockEnum.Loop, 'loop-source'],
-    ])('pastes a copied %s as a top-level node when the source container remains selected', async (containerType, nodeId) => {
-      currentNodes = [
-        createNode({
-          id: nodeId,
-          position: { x: 20, y: 20 },
-          selected: true,
-          data: {
-            type: containerType,
-            title: containerType === BlockEnum.Iteration ? 'Iteration' : 'Loop',
-            desc: '',
-            _children: [],
-          },
-        }),
-      ]
-      currentEdges = []
-      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
-      rfState.edges = currentEdges as unknown as typeof rfState.edges
-
-      const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
-        historyStore: {
-          nodes: currentNodes,
-          edges: currentEdges,
-        },
-      })
-
-      store.setState({
-        clipboardElements: [
+    ])(
+      'pastes a copied %s as a top-level node when the source container remains selected',
+      async (containerType, nodeId) => {
+        currentNodes = [
           createNode({
             id: nodeId,
-            position: { x: 120, y: 120 },
-            zIndex: 1002,
+            position: { x: 20, y: 20 },
+            selected: true,
             data: {
               type: containerType,
               title: containerType === BlockEnum.Iteration ? 'Iteration' : 'Loop',
@@ -1120,27 +1132,55 @@ describe('useNodesInteractions', () => {
               _children: [],
             },
           }),
-        ] as never,
-        clipboardEdges: [] as never,
-        mousePosition: {
-          pageX: 60,
-          pageY: 80,
-        } as never,
-      })
+        ]
+        currentEdges = []
+        rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+        rfState.edges = currentEdges as unknown as typeof rfState.edges
 
-      await act(async () => {
-        await result.current.handleNodesPaste()
-      })
+        const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+          historyStore: {
+            nodes: currentNodes,
+            edges: currentEdges,
+          },
+        })
 
-      const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
-      const newContainer = pastedNodes.find(node => node.id !== nodeId && node.data.type === containerType)
+        store.setState({
+          clipboardElements: [
+            createNode({
+              id: nodeId,
+              position: { x: 120, y: 120 },
+              zIndex: 1002,
+              data: {
+                type: containerType,
+                title: containerType === BlockEnum.Iteration ? 'Iteration' : 'Loop',
+                desc: '',
+                _children: [],
+              },
+            }),
+          ] as never,
+          clipboardEdges: [] as never,
+          mousePosition: {
+            pageX: 60,
+            pageY: 80,
+          } as never,
+        })
 
-      expect(newContainer).toBeDefined()
-      expect(newContainer?.parentId).toBeUndefined()
-      expect(newContainer?.zIndex).toBe(0)
-      expect(newContainer?.data.isInIteration).toBeFalsy()
-      expect(newContainer?.data.isInLoop).toBeFalsy()
-    })
+        await act(async () => {
+          await result.current.handleNodesPaste()
+        })
+
+        const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
+        const newContainer = pastedNodes.find(
+          (node) => node.id !== nodeId && node.data.type === containerType,
+        )
+
+        expect(newContainer).toBeDefined()
+        expect(newContainer?.parentId).toBeUndefined()
+        expect(newContainer?.zIndex).toBe(0)
+        expect(newContainer?.data.isInIteration).toBeFalsy()
+        expect(newContainer?.data.isInLoop).toBeFalsy()
+      },
+    )
   })
 
   // Nested container paste restrictions should stay aligned with available block filtering.
@@ -1165,7 +1205,10 @@ describe('useNodesInteractions', () => {
       },
     })
 
-    const runDisallowedPasteScenario = async (containerType: BlockEnum.Iteration | BlockEnum.Loop, nodeType: BlockEnum) => {
+    const runDisallowedPasteScenario = async (
+      containerType: BlockEnum.Iteration | BlockEnum.Loop,
+      nodeType: BlockEnum,
+    ) => {
       runtimeNodesMetaDataMap.value = {
         [nodeType]: createNodeMeta(nodeType),
       }
@@ -1223,7 +1266,9 @@ describe('useNodesInteractions', () => {
       expect(pastedNodes).toHaveLength(1)
       expect(pastedNodes[0]?.id).toBe(containerId)
       expect(pastedNodes[0]?.data._children).toEqual([])
-      expect(pastedNodes.some(node => node.data.type === nodeType && node.parentId === containerId)).toBe(false)
+      expect(
+        pastedNodes.some((node) => node.data.type === nodeType && node.parentId === containerId),
+      ).toBe(false)
     }
 
     it.each(disallowedNestedPasteNodeTypes)(

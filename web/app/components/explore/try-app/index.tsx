@@ -26,13 +26,7 @@ type Props = Readonly<{
   onCreate: () => void
 }>
 
-const TryApp: FC<Props> = ({
-  appId,
-  app,
-  categories,
-  onClose,
-  onCreate,
-}) => {
+const TryApp: FC<Props> = ({ appId, app, categories, onClose, onCreate }) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isTrialApp = !!(app && app.can_trial && systemFeatures.enable_trial_app)
@@ -45,19 +39,21 @@ const TryApp: FC<Props> = ({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
     >
       <DialogContent className="h-[calc(100dvh-32px)] max-h-[calc(100dvh-32px)] w-full max-w-[calc(100vw-32px)] min-w-[1280px] overflow-hidden overflow-x-auto border-none p-2 text-left align-middle">
-
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loading type="area" />
           </div>
         ) : isError ? (
           <div className="flex h-full items-center justify-center">
-            <AppUnavailable className="size-auto" isUnknownReason={!error} unknownReason={error instanceof Error ? error.message : undefined} />
+            <AppUnavailable
+              className="size-auto"
+              isUnknownReason={!error}
+              unknownReason={error instanceof Error ? error.message : undefined}
+            />
           </div>
         ) : !appDetail ? (
           <div className="flex h-full items-center justify-center">
@@ -66,7 +62,7 @@ const TryApp: FC<Props> = ({
         ) : (
           <Tabs
             value={activeType}
-            onValueChange={selectedValue => setType(selectedValue)}
+            onValueChange={(selectedValue) => setType(selectedValue)}
             className="flex h-full flex-col"
           >
             <div className="flex shrink-0 justify-between pl-4">
@@ -77,20 +73,24 @@ const TryApp: FC<Props> = ({
                     disabled={app ? !isTrialApp : false}
                     className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
                   >
-                    <span className="system-md-semibold-uppercase">{t($ => $['tryApp.tabHeader.try'], { ns: 'explore' })}</span>
+                    <span className="system-md-semibold-uppercase">
+                      {t(($) => $['tryApp.tabHeader.try'], { ns: 'explore' })}
+                    </span>
                   </TabsTab>
                 )}
                 <TabsTab
                   value={TypeEnum.DETAIL}
                   className="pt-2 data-active:border-util-colors-blue-brand-blue-brand-500"
                 >
-                  <span className="system-md-semibold-uppercase">{t($ => $['tryApp.tabHeader.detail'], { ns: 'explore' })}</span>
+                  <span className="system-md-semibold-uppercase">
+                    {t(($) => $['tryApp.tabHeader.detail'], { ns: 'explore' })}
+                  </span>
                 </TabsTab>
               </TabsList>
               <Button
                 size="large"
                 variant="tertiary"
-                aria-label={t($ => $['operation.close'], { ns: 'common' })}
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                 className="flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text"
                 onClick={onClose}
               >

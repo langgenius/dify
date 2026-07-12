@@ -4,14 +4,20 @@ import { MAX_ITERATIONS_NUM } from '@/config'
 import { AgentSetting } from '../index'
 
 vi.mock('@langgenius/dify-ui/slider', () => ({
-  Slider: (props: { className?: string, min?: number, max?: number, value: number, onValueChange: (value: number) => void }) => (
+  Slider: (props: {
+    className?: string
+    min?: number
+    max?: number
+    value: number
+    onValueChange: (value: number) => void
+  }) => (
     <input
       type="range"
       className={`slider ${props.className ?? ''}`}
       min={props.min}
       max={props.max}
       value={props.value}
-      onChange={e => props.onValueChange(Number(e.target.value))}
+      onChange={(e) => props.onValueChange(Number(e.target.value))}
     />
   ),
 }))

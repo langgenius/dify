@@ -27,27 +27,33 @@ describe('nested workflow node layering', () => {
 
 describe('getNodeCatalogType', () => {
   it('should use Agent V2 catalog type for graph agent nodes with the Agent V2 discriminator', () => {
-    expect(getNodeCatalogType({
-      title: 'Agent',
-      desc: '',
-      type: BlockEnum.Agent,
-      agent_node_kind: 'dify_agent',
-      version: '2',
-    } as CommonNodeType)).toBe(BlockEnum.AgentV2)
+    expect(
+      getNodeCatalogType({
+        title: 'Agent',
+        desc: '',
+        type: BlockEnum.Agent,
+        agent_node_kind: 'dify_agent',
+        version: '2',
+      } as CommonNodeType),
+    ).toBe(BlockEnum.AgentV2)
   })
 
   it('should keep the graph node type for regular nodes and legacy Agent nodes', () => {
-    expect(getNodeCatalogType({
-      title: 'Code',
-      desc: '',
-      type: BlockEnum.Code,
-    })).toBe(BlockEnum.Code)
+    expect(
+      getNodeCatalogType({
+        title: 'Code',
+        desc: '',
+        type: BlockEnum.Code,
+      }),
+    ).toBe(BlockEnum.Code)
 
-    expect(getNodeCatalogType({
-      title: 'Agent',
-      desc: '',
-      type: BlockEnum.Agent,
-    })).toBe(BlockEnum.Agent)
+    expect(
+      getNodeCatalogType({
+        title: 'Agent',
+        desc: '',
+        type: BlockEnum.Agent,
+      }),
+    ).toBe(BlockEnum.Agent)
   })
 })
 
@@ -203,10 +209,7 @@ describe('getTopLeftNodePosition', () => {
   })
 
   it('should handle negative positions', () => {
-    const nodes = [
-      { position: { x: -10, y: -20 } },
-      { position: { x: 5, y: -30 } },
-    ] as Node[]
+    const nodes = [{ position: { x: -10, y: -20 } }, { position: { x: 5, y: -30 } }] as Node[]
 
     expect(getTopLeftNodePosition(nodes)).toEqual({ x: -10, y: -30 })
   })

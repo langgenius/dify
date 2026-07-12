@@ -58,14 +58,7 @@ describe('LearnDifyItem', () => {
   })
 
   it('should not render hover action buttons', () => {
-    render(
-      <LearnDifyItem
-        canCreate
-        item={createApp()}
-        onCreate={vi.fn()}
-        onTry={vi.fn()}
-      />,
-    )
+    render(<LearnDifyItem canCreate item={createApp()} onCreate={vi.fn()} onTry={vi.fn()} />)
 
     expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
     expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
@@ -76,14 +69,7 @@ describe('LearnDifyItem', () => {
     const app = createApp()
     const onCreate = vi.fn()
 
-    render(
-      <LearnDifyItem
-        canCreate
-        item={app}
-        onCreate={onCreate}
-        onTry={vi.fn()}
-      />,
-    )
+    render(<LearnDifyItem canCreate item={app} onCreate={onCreate} onTry={vi.fn()} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Learn Dify App' }))
 
@@ -94,13 +80,7 @@ describe('LearnDifyItem', () => {
   it('should not make the card clickable outside cloud edition when create is unavailable', () => {
     mockConfig.isCloudEdition = false
 
-    render(
-      <LearnDifyItem
-        canCreate={false}
-        item={createApp()}
-        onTry={vi.fn()}
-      />,
-    )
+    render(<LearnDifyItem canCreate={false} item={createApp()} onTry={vi.fn()} />)
 
     expect(screen.queryByRole('button', { name: 'Learn Dify App' })).not.toBeInTheDocument()
   })
@@ -109,13 +89,7 @@ describe('LearnDifyItem', () => {
     const onTry = vi.fn()
     const app = createApp()
 
-    render(
-      <LearnDifyItem
-        canCreate={false}
-        item={app}
-        onTry={onTry}
-      />,
-    )
+    render(<LearnDifyItem canCreate={false} item={app} onTry={onTry} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Learn Dify App' }))
 
@@ -133,13 +107,7 @@ describe('LearnDifyItem', () => {
     const onTry = vi.fn()
     const app = createApp()
 
-    render(
-      <LearnDifyItem
-        canCreate={false}
-        item={app}
-        onTry={onTry}
-      />,
-    )
+    render(<LearnDifyItem canCreate={false} item={app} onTry={onTry} />)
 
     fireEvent.keyDown(screen.getByRole('button', { name: 'Learn Dify App' }), { key: 'Enter' })
 

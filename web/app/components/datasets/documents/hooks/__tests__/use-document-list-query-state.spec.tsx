@@ -134,15 +134,13 @@ describe('useDocumentListQueryState', () => {
       expect(result.current.query.sort).toBe('-created_at')
     })
 
-    it.each([
-      '-created_at',
-      'created_at',
-      '-hit_count',
-      'hit_count',
-    ] as const)('should accept valid sort value %s', (sortValue) => {
-      const { result } = renderWithAdapter(`?sort=${sortValue}`)
-      expect(result.current.query.sort).toBe(sortValue)
-    })
+    it.each(['-created_at', 'created_at', '-hit_count', 'hit_count'] as const)(
+      'should accept valid sort value %s',
+      (sortValue) => {
+        const { result } = renderWithAdapter(`?sort=${sortValue}`)
+        expect(result.current.query.sort).toBe(sortValue)
+      },
+    )
   })
 
   describe('updateQuery', () => {

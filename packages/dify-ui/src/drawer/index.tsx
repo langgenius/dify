@@ -25,10 +25,7 @@ export type DrawerSnapPointChangeEventDetails = BaseDrawer.Root.SnapPointChangeE
 export type DrawerSnapPointChangeEventReason = BaseDrawer.Root.SnapPointChangeEventReason
 export type DrawerTriggerProps<Payload = unknown> = BaseDrawer.Trigger.Props<Payload>
 
-export function DrawerBackdrop({
-  className,
-  ...props
-}: BaseDrawer.Backdrop.Props) {
+export function DrawerBackdrop({ className, ...props }: BaseDrawer.Backdrop.Props) {
   return (
     <BaseDrawer.Backdrop
       className={cn(
@@ -41,22 +38,19 @@ export function DrawerBackdrop({
   )
 }
 
-export function DrawerViewport({
-  className,
-  ...props
-}: BaseDrawer.Viewport.Props) {
+export function DrawerViewport({ className, ...props }: BaseDrawer.Viewport.Props) {
   return (
     <BaseDrawer.Viewport
-      className={cn('fixed inset-0 z-50 touch-none overflow-hidden overscroll-contain outline-hidden', className)}
+      className={cn(
+        'fixed inset-0 z-50 touch-none overflow-hidden overscroll-contain outline-hidden',
+        className,
+      )}
       {...props}
     />
   )
 }
 
-export function DrawerPopup({
-  className,
-  ...props
-}: BaseDrawer.Popup.Props) {
+export function DrawerPopup({ className, ...props }: BaseDrawer.Popup.Props) {
   return (
     <BaseDrawer.Popup
       className={cn(
@@ -77,13 +71,13 @@ export function DrawerPopup({
   )
 }
 
-export function DrawerContent({
-  className,
-  ...props
-}: BaseDrawer.Content.Props) {
+export function DrawerContent({ className, ...props }: BaseDrawer.Content.Props) {
   return (
     <BaseDrawer.Content
-      className={cn('min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0))]', className)}
+      className={cn(
+        'min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0))]',
+        className,
+      )}
       {...props}
     />
   )

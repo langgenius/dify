@@ -8,26 +8,26 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
   AuthCategory: {
     tool: 'tool',
   },
-  PluginAuthInAgent: ({ pluginPayload, credentialId }: {
-    pluginPayload: { provider: string, providerType: string }
+  PluginAuthInAgent: ({
+    pluginPayload,
+    credentialId,
+  }: {
+    pluginPayload: { provider: string; providerType: string }
     credentialId?: string
   }) => (
     <div data-testid="plugin-auth-in-agent">
-      {pluginPayload.provider}
-      :
-      {pluginPayload.providerType}
-      :
-      {credentialId}
+      {pluginPayload.provider}:{pluginPayload.providerType}:{credentialId}
     </div>
   ),
 }))
 
-const createProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
-  name: 'provider-a',
-  type: CollectionType.builtIn,
-  allow_delete: true,
-  ...overrides,
-}) as ToolWithProvider
+const createProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider =>
+  ({
+    name: 'provider-a',
+    type: CollectionType.builtIn,
+    allow_delete: true,
+    ...overrides,
+  }) as ToolWithProvider
 
 describe('ToolAuthorizationSection', () => {
   it('returns null for providers that are not removable built-ins', () => {
@@ -59,6 +59,8 @@ describe('ToolAuthorizationSection', () => {
       />,
     )
 
-    expect(screen.getByTestId('plugin-auth-in-agent')).toHaveTextContent('provider-a:builtin:credential-1')
+    expect(screen.getByTestId('plugin-auth-in-agent')).toHaveTextContent(
+      'provider-a:builtin:credential-1',
+    )
   })
 })

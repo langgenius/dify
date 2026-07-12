@@ -32,7 +32,14 @@ const actionDescriptionKeys = {
   '@node': 'gotoAnything.actions.searchWorkflowNodesDesc',
 } as const
 
-const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, commandValue, onCommandValueChange, originalQuery }) => {
+const CommandSelector: FC<Props> = ({
+  actions,
+  onCommandSelect,
+  searchFilter,
+  commandValue,
+  onCommandValueChange,
+  originalQuery,
+}) => {
   const { t } = useTranslation()
 
   // Check if we're in slash command mode
@@ -40,34 +47,31 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
 
   // Get slash commands from registry
   const slashCommands = useMemo(() => {
-    if (!isSlashMode)
-      return []
+    if (!isSlashMode) return []
 
     const availableCommands = slashCommandRegistry.getAvailableCommands()
     const filter = searchFilter?.toLowerCase() || '' // searchFilter already has '/' removed
 
-    return availableCommands.filter((cmd) => {
-      if (!filter)
-        return true
-      return cmd.name.toLowerCase().includes(filter)
-    }).map(cmd => ({
-      key: `/${cmd.name}`,
-      shortcut: `/${cmd.name}`,
-      title: cmd.name,
-      description: cmd.description,
-    }))
+    return availableCommands
+      .filter((cmd) => {
+        if (!filter) return true
+        return cmd.name.toLowerCase().includes(filter)
+      })
+      .map((cmd) => ({
+        key: `/${cmd.name}`,
+        shortcut: `/${cmd.name}`,
+        title: cmd.name,
+        description: cmd.description,
+      }))
   }, [isSlashMode, searchFilter])
 
   const filteredActions = useMemo(() => {
-    if (isSlashMode)
-      return []
+    if (isSlashMode) return []
 
     return Object.values(actions).filter((action) => {
       // Exclude slash action when in @ mode
-      if (action.key === '/')
-        return false
-      if (!searchFilter)
-        return true
+      if (action.key === '/') return false
+      if (!searchFilter) return true
       const filterLower = searchFilter.toLowerCase()
       return action.shortcut.toLowerCase().includes(filterLower)
     })
@@ -77,9 +81,8 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
 
   useEffect(() => {
     if (allItems.length > 0 && onCommandValueChange) {
-      const currentValueExists = allItems.some(item => item.shortcut === commandValue)
-      if (!currentValueExists)
-        onCommandValueChange(allItems[0]!.shortcut)
+      const currentValueExists = allItems.some((item) => item.shortcut === commandValue)
+      if (!currentValueExists) onCommandValueChange(allItems[0]!.shortcut)
     }
   }, [allItems, commandValue, onCommandValueChange])
 
@@ -89,10 +92,10 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
         <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
           <div>
             <div className="text-sm font-medium text-text-tertiary">
-              {t($ => $['gotoAnything.noMatchingCommands'], { ns: 'app' })}
+              {t(($) => $['gotoAnything.noMatchingCommands'], { ns: 'app' })}
             </div>
             <div className="mt-1 text-xs text-text-quaternary">
-              {t($ => $['gotoAnything.tryDifferentSearch'], { ns: 'app' })}
+              {t(($) => $['gotoAnything.tryDifferentSearch'], { ns: 'app' })}
             </div>
           </div>
         </div>
@@ -103,17 +106,16 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
   return (
     <div className="px-4 py-3">
       <div className="mb-2 text-left text-sm font-medium text-text-secondary">
-        {isSlashMode ? t($ => $['gotoAnything.groups.commands'], { ns: 'app' }) : t($ => $['gotoAnything.selectSearchType'], { ns: 'app' })}
+        {isSlashMode
+          ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
+          : t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
       </div>
       <Command.Group className="space-y-1">
-        {allItems.map(item => (
+        {allItems.map((item) => (
           <Command.Item
             key={item.key}
             value={item.shortcut}
-            className="flex cursor-pointer items-center rounded-md
-                     p-2
-                     transition-all
-                     duration-150 hover:bg-state-base-hover aria-selected:bg-state-base-hover-alt"
+            className="flex cursor-pointer items-center rounded-md p-2 transition-all duration-150 hover:bg-state-base-hover aria-selected:bg-state-base-hover-alt"
             onSelect={() => onCommandSelect(item.shortcut)}
           >
             <span className="min-w-18 text-left font-mono text-xs text-text-tertiary">
@@ -121,8 +123,19 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
             </span>
             <span className="ml-3 text-sm text-text-secondary">
               {isSlashMode
-                ? t($ => $[slashCommandDescriptionKeys[item.key as keyof typeof slashCommandDescriptionKeys] || item.description], { ns: 'app' })
-                : t($ => $[actionDescriptionKeys[item.key as keyof typeof actionDescriptionKeys]], { ns: 'app' })}
+                ? t(
+                    ($) =>
+                      $[
+                        slashCommandDescriptionKeys[
+                          item.key as keyof typeof slashCommandDescriptionKeys
+                        ] || item.description
+                      ],
+                    { ns: 'app' },
+                  )
+                : t(
+                    ($) => $[actionDescriptionKeys[item.key as keyof typeof actionDescriptionKeys]],
+                    { ns: 'app' },
+                  )}
             </span>
           </Command.Item>
         ))}

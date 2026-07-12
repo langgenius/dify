@@ -1,10 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
-import {
-  Collapsible,
-  CollapsiblePanel,
-  CollapsibleTrigger,
-} from '.'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '.'
 import { cn } from '../cn'
 
 const meta = {
@@ -14,7 +10,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Unstyled Base UI Collapsible primitive. The examples mirror the official Root, Trigger, and Panel anatomy, with presentation supplied at the call site using Dify UI tokens.',
+        component:
+          'Unstyled Base UI Collapsible primitive. The examples mirror the official Root, Trigger, and Panel anatomy, with presentation supplied at the call site using Dify UI tokens.',
       },
     },
   },
@@ -24,16 +21,16 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-const rootClassName = 'w-72 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg shadow-shadow-shadow-5'
+const rootClassName =
+  'w-72 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg shadow-shadow-shadow-5'
 const triggerClassName = 'h-8'
 const panelClassName = 'system-sm-regular text-text-secondary'
 const contentClassName = 'flex flex-col gap-2 px-2.5 pb-2 pt-1'
-const iconClassName = 'i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary transition-transform duration-100 ease-out group-data-panel-open:rotate-90 motion-reduce:transition-none'
-const sectionRootClassName = 'w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg shadow-shadow-shadow-5'
-const sectionTriggerClassName = cn(
-  triggerClassName,
-  'h-auto min-h-12 px-3 py-2',
-)
+const iconClassName =
+  'i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary transition-transform duration-100 ease-out group-data-panel-open:rotate-90 motion-reduce:transition-none'
+const sectionRootClassName =
+  'w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg shadow-shadow-shadow-5'
+const sectionTriggerClassName = cn(triggerClassName, 'h-auto min-h-12 px-3 py-2')
 const sectionPanelClassName = panelClassName
 
 function TriggerIcon() {
@@ -66,7 +63,7 @@ export const Anatomy: Story = {
   args: {
     defaultOpen: true,
   },
-  render: args => (
+  render: (args) => (
     <Collapsible {...args} className={rootClassName}>
       <RecoveryKeys />
     </Collapsible>
@@ -97,7 +94,7 @@ function ControlledDemo() {
       <button
         type="button"
         className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 system-sm-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-        onClick={() => setOpen(value => !value)}
+        onClick={() => setOpen((value) => !value)}
       >
         {open ? 'Close panel' : 'Open panel'}
       </button>
@@ -169,7 +166,9 @@ export const SettingsSections: Story = {
           <CollapsibleTrigger className={sectionTriggerClassName}>
             <span className="flex min-w-0 flex-col gap-1">
               <span className="truncate system-sm-medium text-text-primary">{section.title}</span>
-              <span className="line-clamp-2 system-xs-regular text-text-tertiary">{section.description}</span>
+              <span className="line-clamp-2 system-xs-regular text-text-tertiary">
+                {section.description}
+              </span>
             </span>
             <TriggerIcon />
           </CollapsibleTrigger>

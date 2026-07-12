@@ -665,12 +665,12 @@ export type WorkflowNodeJobConfig = {
   workflow_prompt?: string
 }
 
-export type ComposerSaveStrategy
-  = | 'node_job_only'
-    | 'save_as_new_agent'
-    | 'save_as_new_version'
-    | 'save_to_current_version'
-    | 'save_to_roster'
+export type ComposerSaveStrategy =
+  | 'node_job_only'
+  | 'save_as_new_agent'
+  | 'save_as_new_version'
+  | 'save_to_current_version'
+  | 'save_to_roster'
 
 export type ComposerSoulLockPayload = {
   locked?: boolean
@@ -965,16 +965,16 @@ export type Feedback = {
   rating: string
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
+export type JsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
       [key: string]: unknown
     }
-    | Array<unknown>
-    | null
+  | Array<unknown>
+  | null
 
 export type MessageFile = {
   belongs_to?: string | null
@@ -1415,14 +1415,14 @@ export type AgentUserSatisfactionRateStatisticResponse = {
   rate: number
 }
 
-export type AgentConfigRevisionOperation
-  = | 'create_version'
-    | 'publish_draft'
-    | 'restore_version'
-    | 'save_current_version'
-    | 'save_new_agent'
-    | 'save_new_version'
-    | 'save_to_roster'
+export type AgentConfigRevisionOperation =
+  | 'create_version'
+  | 'publish_draft'
+  | 'restore_version'
+  | 'save_current_version'
+  | 'save_new_agent'
+  | 'save_new_version'
+  | 'save_to_roster'
 
 export type AgentFileUploadFeatureConfig = {
   allowed_file_extensions?: Array<string>
@@ -1627,15 +1627,15 @@ export type DeclaredOutputFileConfig = {
   mime_types?: Array<string>
 }
 
-export type AgentCliToolAuthorizationStatus
-  = | 'allowed'
-    | 'authorized'
-    | 'denied'
-    | 'forbidden'
-    | 'not_required'
-    | 'pending'
-    | 'pre_authorized'
-    | 'unauthorized'
+export type AgentCliToolAuthorizationStatus =
+  | 'allowed'
+  | 'authorized'
+  | 'denied'
+  | 'forbidden'
+  | 'not_required'
+  | 'pending'
+  | 'pre_authorized'
+  | 'unauthorized'
 
 export type AgentCliToolEnvConfig = {
   secret_refs?: Array<AgentSecretRefConfig>
@@ -1669,19 +1669,19 @@ export type UserActionConfig = {
   title: string
 }
 
-export type FormInputConfig
-  = | ({
-    type: 'paragraph'
-  } & ParagraphInputConfig)
+export type FormInputConfig =
   | ({
-    type: 'select'
-  } & SelectInputConfig)
+      type: 'paragraph'
+    } & ParagraphInputConfig)
   | ({
-    type: 'file'
-  } & FileInputConfig)
+      type: 'select'
+    } & SelectInputConfig)
   | ({
-    type: 'file-list'
-  } & FileListInputConfig)
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
 
 export type JsonValue2 = unknown
 
@@ -2013,8 +2013,8 @@ export type GetAgentInviteOptionsResponses = {
   200: AgentInviteOptionsResponse
 }
 
-export type GetAgentInviteOptionsResponse
-  = GetAgentInviteOptionsResponses[keyof GetAgentInviteOptionsResponses]
+export type GetAgentInviteOptionsResponse =
+  GetAgentInviteOptionsResponses[keyof GetAgentInviteOptionsResponses]
 
 export type DeleteAgentByAgentIdData = {
   body?: never
@@ -2033,8 +2033,8 @@ export type DeleteAgentByAgentIdResponses = {
   204: void
 }
 
-export type DeleteAgentByAgentIdResponse
-  = DeleteAgentByAgentIdResponses[keyof DeleteAgentByAgentIdResponses]
+export type DeleteAgentByAgentIdResponse =
+  DeleteAgentByAgentIdResponses[keyof DeleteAgentByAgentIdResponses]
 
 export type GetAgentByAgentIdData = {
   body?: never
@@ -2084,8 +2084,8 @@ export type GetAgentByAgentIdApiAccessResponses = {
   200: AgentApiAccessResponse
 }
 
-export type GetAgentByAgentIdApiAccessResponse
-  = GetAgentByAgentIdApiAccessResponses[keyof GetAgentByAgentIdApiAccessResponses]
+export type GetAgentByAgentIdApiAccessResponse =
+  GetAgentByAgentIdApiAccessResponses[keyof GetAgentByAgentIdApiAccessResponses]
 
 export type PostAgentByAgentIdApiEnableData = {
   body: AgentApiStatusPayload
@@ -2104,8 +2104,8 @@ export type PostAgentByAgentIdApiEnableResponses = {
   200: AgentApiAccessResponse
 }
 
-export type PostAgentByAgentIdApiEnableResponse
-  = PostAgentByAgentIdApiEnableResponses[keyof PostAgentByAgentIdApiEnableResponses]
+export type PostAgentByAgentIdApiEnableResponse =
+  PostAgentByAgentIdApiEnableResponses[keyof PostAgentByAgentIdApiEnableResponses]
 
 export type GetAgentByAgentIdApiKeysData = {
   body?: never
@@ -2120,8 +2120,8 @@ export type GetAgentByAgentIdApiKeysResponses = {
   200: ApiKeyList
 }
 
-export type GetAgentByAgentIdApiKeysResponse
-  = GetAgentByAgentIdApiKeysResponses[keyof GetAgentByAgentIdApiKeysResponses]
+export type GetAgentByAgentIdApiKeysResponse =
+  GetAgentByAgentIdApiKeysResponses[keyof GetAgentByAgentIdApiKeysResponses]
 
 export type PostAgentByAgentIdApiKeysData = {
   body?: never
@@ -2140,8 +2140,8 @@ export type PostAgentByAgentIdApiKeysResponses = {
   201: ApiKeyItem
 }
 
-export type PostAgentByAgentIdApiKeysResponse
-  = PostAgentByAgentIdApiKeysResponses[keyof PostAgentByAgentIdApiKeysResponses]
+export type PostAgentByAgentIdApiKeysResponse =
+  PostAgentByAgentIdApiKeysResponses[keyof PostAgentByAgentIdApiKeysResponses]
 
 export type DeleteAgentByAgentIdApiKeysByApiKeyIdData = {
   body?: never
@@ -2157,8 +2157,8 @@ export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponses = {
   204: void
 }
 
-export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponse
-  = DeleteAgentByAgentIdApiKeysByApiKeyIdResponses[keyof DeleteAgentByAgentIdApiKeysByApiKeyIdResponses]
+export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponse =
+  DeleteAgentByAgentIdApiKeysByApiKeyIdResponses[keyof DeleteAgentByAgentIdApiKeysByApiKeyIdResponses]
 
 export type PostAgentByAgentIdBuildChatFinalizeData = {
   body?: never
@@ -2178,8 +2178,8 @@ export type PostAgentByAgentIdBuildChatFinalizeResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAgentByAgentIdBuildChatFinalizeResponse
-  = PostAgentByAgentIdBuildChatFinalizeResponses[keyof PostAgentByAgentIdBuildChatFinalizeResponses]
+export type PostAgentByAgentIdBuildChatFinalizeResponse =
+  PostAgentByAgentIdBuildChatFinalizeResponses[keyof PostAgentByAgentIdBuildChatFinalizeResponses]
 
 export type DeleteAgentByAgentIdBuildDraftData = {
   body?: never
@@ -2194,8 +2194,8 @@ export type DeleteAgentByAgentIdBuildDraftResponses = {
   200: AgentSimpleResultResponse
 }
 
-export type DeleteAgentByAgentIdBuildDraftResponse
-  = DeleteAgentByAgentIdBuildDraftResponses[keyof DeleteAgentByAgentIdBuildDraftResponses]
+export type DeleteAgentByAgentIdBuildDraftResponse =
+  DeleteAgentByAgentIdBuildDraftResponses[keyof DeleteAgentByAgentIdBuildDraftResponses]
 
 export type GetAgentByAgentIdBuildDraftData = {
   body?: never
@@ -2210,8 +2210,8 @@ export type GetAgentByAgentIdBuildDraftResponses = {
   200: AgentBuildDraftResponse
 }
 
-export type GetAgentByAgentIdBuildDraftResponse
-  = GetAgentByAgentIdBuildDraftResponses[keyof GetAgentByAgentIdBuildDraftResponses]
+export type GetAgentByAgentIdBuildDraftResponse =
+  GetAgentByAgentIdBuildDraftResponses[keyof GetAgentByAgentIdBuildDraftResponses]
 
 export type PutAgentByAgentIdBuildDraftData = {
   body: ComposerSavePayload
@@ -2226,8 +2226,8 @@ export type PutAgentByAgentIdBuildDraftResponses = {
   200: AgentBuildDraftResponse
 }
 
-export type PutAgentByAgentIdBuildDraftResponse
-  = PutAgentByAgentIdBuildDraftResponses[keyof PutAgentByAgentIdBuildDraftResponses]
+export type PutAgentByAgentIdBuildDraftResponse =
+  PutAgentByAgentIdBuildDraftResponses[keyof PutAgentByAgentIdBuildDraftResponses]
 
 export type PostAgentByAgentIdBuildDraftApplyData = {
   body?: never
@@ -2242,8 +2242,8 @@ export type PostAgentByAgentIdBuildDraftApplyResponses = {
   200: AgentBuildDraftApplyResponse
 }
 
-export type PostAgentByAgentIdBuildDraftApplyResponse
-  = PostAgentByAgentIdBuildDraftApplyResponses[keyof PostAgentByAgentIdBuildDraftApplyResponses]
+export type PostAgentByAgentIdBuildDraftApplyResponse =
+  PostAgentByAgentIdBuildDraftApplyResponses[keyof PostAgentByAgentIdBuildDraftApplyResponses]
 
 export type PostAgentByAgentIdBuildDraftCheckoutData = {
   body: AgentBuildDraftCheckoutPayload
@@ -2258,8 +2258,8 @@ export type PostAgentByAgentIdBuildDraftCheckoutResponses = {
   200: AgentBuildDraftResponse
 }
 
-export type PostAgentByAgentIdBuildDraftCheckoutResponse
-  = PostAgentByAgentIdBuildDraftCheckoutResponses[keyof PostAgentByAgentIdBuildDraftCheckoutResponses]
+export type PostAgentByAgentIdBuildDraftCheckoutResponse =
+  PostAgentByAgentIdBuildDraftCheckoutResponses[keyof PostAgentByAgentIdBuildDraftCheckoutResponses]
 
 export type GetAgentByAgentIdChatMessagesData = {
   body?: never
@@ -2282,8 +2282,8 @@ export type GetAgentByAgentIdChatMessagesResponses = {
   200: MessageInfiniteScrollPaginationResponse
 }
 
-export type GetAgentByAgentIdChatMessagesResponse
-  = GetAgentByAgentIdChatMessagesResponses[keyof GetAgentByAgentIdChatMessagesResponses]
+export type GetAgentByAgentIdChatMessagesResponse =
+  GetAgentByAgentIdChatMessagesResponses[keyof GetAgentByAgentIdChatMessagesResponses]
 
 export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
@@ -2303,8 +2303,8 @@ export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses 
   200: SuggestedQuestionsResponse
 }
 
-export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponse
-  = GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses[keyof GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses]
+export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponse =
+  GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses[keyof GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses]
 
 export type PostAgentByAgentIdChatMessagesByTaskIdStopData = {
   body?: never
@@ -2320,8 +2320,8 @@ export type PostAgentByAgentIdChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAgentByAgentIdChatMessagesByTaskIdStopResponse
-  = PostAgentByAgentIdChatMessagesByTaskIdStopResponses[keyof PostAgentByAgentIdChatMessagesByTaskIdStopResponses]
+export type PostAgentByAgentIdChatMessagesByTaskIdStopResponse =
+  PostAgentByAgentIdChatMessagesByTaskIdStopResponses[keyof PostAgentByAgentIdChatMessagesByTaskIdStopResponses]
 
 export type GetAgentByAgentIdComposerData = {
   body?: never
@@ -2336,8 +2336,8 @@ export type GetAgentByAgentIdComposerResponses = {
   200: AgentAppComposerResponse
 }
 
-export type GetAgentByAgentIdComposerResponse
-  = GetAgentByAgentIdComposerResponses[keyof GetAgentByAgentIdComposerResponses]
+export type GetAgentByAgentIdComposerResponse =
+  GetAgentByAgentIdComposerResponses[keyof GetAgentByAgentIdComposerResponses]
 
 export type PutAgentByAgentIdComposerData = {
   body: ComposerSavePayload
@@ -2352,8 +2352,8 @@ export type PutAgentByAgentIdComposerResponses = {
   200: AgentAppComposerResponse
 }
 
-export type PutAgentByAgentIdComposerResponse
-  = PutAgentByAgentIdComposerResponses[keyof PutAgentByAgentIdComposerResponses]
+export type PutAgentByAgentIdComposerResponse =
+  PutAgentByAgentIdComposerResponses[keyof PutAgentByAgentIdComposerResponses]
 
 export type GetAgentByAgentIdComposerCandidatesData = {
   body?: never
@@ -2368,8 +2368,8 @@ export type GetAgentByAgentIdComposerCandidatesResponses = {
   200: AgentComposerCandidatesResponse
 }
 
-export type GetAgentByAgentIdComposerCandidatesResponse
-  = GetAgentByAgentIdComposerCandidatesResponses[keyof GetAgentByAgentIdComposerCandidatesResponses]
+export type GetAgentByAgentIdComposerCandidatesResponse =
+  GetAgentByAgentIdComposerCandidatesResponses[keyof GetAgentByAgentIdComposerCandidatesResponses]
 
 export type PostAgentByAgentIdComposerValidateData = {
   body: ComposerSavePayload
@@ -2384,8 +2384,8 @@ export type PostAgentByAgentIdComposerValidateResponses = {
   200: AgentComposerValidateResponse
 }
 
-export type PostAgentByAgentIdComposerValidateResponse
-  = PostAgentByAgentIdComposerValidateResponses[keyof PostAgentByAgentIdComposerValidateResponses]
+export type PostAgentByAgentIdComposerValidateResponse =
+  PostAgentByAgentIdComposerValidateResponses[keyof PostAgentByAgentIdComposerValidateResponses]
 
 export type GetAgentByAgentIdConfigFilesData = {
   body?: never
@@ -2403,8 +2403,8 @@ export type GetAgentByAgentIdConfigFilesResponses = {
   200: AgentConfigFileListResponse
 }
 
-export type GetAgentByAgentIdConfigFilesResponse
-  = GetAgentByAgentIdConfigFilesResponses[keyof GetAgentByAgentIdConfigFilesResponses]
+export type GetAgentByAgentIdConfigFilesResponse =
+  GetAgentByAgentIdConfigFilesResponses[keyof GetAgentByAgentIdConfigFilesResponses]
 
 export type PostAgentByAgentIdConfigFilesData = {
   body: AgentConfigFileUploadPayload
@@ -2422,8 +2422,8 @@ export type PostAgentByAgentIdConfigFilesResponses = {
   201: AgentConfigFileUploadResponse
 }
 
-export type PostAgentByAgentIdConfigFilesResponse
-  = PostAgentByAgentIdConfigFilesResponses[keyof PostAgentByAgentIdConfigFilesResponses]
+export type PostAgentByAgentIdConfigFilesResponse =
+  PostAgentByAgentIdConfigFilesResponses[keyof PostAgentByAgentIdConfigFilesResponses]
 
 export type DeleteAgentByAgentIdConfigFilesByNameData = {
   body?: never
@@ -2442,8 +2442,8 @@ export type DeleteAgentByAgentIdConfigFilesByNameResponses = {
   200: AgentConfigDeleteResponse
 }
 
-export type DeleteAgentByAgentIdConfigFilesByNameResponse
-  = DeleteAgentByAgentIdConfigFilesByNameResponses[keyof DeleteAgentByAgentIdConfigFilesByNameResponses]
+export type DeleteAgentByAgentIdConfigFilesByNameResponse =
+  DeleteAgentByAgentIdConfigFilesByNameResponses[keyof DeleteAgentByAgentIdConfigFilesByNameResponses]
 
 export type GetAgentByAgentIdConfigFilesByNameDownloadData = {
   body?: never
@@ -2462,8 +2462,8 @@ export type GetAgentByAgentIdConfigFilesByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
 
-export type GetAgentByAgentIdConfigFilesByNameDownloadResponse
-  = GetAgentByAgentIdConfigFilesByNameDownloadResponses[keyof GetAgentByAgentIdConfigFilesByNameDownloadResponses]
+export type GetAgentByAgentIdConfigFilesByNameDownloadResponse =
+  GetAgentByAgentIdConfigFilesByNameDownloadResponses[keyof GetAgentByAgentIdConfigFilesByNameDownloadResponses]
 
 export type GetAgentByAgentIdConfigFilesByNamePreviewData = {
   body?: never
@@ -2482,8 +2482,8 @@ export type GetAgentByAgentIdConfigFilesByNamePreviewResponses = {
   200: AgentConfigFilePreviewResponse
 }
 
-export type GetAgentByAgentIdConfigFilesByNamePreviewResponse
-  = GetAgentByAgentIdConfigFilesByNamePreviewResponses[keyof GetAgentByAgentIdConfigFilesByNamePreviewResponses]
+export type GetAgentByAgentIdConfigFilesByNamePreviewResponse =
+  GetAgentByAgentIdConfigFilesByNamePreviewResponses[keyof GetAgentByAgentIdConfigFilesByNamePreviewResponses]
 
 export type GetAgentByAgentIdConfigManifestData = {
   body?: never
@@ -2501,8 +2501,8 @@ export type GetAgentByAgentIdConfigManifestResponses = {
   200: AgentConfigManifestResponse
 }
 
-export type GetAgentByAgentIdConfigManifestResponse
-  = GetAgentByAgentIdConfigManifestResponses[keyof GetAgentByAgentIdConfigManifestResponses]
+export type GetAgentByAgentIdConfigManifestResponse =
+  GetAgentByAgentIdConfigManifestResponses[keyof GetAgentByAgentIdConfigManifestResponses]
 
 export type GetAgentByAgentIdConfigSkillsData = {
   body?: never
@@ -2520,8 +2520,8 @@ export type GetAgentByAgentIdConfigSkillsResponses = {
   200: AgentConfigSkillListResponse
 }
 
-export type GetAgentByAgentIdConfigSkillsResponse
-  = GetAgentByAgentIdConfigSkillsResponses[keyof GetAgentByAgentIdConfigSkillsResponses]
+export type GetAgentByAgentIdConfigSkillsResponse =
+  GetAgentByAgentIdConfigSkillsResponses[keyof GetAgentByAgentIdConfigSkillsResponses]
 
 export type PostAgentByAgentIdConfigSkillsUploadData = {
   body: {
@@ -2541,8 +2541,8 @@ export type PostAgentByAgentIdConfigSkillsUploadResponses = {
   201: AgentConfigSkillUploadResponse
 }
 
-export type PostAgentByAgentIdConfigSkillsUploadResponse
-  = PostAgentByAgentIdConfigSkillsUploadResponses[keyof PostAgentByAgentIdConfigSkillsUploadResponses]
+export type PostAgentByAgentIdConfigSkillsUploadResponse =
+  PostAgentByAgentIdConfigSkillsUploadResponses[keyof PostAgentByAgentIdConfigSkillsUploadResponses]
 
 export type DeleteAgentByAgentIdConfigSkillsByNameData = {
   body?: never
@@ -2561,8 +2561,8 @@ export type DeleteAgentByAgentIdConfigSkillsByNameResponses = {
   200: AgentConfigDeleteResponse
 }
 
-export type DeleteAgentByAgentIdConfigSkillsByNameResponse
-  = DeleteAgentByAgentIdConfigSkillsByNameResponses[keyof DeleteAgentByAgentIdConfigSkillsByNameResponses]
+export type DeleteAgentByAgentIdConfigSkillsByNameResponse =
+  DeleteAgentByAgentIdConfigSkillsByNameResponses[keyof DeleteAgentByAgentIdConfigSkillsByNameResponses]
 
 export type GetAgentByAgentIdConfigSkillsByNameDownloadData = {
   body?: never
@@ -2581,8 +2581,8 @@ export type GetAgentByAgentIdConfigSkillsByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
 
-export type GetAgentByAgentIdConfigSkillsByNameDownloadResponse
-  = GetAgentByAgentIdConfigSkillsByNameDownloadResponses[keyof GetAgentByAgentIdConfigSkillsByNameDownloadResponses]
+export type GetAgentByAgentIdConfigSkillsByNameDownloadResponse =
+  GetAgentByAgentIdConfigSkillsByNameDownloadResponses[keyof GetAgentByAgentIdConfigSkillsByNameDownloadResponses]
 
 export type GetAgentByAgentIdConfigSkillsByNameFilesContentData = {
   body?: never
@@ -2600,8 +2600,8 @@ export type GetAgentByAgentIdConfigSkillsByNameFilesContentResponses = {
   }
 }
 
-export type GetAgentByAgentIdConfigSkillsByNameFilesContentResponse
-  = GetAgentByAgentIdConfigSkillsByNameFilesContentResponses[keyof GetAgentByAgentIdConfigSkillsByNameFilesContentResponses]
+export type GetAgentByAgentIdConfigSkillsByNameFilesContentResponse =
+  GetAgentByAgentIdConfigSkillsByNameFilesContentResponses[keyof GetAgentByAgentIdConfigSkillsByNameFilesContentResponses]
 
 export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadData = {
   body?: never
@@ -2621,8 +2621,8 @@ export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
 
-export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadResponse
-  = GetAgentByAgentIdConfigSkillsByNameFilesDownloadResponses[keyof GetAgentByAgentIdConfigSkillsByNameFilesDownloadResponses]
+export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadResponse =
+  GetAgentByAgentIdConfigSkillsByNameFilesDownloadResponses[keyof GetAgentByAgentIdConfigSkillsByNameFilesDownloadResponses]
 
 export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewData = {
   body?: never
@@ -2642,8 +2642,8 @@ export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewResponses = {
   200: AgentConfigSkillFilePreviewResponse
 }
 
-export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewResponse
-  = GetAgentByAgentIdConfigSkillsByNameFilesPreviewResponses[keyof GetAgentByAgentIdConfigSkillsByNameFilesPreviewResponses]
+export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewResponse =
+  GetAgentByAgentIdConfigSkillsByNameFilesPreviewResponses[keyof GetAgentByAgentIdConfigSkillsByNameFilesPreviewResponses]
 
 export type GetAgentByAgentIdConfigSkillsByNameInspectData = {
   body?: never
@@ -2662,8 +2662,8 @@ export type GetAgentByAgentIdConfigSkillsByNameInspectResponses = {
   200: AgentConfigSkillInspectResponse
 }
 
-export type GetAgentByAgentIdConfigSkillsByNameInspectResponse
-  = GetAgentByAgentIdConfigSkillsByNameInspectResponses[keyof GetAgentByAgentIdConfigSkillsByNameInspectResponses]
+export type GetAgentByAgentIdConfigSkillsByNameInspectResponse =
+  GetAgentByAgentIdConfigSkillsByNameInspectResponses[keyof GetAgentByAgentIdConfigSkillsByNameInspectResponses]
 
 export type PostAgentByAgentIdCopyData = {
   body: AgentAppCopyPayload
@@ -2683,8 +2683,8 @@ export type PostAgentByAgentIdCopyResponses = {
   201: AgentAppDetailWithSite
 }
 
-export type PostAgentByAgentIdCopyResponse
-  = PostAgentByAgentIdCopyResponses[keyof PostAgentByAgentIdCopyResponses]
+export type PostAgentByAgentIdCopyResponse =
+  PostAgentByAgentIdCopyResponses[keyof PostAgentByAgentIdCopyResponses]
 
 export type PostAgentByAgentIdDebugConversationRefreshData = {
   body?: never
@@ -2703,8 +2703,8 @@ export type PostAgentByAgentIdDebugConversationRefreshResponses = {
   200: AgentDebugConversationRefreshResponse
 }
 
-export type PostAgentByAgentIdDebugConversationRefreshResponse
-  = PostAgentByAgentIdDebugConversationRefreshResponses[keyof PostAgentByAgentIdDebugConversationRefreshResponses]
+export type PostAgentByAgentIdDebugConversationRefreshResponse =
+  PostAgentByAgentIdDebugConversationRefreshResponses[keyof PostAgentByAgentIdDebugConversationRefreshResponses]
 
 export type GetAgentByAgentIdDriveFilesData = {
   body?: never
@@ -2721,8 +2721,8 @@ export type GetAgentByAgentIdDriveFilesResponses = {
   200: AgentDriveListResponse
 }
 
-export type GetAgentByAgentIdDriveFilesResponse
-  = GetAgentByAgentIdDriveFilesResponses[keyof GetAgentByAgentIdDriveFilesResponses]
+export type GetAgentByAgentIdDriveFilesResponse =
+  GetAgentByAgentIdDriveFilesResponses[keyof GetAgentByAgentIdDriveFilesResponses]
 
 export type GetAgentByAgentIdDriveFilesDownloadData = {
   body?: never
@@ -2739,8 +2739,8 @@ export type GetAgentByAgentIdDriveFilesDownloadResponses = {
   200: AgentDriveDownloadResponse
 }
 
-export type GetAgentByAgentIdDriveFilesDownloadResponse
-  = GetAgentByAgentIdDriveFilesDownloadResponses[keyof GetAgentByAgentIdDriveFilesDownloadResponses]
+export type GetAgentByAgentIdDriveFilesDownloadResponse =
+  GetAgentByAgentIdDriveFilesDownloadResponses[keyof GetAgentByAgentIdDriveFilesDownloadResponses]
 
 export type GetAgentByAgentIdDriveFilesPreviewData = {
   body?: never
@@ -2757,8 +2757,8 @@ export type GetAgentByAgentIdDriveFilesPreviewResponses = {
   200: AgentDrivePreviewResponse
 }
 
-export type GetAgentByAgentIdDriveFilesPreviewResponse
-  = GetAgentByAgentIdDriveFilesPreviewResponses[keyof GetAgentByAgentIdDriveFilesPreviewResponses]
+export type GetAgentByAgentIdDriveFilesPreviewResponse =
+  GetAgentByAgentIdDriveFilesPreviewResponses[keyof GetAgentByAgentIdDriveFilesPreviewResponses]
 
 export type GetAgentByAgentIdDriveSkillsData = {
   body?: never
@@ -2773,8 +2773,8 @@ export type GetAgentByAgentIdDriveSkillsResponses = {
   200: AgentDriveSkillListResponse
 }
 
-export type GetAgentByAgentIdDriveSkillsResponse
-  = GetAgentByAgentIdDriveSkillsResponses[keyof GetAgentByAgentIdDriveSkillsResponses]
+export type GetAgentByAgentIdDriveSkillsResponse =
+  GetAgentByAgentIdDriveSkillsResponses[keyof GetAgentByAgentIdDriveSkillsResponses]
 
 export type GetAgentByAgentIdDriveSkillsBySkillPathInspectData = {
   body?: never
@@ -2790,8 +2790,8 @@ export type GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses = {
   200: AgentDriveSkillInspectResponse
 }
 
-export type GetAgentByAgentIdDriveSkillsBySkillPathInspectResponse
-  = GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses[keyof GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses]
+export type GetAgentByAgentIdDriveSkillsBySkillPathInspectResponse =
+  GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses[keyof GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses]
 
 export type PostAgentByAgentIdFeaturesData = {
   body: AgentAppFeaturesPayload
@@ -2811,8 +2811,8 @@ export type PostAgentByAgentIdFeaturesResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAgentByAgentIdFeaturesResponse
-  = PostAgentByAgentIdFeaturesResponses[keyof PostAgentByAgentIdFeaturesResponses]
+export type PostAgentByAgentIdFeaturesResponse =
+  PostAgentByAgentIdFeaturesResponses[keyof PostAgentByAgentIdFeaturesResponses]
 
 export type PostAgentByAgentIdFeedbacksData = {
   body: MessageFeedbackPayload
@@ -2831,8 +2831,8 @@ export type PostAgentByAgentIdFeedbacksResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAgentByAgentIdFeedbacksResponse
-  = PostAgentByAgentIdFeedbacksResponses[keyof PostAgentByAgentIdFeedbacksResponses]
+export type PostAgentByAgentIdFeedbacksResponse =
+  PostAgentByAgentIdFeedbacksResponses[keyof PostAgentByAgentIdFeedbacksResponses]
 
 export type DeleteAgentByAgentIdFilesData = {
   body?: never
@@ -2849,8 +2849,8 @@ export type DeleteAgentByAgentIdFilesResponses = {
   200: AgentDriveDeleteResponse
 }
 
-export type DeleteAgentByAgentIdFilesResponse
-  = DeleteAgentByAgentIdFilesResponses[keyof DeleteAgentByAgentIdFilesResponses]
+export type DeleteAgentByAgentIdFilesResponse =
+  DeleteAgentByAgentIdFilesResponses[keyof DeleteAgentByAgentIdFilesResponses]
 
 export type PostAgentByAgentIdFilesData = {
   body: AgentDriveFilePayload
@@ -2865,8 +2865,8 @@ export type PostAgentByAgentIdFilesResponses = {
   201: AgentDriveFileCommitResponse
 }
 
-export type PostAgentByAgentIdFilesResponse
-  = PostAgentByAgentIdFilesResponses[keyof PostAgentByAgentIdFilesResponses]
+export type PostAgentByAgentIdFilesResponse =
+  PostAgentByAgentIdFilesResponses[keyof PostAgentByAgentIdFilesResponses]
 
 export type GetAgentByAgentIdLogSourcesData = {
   body?: never
@@ -2881,8 +2881,8 @@ export type GetAgentByAgentIdLogSourcesResponses = {
   200: AgentLogSourceListResponse
 }
 
-export type GetAgentByAgentIdLogSourcesResponse
-  = GetAgentByAgentIdLogSourcesResponses[keyof GetAgentByAgentIdLogSourcesResponses]
+export type GetAgentByAgentIdLogSourcesResponse =
+  GetAgentByAgentIdLogSourcesResponses[keyof GetAgentByAgentIdLogSourcesResponses]
 
 export type GetAgentByAgentIdLogsData = {
   body?: never
@@ -2909,8 +2909,8 @@ export type GetAgentByAgentIdLogsResponses = {
   200: AgentLogListResponse
 }
 
-export type GetAgentByAgentIdLogsResponse
-  = GetAgentByAgentIdLogsResponses[keyof GetAgentByAgentIdLogsResponses]
+export type GetAgentByAgentIdLogsResponse =
+  GetAgentByAgentIdLogsResponses[keyof GetAgentByAgentIdLogsResponses]
 
 export type GetAgentByAgentIdLogsByConversationIdMessagesData = {
   body?: never
@@ -2938,8 +2938,8 @@ export type GetAgentByAgentIdLogsByConversationIdMessagesResponses = {
   200: AgentLogMessageListResponse
 }
 
-export type GetAgentByAgentIdLogsByConversationIdMessagesResponse
-  = GetAgentByAgentIdLogsByConversationIdMessagesResponses[keyof GetAgentByAgentIdLogsByConversationIdMessagesResponses]
+export type GetAgentByAgentIdLogsByConversationIdMessagesResponse =
+  GetAgentByAgentIdLogsByConversationIdMessagesResponses[keyof GetAgentByAgentIdLogsByConversationIdMessagesResponses]
 
 export type GetAgentByAgentIdMessagesByMessageIdData = {
   body?: never
@@ -2959,8 +2959,8 @@ export type GetAgentByAgentIdMessagesByMessageIdResponses = {
   200: MessageDetailResponse
 }
 
-export type GetAgentByAgentIdMessagesByMessageIdResponse
-  = GetAgentByAgentIdMessagesByMessageIdResponses[keyof GetAgentByAgentIdMessagesByMessageIdResponses]
+export type GetAgentByAgentIdMessagesByMessageIdResponse =
+  GetAgentByAgentIdMessagesByMessageIdResponses[keyof GetAgentByAgentIdMessagesByMessageIdResponses]
 
 export type PostAgentByAgentIdPublishData = {
   body: AgentPublishPayload
@@ -2979,8 +2979,8 @@ export type PostAgentByAgentIdPublishResponses = {
   200: AgentPublishResponse
 }
 
-export type PostAgentByAgentIdPublishResponse
-  = PostAgentByAgentIdPublishResponses[keyof PostAgentByAgentIdPublishResponses]
+export type PostAgentByAgentIdPublishResponse =
+  PostAgentByAgentIdPublishResponses[keyof PostAgentByAgentIdPublishResponses]
 
 export type GetAgentByAgentIdReferencingWorkflowsData = {
   body?: never
@@ -2999,8 +2999,8 @@ export type GetAgentByAgentIdReferencingWorkflowsResponses = {
   200: AgentReferencingWorkflowsResponse
 }
 
-export type GetAgentByAgentIdReferencingWorkflowsResponse
-  = GetAgentByAgentIdReferencingWorkflowsResponses[keyof GetAgentByAgentIdReferencingWorkflowsResponses]
+export type GetAgentByAgentIdReferencingWorkflowsResponse =
+  GetAgentByAgentIdReferencingWorkflowsResponses[keyof GetAgentByAgentIdReferencingWorkflowsResponses]
 
 export type GetAgentByAgentIdSandboxData = {
   body?: never
@@ -3017,8 +3017,8 @@ export type GetAgentByAgentIdSandboxResponses = {
   200: SandboxInfoResponse
 }
 
-export type GetAgentByAgentIdSandboxResponse
-  = GetAgentByAgentIdSandboxResponses[keyof GetAgentByAgentIdSandboxResponses]
+export type GetAgentByAgentIdSandboxResponse =
+  GetAgentByAgentIdSandboxResponses[keyof GetAgentByAgentIdSandboxResponses]
 
 export type GetAgentByAgentIdSandboxFilesData = {
   body?: never
@@ -3036,8 +3036,8 @@ export type GetAgentByAgentIdSandboxFilesResponses = {
   200: SandboxListResponse
 }
 
-export type GetAgentByAgentIdSandboxFilesResponse
-  = GetAgentByAgentIdSandboxFilesResponses[keyof GetAgentByAgentIdSandboxFilesResponses]
+export type GetAgentByAgentIdSandboxFilesResponse =
+  GetAgentByAgentIdSandboxFilesResponses[keyof GetAgentByAgentIdSandboxFilesResponses]
 
 export type GetAgentByAgentIdSandboxFilesReadData = {
   body?: never
@@ -3055,8 +3055,8 @@ export type GetAgentByAgentIdSandboxFilesReadResponses = {
   200: SandboxReadResponse
 }
 
-export type GetAgentByAgentIdSandboxFilesReadResponse
-  = GetAgentByAgentIdSandboxFilesReadResponses[keyof GetAgentByAgentIdSandboxFilesReadResponses]
+export type GetAgentByAgentIdSandboxFilesReadResponse =
+  GetAgentByAgentIdSandboxFilesReadResponses[keyof GetAgentByAgentIdSandboxFilesReadResponses]
 
 export type PostAgentByAgentIdSandboxFilesUploadData = {
   body: AgentSandboxUploadPayload
@@ -3071,8 +3071,8 @@ export type PostAgentByAgentIdSandboxFilesUploadResponses = {
   200: SandboxUploadResponse
 }
 
-export type PostAgentByAgentIdSandboxFilesUploadResponse
-  = PostAgentByAgentIdSandboxFilesUploadResponses[keyof PostAgentByAgentIdSandboxFilesUploadResponses]
+export type PostAgentByAgentIdSandboxFilesUploadResponse =
+  PostAgentByAgentIdSandboxFilesUploadResponses[keyof PostAgentByAgentIdSandboxFilesUploadResponses]
 
 export type PostAgentByAgentIdSkillsUploadData = {
   body: {
@@ -3093,8 +3093,8 @@ export type PostAgentByAgentIdSkillsUploadResponses = {
   201: AgentSkillUploadResponse
 }
 
-export type PostAgentByAgentIdSkillsUploadResponse
-  = PostAgentByAgentIdSkillsUploadResponses[keyof PostAgentByAgentIdSkillsUploadResponses]
+export type PostAgentByAgentIdSkillsUploadResponse =
+  PostAgentByAgentIdSkillsUploadResponses[keyof PostAgentByAgentIdSkillsUploadResponses]
 
 export type DeleteAgentByAgentIdSkillsBySlugData = {
   body?: never
@@ -3110,8 +3110,8 @@ export type DeleteAgentByAgentIdSkillsBySlugResponses = {
   200: AgentDriveDeleteResponse
 }
 
-export type DeleteAgentByAgentIdSkillsBySlugResponse
-  = DeleteAgentByAgentIdSkillsBySlugResponses[keyof DeleteAgentByAgentIdSkillsBySlugResponses]
+export type DeleteAgentByAgentIdSkillsBySlugResponse =
+  DeleteAgentByAgentIdSkillsBySlugResponses[keyof DeleteAgentByAgentIdSkillsBySlugResponses]
 
 export type PostAgentByAgentIdSkillsBySlugInferToolsData = {
   body?: never
@@ -3127,8 +3127,8 @@ export type PostAgentByAgentIdSkillsBySlugInferToolsResponses = {
   200: SkillToolInferenceResult
 }
 
-export type PostAgentByAgentIdSkillsBySlugInferToolsResponse
-  = PostAgentByAgentIdSkillsBySlugInferToolsResponses[keyof PostAgentByAgentIdSkillsBySlugInferToolsResponses]
+export type PostAgentByAgentIdSkillsBySlugInferToolsResponse =
+  PostAgentByAgentIdSkillsBySlugInferToolsResponses[keyof PostAgentByAgentIdSkillsBySlugInferToolsResponses]
 
 export type GetAgentByAgentIdStatisticsSummaryData = {
   body?: never
@@ -3147,8 +3147,8 @@ export type GetAgentByAgentIdStatisticsSummaryResponses = {
   200: AgentStatisticSummaryEnvelopeResponse
 }
 
-export type GetAgentByAgentIdStatisticsSummaryResponse
-  = GetAgentByAgentIdStatisticsSummaryResponses[keyof GetAgentByAgentIdStatisticsSummaryResponses]
+export type GetAgentByAgentIdStatisticsSummaryResponse =
+  GetAgentByAgentIdStatisticsSummaryResponses[keyof GetAgentByAgentIdStatisticsSummaryResponses]
 
 export type GetAgentByAgentIdVersionsData = {
   body?: never
@@ -3163,8 +3163,8 @@ export type GetAgentByAgentIdVersionsResponses = {
   200: AgentConfigSnapshotListResponse
 }
 
-export type GetAgentByAgentIdVersionsResponse
-  = GetAgentByAgentIdVersionsResponses[keyof GetAgentByAgentIdVersionsResponses]
+export type GetAgentByAgentIdVersionsResponse =
+  GetAgentByAgentIdVersionsResponses[keyof GetAgentByAgentIdVersionsResponses]
 
 export type GetAgentByAgentIdVersionsByVersionIdData = {
   body?: never
@@ -3180,8 +3180,8 @@ export type GetAgentByAgentIdVersionsByVersionIdResponses = {
   200: AgentConfigSnapshotDetailResponse
 }
 
-export type GetAgentByAgentIdVersionsByVersionIdResponse
-  = GetAgentByAgentIdVersionsByVersionIdResponses[keyof GetAgentByAgentIdVersionsByVersionIdResponses]
+export type GetAgentByAgentIdVersionsByVersionIdResponse =
+  GetAgentByAgentIdVersionsByVersionIdResponses[keyof GetAgentByAgentIdVersionsByVersionIdResponses]
 
 export type PostAgentByAgentIdVersionsByVersionIdRestoreData = {
   body?: never
@@ -3197,5 +3197,5 @@ export type PostAgentByAgentIdVersionsByVersionIdRestoreResponses = {
   200: AgentConfigSnapshotRestoreResponse
 }
 
-export type PostAgentByAgentIdVersionsByVersionIdRestoreResponse
-  = PostAgentByAgentIdVersionsByVersionIdRestoreResponses[keyof PostAgentByAgentIdVersionsByVersionIdRestoreResponses]
+export type PostAgentByAgentIdVersionsByVersionIdRestoreResponse =
+  PostAgentByAgentIdVersionsByVersionIdRestoreResponses[keyof PostAgentByAgentIdVersionsByVersionIdRestoreResponses]

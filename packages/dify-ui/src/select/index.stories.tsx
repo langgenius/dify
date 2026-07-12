@@ -34,7 +34,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound select built on Base UI Select. Compose `SelectTrigger`, `SelectContent`, and `SelectItem` to build accessible single-value pickers with groups, labels, separators, and keyboard selection.',
+        component:
+          'Compound select built on Base UI Select. Compose `SelectTrigger`, `SelectContent`, and `SelectItem` to build accessible single-value pickers with groups, labels, separators, and keyboard selection.',
       },
     },
   },
@@ -147,7 +148,7 @@ export const WithPlaceholder: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="flex flex-col gap-3">
-      {(['small', 'medium', 'large'] as const).map(size => (
+      {(['small', 'medium', 'large'] as const).map((size) => (
         <div key={size} className={triggerWidth}>
           <Select defaultValue="seattle">
             <SelectTrigger aria-label={`${size} select`} size={size}>
@@ -354,7 +355,9 @@ export const InForm: Story = {
         <FieldDescription>Used to schedule workflow runs.</FieldDescription>
       </Field>
       <div className="flex justify-end">
-        <Button type="submit" variant="primary">Save</Button>
+        <Button type="submit" variant="primary">
+          Save
+        </Button>
       </div>
     </Form>
   ),

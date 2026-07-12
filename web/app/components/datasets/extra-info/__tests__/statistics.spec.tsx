@@ -72,11 +72,15 @@ describe('Statistics', () => {
   })
 
   it('should use the compact bottom-sidebar statistics layout', () => {
-    const { container } = render(<Statistics expand={true} documentCount={5} relatedApps={mockRelatedApps} />)
+    const { container } = render(
+      <Statistics expand={true} documentCount={5} relatedApps={mockRelatedApps} />,
+    )
 
     expect(container.firstChild).toHaveClass('items-start', 'gap-x-0.5', 'px-1', 'pt-2')
     expect(container.querySelector('.rotate-\\[15deg\\]')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.datasetMenus.relatedApp' })).toHaveClass('max-w-full')
+    expect(screen.getByRole('button', { name: 'common.datasetMenus.relatedApp' })).toHaveClass(
+      'max-w-full',
+    )
   })
 
   it('should be wrapped with React.memo', () => {

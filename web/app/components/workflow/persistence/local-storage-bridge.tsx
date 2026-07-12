@@ -16,23 +16,21 @@ export const WorkflowLocalStorageBridge = () => {
   const [storedControlMode, setControlModeStorage] = useWorkflowOperationMode()
 
   const workflowStore = useWorkflowStore()
-  const setNodePanelWidth = useStore(state => state.setNodePanelWidth)
-  const setPanelWidth = useStore(state => state.setPanelWidth)
-  const setPreviewPanelWidth = useStore(state => state.setPreviewPanelWidth)
-  const setVariableInspectPanelHeight = useStore(state => state.setVariableInspectPanelHeight)
-  const setControlMode = useStore(state => state.setControlMode)
+  const setNodePanelWidth = useStore((state) => state.setNodePanelWidth)
+  const setPanelWidth = useStore((state) => state.setPanelWidth)
+  const setPreviewPanelWidth = useStore((state) => state.setPreviewPanelWidth)
+  const setVariableInspectPanelHeight = useStore((state) => state.setVariableInspectPanelHeight)
+  const setControlMode = useStore((state) => state.setControlMode)
 
   useLayoutEffect(() => {
-    if (!isFiniteNumber(storedNodePanelWidth))
-      return
+    if (!isFiniteNumber(storedNodePanelWidth)) return
 
     setNodePanelWidth(storedNodePanelWidth)
     setPanelWidth(storedNodePanelWidth)
   }, [setNodePanelWidth, setPanelWidth, storedNodePanelWidth])
 
   useLayoutEffect(() => {
-    if (isFiniteNumber(storedPreviewPanelWidth))
-      setPreviewPanelWidth(storedPreviewPanelWidth)
+    if (isFiniteNumber(storedPreviewPanelWidth)) setPreviewPanelWidth(storedPreviewPanelWidth)
   }, [setPreviewPanelWidth, storedPreviewPanelWidth])
 
   useLayoutEffect(() => {
@@ -41,8 +39,7 @@ export const WorkflowLocalStorageBridge = () => {
   }, [setVariableInspectPanelHeight, storedVariableInspectPanelHeight])
 
   useLayoutEffect(() => {
-    if (isControlMode(storedControlMode))
-      setControlMode(storedControlMode)
+    if (isControlMode(storedControlMode)) setControlMode(storedControlMode)
   }, [setControlMode, storedControlMode])
 
   useEffect(() => {

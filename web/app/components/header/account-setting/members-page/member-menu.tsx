@@ -57,8 +57,8 @@ const MemberMenu = ({
   const selectedRoles = member.roles || []
   const memberName = member.name || member.email
   const assignRolesLabel = allowMultipleRoles
-    ? t($ => $['members.assignRoles'], { ns: 'common', defaultValue: 'Assign Roles' })
-    : t($ => $['members.editRole'], { ns: 'common', defaultValue: 'Edit Role' })
+    ? t(($) => $['members.assignRoles'], { ns: 'common', defaultValue: 'Assign Roles' })
+    : t(($) => $['members.editRole'], { ns: 'common', defaultValue: 'Edit Role' })
 
   const handleOpenAssignRoles = useCallback(() => {
     setOpen(false)
@@ -67,20 +67,26 @@ const MemberMenu = ({
 
   const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
 
-  const handleAssignRolesSubmit = useCallback((roles: Role[]) => {
-    const roleIds = allowMultipleRoles
-      ? roles.map(role => role.id)
-      : roles.slice(0, 1).map(role => role.id)
+  const handleAssignRolesSubmit = useCallback(
+    (roles: Role[]) => {
+      const roleIds = allowMultipleRoles
+        ? roles.map((role) => role.id)
+        : roles.slice(0, 1).map((role) => role.id)
 
-    updateRolesOfMember({
-      memberId: member.id,
-      roleIds,
-    }, {
-      onSuccess: () => {
-        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      },
-    })
-  }, [allowMultipleRoles, member.id, t, updateRolesOfMember])
+      updateRolesOfMember(
+        {
+          memberId: member.id,
+          roleIds,
+        },
+        {
+          onSuccess: () => {
+            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+          },
+        },
+      )
+    },
+    [allowMultipleRoles, member.id, t, updateRolesOfMember],
+  )
 
   const handleOpenRemoveConfirm = useCallback(() => {
     setOpen(false)
@@ -92,12 +98,10 @@ const MemberMenu = ({
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
-      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setRemoveConfirmOpen(false)
-    }
-    catch {
-    }
-    finally {
+    } catch {
+    } finally {
       setRemoving(false)
     }
   }, [member.id, queryClient, t])
@@ -107,20 +111,22 @@ const MemberMenu = ({
     onTransferOwnership?.()
   }, [onTransferOwnership])
 
-  if (!canAssignRoles && !canRemove && !showTransferOwnership)
-    return null
+  if (!canAssignRoles && !canRemove && !showTransferOwnership) return null
 
   return (
     <div role="presentation">
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
-          render={(
+          render={
             <ActionButton
               size="l"
               className="data-popup-open:bg-state-base-hover"
-              aria-label={t($ => $['members.memberActions'], { ns: 'common', defaultValue: 'Member actions' })}
+              aria-label={t(($) => $['members.memberActions'], {
+                ns: 'common',
+                defaultValue: 'Member actions',
+              })}
             />
-          )}
+          }
         >
           <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
         </DropdownMenuTrigger>
@@ -142,40 +148,40 @@ const MemberMenu = ({
               className="system-sm-medium text-text-secondary"
               onClick={handleTransferOwnership}
             >
-              {t($ => $['members.transferOwnership'], { ns: 'common' })}
+              {t(($) => $['members.transferOwnership'], { ns: 'common' })}
             </DropdownMenuItem>
           )}
-          {(canAssignRoles || showTransferOwnership) && canRemove && (
-            <DropdownMenuSeparator />
-          )}
+          {(canAssignRoles || showTransferOwnership) && canRemove && <DropdownMenuSeparator />}
           {canRemove && (
             <DropdownMenuItem
               variant="destructive"
               className="system-sm-medium"
               onClick={handleOpenRemoveConfirm}
             >
-              {t($ => $['members.removeFromTeam'], { ns: 'common' })}
+              {t(($) => $['members.removeFromTeam'], { ns: 'common' })}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      <AlertDialog open={removeConfirmOpen} onOpenChange={open => !open && setRemoveConfirmOpen(false)}>
+      <AlertDialog
+        open={removeConfirmOpen}
+        onOpenChange={(open) => !open && setRemoveConfirmOpen(false)}
+      >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t($ => $['members.removeFromTeamConfirmTitle'], { ns: 'common', memberName })}
+              {t(($) => $['members.removeFromTeamConfirmTitle'], { ns: 'common', memberName })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t($ => $['members.removeFromTeamConfirmDescription'], { ns: 'common' })}
+              {t(($) => $['members.removeFromTeamConfirmDescription'], { ns: 'common' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t($ => $['operation.cancel'], { ns: 'common' })}</AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              disabled={removing}
-              onClick={handleRemove}
-            >
-              {t($ => $['operation.confirm'], { ns: 'common' })}
+            <AlertDialogCancelButton>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton disabled={removing} onClick={handleRemove}>
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

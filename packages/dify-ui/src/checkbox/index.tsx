@@ -20,60 +20,50 @@ const checkboxRootClassName = cn(
   'data-disabled:data-indeterminate:hover:bg-components-checkbox-bg-disabled-checked',
 )
 
-const checkboxIndicatorClassName = 'flex size-3 items-center justify-center text-current data-unchecked:hidden'
+const checkboxIndicatorClassName =
+  'flex size-3 items-center justify-center text-current data-unchecked:hidden'
 
 const checkboxSkeletonClassName = 'size-4 shrink-0 rounded-sm bg-text-quaternary opacity-20'
 
-export type CheckboxRootProps
-  = Omit<BaseCheckboxNS.Root.Props, 'className'>
-    & {
-      className?: string
-    }
-
-export function CheckboxRoot({
-  className,
-  ...props
-}: CheckboxRootProps) {
-  return (
-    <BaseCheckbox.Root
-      className={cn(checkboxRootClassName, className)}
-      {...props}
-    />
-  )
+export type CheckboxRootProps = Omit<BaseCheckboxNS.Root.Props, 'className'> & {
+  className?: string
 }
 
-export type CheckboxIndicatorProps
-  = Omit<BaseCheckboxNS.Indicator.Props, 'className' | 'children'>
-    & {
-      className?: string
-    }
+export function CheckboxRoot({ className, ...props }: CheckboxRootProps) {
+  return <BaseCheckbox.Root className={cn(checkboxRootClassName, className)} {...props} />
+}
 
-export function CheckboxIndicator({
-  className,
-  render,
-  ...props
-}: CheckboxIndicatorProps) {
+export type CheckboxIndicatorProps = Omit<
+  BaseCheckboxNS.Indicator.Props,
+  'className' | 'children'
+> & {
+  className?: string
+}
+
+export function CheckboxIndicator({ className, render, ...props }: CheckboxIndicatorProps) {
   return (
     <BaseCheckbox.Indicator
       className={cn(checkboxIndicatorClassName, className)}
-      render={render ?? ((indicatorProps, state) => (
-        <span {...indicatorProps}>
-          {state.indeterminate
-            ? <span className="block h-[1.5px] w-1.75 rounded-full bg-current" />
-            : <span className="i-ri-check-line block size-3 shrink-0" />}
-        </span>
-      ))}
+      render={
+        render ??
+        ((indicatorProps, state) => (
+          <span {...indicatorProps}>
+            {state.indeterminate ? (
+              <span className="block h-[1.5px] w-1.75 rounded-full bg-current" />
+            ) : (
+              <span className="i-ri-check-line block size-3 shrink-0" />
+            )}
+          </span>
+        ))
+      }
       {...props}
     />
   )
 }
 
-export type CheckboxProps
-  = Omit<CheckboxRootProps, 'children'>
+export type CheckboxProps = Omit<CheckboxRootProps, 'children'>
 
-export function Checkbox({
-  ...props
-}: CheckboxProps) {
+export function Checkbox({ ...props }: CheckboxProps) {
   return (
     <CheckboxRoot {...props}>
       <CheckboxIndicator />
@@ -81,20 +71,10 @@ export function Checkbox({
   )
 }
 
-export type CheckboxSkeletonProps
-  = Omit<React.ComponentProps<'div'>, 'className'>
-    & {
-      className?: string
-    }
+export type CheckboxSkeletonProps = Omit<React.ComponentProps<'div'>, 'className'> & {
+  className?: string
+}
 
-export function CheckboxSkeleton({
-  className,
-  ...props
-}: CheckboxSkeletonProps) {
-  return (
-    <div
-      className={cn(checkboxSkeletonClassName, className)}
-      {...props}
-    />
-  )
+export function CheckboxSkeleton({ className, ...props }: CheckboxSkeletonProps) {
+  return <div className={cn(checkboxSkeletonClassName, className)} {...props} />
 }

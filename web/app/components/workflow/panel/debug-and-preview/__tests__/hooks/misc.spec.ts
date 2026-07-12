@@ -185,10 +185,13 @@ describe('useChat – handleSwitchSibling', () => {
     })
 
     act(() => {
-      result.current.handleSend({
-        query: 'child',
-        parent_message_id: 'msg-parent',
-      }, {})
+      result.current.handleSend(
+        {
+          query: 'child',
+          parent_message_id: 'msg-parent',
+        },
+        {},
+      )
     })
 
     act(() => {
@@ -228,10 +231,16 @@ describe('useChat – handleSubmitHumanInputForm', () => {
     const { result } = renderHook(() => useChat({}))
 
     await act(async () => {
-      await result.current.handleSubmitHumanInputForm('token-123', { inputs: { field: 'value' }, action: 'approve' })
+      await result.current.handleSubmitHumanInputForm('token-123', {
+        inputs: { field: 'value' },
+        action: 'approve',
+      })
     })
 
-    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-123', { inputs: { field: 'value' }, action: 'approve' })
+    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-123', {
+      inputs: { field: 'value' },
+      action: 'approve',
+    })
   })
 })
 
@@ -320,23 +329,23 @@ describe('useChat – conversationId and setTargetMessageId', () => {
     const { result } = renderHook(() => useChat({}, undefined, prevChatTree))
 
     const defaultList = result.current.chatList
-    expect(defaultList.some(item => item.id === 'a1')).toBe(true)
+    expect(defaultList.some((item) => item.id === 'a1')).toBe(true)
 
     act(() => {
       result.current.setTargetMessageId('a2-branch-a')
     })
 
     const listA = result.current.chatList
-    expect(listA.some(item => item.id === 'a2-branch-a')).toBe(true)
-    expect(listA.some(item => item.id === 'a2-branch-b')).toBe(false)
+    expect(listA.some((item) => item.id === 'a2-branch-a')).toBe(true)
+    expect(listA.some((item) => item.id === 'a2-branch-b')).toBe(false)
 
     act(() => {
       result.current.setTargetMessageId('a2-branch-b')
     })
 
     const listB = result.current.chatList
-    expect(listB.some(item => item.id === 'a2-branch-b')).toBe(true)
-    expect(listB.some(item => item.id === 'a2-branch-a')).toBe(false)
+    expect(listB.some((item) => item.id === 'a2-branch-b')).toBe(true)
+    expect(listB.some((item) => item.id === 'a2-branch-a')).toBe(false)
   })
 })
 
@@ -373,10 +382,13 @@ describe('useChat – updateCurrentQAOnTree with parent_message_id', () => {
     })
 
     act(() => {
-      result.current.handleSend({
-        query: 'follow up',
-        parent_message_id: 'msg-1',
-      }, {})
+      result.current.handleSend(
+        {
+          query: 'follow up',
+          parent_message_id: 'msg-1',
+        },
+        {},
+      )
     })
 
     expect(mockHandleRun).toHaveBeenCalledTimes(2)

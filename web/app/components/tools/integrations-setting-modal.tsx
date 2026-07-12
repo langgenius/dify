@@ -25,7 +25,11 @@ export default function IntegrationsSettingModal({
   const { t } = useTranslation()
   const isAgentSource = source === 'agent'
   const handleSwitchToMarketplace = useCallback((path: string) => {
-    window.open(getMarketplaceUrl(path, undefined, { source: window.location.origin }), '_blank', 'noopener,noreferrer')
+    window.open(
+      getMarketplaceUrl(path, undefined, { source: window.location.origin }),
+      '_blank',
+      'noopener,noreferrer',
+    )
   }, [])
 
   return (
@@ -35,10 +39,11 @@ export default function IntegrationsSettingModal({
       className={isAgentSource ? 'bg-transparent backdrop-blur-none' : undefined}
       onClose={onCancel}
     >
-      <div className={cn(
-        'mx-auto flex h-dvh w-[min(1440px,calc(100vw-48px))] shrink-0 py-6',
-        isAgentSource && 'w-full p-6',
-      )}
+      <div
+        className={cn(
+          'mx-auto flex h-dvh w-[min(1440px,calc(100vw-48px))] shrink-0 py-6',
+          isAgentSource && 'w-full p-6',
+        )}
       >
         <div className="relative flex min-h-0 w-full shrink-0 overflow-hidden rounded-2xl border border-divider-subtle bg-components-panel-bg shadow-2xl">
           <IntegrationsPage
@@ -51,7 +56,7 @@ export default function IntegrationsSettingModal({
               variant="tertiary"
               size="large"
               className="px-2"
-              aria-label={t($ => $['operation.close'], { ns: 'common' })}
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               onClick={onCancel}
             >
               <span className="i-ri-close-line h-5 w-5" />

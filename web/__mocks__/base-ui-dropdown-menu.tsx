@@ -26,17 +26,16 @@ type DropdownMenuContentProps = React.HTMLAttributes<HTMLDivElement> & {
   popupClassName?: string
 }
 
-export const DropdownMenu = ({
-  children,
-  open,
-  onOpenChange,
-}: DropdownMenuProps) => {
+export const DropdownMenu = ({ children, open, onOpenChange }: DropdownMenuProps) => {
   const [localOpen, setLocalOpen] = React.useState(false)
   const resolvedOpen = open ?? localOpen
-  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
-    setLocalOpen(nextOpen)
-    onOpenChange?.(nextOpen)
-  }, [onOpenChange])
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      setLocalOpen(nextOpen)
+      onOpenChange?.(nextOpen)
+    },
+    [onOpenChange],
+  )
 
   return (
     <DropdownMenuContext.Provider value={{ open: resolvedOpen, onOpenChange: handleOpenChange }}>
@@ -59,30 +58,48 @@ export const DropdownMenuTrigger = ({
   const isNativeButton = React.isValidElement(node) && node.type === 'button'
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     onClick?.(event)
-    if (!event.defaultPrevented)
-      onOpenChange(!open)
+    if (!event.defaultPrevented) onOpenChange(!open)
   }
 
   if (React.isValidElement(node)) {
     const triggerElement = node as React.ReactElement<Record<string, unknown>>
-    const childProps = (triggerElement.props ?? {}) as React.HTMLAttributes<HTMLElement> & { 'data-testid'?: string }
+    const childProps = (triggerElement.props ?? {}) as React.HTMLAttributes<HTMLElement> & {
+      'data-testid'?: string
+    }
     const triggerProps = props as React.HTMLAttributes<HTMLElement> & { 'data-testid'?: string }
-    const role = childProps.role ?? triggerProps.role ?? (!isNativeButton && (childProps['aria-label'] || triggerProps['aria-label']) ? 'button' : undefined)
-    return React.cloneElement(triggerElement, {
-      ...props,
-      ...childProps,
-      'data-testid': childProps['data-testid'] ?? triggerProps['data-testid'] ?? 'dropdown-menu-trigger',
-      role,
-      'tabIndex': childProps.tabIndex ?? triggerProps.tabIndex ?? (role === 'button' ? 0 : undefined),
-      'onClick': (event: React.MouseEvent<HTMLElement>) => {
-        childProps.onClick?.(event)
-        handleClick(event)
+    const role =
+      childProps.role ??
+      triggerProps.role ??
+      (!isNativeButton && (childProps['aria-label'] || triggerProps['aria-label'])
+        ? 'button'
+        : undefined)
+    return React.cloneElement(
+      triggerElement,
+      {
+        ...props,
+        ...childProps,
+        'data-testid':
+          childProps['data-testid'] ?? triggerProps['data-testid'] ?? 'dropdown-menu-trigger',
+        role,
+        tabIndex:
+          childProps.tabIndex ?? triggerProps.tabIndex ?? (role === 'button' ? 0 : undefined),
+        onClick: (event: React.MouseEvent<HTMLElement>) => {
+          childProps.onClick?.(event)
+          handleClick(event)
+        },
       },
-    }, render ? (children ?? childProps.children) : childProps.children)
+      render ? (children ?? childProps.children) : childProps.children,
+    )
   }
 
   return (
-    <div data-testid="dropdown-menu-trigger" role="button" tabIndex={0} onClick={handleClick} {...props}>
+    <div
+      data-testid="dropdown-menu-trigger"
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      {...props}
+    >
       {node}
     </div>
   )
@@ -98,8 +115,7 @@ export const DropdownMenuContent = ({
   ...props
 }: DropdownMenuContentProps) => {
   const { open } = React.useContext(DropdownMenuContext)
-  if (!open)
-    return null
+  if (!open) return null
 
   return (
     <div
@@ -129,16 +145,18 @@ export const DropdownMenuRadioGroup = ({
   children,
   onValueChange,
   ...props
-}: React.HTMLAttributes<HTMLDivElement> & { children?: ReactNode, value?: unknown, onValueChange?: (value: unknown) => void }) => (
-  <div
-    role="radiogroup"
-    {...props}
-    data-on-value-change={onValueChange ? 'true' : undefined}
-  >
+}: React.HTMLAttributes<HTMLDivElement> & {
+  children?: ReactNode
+  value?: unknown
+  onValueChange?: (value: unknown) => void
+}) => (
+  <div role="radiogroup" {...props} data-on-value-change={onValueChange ? 'true' : undefined}>
     {React.Children.map(children, (child) => {
-      if (!React.isValidElement(child))
-        return child
-      return React.cloneElement(child as React.ReactElement<{ __onValueChange?: (value: unknown) => void }>, { __onValueChange: onValueChange })
+      if (!React.isValidElement(child)) return child
+      return React.cloneElement(
+        child as React.ReactElement<{ __onValueChange?: (value: unknown) => void }>,
+        { __onValueChange: onValueChange },
+      )
     })}
   </div>
 )
@@ -149,7 +167,11 @@ export const DropdownMenuRadioItem = ({
   onClick,
   __onValueChange,
   ...props
-}: React.HTMLAttributes<HTMLDivElement> & { children?: ReactNode, value?: unknown, __onValueChange?: (value: unknown) => void }) => (
+}: React.HTMLAttributes<HTMLDivElement> & {
+  children?: ReactNode
+  value?: unknown
+  __onValueChange?: (value: unknown) => void
+}) => (
   <div
     role="radio"
     onClick={(event) => {
@@ -162,11 +184,17 @@ export const DropdownMenuRadioItem = ({
   </div>
 )
 
-export const DropdownMenuRadioItemIndicator = ({ children }: { children?: ReactNode }) => <>{children}</>
+export const DropdownMenuRadioItemIndicator = ({ children }: { children?: ReactNode }) => (
+  <>{children}</>
+)
 export const DropdownMenuCheckboxItem = DropdownMenuItem
-export const DropdownMenuCheckboxItemIndicator = ({ children }: { children?: ReactNode }) => <>{children}</>
+export const DropdownMenuCheckboxItemIndicator = ({ children }: { children?: ReactNode }) => (
+  <>{children}</>
+)
 export const DropdownMenuLabel = ({ children }: { children?: ReactNode }) => <>{children}</>
-export const DropdownMenuSeparator = (props: React.HTMLAttributes<HTMLDivElement>) => <div role="separator" {...props} />
+export const DropdownMenuSeparator = (props: React.HTMLAttributes<HTMLDivElement>) => (
+  <div role="separator" {...props} />
+)
 export const DropdownMenuSub = ({ children }: { children?: ReactNode }) => <>{children}</>
 export const DropdownMenuSubTrigger = DropdownMenuItem
 export const DropdownMenuSubContent = ({ children }: { children?: ReactNode }) => <>{children}</>

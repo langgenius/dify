@@ -1,12 +1,5 @@
-import type {
-  BlockEnum,
-  ChildNodeTypeCount,
-  Node,
-} from '../../types'
-import {
-  ITERATION_PADDING,
-  NESTED_ELEMENT_Z_INDEX,
-} from '../../constants'
+import type { BlockEnum, ChildNodeTypeCount, Node } from '../../types'
+import { ITERATION_PADDING, NESTED_ELEMENT_Z_INDEX } from '../../constants'
 import { CUSTOM_ITERATION_START_NODE } from '../iteration-start/constants'
 
 type ContainerBounds = {
@@ -16,12 +9,16 @@ type ContainerBounds = {
 
 export const getIterationContainerBounds = (childrenNodes: Node[]): ContainerBounds => {
   return childrenNodes.reduce<ContainerBounds>((acc, node) => {
-    const nextRightNode = !acc.rightNode || node.position.x + node.width! > acc.rightNode.position.x + acc.rightNode.width!
-      ? node
-      : acc.rightNode
-    const nextBottomNode = !acc.bottomNode || node.position.y + node.height! > acc.bottomNode.position.y + acc.bottomNode.height!
-      ? node
-      : acc.bottomNode
+    const nextRightNode =
+      !acc.rightNode ||
+      node.position.x + node.width! > acc.rightNode.position.x + acc.rightNode.width!
+        ? node
+        : acc.rightNode
+    const nextBottomNode =
+      !acc.bottomNode ||
+      node.position.y + node.height! > acc.bottomNode.position.y + acc.bottomNode.height!
+        ? node
+        : acc.bottomNode
 
     return {
       rightNode: nextRightNode,
@@ -31,12 +28,15 @@ export const getIterationContainerBounds = (childrenNodes: Node[]): ContainerBou
 }
 
 export const getIterationContainerResize = (currentNode: Node, bounds: ContainerBounds) => {
-  const width = bounds.rightNode && currentNode.width! < bounds.rightNode.position.x + bounds.rightNode.width!
-    ? bounds.rightNode.position.x + bounds.rightNode.width! + ITERATION_PADDING.right
-    : undefined
-  const height = bounds.bottomNode && currentNode.height! < bounds.bottomNode.position.y + bounds.bottomNode.height!
-    ? bounds.bottomNode.position.y + bounds.bottomNode.height! + ITERATION_PADDING.bottom
-    : undefined
+  const width =
+    bounds.rightNode && currentNode.width! < bounds.rightNode.position.x + bounds.rightNode.width!
+      ? bounds.rightNode.position.x + bounds.rightNode.width! + ITERATION_PADDING.right
+      : undefined
+  const height =
+    bounds.bottomNode &&
+    currentNode.height! < bounds.bottomNode.position.y + bounds.bottomNode.height!
+      ? bounds.bottomNode.position.y + bounds.bottomNode.height! + ITERATION_PADDING.bottom
+      : undefined
 
   return {
     width,
@@ -45,15 +45,12 @@ export const getIterationContainerResize = (currentNode: Node, bounds: Container
 }
 
 export const getRestrictedIterationPosition = (node: Node, parentNode?: Node) => {
-  const restrictPosition: { x?: number, y?: number } = { x: undefined, y: undefined }
+  const restrictPosition: { x?: number; y?: number } = { x: undefined, y: undefined }
 
-  if (!node.data.isInIteration || !parentNode)
-    return restrictPosition
+  if (!node.data.isInIteration || !parentNode) return restrictPosition
 
-  if (node.position.y < ITERATION_PADDING.top)
-    restrictPosition.y = ITERATION_PADDING.top
-  if (node.position.x < ITERATION_PADDING.left)
-    restrictPosition.x = ITERATION_PADDING.left
+  if (node.position.y < ITERATION_PADDING.top) restrictPosition.y = ITERATION_PADDING.top
+  if (node.position.x < ITERATION_PADDING.left) restrictPosition.x = ITERATION_PADDING.left
   if (node.position.x + node.width! > parentNode.width! - ITERATION_PADDING.right)
     restrictPosition.x = parentNode.width! - ITERATION_PADDING.right - node.width!
   if (node.position.y + node.height! > parentNode.height! - ITERATION_PADDING.bottom)
@@ -63,7 +60,9 @@ export const getRestrictedIterationPosition = (node: Node, parentNode?: Node) =>
 }
 
 export const getIterationChildren = (nodes: Node[], nodeId: string) => {
-  return nodes.filter(node => node.parentId === nodeId && node.type !== CUSTOM_ITERATION_START_NODE)
+  return nodes.filter(
+    (node) => node.parentId === nodeId && node.type !== CUSTOM_ITERATION_START_NODE,
+  )
 }
 
 export const getNextChildNodeTypeCount = (
@@ -73,8 +72,7 @@ export const getNextChildNodeTypeCount = (
 ) => {
   if (!childNodeTypeCount[childNodeType])
     childNodeTypeCount[childNodeType] = nodesWithSameTypeCount + 1
-  else
-    childNodeTypeCount[childNodeType] = childNodeTypeCount[childNodeType] + 1
+  else childNodeTypeCount[childNodeType] = childNodeTypeCount[childNodeType] + 1
 
   return childNodeTypeCount[childNodeType]
 }

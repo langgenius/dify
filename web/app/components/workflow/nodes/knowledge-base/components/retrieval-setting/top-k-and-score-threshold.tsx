@@ -26,9 +26,9 @@ export type VisibleScoreThresholdFieldProps = {
   onEnabledChange: (value: boolean) => void
 }
 
-type ScoreThresholdFieldProps
-  = | VisibleScoreThresholdFieldProps
-    | {
+type ScoreThresholdFieldProps =
+  | VisibleScoreThresholdFieldProps
+  | {
       hidden: true
     }
 
@@ -55,10 +55,10 @@ export function TopKAndScoreThreshold({
   readonly,
 }: TopKAndScoreThresholdProps) {
   const { t } = useTranslation()
-  const topKLabel = t($ => $['datasetConfig.top_k'], { ns: 'appDebug' })
-  const scoreThresholdLabel = t($ => $['datasetConfig.score_threshold'], { ns: 'appDebug' })
-  const topKTip = t($ => $['datasetConfig.top_kTip'], { ns: 'appDebug' })
-  const scoreThresholdTip = t($ => $['datasetConfig.score_thresholdTip'], { ns: 'appDebug' })
+  const topKLabel = t(($) => $['datasetConfig.top_k'], { ns: 'appDebug' })
+  const scoreThresholdLabel = t(($) => $['datasetConfig.score_threshold'], { ns: 'appDebug' })
+  const topKTip = t(($) => $['datasetConfig.top_kTip'], { ns: 'appDebug' })
+  const scoreThresholdTip = t(($) => $['datasetConfig.score_thresholdTip'], { ns: 'appDebug' })
   const scoreThresholdHidden = scoreThreshold.hidden === true
   const scoreThresholdEnabled = scoreThresholdHidden ? false : (scoreThreshold.enabled ?? false)
 
@@ -66,13 +66,8 @@ export function TopKAndScoreThreshold({
     <div className="grid grid-cols-2 gap-4">
       <Field name="top_k" className="gap-0">
         <div className="mb-0.5 flex h-6 items-center">
-          <FieldLabel className="py-0 system-xs-medium text-text-secondary">
-            {topKLabel}
-          </FieldLabel>
-          <Infotip
-            aria-label={topKTip}
-            className="ml-0.5 size-3.5"
-          >
+          <FieldLabel className="py-0 system-xs-medium text-text-secondary">{topKLabel}</FieldLabel>
+          <Infotip aria-label={topKTip} className="ml-0.5 size-3.5">
             {topKTip}
           </Infotip>
         </div>
@@ -82,7 +77,7 @@ export function TopKAndScoreThreshold({
           min={TOP_K_VALUE_LIMIT.min}
           max={TOP_K_VALUE_LIMIT.max}
           value={topK.value}
-          onValueChange={value => topK.onChange(value ?? 0)}
+          onValueChange={(value) => topK.onChange(value ?? 0)}
         >
           <NumberFieldGroup>
             <NumberFieldInput />
@@ -93,53 +88,46 @@ export function TopKAndScoreThreshold({
           </NumberFieldGroup>
         </NumberField>
       </Field>
-      {scoreThresholdHidden
-        ? null
-        : (
-            <Fieldset className="min-w-0">
-              <FieldsetLegend className="sr-only">{scoreThresholdLabel}</FieldsetLegend>
-              <Field name="score_threshold_enabled" className="mb-0.5 gap-0">
-                <div className="flex h-6 items-center">
-                  <FieldLabel className="flex w-full min-w-0 grow items-center py-0 system-sm-medium text-text-secondary">
-                    <Switch
-                      className="mr-2"
-                      checked={scoreThresholdEnabled}
-                      onCheckedChange={scoreThreshold.onEnabledChange}
-                      disabled={readonly}
-                    />
-                    <span className="grow truncate">
-                      {scoreThresholdLabel}
-                    </span>
-                  </FieldLabel>
-                  <Infotip
-                    aria-label={scoreThresholdTip}
-                    className="ml-0.5 size-3.5"
-                  >
-                    {scoreThresholdTip}
-                  </Infotip>
-                </div>
-              </Field>
-              <Field name="score_threshold" className="gap-0">
-                <FieldLabel className="sr-only">{scoreThresholdLabel}</FieldLabel>
-                <NumberField
-                  disabled={readonly || !scoreThresholdEnabled}
-                  step={SCORE_THRESHOLD_VALUE_LIMIT.step}
-                  min={SCORE_THRESHOLD_VALUE_LIMIT.min}
-                  max={SCORE_THRESHOLD_VALUE_LIMIT.max}
-                  value={scoreThreshold.value ?? null}
-                  onValueChange={value => scoreThreshold.onChange(value ?? 0)}
-                >
-                  <NumberFieldGroup>
-                    <NumberFieldInput />
-                    <NumberFieldControls>
-                      <NumberFieldIncrement />
-                      <NumberFieldDecrement />
-                    </NumberFieldControls>
-                  </NumberFieldGroup>
-                </NumberField>
-              </Field>
-            </Fieldset>
-          )}
+      {scoreThresholdHidden ? null : (
+        <Fieldset className="min-w-0">
+          <FieldsetLegend className="sr-only">{scoreThresholdLabel}</FieldsetLegend>
+          <Field name="score_threshold_enabled" className="mb-0.5 gap-0">
+            <div className="flex h-6 items-center">
+              <FieldLabel className="flex w-full min-w-0 grow items-center py-0 system-sm-medium text-text-secondary">
+                <Switch
+                  className="mr-2"
+                  checked={scoreThresholdEnabled}
+                  onCheckedChange={scoreThreshold.onEnabledChange}
+                  disabled={readonly}
+                />
+                <span className="grow truncate">{scoreThresholdLabel}</span>
+              </FieldLabel>
+              <Infotip aria-label={scoreThresholdTip} className="ml-0.5 size-3.5">
+                {scoreThresholdTip}
+              </Infotip>
+            </div>
+          </Field>
+          <Field name="score_threshold" className="gap-0">
+            <FieldLabel className="sr-only">{scoreThresholdLabel}</FieldLabel>
+            <NumberField
+              disabled={readonly || !scoreThresholdEnabled}
+              step={SCORE_THRESHOLD_VALUE_LIMIT.step}
+              min={SCORE_THRESHOLD_VALUE_LIMIT.min}
+              max={SCORE_THRESHOLD_VALUE_LIMIT.max}
+              value={scoreThreshold.value ?? null}
+              onValueChange={(value) => scoreThreshold.onChange(value ?? 0)}
+            >
+              <NumberFieldGroup>
+                <NumberFieldInput />
+                <NumberFieldControls>
+                  <NumberFieldIncrement />
+                  <NumberFieldDecrement />
+                </NumberFieldControls>
+              </NumberFieldGroup>
+            </NumberField>
+          </Field>
+        </Fieldset>
+      )}
     </div>
   )
 }

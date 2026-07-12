@@ -15,7 +15,11 @@ vi.mock('../store', () => ({
 // Mock DetailHeader
 const mockDetailHeaderOnUpdate = vi.fn()
 vi.mock('../detail-header', () => ({
-  default: ({ detail, onUpdate, onHide }: {
+  default: ({
+    detail,
+    onUpdate,
+    onHide,
+  }: {
     detail: PluginDetail
     onUpdate: (isDelete?: boolean) => void
     onHide: () => void
@@ -25,22 +29,13 @@ vi.mock('../detail-header', () => ({
     return (
       <div data-testid="detail-header">
         <span data-testid="header-title">{detail.name}</span>
-        <button
-          data-testid="header-update-btn"
-          onClick={() => onUpdate()}
-        >
+        <button data-testid="header-update-btn" onClick={() => onUpdate()}>
           Update
         </button>
-        <button
-          data-testid="header-delete-btn"
-          onClick={() => onUpdate(true)}
-        >
+        <button data-testid="header-delete-btn" onClick={() => onUpdate(true)}>
           Delete
         </button>
-        <button
-          data-testid="header-hide-btn"
-          onClick={onHide}
-        >
+        <button data-testid="header-hide-btn" onClick={onHide}>
           Hide
         </button>
       </div>
@@ -104,14 +99,18 @@ vi.mock('../subscription-list', () => ({
 
 // Mock TriggerEventsList
 vi.mock('../trigger/event-list', () => ({
-  TriggerEventsList: () => (
-    <div data-testid="trigger-events-list">Events List</div>
-  ),
+  TriggerEventsList: () => <div data-testid="trigger-events-list">Events List</div>,
 }))
 
 // Mock ReadmeEntrance
 vi.mock('../../readme-panel/entrance', () => ({
-  ReadmeEntrance: ({ pluginDetail, className }: { pluginDetail: PluginDetail, className?: string }) => (
+  ReadmeEntrance: ({
+    pluginDetail,
+    className,
+  }: {
+    pluginDetail: PluginDetail
+    className?: string
+  }) => (
     <div data-testid="readme-entrance" className={className}>
       <span data-testid="readme-plugin-id">{pluginDetail.plugin_id}</span>
     </div>
@@ -306,11 +305,7 @@ describe('PluginDetailPanel', () => {
   describe('Rendering', () => {
     it('should render nothing when detail is undefined', () => {
       const { container } = render(
-        <PluginDetailPanel
-          detail={undefined}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
+        <PluginDetailPanel detail={undefined} onUpdate={mockOnUpdate} onHide={mockOnHide} />,
       )
 
       expect(container).toBeEmptyDOMElement()
@@ -320,13 +315,7 @@ describe('PluginDetailPanel', () => {
     it('should render drawer when detail is provided', () => {
       const detail = createPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       const dialog = screen.getByRole('dialog')
 
@@ -344,13 +333,7 @@ describe('PluginDetailPanel', () => {
     it('should render detail header with plugin name', () => {
       const detail = createPluginDetail({ name: 'My Custom Plugin' })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByTestId('header-title')).toHaveTextContent('My Custom Plugin')
     })
@@ -358,13 +341,7 @@ describe('PluginDetailPanel', () => {
     it('should render readme entrance with plugin detail', () => {
       const detail = createPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByTestId('readme-entrance')).toBeInTheDocument()
       expect(screen.getByTestId('readme-plugin-id')).toHaveTextContent('test-plugin-id')
@@ -373,13 +350,7 @@ describe('PluginDetailPanel', () => {
     it('should render drawer with correct styles', () => {
       const detail = createPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       const drawer = screen.getByRole('dialog')
       expect(drawer).toBeInTheDocument()
@@ -390,13 +361,7 @@ describe('PluginDetailPanel', () => {
     it('should render ActionList for tool plugins', () => {
       const detail = createPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByTestId('action-list')).toBeInTheDocument()
       expect(screen.queryByTestId('model-list')).not.toBeInTheDocument()
@@ -408,13 +373,7 @@ describe('PluginDetailPanel', () => {
     it('should render ModelList for model plugins', () => {
       const detail = createModelPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByTestId('model-list')).toBeInTheDocument()
       expect(screen.queryByTestId('action-list')).not.toBeInTheDocument()
@@ -423,13 +382,7 @@ describe('PluginDetailPanel', () => {
     it('should render AgentStrategyList for agent strategy plugins', () => {
       const detail = createAgentStrategyPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByTestId('agent-strategy-list')).toBeInTheDocument()
       expect(screen.queryByTestId('action-list')).not.toBeInTheDocument()
@@ -438,13 +391,7 @@ describe('PluginDetailPanel', () => {
     it('should render EndpointList for endpoint plugins', () => {
       const detail = createEndpointPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByTestId('endpoint-list')).toBeInTheDocument()
       expect(screen.queryByTestId('action-list')).not.toBeInTheDocument()
@@ -453,13 +400,7 @@ describe('PluginDetailPanel', () => {
     it('should render DatasourceActionList for datasource plugins', () => {
       const detail = createDatasourcePluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByTestId('datasource-action-list')).toBeInTheDocument()
       expect(screen.queryByTestId('action-list')).not.toBeInTheDocument()
@@ -468,13 +409,7 @@ describe('PluginDetailPanel', () => {
     it('should render SubscriptionList and TriggerEventsList for trigger plugins', () => {
       const detail = createTriggerPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByTestId('subscription-list')).toBeInTheDocument()
       expect(screen.getByTestId('trigger-events-list')).toBeInTheDocument()
@@ -493,13 +428,7 @@ describe('PluginDetailPanel', () => {
         },
       })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByTestId('action-list')).toBeInTheDocument()
       expect(screen.getByTestId('endpoint-list')).toBeInTheDocument()
@@ -515,43 +444,29 @@ describe('PluginDetailPanel', () => {
         id: 'detail-id',
       })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(mockSetDetail).toHaveBeenCalledTimes(1)
-      expect(mockSetDetail).toHaveBeenCalledWith(expect.objectContaining({
-        plugin_id: 'my-plugin-id',
-        plugin_unique_identifier: 'my-plugin-uid',
-        name: 'My Plugin',
-        id: 'detail-id',
-        provider: 'my-plugin-id/test-plugin',
-      }))
+      expect(mockSetDetail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          plugin_id: 'my-plugin-id',
+          plugin_unique_identifier: 'my-plugin-uid',
+          name: 'My Plugin',
+          id: 'detail-id',
+          provider: 'my-plugin-id/test-plugin',
+        }),
+      )
     })
 
     it('should call setDetail with undefined when detail becomes undefined', () => {
       const detail = createPluginDetail()
       const { rerender } = render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
+        <PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />,
       )
 
       expect(mockSetDetail).toHaveBeenCalledTimes(1)
 
-      rerender(
-        <PluginDetailPanel
-          detail={undefined}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      rerender(<PluginDetailPanel detail={undefined} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(mockSetDetail).toHaveBeenCalledTimes(2)
       expect(mockSetDetail).toHaveBeenLastCalledWith(undefined)
@@ -562,46 +477,36 @@ describe('PluginDetailPanel', () => {
       const detail2 = createPluginDetail({ plugin_id: 'plugin-2' })
 
       const { rerender } = render(
-        <PluginDetailPanel
-          detail={detail1}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
+        <PluginDetailPanel detail={detail1} onUpdate={mockOnUpdate} onHide={mockOnHide} />,
       )
 
       expect(mockSetDetail).toHaveBeenCalledTimes(1)
-      expect(mockSetDetail).toHaveBeenLastCalledWith(expect.objectContaining({
-        plugin_id: 'plugin-1',
-      }))
-
-      rerender(
-        <PluginDetailPanel
-          detail={detail2}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
+      expect(mockSetDetail).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          plugin_id: 'plugin-1',
+        }),
       )
 
+      rerender(<PluginDetailPanel detail={detail2} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
+
       expect(mockSetDetail).toHaveBeenCalledTimes(2)
-      expect(mockSetDetail).toHaveBeenLastCalledWith(expect.objectContaining({
-        plugin_id: 'plugin-2',
-      }))
+      expect(mockSetDetail).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          plugin_id: 'plugin-2',
+        }),
+      )
     })
 
     it('should include declaration in setDetail call', () => {
       const detail = createPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(mockSetDetail).toHaveBeenCalledWith(expect.objectContaining({
-        declaration: expect.any(Object),
-      }))
+      expect(mockSetDetail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          declaration: expect.any(Object),
+        }),
+      )
     })
   })
 
@@ -615,11 +520,7 @@ describe('PluginDetailPanel', () => {
       // it depends on onHide and onUpdate (tested in other tests)
       // This test verifies the basic rendering doesn't change the functionality
       const { rerender } = render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={onUpdate}
-          onHide={onHide}
-        />,
+        <PluginDetailPanel detail={detail} onUpdate={onUpdate} onHide={onHide} />,
       )
 
       // Initial click should work
@@ -627,13 +528,7 @@ describe('PluginDetailPanel', () => {
       expect(onUpdate).toHaveBeenCalledTimes(1)
 
       // Re-render with same props
-      rerender(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={onUpdate}
-          onHide={onHide}
-        />,
-      )
+      rerender(<PluginDetailPanel detail={detail} onUpdate={onUpdate} onHide={onHide} />)
 
       // Callback should still work after re-render
       fireEvent.click(screen.getByTestId('header-update-btn'))
@@ -647,23 +542,13 @@ describe('PluginDetailPanel', () => {
       const onHide = vi.fn()
 
       const { rerender } = render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={onUpdate1}
-          onHide={onHide}
-        />,
+        <PluginDetailPanel detail={detail} onUpdate={onUpdate1} onHide={onHide} />,
       )
 
       fireEvent.click(screen.getByTestId('header-update-btn'))
       expect(onUpdate1).toHaveBeenCalledTimes(1)
 
-      rerender(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={onUpdate2}
-          onHide={onHide}
-        />,
-      )
+      rerender(<PluginDetailPanel detail={detail} onUpdate={onUpdate2} onHide={onHide} />)
 
       fireEvent.click(screen.getByTestId('header-update-btn'))
       expect(onUpdate2).toHaveBeenCalledTimes(1)
@@ -676,23 +561,13 @@ describe('PluginDetailPanel', () => {
       const onHide2 = vi.fn()
 
       const { rerender } = render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={onUpdate}
-          onHide={onHide1}
-        />,
+        <PluginDetailPanel detail={detail} onUpdate={onUpdate} onHide={onHide1} />,
       )
 
       fireEvent.click(screen.getByTestId('header-delete-btn'))
       expect(onHide1).toHaveBeenCalledTimes(1)
 
-      rerender(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={onUpdate}
-          onHide={onHide2}
-        />,
-      )
+      rerender(<PluginDetailPanel detail={detail} onUpdate={onUpdate} onHide={onHide2} />)
 
       onUpdate.mockClear()
       fireEvent.click(screen.getByTestId('header-delete-btn'))
@@ -704,13 +579,7 @@ describe('PluginDetailPanel', () => {
     it('should call onUpdate when update button is clicked', () => {
       const detail = createPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       fireEvent.click(screen.getByTestId('header-update-btn'))
 
@@ -721,13 +590,7 @@ describe('PluginDetailPanel', () => {
     it('should call onHide and onUpdate when delete is triggered', () => {
       const detail = createPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       fireEvent.click(screen.getByTestId('header-delete-btn'))
 
@@ -742,13 +605,7 @@ describe('PluginDetailPanel', () => {
 
       const detail = createPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={onUpdate}
-          onHide={onHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={onUpdate} onHide={onHide} />)
 
       fireEvent.click(screen.getByTestId('header-delete-btn'))
 
@@ -758,13 +615,7 @@ describe('PluginDetailPanel', () => {
     it('should call only onUpdate when isDelete is false', () => {
       const detail = createPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       fireEvent.click(screen.getByTestId('header-update-btn'))
 
@@ -775,13 +626,7 @@ describe('PluginDetailPanel', () => {
     it('should call onHide when hide button is clicked', () => {
       const detail = createPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       fireEvent.click(screen.getByTestId('header-hide-btn'))
 
@@ -791,13 +636,7 @@ describe('PluginDetailPanel', () => {
     it('should call onHide when drawer close is triggered', () => {
       const detail = createPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       // Click the hide button in the header to close the drawer
       fireEvent.click(screen.getByTestId('header-hide-btn'))
@@ -815,17 +654,13 @@ describe('PluginDetailPanel', () => {
         },
       })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(mockSetDetail).toHaveBeenCalledWith(expect.objectContaining({
-        provider: expect.stringContaining('/'),
-      }))
+      expect(mockSetDetail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: expect.stringContaining('/'),
+        }),
+      )
     })
 
     it('should handle plugin with empty plugin_unique_identifier', () => {
@@ -833,17 +668,13 @@ describe('PluginDetailPanel', () => {
         plugin_unique_identifier: '',
       })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(mockSetDetail).toHaveBeenCalledWith(expect.objectContaining({
-        plugin_unique_identifier: '',
-      }))
+      expect(mockSetDetail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          plugin_unique_identifier: '',
+        }),
+      )
     })
 
     it('should handle plugin with undefined plugin_unique_identifier', () => {
@@ -851,13 +682,7 @@ describe('PluginDetailPanel', () => {
         plugin_unique_identifier: undefined as unknown as string,
       })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
@@ -877,13 +702,7 @@ describe('PluginDetailPanel', () => {
         declaration: emptyDeclaration,
       })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(screen.queryByTestId('action-list')).not.toBeInTheDocument()
@@ -899,31 +718,15 @@ describe('PluginDetailPanel', () => {
       const detail3 = createPluginDetail({ plugin_id: 'plugin-3' })
 
       const { rerender } = render(
-        <PluginDetailPanel
-          detail={detail1}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
+        <PluginDetailPanel detail={detail1} onUpdate={mockOnUpdate} onHide={mockOnHide} />,
       )
 
       act(() => {
-        rerender(
-          <PluginDetailPanel
-            detail={detail2}
-            onUpdate={mockOnUpdate}
-            onHide={mockOnHide}
-          />,
-        )
+        rerender(<PluginDetailPanel detail={detail2} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
       })
 
       act(() => {
-        rerender(
-          <PluginDetailPanel
-            detail={detail3}
-            onUpdate={mockOnUpdate}
-            onHide={mockOnHide}
-          />,
-        )
+        rerender(<PluginDetailPanel detail={detail3} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
       })
 
       expect(mockSetDetail).toHaveBeenCalledTimes(3)
@@ -934,32 +737,16 @@ describe('PluginDetailPanel', () => {
       const detail = createPluginDetail()
 
       const { rerender, container } = render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
+        <PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />,
       )
 
       expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-      rerender(
-        <PluginDetailPanel
-          detail={undefined}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      rerender(<PluginDetailPanel detail={undefined} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(container).toBeEmptyDOMElement()
 
-      rerender(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      rerender(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
@@ -969,13 +756,7 @@ describe('PluginDetailPanel', () => {
     it('should pass correct props to DetailHeader', () => {
       const detail = createPluginDetail({ name: 'Custom Plugin Name' })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByTestId('header-title')).toHaveTextContent('Custom Plugin Name')
     })
@@ -991,11 +772,7 @@ describe('PluginDetailPanel', () => {
       sources.forEach((source) => {
         const detail = createPluginDetail({ source })
         const { unmount } = render(
-          <PluginDetailPanel
-            detail={detail}
-            onUpdate={mockOnUpdate}
-            onHide={mockOnHide}
-          />,
+          <PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />,
         )
 
         expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -1009,11 +786,7 @@ describe('PluginDetailPanel', () => {
       statuses.forEach((status) => {
         const detail = createPluginDetail({ status })
         const { unmount } = render(
-          <PluginDetailPanel
-            detail={detail}
-            onUpdate={mockOnUpdate}
-            onHide={mockOnHide}
-          />,
+          <PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />,
         )
 
         expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -1027,13 +800,7 @@ describe('PluginDetailPanel', () => {
         alternative_plugin_id: 'alternative-plugin',
       })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
@@ -1048,13 +815,7 @@ describe('PluginDetailPanel', () => {
         },
       })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
@@ -1066,13 +827,7 @@ describe('PluginDetailPanel', () => {
         latest_unique_identifier: 'new-uid',
       })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
@@ -1080,27 +835,17 @@ describe('PluginDetailPanel', () => {
     it('should pass pluginDetail to SubscriptionList for trigger plugins', () => {
       const detail = createTriggerPluginDetail({ plugin_id: 'trigger-plugin-123' })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(screen.getByTestId('subscription-list-plugin-id')).toHaveTextContent('trigger-plugin-123')
+      expect(screen.getByTestId('subscription-list-plugin-id')).toHaveTextContent(
+        'trigger-plugin-123',
+      )
     })
 
     it('should pass detail to ActionList for tool plugins', () => {
       const detail = createPluginDetail({ plugin_id: 'tool-plugin-456' })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByTestId('action-list-plugin-id')).toHaveTextContent('tool-plugin-456')
     })
@@ -1116,29 +861,19 @@ describe('PluginDetailPanel', () => {
         },
       })
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
-      expect(mockSetDetail).toHaveBeenCalledWith(expect.objectContaining({
-        provider: 'my-org/my-plugin/my-tool-name',
-      }))
+      expect(mockSetDetail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: 'my-org/my-plugin/my-tool-name',
+        }),
+      )
     })
 
     it('should include all required fields in setDetail payload', () => {
       const detail = createPluginDetail()
 
-      render(
-        <PluginDetailPanel
-          detail={detail}
-          onUpdate={mockOnUpdate}
-          onHide={mockOnHide}
-        />,
-      )
+      render(<PluginDetailPanel detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(mockSetDetail).toHaveBeenCalledWith({
         plugin_id: detail.plugin_id,

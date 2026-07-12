@@ -22,16 +22,11 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? !!controlledOpen : uncontrolledOpen
     const setOpen = (nextOpen: boolean) => {
-      if (!isControlled)
-        setUncontrolledOpen(nextOpen)
+      if (!isControlled) setUncontrolledOpen(nextOpen)
       onOpenChange?.(nextOpen)
     }
 
-    return (
-      <PopoverContext.Provider value={{ open, setOpen }}>
-        {children}
-      </PopoverContext.Provider>
-    )
+    return <PopoverContext.Provider value={{ open, setOpen }}>{children}</PopoverContext.Provider>
   }
 
   const PopoverTrigger = ({
@@ -45,11 +40,7 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
   }) => {
     const { open, setOpen } = React.useContext(PopoverContext)
     if (render) {
-      return (
-        <div onClick={() => setOpen(!open)}>
-          {render}
-        </div>
-      )
+      return <div onClick={() => setOpen(!open)}>{render}</div>
     }
 
     return (
@@ -64,8 +55,7 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     ...props
   }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => {
     const { open } = React.useContext(PopoverContext)
-    if (!open)
-      return null
+    if (!open) return null
 
     return <div {...props}>{children}</div>
   }
@@ -89,7 +79,7 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
     tags: mockTags,
     tagsMap: mockTags.reduce((acc, tag) => ({ ...acc, [tag.name]: tag }), {}),
-    getTagLabel: (name: string) => mockTags.find(t => t.name === name)?.label ?? name,
+    getTagLabel: (name: string) => mockTags.find((t) => t.name === name)?.label ?? name,
   }),
 }))
 
@@ -138,7 +128,9 @@ describe('LabelSelector', () => {
     it('should render the trigger as a native button', () => {
       render(<LabelSelector value={[]} onChange={mockOnChange} />)
 
-      expect(screen.getByRole('button', { name: 'tools.createTool.toolInput.labelPlaceholder' })).toHaveAttribute('type', 'button')
+      expect(
+        screen.getByRole('button', { name: 'tools.createTool.toolInput.labelPlaceholder' }),
+      ).toHaveAttribute('type', 'button')
     })
 
     it('should display selected labels as comma-separated list', () => {

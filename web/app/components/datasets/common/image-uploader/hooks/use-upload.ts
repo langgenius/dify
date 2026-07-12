@@ -28,8 +28,7 @@ export const useUpload = () => {
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.target !== dragRef.current)
-      setDragging(true)
+    if (e.target !== dragRef.current) setDragging(true)
   }
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault()
@@ -38,8 +37,7 @@ export const useUpload = () => {
   const handleDragLeave = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.target === dragRef.current)
-      setDragging(false)
+    if (e.target === dragRef.current) setDragging(false)
   }
 
   const checkFileType = useCallback((file: File) => {
@@ -47,203 +45,234 @@ export const useUpload = () => {
     return ACCEPT_TYPES.includes(ext!.toLowerCase())
   }, [])
 
-  const checkFileSize = useCallback((file: File) => {
-    const { size } = file
-    return size <= fileUploadConfig.imageFileSizeLimit * 1024 * 1024
-  }, [fileUploadConfig])
+  const checkFileSize = useCallback(
+    (file: File) => {
+      const { size } = file
+      return size <= fileUploadConfig.imageFileSizeLimit * 1024 * 1024
+    },
+    [fileUploadConfig],
+  )
 
-  const showErrorMessage = useCallback((type: 'type' | 'size') => {
-    if (type === 'type')
-      toast.error(t($ => $['fileUploader.fileExtensionNotSupport'], { ns: 'common' }))
-    else
-      toast.error(t($ => $['imageUploader.fileSizeLimitExceeded'], { ns: 'dataset', size: fileUploadConfig.imageFileSizeLimit }))
-  }, [fileUploadConfig, t])
+  const showErrorMessage = useCallback(
+    (type: 'type' | 'size') => {
+      if (type === 'type')
+        toast.error(t(($) => $['fileUploader.fileExtensionNotSupport'], { ns: 'common' }))
+      else
+        toast.error(
+          t(($) => $['imageUploader.fileSizeLimitExceeded'], {
+            ns: 'dataset',
+            size: fileUploadConfig.imageFileSizeLimit,
+          }),
+        )
+    },
+    [fileUploadConfig, t],
+  )
 
-  const getValidFiles = useCallback((files: File[]) => {
-    let validType = true
-    let validSize = true
-    const validFiles = files.filter((file) => {
-      if (!checkFileType(file)) {
-        validType = false
-        return false
-      }
-      if (!checkFileSize(file)) {
-        validSize = false
-        return false
-      }
-      return true
-    })
-    if (!validType)
-      showErrorMessage('type')
-    else if (!validSize)
-      showErrorMessage('size')
+  const getValidFiles = useCallback(
+    (files: File[]) => {
+      let validType = true
+      let validSize = true
+      const validFiles = files.filter((file) => {
+        if (!checkFileType(file)) {
+          validType = false
+          return false
+        }
+        if (!checkFileSize(file)) {
+          validSize = false
+          return false
+        }
+        return true
+      })
+      if (!validType) showErrorMessage('type')
+      else if (!validSize) showErrorMessage('size')
 
-    return validFiles
-  }, [checkFileType, checkFileSize, showErrorMessage])
+      return validFiles
+    },
+    [checkFileType, checkFileSize, showErrorMessage],
+  )
 
   const selectHandle = () => {
-    if (uploaderRef.current)
-      uploaderRef.current.click()
+    if (uploaderRef.current) uploaderRef.current.click()
   }
 
-  const handleAddFile = useCallback((newFile: FileEntity) => {
-    const {
-      files,
-      setFiles,
-    } = fileStore.getState()
+  const handleAddFile = useCallback(
+    (newFile: FileEntity) => {
+      const { files, setFiles } = fileStore.getState()
 
-    const newFiles = produce(files, (draft) => {
-      draft.push(newFile)
-    })
-    setFiles(newFiles)
-  }, [fileStore])
-
-  const handleUpdateFile = useCallback((newFile: FileEntity) => {
-    const {
-      files,
-      setFiles,
-    } = fileStore.getState()
-
-    const newFiles = produce(files, (draft) => {
-      const index = draft.findIndex(file => file.id === newFile.id)
-
-      if (index > -1)
-        draft[index] = newFile
-    })
-    setFiles(newFiles)
-  }, [fileStore])
-
-  const handleRemoveFile = useCallback((fileId: string) => {
-    const {
-      files,
-      setFiles,
-    } = fileStore.getState()
-
-    const newFiles = files.filter(file => file.id !== fileId)
-    setFiles(newFiles)
-  }, [fileStore])
-
-  const handleReUploadFile = useCallback((fileId: string) => {
-    const {
-      files,
-      setFiles,
-    } = fileStore.getState()
-    const index = files.findIndex(file => file.id === fileId)
-
-    if (index > -1) {
-      const uploadingFile = files[index]!
       const newFiles = produce(files, (draft) => {
-        draft[index]!.progress = 0
+        draft.push(newFile)
       })
       setFiles(newFiles)
-      fileUpload({
-        file: uploadingFile!.originalFile!,
-        onProgressCallback: (progress) => {
-          handleUpdateFile({ ...uploadingFile, progress })
-        },
-        onSuccessCallback: (res) => {
-          handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
-        },
-        onErrorCallback: (error?: any) => {
-          const errorMessage = getFileUploadErrorMessage(error, t($ => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }), t)
-          toast.error(errorMessage)
-          handleUpdateFile({ ...uploadingFile, progress: -1 })
-        },
+    },
+    [fileStore],
+  )
+
+  const handleUpdateFile = useCallback(
+    (newFile: FileEntity) => {
+      const { files, setFiles } = fileStore.getState()
+
+      const newFiles = produce(files, (draft) => {
+        const index = draft.findIndex((file) => file.id === newFile.id)
+
+        if (index > -1) draft[index] = newFile
       })
-    }
-  }, [fileStore, t, handleUpdateFile])
+      setFiles(newFiles)
+    },
+    [fileStore],
+  )
 
-  const handleLocalFileUpload = useCallback((file: File) => {
-    const reader = new FileReader()
-    const isImage = file.type.startsWith('image')
+  const handleRemoveFile = useCallback(
+    (fileId: string) => {
+      const { files, setFiles } = fileStore.getState()
 
-    reader.addEventListener(
-      'load',
-      () => {
-        const uploadingFile = {
-          id: uuid4(),
-          name: file.name,
-          extension: getFileType(file),
-          mimeType: file.type,
-          size: file.size,
-          progress: 0,
-          originalFile: file,
-          base64Url: isImage ? reader.result as string : '',
-        }
-        handleAddFile(uploadingFile)
+      const newFiles = files.filter((file) => file.id !== fileId)
+      setFiles(newFiles)
+    },
+    [fileStore],
+  )
+
+  const handleReUploadFile = useCallback(
+    (fileId: string) => {
+      const { files, setFiles } = fileStore.getState()
+      const index = files.findIndex((file) => file.id === fileId)
+
+      if (index > -1) {
+        const uploadingFile = files[index]!
+        const newFiles = produce(files, (draft) => {
+          draft[index]!.progress = 0
+        })
+        setFiles(newFiles)
         fileUpload({
-          file: uploadingFile.originalFile,
+          file: uploadingFile!.originalFile!,
           onProgressCallback: (progress) => {
             handleUpdateFile({ ...uploadingFile, progress })
           },
           onSuccessCallback: (res) => {
-            handleUpdateFile({
-              ...uploadingFile,
-              extension: res.extension,
-              mimeType: res.mime_type,
-              size: res.size,
-              uploadedId: res.id,
-              progress: 100,
-            })
+            handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
           onErrorCallback: (error?: any) => {
-            const errorMessage = getFileUploadErrorMessage(error, t($ => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }), t)
+            const errorMessage = getFileUploadErrorMessage(
+              error,
+              t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
+              t,
+            )
             toast.error(errorMessage)
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
         })
-      },
-      false,
-    )
-    reader.addEventListener(
-      'error',
-      () => {
-        toast.error(t($ => $['fileUploader.uploadFromComputerReadError'], { ns: 'common' }))
-      },
-      false,
-    )
-    reader.readAsDataURL(file)
-  }, [t, handleAddFile, handleUpdateFile])
+      }
+    },
+    [fileStore, t, handleUpdateFile],
+  )
 
-  const handleFileUpload = useCallback((newFiles: File[]) => {
-    const { files } = fileStore.getState()
-    const { singleChunkAttachmentLimit } = fileUploadConfig
-    if (newFiles.length === 0)
-      return
-    if (files.length + newFiles.length > singleChunkAttachmentLimit) {
-      toast.error(t($ => $['imageUploader.singleChunkAttachmentLimitTooltip'], { ns: 'datasetHitTesting', limit: singleChunkAttachmentLimit }))
-      return
-    }
-    for (const file of newFiles)
-      handleLocalFileUpload(file)
-  }, [fileUploadConfig, fileStore, t, handleLocalFileUpload])
+  const handleLocalFileUpload = useCallback(
+    (file: File) => {
+      const reader = new FileReader()
+      const isImage = file.type.startsWith('image')
 
-  const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { imageFileBatchLimit } = fileUploadConfig
-    const files = Array.from(e.target.files ?? []).slice(0, imageFileBatchLimit)
-    const validFiles = getValidFiles(files)
-    handleFileUpload(validFiles)
-  }, [getValidFiles, handleFileUpload, fileUploadConfig])
+      reader.addEventListener(
+        'load',
+        () => {
+          const uploadingFile = {
+            id: uuid4(),
+            name: file.name,
+            extension: getFileType(file),
+            mimeType: file.type,
+            size: file.size,
+            progress: 0,
+            originalFile: file,
+            base64Url: isImage ? (reader.result as string) : '',
+          }
+          handleAddFile(uploadingFile)
+          fileUpload({
+            file: uploadingFile.originalFile,
+            onProgressCallback: (progress) => {
+              handleUpdateFile({ ...uploadingFile, progress })
+            },
+            onSuccessCallback: (res) => {
+              handleUpdateFile({
+                ...uploadingFile,
+                extension: res.extension,
+                mimeType: res.mime_type,
+                size: res.size,
+                uploadedId: res.id,
+                progress: 100,
+              })
+            },
+            onErrorCallback: (error?: any) => {
+              const errorMessage = getFileUploadErrorMessage(
+                error,
+                t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
+                t,
+              )
+              toast.error(errorMessage)
+              handleUpdateFile({ ...uploadingFile, progress: -1 })
+            },
+          })
+        },
+        false,
+      )
+      reader.addEventListener(
+        'error',
+        () => {
+          toast.error(t(($) => $['fileUploader.uploadFromComputerReadError'], { ns: 'common' }))
+        },
+        false,
+      )
+      reader.readAsDataURL(file)
+    },
+    [t, handleAddFile, handleUpdateFile],
+  )
 
-  const handleDrop = useCallback(async (e: DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragging(false)
-    if (!e.dataTransfer)
-      return
-    const nested = await Promise.all(
-      Array.from(e.dataTransfer.items).map((it) => {
-        const entry = (it as any).webkitGetAsEntry?.()
-        if (entry)
-          return traverseFileEntry(entry)
-        const f = it.getAsFile?.()
-        return f ? Promise.resolve([f]) : Promise.resolve([])
-      }),
-    )
-    const files = nested.flat().slice(0, fileUploadConfig.imageFileBatchLimit)
-    const validFiles = getValidFiles(files)
-    handleFileUpload(validFiles)
-  }, [fileUploadConfig, handleFileUpload, getValidFiles])
+  const handleFileUpload = useCallback(
+    (newFiles: File[]) => {
+      const { files } = fileStore.getState()
+      const { singleChunkAttachmentLimit } = fileUploadConfig
+      if (newFiles.length === 0) return
+      if (files.length + newFiles.length > singleChunkAttachmentLimit) {
+        toast.error(
+          t(($) => $['imageUploader.singleChunkAttachmentLimitTooltip'], {
+            ns: 'datasetHitTesting',
+            limit: singleChunkAttachmentLimit,
+          }),
+        )
+        return
+      }
+      for (const file of newFiles) handleLocalFileUpload(file)
+    },
+    [fileUploadConfig, fileStore, t, handleLocalFileUpload],
+  )
+
+  const fileChangeHandle = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { imageFileBatchLimit } = fileUploadConfig
+      const files = Array.from(e.target.files ?? []).slice(0, imageFileBatchLimit)
+      const validFiles = getValidFiles(files)
+      handleFileUpload(validFiles)
+    },
+    [getValidFiles, handleFileUpload, fileUploadConfig],
+  )
+
+  const handleDrop = useCallback(
+    async (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setDragging(false)
+      if (!e.dataTransfer) return
+      const nested = await Promise.all(
+        Array.from(e.dataTransfer.items).map((it) => {
+          const entry = (it as any).webkitGetAsEntry?.()
+          if (entry) return traverseFileEntry(entry)
+          const f = it.getAsFile?.()
+          return f ? Promise.resolve([f]) : Promise.resolve([])
+        }),
+      )
+      const files = nested.flat().slice(0, fileUploadConfig.imageFileBatchLimit)
+      const validFiles = getValidFiles(files)
+      handleFileUpload(validFiles)
+    },
+    [fileUploadConfig, handleFileUpload, getValidFiles],
+  )
 
   useEffect(() => {
     dropRef.current?.addEventListener('dragenter', handleDragEnter)

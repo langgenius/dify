@@ -3,11 +3,7 @@ import type { IfElseNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import {
-  BlockEnum,
-
-  VarType,
-} from '../../../types'
+import { BlockEnum, VarType } from '../../../types'
 import { VarType as NumberVarType } from '../../tool/types'
 import ConditionAdd from '../components/condition-add'
 import ConditionFilesListValue from '../components/condition-files-list-value'
@@ -17,11 +13,7 @@ import ConditionNumberInput from '../components/condition-number-input'
 import ConditionValue from '../components/condition-value'
 import Node from '../node'
 import Panel from '../panel'
-import {
-  ComparisonOperator,
-
-  LogicalOperator,
-} from '../types'
+import { ComparisonOperator, LogicalOperator } from '../types'
 import useConfig from '../use-config'
 
 vi.mock('reactflow', async () => {
@@ -45,11 +37,12 @@ vi.mock('react-sortablejs', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-vars', () => ({
-  default: ({ onChange }: { onChange: (valueSelector: string[], varItem: { type: VarType }) => void }) => (
-    <button
-      type="button"
-      onClick={() => onChange(['node-1', 'score'], { type: VarType.number })}
-    >
+  default: ({
+    onChange,
+  }: {
+    onChange: (valueSelector: string[], varItem: { type: VarType }) => void
+  }) => (
+    <button type="button" onClick={() => onChange(['node-1', 'score'], { type: VarType.number })}>
       pick-var
     </button>
   ),
@@ -66,7 +59,9 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable-tag', () => (
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/node-handle', () => ({
-  NodeSourceHandle: ({ handleId }: { handleId: string }) => <div data-testid={`handle-${handleId}`} />,
+  NodeSourceHandle: ({ handleId }: { handleId: string }) => (
+    <div data-testid={`handle-${handleId}`} />
+  ),
 }))
 
 const mockWorkflowStoreState = {
@@ -76,7 +71,8 @@ const mockWorkflowStoreState = {
 }
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: typeof mockWorkflowStoreState) => unknown) => selector(mockWorkflowStoreState),
+  useStore: (selector: (state: typeof mockWorkflowStoreState) => unknown) =>
+    selector(mockWorkflowStoreState),
   useWorkflowStore: () => ({
     getState: () => ({
       ...mockWorkflowStoreState,
@@ -141,7 +137,9 @@ const createData = (overrides: Partial<IfElseNodeType> = {}): IfElseNodeType => 
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   filterVar: () => true,
@@ -220,18 +218,14 @@ describe('if-else path', () => {
       const user = userEvent.setup()
       const onSelectVariable = vi.fn()
 
-      render(
-        <ConditionAdd
-          caseId="case-1"
-          variables={[]}
-          onSelectVariable={onSelectVariable}
-        />,
-      )
+      render(<ConditionAdd caseId="case-1" variables={[]} onSelectVariable={onSelectVariable} />)
 
       await user.click(screen.getByRole('button', { name: /workflow.nodes.ifElse.addCondition/i }))
       await user.click(screen.getByText('pick-var'))
 
-      expect(onSelectVariable).toHaveBeenCalledWith('case-1', ['node-1', 'score'], { type: VarType.number })
+      expect(onSelectVariable).toHaveBeenCalledWith('case-1', ['node-1', 'score'], {
+        type: VarType.number,
+      })
     })
 
     it('should switch operators and number input modes', async () => {
@@ -408,18 +402,14 @@ describe('if-else path', () => {
       const handleAddCase = vi.fn()
       const inputs = createData({ cases: [] })
 
-      mockUseConfig.mockReturnValueOnce(createConfigResult({
-        inputs,
-        handleAddCase,
-      }))
-
-      render(
-        <Panel
-          id="if-else-node"
-          data={inputs}
-          panelProps={panelProps}
-        />,
+      mockUseConfig.mockReturnValueOnce(
+        createConfigResult({
+          inputs,
+          handleAddCase,
+        }),
       )
+
+      render(<Panel id="if-else-node" data={inputs} panelProps={panelProps} />)
 
       await user.click(screen.getByRole('button', { name: /elif/i }))
 

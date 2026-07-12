@@ -3,7 +3,7 @@ import Chart, { MessagesChart } from '../app-chart'
 
 const reactEChartsMock = vi.fn()
 vi.mock('echarts-for-react', () => ({
-  default: (props: { option: unknown, opts?: unknown }) => {
+  default: (props: { option: unknown; opts?: unknown }) => {
     reactEChartsMock(props)
     return <div data-testid="echarts" />
   },
