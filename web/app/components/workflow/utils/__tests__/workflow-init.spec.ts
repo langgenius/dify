@@ -613,6 +613,24 @@ describe('initialEdges', () => {
     expect(result.find(edge => edge.id === 'nested-edge')!.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
     expect(result.find(edge => edge.id === 'boundary-edge')!.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
     expect(result.find(edge => edge.id === 'root-edge')!.zIndex).toBe(0)
+    expect(result.find(edge => edge.id === 'nested-edge')!.data).toEqual(expect.objectContaining({
+      isInIteration: true,
+      iteration_id: 'iter-1',
+      isInLoop: false,
+      loop_id: undefined,
+    }))
+    expect(result.find(edge => edge.id === 'boundary-edge')!.data).toEqual(expect.objectContaining({
+      isInIteration: true,
+      iteration_id: 'iter-1',
+      isInLoop: false,
+      loop_id: undefined,
+    }))
+    expect(result.find(edge => edge.id === 'root-edge')!.data).toEqual(expect.objectContaining({
+      isInIteration: false,
+      iteration_id: undefined,
+      isInLoop: false,
+      loop_id: undefined,
+    }))
   })
 
   it('should set edge type to custom', () => {

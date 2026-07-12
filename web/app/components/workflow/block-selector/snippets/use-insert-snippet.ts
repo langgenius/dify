@@ -379,14 +379,20 @@ export const useInsertSnippet = () => {
         const targetNode = finalNodesById.get(edge.target)
         const sourceParentNode = sourceNode?.parentId ? finalNodesById.get(sourceNode.parentId) : undefined
         const targetParentNode = targetNode?.parentId ? finalNodesById.get(targetNode.parentId) : undefined
-        const isNestedEdge = sourceParentNode?.data.type === BlockEnum.Iteration
-          || sourceParentNode?.data.type === BlockEnum.Loop
-          || targetParentNode?.data.type === BlockEnum.Iteration
-          || targetParentNode?.data.type === BlockEnum.Loop
+        const nestedParentNode = [sourceParentNode, targetParentNode].find(node => node?.data.type === BlockEnum.Iteration || node?.data.type === BlockEnum.Loop)
+        const isInIteration = nestedParentNode?.data.type === BlockEnum.Iteration
+        const isInLoop = nestedParentNode?.data.type === BlockEnum.Loop
 
         return {
           ...edge,
-          zIndex: isNestedEdge ? NESTED_ELEMENT_Z_INDEX : 0,
+          data: {
+            ...edge.data,
+            isInIteration,
+            iteration_id: isInIteration ? nestedParentNode.id : undefined,
+            isInLoop,
+            loop_id: isInLoop ? nestedParentNode.id : undefined,
+          },
+          zIndex: nestedParentNode ? NESTED_ELEMENT_Z_INDEX : 0,
         }
       })
 

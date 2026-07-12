@@ -365,11 +365,17 @@ export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
     const targetNode = nodesMap[edge.target]
     const sourceParentNode = sourceNode?.parentId ? nodesMap[sourceNode.parentId] : undefined
     const targetParentNode = targetNode?.parentId ? nodesMap[targetNode.parentId] : undefined
-    const isNestedEdge = sourceParentNode?.data.type === BlockEnum.Iteration
-      || sourceParentNode?.data.type === BlockEnum.Loop
-      || targetParentNode?.data.type === BlockEnum.Iteration
-      || targetParentNode?.data.type === BlockEnum.Loop
-    edge.zIndex = isNestedEdge
+    const nestedParentNode = [sourceParentNode, targetParentNode].find(node => node?.data.type === BlockEnum.Iteration || node?.data.type === BlockEnum.Loop)
+    const isInIteration = nestedParentNode?.data.type === BlockEnum.Iteration
+    const isInLoop = nestedParentNode?.data.type === BlockEnum.Loop
+    edge.data = {
+      ...edge.data,
+      isInIteration,
+      iteration_id: isInIteration ? nestedParentNode.id : undefined,
+      isInLoop,
+      loop_id: isInLoop ? nestedParentNode.id : undefined,
+    } as Edge['data']
+    edge.zIndex = nestedParentNode
       ? NESTED_ELEMENT_Z_INDEX
       : 0
 

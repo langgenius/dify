@@ -24,6 +24,12 @@ type TestEdge = {
   target: string
   targetHandle?: string
   zIndex?: number
+  data?: {
+    isInIteration?: boolean
+    iteration_id?: string
+    isInLoop?: boolean
+    loop_id?: string
+  }
 }
 
 const mockFetchQuery = vi.fn()
@@ -258,7 +264,14 @@ describe('useInsertSnippet', () => {
           targetHandle: 'target',
         }),
       ]))
-      expect(nextEdges.find(edge => edge.source === insertedEntry.id && edge.target === insertedExit.id)?.zIndex).toBe(0)
+      const insertedInternalEdge = nextEdges.find(edge => edge.source === insertedEntry.id && edge.target === insertedExit.id)
+      expect(insertedInternalEdge?.zIndex).toBe(0)
+      expect(insertedInternalEdge?.data).toEqual(expect.objectContaining({
+        isInIteration: false,
+        iteration_id: undefined,
+        isInLoop: false,
+        loop_id: undefined,
+      }))
       expect(mockIncrementSnippetUseCount).toHaveBeenCalledWith({
         params: { snippetId: 'snippet-1' },
       })
@@ -354,6 +367,12 @@ describe('useInsertSnippet', () => {
       expect(incomingEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
       expect(insertedInternalEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
       expect(outgoingEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+      expect(insertedInternalEdge?.data).toEqual(expect.objectContaining({
+        isInIteration: containerType === 'iteration',
+        iteration_id: containerType === 'iteration' ? 'container-node' : undefined,
+        isInLoop: containerType === 'loop',
+        loop_id: containerType === 'loop' ? 'container-node' : undefined,
+      }))
     })
 
     it('should show error toast when fetching snippet workflow fails', async () => {
