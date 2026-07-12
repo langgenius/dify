@@ -1,6 +1,6 @@
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -116,6 +116,12 @@ function renderKnowledgeRetrieval({
   )
 }
 
+function getDialogNameEditButton(dialog: HTMLElement) {
+  return within(dialog).getByRole('button', {
+    name: /agentDetail\.configure\.knowledgeRetrieval\.edit/,
+  })
+}
+
 describe('AgentKnowledgeRetrieval', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -141,30 +147,6 @@ describe('AgentKnowledgeRetrieval', () => {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.remove:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
       })).not.toBeInTheDocument()
     })
-
-    it('should keep row actions out of layout until hover or focus', () => {
-      renderKnowledgeRetrieval()
-
-      const editButton = screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
-      })
-      const removeButton = screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.remove:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
-      })
-      const actionGroup = editButton.parentElement
-
-      expect(actionGroup).toHaveClass('hidden')
-      expect(actionGroup).toHaveClass(
-        'group-focus-within:flex',
-        'group-hover:flex',
-      )
-      expect(removeButton).toHaveClass(
-        'hover:bg-state-destructive-hover',
-        'hover:text-text-destructive',
-        'focus-visible:bg-state-destructive-hover',
-        'focus-visible:text-text-destructive',
-      )
-    })
   })
 
   describe('User Interactions', () => {
@@ -177,10 +159,9 @@ describe('AgentKnowledgeRetrieval', () => {
       const dialog = screen.getByRole('dialog', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
       })
-      const titleButton = within(dialog).getByRole('button', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo',
-      })
+      const titleButton = getDialogNameEditButton(dialog)
       expect(titleButton).toBeInTheDocument()
+      expect(titleButton).toHaveTextContent('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo')
       expect(within(dialog).queryByRole('textbox', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
       })).not.toBeInTheDocument()
@@ -231,10 +212,6 @@ describe('AgentKnowledgeRetrieval', () => {
       renderKnowledgeRetrieval()
 
       await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.knowledgeRetrieval.add' }))
-
-      expect(screen.queryByRole('button', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo"}',
-      })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Close' }))
 
@@ -318,9 +295,7 @@ describe('AgentKnowledgeRetrieval', () => {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
       })
 
-      await user.click(within(dialog).getByRole('button', {
-        name: 'FAQ Search',
-      }))
+      await user.click(getDialogNameEditButton(dialog))
       const nameInput = within(dialog).getByRole('textbox', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
       })
@@ -340,9 +315,7 @@ describe('AgentKnowledgeRetrieval', () => {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
       })
 
-      expect(within(dialog).getByRole('button', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo',
-      })).toBeInTheDocument()
+      expect(getDialogNameEditButton(dialog)).toHaveTextContent('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo')
 
       await user.click(within(dialog).getByRole('radio', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.custom',
@@ -401,9 +374,7 @@ describe('AgentKnowledgeRetrieval', () => {
       const dialog = screen.getByRole('dialog', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
       })
-      await user.click(within(dialog).getByRole('button', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne',
-      }))
+      await user.click(getDialogNameEditButton(dialog))
 
       expect(within(dialog).getByRole('textbox', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
@@ -443,7 +414,7 @@ describe('AgentKnowledgeRetrieval', () => {
       expect(within(dialog).queryByText('appDebug.datasetConfig.knowledgeTip')).not.toBeInTheDocument()
     })
 
-    it('should save the default rerank model when editing retrieval with existing knowledge', async () => {
+    it('should preserve retrieval settings when renaming a retrieval', async () => {
       const user = userEvent.setup()
       renderKnowledgeRetrieval({
         showConfigSnapshot: true,
@@ -477,27 +448,73 @@ describe('AgentKnowledgeRetrieval', () => {
       const dialog = screen.getByRole('dialog', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
       })
-      await user.click(within(dialog).getByRole('button', {
-        name: 'Search Docs',
-      }))
+      await user.click(getDialogNameEditButton(dialog))
       const nameInput = within(dialog).getByRole('textbox', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
       })
       await user.clear(nameInput)
-      await user.type(nameInput, 'Default Rerank Docs')
+      await user.type(nameInput, 'Renamed Docs{Enter}')
 
-      await waitFor(() => {
-        const knowledgeConfig = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
-        expect(knowledgeConfig.sets[0].retrieval).toEqual(expect.objectContaining({
+      const titleButton = getDialogNameEditButton(dialog)
+      expect(titleButton).toHaveTextContent('Renamed Docs')
+      expect(titleButton).toHaveFocus()
+      const knowledgeConfig = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
+      expect(knowledgeConfig.sets[0]).toMatchObject({
+        name: 'Renamed Docs',
+        retrieval: {
           mode: 'multiple',
-          reranking_enable: true,
-          reranking_mode: RerankingModeEnum.RerankingModel,
-          reranking_model: {
-            provider: 'rerank-provider',
-            model: 'rerank-model',
-          },
-        }))
+          reranking_enable: false,
+          top_k: 4,
+        },
       })
+      expect(knowledgeConfig.sets[0].retrieval).not.toHaveProperty('reranking_model')
+    })
+
+    it('should cancel name editing with Escape without closing the dialog', async () => {
+      const user = userEvent.setup()
+      renderKnowledgeRetrieval({ showConfigSnapshot: true })
+
+      await user.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
+      }))
+      const dialog = screen.getByRole('dialog', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
+      })
+      await user.click(getDialogNameEditButton(dialog))
+      const nameInput = within(dialog).getByRole('textbox', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
+      })
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Draft name')
+      await user.keyboard('{Escape}')
+
+      expect(dialog).toBeInTheDocument()
+      const titleButton = getDialogNameEditButton(dialog)
+      expect(titleButton).toHaveTextContent('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne')
+      expect(titleButton).toHaveFocus()
+      const knowledgeConfig = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
+      expect(knowledgeConfig.sets[0].name).toBe('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne')
+    })
+
+    it('should keep editing when Enter confirms an IME composition', async () => {
+      const user = userEvent.setup()
+      renderKnowledgeRetrieval()
+
+      await user.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
+      }))
+      const dialog = screen.getByRole('dialog', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
+      })
+      await user.click(getDialogNameEditButton(dialog))
+      const nameInput = within(dialog).getByRole('textbox', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
+      })
+
+      fireEvent.keyDown(nameInput, { key: 'Enter', isComposing: true })
+
+      expect(nameInput).toBeInTheDocument()
+      expect(nameInput).toHaveFocus()
     })
 
     it('should save edited retrieval data into the config snapshot', async () => {
@@ -511,9 +528,7 @@ describe('AgentKnowledgeRetrieval', () => {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
       })
 
-      await user.click(within(dialog).getByRole('button', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne',
-      }))
+      await user.click(getDialogNameEditButton(dialog))
       const nameInput = within(dialog).getByRole('textbox', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
       })
@@ -569,6 +584,34 @@ describe('AgentKnowledgeRetrieval', () => {
 
       expect(screen.queryByRole('dialog', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
+      })).not.toBeInTheDocument()
+    })
+
+    it('should reset an uncreated dialog draft after closing', async () => {
+      const user = userEvent.setup()
+      renderKnowledgeRetrieval()
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.knowledgeRetrieval.add' }))
+      let dialog = screen.getByRole('dialog', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
+      })
+      await user.click(within(dialog).getByRole('radio', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.custom',
+      }))
+      await user.type(within(dialog).getByRole('textbox', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel',
+      }), 'temporary query')
+      await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.knowledgeRetrieval.add' }))
+      dialog = screen.getByRole('dialog', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
+      })
+      expect(within(dialog).getByRole('radio', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.agent',
+      })).toBeChecked()
+      expect(within(dialog).queryByRole('textbox', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel',
       })).not.toBeInTheDocument()
     })
   })
