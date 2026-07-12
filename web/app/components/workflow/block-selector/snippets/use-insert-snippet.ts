@@ -372,23 +372,25 @@ export const useInsertSnippet = () => {
           },
         }
       })
+      const nextNodes = [...clearedNodes, ...insertedNodes]
+      const finalNodesById = new Map(nextNodes.map(node => [node.id, node]))
       const insertedEdges = remappedGraph.edges.map((edge) => {
-        const sourceNode = remappedNodesById.get(edge.source)
-        const targetNode = remappedNodesById.get(edge.target)
-        const sourceParentNode = sourceNode?.parentId ? remappedNodesById.get(sourceNode.parentId) : undefined
-        const targetParentNode = targetNode?.parentId ? remappedNodesById.get(targetNode.parentId) : undefined
-        const isNestedInSnippet = sourceParentNode?.data.type === BlockEnum.Iteration
+        const sourceNode = finalNodesById.get(edge.source)
+        const targetNode = finalNodesById.get(edge.target)
+        const sourceParentNode = sourceNode?.parentId ? finalNodesById.get(sourceNode.parentId) : undefined
+        const targetParentNode = targetNode?.parentId ? finalNodesById.get(targetNode.parentId) : undefined
+        const isNestedEdge = sourceParentNode?.data.type === BlockEnum.Iteration
           || sourceParentNode?.data.type === BlockEnum.Loop
           || targetParentNode?.data.type === BlockEnum.Iteration
           || targetParentNode?.data.type === BlockEnum.Loop
 
         return {
           ...edge,
-          zIndex: isNestedInSnippet ? NESTED_ELEMENT_Z_INDEX : 0,
+          zIndex: isNestedEdge ? NESTED_ELEMENT_Z_INDEX : 0,
         }
       })
 
-      setNodes([...clearedNodes, ...insertedNodes])
+      setNodes(nextNodes)
       setEdges([
         ...edges
           .filter(edge => edge.id !== currentEdge?.id)

@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
+import { NESTED_ELEMENT_Z_INDEX } from '../../../constants'
 import { useInsertSnippet } from '../use-insert-snippet'
 
 type TestNode = {
@@ -257,9 +258,102 @@ describe('useInsertSnippet', () => {
           targetHandle: 'target',
         }),
       ]))
+      expect(nextEdges.find(edge => edge.source === insertedEntry.id && edge.target === insertedExit.id)?.zIndex).toBe(0)
       expect(mockIncrementSnippetUseCount).toHaveBeenCalledWith({
         params: { snippetId: 'snippet-1' },
       })
+    })
+
+    it.each(['iteration', 'loop'] as const)('should keep inserted snippet edges above the %s container', async (containerType) => {
+      mockGetNodes.mockReturnValue([
+        {
+          id: 'container-node',
+          position: { x: 0, y: 0 },
+          data: {
+            type: containerType,
+            selected: false,
+            _children: [
+              { nodeId: 'prev-node', nodeType: 'code' },
+              { nodeId: 'next-node', nodeType: 'code' },
+            ],
+          },
+        },
+        {
+          id: 'prev-node',
+          parentId: 'container-node',
+          position: { x: 0, y: 0 },
+          width: 240,
+          data: { type: 'code', selected: true, _connectedSourceHandleIds: ['source'] },
+        },
+        {
+          id: 'next-node',
+          parentId: 'container-node',
+          position: { x: 300, y: 0 },
+          data: { type: 'code', selected: false, _connectedTargetHandleIds: ['target'] },
+        },
+      ])
+      mockEdges = [
+        {
+          id: 'prev-node-source-next-node-target',
+          source: 'prev-node',
+          sourceHandle: 'source',
+          target: 'next-node',
+          targetHandle: 'target',
+          data: { sourceType: 'code', targetType: 'code' },
+        },
+      ]
+      mockFetchQuery.mockResolvedValue({
+        graph: {
+          nodes: [
+            {
+              id: 'snippet-entry',
+              position: { x: 0, y: 0 },
+              data: { type: 'llm', selected: false },
+            },
+            {
+              id: 'snippet-exit',
+              position: { x: 300, y: 0 },
+              data: { type: 'code', selected: false },
+            },
+          ],
+          edges: [
+            {
+              id: 'snippet-entry-source-snippet-exit-target',
+              source: 'snippet-entry',
+              sourceHandle: 'source',
+              target: 'snippet-exit',
+              targetHandle: 'target',
+              data: { sourceType: 'llm', targetType: 'code' },
+            },
+          ],
+        },
+      })
+
+      const { result } = renderHook(() => useInsertSnippet())
+
+      await act(async () => {
+        await result.current.handleInsertSnippet('snippet-1', {
+          prevNodeId: 'prev-node',
+          prevNodeSourceHandle: 'source',
+          nextNodeId: 'next-node',
+          nextNodeTargetHandle: 'target',
+        })
+      })
+
+      const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
+      const insertedNodes = nextNodes.filter(node => node.id.includes('snippet-'))
+      expect(insertedNodes).toHaveLength(2)
+      expect(insertedNodes.every(node => node.parentId === 'container-node' && node.zIndex === NESTED_ELEMENT_Z_INDEX)).toBe(true)
+
+      const insertedEntry = insertedNodes.find(node => node.id.includes('snippet-entry'))!
+      const insertedExit = insertedNodes.find(node => node.id.includes('snippet-exit'))!
+      const nextEdges = mockSetEdges.mock.calls[0]![0] as TestEdge[]
+      const incomingEdge = nextEdges.find(edge => edge.source === 'prev-node' && edge.target === insertedEntry.id)
+      const insertedInternalEdge = nextEdges.find(edge => edge.source === insertedEntry.id && edge.target === insertedExit.id)
+      const outgoingEdge = nextEdges.find(edge => edge.source === insertedExit.id && edge.target === 'next-node')
+      expect(incomingEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+      expect(insertedInternalEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
+      expect(outgoingEdge?.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
     })
 
     it('should show error toast when fetching snippet workflow fails', async () => {
