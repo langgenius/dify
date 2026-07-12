@@ -255,7 +255,9 @@ describe('Question component', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-      expect(screen.getByTestId('question-content')).toHaveTextContent('This is the question content')
+      expect(screen.getByTestId('question-content')).toHaveTextContent(
+        'This is the question content',
+      )
     })
   })
 

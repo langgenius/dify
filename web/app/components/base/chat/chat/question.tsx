@@ -198,7 +198,7 @@ const Question: FC<QuestionProps> = ({
             />
           )}
           {!isEditing ? (
-            <div className="whitespace-pre-wrap break-words">{content}</div>
+            <div className="break-words whitespace-pre-wrap">{content}</div>
           ) : (
             <div className="flex flex-col gap-4">
               <div className="max-h-[158px] overflow-x-hidden overflow-y-auto pr-1">
