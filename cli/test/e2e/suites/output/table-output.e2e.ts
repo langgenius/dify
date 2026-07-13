@@ -147,7 +147,7 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     assertExitCode(result, 0)
     // No NUL, BEL, BS, VT, FF, SO–US, DEL bytes that would corrupt a pipe
     // eslint-disable-next-line no-control-regex
-    expect(result.stdout).not.toMatch(/[\x00-\x08\v\x0C\x0E-\x1F\x7F]/)
+    expect(result.stdout).not.toMatch(/[\x00-\x08\v\f\x0E-\x1F\x7F]/)
   })
 
   it('[P0] 5.16 default table output written to a file contains no control characters', async () => {
@@ -156,7 +156,7 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     assertExitCode(result, 0)
     assertNoAnsi(result.stdout, 'stdout')
     // eslint-disable-next-line no-control-regex
-    expect(result.stdout).not.toMatch(/[\x00-\x08\v\x0C\x0E-\x1F\x7F]/)
+    expect(result.stdout).not.toMatch(/[\x00-\x08\v\f\x0E-\x1F\x7F]/)
   })
 
   // ── 5.25 — Performance ────────────────────────────────────────────────────

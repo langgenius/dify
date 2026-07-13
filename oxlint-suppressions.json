@@ -14,11 +14,6 @@
       "count": 1
     }
   },
-  "cli/test/e2e/suites/output/table-output.e2e.ts": {
-    "regexp/control-character-escape": {
-      "count": 2
-    }
-  },
   "e2e/support/web-server.ts": {
     "no-throw-literal": {
       "count": 1
