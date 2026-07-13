@@ -250,6 +250,64 @@ def test_run_rejects_unowned_pipeline_dataset(
     runner.get_workflow.assert_not_called()
 
 
+def test_run_rejects_document_outside_pipeline_dataset_after_async_boundary(
+    mocker: MockerFixture,
+    runner: PipelineRunner,
+):
+    runner.application_generate_entity.document_id = "foreign-doc"
+    runner.application_generate_entity.original_document_id = "foreign-doc"
+    pipeline = MagicMock(id="pipe", tenant_id="tenant")
+    pipeline.retrieve_dataset.return_value = SimpleNamespace(id="ds", tenant_id="tenant")
+    session = MagicMock()
+    session.get.side_effect = [None, pipeline]
+    _patch_create_session(mocker, session)
+    runner.get_workflow = MagicMock()
+    get_document_by_ref = mocker.patch.object(
+        module.DatasetRefService,
+        "get_document_by_ref",
+        return_value=None,
+    )
+
+    with pytest.raises(ValueError, match="Pipeline document not found"):
+        runner.run()
+
+    document_ref = get_document_by_ref.call_args.args[0]
+    assert document_ref.dataset.tenant_id == "tenant"
+    assert document_ref.dataset.dataset_id == "ds"
+    assert document_ref.document_id == "foreign-doc"
+    get_document_by_ref.assert_called_once_with(document_ref, session=session)
+    runner.get_workflow.assert_not_called()
+
+
+def test_run_rejects_original_document_outside_pipeline_dataset_after_async_boundary(
+    mocker: MockerFixture,
+    runner: PipelineRunner,
+):
+    runner.application_generate_entity.document_id = "doc"
+    runner.application_generate_entity.original_document_id = "foreign-doc"
+    pipeline = MagicMock(id="pipe", tenant_id="tenant")
+    pipeline.retrieve_dataset.return_value = SimpleNamespace(id="ds", tenant_id="tenant")
+    session = MagicMock()
+    session.get.side_effect = [None, pipeline]
+    _patch_create_session(mocker, session)
+    runner.get_workflow = MagicMock()
+    get_document_by_ref = mocker.patch.object(
+        module.DatasetRefService,
+        "get_document_by_ref",
+        side_effect=[SimpleNamespace(id="doc"), None],
+    )
+
+    with pytest.raises(ValueError, match="Pipeline original document not found"):
+        runner.run()
+
+    document_refs = [call.args[0] for call in get_document_by_ref.call_args_list]
+    assert [document_ref.document_id for document_ref in document_refs] == ["doc", "foreign-doc"]
+    for document_ref in document_refs:
+        assert document_ref.dataset.tenant_id == "tenant"
+        assert document_ref.dataset.dataset_id == "ds"
+    runner.get_workflow.assert_not_called()
+
+
 def test_run_workflow_not_initialized(mocker: MockerFixture):
     app_generate_entity = _build_app_generate_entity()
 

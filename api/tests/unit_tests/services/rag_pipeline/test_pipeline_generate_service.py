@@ -123,6 +123,37 @@ def test_generate_rejects_pipeline_dataset_from_another_tenant(mocker: MockerFix
     update_status_mock.assert_not_called()
 
 
+def test_generate_rejects_original_document_outside_pipeline_dataset_before_dispatch(
+    mocker: MockerFixture,
+) -> None:
+    dataset = cast(Dataset, SimpleNamespace(id="dataset-1", tenant_id="tenant-1"))
+    pipeline = cast(
+        Pipeline,
+        SimpleNamespace(
+            id="pipeline-1",
+            tenant_id="tenant-1",
+            retrieve_dataset=mocker.Mock(return_value=dataset),
+        ),
+    )
+    session = mocker.Mock()
+    session.scalar.return_value = None
+    mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=SimpleNamespace(id="wf-1"))
+    generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
+
+    with pytest.raises(ValueError, match="Pipeline document not found"):
+        PipelineGenerateService.generate(
+            pipeline=pipeline,
+            user=cast(Account, SimpleNamespace(id="user-1")),
+            args={"original_document_id": "foreign-doc"},
+            invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+            session=session,
+        )
+
+    statement = session.scalar.call_args.args[0]
+    assert {"foreign-doc", "dataset-1", "tenant-1"} <= set(statement.compile().params.values())
+    generator_cls.assert_not_called()
+
+
 def test_update_document_status_updates_existing_document(mocker: MockerFixture) -> None:
     document = SimpleNamespace(indexing_status="completed")
     dataset = cast(Dataset, SimpleNamespace(id="dataset-1", tenant_id="tenant-1"))
@@ -147,7 +178,7 @@ def test_update_document_status_updates_existing_document(mocker: MockerFixture)
         pytest.param("tenant-1", "other-dataset", id="other-dataset"),
     ],
 )
-def test_update_document_status_skips_document_outside_owner(
+def test_update_document_status_rejects_document_outside_owner(
     mocker: MockerFixture,
     document_tenant_id: str,
     document_dataset_id: str,
@@ -171,7 +202,8 @@ def test_update_document_status_skips_document_outside_owner(
     session_mock.scalar.side_effect = resolve_document
     add_mock = session_mock.add
 
-    PipelineGenerateService.update_document_status(document_ref, session=session_mock)
+    with pytest.raises(ValueError, match="Pipeline document not found"):
+        PipelineGenerateService.update_document_status(document_ref, session=session_mock)
 
     statement = session_mock.scalar.call_args.args[0]
     assert {"doc-1", "dataset-1", "tenant-1"} <= set(statement.compile().params.values())

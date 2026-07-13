@@ -129,8 +129,9 @@ class PipelineGenerateService:
 
     @classmethod
     def update_document_status(cls, document_ref: DocumentRef, *, session: Session) -> None:
-        """Set a document in the owner-bound dataset to waiting, if it exists."""
+        """Set a document in the owner-bound dataset to waiting."""
         document = DatasetRefService.get_document_by_ref(document_ref, session=session)
-        if document:
-            document.indexing_status = IndexingStatus.WAITING
-            session.add(document)
+        if document is None:
+            raise ValueError("Pipeline document not found")
+        document.indexing_status = IndexingStatus.WAITING
+        session.add(document)

@@ -16,7 +16,7 @@ class DatasetRef(NamedTuple):
 
 
 class DocumentRef(NamedTuple):
-    """Document identifiers used to scope downstream resource lookups."""
+    """Owner-bound lookup coordinates, not proof that a document is authorized or exists."""
 
     dataset: DatasetRef
     document_id: str
@@ -30,10 +30,11 @@ class SegmentRef(NamedTuple):
 
 
 class DatasetRefService:
-    """Factory helpers for dataset, document, and segment refs."""
+    """Build child locators from validated dataset roots and resolve them with owner predicates."""
 
     @staticmethod
     def create_dataset_ref(dataset: Dataset) -> DatasetRef:
+        """Create a root ref from a dataset already validated by the caller."""
         return DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
 
     @staticmethod
@@ -44,6 +45,7 @@ class DatasetRefService:
 
     @staticmethod
     def create_document_ref_from_id(dataset_ref: DatasetRef, document_id: str) -> DocumentRef:
+        """Bind a candidate document ID; ownership is enforced when the ref is consumed."""
         return DocumentRef(dataset=dataset_ref, document_id=document_id)
 
     @staticmethod

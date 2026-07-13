@@ -105,15 +105,26 @@ class PipelineRunner(WorkflowBasedAppRunner):
             ):
                 raise ValueError("Pipeline dataset not found")
 
+            document_id = self.application_generate_entity.document_id
+            original_document_id = self.application_generate_entity.original_document_id
             dataset_ref = DatasetRefService.create_dataset_ref(dataset)
             document_ref = (
                 DatasetRefService.create_document_ref_from_id(
                     dataset_ref,
-                    self.application_generate_entity.document_id,
+                    document_id,
                 )
-                if self.application_generate_entity.document_id
+                if document_id
                 else None
             )
+            if document_ref and DatasetRefService.get_document_by_ref(document_ref, session=session) is None:
+                raise ValueError("Pipeline document not found")
+            if original_document_id and original_document_id != document_id:
+                original_document_ref = DatasetRefService.create_document_ref_from_id(
+                    dataset_ref,
+                    original_document_id,
+                )
+                if DatasetRefService.get_document_by_ref(original_document_ref, session=session) is None:
+                    raise ValueError("Pipeline original document not found")
 
             workflow = self.get_workflow(session=session, pipeline=pipeline, workflow_id=app_config.workflow_id)
             if not workflow:
