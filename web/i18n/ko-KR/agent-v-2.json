@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": ".zip 또는 .skill 파일을 업로드하세요.",
   "agentDetail.configure.skills.upload.success": "스킬을 업로드했습니다.",
   "agentDetail.configure.skills.upload.title": "스킬 업로드",
+  "agentDetail.configure.skills.upload.warning.files": "Markdown 파일만 사용하려면 파일에 업로드하고 프롬프트에서 참조하세요.",
+  "agentDetail.configure.skills.upload.warning.specification": "업로드한 스킬은 <specificationLink>Agent Skills 사양</specificationLink>을 준수해야 합니다.",
   "agentDetail.configure.title": "구성",
   "agentDetail.configure.tools.add": "도구 추가",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "개발자용",

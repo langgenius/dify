@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "Téléversez un fichier .zip ou .skill.",
   "agentDetail.configure.skills.upload.success": "Compétence téléversée.",
   "agentDetail.configure.skills.upload.title": "Téléverser une compétence",
+  "agentDetail.configure.skills.upload.warning.files": "Si vous souhaitez uniquement utiliser des fichiers Markdown, téléversez-les dans Fichiers et référencez-les dans votre prompt.",
+  "agentDetail.configure.skills.upload.warning.specification": "Les compétences téléversées doivent respecter la <specificationLink>spécification Agent Skills</specificationLink>.",
   "agentDetail.configure.title": "Configurer",
   "agentDetail.configure.tools.add": "Ajouter un outil",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Pour les développeurs",

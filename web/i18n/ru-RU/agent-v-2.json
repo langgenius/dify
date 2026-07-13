@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "Загрузите файл .zip или .skill.",
   "agentDetail.configure.skills.upload.success": "Навык загружен.",
   "agentDetail.configure.skills.upload.title": "Загрузить навык",
+  "agentDetail.configure.skills.upload.warning.files": "Если вам нужно использовать только файлы Markdown, загрузите их в раздел «Файлы» и укажите ссылки на них в своем промпте.",
+  "agentDetail.configure.skills.upload.warning.specification": "Загружаемые навыки должны соответствовать <specificationLink>спецификации Agent Skills</specificationLink>.",
   "agentDetail.configure.title": "Настроить",
   "agentDetail.configure.tools.add": "Добавить инструмент",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Для разработчиков",

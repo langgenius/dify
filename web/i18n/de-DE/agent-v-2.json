@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "Bitte eine .zip- oder .skill-Datei hochladen.",
   "agentDetail.configure.skills.upload.success": "Skill hochgeladen.",
   "agentDetail.configure.skills.upload.title": "Skill hochladen",
+  "agentDetail.configure.skills.upload.warning.files": "Wenn du nur Markdown-Dateien verwenden möchtest, lade sie unter „Dateien“ hoch und verweise in deinem Prompt darauf.",
+  "agentDetail.configure.skills.upload.warning.specification": "Hochgeladene Skills müssen der <specificationLink>Agent-Skills-Spezifikation</specificationLink> entsprechen.",
   "agentDetail.configure.title": "Konfigurieren",
   "agentDetail.configure.tools.add": "Tool hinzufügen",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Für Entwickler",
