@@ -604,7 +604,9 @@ class TestChatApiController:
             with pytest.raises(AgentNotPublishedError):
                 handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
-    def test_invalid_conversation_id_fails_fast_as_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_invalid_conversation_id_fails_fast_as_not_found(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
+    ) -> None:
         # A well-formed but nonexistent conversation_id must fail fast as 404, before the
         # streaming generator is created. Previously the lookup only ran inside the generator,
         # so an invalid id surfaced as a hang instead of a clean error.
@@ -619,8 +621,7 @@ class TestChatApiController:
 
         api = ChatApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value, id="app-1")
-        end_user = SimpleNamespace()
+        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
 
         with app.test_request_context(
             "/chat-messages",
@@ -628,7 +629,7 @@ class TestChatApiController:
             json={"inputs": {}, "query": "hi", "conversation_id": str(uuid.uuid4())},
         ):
             with pytest.raises(NotFound):
-                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
+                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
         # The lookup must run before generation, so the generator is never started.
         generate_mock.assert_not_called()
