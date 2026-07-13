@@ -1,25 +1,15 @@
-import base64
 import hashlib
 import os
 import uuid
-from collections.abc import Generator, Sequence
-from contextlib import contextmanager, suppress
-from tempfile import NamedTemporaryFile
 from typing import Literal
-from zipfile import ZIP_DEFLATED, ZipFile
 
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from constants import (
-    AUDIO_EXTENSIONS,
     DOCUMENT_EXTENSIONS,
-    IMAGE_EXTENSIONS,
-    VIDEO_EXTENSIONS,
 )
-from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import helpers as file_helpers
