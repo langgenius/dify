@@ -1,5 +1,6 @@
 'use client'
 
+import type { Ref } from 'react'
 import type { Role } from '@/models/access-control'
 import { Field, FieldError } from '@langgenius/dify-ui/field'
 import {
@@ -23,6 +24,8 @@ type RoleSelectorProps = {
   onChange: (role: Role | null) => void
   onInteract?: () => void
   error?: string
+  disabled?: boolean
+  triggerRef?: Ref<HTMLButtonElement>
 }
 
 const PAGE_SIZE = 20
@@ -48,7 +51,14 @@ function getLegacyRoleDescriptionKey(role: Role) {
   return candidateKeys.find(isLegacyRoleKey)
 }
 
-export function RoleSelector({ value, onChange, onInteract, error }: RoleSelectorProps) {
+export function RoleSelector({
+  value,
+  onChange,
+  onInteract,
+  error,
+  disabled = false,
+  triggerRef,
+}: RoleSelectorProps) {
   const { t } = useTranslation()
   const locale = useLocale()
   const [open, setOpen] = useState(false)
@@ -144,6 +154,7 @@ export function RoleSelector({ value, onChange, onInteract, error }: RoleSelecto
       <Select<Role>
         name="role"
         required
+        disabled={disabled}
         value={value}
         open={open}
         onOpenChange={(nextOpen) => {
@@ -159,7 +170,7 @@ export function RoleSelector({ value, onChange, onInteract, error }: RoleSelecto
         isItemEqualToValue={(role, selectedRole) => role.id === selectedRole.id}
       >
         <SelectLabel>{t(($) => $['members.role'], { ns: 'common' })}</SelectLabel>
-        <SelectTrigger>
+        <SelectTrigger ref={triggerRef}>
           <SelectValue placeholder={t(($) => $['members.selectRole'], { ns: 'common' })} />
         </SelectTrigger>
         <SelectContent

@@ -1,6 +1,6 @@
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { vi } from 'vitest'
@@ -168,6 +168,32 @@ describe('InviteModal', () => {
     expect(onSend).toHaveBeenCalledWith([])
   })
 
+  it('submits a valid draft without requiring Enter or blur to create a chip', async () => {
+    const user = userEvent.setup()
+    inviteMember.mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+      tenant_id: 'tenant-id',
+    } satisfies MemberInviteResponse)
+    renderModal()
+
+    await selectAdminRole(user)
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.type(input, 'draft@example.com')
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(inviteMember).toHaveBeenCalledOnce()
+      expect(inviteMember.mock.calls[0]?.[0]).toEqual({
+        body: {
+          emails: ['draft@example.com'],
+          role: 'admin',
+          language: 'en-US',
+        },
+      })
+    })
+  })
+
   it('accepts an address allowed by the browser without requiring a dotted domain', async () => {
     const user = userEvent.setup()
     inviteMember.mockResolvedValue({
@@ -198,6 +224,54 @@ describe('InviteModal', () => {
     expect(inviteMember).not.toHaveBeenCalled()
   })
 
+  it('shows the required error and focuses the email field after an empty submission', async () => {
+    const user = userEvent.setup()
+    renderModal()
+
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    expect(screen.getByText(/members\.emailRequired/i)).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: /members\.emailRecipients/i })).toHaveFocus()
+    expect(inviteMember).not.toHaveBeenCalled()
+  })
+
+  it('freezes all editable controls while invitations are being sent', async () => {
+    const user = userEvent.setup()
+    let resolveInvite!: (response: MemberInviteResponse) => void
+    inviteMember.mockReturnValue(
+      new Promise<MemberInviteResponse>((resolve) => {
+        resolveInvite = resolve
+      }),
+    )
+    renderModal()
+
+    await addRecipients(user, 'user@example.com, another@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: /members\.emailRecipients/i })).toBeDisabled()
+      expect(screen.getByRole('combobox', { name: /members\.role/i })).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: /operation\.remove.*user@example\.com/i }),
+      ).toBeDisabled()
+      expect(screen.getByRole('button', { name: /members\.sendInvite/i })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+    })
+    expect(inviteMember).toHaveBeenCalledOnce()
+
+    await act(async () => {
+      resolveInvite({
+        result: 'success',
+        invitation_results: [],
+        tenant_id: 'tenant-id',
+      })
+    })
+  })
+
   it('warns but lets the backend decide whether recipients consume remaining seats', async () => {
     const user = userEvent.setup()
     vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
@@ -224,9 +298,9 @@ describe('InviteModal', () => {
   })
 
   it.each([
-    ['limit_exceeded', /members\.inviteLimitExceeded/i, 'emails'],
-    ['invalid-role', /members\.invalidRole/i, 'role'],
-  ])('maps %s server validation to the owning field', async (code, message, fieldName) => {
+    ['limit_exceeded', /members\.inviteLimitExceeded/i, 'emails', 'textbox'],
+    ['invalid-role', /members\.invalidRole/i, 'role', 'combobox'],
+  ])('maps %s server validation to the owning field', async (code, message, fieldName, role) => {
     const user = userEvent.setup()
     inviteMember.mockRejectedValue({
       code: 'BAD_REQUEST',
@@ -240,6 +314,11 @@ describe('InviteModal', () => {
 
     expect(await screen.findByText(message)).toBeInTheDocument()
     expect(document.querySelector(`[name="${fieldName}"]`)).toHaveAttribute('aria-invalid', 'true')
+    expect(
+      screen.getByRole(role, {
+        name: fieldName === 'emails' ? /members\.emailRecipients/i : /members\.role/i,
+      }),
+    ).toHaveFocus()
     expect(onOpenChange).not.toHaveBeenCalled()
   })
 
@@ -289,6 +368,8 @@ describe('InviteModal', () => {
     await user.click(trigger)
     await addRecipients(user, 'person@example.com, another@example.com')
     await user.click(screen.getByRole('button', { name: /operation\.close/i }))
+
+    await waitFor(() => expect(trigger).toHaveFocus())
 
     await user.click(trigger)
     expect(screen.queryByText('person@example.com')).not.toBeInTheDocument()

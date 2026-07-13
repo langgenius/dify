@@ -3,13 +3,18 @@ export type EmailRecipient = {
   isValid: boolean
 }
 
-const EMAIL_DELIMITER_PATTERN = /[,;\s]+/
+const EMAIL_DELIMITER_PATTERN = /[,;\r\n\t]+/
 
 function isEmailValid(value: string) {
   const input = document.createElement('input')
   input.type = 'email'
   input.value = value
   return input.validity.valid
+}
+
+export function createEmailRecipient(input: string): EmailRecipient {
+  const value = input.trim().toLowerCase()
+  return { value, isValid: Boolean(value) && isEmailValid(value) }
 }
 
 export function hasEmailDelimiter(value: string) {
@@ -22,13 +27,14 @@ export function mergeEmailRecipients(recipients: EmailRecipient[], input: string
 
   input
     .split(EMAIL_DELIMITER_PATTERN)
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean)
-    .forEach((value) => {
+    .map(createEmailRecipient)
+    .filter(({ value }) => Boolean(value))
+    .forEach((recipient) => {
+      const { value } = recipient
       if (existingValues.has(value)) return
 
       existingValues.add(value)
-      nextRecipients.push({ value, isValid: isEmailValid(value) })
+      nextRecipients.push(recipient)
     })
 
   return nextRecipients

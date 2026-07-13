@@ -16,13 +16,13 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import { commonQueryKeys } from '@/service/use-common'
-import { mergeEmailRecipients } from './email-recipients'
+import { createEmailRecipient, mergeEmailRecipients } from './email-recipients'
 import { EmailRecipientsField } from './email-recipients-field'
 import { getInviteErrorCode } from './invite-error'
 import { RoleSelector } from './role-selector'
@@ -51,8 +51,11 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   const licenseLimit = useProviderContextSelector((state) => state.licenseLimit)
   const refreshLicenseLimit = useProviderContextSelector((state) => state.refreshLicenseLimit)
   const [recipients, setRecipients] = useState<EmailRecipient[]>([])
+  const [draft, setDraft] = useState('')
   const [role, setRole] = useState<Role | null>(null)
   const [submitError, setSubmitError] = useState<SubmitError>(null)
+  const emailInputRef = useRef<HTMLInputElement>(null)
+  const roleTriggerRef = useRef<HTMLButtonElement>(null)
   const invalidRecipientError = recipients.some(({ isValid }) => !isValid)
     ? t(($) => $['members.emailInvalid'], { ns: 'common' })
     : null
@@ -62,6 +65,8 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   const currentSize = licenseLimit.workspace_members.size ?? 0
   const memberLimit = licenseLimit.workspace_members.limit
   const remainingSeats = memberLimit > 0 ? Math.max(memberLimit - currentSize, 0) : null
+  const validRecipientCount = recipients.filter(({ isValid }) => isValid).length
+  const exceedsRemainingSeats = remainingSeats !== null && validRecipientCount > remainingSeats
   const formErrors = {
     ...(emailError ? { emails: emailError } : {}),
     ...(roleError ? { role: roleError } : {}),
@@ -77,24 +82,46 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
     setSubmitError((error) => (error?.target === target ? null : error))
   }
 
+  useEffect(() => {
+    if (submitError?.target === 'emails') emailInputRef.current?.focus()
+    if (submitError?.target === 'role') roleTriggerRef.current?.focus()
+  }, [submitError])
+
   const handleSubmit: FormSubmitHandler = async (event) => {
     event.preventDefault()
     if (isPending) return
 
-    const draft = new FormData(event.currentTarget).get('emails')
-    const nextRecipients = mergeEmailRecipients(recipients, typeof draft === 'string' ? draft : '')
-    setRecipients(nextRecipients)
+    const submittedDraft = new FormData(event.currentTarget).get('emails')
+    const draftValue = typeof submittedDraft === 'string' ? submittedDraft : draft
+
+    if (draftValue.trim() && !createEmailRecipient(draftValue).isValid) {
+      emailInputRef.current?.focus()
+      return
+    }
+
+    const nextRecipients = mergeEmailRecipients(recipients, draftValue)
 
     if (nextRecipients.length === 0) {
       setSubmitError({
         target: 'emails',
         message: t(($) => $['members.emailRequired'], { ns: 'common' }),
       })
+      emailInputRef.current?.focus()
       return
     }
 
-    if (nextRecipients.some(({ isValid }) => !isValid)) return
-    if (!role) return
+    if (nextRecipients.some(({ isValid }) => !isValid)) {
+      emailInputRef.current?.focus()
+      return
+    }
+
+    setRecipients(nextRecipients)
+    setDraft('')
+
+    if (!role) {
+      roleTriggerRef.current?.focus()
+      return
+    }
 
     setSubmitError(null)
     try {
@@ -150,17 +177,38 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
       )}
       <EmailRecipientsField
         recipients={recipients}
+        draft={draft}
         onRecipientsChange={setRecipients}
+        onDraftChange={setDraft}
         onChange={() => clearSubmitError('emails')}
         error={emailServerError}
-        remainingSeats={remainingSeats}
+        disabled={isPending}
+        inputRef={emailInputRef}
       />
       <RoleSelector
         value={role}
         onChange={setRole}
         onInteract={() => clearSubmitError('role')}
         error={roleError}
+        disabled={isPending}
+        triggerRef={roleTriggerRef}
       />
+      {exceedsRemainingSeats && (
+        <div
+          role="status"
+          className="flex items-start gap-1.5 rounded-lg bg-state-warning-hover p-2 body-xs-regular text-text-warning"
+        >
+          <span aria-hidden="true" className="i-ri-error-warning-line size-4 shrink-0" />
+          <span>
+            {t(($) => $['members.seatsRemaining'], {
+              ns: 'common',
+              count: remainingSeats,
+            })}
+            <span aria-hidden="true"> · </span>
+            {t(($) => $['members.recipientCountExceedsSeats'], { ns: 'common' })}
+          </span>
+        </div>
+      )}
       {submitError?.target === 'form' && (
         <div role="alert" className="body-xs-regular text-text-destructive">
           {submitError.message}
@@ -173,10 +221,10 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
         loading={isPending}
         disabled={isPending}
       >
-        {recipients.length > 0
+        {validRecipientCount > 0
           ? t(($) => $['members.sendInviteCount'], {
               ns: 'common',
-              count: recipients.length,
+              count: validRecipientCount,
             })
           : t(($) => $['members.sendInvite'], { ns: 'common' })}
       </Button>
