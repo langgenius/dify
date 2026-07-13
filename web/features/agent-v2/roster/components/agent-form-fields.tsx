@@ -63,7 +63,7 @@ export function AgentFormFields({
             <FieldLabel>{t(($) => $['roster.createForm.nameLabel'])}</FieldLabel>
             <FieldControl
               autoComplete="off"
-              // eslint-disable-next-line jsx-a11y/no-autofocus -- Agent roster dialogs open from explicit commands, and the name field is the primary editable control.
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- Agent roster dialogs open from explicit commands, and the name field is the primary editable control.
               autoFocus
               maxLength={255}
               onValueChange={onNameChange}

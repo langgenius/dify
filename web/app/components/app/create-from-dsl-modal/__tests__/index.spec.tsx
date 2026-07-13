@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'

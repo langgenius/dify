@@ -343,6 +343,60 @@ describe('AgentSkills', () => {
     expect(toast.success).toHaveBeenCalled()
   })
 
+  it('should hide skill package guidance before an upload fails', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+
+    expect(
+      screen.queryByText('agentV2.agentDetail.configure.skills.upload.warning.specification'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('should show skill package guidance after failure and hide it when retrying', async () => {
+    const user = userEvent.setup()
+    mocks.uploadSkillMutationFn
+      .mockRejectedValueOnce(new Error('Backend upload error'))
+      .mockImplementationOnce(() => new Promise<never>(() => undefined))
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+    const input = await waitFor(() => {
+      const element = document.querySelector('input[type="file"]')
+      expect(element).not.toBeNull()
+      return element as HTMLInputElement
+    })
+    await user.upload(
+      input,
+      new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' }),
+    )
+    const uploadButton = screen.getByRole('button', {
+      name: /agentDetail\.configure\.skills\.upload\.action/i,
+    })
+
+    await user.click(uploadButton)
+
+    expect(
+      await screen.findByText('agentV2.agentDetail.configure.skills.upload.warning.files'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.skills.upload.warning.specification'),
+    ).toBeInTheDocument()
+
+    await user.click(uploadButton)
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('agentV2.agentDetail.configure.skills.upload.warning.files'),
+      ).not.toBeInTheDocument()
+    })
+  })
+
   it('should not show the frontend fallback error when skill upload fails', async () => {
     const user = userEvent.setup()
     mocks.uploadSkillMutationFn.mockRejectedValueOnce(new Error('Backend upload error'))

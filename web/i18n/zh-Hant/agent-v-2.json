@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "請上傳 .zip 或 .skill 檔案。",
   "agentDetail.configure.skills.upload.success": "Skill 已上傳。",
   "agentDetail.configure.skills.upload.title": "上傳 Skill",
+  "agentDetail.configure.skills.upload.warning.files": "如果只需要使用 Markdown 檔案，請將它們上傳到「檔案」，並在你的提示詞中引用。",
+  "agentDetail.configure.skills.upload.warning.specification": "上傳的 Skill 需遵循 <specificationLink>Agent Skills 規範</specificationLink>。",
   "agentDetail.configure.title": "設定",
   "agentDetail.configure.tools.add": "新增工具",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "開發者適用",

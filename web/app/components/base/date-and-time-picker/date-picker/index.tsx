@@ -62,18 +62,18 @@ const DatePicker = ({
     clearMonthMapCache()
     if (normalizedValue) {
       const newValue = getDateWithTimezone({ date: normalizedValue, timezone })
-      // eslint-disable-next-line react/set-state-in-effect -- timezone changes intentionally resync the displayed calendar state.
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- timezone changes intentionally resync the displayed calendar state.
       setCurrentDate(newValue)
-      // eslint-disable-next-line react/set-state-in-effect -- timezone changes intentionally resync the selected value.
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- timezone changes intentionally resync the selected value.
       setSelectedDate(newValue)
       onChange(newValue)
     } else {
-      // eslint-disable-next-line react/set-state-in-effect -- timezone changes intentionally resync the displayed calendar state.
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- timezone changes intentionally resync the displayed calendar state.
       setCurrentDate((prev) => getDateWithTimezone({ date: prev, timezone }))
-      // eslint-disable-next-line react/set-state-in-effect -- timezone changes intentionally resync the selected value.
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- timezone changes intentionally resync the selected value.
       setSelectedDate((prev) => (prev ? getDateWithTimezone({ date: prev, timezone }) : undefined))
     }
-    // eslint-disable-next-line react/exhaustive-deps -- this effect intentionally runs only when timezone changes.
+    // oxlint-disable-next-line react/exhaustive-deps -- this effect intentionally runs only when timezone changes.
   }, [timezone])
 
   const handleOpenChange = useCallback(

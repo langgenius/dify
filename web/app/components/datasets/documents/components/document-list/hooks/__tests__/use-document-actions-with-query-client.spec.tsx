@@ -37,7 +37,6 @@ describe('useDocumentActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    // Setup all mocks with default values
     const createMockMutation = () => ({
       mutateAsync: mockMutateAsync,
       isPending: false,

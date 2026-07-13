@@ -165,7 +165,7 @@ export function ToolPickerContent({
           onShowAddCustomCollectionModal={showEditCustomCollectionModal}
           // The picker replaces the focused menu item inside an already-open popover.
           // Focusing search keeps keyboard users in the same add-tool workflow.
-          /* eslint-disable-next-line jsx-a11y/no-autofocus */
+          /* oxlint-disable-next-line jsx-a11y/no-autofocus */
           autoFocus={focusSearchOnMount}
           inputClassName="grow"
         />

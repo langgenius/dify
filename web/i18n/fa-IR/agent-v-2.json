@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "یک فایل .zip یا .skill بارگذاری کنید.",
   "agentDetail.configure.skills.upload.success": "مهارت بارگذاری شد.",
   "agentDetail.configure.skills.upload.title": "بارگذاری مهارت",
+  "agentDetail.configure.skills.upload.warning.files": "اگر فقط می‌خواهید از فایل‌های Markdown استفاده کنید، آن‌ها را در بخش فایل‌ها بارگذاری و در پرامپت خود ارجاع دهید.",
+  "agentDetail.configure.skills.upload.warning.specification": "مهارت‌های بارگذاری‌شده باید از <specificationLink>مشخصات Agent Skills</specificationLink> پیروی کنند.",
   "agentDetail.configure.title": "پیکربندی",
   "agentDetail.configure.tools.add": "افزودن ابزار",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "برای توسعه‌دهندگان",

@@ -2,7 +2,7 @@ import type { AppModeEnum } from '@/types/app'
 // service/base is the dependency we're mocking in this test; the
 // no-restricted-imports rule targets production imports, not test
 // instrumentation — mirrors sibling service specs (annotation.spec.ts etc.).
-// eslint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports
 import { get, post, sseGeneratorPost, ssePost } from './base'
 import {
   fetchConversationMessages,

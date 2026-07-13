@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import {

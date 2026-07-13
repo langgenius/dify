@@ -65,7 +65,7 @@ const HotkeyKbdGroup = ({
 }) => (
   <KbdGroup>
     {displayKeys(hotkey, platform).map((key, index) => (
-      // eslint-disable-next-line react/no-array-index-key -- Repeated display keys are static, ordered tokens with no component state.
+      // oxlint-disable-next-line react/no-array-index-key -- Repeated display keys are static, ordered tokens with no component state.
       <Kbd key={`${key}-${index}`} color={color}>
         {key}
       </Kbd>
