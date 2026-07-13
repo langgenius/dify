@@ -106,7 +106,7 @@ function createTestStore() {
   return store
 }
 
-async function flushMicrotasks() {
+async function flushAsync() {
   await new Promise((resolve) => {
     setTimeout(resolve, 0)
   })
@@ -125,7 +125,7 @@ describe('amplitudeIdentitySyncAtom', () => {
       const store = createTestStore()
 
       expect(() => store.sub(amplitudeIdentitySyncAtom, () => {})).not.toThrow()
-      await flushMicrotasks()
+      await flushAsync()
 
       expect(setUserId).not.toHaveBeenCalled()
       expect(setUserProperties).not.toHaveBeenCalled()
@@ -135,7 +135,7 @@ describe('amplitudeIdentitySyncAtom', () => {
     it('should sync identity when the pending profile query resolves', async () => {
       const store = createTestStore()
       store.sub(amplitudeIdentitySyncAtom, () => {})
-      await flushMicrotasks()
+      await flushAsync()
 
       profileQueryState.resolve(createProfileQueryData())
 
@@ -155,10 +155,10 @@ describe('amplitudeIdentitySyncAtom', () => {
     it('should skip sync when the resolved profile has no id', async () => {
       const store = createTestStore()
       store.sub(amplitudeIdentitySyncAtom, () => {})
-      await flushMicrotasks()
+      await flushAsync()
 
       profileQueryState.resolve(createProfileQueryData({ id: '', email: '', name: '' }))
-      await flushMicrotasks()
+      await flushAsync()
 
       expect(setUserId).not.toHaveBeenCalled()
       expect(setUserProperties).not.toHaveBeenCalled()
@@ -184,6 +184,36 @@ describe('amplitudeIdentitySyncAtom', () => {
       await vi.waitFor(() => {
         expect(setUserId).toHaveBeenCalledWith('user@example.com')
       })
+    })
+
+    it('should not re-sync identity when the effect re-runs with the same profile', async () => {
+      const store = createStore()
+      const queryClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+            staleTime: Number.POSITIVE_INFINITY,
+          },
+        },
+      })
+      queryClient.setQueryData(['user-profile'], createProfileQueryData())
+      queryClient.setQueryData(['current-workspace'], mockCurrentWorkspaceResponse)
+      store.set(queryClientAtom, queryClient)
+
+      store.sub(amplitudeIdentitySyncAtom, () => {})
+      await vi.waitFor(() => {
+        expect(setUserProperties).toHaveBeenCalledWith(
+          expect.objectContaining({ workspace_id: 'workspace-1' }),
+        )
+      })
+      await flushAsync()
+      const settledCallCount = vi.mocked(setUserId).mock.calls.length
+
+      queryClient.setQueryData(['user-profile'], createProfileQueryData({ avatar: 'changed-avatar' }))
+      await flushAsync()
+
+      expect(setUserId).toHaveBeenCalledTimes(settledCallCount)
+      expect(setUserProperties).toHaveBeenCalledTimes(settledCallCount)
     })
   })
 })

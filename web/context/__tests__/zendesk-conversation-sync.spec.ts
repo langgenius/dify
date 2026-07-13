@@ -165,7 +165,7 @@ function createTestStore() {
   return store
 }
 
-async function flushMicrotasks() {
+async function flushAsync() {
   await new Promise((resolve) => {
     setTimeout(resolve, 0)
   })
@@ -185,7 +185,7 @@ describe('zendeskConversationSyncAtom', () => {
       const store = createTestStore()
 
       expect(() => store.sub(zendeskConversationSyncAtom, () => {})).not.toThrow()
-      await flushMicrotasks()
+      await flushAsync()
 
       expect(setZendeskConversationFields).not.toHaveBeenCalled()
     })
@@ -194,7 +194,7 @@ describe('zendeskConversationSyncAtom', () => {
       mockCurrentWorkspaceQueryState.isPending = false
       const store = createTestStore()
       store.sub(zendeskConversationSyncAtom, () => {})
-      await flushMicrotasks()
+      await flushAsync()
 
       profileQueryState.resolve(createProfileQueryData())
 
