@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Any, Union, override
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
@@ -257,6 +258,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         domain_execution = self._get_node_execution(event.id)
         domain_execution.status = WorkflowNodeExecutionStatus.RETRY
         domain_execution.error = event.error
+        self._append_retry_history(domain_execution, event)
         self._workflow_node_execution_repository.save(domain_execution)
         self._workflow_node_execution_repository.save_execution_data(domain_execution)
         _inspector_publish_node_changed(
@@ -356,6 +358,46 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._node_sequence += 1
         return self._node_sequence
 
+    def _append_retry_history(self, execution: WorkflowNodeExecution, event: NodeRunRetryEvent) -> None:
+        """Append a validated full attempt before repository truncation or offload."""
+        finished_at = naive_utc_now()
+        process_data = dict(execution.process_data or {})
+        raw_history = process_data.get(RETRY_HISTORY_PROCESS_DATA_KEY)
+        history = list(raw_history) if isinstance(raw_history, list) else []
+        projected_outputs = project_node_outputs_for_workflow_run(
+            node_type=execution.node_type,
+            inputs=event.node_run_result.inputs,
+            outputs=event.node_run_result.outputs,
+        )
+        attempt = WorkflowNodeRetryAttempt(
+            retry_index=event.retry_index,
+            inputs=event.node_run_result.inputs,
+            process_data=event.node_run_result.process_data,
+            outputs=projected_outputs,
+            error=event.node_run_result.error or event.error,
+            elapsed_time=max((finished_at - event.start_at).total_seconds(), 0.0),
+            execution_metadata=event.node_run_result.metadata,
+            created_at=int(event.start_at.timestamp()),
+            finished_at=int(finished_at.timestamp()),
+        )
+        history.append(attempt.model_dump(mode="json"))
+        process_data[RETRY_HISTORY_PROCESS_DATA_KEY] = history
+        execution.process_data = process_data
+
+    @staticmethod
+    def _merge_retry_history(
+        existing_process_data: Mapping[str, Any] | None,
+        next_process_data: Mapping[str, Any] | None,
+    ) -> Mapping[str, Any] | None:
+        """Keep internal retry history while replacing node-specific Process Data."""
+        raw_history = (existing_process_data or {}).get(RETRY_HISTORY_PROCESS_DATA_KEY)
+        if not isinstance(raw_history, list) or not raw_history:
+            return next_process_data
+
+        merged_process_data = dict(next_process_data or {})
+        merged_process_data[RETRY_HISTORY_PROCESS_DATA_KEY] = raw_history
+        return merged_process_data
+
     def _populate_completion_statistics(self, execution: WorkflowExecution, *, update_finished: bool = True) -> None:
         if update_finished:
             execution.finished_at = naive_utc_now()
@@ -391,9 +433,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
                 inputs=node_result.inputs,
                 outputs=node_result.outputs,
             )
+            process_data = self._merge_retry_history(domain_execution.process_data, node_result.process_data)
             domain_execution.update_from_mapping(
                 inputs=node_result.inputs,
-                process_data=node_result.process_data,
+                process_data=process_data,
                 outputs=projected_outputs,
                 metadata=node_result.metadata,
             )
