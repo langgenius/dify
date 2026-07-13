@@ -7,9 +7,7 @@ describe('transformToBodyPayload', () => {
     it('should keep the whole string as a single text value', () => {
       const result = transformToBodyPayload('{"url":"https://a:1"}', false)
 
-      expect(result).toEqual([
-        { type: BodyPayloadValueType.text, value: '{"url":"https://a:1"}' },
-      ])
+      expect(result).toEqual([{ type: BodyPayloadValueType.text, value: '{"url":"https://a:1"}' }])
     })
   })
 
@@ -18,9 +16,7 @@ describe('transformToBodyPayload', () => {
     it('should split a simple key:value pair', () => {
       const result = transformToBodyPayload('name:alice', true)
 
-      expect(result).toEqual([
-        { key: 'name', type: BodyPayloadValueType.text, value: 'alice' },
-      ])
+      expect(result).toEqual([{ key: 'name', type: BodyPayloadValueType.text, value: 'alice' }])
     })
 
     it('should keep colons that belong to the value', () => {
@@ -45,9 +41,7 @@ describe('transformToBodyPayload', () => {
     it('should use an empty value when the line has no colon', () => {
       const result = transformToBodyPayload('lonelykey', true)
 
-      expect(result).toEqual([
-        { key: 'lonelykey', type: BodyPayloadValueType.text, value: '' },
-      ])
+      expect(result).toEqual([{ key: 'lonelykey', type: BodyPayloadValueType.text, value: '' }])
     })
   })
 })
