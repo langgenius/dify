@@ -8,7 +8,7 @@ dependencies = [
     "anyio>=4.12.1,<5.0.0",
     "httpx==0.28.1",
     "httpx2>=2.5.0,<3.0.0",
-    "pydantic>=2.12.5,<2.13",
+    "pydantic>=2.13.4,<2.14",
     "pydantic-ai-slim>=1.102.0,<2.0.0",
     "typer>=0.16.1,<0.17",
     "typing-extensions>=4.12.2,<5.0.0",
