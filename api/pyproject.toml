@@ -8,7 +8,7 @@ dependencies = [
     "arize-phoenix-otel~=0.15.0",
     "azure-identity==1.25.3",
     "beautifulsoup4==4.14.3",
-    "boto3==1.42.73",
+    "boto3==1.43.46",
     "bs4~=0.0.1",
     "cachetools~=5.3.0",
     "celery~=5.6.2",
@@ -190,15 +190,15 @@ dev = [
 # Required for storage clients
 ############################################################
 storage = [
-    "azure-storage-blob==12.28.0",
-    "bce-python-sdk~=0.9.23",
-    "cos-python-sdk-v5==1.9.41",
-    "esdk-obs-python==3.26.2",
-    "google-cloud-storage>=3.0.0",
-    "opendal~=0.46.0",
+    "azure-storage-blob==12.30.0",
+    "bce-python-sdk~=0.9.72",
+    "cos-python-sdk-v5==1.9.44",
+    "esdk-obs-python==3.26.6",
+    "google-cloud-storage>=3.12.1",
+    "opendal~=0.47.3",
     "oss2==2.19.1",
-    "supabase~=2.18.1",
-    "tos~=2.9.0",
+    "supabase~=2.31.0",
+    "tos~=2.9.2",
 ]
 
 ############################################################
