@@ -4,8 +4,8 @@ import { atom } from 'jotai'
 import { atomEffect } from 'jotai-effect'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
-import { userProfileAtom } from './account-state'
-import { langGeniusVersionInfoAtom } from './version-state'
+import { userProfileOrNullAtom } from './account-state'
+import { langGeniusVersionInfoOrDefaultAtom } from './version-state'
 import { currentWorkspaceAtom } from './workspace-state'
 
 type ZendeskSyncState = {
@@ -42,9 +42,9 @@ function syncZendeskField({
 }
 
 export const zendeskConversationSyncAtom = atomEffect((get, set) => {
-  const userProfile = get(userProfileAtom)
+  const userProfile = get(userProfileOrNullAtom)
   const currentWorkspace = get(currentWorkspaceAtom)
-  const langGeniusVersionInfo = get(langGeniusVersionInfoAtom)
+  const langGeniusVersionInfo = get(langGeniusVersionInfoOrDefaultAtom)
   const state = get.peek(zendeskConversationSyncStateAtom)
   const nextState = { ...state }
 
@@ -70,7 +70,7 @@ export const zendeskConversationSyncAtom = atomEffect((get, set) => {
   didSync =
     syncZendeskField({
       fieldId: ZENDESK_FIELD_IDS.EMAIL,
-      value: userProfile.email,
+      value: userProfile?.email ?? '',
       previousValue: state.email,
       setNextValue: (value) => {
         nextState.email = value
