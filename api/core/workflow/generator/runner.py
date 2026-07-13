@@ -838,6 +838,7 @@ class WorkflowGenerator:
         # variables. We also repair a mistaken output name when its source
         # exposes exactly one valid output; ambiguous references still fail
         # closed in the structural validator.
+        cls._normalize_sys_query_references(nodes=nodes, mode=mode)
         cls._reconcile_variable_references(nodes=nodes, mode=mode)
 
         # Schema backstop: a "file" / "file-list" start variable MUST carry a
@@ -852,6 +853,63 @@ class WorkflowGenerator:
     # ------------------------------------------------------------------
     # Variable-reference reconciliation
     # ------------------------------------------------------------------
+
+    @classmethod
+    def _normalize_sys_query_references(
+        cls,
+        *,
+        nodes: list[dict[str, Any]],
+        mode: WorkflowGenerationMode,
+    ) -> None:
+        """Normalize malformed ``sys.query`` references without changing their intent.
+
+        Chatflows expose ``sys.query`` directly. Plain workflows do not, so
+        their query references become a Start-node input and the existing
+        reconciliation pass declares that input immediately afterwards.
+        """
+        if mode == "advanced-chat":
+            target_node_id = "sys"
+        else:
+            start_node = next(
+                (node for node in nodes if node.get("data", {}).get("type") == BuiltinNodeTypes.START),
+                None,
+            )
+            start_node_id = start_node.get("id") if start_node else None
+            if not isinstance(start_node_id, str) or not start_node_id:
+                return
+            target_node_id = start_node_id
+
+        for node in nodes:
+            data = node.get("data")
+            if isinstance(data, dict):
+                cls._normalize_sys_query_reference_in_data(data, target_node_id=target_node_id)
+
+    @classmethod
+    def _normalize_sys_query_reference_in_data(cls, value: Any, *, target_node_id: str) -> Any:
+        """Rewrite malformed query placeholders and selector arrays recursively."""
+        target_placeholder = f"{{{{#{target_node_id}.query#}}}}"
+        if isinstance(value, str):
+            return value.replace("{{#sys.query#}}", target_placeholder).replace("{{#sys,query#}}", target_placeholder)
+        if isinstance(value, dict):
+            for key, item in list(value.items()):
+                if key not in cls._NON_SELECTOR_LIST_KEYS and cls._is_sys_query_selector(item):
+                    value[key] = [target_node_id, "query"]
+                    continue
+                value[key] = cls._normalize_sys_query_reference_in_data(item, target_node_id=target_node_id)
+            return value
+        if isinstance(value, list):
+            for index, item in enumerate(value):
+                value[index] = cls._normalize_sys_query_reference_in_data(item, target_node_id=target_node_id)
+        return value
+
+    @staticmethod
+    def _is_sys_query_selector(value: Any) -> bool:
+        """Recognize the valid selector and common one-item LLM variants."""
+        if value == ["sys", "query"]:
+            return True
+        if not isinstance(value, list) or len(value) != 1 or not isinstance(value[0], str):
+            return False
+        return value[0].replace(" ", "") in {"sys.query", "sys,query"}
 
     # Detects ``{{#node_id.var#}}`` placeholders. We match the EXACT regex
     # Dify's workflow runtime uses (see

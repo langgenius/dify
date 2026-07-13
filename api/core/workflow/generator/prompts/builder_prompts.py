@@ -440,7 +440,9 @@ correct.
      copy each entry verbatim into ``start.data.variables`` so the
      downstream references resolve.
    - In Advanced-Chat mode you may also reference ``sys.query`` and
-     ``sys.files`` without declaring them.
+     ``sys.files`` without declaring them. In selector fields, spell these as
+     exactly ``["sys", "query"]`` and ``["sys", "files"]`` — never as a
+     one-item array such as ``["sys,query"]`` or ``["sys.query"]``.
 
 """
 

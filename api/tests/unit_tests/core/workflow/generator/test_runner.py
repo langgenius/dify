@@ -1382,6 +1382,69 @@ class TestWorkflowGeneratorVariableReferences:
         assert start["data"]["variables"] == []
         assert result["error"] == ""
 
+    @pytest.mark.parametrize(
+        ("mode", "terminal_type", "expected_selector", "expected_start_variables"),
+        [
+            ("advanced-chat", "answer", ["sys", "query"], []),
+            ("workflow", "end", ["node1", "query"], ["query"]),
+        ],
+    )
+    def test_normalizes_malformed_sys_query_selector(
+        self,
+        mode,
+        terminal_type,
+        expected_selector,
+        expected_start_variables,
+    ):
+        terminal_data = {"type": terminal_type, "title": "Terminal"}
+        if terminal_type == "answer":
+            terminal_data["answer"] = "{{#node2.result#}}"
+        else:
+            terminal_data["outputs"] = [{"variable": "result", "value_selector": ["node2", "result"]}]
+        graph = cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start", "variables": []},
+                    },
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "code",
+                            "title": "Code",
+                            "variables": [{"variable": "query", "value_selector": ["sys,query"]}],
+                            "outputs": {"result": {"type": "string"}},
+                        },
+                    },
+                    {
+                        "id": "node3",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": terminal_data,
+                    },
+                ],
+                "edges": [
+                    {"id": "e1", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "e2", "source": "node2", "target": "node3", "type": "custom"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            },
+        )
+
+        result = WorkflowGenerator._postprocess_graph(graph=graph, mode=mode)
+
+        start_node = next(node for node in result["nodes"] if node["id"] == "node1")
+        code_node = next(node for node in result["nodes"] if node["id"] == "node2")
+        assert code_node["data"]["variables"][0]["value_selector"] == expected_selector
+        assert [variable["variable"] for variable in start_node["data"]["variables"]] == expected_start_variables
+        assert WorkflowGenerator._validate_structure(graph=result, mode=mode) == []
+
     def test_start_inputs_flow_into_builder_user_prompt(self):
         # The planner's ``start_inputs`` must be visible to the builder so
         # it can populate ``start.data.variables`` proactively. We sniff the
