@@ -178,7 +178,7 @@ export function DuplicateAgentDialog({
                     </FieldLabel>
                     <FieldControl
                       autoComplete="off"
-                      // eslint-disable-next-line jsx-a11y/no-autofocus -- The duplicate dialog opens from an explicit command, and naming the copy is the primary editable action.
+                      // oxlint-disable-next-line jsx-a11y/no-autofocus -- The duplicate dialog opens from an explicit command, and naming the copy is the primary editable action.
                       autoFocus
                       maxLength={255}
                       onValueChange={setName}

@@ -23,6 +23,7 @@ import {
 import {
   skipMissingAgentBuilderAgentDecisionChatModel,
   skipMissingAgentBuilderBrokenChatModel,
+  skipMissingAgentBuilderSpeechToTextModel,
   skipMissingAgentBuilderStableChatModel,
 } from '../../agent-v2/support/preflight/models'
 import { skipMissingPreseededTool } from '../../agent-v2/support/preflight/tools'
@@ -32,6 +33,13 @@ Given('the Agent Builder stable chat model is available', async function (this: 
   if (stableModel === 'skipped') return stableModel
 
   this.agentBuilder.preflight.stableModel = stableModel
+})
+
+Given('the workspace default speech-to-text model is active', async function (this: DifyWorld) {
+  const speechToTextModel = await skipMissingAgentBuilderSpeechToTextModel(this)
+  if (speechToTextModel === 'skipped') return speechToTextModel
+
+  this.agentBuilder.preflight.speechToTextModel = speechToTextModel
 })
 
 Given('the Agent Builder agent-decision chat model is available', async function (this: DifyWorld) {

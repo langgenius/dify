@@ -3,11 +3,11 @@ import type { Theme } from '../../embedded-chatbot/theme/theme-context'
 import type { EnableType, OnSend } from '../../types'
 import type { InputForm } from '../type'
 import type { FileUpload } from '@/app/components/base/features/types'
+import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
-import Recorder from 'js-audio-recorder'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
@@ -22,11 +22,11 @@ import { useCheckInputsForms } from '../check-input-forms-hooks'
 import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
 
-type AudioRecorderWithPermission = typeof Recorder & {
-  getPermission: () => Promise<void>
-}
-
 type SendAcceptance = void | boolean | Promise<void | boolean>
+
+function isMicrophonePermissionDenied(error: unknown) {
+  return error instanceof DOMException && error.name === 'NotAllowedError'
+}
 
 type ChatInputAreaProps = {
   readonly?: boolean
@@ -39,6 +39,8 @@ type ChatInputAreaProps = {
   onFeatureBarClick?: (state: boolean) => void
   visionConfig?: FileUpload
   speechToTextConfig?: EnableType
+  speechToTextTarget?: SpeechToTextTarget
+  onBeforeSpeechToText?: () => Promise<unknown>
   onSend?: OnSend
   inputs?: Record<string, unknown>
   inputsForm?: InputForm[]
@@ -69,6 +71,8 @@ const ChatInputArea = ({
   onFeatureBarClick,
   visionConfig,
   speechToTextConfig = { enabled: true },
+  speechToTextTarget,
+  onBeforeSpeechToText,
   onSend,
   inputs = {},
   inputsForm = [],
@@ -108,6 +112,9 @@ const ChatInputArea = ({
   const [currentIndex, setCurrentIndex] = useState(-1)
   const isComposingRef = useRef(false)
   const queryRef = useRef('')
+  const voiceInputRef = useRef<HTMLDivElement>(null)
+  const voiceInputReturnFocusRef = useRef<HTMLElement | null>(null)
+  const voiceInputCompletedRef = useRef(false)
   const handleQueryChange = useCallback(
     (value: string) => {
       queryRef.current = value
@@ -199,22 +206,85 @@ const ChatInputArea = ({
     }
   }
   const handleShowVoiceInput = useCallback(() => {
-    ;(Recorder as AudioRecorderWithPermission).getPermission().then(
-      () => {
-        setShowVoiceInput(true)
-      },
-      () => {
-        toast.error(t(($) => $['voiceInput.notAllow'], { ns: 'common' }))
-      },
-    )
+    const textareaElement = textareaRef.current
+    if (textareaElement) {
+      const activeElement = textareaElement.ownerDocument.activeElement
+      voiceInputReturnFocusRef.current =
+        activeElement instanceof HTMLElement && activeElement !== textareaElement.ownerDocument.body
+          ? activeElement
+          : textareaElement
+    }
+    voiceInputCompletedRef.current = false
+    setShowVoiceInput(true)
+  }, [textareaRef])
+  const handleVoiceInputStartError = useCallback(
+    (error: unknown) => {
+      toast.error(
+        t(
+          ($) =>
+            $[isMicrophonePermissionDenied(error) ? 'voiceInput.notAllow' : 'api.actionFailed'],
+          { ns: 'common' },
+        ),
+      )
+    },
+    [t],
+  )
+  const handleVoiceInputError = useCallback(() => {
+    toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
   }, [t])
+  const handleHideVoiceInput = useCallback(() => {
+    const textareaElement = textareaRef.current
+    const documentElement = textareaElement?.ownerDocument
+    const activeElement = documentElement?.activeElement
+    const shouldRestoreFocus =
+      !!documentElement &&
+      (activeElement === documentElement.body ||
+        !!(activeElement && voiceInputRef.current?.contains(activeElement)))
+    const returnFocusElement = voiceInputReturnFocusRef.current
+    const voiceInputCompleted = voiceInputCompletedRef.current
+    voiceInputReturnFocusRef.current = null
+    voiceInputCompletedRef.current = false
+    setShowVoiceInput(false)
+    if (voiceInputCompleted || !shouldRestoreFocus || !documentElement) return
+
+    queueMicrotask(() => {
+      const currentActiveElement = documentElement.activeElement
+      if (currentActiveElement !== documentElement.body && currentActiveElement !== activeElement)
+        return
+
+      const elementToFocus = returnFocusElement?.isConnected ? returnFocusElement : textareaElement
+      elementToFocus?.focus({ preventScroll: true })
+    })
+  }, [textareaRef])
+  const handleVoiceInputConverted = (text: string) => {
+    voiceInputCompletedRef.current = true
+    handleQueryChange(text)
+    queueMicrotask(() => {
+      const textareaElement = textareaRef.current
+      if (!textareaElement) return
+
+      const activeElement = textareaElement.ownerDocument.activeElement
+      if (
+        activeElement &&
+        activeElement !== textareaElement.ownerDocument.body &&
+        activeElement !== textareaElement &&
+        !voiceInputRef.current?.contains(activeElement)
+      ) {
+        return
+      }
+
+      textareaElement.focus({ preventScroll: true })
+      const caretPosition = textareaElement.value.length
+      textareaElement.setSelectionRange(caretPosition, caretPosition)
+    })
+  }
   const operation = (
     <Operation
       ref={holdSpaceRef}
       readonly={readonly}
       fileConfig={visionConfig}
       speechToTextConfig={speechToTextConfig}
-      onShowVoiceInput={handleShowVoiceInput}
+      onShowVoiceInput={speechToTextTarget ? handleShowVoiceInput : undefined}
       onSend={handleSend}
       sendButtonLabel={sendButtonLabel}
       sendButtonLoading={sendButtonLoading}
@@ -239,8 +309,10 @@ const ChatInputArea = ({
           disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none',
         )}
       >
-        <div className="relative max-h-[158px] overflow-x-hidden overflow-y-auto px-[9px] pt-[9px]">
+        <div className="px-[9px] pt-[9px]">
           <FileListInChatInput fileConfig={visionConfig!} />
+        </div>
+        <div className="relative max-h-[158px] overflow-x-hidden overflow-y-auto px-[9px]">
           <div ref={wrapperRef} className="flex items-center justify-between">
             <div className="relative flex w-full grow items-center">
               <div
@@ -268,7 +340,7 @@ const ChatInputArea = ({
                       )
                 }
                 // Existing chat behavior focuses the composer as soon as it opens.
-                // eslint-disable-next-line jsx-a11y/no-autofocus
+                // oxlint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus={autoFocus}
                 minRows={1}
                 value={query}
@@ -286,13 +358,20 @@ const ChatInputArea = ({
             </div>
             {!isMultipleLine && operation}
           </div>
-          {showVoiceInput && (
-            <VoiceInput
-              onCancel={() => setShowVoiceInput(false)}
-              onConverted={(text) => handleQueryChange(text)}
-            />
-          )}
         </div>
+        {showVoiceInput && speechToTextTarget && (
+          <div className="px-[9px]">
+            <VoiceInput
+              ref={voiceInputRef}
+              target={speechToTextTarget}
+              onCancel={handleHideVoiceInput}
+              onBeforeTranscribe={onBeforeSpeechToText}
+              onConverted={handleVoiceInputConverted}
+              onError={handleVoiceInputError}
+              onStartError={handleVoiceInputStartError}
+            />
+          </div>
+        )}
         {isMultipleLine && <div className="px-[9px]">{operation}</div>}
       </div>
       {shouldShowFooterNotice && (

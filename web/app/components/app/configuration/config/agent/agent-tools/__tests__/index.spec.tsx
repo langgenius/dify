@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { PropsWithChildren } from 'react'
 import type { Mock } from 'vitest'
 import type SettingBuiltInToolType from '../setting-built-in-tool'

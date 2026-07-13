@@ -420,12 +420,19 @@ const ChatWrapper = () => {
       imageUrl={appData.site.icon_url}
     />
   ) : null
+  const speechToTextTarget =
+    appSourceType === AppSourceType.webApp
+      ? { type: 'app' as const, appSourceType }
+      : appId
+        ? { type: 'app' as const, appId, appSourceType }
+        : undefined
 
   return (
     <Chat
       isTryApp={isTryApp}
       appData={appData || undefined}
       config={appConfig}
+      speechToTextTarget={speechToTextTarget}
       chatList={messageList}
       isResponding={respondingState}
       chatContainerInnerClassName={cn(

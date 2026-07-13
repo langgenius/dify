@@ -9,6 +9,7 @@ import { chromium } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
 import { deleteTestApp } from '../../support/api'
 import { deleteTestDataset } from '../../support/datasets'
+import { getVoiceInputTestMaterialPath } from '../../support/test-materials'
 import { deleteBuiltinToolCredential } from '../../support/tools'
 import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env'
 import { deleteTestAgent } from '../agent-v2/support/agent'
@@ -22,6 +23,7 @@ const e2eRoot = fileURLToPath(new URL('../..', import.meta.url))
 const artifactsDir = path.join(e2eRoot, 'cucumber-report', 'artifacts')
 
 let browser: Browser | undefined
+let microphoneBrowserPromise: Promise<Browser> | undefined
 
 setDefaultTimeout(60_000)
 
@@ -101,17 +103,43 @@ BeforeAll({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async () => {
   await ensureAuthenticatedState(browser, baseURL)
 })
 
+const getMicrophoneBrowser = () => {
+  microphoneBrowserPromise ??= chromium.launch({
+    args: [
+      '--use-fake-device-for-media-stream',
+      '--use-fake-ui-for-media-stream',
+      `--use-file-for-fake-audio-capture=${getVoiceInputTestMaterialPath()}%noloop`,
+    ],
+    headless: cucumberHeadless,
+    slowMo: cucumberSlowMo,
+  })
+
+  return microphoneBrowserPromise
+}
+
 Before(async function (this: DifyWorld, { pickle }) {
   if (!browser) throw new Error('Shared Playwright browser is not available.')
 
-  const isUnauthenticatedScenario = pickle.tags.some((tag) => tag.name === '@unauthenticated')
+  const scenarioTags = pickle.tags.map((tag) => tag.name)
+  const isMicrophoneScenario = scenarioTags.includes('@microphone')
+  const isUnauthenticatedScenario = scenarioTags.includes('@unauthenticated')
+  const scenarioBrowser = isMicrophoneScenario ? await getMicrophoneBrowser() : browser
 
-  if (isUnauthenticatedScenario) await this.startUnauthenticatedSession(browser)
-  else await this.startAuthenticatedSession(browser)
+  if (isUnauthenticatedScenario) await this.startUnauthenticatedSession(scenarioBrowser)
+  else await this.startAuthenticatedSession(scenarioBrowser)
+
+  if (isMicrophoneScenario) {
+    if (!this.context)
+      throw new Error('Playwright context has not been initialized for the microphone scenario.')
+
+    await this.context.grantPermissions(['microphone'], {
+      origin: new URL(baseURL).origin,
+    })
+  }
 
   this.scenarioStartedAt = Date.now()
 
-  const tags = pickle.tags.map((tag) => tag.name).join(' ')
+  const tags = scenarioTags.join(' ')
   console.warn(`[e2e] start ${pickle.name}${tags ? ` ${tags}` : ''}`)
 })
 
@@ -197,6 +225,9 @@ After(async function (this: DifyWorld, { pickle, result }) {
 })
 
 AfterAll(async () => {
+  const microphoneBrowser = await microphoneBrowserPromise?.catch(() => undefined)
+  await microphoneBrowser?.close()
   await browser?.close()
+  microphoneBrowserPromise = undefined
   browser = undefined
 })

@@ -4357,7 +4357,9 @@ export type PostAppsByAppIdApiEnableResponse =
   PostAppsByAppIdApiEnableResponses[keyof PostAppsByAppIdApiEnableResponses]
 
 export type PostAppsByAppIdAudioToTextData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     app_id: string
   }

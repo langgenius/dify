@@ -43,10 +43,12 @@ describe('Operation', () => {
       expect(screen.queryByTestId('file-uploader')).not.toBeInTheDocument()
     })
 
-    it('should render voice input button when speechToTextConfig.enabled is true', () => {
+    it('should render voice input button when speech-to-text is enabled with a handler', () => {
       const speechConfig: EnableType = { enabled: true }
 
-      render(<Operation onSend={vi.fn()} speechToTextConfig={speechConfig} />)
+      render(
+        <Operation onSend={vi.fn()} speechToTextConfig={speechConfig} onShowVoiceInput={vi.fn()} />,
+      )
 
       expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeInTheDocument()
@@ -57,7 +59,12 @@ describe('Operation', () => {
       const speechConfig: EnableType = { enabled: true }
 
       render(
-        <Operation onSend={vi.fn()} fileConfig={fileConfig} speechToTextConfig={speechConfig} />,
+        <Operation
+          onSend={vi.fn()}
+          fileConfig={fileConfig}
+          speechToTextConfig={speechConfig}
+          onShowVoiceInput={vi.fn()}
+        />,
       )
 
       const fileUploader = screen.getByTestId('file-uploader')

@@ -137,7 +137,7 @@ describe('ExamplePrompts', () => {
 
     it('should gracefully handle empty response structure', async () => {
       // Simulate an empty response with no suggestions array
-      // eslint-disable-next-line ts/no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any
       mockFetch.mockResolvedValue({} as any)
       render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
 

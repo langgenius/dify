@@ -1,523 +1,318 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { audioToText } from '@/service/share'
+import type { VoiceRecorder } from '../recorder'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { StrictMode } from 'react'
+import { transcribeAudio } from '../api'
 import VoiceInput from '../index'
+import { startVoiceRecorder } from '../recorder'
 
-const { mockState, MockRecorder, rafState } = vi.hoisted(() => {
-  const state = {
-    params: {} as Record<string, string>,
-    pathname: '/test',
-    recorderInstances: [] as unknown[],
-    startOverride: null as (() => Promise<void>) | null,
-    analyseData: new Uint8Array(1024).fill(150) as Uint8Array,
-  }
-  const rafStateObj = {
-    callback: null as (() => void) | null,
-  }
+vi.mock('../api', () => ({ transcribeAudio: vi.fn() }))
 
-  class MockRecorderClass {
-    start = vi.fn((..._args: unknown[]) => {
-      if (state.startOverride) return state.startOverride()
-      return Promise.resolve()
-    })
-
-    stop = vi.fn()
-    getRecordAnalyseData = vi.fn(() => state.analyseData)
-    getWAV = vi.fn(() => new ArrayBuffer(0))
-    getChannelData = vi.fn(() => ({
-      left: { buffer: new ArrayBuffer(2048), byteLength: 2048 },
-      right: { buffer: new ArrayBuffer(2048), byteLength: 2048 },
-    }))
-
-    constructor() {
-      state.recorderInstances.push(this)
-    }
-  }
-
-  return { mockState: state, MockRecorder: MockRecorderClass, rafState: rafStateObj }
-})
-
-vi.mock('js-audio-recorder', () => ({
-  default: MockRecorder,
+vi.mock('../recorder', () => ({
+  startVoiceRecorder: vi.fn(),
 }))
 
-vi.mock('@/service/share', () => ({
-  AppSourceType: { webApp: 'webApp', installedApp: 'installedApp' },
-  audioToText: vi.fn(),
-}))
+const recorderStop = vi.fn<() => Promise<Blob>>()
+const recorderCancel = vi.fn<() => Promise<void>>()
+const getByteFrequencyData = vi.fn()
+const recorder: VoiceRecorder = {
+  analyser: {
+    frequencyBinCount: 8,
+    getByteFrequencyData,
+  } as unknown as AnalyserNode,
+  stop: recorderStop,
+  cancel: recorderCancel,
+}
+const target = {
+  type: 'consoleApp' as const,
+  appId: 'app-123',
+}
+const canvasContext = {
+  beginPath: vi.fn(),
+  clearRect: vi.fn(),
+  closePath: vi.fn(),
+  fill: vi.fn(),
+  rect: vi.fn(),
+  roundRect: vi.fn(),
+  scale: vi.fn(),
+  get fillStyle() {
+    return ''
+  },
+  set fillStyle(_value: string) {},
+} as unknown as CanvasRenderingContext2D
 
-vi.mock('@/next/navigation', () => ({
-  useParams: vi.fn(() => mockState.params),
-  usePathname: vi.fn(() => mockState.pathname),
-}))
-
-vi.mock('../utils', () => ({
-  convertToMp3: vi.fn(() => new Blob(['test'], { type: 'audio/mp3' })),
-}))
-
-vi.mock('ahooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('ahooks')>()
-  return {
-    ...actual,
-    useRafInterval: vi.fn((fn) => {
-      rafState.callback = fn
-      return vi.fn()
-    }),
+const renderVoiceInput = (overrides: Partial<React.ComponentProps<typeof VoiceInput>> = {}) => {
+  const props: React.ComponentProps<typeof VoiceInput> = {
+    onCancel: vi.fn(),
+    onBeforeTranscribe: vi.fn().mockResolvedValue(undefined),
+    onConverted: vi.fn(),
+    onError: vi.fn(),
+    onStartError: vi.fn(),
+    target,
+    ...overrides,
   }
-})
+  return { ...render(<VoiceInput {...props} />), props }
+}
 
 describe('VoiceInput', () => {
-  const onConverted = vi.fn()
-  const onCancel = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
-    mockState.params = {}
-    mockState.pathname = '/test'
-    mockState.recorderInstances = []
-    mockState.startOverride = null
-    rafState.callback = null
-
-    // Ensure canvas has non-zero dimensions for initCanvas()
-    HTMLCanvasElement.prototype.getBoundingClientRect = vi.fn(() => ({
-      width: 300,
-      height: 32,
-      top: 0,
+    vi.mocked(startVoiceRecorder).mockResolvedValue(recorder)
+    recorderStop.mockResolvedValue(new Blob(['mp3-data'], { type: 'audio/mp3' }))
+    recorderCancel.mockResolvedValue()
+    vi.mocked(transcribeAudio).mockResolvedValue({ text: 'transcribed text' })
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(canvasContext)
+    vi.spyOn(HTMLCanvasElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      bottom: 16,
+      height: 16,
       left: 0,
       right: 300,
-      bottom: 32,
+      top: 0,
+      width: 300,
       x: 0,
       y: 0,
-      toJSON: vi.fn(),
-    }))
-
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1)
-    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
-  })
-
-  it('should start recording on mount and show speaking state', async () => {
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    // eslint-disable-next-line ts/no-explicit-any
-    const recorder = mockState.recorderInstances[0] as any
-    expect(recorder.start).toHaveBeenCalled()
-    expect(await screen.findByText('common.voiceInput.speaking'))!.toBeInTheDocument()
-    expect(screen.getByTestId('voice-input-stop'))!.toBeInTheDocument()
-    expect(screen.getByTestId('voice-input-timer'))!.toHaveTextContent('00:00')
-  })
-
-  it('should call onCancel when recording start fails', async () => {
-    mockState.startOverride = () => Promise.reject(new Error('Permission denied'))
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    await waitFor(() => {
-      expect(onCancel).toHaveBeenCalled()
+      toJSON: () => ({}),
     })
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn(() => 1),
+    )
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
   })
 
-  it('should stop recording and convert audio on stop click', async () => {
-    const user = userEvent.setup()
-    vi.mocked(audioToText).mockResolvedValueOnce({ text: 'hello world' })
-    mockState.params = { token: 'abc' }
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    const stopBtn = await screen.findByTestId('voice-input-stop')
-    await user.click(stopBtn)
-
-    // eslint-disable-next-line ts/no-explicit-any
-    const recorder = mockState.recorderInstances[0] as any
-    expect(await screen.findByTestId('voice-input-converting-text'))!.toBeInTheDocument()
-    expect(screen.getByText('common.voiceInput.converting'))!.toBeInTheDocument()
-    expect(screen.getByTestId('voice-input-loader'))!.toBeInTheDocument()
-
-    await waitFor(() => {
-      expect(recorder.stop).toHaveBeenCalled()
-      expect(onConverted).toHaveBeenCalledWith('hello world')
-      expect(onCancel).toHaveBeenCalled()
-    })
-  })
-
-  it('should call onConverted with empty string on conversion failure', async () => {
-    const user = userEvent.setup()
-    vi.mocked(audioToText).mockRejectedValueOnce(new Error('API error'))
-    mockState.params = { token: 'abc' }
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    const stopBtn = await screen.findByTestId('voice-input-stop')
-    await user.click(stopBtn)
-
-    await waitFor(() => {
-      expect(onConverted).toHaveBeenCalledWith('')
-      expect(onCancel).toHaveBeenCalled()
-    })
-  })
-
-  it('should show cancel button during conversion and cancel on click', async () => {
-    const user = userEvent.setup()
-    vi.mocked(audioToText).mockImplementation(() => new Promise(() => {}))
-    mockState.params = { token: 'abc' }
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    const stopBtn = await screen.findByTestId('voice-input-stop')
-    await user.click(stopBtn)
-
-    const cancelBtn = await screen.findByTestId('voice-input-cancel')
-    await user.click(cancelBtn)
-
-    expect(onCancel).toHaveBeenCalled()
-  })
-
-  it('should draw on canvas with low data values triggering v < 128 clamp', async () => {
-    mockState.analyseData = new Uint8Array(1024).fill(50)
-
-    let rafCalls = 0
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
-      rafCalls++
-      if (rafCalls <= 2) cb(0)
-      return rafCalls
-    })
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    await screen.findByTestId('voice-input-stop')
-
-    // eslint-disable-next-line ts/no-explicit-any
-    const firstRecorder = mockState.recorderInstances[0] as any
-    expect(firstRecorder.getRecordAnalyseData).toHaveBeenCalled()
-  })
-
-  it('should draw on canvas with high data values triggering v > 178 clamp', async () => {
-    mockState.analyseData = new Uint8Array(1024).fill(250)
-
-    let rafCalls = 0
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
-      rafCalls++
-      if (rafCalls <= 2) cb(0)
-      return rafCalls
-    })
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    await screen.findByTestId('voice-input-stop')
-
-    // eslint-disable-next-line ts/no-explicit-any
-    const firstRecorder = mockState.recorderInstances[0] as any
-    expect(firstRecorder.getRecordAnalyseData).toHaveBeenCalled()
-  })
-
-  it('should pass wordTimestamps in form data', async () => {
-    const user = userEvent.setup()
-    vi.mocked(audioToText).mockResolvedValueOnce({ text: 'test' })
-    mockState.params = { token: 'abc' }
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} wordTimestamps="enabled" />)
-    const stopBtn = await screen.findByTestId('voice-input-stop')
-    await user.click(stopBtn)
-
-    await waitFor(() => {
-      expect(audioToText).toHaveBeenCalled()
-      const formData = vi.mocked(audioToText).mock.calls[0]![2] as FormData
-      expect(formData.get('word_timestamps')).toBe('enabled')
-    })
-  })
-
-  describe('URL patterns', () => {
-    it('should use webApp source with /audio-to-text for token-based URL', async () => {
-      const user = userEvent.setup()
-      vi.mocked(audioToText).mockResolvedValueOnce({ text: 'test' })
-      mockState.params = { token: 'my-token' }
-
-      render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-      await user.click(await screen.findByTestId('voice-input-stop'))
-
-      await waitFor(() => {
-        expect(audioToText).toHaveBeenCalledWith('/audio-to-text', 'webApp', expect.any(FormData))
+  // The component owns the local recording state and browser-resource lifecycle.
+  describe('Recording state', () => {
+    it('should expose a cancellable starting state while microphone permission is pending', async () => {
+      let setupSignal: AbortSignal | undefined
+      vi.mocked(startVoiceRecorder).mockImplementationOnce((signal) => {
+        setupSignal = signal
+        return new Promise(() => {})
       })
+      const { props } = renderVoiceInput()
+
+      expect(screen.getByRole('status')).toHaveTextContent('common.voiceInput.starting')
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+      expect(props.onCancel).toHaveBeenCalledTimes(1)
+      expect(setupSignal?.aborted).toBe(true)
     })
 
-    it('should use installed-apps URL when pathname is an installed app route', async () => {
-      const user = userEvent.setup()
-      vi.mocked(audioToText).mockResolvedValueOnce({ text: 'test' })
-      mockState.params = { appId: 'app-123' }
-      mockState.pathname = '/installed/app-123'
+    it('should show the recording state after microphone setup succeeds', async () => {
+      renderVoiceInput()
 
-      render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-      await user.click(await screen.findByTestId('voice-input-stop'))
+      expect(await screen.findByText('common.voiceInput.speaking')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.voiceInput.stop' })).toBeInTheDocument()
+      expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('00:00')
+      expect(getByteFrequencyData).toHaveBeenCalledTimes(1)
+    })
 
-      await waitFor(() => {
-        expect(audioToText).toHaveBeenCalledWith(
-          '/installed-apps/app-123/audio-to-text',
-          'installedApp',
-          expect.any(FormData),
+    it('should report the original setup failure and close the voice input', async () => {
+      const startError = new DOMException('microphone denied', 'NotAllowedError')
+      vi.mocked(startVoiceRecorder).mockRejectedValueOnce(startError)
+      const { props } = renderVoiceInput()
+
+      await waitFor(() => expect(props.onStartError).toHaveBeenCalledWith(startError))
+      expect(props.onCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('should cancel recorder resources when unmounted', async () => {
+      const { unmount } = renderVoiceInput()
+      await screen.findByText('common.voiceInput.speaking')
+
+      unmount()
+
+      expect(recorderCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('should discard a stale recorder when effects are replayed', async () => {
+      let resolveFirstRecorder: (value: VoiceRecorder) => void = () => {}
+      let resolveSecondRecorder: (value: VoiceRecorder) => void = () => {}
+      const staleCancel = vi.fn().mockResolvedValue(undefined)
+      const activeCancel = vi.fn().mockResolvedValue(undefined)
+      vi.mocked(startVoiceRecorder)
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveFirstRecorder = resolve
+          }),
         )
-      })
-    })
-
-    it('should use /apps URL for non-explore paths with appId', async () => {
-      const user = userEvent.setup()
-      vi.mocked(audioToText).mockResolvedValueOnce({ text: 'test' })
-      mockState.params = { appId: 'app-456' }
-      mockState.pathname = '/dashboard/apps'
-
-      render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-      await user.click(await screen.findByTestId('voice-input-stop'))
-
-      await waitFor(() => {
-        expect(audioToText).toHaveBeenCalledWith(
-          '/apps/app-456/audio-to-text',
-          'installedApp',
-          expect.any(FormData),
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveSecondRecorder = resolve
+          }),
         )
-      })
-    })
-  })
 
-  it('should use fallback rect when canvas roundRect is not available', async () => {
-    const user = userEvent.setup()
-    vi.mocked(audioToText).mockResolvedValueOnce({ text: 'test' })
-    mockState.params = { token: 'abc' }
-    mockState.analyseData = new Uint8Array(1024).fill(150)
-
-    const oldGetContext = HTMLCanvasElement.prototype.getContext
-    HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
-      scale: vi.fn(),
-      clearRect: vi.fn(),
-      beginPath: vi.fn(),
-      moveTo: vi.fn(),
-      rect: vi.fn(),
-      fill: vi.fn(),
-      closePath: vi.fn(),
-    })) as unknown as typeof HTMLCanvasElement.prototype.getContext
-
-    let rafCalls = 0
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
-      rafCalls++
-      if (rafCalls <= 1) cb(0)
-      return rafCalls
-    })
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    await user.click(await screen.findByTestId('voice-input-stop'))
-
-    await waitFor(() => {
-      expect(onConverted).toHaveBeenCalled()
-    })
-    HTMLCanvasElement.prototype.getContext = oldGetContext
-  })
-
-  it('should display timer in MM:SS format correctly', async () => {
-    mockState.params = { token: 'abc' }
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    const timer = await screen.findByTestId('voice-input-timer')
-    expect(timer)!.toHaveTextContent('00:00')
-
-    await act(async () => {
-      if (rafState.callback) rafState.callback()
-    })
-    expect(timer)!.toHaveTextContent('00:01')
-
-    for (let i = 0; i < 9; i++) {
-      await act(async () => {
-        if (rafState.callback) rafState.callback()
-      })
-    }
-    expect(timer)!.toHaveTextContent('00:10')
-  })
-
-  it('should show timer element with formatted time', async () => {
-    mockState.params = { token: 'abc' }
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    const timer = screen.getByTestId('voice-input-timer')
-    expect(timer)!.toBeInTheDocument()
-    // Initial state should show 00:00
-    expect(timer.textContent).toMatch(/0\d:\d{2}/)
-  })
-
-  it('should handle data values in normal range (between 128 and 178)', async () => {
-    mockState.analyseData = new Uint8Array(1024).fill(150)
-
-    let rafCalls = 0
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
-      rafCalls++
-      if (rafCalls <= 2) cb(0)
-      return rafCalls
-    })
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    await screen.findByTestId('voice-input-stop')
-
-    // eslint-disable-next-line ts/no-explicit-any
-    const recorder = mockState.recorderInstances[0] as any
-    expect(recorder.getRecordAnalyseData).toHaveBeenCalled()
-  })
-
-  it('should handle canvas context and device pixel ratio', async () => {
-    const dprSpy = vi.spyOn(window, 'devicePixelRatio', 'get')
-    dprSpy.mockReturnValue(2)
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    await screen.findByTestId('voice-input-stop')
-
-    expect(screen.getByTestId('voice-input-stop'))!.toBeInTheDocument()
-
-    dprSpy.mockRestore()
-  })
-
-  it('should handle empty params with no token or appId', async () => {
-    const user = userEvent.setup()
-    vi.mocked(audioToText).mockResolvedValueOnce({ text: 'test' })
-    mockState.params = {}
-    mockState.pathname = '/test'
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    const stopBtn = await screen.findByTestId('voice-input-stop')
-    await user.click(stopBtn)
-
-    await waitFor(() => {
-      // Should call audioToText with empty URL when neither token nor appId is present
-      expect(audioToText).toHaveBeenCalledWith('', 'installedApp', expect.any(FormData))
-    })
-  })
-
-  it('should render speaking state indicator', async () => {
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    expect(await screen.findByText('common.voiceInput.speaking'))!.toBeInTheDocument()
-  })
-
-  it('should cleanup on unmount', () => {
-    const { unmount } = render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    // eslint-disable-next-line ts/no-explicit-any
-    const recorder = mockState.recorderInstances[0] as any
-
-    unmount()
-
-    expect(recorder.stop).toHaveBeenCalled()
-  })
-
-  it('should handle all data in recordAnalyseData for canvas drawing', async () => {
-    const allDataValues = []
-    for (let i = 0; i < 256; i++) {
-      allDataValues.push(i)
-    }
-    mockState.analyseData = new Uint8Array(allDataValues)
-
-    let rafCalls = 0
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
-      rafCalls++
-      if (rafCalls <= 2) cb(0)
-      return rafCalls
-    })
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    await screen.findByTestId('voice-input-stop')
-
-    // eslint-disable-next-line ts/no-explicit-any
-    const recorder = mockState.recorderInstances[0] as any
-    expect(recorder.getRecordAnalyseData).toHaveBeenCalled()
-  })
-
-  it('should pass multiple props correctly', async () => {
-    const user = userEvent.setup()
-    vi.mocked(audioToText).mockResolvedValueOnce({ text: 'test' })
-    mockState.params = { token: 'token123' }
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} wordTimestamps="enabled" />)
-
-    const stopBtn = await screen.findByTestId('voice-input-stop')
-    await user.click(stopBtn)
-
-    await waitFor(() => {
-      const calls = vi.mocked(audioToText).mock.calls
-      expect(calls.length).toBeGreaterThan(0)
-      const [url, sourceType, formData] = (calls[0] ?? []) as [any, any, any]
-      expect(url).toBe('/audio-to-text')
-      expect(sourceType).toBe('webApp')
-      expect(formData.get('word_timestamps')).toBe('enabled')
-    })
-  })
-
-  it('should handle legacy explore installed pathname when appId exists', async () => {
-    const user = userEvent.setup()
-    vi.mocked(audioToText).mockResolvedValueOnce({ text: 'test' })
-    mockState.params = { appId: 'app-id-123' }
-    mockState.pathname = '/explore/installed/app-details'
-
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    const stopBtn = await screen.findByTestId('voice-input-stop')
-    await user.click(stopBtn)
-
-    await waitFor(() => {
-      expect(audioToText).toHaveBeenCalledWith(
-        '/installed-apps/app-id-123/audio-to-text',
-        'installedApp',
-        expect.any(FormData),
+      render(
+        <StrictMode>
+          <VoiceInput onCancel={vi.fn()} onConverted={vi.fn()} target={target} />
+        </StrictMode>,
       )
+      resolveSecondRecorder({ ...recorder, cancel: activeCancel })
+      expect(await screen.findByText('common.voiceInput.speaking')).toBeInTheDocument()
+
+      resolveFirstRecorder({ ...recorder, cancel: staleCancel })
+
+      await waitFor(() => expect(staleCancel).toHaveBeenCalledTimes(1))
+      expect(activeCancel).not.toHaveBeenCalled()
+    })
+
+    it('should keep the active recorder when error callbacks change', async () => {
+      const { props, rerender } = renderVoiceInput()
+      await screen.findByText('common.voiceInput.speaking')
+
+      rerender(<VoiceInput {...props} onCancel={vi.fn()} onStartError={vi.fn()} />)
+
+      expect(startVoiceRecorder).toHaveBeenCalledTimes(1)
+      expect(recorderCancel).not.toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: 'common.voiceInput.stop' })).toBeInTheDocument()
     })
   })
 
-  it('should render timer with initial 00:00 value', () => {
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    const timer = screen.getByTestId('voice-input-timer')
-    expect(timer)!.toHaveTextContent('00:00')
-  })
+  // Stopping must upload a real MP3 file to the explicit owner-provided target.
+  describe('Conversion', () => {
+    it('should upload MP3 bytes to the explicit app target', async () => {
+      const { props } = renderVoiceInput()
+      fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
-  it('should render stop button during recording', async () => {
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    expect(await screen.findByTestId('voice-input-stop'))!.toBeInTheDocument()
-  })
+      expect(await screen.findByRole('status')).toHaveTextContent('common.voiceInput.converting')
+      await waitFor(() => expect(transcribeAudio).toHaveBeenCalledTimes(1))
+      const [requestTarget, file] = vi.mocked(transcribeAudio).mock.calls[0]!
+      expect(requestTarget).toBe(target)
+      expect(file.name).toBe('temp.mp3')
+      expect(file.type).toBe('audio/mp3')
+      expect(props.onBeforeTranscribe).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(props.onBeforeTranscribe!).mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(transcribeAudio).mock.invocationCallOrder[0]!,
+      )
+      await waitFor(() => expect(props.onConverted).toHaveBeenCalledWith('transcribed text'))
+      expect(props.onCancel).toHaveBeenCalledTimes(1)
+    })
 
-  it('should render converting UI after stopping', async () => {
-    const user = userEvent.setup()
-    vi.mocked(audioToText).mockImplementation(() => new Promise(() => {}))
-    mockState.params = { token: 'abc' }
+    it('should ignore repeated stop requests', async () => {
+      let resolveStop: (blob: Blob) => void = () => {}
+      recorderStop.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveStop = resolve
+        }),
+      )
+      renderVoiceInput()
+      const stopButton = await screen.findByRole('button', { name: 'common.voiceInput.stop' })
 
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    const stopBtn = await screen.findByTestId('voice-input-stop')
-    await user.click(stopBtn)
+      fireEvent.click(stopButton)
+      fireEvent.click(stopButton)
 
-    await screen.findByTestId('voice-input-loader')
-    expect(screen.getByTestId('voice-input-converting-text'))!.toBeInTheDocument()
-    expect(screen.getByTestId('voice-input-cancel'))!.toBeInTheDocument()
-  })
+      expect(recorderStop).toHaveBeenCalledTimes(1)
+      resolveStop(new Blob(['mp3-data'], { type: 'audio/mp3' }))
+      await waitFor(() => expect(transcribeAudio).toHaveBeenCalledTimes(1))
+    })
 
-  it('should auto-stop recording and convert audio when duration reaches 10 minutes (600s)', async () => {
-    vi.mocked(audioToText).mockResolvedValueOnce({ text: 'auto-stopped text' })
-    mockState.params = { token: 'abc' }
+    it('should report conversion failure without replacing the current text', async () => {
+      vi.mocked(transcribeAudio).mockRejectedValueOnce(new Error('API error'))
+      const { props } = renderVoiceInput()
+      fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
 
-    render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    expect(await screen.findByTestId('voice-input-stop'))!.toBeInTheDocument()
+      await waitFor(() => expect(props.onError).toHaveBeenCalledTimes(1))
+      expect(props.onConverted).not.toHaveBeenCalled()
+      expect(props.onCancel).toHaveBeenCalledTimes(1)
+    })
 
-    for (let i = 0; i < 601; i++) {
-      await act(async () => {
-        if (rafState.callback) rafState.callback()
+    it('should not upload when saving the owning draft fails', async () => {
+      const onBeforeTranscribe = vi.fn().mockRejectedValue(new Error('save failed'))
+      const { props } = renderVoiceInput({ onBeforeTranscribe })
+      fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
+
+      await waitFor(() => expect(props.onCancel).toHaveBeenCalledTimes(1))
+      expect(transcribeAudio).not.toHaveBeenCalled()
+      expect(props.onConverted).not.toHaveBeenCalled()
+      expect(props.onError).not.toHaveBeenCalled()
+    })
+
+    it('should close without publishing late results when conversion is cancelled', async () => {
+      let requestSignal: AbortSignal | undefined
+      vi.mocked(transcribeAudio).mockImplementationOnce((_target, _file, signal) => {
+        requestSignal = signal
+        return new Promise(() => {})
       })
-    }
+      const { props } = renderVoiceInput()
+      fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
+      await waitFor(() => expect(transcribeAudio).toHaveBeenCalledTimes(1))
+      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
 
-    expect(await screen.findByTestId('voice-input-converting-text'))!.toBeInTheDocument()
-    await waitFor(() => {
-      expect(onConverted).toHaveBeenCalledWith('auto-stopped text')
+      expect(recorderCancel).toHaveBeenCalledTimes(1)
+      expect(requestSignal?.aborted).toBe(true)
+      expect(props.onCancel).toHaveBeenCalledTimes(1)
+      expect(props.onConverted).not.toHaveBeenCalled()
     })
-  }, 10000)
 
-  it('should handle null canvas element gracefully during initialization', async () => {
-    const getElementByIdMock = vi.spyOn(document, 'getElementById').mockReturnValue(null)
+    it('should not upload when conversion is cancelled while the recorder is stopping', async () => {
+      let resolveStop: (blob: Blob) => void = () => {}
+      recorderStop.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveStop = resolve
+        }),
+      )
+      const { props } = renderVoiceInput()
 
-    const { unmount } = render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    await screen.findByTestId('voice-input-stop')
+      fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
+      resolveStop(new Blob(['mp3-data'], { type: 'audio/mp3' }))
 
-    unmount()
+      await act(async () => {})
+      expect(transcribeAudio).not.toHaveBeenCalled()
+      expect(props.onBeforeTranscribe).not.toHaveBeenCalled()
+      expect(props.onCancel).toHaveBeenCalledTimes(1)
+      expect(props.onError).not.toHaveBeenCalled()
+    })
 
-    getElementByIdMock.mockRestore()
+    it('should not upload when conversion is cancelled while the draft is saving', async () => {
+      let resolveDraftSave: () => void = () => {}
+      const onBeforeTranscribe = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveDraftSave = resolve
+          }),
+      )
+      const { props } = renderVoiceInput({ onBeforeTranscribe })
+
+      fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
+      await waitFor(() => expect(onBeforeTranscribe).toHaveBeenCalledTimes(1))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      resolveDraftSave()
+
+      await act(async () => {})
+      expect(transcribeAudio).not.toHaveBeenCalled()
+      expect(props.onCancel).toHaveBeenCalledTimes(1)
+      expect(props.onError).not.toHaveBeenCalled()
+    })
   })
 
-  it('should handle getContext returning null gracefully during initialization', async () => {
-    const oldGetContext = HTMLCanvasElement.prototype.getContext
-    HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(null)
+  // The ten-minute limit is a local timer transition, not a render-time side effect.
+  describe('Duration limit', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
 
-    const { unmount } = render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    await screen.findByTestId('voice-input-stop')
+    afterEach(() => {
+      vi.runOnlyPendingTimers()
+      vi.useRealTimers()
+    })
 
-    unmount()
+    it('should update the timer while recording', async () => {
+      renderVoiceInput()
+      await act(async () => {})
 
-    HTMLCanvasElement.prototype.getContext = oldGetContext
+      act(() => vi.advanceTimersByTime(1000))
+
+      expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('00:01')
+    })
+
+    it('should stop automatically at ten minutes', async () => {
+      renderVoiceInput()
+      await act(async () => {})
+
+      act(() => vi.advanceTimersByTime(600_000))
+      await act(async () => {})
+
+      expect(recorderStop).toHaveBeenCalledTimes(1)
+      expect(screen.getByTestId('voice-input-timer')).toHaveTextContent('10:00')
+    })
   })
 })

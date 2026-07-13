@@ -16,7 +16,7 @@ import type {
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-// eslint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports
 import { get, post } from './base'
 
 const NAME_SPACE = 'common'

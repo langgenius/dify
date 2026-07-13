@@ -28,6 +28,7 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -39,6 +40,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -207,6 +209,7 @@ class TestAudioApi:
             (AudioTooLargeServiceError("too big"), AudioTooLargeError),
             (UnsupportedAudioTypeServiceError(), UnsupportedAudioTypeError),
             (ProviderNotSupportSpeechToTextServiceError(), ProviderNotSupportSpeechToTextError),
+            (SpeechToTextDisabledServiceError(), SpeechToTextDisabledError),
             (ProviderTokenNotInitError("token"), ProviderNotInitializeError),
             (QuotaExceededError(), ProviderQuotaExceededError),
             (ModelCurrentlyNotSupportError(), ProviderModelCurrentlyNotSupportError),

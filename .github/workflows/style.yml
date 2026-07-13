@@ -163,7 +163,10 @@ jobs:
             pnpm-workspace.yaml
             .nvmrc
             vite.config.ts
+            lint.config.ts
             eslint.config.mjs
+            oxlint-suppressions.json
+            eslint-suppressions.json
             .vscode/**
             .github/workflows/autofix.yml
             .github/workflows/style.yml
@@ -177,30 +180,13 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: vp fmt --check
 
-      - name: Restore ESLint cache
-        if: steps.changed-files.outputs.any_changed == 'true'
-        id: eslint-cache-restore
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .eslintcache
-          key: ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'packages/dify-ui/eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'packages/dify-ui/eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-
-
       - name: Style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: vp run lint:ci
+        run: pnpm -w lint:ci
 
       - name: Type check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: vp run type-check
-
-      - name: Save ESLint cache
-        if: steps.changed-files.outputs.any_changed == 'true' && success() && steps.eslint-cache-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .eslintcache
-          key: ${{ steps.eslint-cache-restore.outputs.cache-primary-key }}
+        run: pnpm -w type-check
 
   superlinter:
     name: SuperLinter

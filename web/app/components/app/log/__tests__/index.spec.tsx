@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { fireEvent, render, screen } from '@testing-library/react'
 import { APP_PAGE_LIMIT } from '@/config'
 import { AppModeEnum } from '@/types/app'

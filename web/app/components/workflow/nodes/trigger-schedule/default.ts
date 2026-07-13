@@ -149,7 +149,7 @@ const nodeDefault: NodeDefault<ScheduleTriggerNodeType> = {
     // Validate timezone format if provided (timezone will be auto-filled by use-config.ts if undefined)
     if (!errorMessages && payload.timezone) {
       try {
-        // eslint-disable-next-line no-new
+        // oxlint-disable-next-line no-new
         new Intl.DateTimeFormat(undefined, { timeZone: payload.timezone })
       } catch {
         errorMessages = t(($) => $['nodes.triggerSchedule.invalidTimezone'], { ns: 'workflow' })

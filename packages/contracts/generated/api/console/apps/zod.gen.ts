@@ -1478,7 +1478,7 @@ export const zDailyTokenCostStatisticItem = z.object({
   token_count: z.int().nullish(),
   total_price: z
     .string()
-    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
     .nullish(),
 })
 
@@ -5093,6 +5093,10 @@ export const zPostAppsByAppIdApiEnablePath = z.object({
  * API status updated successfully
  */
 export const zPostAppsByAppIdApiEnableResponse = zAppDetail
+
+export const zPostAppsByAppIdAudioToTextBody = z.object({
+  file: z.custom<Blob | File>(),
+})
 
 export const zPostAppsByAppIdAudioToTextPath = z.object({
   app_id: z.uuid(),

@@ -89,7 +89,7 @@ const buildShortcutMappings = (options: TestRunOptions): ShortcutMapping[] => {
   return mappings
 }
 
-// eslint-disable-next-line react/no-forward-ref
+// oxlint-disable-next-line eslint-react/no-forward-ref
 const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
   ({ options, onSelect, children }, ref) => {
     const { t } = useTranslation()
