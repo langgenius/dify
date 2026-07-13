@@ -5,15 +5,13 @@ import { getStepByStepTourTargetSelector } from './target-registry'
 
 export const useStepByStepTourTarget = (target?: string) => {
   const [targetElement, setTargetElement] = useState<HTMLElement | null>(() => {
-    if (!target || typeof document === 'undefined')
-      return null
+    if (!target || typeof document === 'undefined') return null
 
     return document.querySelector<HTMLElement>(getStepByStepTourTargetSelector(target))
   })
 
   useEffect(() => {
-    if (typeof document === 'undefined')
-      return
+    if (typeof document === 'undefined') return
 
     const selector = target ? getStepByStepTourTargetSelector(target) : undefined
 
@@ -27,16 +25,13 @@ export const useStepByStepTourTarget = (target?: string) => {
     const syncTarget = () => {
       animationFrame = 0
       const nextTargetElement = document.querySelector<HTMLElement>(selector)
-      setTargetElement(currentTargetElement => (
-        currentTargetElement === nextTargetElement
-          ? currentTargetElement
-          : nextTargetElement
-      ))
+      setTargetElement((currentTargetElement) =>
+        currentTargetElement === nextTargetElement ? currentTargetElement : nextTargetElement,
+      )
     }
 
     const scheduleSyncTarget = () => {
-      if (animationFrame)
-        return
+      if (animationFrame) return
 
       animationFrame = window.requestAnimationFrame(syncTarget)
     }
@@ -52,8 +47,7 @@ export const useStepByStepTourTarget = (target?: string) => {
     })
 
     return () => {
-      if (animationFrame)
-        window.cancelAnimationFrame(animationFrame)
+      if (animationFrame) window.cancelAnimationFrame(animationFrame)
       observer.disconnect()
     }
   }, [target])

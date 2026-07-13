@@ -824,7 +824,10 @@ describe('IntegrationsPage', () => {
     view.rerender(<IntegrationsPage section="mcp" />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'common.menus.tools' })).toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByRole('button', { name: 'common.menus.tools' })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
     })
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveClass('bg-state-base-active')
   })
@@ -1096,9 +1099,13 @@ describe('IntegrationsPage', () => {
 
     renderIntegrationsPage({ section: 'provider' })
 
-    expect(screen.getByText('common.settings.integrations').parentElement?.parentElement).toHaveClass('h-14', 'pt-1', 'pb-7')
+    expect(
+      screen.getByText('common.settings.integrations').parentElement?.parentElement,
+    ).toHaveClass('h-14', 'pt-1', 'pb-7')
     expect(screen.queryByRole('button', { name: 'plugin install' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'common.settings.provider' }).parentElement).toHaveClass('mt-6')
+    expect(
+      screen.getByRole('link', { name: 'common.settings.provider' }).parentElement,
+    ).toHaveClass('mt-6')
   })
 
   it('keeps the integrations sidebar expanded without a collapse control', () => {

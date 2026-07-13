@@ -145,7 +145,11 @@ function FirstEmptyActionCard(props: FirstEmptyActionCardProps) {
 
   if (props.href) {
     return (
-      <Link href={props.href} className={className} data-step-by-step-tour-target={props.stepByStepTourTarget}>
+      <Link
+        href={props.href}
+        className={className}
+        data-step-by-step-tour-target={props.stepByStepTourTarget}
+      >
         <ActionCardContent
           badge={props.badge}
           badgeVariant={props.badgeVariant}
@@ -159,7 +163,12 @@ function FirstEmptyActionCard(props: FirstEmptyActionCardProps) {
   }
 
   return (
-    <button type="button" className={className} data-step-by-step-tour-target={props.stepByStepTourTarget} onClick={props.onClick}>
+    <button
+      type="button"
+      className={className}
+      data-step-by-step-tour-target={props.stepByStepTourTarget}
+      onClick={props.onClick}
+    >
       <ActionCardContent
         badge={props.badge}
         badgeVariant={props.badgeVariant}

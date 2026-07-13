@@ -296,10 +296,7 @@ describe('OperationsDropdown', () => {
 
       render(
         <div role="button" tabIndex={0} onClick={onCardClick} onKeyDown={noopKeyboardHandler}>
-          <OperationsDropdown
-            {...defaultProps}
-            detectIsUsedByApp={detectIsUsedByApp}
-          />
+          <OperationsDropdown {...defaultProps} detectIsUsedByApp={detectIsUsedByApp} />
         </div>,
       )
 
@@ -311,13 +308,13 @@ describe('OperationsDropdown', () => {
     })
 
     it('should keep the tour-opened operations menu open when its trigger is clicked', async () => {
-      render((
+      render(
         <OperationsDropdown
           {...defaultProps}
           stepByStepTourHighlightPart="knowledge-card-actions-menu"
           stepByStepTourOpen
-        />
-      ))
+        />,
+      )
 
       expect(await screen.findByText('common.operation.edit')).toBeInTheDocument()
 
@@ -331,16 +328,18 @@ describe('OperationsDropdown', () => {
     it('should keep tour-opened operations menu items from running actions', async () => {
       const detectIsUsedByApp = vi.fn()
 
-      render((
+      render(
         <OperationsDropdown
           {...defaultProps}
           detectIsUsedByApp={detectIsUsedByApp}
           stepByStepTourHighlightPart="knowledge-card-actions-menu"
           stepByStepTourOpen
-        />
-      ))
+        />,
+      )
 
-      fireEvent.click(await screen.findByRole('menuitem', { name: 'common.operation.delete', hidden: true }))
+      fireEvent.click(
+        await screen.findByRole('menuitem', { name: 'common.operation.delete', hidden: true }),
+      )
 
       expect(detectIsUsedByApp).not.toHaveBeenCalled()
       expect(screen.getByRole('menu', { hidden: true })).toBeInTheDocument()

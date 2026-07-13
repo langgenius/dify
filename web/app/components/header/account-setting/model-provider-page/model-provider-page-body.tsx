@@ -51,7 +51,7 @@ function ModelProviderListSkeleton() {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t($ => $.loading, { ns: 'common' })} className="space-y-2">
+    <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
       {Array.from({ length: 3 }, (_, index) => (
         <ModelProviderCardSkeleton key={index} />
       ))}
@@ -69,31 +69,36 @@ function EmptyProviderState({
   const { t } = useTranslation()
 
   return (
-    <div className="rounded-[10px] bg-workflow-process-bg p-4" data-step-by-step-tour-target={stepByStepTourTarget}>
+    <div
+      className="rounded-[10px] bg-workflow-process-bg p-4"
+      data-step-by-step-tour-target={stepByStepTourTarget}
+    >
       <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
         <span aria-hidden className="i-ri-brain-2-line size-5 text-text-primary" />
       </div>
-      <div className="mt-2 system-sm-medium text-text-secondary">{t($ => $['modelProvider.emptyProviderTitle'], { ns: 'common' })}</div>
+      <div className="mt-2 system-sm-medium text-text-secondary">
+        {t(($) => $['modelProvider.emptyProviderTitle'], { ns: 'common' })}
+      </div>
       <p className="mt-1 system-xs-regular text-text-tertiary">
-        {enableMarketplace
-          ? (
-              <Trans
-                i18nKey={$ => $['modelProvider.emptyProviderTipWithMarketplace']}
-                ns="common"
-                components={{
-                  marketplace: (
-                    <a
-                      href="#model-provider-marketplace"
-                      aria-label={t($ => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
-                      className="system-xs-medium text-text-accent hover:underline"
-                    >
-                      {t($ => $['mainNav.marketplace'], { ns: 'common' })}
-                    </a>
-                  ),
-                }}
-              />
-            )
-          : t($ => $['modelProvider.emptyProviderTip'], { ns: 'common' })}
+        {enableMarketplace ? (
+          <Trans
+            i18nKey={($) => $['modelProvider.emptyProviderTipWithMarketplace']}
+            ns="common"
+            components={{
+              marketplace: (
+                <a
+                  href="#model-provider-marketplace"
+                  aria-label={t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
+                  className="system-xs-medium text-text-accent hover:underline"
+                >
+                  {t(($) => $['mainNav.marketplace'], { ns: 'common' })}
+                </a>
+              ),
+            }}
+          />
+        ) : (
+          t(($) => $['modelProvider.emptyProviderTip'], { ns: 'common' })
+        )}
       </p>
     </div>
   )
@@ -107,7 +112,9 @@ type ProviderCardListProps = {
 }
 
 function isDebuggingProvider(provider: ModelProvider, pluginDetailMap: Map<string, PluginDetail>) {
-  return pluginDetailMap.get(providerToPluginId(provider.provider))?.source === PluginSource.debugging
+  return (
+    pluginDetailMap.get(providerToPluginId(provider.provider))?.source === PluginSource.debugging
+  )
 }
 
 function ProviderCardList({
@@ -116,16 +123,14 @@ function ProviderCardList({
   pluginDetailMap,
   notConfigured,
 }: ProviderCardListProps) {
-  const sortedProviders = [...providers]
-    .sort((a, b) => {
-      const aIsDebuggingPlugin = isDebuggingProvider(a, pluginDetailMap)
-      const bIsDebuggingPlugin = isDebuggingProvider(b, pluginDetailMap)
+  const sortedProviders = [...providers].sort((a, b) => {
+    const aIsDebuggingPlugin = isDebuggingProvider(a, pluginDetailMap)
+    const bIsDebuggingPlugin = isDebuggingProvider(b, pluginDetailMap)
 
-      if (aIsDebuggingPlugin === bIsDebuggingPlugin)
-        return 0
+    if (aIsDebuggingPlugin === bIsDebuggingPlugin) return 0
 
-      return aIsDebuggingPlugin ? -1 : 1
-    })
+    return aIsDebuggingPlugin ? -1 : 1
+  })
 
   return (
     <div className="relative flex flex-col gap-2">
@@ -168,7 +173,9 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
   return (
     <div className="flex flex-col gap-2">
       {IS_CLOUD_EDITION && (
-        <div data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderCredits}>
+        <div
+          data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderCredits}
+        >
           <QuotaPanel providers={providers} />
         </div>
       )}
@@ -180,7 +187,11 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
       {showEmptyProvider && (
         <EmptyProviderState
           enableMarketplace={enableMarketplace}
-          stepByStepTourTarget={!showConfiguredProviders && !showNotConfiguredProviders ? STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction : undefined}
+          stepByStepTourTarget={
+            !showConfiguredProviders && !showNotConfiguredProviders
+              ? STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction
+              : undefined
+          }
         />
       )}
       {showConfiguredProviders && (
@@ -192,9 +203,15 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
       )}
       {showNotConfiguredProviders && (
         <div className="flex flex-col gap-2 pt-2">
-          <div className="flex h-5 items-center system-md-semibold text-text-primary">{t($ => $['modelProvider.toBeConfigured'], { ns: 'common' })}</div>
+          <div className="flex h-5 items-center system-md-semibold text-text-primary">
+            {t(($) => $['modelProvider.toBeConfigured'], { ns: 'common' })}
+          </div>
           <ProviderCardList
-            firstCardTarget={!showConfiguredProviders ? STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction : undefined}
+            firstCardTarget={
+              !showConfiguredProviders
+                ? STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction
+                : undefined
+            }
             providers={filteredNotConfiguredProviders}
             notConfigured
             pluginDetailMap={pluginDetailMap}

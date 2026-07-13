@@ -35,8 +35,7 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
   useEffect(() => {
     if (!isNextSlide) {
       setProgress(0)
-      if (frameIdRef.current)
-        cancelAnimationFrame(frameIdRef.current)
+      if (frameIdRef.current) cancelAnimationFrame(frameIdRef.current)
       return
     }
 
@@ -49,30 +48,28 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
         const newProgress = Math.min((elapsed / autoplayDelay) * PROGRESS_MAX, PROGRESS_MAX)
         setProgress(newProgress)
 
-        if (newProgress < PROGRESS_MAX)
-          frameIdRef.current = requestAnimationFrame(animate)
-      }
-      else {
+        if (newProgress < PROGRESS_MAX) frameIdRef.current = requestAnimationFrame(animate)
+      } else {
         frameIdRef.current = requestAnimationFrame(animate)
       }
     }
 
-    if (shouldAnimate)
-      frameIdRef.current = requestAnimationFrame(animate)
+    if (shouldAnimate) frameIdRef.current = requestAnimationFrame(animate)
 
     return () => {
-      if (frameIdRef.current)
-        cancelAnimationFrame(frameIdRef.current)
+      if (frameIdRef.current) cancelAnimationFrame(frameIdRef.current)
     }
   }, [isNextSlide, autoplayDelay, resetKey, isPaused, shouldAnimate])
 
-  const handleClick = useCallback((e: MouseEvent) => {
-    e.stopPropagation()
-    onClick()
-  }, [onClick])
+  const handleClick = useCallback(
+    (e: MouseEvent) => {
+      e.stopPropagation()
+      onClick()
+    },
+    [onClick],
+  )
   const handleKeyDown = useCallback((event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === 'Enter' || event.key === ' ')
-      event.stopPropagation()
+    if (event.key === 'Enter' || event.key === ' ') event.stopPropagation()
   }, [])
 
   const progressDegrees = progress * DEGREES_PER_PERCENT
@@ -109,9 +106,7 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
       )}
 
       {/* number content */}
-      <span className="relative z-10">
-        {String(index + 1).padStart(2, '0')}
-      </span>
+      <span className="relative z-10">{String(index + 1).padStart(2, '0')}</span>
     </button>
   )
 }

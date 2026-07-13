@@ -85,27 +85,29 @@ vi.mock('@/service/client', () => ({
                 skipped: false,
                 updated_at: null,
               },
-              queryFn: () => Promise.resolve({
-                completed_task_ids: [],
-                first_workspace_id: null,
-                manually_disabled_workspace_ids: [],
-                manually_enabled_workspace_ids: [],
-                skipped: false,
-                updated_at: null,
-              }),
+              queryFn: () =>
+                Promise.resolve({
+                  completed_task_ids: [],
+                  first_workspace_id: null,
+                  manually_disabled_workspace_ids: [],
+                  manually_enabled_workspace_ids: [],
+                  skipped: false,
+                  updated_at: null,
+                }),
               queryKey: ['console', 'onboarding', 'stepByStepTour', 'state'],
             }),
           },
           patch: {
             mutationOptions: () => ({
-              mutationFn: () => Promise.resolve({
-                completed_task_ids: [],
-                first_workspace_id: null,
-                manually_disabled_workspace_ids: [],
-                manually_enabled_workspace_ids: [],
-                skipped: false,
-                updated_at: null,
-              }),
+              mutationFn: () =>
+                Promise.resolve({
+                  completed_task_ids: [],
+                  first_workspace_id: null,
+                  manually_disabled_workspace_ids: [],
+                  manually_enabled_workspace_ids: [],
+                  skipped: false,
+                  updated_at: null,
+                }),
             }),
           },
         },

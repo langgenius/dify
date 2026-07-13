@@ -26,16 +26,14 @@ export type IntegrationSidebarNavItemData = {
 }
 
 const renderIcon = (icon: IconComponent | string, className = 'size-4') => {
-  if (typeof icon === 'string')
-    return <span className={cn(className, icon)} />
+  if (typeof icon === 'string') return <span className={cn(className, icon)} />
 
   const Icon = icon
   return <Icon className={className} />
 }
 
 const StepByStepTourTargetAnchor = ({ target }: { target?: string }) => {
-  if (!target)
-    return null
+  if (!target) return null
 
   return (
     <span
@@ -63,7 +61,9 @@ export function IntegrationSidebarNavItem({
   const className = cn(
     integrationSidebarNavItemClassName,
     item.stepByStepTourTarget && 'relative',
-    isActive ? integrationSidebarActiveNavItemClassName : integrationSidebarInactiveNavItemClassName,
+    isActive
+      ? integrationSidebarActiveNavItemClassName
+      : integrationSidebarInactiveNavItemClassName,
     item.className,
   )
 
@@ -83,7 +83,9 @@ export function IntegrationSidebarNavItem({
         <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
           {renderIcon(item.icon, item.iconClassName)}
         </span>
-        <span className="min-w-0 truncate" title={item.label}>{item.label}</span>
+        <span className="min-w-0 truncate" title={item.label}>
+          {item.label}
+        </span>
       </div>
     )
   }
@@ -93,7 +95,9 @@ export function IntegrationSidebarNavItem({
       <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
         {renderIcon(icon, item.iconClassName)}
       </span>
-      <span className="min-w-0 truncate" title={item.label}>{item.label}</span>
+      <span className="min-w-0 truncate" title={item.label}>
+        {item.label}
+      </span>
     </>
   )
 

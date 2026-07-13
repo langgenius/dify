@@ -7,7 +7,10 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { getStepByStepTourDropdownMenuContentProps, useStepByStepTourControlledDropdown } from '@/app/components/step-by-step-tour/dropdown-menu'
+import {
+  getStepByStepTourDropdownMenuContentProps,
+  useStepByStepTourControlledDropdown,
+} from '@/app/components/step-by-step-tour/dropdown-menu'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { datasetRbacEnabledAtom } from '@/context/system-features-state'
@@ -42,19 +45,29 @@ const OperationsDropdown = ({
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
-    currentUserId,
-    resourceMaintainer: dataset.maintainer,
-    workspacePermissionKeys,
-    isRbacEnabled,
-  }), [dataset.maintainer, dataset.permission_keys, currentUserId, isRbacEnabled, workspacePermissionKeys])
-  const canShowOperations = datasetACLCapabilities.canEdit
-    || datasetACLCapabilities.canImportExportDSL
-    || datasetACLCapabilities.canAccessConfig
-    || datasetACLCapabilities.canDelete
+  const datasetACLCapabilities = React.useMemo(
+    () =>
+      getDatasetACLCapabilities(dataset.permission_keys, {
+        currentUserId,
+        resourceMaintainer: dataset.maintainer,
+        workspacePermissionKeys,
+        isRbacEnabled,
+      }),
+    [
+      dataset.maintainer,
+      dataset.permission_keys,
+      currentUserId,
+      isRbacEnabled,
+      workspacePermissionKeys,
+    ],
+  )
+  const canShowOperations =
+    datasetACLCapabilities.canEdit ||
+    datasetACLCapabilities.canImportExportDSL ||
+    datasetACLCapabilities.canAccessConfig ||
+    datasetACLCapabilities.canDelete
 
-  if (!canShowOperations)
-    return null
+  if (!canShowOperations) return null
 
   return (
     <div
@@ -64,7 +77,7 @@ const OperationsDropdown = ({
           ? 'pointer-events-auto visible'
           : 'pointer-events-none invisible group-hover:pointer-events-auto group-hover:visible',
       )}
-      onClick={e => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
@@ -94,7 +107,9 @@ const OperationsDropdown = ({
           <Operations
             showEdit={datasetACLCapabilities.canEdit}
             showDelete={datasetACLCapabilities.canDelete}
-            showExportPipeline={dataset.runtime_mode === 'rag_pipeline' && datasetACLCapabilities.canImportExportDSL}
+            showExportPipeline={
+              dataset.runtime_mode === 'rag_pipeline' && datasetACLCapabilities.canImportExportDSL
+            }
             showAccessConfig={datasetACLCapabilities.canAccessConfig}
             openRenameModal={openRenameModal}
             handleExportPipeline={handleExportPipeline}

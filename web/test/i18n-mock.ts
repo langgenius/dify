@@ -12,16 +12,15 @@ type TranslationFunction<Args extends unknown[], Result> = {
   (key: TranslationSelector, ...args: Args): Result
   (key: unknown, ...args: Args): Result
 }
-type SelectorI18nKeyProps<Props, Ns extends TranslationNamespace> = Omit<Props, 'i18nKey' | 'ns'>
-  & (Props extends { i18nKey: unknown }
+type SelectorI18nKeyProps<Props, Ns extends TranslationNamespace> = Omit<Props, 'i18nKey' | 'ns'> &
+  (Props extends { i18nKey: unknown }
     ? { i18nKey: TranslationKey }
-    : { i18nKey?: TranslationKey })
-  & (Props extends { ns: unknown } ? { ns: Ns } : { ns?: Ns })
+    : { i18nKey?: TranslationKey }) &
+  (Props extends { ns: unknown } ? { ns: Ns } : { ns?: Ns })
 
 function splitNamespacedKey(key: string) {
   const separatorIndex = key.indexOf(':')
-  if (separatorIndex < 1)
-    return { key }
+  if (separatorIndex < 1) return { key }
 
   return {
     key: key.slice(separatorIndex + 1),
@@ -34,10 +33,8 @@ const selectorPath = Symbol('selectorPath')
 function createSelectorSource(path: readonly string[] = []): TranslationSelectorSource {
   return new Proxy({} as TranslationSelectorSource, {
     get: (_, property) => {
-      if (property === selectorPath)
-        return path
-      if (typeof property !== 'string')
-        return undefined
+      if (property === selectorPath) return path
+      if (typeof property !== 'string') return undefined
       return createSelectorSource([...path, property])
     },
   })
@@ -49,8 +46,7 @@ function getSelectorPath(selector: TranslationSelector) {
     throw new TypeError('Translation selectors must return a translation key')
 
   const path = Reflect.get(selected, selectorPath) as readonly string[] | undefined
-  if (!path?.length)
-    throw new TypeError('Translation selectors must return a translation key')
+  if (!path?.length) throw new TypeError('Translation selectors must return a translation key')
   return path
 }
 
@@ -64,8 +60,7 @@ function resolveSelectorKey(selector: TranslationSelector, namespace?: Translati
 }
 
 function resolveI18nKey(key: TranslationKey, namespace?: TranslationNamespace) {
-  if (typeof key === 'string')
-    return key
+  if (typeof key === 'string') return key
 
   return resolveSelectorKey(key, namespace)
 }
@@ -90,14 +85,14 @@ export function withSelectorKey<Args extends unknown[], Result>(
   translate: (key: string, ...args: Args) => Result,
   namespace?: TranslationNamespace,
 ) {
-  const t = (key: unknown, ...args: Args) => translate(resolveI18nKey(key as TranslationKey, namespace), ...args)
+  const t = (key: unknown, ...args: Args) =>
+    translate(resolveI18nKey(key as TranslationKey, namespace), ...args)
   return t as TranslationFunction<Args, Result>
 }
 
-export function withSelectorKeyProps<
-  Props extends object,
-  Result,
->(render: (props: Props) => Result) {
+export function withSelectorKeyProps<Props extends object, Result>(
+  render: (props: Props) => Result,
+) {
   return <Ns extends TranslationNamespace>(props: SelectorI18nKeyProps<Props, Ns>) => {
     const i18nKey = props.i18nKey
     const resolvedProps = {
@@ -108,12 +103,8 @@ export function withSelectorKeyProps<
   }
 }
 
-function interpolateTranslation(
-  value: string | string[],
-  options?: Record<string, unknown>,
-) {
-  if (typeof value !== 'string')
-    return value
+function interpolateTranslation(value: string | string[], options?: Record<string, unknown>) {
+  if (typeof value !== 'string') return value
 
   return value.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, paramName: string) => {
     const paramValue = options?.[paramName]
@@ -129,7 +120,11 @@ function interpolateTranslation(
 function createTFunction<Ns extends TranslationNamespace>(
   translations: TranslationMap,
   defaultNs?: Ns,
-  config: { includeDefaultNamespace: boolean, includeOptionNamespace: boolean, includeInterpolationOptions: boolean } = {
+  config: {
+    includeDefaultNamespace: boolean
+    includeOptionNamespace: boolean
+    includeInterpolationOptions: boolean
+  } = {
     includeDefaultNamespace: true,
     includeOptionNamespace: true,
     includeInterpolationOptions: true,
@@ -137,14 +132,22 @@ function createTFunction<Ns extends TranslationNamespace>(
 ) {
   const t = (translationKey: unknown, options?: Record<string, unknown>) => {
     const optionNs = options?.ns as TranslationNamespace | undefined
-    const namespace = ((config.includeOptionNamespace ? optionNs : undefined) ?? (config.includeDefaultNamespace ? defaultNs : undefined)) as Ns | undefined
-    const { key, namespace: keyNamespace } = resolveTranslationKey(translationKey as TranslationKey, namespace)
+    const namespace = ((config.includeOptionNamespace ? optionNs : undefined) ??
+      (config.includeDefaultNamespace ? defaultNs : undefined)) as Ns | undefined
+    const { key, namespace: keyNamespace } = resolveTranslationKey(
+      translationKey as TranslationKey,
+      namespace,
+    )
 
     // Check custom translations first (without namespace)
-    if (translations[key] !== undefined)
-      return interpolateTranslation(translations[key], options)
+    if (translations[key] !== undefined) return interpolateTranslation(translations[key], options)
 
-    const ns = keyNamespace ?? getPrimaryNamespace((config.includeOptionNamespace ? optionNs : undefined) ?? (config.includeDefaultNamespace ? defaultNs : undefined))
+    const ns =
+      keyNamespace ??
+      getPrimaryNamespace(
+        (config.includeOptionNamespace ? optionNs : undefined) ??
+          (config.includeDefaultNamespace ? defaultNs : undefined),
+      )
     const fullKey = ns ? `${ns}.${key}` : key
 
     // Check custom translations with namespace
@@ -154,7 +157,10 @@ function createTFunction<Ns extends TranslationNamespace>(
     // Serialize params (excluding ns) for test assertions
     const params = { ...options }
     delete params.ns
-    const suffix = config.includeInterpolationOptions && Object.keys(params).length > 0 ? `:${JSON.stringify(params)}` : ''
+    const suffix =
+      config.includeInterpolationOptions && Object.keys(params).length > 0
+        ? `:${JSON.stringify(params)}`
+        : ''
     return `${fullKey}${suffix}`
   }
   return t as TranslationFunction<[options?: Record<string, unknown>], ReturnType<typeof t>>
@@ -172,9 +178,7 @@ function createTFunction<Ns extends TranslationNamespace>(
  *   'operation.confirm': 'Confirm',
  * }))
  */
-function createUseTranslationMock(
-  translations: TranslationMap = {},
-) {
+function createUseTranslationMock(translations: TranslationMap = {}) {
   const tCache = new Map<string, unknown>()
   const i18n = {
     language: 'en-US',
@@ -182,7 +186,7 @@ function createUseTranslationMock(
   }
   return {
     useTranslation: <Ns extends TranslationNamespace = 'app'>(defaultNs?: Ns) => {
-      const cacheKey = typeof defaultNs === 'string' ? defaultNs : defaultNs?.join(',') ?? ''
+      const cacheKey = typeof defaultNs === 'string' ? defaultNs : (defaultNs?.join(',') ?? '')
       if (!tCache.has(cacheKey)) {
         tCache.set(cacheKey, createTFunction(translations, defaultNs))
       }
@@ -199,7 +203,11 @@ function createUseTranslationMock(
  */
 function createTransMock(translations: TranslationMap = {}) {
   return {
-    Trans: <Ns extends TranslationNamespace>({ i18nKey, ns, children }: {
+    Trans: <Ns extends TranslationNamespace>({
+      i18nKey,
+      ns,
+      children,
+    }: {
       i18nKey: TranslationKey
       ns?: Ns
       children?: React.ReactNode
@@ -222,9 +230,7 @@ function createTransMock(translations: TranslationMap = {}) {
  *   'modal.title': 'My Modal',
  * }))
  */
-export function createReactI18nextMock(
-  translations: TranslationMap = {},
-) {
+export function createReactI18nextMock(translations: TranslationMap = {}) {
   const useTranslationMock = createUseTranslationMock(translations)
   const i18nextMock = createI18nextMock(translations)
   return {
@@ -237,9 +243,7 @@ export function createReactI18nextMock(
   }
 }
 
-export function createI18nextMock(
-  translations: TranslationMap = {},
-) {
+export function createI18nextMock(translations: TranslationMap = {}) {
   return {
     t: createTFunction(translations, undefined, {
       includeDefaultNamespace: false,

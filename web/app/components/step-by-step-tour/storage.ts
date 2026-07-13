@@ -13,10 +13,7 @@ import type {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { IS_CLOUD_EDITION } from '@/config'
 import { consoleQuery } from '@/service/client'
-import {
-  useSetStepByStepTourUiState,
-  useStepByStepTourUiStateValue,
-} from './atoms'
+import { useSetStepByStepTourUiState, useStepByStepTourUiStateValue } from './atoms'
 
 const normalizeTaskIds = (
   taskIds: StepByStepTourStateResponse['completed_task_ids'] | undefined,
@@ -47,7 +44,9 @@ const toStepByStepTourStateResponse = (
   skipped: state.skipped,
 })
 
-const pickUiState = (state: StepByStepTourAccountState | StepByStepTourUiState): StepByStepTourUiState => ({
+const pickUiState = (
+  state: StepByStepTourAccountState | StepByStepTourUiState,
+): StepByStepTourUiState => ({
   activeTaskId: state.activeTaskId,
   activeGuideIndex: state.activeGuideIndex,
   activeGuideGroup: state.activeGuideGroup,
@@ -56,14 +55,13 @@ const pickUiState = (state: StepByStepTourAccountState | StepByStepTourUiState):
 })
 
 const addId = <T extends string>(values: T[], value: T): T[] => {
-  if (values.includes(value))
-    return values
+  if (values.includes(value)) return values
 
   return [...values, value]
 }
 
 const removeId = <T extends string>(values: T[], value: T): T[] =>
-  values.filter(item => item !== value)
+  values.filter((item) => item !== value)
 
 const getStepByStepTourStateQueryKey = () =>
   consoleQuery.onboarding.stepByStepTour.state.get.queryKey()
@@ -78,12 +76,11 @@ export const getStepByStepTourEnabledForCurrentWorkspace = (
     'firstWorkspaceId' | 'manuallyDisabledWorkspaceIds' | 'manuallyEnabledWorkspaceIds' | 'skipped'
   >,
   currentWorkspaceId: string,
-) => !accountState.skipped
-  && !accountState.manuallyDisabledWorkspaceIds.includes(currentWorkspaceId)
-  && (
-    accountState.firstWorkspaceId === currentWorkspaceId
-    || accountState.manuallyEnabledWorkspaceIds.includes(currentWorkspaceId)
-  )
+) =>
+  !accountState.skipped &&
+  !accountState.manuallyDisabledWorkspaceIds.includes(currentWorkspaceId) &&
+  (accountState.firstWorkspaceId === currentWorkspaceId ||
+    accountState.manuallyEnabledWorkspaceIds.includes(currentWorkspaceId))
 
 export const useStepByStepTourAccountStateValue = (): StepByStepTourAccountState => {
   const { data } = useQuery({
@@ -110,7 +107,9 @@ export const useSetStepByStepTourAccountState = () => {
 
 export const useStepByStepTourStateActions = () => {
   const queryClient = useQueryClient()
-  const patchMutation = useMutation(consoleQuery.onboarding.stepByStepTour.state.patch.mutationOptions())
+  const patchMutation = useMutation(
+    consoleQuery.onboarding.stepByStepTour.state.patch.mutationOptions(),
+  )
   // eslint-disable-next-line react/use-state -- Step-by-step tour UI state hooks are not React useState calls.
   const setUiState = useSetStepByStepTourUiState()
 
@@ -119,17 +118,19 @@ export const useStepByStepTourStateActions = () => {
   ) => {
     queryClient.setQueryData<StepByStepTourStateResponse | undefined>(
       getStepByStepTourStateQueryKey(),
-      currentState => toStepByStepTourStateResponse(updater(normalizePersistentState(currentState))),
+      (currentState) =>
+        toStepByStepTourStateResponse(updater(normalizePersistentState(currentState))),
     )
   }
 
   const patchPersistentState = (
     body: StepByStepTourStatePatchPayload,
-    optimisticUpdate: (currentState: StepByStepTourPersistentState) => StepByStepTourPersistentState,
+    optimisticUpdate: (
+      currentState: StepByStepTourPersistentState,
+    ) => StepByStepTourPersistentState,
     options?: StepByStepTourStateActionOptions,
   ) => {
-    if (!IS_CLOUD_EDITION)
-      return
+    if (!IS_CLOUD_EDITION) return
 
     updatePersistentStateCache(optimisticUpdate)
     patchMutation.mutate(
@@ -151,10 +152,13 @@ export const useStepByStepTourStateActions = () => {
     skipTour(currentWorkspaceId: string, options?: StepByStepTourStateActionOptions) {
       patchPersistentState(
         { action: 'skip' },
-        currentState => ({
+        (currentState) => ({
           ...currentState,
           skipped: true,
-          manuallyEnabledWorkspaceIds: removeId(currentState.manuallyEnabledWorkspaceIds, currentWorkspaceId),
+          manuallyEnabledWorkspaceIds: removeId(
+            currentState.manuallyEnabledWorkspaceIds,
+            currentWorkspaceId,
+          ),
         }),
         options,
       )
@@ -162,7 +166,7 @@ export const useStepByStepTourStateActions = () => {
     completeTask(taskId: StepByStepTourTaskId, options?: StepByStepTourStateActionOptions) {
       patchPersistentState(
         { action: 'complete_task', task_id: taskId },
-        currentState => ({
+        (currentState) => ({
           ...currentState,
           completedTaskIds: addId(currentState.completedTaskIds, taskId),
         }),
@@ -172,7 +176,7 @@ export const useStepByStepTourStateActions = () => {
     uncompleteTask(taskId: StepByStepTourTaskId, options?: StepByStepTourStateActionOptions) {
       patchPersistentState(
         { action: 'uncomplete_task', task_id: taskId },
-        currentState => ({
+        (currentState) => ({
           ...currentState,
           completedTaskIds: removeId(currentState.completedTaskIds, taskId),
         }),
@@ -182,22 +186,37 @@ export const useStepByStepTourStateActions = () => {
     enableCurrentWorkspace(currentWorkspaceId: string, options?: StepByStepTourStateActionOptions) {
       patchPersistentState(
         { action: 'enable_current_workspace' },
-        currentState => ({
+        (currentState) => ({
           ...currentState,
           skipped: false,
-          manuallyEnabledWorkspaceIds: addId(currentState.manuallyEnabledWorkspaceIds, currentWorkspaceId),
-          manuallyDisabledWorkspaceIds: removeId(currentState.manuallyDisabledWorkspaceIds, currentWorkspaceId),
+          manuallyEnabledWorkspaceIds: addId(
+            currentState.manuallyEnabledWorkspaceIds,
+            currentWorkspaceId,
+          ),
+          manuallyDisabledWorkspaceIds: removeId(
+            currentState.manuallyDisabledWorkspaceIds,
+            currentWorkspaceId,
+          ),
         }),
         options,
       )
     },
-    disableCurrentWorkspace(currentWorkspaceId: string, options?: StepByStepTourStateActionOptions) {
+    disableCurrentWorkspace(
+      currentWorkspaceId: string,
+      options?: StepByStepTourStateActionOptions,
+    ) {
       patchPersistentState(
         { action: 'disable_current_workspace' },
-        currentState => ({
+        (currentState) => ({
           ...currentState,
-          manuallyEnabledWorkspaceIds: removeId(currentState.manuallyEnabledWorkspaceIds, currentWorkspaceId),
-          manuallyDisabledWorkspaceIds: addId(currentState.manuallyDisabledWorkspaceIds, currentWorkspaceId),
+          manuallyEnabledWorkspaceIds: removeId(
+            currentState.manuallyEnabledWorkspaceIds,
+            currentWorkspaceId,
+          ),
+          manuallyDisabledWorkspaceIds: addId(
+            currentState.manuallyDisabledWorkspaceIds,
+            currentWorkspaceId,
+          ),
         }),
         options,
       )

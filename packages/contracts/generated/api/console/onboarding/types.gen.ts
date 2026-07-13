@@ -34,8 +34,8 @@ export type GetOnboardingStepByStepTourStateResponses = {
   200: StepByStepTourStateResponse
 }
 
-export type GetOnboardingStepByStepTourStateResponse
-  = GetOnboardingStepByStepTourStateResponses[keyof GetOnboardingStepByStepTourStateResponses]
+export type GetOnboardingStepByStepTourStateResponse =
+  GetOnboardingStepByStepTourStateResponses[keyof GetOnboardingStepByStepTourStateResponses]
 
 export type PatchOnboardingStepByStepTourStateData = {
   body: StepByStepTourStatePatchPayload
@@ -48,5 +48,5 @@ export type PatchOnboardingStepByStepTourStateResponses = {
   200: StepByStepTourStateResponse
 }
 
-export type PatchOnboardingStepByStepTourStateResponse
-  = PatchOnboardingStepByStepTourStateResponses[keyof PatchOnboardingStepByStepTourStateResponses]
+export type PatchOnboardingStepByStepTourStateResponse =
+  PatchOnboardingStepByStepTourStateResponses[keyof PatchOnboardingStepByStepTourStateResponses]

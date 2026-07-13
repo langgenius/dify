@@ -17,10 +17,7 @@ import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '../shell-storage'
 import { STEP_BY_STEP_TOUR_TARGETS } from '../target-registry'
 import { getStepByStepTourCoachmarkPosition } from '../use-coachmark-position'
 import { useStepByStepTourTargetRect } from '../use-target-rect'
-import {
-  StepByStepTourTestStateObserver,
-  StepByStepTourTestUiStateHydrator,
-} from './test-utils'
+import { StepByStepTourTestStateObserver, StepByStepTourTestUiStateHydrator } from './test-utils'
 
 type WorkspaceRole = ICurrentWorkspace['role']
 
@@ -58,7 +55,8 @@ const mockStepByStepTour = vi.hoisted(() => {
   const createState = (
     overrides: Partial<StepByStepTourStateResponse> = {},
   ): StepByStepTourStateResponse => ({
-    first_workspace_id: overrides.first_workspace_id === undefined ? 'workspace-1' : overrides.first_workspace_id,
+    first_workspace_id:
+      overrides.first_workspace_id === undefined ? 'workspace-1' : overrides.first_workspace_id,
     skipped: overrides.skipped ?? false,
     completed_task_ids: overrides.completed_task_ids ?? [],
     manually_enabled_workspace_ids: overrides.manually_enabled_workspace_ids ?? [],
@@ -92,42 +90,59 @@ const mockStepByStepTour = vi.hoisted(() => {
     updatedAt: state.updated_at ?? null,
   })
   const patchState = vi.fn(
-    async ({ body }: { body: StepByStepTourStatePatchPayload }): Promise<StepByStepTourStateResponse> => {
+    async ({
+      body,
+    }: {
+      body: StepByStepTourStatePatchPayload
+    }): Promise<StepByStepTourStateResponse> => {
       switch (body.action) {
         case 'complete_task':
           state = {
             ...state,
-            completed_task_ids: body.task_id && !state.completed_task_ids?.includes(body.task_id)
-              ? [...(state.completed_task_ids ?? []), body.task_id]
-              : state.completed_task_ids,
+            completed_task_ids:
+              body.task_id && !state.completed_task_ids?.includes(body.task_id)
+                ? [...(state.completed_task_ids ?? []), body.task_id]
+                : state.completed_task_ids,
           }
           break
         case 'uncomplete_task':
           state = {
             ...state,
-            completed_task_ids: (state.completed_task_ids ?? []).filter(taskId => taskId !== body.task_id),
+            completed_task_ids: (state.completed_task_ids ?? []).filter(
+              (taskId) => taskId !== body.task_id,
+            ),
           }
           break
         case 'skip':
           state = {
             ...state,
             skipped: true,
-            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(id => id !== 'workspace-1'),
+            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(
+              (id) => id !== 'workspace-1',
+            ),
           }
           break
         case 'enable_current_workspace':
           state = {
             ...state,
             skipped: false,
-            manually_enabled_workspace_ids: Array.from(new Set([...(state.manually_enabled_workspace_ids ?? []), 'workspace-1'])),
-            manually_disabled_workspace_ids: (state.manually_disabled_workspace_ids ?? []).filter(id => id !== 'workspace-1'),
+            manually_enabled_workspace_ids: Array.from(
+              new Set([...(state.manually_enabled_workspace_ids ?? []), 'workspace-1']),
+            ),
+            manually_disabled_workspace_ids: (state.manually_disabled_workspace_ids ?? []).filter(
+              (id) => id !== 'workspace-1',
+            ),
           }
           break
         case 'disable_current_workspace':
           state = {
             ...state,
-            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(id => id !== 'workspace-1'),
-            manually_disabled_workspace_ids: Array.from(new Set([...(state.manually_disabled_workspace_ids ?? []), 'workspace-1'])),
+            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(
+              (id) => id !== 'workspace-1',
+            ),
+            manually_disabled_workspace_ids: Array.from(
+              new Set([...(state.manually_disabled_workspace_ids ?? []), 'workspace-1']),
+            ),
           }
           break
       }
@@ -181,13 +196,7 @@ const mockStepByStepTour = vi.hoisted(() => {
   }
 })
 
-const setViewportSize = ({
-  height,
-  width,
-}: {
-  height: number
-  width: number
-}) => {
+const setViewportSize = ({ height, width }: { height: number; width: number }) => {
   Object.defineProperty(window, 'innerHeight', {
     configurable: true,
     value: height,
@@ -211,9 +220,10 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: <T,>(selector: (state: { hasBlockingModalOpen: boolean }) => T) => selector({
-    hasBlockingModalOpen: mockHasBlockingModalOpen.value,
-  }),
+  useModalContextSelector: <T,>(selector: (state: { hasBlockingModalOpen: boolean }) => T) =>
+    selector({
+      hasBlockingModalOpen: mockHasBlockingModalOpen.value,
+    }),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -258,59 +268,91 @@ vi.mock('react-i18next', async () => {
     ...createReactI18nextMock({
       'common.stepByStepTour.title': 'Get to know Dify',
       'common.stepByStepTour.duration': 'A quick tour — about 5 minutes',
-      'common.stepByStepTour.guides.integration.dataSource.description': 'Connect external data sources so Knowledge bases can pull from them.',
+      'common.stepByStepTour.guides.integration.dataSource.description':
+        'Connect external data sources so Knowledge bases can pull from them.',
       'common.stepByStepTour.guides.integration.dataSource.title': 'Data Source',
-      'common.stepByStepTour.guides.integration.mcp.description': 'Connect MCP servers when your apps need access to external tools and services through MCP.',
+      'common.stepByStepTour.guides.integration.mcp.description':
+        'Connect MCP servers when your apps need access to external tools and services through MCP.',
       'common.stepByStepTour.guides.integration.mcp.title': 'MCP',
-      'common.stepByStepTour.guides.integration.modelProvider.description': 'Manage or install model providers here, set up model credentials, and check your Message Credits.',
+      'common.stepByStepTour.guides.integration.modelProvider.description':
+        'Manage or install model providers here, set up model credentials, and check your Message Credits.',
       'common.stepByStepTour.guides.integration.modelProvider.title': 'Model Provider',
-      'common.stepByStepTour.guides.integration.limitedAccess.dataSource.description': 'Connect data sources here so Knowledge can bring in content from Drive, Notion, GitHub, Firecrawl, and more. Setup may require admin access.',
-      'common.stepByStepTour.guides.integration.limitedAccess.mcp.description': 'View connected MCP servers that expose external tools and services to apps. Adding or editing servers requires the right workspace permission.',
-      'common.stepByStepTour.guides.integration.limitedAccess.modelProvider.description': 'View model providers here, check model credentials, and see Message Credits. Installing or changing providers requires admin permission.',
-      'common.stepByStepTour.guides.integration.limitedAccess.toolPlugin.description': 'Browse installed tools and marketplace plugins that apps can call during execution. Ask an admin if you need to install or configure one.',
-      'common.stepByStepTour.guides.integration.limitedAccess.trigger.description': 'View triggers that turn third-party events into app inputs. Creating or managing triggers requires permission from your Workspace Owner or Admin.',
-      'common.stepByStepTour.guides.integration.toolPlugin.description': 'Manage built-in tools and marketplace plugins that apps can call during execution.',
+      'common.stepByStepTour.guides.integration.limitedAccess.dataSource.description':
+        'Connect data sources here so Knowledge can bring in content from Drive, Notion, GitHub, Firecrawl, and more. Setup may require admin access.',
+      'common.stepByStepTour.guides.integration.limitedAccess.mcp.description':
+        'View connected MCP servers that expose external tools and services to apps. Adding or editing servers requires the right workspace permission.',
+      'common.stepByStepTour.guides.integration.limitedAccess.modelProvider.description':
+        'View model providers here, check model credentials, and see Message Credits. Installing or changing providers requires admin permission.',
+      'common.stepByStepTour.guides.integration.limitedAccess.toolPlugin.description':
+        'Browse installed tools and marketplace plugins that apps can call during execution. Ask an admin if you need to install or configure one.',
+      'common.stepByStepTour.guides.integration.limitedAccess.trigger.description':
+        'View triggers that turn third-party events into app inputs. Creating or managing triggers requires permission from your Workspace Owner or Admin.',
+      'common.stepByStepTour.guides.integration.toolPlugin.description':
+        'Manage built-in tools and marketplace plugins that apps can call during execution.',
       'common.stepByStepTour.guides.integration.toolPlugin.title': 'Tool Plugin',
-      'common.stepByStepTour.guides.integration.trigger.description': 'Convert third-party events into inputs your apps can act on.',
+      'common.stepByStepTour.guides.integration.trigger.description':
+        'Convert third-party events into inputs your apps can act on.',
       'common.stepByStepTour.guides.integration.trigger.title': 'Trigger',
-      'common.stepByStepTour.guides.integration.updateSettings.description': 'Configure how integrations update automatically, including the update mode, scheduled time, and which integrations are included.',
+      'common.stepByStepTour.guides.integration.updateSettings.description':
+        'Configure how integrations update automatically, including the update mode, scheduled time, and which integrations are included.',
       'common.stepByStepTour.guides.integration.updateSettings.title': 'Update Settings',
       'common.stepByStepTour.guides.home.create.description': 'Click here to make it yours',
-      'common.stepByStepTour.guides.home.noCreate.description': 'You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.',
+      'common.stepByStepTour.guides.home.noCreate.description':
+        'You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.',
       'common.stepByStepTour.guides.home.noCreate.title': 'Browse Learn Dify',
       'common.stepByStepTour.guides.home.pick.description': 'Pick a lesson to see how it works.',
-      'common.stepByStepTour.guides.knowledge.empty.connect.description': 'Already have a knowledge base elsewhere? Connect it via API — no data migration needed.',
-      'common.stepByStepTour.guides.knowledge.empty.connect.title': 'Connect to an external knowledge base',
-      'common.stepByStepTour.guides.knowledge.empty.create.description': 'Fastest way to get going. Upload documents and Dify handles chunking, indexing, and embedding for you. You can switch to custom anytime.',
-      'common.stepByStepTour.guides.knowledge.empty.create.title': 'Create a ready-to-use knowledge base',
-      'common.stepByStepTour.guides.knowledge.empty.pipeline.description': 'Define your own chunking, cleanup, and indexing flow when you need finer control over how documents become searchable.',
-      'common.stepByStepTour.guides.knowledge.empty.pipeline.title': 'Build a custom knowledge base',
-      'common.stepByStepTour.guides.knowledge.withDatasets.create.description': 'Use Create to add a new knowledge base — start ready-to-use, build a custom one from your documents, or connect to an external knowledge base.',
-      'common.stepByStepTour.guides.knowledge.withDatasets.create.title': 'Create a new knowledge base',
-      'common.stepByStepTour.guides.knowledge.withDatasets.manage.description': 'Tap any knowledge base to open its document management page — update documents, retrieval settings, and access from there.',
-      'common.stepByStepTour.guides.knowledge.withDatasets.manage.title': 'Open and manage each knowledge base',
+      'common.stepByStepTour.guides.knowledge.empty.connect.description':
+        'Already have a knowledge base elsewhere? Connect it via API — no data migration needed.',
+      'common.stepByStepTour.guides.knowledge.empty.connect.title':
+        'Connect to an external knowledge base',
+      'common.stepByStepTour.guides.knowledge.empty.create.description':
+        'Fastest way to get going. Upload documents and Dify handles chunking, indexing, and embedding for you. You can switch to custom anytime.',
+      'common.stepByStepTour.guides.knowledge.empty.create.title':
+        'Create a ready-to-use knowledge base',
+      'common.stepByStepTour.guides.knowledge.empty.pipeline.description':
+        'Define your own chunking, cleanup, and indexing flow when you need finer control over how documents become searchable.',
+      'common.stepByStepTour.guides.knowledge.empty.pipeline.title':
+        'Build a custom knowledge base',
+      'common.stepByStepTour.guides.knowledge.withDatasets.create.description':
+        'Use Create to add a new knowledge base — start ready-to-use, build a custom one from your documents, or connect to an external knowledge base.',
+      'common.stepByStepTour.guides.knowledge.withDatasets.create.title':
+        'Create a new knowledge base',
+      'common.stepByStepTour.guides.knowledge.withDatasets.manage.description':
+        'Tap any knowledge base to open its document management page — update documents, retrieval settings, and access from there.',
+      'common.stepByStepTour.guides.knowledge.withDatasets.manage.title':
+        'Open and manage each knowledge base',
       'common.stepByStepTour.guides.primaryActionLabel': 'Got it',
-      'common.stepByStepTour.guides.studio.empty.blank.description': 'Start from an empty canvas when you already know what to build.',
+      'common.stepByStepTour.guides.studio.empty.blank.description':
+        'Start from an empty canvas when you already know what to build.',
       'common.stepByStepTour.guides.studio.empty.blank.title': 'Create from blank',
-      'common.stepByStepTour.guides.studio.empty.dsl.description': 'Got a Dify DSL file? Import it here to restore an app you have shared or backed up.',
+      'common.stepByStepTour.guides.studio.empty.dsl.description':
+        'Got a Dify DSL file? Import it here to restore an app you have shared or backed up.',
       'common.stepByStepTour.guides.studio.empty.dsl.title': 'Import a DSL file',
-      'common.stepByStepTour.guides.studio.empty.learnDify.description': 'New to Dify? Walk through a guided lesson first.',
+      'common.stepByStepTour.guides.studio.empty.learnDify.description':
+        'New to Dify? Walk through a guided lesson first.',
       'common.stepByStepTour.guides.studio.empty.learnDify.title': 'Or start with Learn Dify',
-      'common.stepByStepTour.guides.studio.empty.template.description': 'Browse Dify templates and pick one that matches what you want to build.',
+      'common.stepByStepTour.guides.studio.empty.template.description':
+        'Browse Dify templates and pick one that matches what you want to build.',
       'common.stepByStepTour.guides.studio.empty.template.title': 'Create from a template',
-      'common.stepByStepTour.guides.studio.noCreate.empty.description': 'You can view apps in this workspace, but there are no apps here yet. To create or edit apps, switch workspaces or ask your Workspace Owner or Admin for access.',
+      'common.stepByStepTour.guides.studio.noCreate.empty.description':
+        'You can view apps in this workspace, but there are no apps here yet. To create or edit apps, switch workspaces or ask your Workspace Owner or Admin for access.',
       'common.stepByStepTour.guides.studio.noCreate.empty.title': 'No apps to view yet',
-      'common.stepByStepTour.guides.studio.noCreate.withApps.description': 'You can browse apps in this workspace, but creating or editing apps requires permission. Switch to a workspace where you have access, or contact your Workspace Owner or Admin.',
+      'common.stepByStepTour.guides.studio.noCreate.withApps.description':
+        'You can browse apps in this workspace, but creating or editing apps requires permission. Switch to a workspace where you have access, or contact your Workspace Owner or Admin.',
       'common.stepByStepTour.guides.studio.noCreate.withApps.title': 'Studio is view-only for you',
-      'common.stepByStepTour.guides.studio.withApps.create.description': 'Use Create to add a new app — pick from a template, start from blank, or import a DSL file.',
+      'common.stepByStepTour.guides.studio.withApps.create.description':
+        'Use Create to add a new app — pick from a template, start from blank, or import a DSL file.',
       'common.stepByStepTour.guides.studio.withApps.create.title': 'Create a new app',
-      'common.stepByStepTour.guides.studio.withApps.manage.description': 'Tap any app to open its orchestration page — edit prompts, models, and logic, or manage its settings from there.',
+      'common.stepByStepTour.guides.studio.withApps.manage.description':
+        'Tap any app to open its orchestration page — edit prompts, models, and logic, or manage its settings from there.',
       'common.stepByStepTour.guides.studio.withApps.manage.title': 'Open and manage each app',
       'common.stepByStepTour.skip': 'Skip tour',
       'common.stepByStepTour.skipRecovery.dismiss': 'Got it',
       'common.stepByStepTour.skipRecovery.label': 'Step-by-step Tour recovery tip',
-      'common.stepByStepTour.skipRecovery.message': 'Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.',
-      'common.stepByStepTour.completion.description': 'You’ve seen the essentials. Time to build something.',
+      'common.stepByStepTour.skipRecovery.message':
+        'Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.',
+      'common.stepByStepTour.completion.description':
+        'You’ve seen the essentials. Time to build something.',
       'common.stepByStepTour.completion.dismiss': 'Dismiss',
       'common.stepByStepTour.completion.label': 'Step-by-step Tour completed',
       'common.stepByStepTour.completion.title': 'You’re all set',
@@ -322,25 +364,33 @@ vi.mock('react-i18next', async () => {
       'common.stepByStepTour.progressAriaValueText': '{{completed}} of {{total}} steps completed',
       'common.stepByStepTour.stepLabel': '{{current}} of {{total}}',
       'common.stepByStepTour.tasks.home.title': 'Try a Learn Dify lesson',
-      'common.stepByStepTour.tasks.home.description': 'Open a hands-on lesson from Learn Dify to see Dify in action.',
+      'common.stepByStepTour.tasks.home.description':
+        'Open a hands-on lesson from Learn Dify to see Dify in action.',
       'common.stepByStepTour.tasks.home.noCreate.title': 'Browse Learn Dify',
-      'common.stepByStepTour.tasks.home.noCreate.description': 'You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.',
+      'common.stepByStepTour.tasks.home.noCreate.description':
+        'You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.',
       'common.stepByStepTour.tasks.home.primaryActionLabel': 'Show me',
       'common.stepByStepTour.tasks.studio.title': 'Manage your apps in Studio',
-      'common.stepByStepTour.tasks.studio.description': 'All your apps live in Studio — edit, organize, and publish them here.',
+      'common.stepByStepTour.tasks.studio.description':
+        'All your apps live in Studio — edit, organize, and publish them here.',
       'common.stepByStepTour.tasks.studio.noCreate.title': 'Find your apps in Studio',
-      'common.stepByStepTour.tasks.studio.noCreate.description': 'You can browse apps in this workspace, but creating or editing apps requires permission. Switch to a workspace where you have access, or contact your Workspace Owner or Admin.',
+      'common.stepByStepTour.tasks.studio.noCreate.description':
+        'You can browse apps in this workspace, but creating or editing apps requires permission. Switch to a workspace where you have access, or contact your Workspace Owner or Admin.',
       'common.stepByStepTour.tasks.studio.primaryActionLabel': 'Take a look',
       'common.stepByStepTour.tasks.knowledge.title': 'Add your own data',
-      'common.stepByStepTour.tasks.knowledge.description': 'Build a knowledge base so your apps answer from your documents.',
+      'common.stepByStepTour.tasks.knowledge.description':
+        'Build a knowledge base so your apps answer from your documents.',
       'common.stepByStepTour.tasks.knowledge.noPermission.title': 'Knowledge needs permission',
-      'common.stepByStepTour.tasks.knowledge.noPermission.description': 'To create or manage knowledge bases, switch to a workspace where you have access or contact your admin.',
+      'common.stepByStepTour.tasks.knowledge.noPermission.description':
+        'To create or manage knowledge bases, switch to a workspace where you have access or contact your admin.',
       'common.stepByStepTour.tasks.knowledge.noPermission.primaryActionLabel': 'Got it',
       'common.stepByStepTour.tasks.knowledge.primaryActionLabel': 'Take a look',
       'common.stepByStepTour.tasks.integration.title': 'Explore integrations',
-      'common.stepByStepTour.tasks.integration.description': 'Models, tools, data sources & more — explore what you can connect.',
+      'common.stepByStepTour.tasks.integration.description':
+        'Models, tools, data sources & more — explore what you can connect.',
       'common.stepByStepTour.tasks.integration.noPermission.title': 'Explore Integrations',
-      'common.stepByStepTour.tasks.integration.noPermission.description': 'Browse models, tools, and data sources, and see how they are managed.',
+      'common.stepByStepTour.tasks.integration.noPermission.description':
+        'Browse models, tools, and data sources, and see how they are managed.',
       'common.stepByStepTour.tasks.integration.primaryActionLabel': 'Take a look',
     }),
   }
@@ -378,7 +428,8 @@ vi.mock('@/context/workspace-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateJotaiMock(importOriginal)
 })
@@ -412,23 +463,17 @@ const createTourElement = (
   return target
 }
 
-const createTourTarget = (targetName: string, top = 114, rect?: Partial<TestRect>) => createTourElement(
-  'stepByStepTourTarget',
-  targetName,
-  {
+const createTourTarget = (targetName: string, top = 114, rect?: Partial<TestRect>) =>
+  createTourElement('stepByStepTourTarget', targetName, {
     height: 64,
     left: 472,
     top,
     width: 1012,
     ...rect,
-  },
-)
+  })
 
-const createTourHighlightPart = (targetName: string, rect: TestRect) => createTourElement(
-  'stepByStepTourHighlightPart',
-  targetName,
-  rect,
-)
+const createTourHighlightPart = (targetName: string, rect: TestRect) =>
+  createTourElement('stepByStepTourHighlightPart', targetName, rect)
 
 function TargetRectProbe({
   highlightPartSelectors,
@@ -548,12 +593,28 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
-    expect(screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' })).toHaveClass('bottom-[76px]', 'bg-state-accent-hover', 'border-state-accent-hover-alt')
-    expect(screen.getByText('Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.')).toBeInTheDocument()
-    const [arrowLine, arrowDot] = screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' }).querySelectorAll('span[aria-hidden="true"]')
+    expect(
+      screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' })).toHaveClass(
+      'bottom-[76px]',
+      'bg-state-accent-hover',
+      'border-state-accent-hover-alt',
+    )
+    expect(
+      screen.getByText('Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.'),
+    ).toBeInTheDocument()
+    const [arrowLine, arrowDot] = screen
+      .getByRole('region', { name: 'Step-by-step Tour recovery tip' })
+      .querySelectorAll('span[aria-hidden="true"]')
     expect(arrowLine).toHaveClass('top-full', 'left-[214px]', 'h-7', 'w-0.5')
-    expect(arrowDot).toHaveClass('top-[calc(100%+22px)]', 'left-[209px]', 'size-3', 'rounded-full', 'bg-state-accent-solid')
+    expect(arrowDot).toHaveClass(
+      'top-[calc(100%+22px)]',
+      'left-[209px]',
+      'size-3',
+      'rounded-full',
+      'bg-state-accent-solid',
+    )
 
     await waitFor(() => {
       const state = mockStepByStepTour.observedState
@@ -562,7 +623,9 @@ describe('StepByStepTourMount', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
 
-    expect(screen.queryByRole('region', { name: 'Step-by-step Tour recovery tip' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+    ).not.toBeInTheDocument()
   })
 
   it('shows a dismissible completion prompt at the bottom of the checklist after all tasks are complete', async () => {
@@ -577,16 +640,22 @@ describe('StepByStepTourMount', () => {
     renderStepByStepTourMount()
 
     expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
-    expect(await screen.findByRole('region', { name: 'Step-by-step Tour completed' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('region', { name: 'Step-by-step Tour completed' }),
+    ).toBeInTheDocument()
     expect(screen.getByText('You’re all set')).toBeInTheDocument()
-    expect(screen.getByText('You’ve seen the essentials. Time to build something.')).toBeInTheDocument()
+    expect(
+      screen.getByText('You’ve seen the essentials. Time to build something.'),
+    ).toBeInTheDocument()
 
     const dismissButton = screen.getByRole('button', { name: 'Dismiss' })
     expect(dismissButton).toHaveFocus()
 
     fireEvent.click(dismissButton)
 
-    expect(screen.queryByRole('region', { name: 'Step-by-step Tour completed' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Step-by-step Tour completed' }),
+    ).not.toBeInTheDocument()
     await waitFor(() => {
       const state = mockStepByStepTour.observedState
       expect(state.skipped).toBe(true)
@@ -606,7 +675,9 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    expect(screen.queryByRole('region', { name: 'Step-by-step Tour completed' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Step-by-step Tour completed' }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
   })
 
@@ -665,7 +736,9 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    expect(await screen.findByRole('region', { name: 'Step-by-step Tour completed' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('region', { name: 'Step-by-step Tour completed' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '3')
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '3')
     expect(screen.queryByText('Try a Learn Dify lesson')).not.toBeInTheDocument()
@@ -683,7 +756,9 @@ describe('StepByStepTourMount', () => {
     const { container } = renderStepByStepTourMount()
 
     const checklist = await screen.findByRole('region', { name: 'Get to know Dify' })
-    const anchor = container.querySelector('[aria-hidden="true"].pointer-events-none.absolute.bottom-0.left-0')
+    const anchor = container.querySelector(
+      '[aria-hidden="true"].pointer-events-none.absolute.bottom-0.left-0',
+    )
     const popoverPopup = checklist.parentElement
     const popoverPositioner = popoverPopup?.parentElement
 
@@ -694,10 +769,18 @@ describe('StepByStepTourMount', () => {
     expect(popoverPositioner).toHaveAttribute('data-align', 'start')
     expect(popoverPopup).toHaveClass('overflow-visible', 'bg-transparent', 'shadow-none')
     expect(checklist).toHaveClass('max-h-[calc(100vh-16px)]', 'overflow-y-auto')
-    expect(checklist).toHaveClass('bg-components-panel-bg-blur', 'bg-clip-padding', 'backdrop-blur-[10px]', 'border-components-panel-border')
+    expect(checklist).toHaveClass(
+      'bg-components-panel-bg-blur',
+      'bg-clip-padding',
+      'backdrop-blur-[10px]',
+      'border-components-panel-border',
+    )
     expect(screen.getByRole('button', { name: 'Skip tour' })).toHaveClass('h-6', 'px-1.5')
-    expect(screen.getByRole('button', { name: 'Minimize tour' }).querySelector('span[aria-hidden="true"]'))
-      .toHaveClass('i-ri-arrow-left-down-line', 'size-4')
+    expect(
+      screen
+        .getByRole('button', { name: 'Minimize tour' })
+        .querySelector('span[aria-hidden="true"]'),
+    ).toHaveClass('i-ri-arrow-left-down-line', 'size-4')
   })
 
   it('persists the collapsed shell mode across remounts', async () => {
@@ -721,7 +804,9 @@ describe('StepByStepTourMount', () => {
     unmount()
     renderStepByStepTourMount()
 
-    expect(await screen.findByRole('button', { name: 'Open step-by-step tour' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'Open step-by-step tour' }),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Open step-by-step tour' }))
@@ -744,7 +829,9 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    expect(await screen.findByRole('region', { name: 'Step-by-step Tour completed' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('region', { name: 'Step-by-step Tour completed' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Open step-by-step tour' })).not.toBeInTheDocument()
   })
@@ -780,7 +867,9 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    expect(await screen.findByRole('button', { name: 'Open step-by-step tour' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'Open step-by-step tour' }),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
   })
 
@@ -829,22 +918,32 @@ describe('StepByStepTourMount', () => {
       STEP_BY_STEP_TOUR_TARGETS.integrationMcpNav,
       STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceNav,
       STEP_BY_STEP_TOUR_TARGETS.integrationTriggerNav,
-    ].map((targetName, index) => createTourTarget(targetName, 80 + index * 8, {
-      height: 40,
-      left: 0,
-      width: 200,
-    }))
+    ].map((targetName, index) =>
+      createTourTarget(targetName, 80 + index * 8, {
+        height: 40,
+        left: 0,
+        width: 200,
+      }),
+    )
 
     try {
       renderStepByStepTourMount()
 
-      expect(await screen.findByText('Browse models, tools, and data sources, and see how they are managed.')).toBeInTheDocument()
+      expect(
+        await screen.findByText(
+          'Browse models, tools, and data sources, and see how they are managed.',
+        ),
+      ).toBeInTheDocument()
       fireEvent.click(screen.getByRole('button', { name: 'Take a look' }))
 
       expect(mockRouterPush).toHaveBeenCalledWith('/integrations/model-provider')
       expect(await screen.findByRole('region', { name: 'Model Provider' })).toBeInTheDocument()
       expect(screen.getByText('1 of 5')).toBeInTheDocument()
-      expect(screen.getByText('View model providers here, check model credentials, and see Message Credits. Installing or changing providers requires admin permission.')).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'View model providers here, check model credentials, and see Message Credits. Installing or changing providers requires admin permission.',
+        ),
+      ).toBeInTheDocument()
       expect(document.body.querySelector('[data-step-by-step-tour-coachmark]')).toHaveStyle({
         left: '8px',
         top: '140px',
@@ -856,9 +955,8 @@ describe('StepByStepTourMount', () => {
         expect(state.activeGuideIndexes).toEqual([0, 1, 2, 3, 4])
         expect(state.completedTaskIds).toEqual(['home', 'studio', 'knowledge'])
       })
-    }
-    finally {
-      targets.forEach(target => target.remove())
+    } finally {
+      targets.forEach((target) => target.remove())
     }
   })
 
@@ -892,10 +990,11 @@ describe('StepByStepTourMount', () => {
 
       expect(await screen.findByRole('region', { name: 'Model Provider' })).toBeInTheDocument()
       expect(screen.getByText('1 of 5')).toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'Free AI Credits to get started' })).not.toBeInTheDocument()
-    }
-    finally {
-      targets.forEach(target => target.remove())
+      expect(
+        screen.queryByRole('region', { name: 'Free AI Credits to get started' }),
+      ).not.toBeInTheDocument()
+    } finally {
+      targets.forEach((target) => target.remove())
     }
   })
 
@@ -938,8 +1037,12 @@ describe('StepByStepTourMount', () => {
 
       expect(await screen.findByRole('region', { name: 'Model Provider' })).toBeInTheDocument()
       expect(screen.getByText('1 of 5')).toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'Free AI Credits to get started' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'Add your own MCP Server' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('region', { name: 'Free AI Credits to get started' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('region', { name: 'Add your own MCP Server' }),
+      ).not.toBeInTheDocument()
 
       await waitFor(() => {
         const state = mockStepByStepTour.observedState
@@ -947,9 +1050,8 @@ describe('StepByStepTourMount', () => {
         expect(state.activeGuideGroup).toBe('integrationLimitedAccess')
         expect(state.activeGuideIndexes).toHaveLength(5)
       })
-    }
-    finally {
-      targets.forEach(target => target.remove())
+    } finally {
+      targets.forEach((target) => target.remove())
     }
   })
 
@@ -972,20 +1074,25 @@ describe('StepByStepTourMount', () => {
       completedTaskIds: ['home', 'studio', 'knowledge'],
       skipped: false,
     })
-    const limitedTarget = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav, 80, {
-      height: 420,
-      left: 0,
-      width: 200,
-    })
+    const limitedTarget = createTourTarget(
+      STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
+      80,
+      {
+        height: 420,
+        left: 0,
+        width: 200,
+      },
+    )
 
     try {
       renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Model Provider' })).toBeInTheDocument()
       expect(screen.getByText('1 of 5')).toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'Free AI Credits to get started' })).not.toBeInTheDocument()
-    }
-    finally {
+      expect(
+        screen.queryByRole('region', { name: 'Free AI Credits to get started' }),
+      ).not.toBeInTheDocument()
+    } finally {
       limitedTarget.remove()
     }
   })
@@ -1004,8 +1111,14 @@ describe('StepByStepTourMount', () => {
 
     expect(await screen.findByText('Knowledge needs permission')).toBeInTheDocument()
     expect(screen.queryByText('RESTRICTED')).not.toBeInTheDocument()
-    expect(screen.getByText('To create or manage knowledge bases, switch to a workspace where you have access or contact your admin.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Mark Knowledge needs permission complete' })).toBeDisabled()
+    expect(
+      screen.getByText(
+        'To create or manage knowledge bases, switch to a workspace where you have access or contact your admin.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Mark Knowledge needs permission complete' }),
+    ).toBeDisabled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
 
@@ -1032,7 +1145,11 @@ describe('StepByStepTourMount', () => {
     renderStepByStepTourMount()
 
     expect(await screen.findByText('Find your apps in Studio')).toBeInTheDocument()
-    expect(screen.getByText('You can browse apps in this workspace, but creating or editing apps requires permission. Switch to a workspace where you have access, or contact your Workspace Owner or Admin.')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'You can browse apps in this workspace, but creating or editing apps requires permission. Switch to a workspace where you have access, or contact your Workspace Owner or Admin.',
+      ),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Take a look' })[0]!)
 
@@ -1083,7 +1200,9 @@ describe('StepByStepTourMount', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Show me' }))
 
       expect(mockRouterPush).toHaveBeenCalledWith('/')
-      expect(await screen.findByRole('region', { name: 'Pick a lesson to see how it works.' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'Pick a lesson to see how it works.' }),
+      ).toBeInTheDocument()
       expect(screen.queryByText('Try a Learn Dify lesson')).not.toBeInTheDocument()
       expect(screen.getByText('1 of 2')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
@@ -1093,8 +1212,7 @@ describe('StepByStepTourMount', () => {
         expect(state.completedTaskIds).toEqual([])
         expect(state.minimized).toBe(true)
       })
-    }
-    finally {
+    } finally {
       target.remove()
     }
   })
@@ -1123,10 +1241,11 @@ describe('StepByStepTourMount', () => {
     try {
       renderStepByStepTourMount()
 
-      expect(await screen.findByRole('region', { name: 'Pick a lesson to see how it works.' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'Pick a lesson to see how it works.' }),
+      ).toBeInTheDocument()
       expect(scrollIntoView).not.toHaveBeenCalled()
-    }
-    finally {
+    } finally {
       target.remove()
     }
   })
@@ -1155,13 +1274,14 @@ describe('StepByStepTourMount', () => {
     try {
       renderStepByStepTourMount()
 
-      expect(await screen.findByRole('region', { name: 'Pick a lesson to see how it works.' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'Pick a lesson to see how it works.' }),
+      ).toBeInTheDocument()
       expect(scrollIntoView).toHaveBeenCalledWith({
         block: 'nearest',
         behavior: 'auto',
       })
-    }
-    finally {
+    } finally {
       target.remove()
     }
   })
@@ -1185,12 +1305,20 @@ describe('StepByStepTourMount', () => {
       renderStepByStepTourMount()
 
       expect(await screen.findByText('Browse Learn Dify')).toBeInTheDocument()
-      expect(screen.getByText('You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.')).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.',
+        ),
+      ).toBeInTheDocument()
       fireEvent.click(await screen.findByRole('button', { name: 'Show me' }))
 
       expect(mockRouterPush).toHaveBeenCalledWith('/')
       expect(await screen.findByRole('region', { name: 'Browse Learn Dify' })).toBeInTheDocument()
-      expect(screen.getByText('You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.')).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.',
+        ),
+      ).toBeInTheDocument()
       expect(screen.getByText('1 of 1')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument()
@@ -1211,8 +1339,7 @@ describe('StepByStepTourMount', () => {
         expect(state.completedTaskIds).toEqual(['home'])
         expect(state.minimized).toBe(false)
       })
-    }
-    finally {
+    } finally {
       target.remove()
     }
   })
@@ -1249,8 +1376,7 @@ describe('StepByStepTourMount', () => {
         expect(state.activeGuideIndex).toBe(0)
         expect(state.completedTaskIds).toEqual([])
       })
-    }
-    finally {
+    } finally {
       target.remove()
     }
   })
@@ -1279,15 +1405,16 @@ describe('StepByStepTourMount', () => {
       const highlightOverlay = document.body.querySelector('[data-step-by-step-tour-highlight]')
       const backdropOverlay = document.body.querySelector('[data-step-by-step-tour-backdrop]')
 
-      expect(document.body.querySelector('[data-step-by-step-tour-portal-root]')).not.toBeInTheDocument()
+      expect(
+        document.body.querySelector('[data-step-by-step-tour-portal-root]'),
+      ).not.toBeInTheDocument()
       expect(coachmarkOverlay?.parentElement).toBe(document.body)
       expect(highlightOverlay?.parentElement).toBe(document.body)
       expect(backdropOverlay?.parentElement).toBe(document.body)
       expect(coachmarkOverlay).toHaveClass('z-50')
       expect(highlightOverlay).toHaveClass('z-50')
       expect(backdropOverlay).toHaveClass('z-50')
-    }
-    finally {
+    } finally {
       target.remove()
     }
   })
@@ -1335,8 +1462,7 @@ describe('StepByStepTourMount', () => {
       expect(coachmarkOverlay).toHaveClass('z-50')
       expect(highlightOverlay).toHaveClass('z-50')
       expect(backdropOverlay).toHaveClass('z-50')
-    }
-    finally {
+    } finally {
       existingDialogLayer.remove()
       target.remove()
     }
@@ -1344,11 +1470,15 @@ describe('StepByStepTourMount', () => {
 
   it('renders the coachmark when the target attribute is added to an existing element', async () => {
     const animationFrameCallbacks: FrameRequestCallback[] = []
-    const requestAnimationFrameSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      animationFrameCallbacks.push(callback)
-      return animationFrameCallbacks.length
-    })
-    const cancelAnimationFrameSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        animationFrameCallbacks.push(callback)
+        return animationFrameCallbacks.length
+      })
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, 'cancelAnimationFrame')
+      .mockImplementation(() => {})
     setStepByStepTourTestState({
       activeTaskId: 'home',
       activeGuideIndex: 1,
@@ -1375,7 +1505,7 @@ describe('StepByStepTourMount', () => {
     document.body.appendChild(target)
     const flushAnimationFrames = () => {
       act(() => {
-        animationFrameCallbacks.splice(0).forEach(callback => callback(0))
+        animationFrameCallbacks.splice(0).forEach((callback) => callback(0))
       })
     }
 
@@ -1391,8 +1521,7 @@ describe('StepByStepTourMount', () => {
       flushAnimationFrames()
 
       expect(await screen.findByText('Click here to make it yours')).toBeInTheDocument()
-    }
-    finally {
+    } finally {
       requestAnimationFrameSpy.mockRestore()
       cancelAnimationFrameSpy.mockRestore()
       target.remove()
@@ -1419,11 +1548,15 @@ describe('StepByStepTourMount', () => {
       disconnect() {}
     } as typeof ResizeObserver
     const animationFrameCallbacks: FrameRequestCallback[] = []
-    const requestAnimationFrameSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      animationFrameCallbacks.push(callback)
-      return animationFrameCallbacks.length
-    })
-    const cancelAnimationFrameSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        animationFrameCallbacks.push(callback)
+        return animationFrameCallbacks.length
+      })
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, 'cancelAnimationFrame')
+      .mockImplementation(() => {})
     setStepByStepTourTestState({
       activeTaskId: 'home',
       activeGuideIndex: 1,
@@ -1444,17 +1577,16 @@ describe('StepByStepTourMount', () => {
 
       const coachmark = await screen.findByText('Click here to make it yours')
       const coachmarkOverlay = coachmark.closest('[data-step-by-step-tour-coachmark]')
-      const coachmarkResizeObserver = resizeObservers.find(observer =>
+      const coachmarkResizeObserver = resizeObservers.find((observer) =>
         observer.observedElements.includes(coachmarkOverlay!),
       )
       act(() => {
-        animationFrameCallbacks.splice(0).forEach(callback => callback(0))
+        animationFrameCallbacks.splice(0).forEach((callback) => callback(0))
       })
 
       expect(coachmarkResizeObserver).toBeUndefined()
       expect(requestAnimationFrameSpy).toHaveBeenCalled()
-    }
-    finally {
+    } finally {
       requestAnimationFrameSpy.mockRestore()
       cancelAnimationFrameSpy.mockRestore()
       target.remove()
@@ -1472,7 +1604,9 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    const completeStudioButton = await screen.findByRole('button', { name: 'Mark Manage your apps in Studio complete' })
+    const completeStudioButton = await screen.findByRole('button', {
+      name: 'Mark Manage your apps in Studio complete',
+    })
     expect(completeStudioButton).toBeDisabled()
 
     fireEvent.click(completeStudioButton)
@@ -1498,7 +1632,9 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    const completeHomeButton = await screen.findByRole('button', { name: 'Mark Try a Learn Dify lesson complete' })
+    const completeHomeButton = await screen.findByRole('button', {
+      name: 'Mark Try a Learn Dify lesson complete',
+    })
     expect(completeHomeButton).toBeDisabled()
 
     fireEvent.click(completeHomeButton)
@@ -1533,7 +1669,9 @@ describe('StepByStepTourMount', () => {
       renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Model Provider' })).toBeInTheDocument()
-      const [minimizedTourButton] = screen.getAllByRole('button', { name: 'Open step-by-step tour' })
+      const [minimizedTourButton] = screen.getAllByRole('button', {
+        name: 'Open step-by-step tour',
+      })
       expect(minimizedTourButton).toBeInTheDocument()
       expect(minimizedTourButton).not.toHaveClass('z-50')
       expect(screen.getByText('1 of 6')).toBeInTheDocument()
@@ -1581,10 +1719,11 @@ describe('StepByStepTourMount', () => {
         expect(state.minimized).toBe(false)
       })
       expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
-      expect(screen.getByRole('region', { name: 'Step-by-step Tour completed' })).toBeInTheDocument()
-    }
-    finally {
-      targets.forEach(target => target.remove())
+      expect(
+        screen.getByRole('region', { name: 'Step-by-step Tour completed' }),
+      ).toBeInTheDocument()
+    } finally {
+      targets.forEach((target) => target.remove())
     }
   })
 
@@ -1629,16 +1768,18 @@ describe('StepByStepTourMount', () => {
       expect(await screen.findByRole('region', { name: 'Trigger' })).toBeInTheDocument()
       expect(screen.getByText('5 of 6')).toBeInTheDocument()
 
-      const updateSettingsTarget = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings, 144)
+      const updateSettingsTarget = createTourTarget(
+        STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings,
+        144,
+      )
       targets.push(updateSettingsTarget)
       mockPathname = '/integrations/tools/built-in'
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
       expect(await screen.findByRole('region', { name: 'Update Settings' })).toBeInTheDocument()
       expect(screen.getByText('6 of 6')).toBeInTheDocument()
-    }
-    finally {
-      targets.forEach(target => target.remove())
+    } finally {
+      targets.forEach((target) => target.remove())
     }
   })
 
@@ -1700,9 +1841,8 @@ describe('StepByStepTourMount', () => {
         expect(state.completedTaskIds).toEqual(['home', 'studio', 'knowledge', 'integration'])
       })
       expect(screen.queryByRole('region', { name: 'Update Settings' })).not.toBeInTheDocument()
-    }
-    finally {
-      targets.forEach(target => target.remove())
+    } finally {
+      targets.forEach((target) => target.remove())
     }
   })
 
@@ -1723,19 +1863,26 @@ describe('StepByStepTourMount', () => {
       left: 1264,
       width: 104,
     })
-    const highlightPart = createTourHighlightPart(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu, {
-      height: 184,
-      left: 1088,
-      top: 120,
-      width: 280,
-    })
+    const highlightPart = createTourHighlightPart(
+      STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu,
+      {
+        height: 184,
+        left: 1088,
+        top: 120,
+        width: 280,
+      },
+    )
 
     try {
       renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Create a new app' })).toBeInTheDocument()
-      const highlight = document.body.querySelector('[data-step-by-step-tour-highlight]') as HTMLElement
-      const coachmark = document.body.querySelector('[data-step-by-step-tour-coachmark]') as HTMLElement
+      const highlight = document.body.querySelector(
+        '[data-step-by-step-tour-highlight]',
+      ) as HTMLElement
+      const coachmark = document.body.querySelector(
+        '[data-step-by-step-tour-coachmark]',
+      ) as HTMLElement
 
       expect(highlight).toHaveStyle({
         height: '240px',
@@ -1744,8 +1891,7 @@ describe('StepByStepTourMount', () => {
         width: '288px',
       })
       expect(coachmark).toHaveStyle({ left: '664px', top: '324px' })
-    }
-    finally {
+    } finally {
       target.remove()
       highlightPart.remove()
     }
@@ -1777,7 +1923,9 @@ describe('StepByStepTourMount', () => {
         expect(document.body.querySelector('[data-step-by-step-tour-backdrop]')).toBeInTheDocument()
       })
       expect(screen.queryByRole('region', { name: 'Create a new app' })).not.toBeInTheDocument()
-      expect(document.body.querySelector('[data-step-by-step-tour-highlight]')).not.toBeInTheDocument()
+      expect(
+        document.body.querySelector('[data-step-by-step-tour-highlight]'),
+      ).not.toBeInTheDocument()
 
       highlightPart = createTourHighlightPart(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu, {
         height: 184,
@@ -1787,15 +1935,16 @@ describe('StepByStepTourMount', () => {
       })
 
       expect(await screen.findByRole('region', { name: 'Create a new app' })).toBeInTheDocument()
-      const highlight = document.body.querySelector('[data-step-by-step-tour-highlight]') as HTMLElement
+      const highlight = document.body.querySelector(
+        '[data-step-by-step-tour-highlight]',
+      ) as HTMLElement
       expect(highlight).toHaveStyle({
         height: '240px',
         left: '1084px',
         top: '68px',
         width: '288px',
       })
-    }
-    finally {
+    } finally {
       highlightPart?.remove()
       target.remove()
     }
@@ -1819,11 +1968,12 @@ describe('StepByStepTourMount', () => {
         />,
       )
 
-      expect(document.body.querySelector('[data-highlight-parts-ready="false"]')).toBeInTheDocument()
+      expect(
+        document.body.querySelector('[data-highlight-parts-ready="false"]'),
+      ).toBeInTheDocument()
       expect(document.body.querySelector('[data-rect-settled="false"]')).toBeInTheDocument()
       expect(requestAnimationFrameSpy).not.toHaveBeenCalled()
-    }
-    finally {
+    } finally {
       requestAnimationFrameSpy.mockRestore()
       target.remove()
     }
@@ -1878,12 +2028,15 @@ describe('StepByStepTourMount', () => {
       left: 1264,
       width: 104,
     })
-    const highlightPart = createTourHighlightPart(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu, {
-      height: 184,
-      left: 1088,
-      top: 120,
-      width: 280,
-    })
+    const highlightPart = createTourHighlightPart(
+      STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu,
+      {
+        height: 184,
+        left: 1088,
+        top: 120,
+        width: 280,
+      },
+    )
 
     try {
       render(
@@ -1897,8 +2050,7 @@ describe('StepByStepTourMount', () => {
 
       expect(observedResizeElements).toEqual([target])
       expect(document.body.querySelector('[data-highlight-parts-ready="true"]')).toBeInTheDocument()
-    }
-    finally {
+    } finally {
       highlightPart.remove()
       target.remove()
     }
@@ -1929,7 +2081,8 @@ describe('StepByStepTourMount', () => {
       width: 216,
     }
     const highlightPart = document.createElement('div')
-    highlightPart.dataset.stepByStepTourHighlightPart = STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu
+    highlightPart.dataset.stepByStepTourHighlightPart =
+      STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu
     highlightPart.getBoundingClientRect = () => ({
       bottom: menuRect.top + menuRect.height,
       height: menuRect.height,
@@ -1947,8 +2100,12 @@ describe('StepByStepTourMount', () => {
     try {
       renderStepByStepTourMount()
 
-      expect(await screen.findByRole('region', { name: 'Open and manage each app' })).toBeInTheDocument()
-      const highlight = document.body.querySelector('[data-step-by-step-tour-highlight]') as HTMLElement
+      expect(
+        await screen.findByRole('region', { name: 'Open and manage each app' }),
+      ).toBeInTheDocument()
+      const highlight = document.body.querySelector(
+        '[data-step-by-step-tour-highlight]',
+      ) as HTMLElement
       expect(highlight).toHaveStyle({
         height: '248px',
         left: '32px',
@@ -1969,8 +2126,7 @@ describe('StepByStepTourMount', () => {
           width: '356px',
         })
       })
-    }
-    finally {
+    } finally {
       target.remove()
       positioner.remove()
     }
@@ -1998,7 +2154,9 @@ describe('StepByStepTourMount', () => {
     try {
       renderStepByStepTourMount()
 
-      expect(await screen.findByRole('region', { name: 'Create from a template' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'Create from a template' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('1 of 4')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
@@ -2015,10 +2173,14 @@ describe('StepByStepTourMount', () => {
       expect(screen.getByText('3 of 4')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
-      expect(await screen.findByRole('region', { name: 'Or start with Learn Dify' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'Or start with Learn Dify' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('4 of 4')).toBeInTheDocument()
       await waitFor(() => {
-        expect(document.body.querySelector('[data-step-by-step-tour-coachmark]')).toHaveStyle({ top: '212px' })
+        expect(document.body.querySelector('[data-step-by-step-tour-coachmark]')).toHaveStyle({
+          top: '212px',
+        })
       })
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
@@ -2029,9 +2191,8 @@ describe('StepByStepTourMount', () => {
         expect(state.completedTaskIds).toEqual(['home', 'studio'])
         expect(state.minimized).toBe(false)
       })
-    }
-    finally {
-      targets.forEach(target => target.remove())
+    } finally {
+      targets.forEach((target) => target.remove())
     }
   })
 
@@ -2056,15 +2217,21 @@ describe('StepByStepTourMount', () => {
     try {
       renderStepByStepTourMount()
 
-      expect(await screen.findByRole('region', { name: 'Create a ready-to-use knowledge base' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'Create a ready-to-use knowledge base' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('1 of 3')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
-      expect(await screen.findByRole('region', { name: 'Build a custom knowledge base' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'Build a custom knowledge base' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('2 of 3')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
-      expect(await screen.findByRole('region', { name: 'Connect to an external knowledge base' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'Connect to an external knowledge base' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('3 of 3')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
@@ -2076,9 +2243,8 @@ describe('StepByStepTourMount', () => {
         expect(state.completedTaskIds).toEqual(['home', 'studio', 'knowledge'])
         expect(state.minimized).toBe(false)
       })
-    }
-    finally {
-      targets.forEach(target => target.remove())
+    } finally {
+      targets.forEach((target) => target.remove())
     }
   })
 
@@ -2124,11 +2290,15 @@ describe('StepByStepTourMount', () => {
     try {
       renderStepByStepTourMount()
 
-      expect(await screen.findByRole('region', { name: 'Create a new knowledge base' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'Create a new knowledge base' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('1 of 2')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
-      expect(await screen.findByRole('region', { name: 'Open and manage each knowledge base' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'Open and manage each knowledge base' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('2 of 2')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
@@ -2140,10 +2310,9 @@ describe('StepByStepTourMount', () => {
         expect(state.completedTaskIds).toEqual(['home', 'studio', 'knowledge'])
         expect(state.minimized).toBe(false)
       })
-    }
-    finally {
-      targets.forEach(target => target.remove())
-      highlightParts.forEach(highlightPart => highlightPart.remove())
+    } finally {
+      targets.forEach((target) => target.remove())
+      highlightParts.forEach((highlightPart) => highlightPart.remove())
     }
   })
 
@@ -2178,9 +2347,8 @@ describe('StepByStepTourMount', () => {
         expect(state.activeTaskId).toBeUndefined()
         expect(state.completedTaskIds).toEqual(['home', 'studio'])
       })
-    }
-    finally {
-      targets.forEach(target => target.remove())
+    } finally {
+      targets.forEach((target) => target.remove())
     }
   })
 
@@ -2222,7 +2390,9 @@ describe('StepByStepTourMount', () => {
       expect(screen.getByText('1 of 2')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
-      expect(await screen.findByRole('region', { name: 'Open and manage each app' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'Open and manage each app' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('2 of 2')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
@@ -2234,10 +2404,9 @@ describe('StepByStepTourMount', () => {
         expect(state.completedTaskIds).toEqual(['home', 'studio'])
         expect(state.minimized).toBe(false)
       })
-    }
-    finally {
-      targets.forEach(target => target.remove())
-      highlightParts.forEach(highlightPart => highlightPart.remove())
+    } finally {
+      targets.forEach((target) => target.remove())
+      highlightParts.forEach((highlightPart) => highlightPart.remove())
     }
   })
 
@@ -2254,21 +2423,25 @@ describe('StepByStepTourMount', () => {
       skipped: false,
     })
     const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard, 164)
-    const highlightPart = createTourHighlightPart(STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard, {
-      height: 164,
-      left: 36,
-      top: 56,
-      width: 1304,
-    })
+    const highlightPart = createTourHighlightPart(
+      STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard,
+      {
+        height: 164,
+        left: 36,
+        top: 56,
+        width: 1304,
+      },
+    )
 
     try {
       renderStepByStepTourMount()
 
-      expect(await screen.findByRole('region', { name: 'Studio is view-only for you' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'Studio is view-only for you' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('1 of 1')).toBeInTheDocument()
       expect(screen.queryByText('2 of 4')).not.toBeInTheDocument()
-    }
-    finally {
+    } finally {
       highlightPart.remove()
       target.remove()
     }
@@ -2294,8 +2467,7 @@ describe('StepByStepTourMount', () => {
       expect(await screen.findByRole('region', { name: 'No apps to view yet' })).toBeInTheDocument()
       expect(screen.getByText('1 of 1')).toBeInTheDocument()
       expect(screen.queryByText('2 of 4')).not.toBeInTheDocument()
-    }
-    finally {
+    } finally {
       target.remove()
     }
   })
@@ -2324,19 +2496,24 @@ describe('StepByStepTourMount', () => {
         width: 320,
       }),
     ]
-    const createHighlightPart = createTourHighlightPart(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu, {
-      height: 184,
-      left: 1088,
-      top: 120,
-      width: 280,
-    })
+    const createHighlightPart = createTourHighlightPart(
+      STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu,
+      {
+        height: 184,
+        left: 1088,
+        top: 120,
+        width: 280,
+      },
+    )
     let appCardHighlightPart: HTMLElement | undefined
 
     try {
       renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Create a new app' })).toBeInTheDocument()
-      const highlight = document.body.querySelector('[data-step-by-step-tour-highlight]') as HTMLElement
+      const highlight = document.body.querySelector(
+        '[data-step-by-step-tour-highlight]',
+      ) as HTMLElement
       expect(highlight).toHaveStyle({
         height: '240px',
         left: '1084px',
@@ -2355,25 +2532,29 @@ describe('StepByStepTourMount', () => {
         width: '288px',
       })
 
-      appCardHighlightPart = createTourHighlightPart(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu, {
-        height: 192,
-        left: 180,
-        top: 212,
-        width: 216,
-      })
+      appCardHighlightPart = createTourHighlightPart(
+        STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu,
+        {
+          height: 192,
+          left: 180,
+          top: 212,
+          width: 216,
+        },
+      )
 
-      expect(await screen.findByRole('region', { name: 'Open and manage each app' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('region', { name: 'Open and manage each app' }),
+      ).toBeInTheDocument()
       expect(document.body.querySelector('[data-step-by-step-tour-highlight]')).toHaveStyle({
         height: '248px',
         left: '32px',
         top: '160px',
         width: '368px',
       })
-    }
-    finally {
+    } finally {
       appCardHighlightPart?.remove()
       createHighlightPart.remove()
-      targets.forEach(target => target.remove())
+      targets.forEach((target) => target.remove())
     }
   })
 
@@ -2390,12 +2571,15 @@ describe('StepByStepTourMount', () => {
       skipped: false,
     })
     const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate, 72)
-    const highlightPart = createTourHighlightPart(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu, {
-      height: 184,
-      left: 1088,
-      top: 120,
-      width: 280,
-    })
+    const highlightPart = createTourHighlightPart(
+      STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu,
+      {
+        height: 184,
+        left: 1088,
+        top: 120,
+        width: 280,
+      },
+    )
 
     try {
       renderStepByStepTourMount()
@@ -2409,8 +2593,7 @@ describe('StepByStepTourMount', () => {
         expect(state.activeTaskId).toBeUndefined()
         expect(state.completedTaskIds).toEqual(['home', 'studio'])
       })
-    }
-    finally {
+    } finally {
       highlightPart.remove()
       target.remove()
     }
@@ -2450,9 +2633,10 @@ describe('StepByStepTourMount', () => {
       })
       expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
       expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'Step-by-step Tour recovery tip' })).not.toBeInTheDocument()
-    }
-    finally {
+      expect(
+        screen.queryByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+      ).not.toBeInTheDocument()
+    } finally {
       target.remove()
     }
   })
@@ -2470,7 +2654,9 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    expect(await screen.findAllByRole('button', { name: 'Open step-by-step tour' })).not.toHaveLength(0)
+    expect(
+      await screen.findAllByRole('button', { name: 'Open step-by-step tour' }),
+    ).not.toHaveLength(0)
   })
 
   it('keeps the tour collapsed during an active guide even if the saved widget state is expanded', async () => {
@@ -2486,7 +2672,9 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    expect(await screen.findAllByRole('button', { name: 'Open step-by-step tour' })).not.toHaveLength(0)
+    expect(
+      await screen.findAllByRole('button', { name: 'Open step-by-step tour' }),
+    ).not.toHaveLength(0)
     expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
   })
 })

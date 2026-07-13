@@ -41,14 +41,13 @@ export function StarredAppCard({
 
   const editTimeText = useMemo(() => {
     const timestamp = app.updated_at || app.created_at
-    if (!timestamp)
-      return ''
+    if (!timestamp) return ''
 
     const timeText = formatTime({
       date: timestamp * 1000,
-      dateFormat: `${t($ => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
+      dateFormat: `${t(($) => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
     })
-    return `${t($ => $['segment.editedAt'], { ns: 'datasetDocuments' })} ${timeText}`
+    return `${t(($) => $['segment.editedAt'], { ns: 'datasetDocuments' })} ${timeText}`
   }, [app.created_at, app.updated_at, t])
   const href = getRedirectionPath(app, {
     currentUserId,
@@ -63,15 +62,17 @@ export function StarredAppCard({
       : 'hover:shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid',
   )
   const showPreviewOnlyAccessWarning = useCallback(() => {
-    toast.warning(t($ => $.noAccessResourcePermission, { ns: 'app' }))
+    toast.warning(t(($) => $.noAccessResourcePermission, { ns: 'app' }))
   }, [t])
-  const handlePreviewOnlyCardKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
-    if (event.key !== 'Enter' && event.key !== ' ')
-      return
+  const handlePreviewOnlyCardKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLElement>) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return
 
-    event.preventDefault()
-    showPreviewOnlyAccessWarning()
-  }, [showPreviewOnlyAccessWarning])
+      event.preventDefault()
+      showPreviewOnlyAccessWarning()
+    },
+    [showPreviewOnlyAccessWarning],
+  )
   const cardContent = (
     <>
       <div className="relative shrink-0">
@@ -82,7 +83,11 @@ export function StarredAppCard({
           background={app.icon_background}
           imageUrl={app.icon_url}
         />
-        <AppTypeIcon type={app.mode} wrapperClassName="absolute -right-0.5 -bottom-0.5 h-4 w-4 shadow-sm" className="size-3" />
+        <AppTypeIcon
+          type={app.mode}
+          wrapperClassName="absolute -right-0.5 -bottom-0.5 h-4 w-4 shadow-sm"
+          className="size-3"
+        />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
         <div className="truncate system-md-semibold text-text-secondary">{app.name}</div>
@@ -97,38 +102,31 @@ export function StarredAppCard({
 
   return (
     <div className="group relative">
-      {isPreviewOnly
-        ? (
-            <div
-              role="button"
-              tabIndex={0}
-              aria-disabled="true"
-              aria-label={app.name}
-              data-step-by-step-tour-target={stepByStepTourCardTarget}
-              data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
-              className={cardClassName}
-              onClick={showPreviewOnlyAccessWarning}
-              onKeyDown={handlePreviewOnlyCardKeyDown}
-            >
-              {cardContent}
-            </div>
-          )
-        : (
-            <Link
-              href={href}
-              data-step-by-step-tour-target={stepByStepTourCardTarget}
-              data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
-              className={cardClassName}
-            >
-              {cardContent}
-            </Link>
-          )}
-      {!isPreviewOnly && (
-        <AppCardActionBar
-          app={app}
-          onRefresh={onRefresh}
-        />
+      {isPreviewOnly ? (
+        <div
+          role="button"
+          tabIndex={0}
+          aria-disabled="true"
+          aria-label={app.name}
+          data-step-by-step-tour-target={stepByStepTourCardTarget}
+          data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
+          className={cardClassName}
+          onClick={showPreviewOnlyAccessWarning}
+          onKeyDown={handlePreviewOnlyCardKeyDown}
+        >
+          {cardContent}
+        </div>
+      ) : (
+        <Link
+          href={href}
+          data-step-by-step-tour-target={stepByStepTourCardTarget}
+          data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
+          className={cardClassName}
+        >
+          {cardContent}
+        </Link>
       )}
+      {!isPreviewOnly && <AppCardActionBar app={app} onRefresh={onRefresh} />}
     </div>
   )
 }

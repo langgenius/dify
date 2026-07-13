@@ -84,19 +84,43 @@ const AppInfo: FC<Props> = ({
         </div>
         <div className="w-0 grow py-px">
           <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
-            <div className="truncate" title={appDetail.name}>{appDetail.name}</div>
+            <div className="truncate" title={appDetail.name}>
+              {appDetail.name}
+            </div>
           </div>
           <div className="flex items-center text-[10px] leading-[18px] font-medium text-text-tertiary">
-            {mode === 'advanced-chat' && <div className="truncate">{t($ => $['types.advanced'], { ns: 'app' }).toUpperCase()}</div>}
-            {mode === 'chat' && <div className="truncate">{t($ => $['types.chatbot'], { ns: 'app' }).toUpperCase()}</div>}
-            {mode === 'agent-chat' && <div className="truncate">{t($ => $['types.agent'], { ns: 'app' }).toUpperCase()}</div>}
-            {mode === 'workflow' && <div className="truncate">{t($ => $['types.workflow'], { ns: 'app' }).toUpperCase()}</div>}
-            {mode === 'completion' && <div className="truncate">{t($ => $['types.completion'], { ns: 'app' }).toUpperCase()}</div>}
+            {mode === 'advanced-chat' && (
+              <div className="truncate">
+                {t(($) => $['types.advanced'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {mode === 'chat' && (
+              <div className="truncate">
+                {t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {mode === 'agent-chat' && (
+              <div className="truncate">
+                {t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {mode === 'workflow' && (
+              <div className="truncate">
+                {t(($) => $['types.workflow'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {mode === 'completion' && (
+              <div className="truncate">
+                {t(($) => $['types.completion'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
           </div>
         </div>
       </div>
       {appDetail.description && (
-        <div className="mt-[14px] shrink-0 system-sm-regular text-text-secondary">{appDetail.description}</div>
+        <div className="mt-[14px] shrink-0 system-sm-regular text-text-secondary">
+          {appDetail.description}
+        </div>
       )}
       {canCreate && (
         <Button
@@ -106,15 +130,17 @@ const AppInfo: FC<Props> = ({
           onClick={onCreate}
         >
           <span className="mr-1 i-ri-add-line size-4 shrink-0" />
-          <span className="truncate">{t($ => $['tryApp.createFromSampleApp'], { ns: 'explore' })}</span>
+          <span className="truncate">
+            {t(($) => $['tryApp.createFromSampleApp'], { ns: 'explore' })}
+          </span>
         </Button>
       )}
 
       {visibleCategories.length > 0 && (
         <div className="mt-6 shrink-0">
-          <div className={headerClassName}>{t($ => $['tryApp.category'], { ns: 'explore' })}</div>
+          <div className={headerClassName}>{t(($) => $['tryApp.category'], { ns: 'explore' })}</div>
           <div className="flex flex-wrap gap-1.5">
-            {visibleCategories.map(category => (
+            {visibleCategories.map((category) => (
               <span
                 key={category}
                 className="rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-2 py-0.5 system-xs-medium text-text-secondary shadow-xs"
@@ -127,18 +153,21 @@ const AppInfo: FC<Props> = ({
       )}
       {requirements.length > 0 && (
         <div className="mt-5 grow overflow-y-auto">
-          <div className={headerClassName}>{t($ => $['tryApp.requirements'], { ns: 'explore' })}</div>
+          <div className={headerClassName}>
+            {t(($) => $['tryApp.requirements'], { ns: 'explore' })}
+          </div>
           <div className="space-y-0.5">
-            {requirements.map(item => (
+            {requirements.map((item) => (
               <div className="flex items-center space-x-2 py-1" key={item.name}>
                 <RequirementIcon iconUrl={item.iconUrl} />
-                <div className="w-0 grow truncate system-md-regular text-text-secondary">{item.name}</div>
+                <div className="w-0 grow truncate system-md-regular text-text-secondary">
+                  {item.name}
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
-
     </div>
   )
 }

@@ -84,8 +84,12 @@ vi.mock('../dataset-card', () => ({
     <article data-testid={`dataset-card-${dataset.id}`}>
       {dataset.name}
       <span data-testid={`dataset-card-target-${dataset.id}`}>{stepByStepTourCardTarget}</span>
-      <span data-testid={`dataset-card-menu-open-${dataset.id}`}>{String(stepByStepTourActionMenuOpen)}</span>
-      <span data-testid={`dataset-card-highlight-${dataset.id}`}>{stepByStepTourActionMenuHighlightPart}</span>
+      <span data-testid={`dataset-card-menu-open-${dataset.id}`}>
+        {String(stepByStepTourActionMenuOpen)}
+      </span>
+      <span data-testid={`dataset-card-highlight-${dataset.id}`}>
+        {stepByStepTourActionMenuHighlightPart}
+      </span>
     </article>
   ),
 }))
@@ -156,16 +160,17 @@ describe('Datasets', () => {
         ],
       },
     ],
-  ) => ({
-    pages: pages.map((page, index) => ({
-      has_more: false,
-      limit: page.data.length,
-      page: index + 1,
-      total: page.data.length,
-      ...page,
-    })),
-    pageParams: pages.map((_, index) => index + 1),
-  }) as unknown as ReturnType<typeof useDatasetList>['data']
+  ) =>
+    ({
+      pages: pages.map((page, index) => ({
+        has_more: false,
+        limit: page.data.length,
+        page: index + 1,
+        total: page.data.length,
+        ...page,
+      })),
+      pageParams: pages.map((_, index) => index + 1),
+    }) as unknown as ReturnType<typeof useDatasetList>['data']
 
   const defaultProps = {
     datasetList: createDatasetListData(),
@@ -207,20 +212,24 @@ describe('Datasets', () => {
     })
 
     it('should pass step-by-step tour targets to the first dataset card only', () => {
-      render((
+      render(
         <Datasets
           {...defaultProps}
           stepByStepTourActionMenuOpen
-          stepByStepTourActionMenuHighlightPart={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu}
+          stepByStepTourActionMenuHighlightPart={
+            STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu
+          }
           stepByStepTourCardTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}
-        />
-      ))
+        />,
+      )
 
-      expect(screen.getByTestId('dataset-card-target-dataset-1'))
-        .toHaveTextContent(STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard)
+      expect(screen.getByTestId('dataset-card-target-dataset-1')).toHaveTextContent(
+        STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard,
+      )
       expect(screen.getByTestId('dataset-card-menu-open-dataset-1')).toHaveTextContent('true')
-      expect(screen.getByTestId('dataset-card-highlight-dataset-1'))
-        .toHaveTextContent(STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu)
+      expect(screen.getByTestId('dataset-card-highlight-dataset-1')).toHaveTextContent(
+        STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu,
+      )
       expect(screen.getByTestId('dataset-card-target-dataset-2')).toBeEmptyDOMElement()
       expect(screen.getByTestId('dataset-card-menu-open-dataset-2')).toHaveTextContent('undefined')
       expect(screen.getByTestId('dataset-card-highlight-dataset-2')).toBeEmptyDOMElement()
@@ -257,12 +266,7 @@ describe('Datasets', () => {
   describe('Loading States', () => {
     it('should show dataset card skeletons while initial dataset list is loading', () => {
       render(
-        <Datasets
-          {...defaultProps}
-          datasetList={undefined}
-          isFetching={true}
-          isLoading={true}
-        />,
+        <Datasets {...defaultProps} datasetList={undefined} isFetching={true} isLoading={true} />,
       )
 
       expect(screen.getByRole('status', { name: /common\.loading/ })).toBeInTheDocument()
@@ -299,7 +303,9 @@ describe('Datasets', () => {
       render(
         <Datasets
           {...defaultProps}
-          datasetList={createDatasetListData([{ data: [createMockDataset({ id: 'dataset-1', name: 'Dataset 1' })] }])}
+          datasetList={createDatasetListData([
+            { data: [createMockDataset({ id: 'dataset-1', name: 'Dataset 1' })] },
+          ])}
           isFetching={true}
           isPlaceholderData={true}
         />,
@@ -422,7 +428,16 @@ describe('Datasets', () => {
     it('should have correct grid styling', () => {
       render(<Datasets {...defaultProps} />)
       const nav = screen.getByRole('navigation')
-      expect(nav).toHaveClass('relative', 'grid', 'grow', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'content-start', 'gap-3', 'px-8', 'pt-2')
+      expect(nav).toHaveClass(
+        'relative',
+        'grid',
+        'grow',
+        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+        'content-start',
+        'gap-3',
+        'px-8',
+        'pt-2',
+      )
     })
   })
 

@@ -40,10 +40,10 @@ const rectFromDOMRect = (rect: DOMRect): StepByStepTourTargetRect => ({
 })
 
 const unionTargetRects = (rects: StepByStepTourTargetRect[]): StepByStepTourTargetRect => {
-  const left = Math.min(...rects.map(rect => rect.left))
-  const top = Math.min(...rects.map(rect => rect.top))
-  const right = Math.max(...rects.map(rect => rect.left + rect.width))
-  const bottom = Math.max(...rects.map(rect => rect.top + rect.height))
+  const left = Math.min(...rects.map((rect) => rect.left))
+  const top = Math.min(...rects.map((rect) => rect.top))
+  const right = Math.max(...rects.map((rect) => rect.left + rect.width))
+  const bottom = Math.max(...rects.map((rect) => rect.top + rect.height))
 
   return {
     height: bottom - top,
@@ -54,37 +54,32 @@ const unionTargetRects = (rects: StepByStepTourTargetRect[]): StepByStepTourTarg
 }
 
 const getElementsBySelectors = (selectors: string[]) =>
-  selectors.flatMap(selector => Array.from(document.querySelectorAll<HTMLElement>(selector)))
+  selectors.flatMap((selector) => Array.from(document.querySelectorAll<HTMLElement>(selector)))
 
 const getVisibleElementRect = (element: HTMLElement) => {
   const rect = element.getBoundingClientRect()
-  if (rect.width <= 0 || rect.height <= 0)
-    return null
+  if (rect.width <= 0 || rect.height <= 0) return null
 
   return rectFromDOMRect(rect)
 }
 
 const getHighlightPartRectState = (selectors: string[]) => {
-  const rectsBySelector = selectors.map(selector => Array.from(document.querySelectorAll<HTMLElement>(selector))
-    .map(getVisibleElementRect)
-    .filter((rect): rect is StepByStepTourTargetRect => Boolean(rect)))
+  const rectsBySelector = selectors.map((selector) =>
+    Array.from(document.querySelectorAll<HTMLElement>(selector))
+      .map(getVisibleElementRect)
+      .filter((rect): rect is StepByStepTourTargetRect => Boolean(rect)),
+  )
 
   return {
-    ready: rectsBySelector.every(rects => rects.length > 0),
+    ready: rectsBySelector.every((rects) => rects.length > 0),
     rects: rectsBySelector.flat(),
   }
 }
 
-const getTargetRects = (
-  targetElement: HTMLElement,
-  highlightPartSelectors: string[] = [],
-) => {
+const getTargetRects = (targetElement: HTMLElement, highlightPartSelectors: string[] = []) => {
   const anchorRect = rectFromDOMRect(targetElement.getBoundingClientRect())
   const highlightPartRectState = getHighlightPartRectState(highlightPartSelectors)
-  const rects = [
-    anchorRect,
-    ...highlightPartRectState.rects,
-  ]
+  const rects = [anchorRect, ...highlightPartRectState.rects]
 
   return {
     anchorRect,
@@ -106,38 +101,46 @@ const areTargetRectsEqual = (
   currentRect: StepByStepTourTargetRect,
   nextRect: StepByStepTourTargetRect,
 ) => {
-  return currentRect.height === nextRect.height
-    && currentRect.left === nextRect.left
-    && currentRect.top === nextRect.top
-    && currentRect.width === nextRect.width
+  return (
+    currentRect.height === nextRect.height &&
+    currentRect.left === nextRect.left &&
+    currentRect.top === nextRect.top &&
+    currentRect.width === nextRect.width
+  )
 }
 
 const areTargetRectSetsEqual = (
   currentRects: StepByStepTourTargetRects,
   nextRects: StepByStepTourTargetRects,
 ) => {
-  return areTargetRectsEqual(currentRects.anchorRect, nextRects.anchorRect)
-    && currentRects.highlightPartsReady === nextRects.highlightPartsReady
-    && areTargetRectsEqual(currentRects.highlightRect, nextRects.highlightRect)
-    && currentRects.rectSettled === nextRects.rectSettled
-    && currentRects.targetElement === nextRects.targetElement
+  return (
+    areTargetRectsEqual(currentRects.anchorRect, nextRects.anchorRect) &&
+    currentRects.highlightPartsReady === nextRects.highlightPartsReady &&
+    areTargetRectsEqual(currentRects.highlightRect, nextRects.highlightRect) &&
+    currentRects.rectSettled === nextRects.rectSettled &&
+    currentRects.targetElement === nextRects.targetElement
+  )
 }
 
 const areMeasuredTargetRectSetsEqual = (
   currentRects: Omit<StepByStepTourTargetRects, 'rectSettled'>,
   nextRects: Omit<StepByStepTourTargetRects, 'rectSettled'>,
 ) => {
-  return areTargetRectsEqual(currentRects.anchorRect, nextRects.anchorRect)
-    && currentRects.highlightPartsReady === nextRects.highlightPartsReady
-    && areTargetRectsEqual(currentRects.highlightRect, nextRects.highlightRect)
-    && currentRects.targetElement === nextRects.targetElement
+  return (
+    areTargetRectsEqual(currentRects.anchorRect, nextRects.anchorRect) &&
+    currentRects.highlightPartsReady === nextRects.highlightPartsReady &&
+    areTargetRectsEqual(currentRects.highlightRect, nextRects.highlightRect) &&
+    currentRects.targetElement === nextRects.targetElement
+  )
 }
 
 export const useStepByStepTourTargetRect = (
   targetElement: HTMLElement,
   highlightPartSelectors: string[] = EMPTY_HIGHLIGHT_PART_SELECTORS,
 ) => {
-  const [targetRects, setTargetRects] = useState(() => getInitialTargetRects(targetElement, highlightPartSelectors))
+  const [targetRects, setTargetRects] = useState(() =>
+    getInitialTargetRects(targetElement, highlightPartSelectors),
+  )
   const targetRectsRef = useRef(targetRects)
   targetRectsRef.current = targetRects
 
@@ -151,16 +154,14 @@ export const useStepByStepTourTargetRect = (
     const observedAttributeElements = new Set<HTMLElement>()
 
     function observeResizeElement(element: HTMLElement) {
-      if (observedResizeElements.has(element))
-        return
+      if (observedResizeElements.has(element)) return
 
       observedResizeElements.add(element)
       resizeObserver?.observe(element)
     }
 
     function observeAttributeElement(element: HTMLElement) {
-      if (!mutationObserver || observedAttributeElements.has(element))
-        return
+      if (!mutationObserver || observedAttributeElements.has(element)) return
 
       observedAttributeElements.add(element)
       mutationObserver.observe(element, ATTRIBUTE_OBSERVER_OPTIONS)
@@ -170,8 +171,7 @@ export const useStepByStepTourTargetRect = (
       // Floating UI positioners already run resize-driven layout internally.
       // Attribute and mount observers are enough to remeasure their stable rects.
       observeAttributeElement(element)
-      if (element.parentElement)
-        observeAttributeElement(element.parentElement)
+      if (element.parentElement) observeAttributeElement(element.parentElement)
     }
 
     function syncRect() {
@@ -224,28 +224,24 @@ export const useStepByStepTourTargetRect = (
     }
 
     function commitTargetRects(nextRects: StepByStepTourTargetRects) {
-      if (areTargetRectSetsEqual(targetRectsRef.current, nextRects))
-        return
+      if (areTargetRectSetsEqual(targetRectsRef.current, nextRects)) return
 
       targetRectsRef.current = nextRects
       setTargetRects(nextRects)
     }
 
     function scheduleSyncRect() {
-      if (animationFrame)
-        return
+      if (animationFrame) return
 
       animationFrame = window.requestAnimationFrame(syncRect)
     }
 
-    resizeObserver = typeof ResizeObserver === 'undefined'
-      ? undefined
-      : new ResizeObserver(scheduleSyncRect)
+    resizeObserver =
+      typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(scheduleSyncRect)
     observeResizeElement(targetElement)
 
-    mutationObserver = typeof MutationObserver === 'undefined'
-      ? undefined
-      : new MutationObserver(scheduleSyncRect)
+    mutationObserver =
+      typeof MutationObserver === 'undefined' ? undefined : new MutationObserver(scheduleSyncRect)
     mutationObserver?.observe(document.body, {
       childList: true,
       subtree: true,
@@ -258,8 +254,7 @@ export const useStepByStepTourTargetRect = (
     syncRect()
 
     return () => {
-      if (animationFrame)
-        window.cancelAnimationFrame(animationFrame)
+      if (animationFrame) window.cancelAnimationFrame(animationFrame)
       resizeObserver?.disconnect()
       mutationObserver?.disconnect()
       window.removeEventListener('resize', scheduleSyncRect)

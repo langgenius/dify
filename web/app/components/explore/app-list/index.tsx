@@ -1,7 +1,10 @@
 'use client'
 
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { StepByStepTourPersistentState, StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
+import type {
+  StepByStepTourPersistentState,
+  StepByStepTourTaskId,
+} from '@/app/components/step-by-step-tour/types'
 import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
 import type { App as WorkspaceApp } from '@/types/app'
@@ -69,9 +72,7 @@ const disabledBannersQueryKey = ['explore', 'home', 'banners', 'disabled'] as co
 const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
 
 function getLocaleQueryInput(locale?: string) {
-  return locale
-    ? { query: { language: locale } }
-    : {}
+  return locale ? { query: { language: locale } } : {}
 }
 
 function getExploreAppListQueryOptions(locale?: string) {
@@ -121,9 +122,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const locale = useLocale()
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { data: systemFeatures } = useSuspenseQuery(
-    systemFeaturesQueryOptions(),
-  )
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const homeQueries = useQueries({
     queries: [
       getExploreAppListQueryOptions(locale),
@@ -136,11 +135,14 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       appListData: exploreAppListQuery.data,
       continueWorkApps: continueWorkAppsQuery.data ?? [],
       banners: bannersQuery.data ?? [],
-      isPending: exploreAppListQuery.isPending || continueWorkAppsQuery.isPending || bannersQuery.isPending,
-      isAppListError: exploreAppListQuery.isError || (!exploreAppListQuery.isPending && !exploreAppListQuery.data),
+      isPending:
+        exploreAppListQuery.isPending || continueWorkAppsQuery.isPending || bannersQuery.isPending,
+      isAppListError:
+        exploreAppListQuery.isError ||
+        (!exploreAppListQuery.isPending && !exploreAppListQuery.data),
     }),
   })
-  const allCategoriesEn = t($ => $['apps.allCategories'], { ns: 'explore', lng: 'en' })
+  const allCategoriesEn = t(($) => $['apps.allCategories'], { ns: 'explore', lng: 'en' })
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
   const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
@@ -148,32 +150,35 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
   // eslint-disable-next-line react/use-state -- Step-by-step tour state actions are not React useState calls.
   const stepByStepTourActions = useStepByStepTourStateActions()
-  const trackHomeTourCompleted = useCallback((state: StepByStepTourPersistentState) => {
-    trackStepByStepTourEvent(STEP_BY_STEP_TOUR_ANALYTICS_EVENTS.taskCompleted, {
-      ...buildStepByStepTourWorkspaceProperties({ currentWorkspaceId }),
-      task_id: HOME_STEP_BY_STEP_TOUR_TASK_ID,
-      completed_task_count: state.completedTaskIds.length,
-      completion_source: 'external_action',
-      permission_variant: getStepByStepTourPermissionVariant({
-        canCreateApp,
-        hasIntegrationWalkthroughPermissions: true,
-        hasKnowledgeWalkthroughPermissions: true,
-        taskId: HOME_STEP_BY_STEP_TOUR_TASK_ID,
-      }),
-      task_total: STEP_BY_STEP_TOUR_TASKS.length,
-    })
-
-    if (STEP_BY_STEP_TOUR_TASKS.every(task => state.completedTaskIds.includes(task.id))) {
-      trackStepByStepTourEvent(STEP_BY_STEP_TOUR_ANALYTICS_EVENTS.completed, {
-        ...buildStepByStepTourScopedWorkspaceProperties({
-          accountState: state,
-          currentWorkspaceId,
+  const trackHomeTourCompleted = useCallback(
+    (state: StepByStepTourPersistentState) => {
+      trackStepByStepTourEvent(STEP_BY_STEP_TOUR_ANALYTICS_EVENTS.taskCompleted, {
+        ...buildStepByStepTourWorkspaceProperties({ currentWorkspaceId }),
+        task_id: HOME_STEP_BY_STEP_TOUR_TASK_ID,
+        completed_task_count: state.completedTaskIds.length,
+        completion_source: 'external_action',
+        permission_variant: getStepByStepTourPermissionVariant({
+          canCreateApp,
+          hasIntegrationWalkthroughPermissions: true,
+          hasKnowledgeWalkthroughPermissions: true,
+          taskId: HOME_STEP_BY_STEP_TOUR_TASK_ID,
         }),
-        completed_task_ids: state.completedTaskIds,
         task_total: STEP_BY_STEP_TOUR_TASKS.length,
       })
-    }
-  }, [canCreateApp, currentWorkspaceId])
+
+      if (STEP_BY_STEP_TOUR_TASKS.every((task) => state.completedTaskIds.includes(task.id))) {
+        trackStepByStepTourEvent(STEP_BY_STEP_TOUR_ANALYTICS_EVENTS.completed, {
+          ...buildStepByStepTourScopedWorkspaceProperties({
+            accountState: state,
+            currentWorkspaceId,
+          }),
+          completed_task_ids: state.completedTaskIds,
+          task_total: STEP_BY_STEP_TOUR_TASKS.length,
+        })
+      }
+    },
+    [canCreateApp, currentWorkspaceId],
+  )
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -195,55 +200,43 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   })
 
   const visibleCategories = useMemo(() => {
-    if (!homeQueries.appListData)
-      return []
+    if (!homeQueries.appListData) return []
 
     const categoriesWithApps = new Set<string>()
     homeQueries.appListData.allList.forEach((app) => {
-      app.categories.forEach(category => categoriesWithApps.add(category))
+      app.categories.forEach((category) => categoriesWithApps.add(category))
     })
 
-    return homeQueries.appListData.categories.filter(category => categoriesWithApps.has(category))
+    return homeQueries.appListData.categories.filter((category) => categoriesWithApps.has(category))
   }, [homeQueries.appListData])
 
-  const activeCategory = visibleCategories.includes(currCategory)
-    ? currCategory
-    : allCategoriesEn
+  const activeCategory = visibleCategories.includes(currCategory) ? currCategory : allCategoriesEn
 
   const filteredList = useMemo(() => {
-    if (!homeQueries.appListData)
-      return []
+    if (!homeQueries.appListData) return []
     return homeQueries.appListData.allList.filter(
-      item =>
-        activeCategory === allCategoriesEn
-        || item.categories?.includes(activeCategory),
+      (item) => activeCategory === allCategoriesEn || item.categories?.includes(activeCategory),
     )
   }, [homeQueries.appListData, activeCategory, allCategoriesEn])
 
   const searchFilteredList = useMemo(() => {
-    if (!searchKeywords || !filteredList || filteredList.length === 0)
-      return filteredList
+    if (!searchKeywords || !filteredList || filteredList.length === 0) return filteredList
 
     const lowerCaseSearchKeywords = searchKeywords.toLowerCase()
 
     return filteredList.filter(
-      item =>
-        item.app
-        && item.app.name
-        && item.app.name.toLowerCase().includes(lowerCaseSearchKeywords),
+      (item) =>
+        item.app && item.app.name && item.app.name.toLowerCase().includes(lowerCaseSearchKeywords),
     )
   }, [searchKeywords, filteredList])
 
   const [currApp, setCurrApp] = useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
 
-  const { handleImportDSL, handleImportDSLConfirm, versions, isFetching }
-    = useImportDSL()
+  const { handleImportDSL, handleImportDSLConfirm, versions, isFetching } = useImportDSL()
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
 
-  const [currentTryApp, setCurrentTryApp] = useState<
-    TryAppSelection | undefined
-  >(undefined)
+  const [currentTryApp, setCurrentTryApp] = useState<TryAppSelection | undefined>(undefined)
   const currentCreateAppModeRef = useRef<App['app']['mode'] | null>(null)
   const currentCreateAppTrackingRef = useRef<Pick<
     TrackCreateAppParams,
@@ -254,13 +247,14 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const isSubmittingHomeTourCreateRef = useRef(false)
   const wasHomeTryAppCreateGuideActiveRef = useRef(false)
   const isShowTryAppPanel = !!currentTryApp
-  const shouldForceShowLearnDifyForTour = stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID
-    && !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
-    && (stepByStepTourAccountState.activeGuideIndex ?? 0) === 0
+  const shouldForceShowLearnDifyForTour =
+    stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
+    !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) &&
+    (stepByStepTourAccountState.activeGuideIndex ?? 0) === 0
   const abandonHomeTour = useCallback(() => {
     if (
-      stepByStepTourAccountState.activeTaskId !== HOME_STEP_BY_STEP_TOUR_TASK_ID
-      || stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
+      stepByStepTourAccountState.activeTaskId !== HOME_STEP_BY_STEP_TOUR_TASK_ID ||
+      stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
     ) {
       return
     }
@@ -276,8 +270,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   }, [setStepByStepTourAccountState, stepByStepTourAccountState])
 
   const completeHomeTourAfterCreate = useCallback(() => {
-    if (!shouldCompleteHomeTourOnCreateRef.current)
-      return
+    if (!shouldCompleteHomeTourOnCreateRef.current) return
 
     setStepByStepTourAccountState({
       ...stepByStepTourAccountState,
@@ -293,13 +286,18 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     isCurrentTryAppFromLearnDifyRef.current = false
     shouldCompleteHomeTourOnCreateRef.current = false
     isSubmittingHomeTourCreateRef.current = false
-  }, [setStepByStepTourAccountState, stepByStepTourAccountState, stepByStepTourActions, trackHomeTourCompleted])
+  }, [
+    setStepByStepTourAccountState,
+    stepByStepTourAccountState,
+    stepByStepTourActions,
+    trackHomeTourCompleted,
+  ])
 
   const completeHomeTourAfterOpenDetails = useCallback(() => {
     if (
-      stepByStepTourAccountState.activeTaskId !== HOME_STEP_BY_STEP_TOUR_TASK_ID
-      || stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
-      || (stepByStepTourAccountState.activeGuideIndex ?? 0) !== 0
+      stepByStepTourAccountState.activeTaskId !== HOME_STEP_BY_STEP_TOUR_TASK_ID ||
+      stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) ||
+      (stepByStepTourAccountState.activeGuideIndex ?? 0) !== 0
     ) {
       return
     }
@@ -315,11 +313,15 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     stepByStepTourActions.completeTask(HOME_STEP_BY_STEP_TOUR_TASK_ID, {
       onSuccess: trackHomeTourCompleted,
     })
-  }, [setStepByStepTourAccountState, stepByStepTourAccountState, stepByStepTourActions, trackHomeTourCompleted])
+  }, [
+    setStepByStepTourAccountState,
+    stepByStepTourAccountState,
+    stepByStepTourActions,
+    trackHomeTourCompleted,
+  ])
 
   const abandonHomeTourCreate = useCallback(() => {
-    if (!isCurrentTryAppFromLearnDifyRef.current || isSubmittingHomeTourCreateRef.current)
-      return
+    if (!isCurrentTryAppFromLearnDifyRef.current || isSubmittingHomeTourCreateRef.current) return
 
     abandonHomeTour()
     setCurrentTryApp(undefined)
@@ -335,9 +337,10 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     // eslint-disable-next-line react/set-state-in-effect -- Also called from the tour-state sync effect when the Learn Dify action guide is skipped.
     setCurrentTryApp(undefined)
   }, [abandonHomeTourCreate])
-  const homeTryAppCreateGuideActive = stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID
-    && stepByStepTourAccountState.activeGuideIndex === 1
-    && !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
+  const homeTryAppCreateGuideActive =
+    stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
+    stepByStepTourAccountState.activeGuideIndex === 1 &&
+    !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
   useEffect(() => {
     if (!isCurrentTryAppFromLearnDifyRef.current || !currentTryApp || isShowCreateModal) {
       wasHomeTryAppCreateGuideActiveRef.current = false
@@ -358,38 +361,47 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     isCurrentTryAppFromLearnDifyRef.current = false
     setCurrentTryApp(params)
   }, [])
-  const handleTryAppFromLearnDify = useCallback((params: TryAppSelection) => {
-    isCurrentTryAppFromLearnDifyRef.current = true
-    setCurrentTryApp(params)
+  const handleTryAppFromLearnDify = useCallback(
+    (params: TryAppSelection) => {
+      isCurrentTryAppFromLearnDifyRef.current = true
+      setCurrentTryApp(params)
 
-    if (
-      stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID
-      && !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
-      && (stepByStepTourAccountState.activeGuideIndex ?? 0) === 0
-    ) {
-      if (!canCreateApp) {
-        completeHomeTourAfterOpenDetails()
-        isCurrentTryAppFromLearnDifyRef.current = false
-        return
+      if (
+        stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
+        !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) &&
+        (stepByStepTourAccountState.activeGuideIndex ?? 0) === 0
+      ) {
+        if (!canCreateApp) {
+          completeHomeTourAfterOpenDetails()
+          isCurrentTryAppFromLearnDifyRef.current = false
+          return
+        }
+
+        setStepByStepTourAccountState({
+          ...stepByStepTourAccountState,
+          activeGuideIndex: 1,
+          minimized: true,
+        })
       }
-
-      setStepByStepTourAccountState({
-        ...stepByStepTourAccountState,
-        activeGuideIndex: 1,
-        minimized: true,
-      })
-    }
-  }, [canCreateApp, completeHomeTourAfterOpenDetails, setStepByStepTourAccountState, stepByStepTourAccountState])
+    },
+    [
+      canCreateApp,
+      completeHomeTourAfterOpenDetails,
+      setStepByStepTourAccountState,
+      stepByStepTourAccountState,
+    ],
+  )
   const handleShowFromTryApp = useCallback(() => {
     setCurrApp(currentTryApp?.app || null)
     currentCreateAppTrackingRef.current = {
       source: 'explore_template_preview',
       templateId: currentTryApp?.appId || currentTryApp?.app.app_id,
     }
-    shouldCompleteHomeTourOnCreateRef.current = isCurrentTryAppFromLearnDifyRef.current
-      && stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID
-      && !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
-      && stepByStepTourAccountState.activeGuideIndex === 1
+    shouldCompleteHomeTourOnCreateRef.current =
+      isCurrentTryAppFromLearnDifyRef.current &&
+      stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
+      !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) &&
+      stepByStepTourAccountState.activeGuideIndex === 1
     setIsShowCreateModal(true)
   }, [currentTryApp?.app, currentTryApp?.appId, stepByStepTourAccountState])
   const handleCreateFromLearnDify = useCallback((app: App) => {
@@ -404,25 +416,20 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     setCurrApp(app)
     setIsShowCreateModal(true)
   }, [])
-  const trackCurrentCreateApp = useCallback(
-    (appMode?: App['app']['mode'] | null) => {
-      const currentCreateAppTracking = currentCreateAppTrackingRef.current
-      const resolvedAppMode = appMode ?? currentCreateAppModeRef.current
-      if (!resolvedAppMode || !currentCreateAppTracking)
-        return
+  const trackCurrentCreateApp = useCallback((appMode?: App['app']['mode'] | null) => {
+    const currentCreateAppTracking = currentCreateAppTrackingRef.current
+    const resolvedAppMode = appMode ?? currentCreateAppModeRef.current
+    if (!resolvedAppMode || !currentCreateAppTracking) return
 
-      trackCreateApp({
-        ...currentCreateAppTracking,
-        appMode: resolvedAppMode,
-      })
-      currentCreateAppTrackingRef.current = null
-      currentCreateAppModeRef.current = null
-    },
-    [],
-  )
+    trackCreateApp({
+      ...currentCreateAppTracking,
+      appMode: resolvedAppMode,
+    })
+    currentCreateAppTrackingRef.current = null
+    currentCreateAppModeRef.current = null
+  }, [])
   const handleCreateModalHide = useCallback(() => {
-    if (!isSubmittingHomeTourCreateRef.current)
-      abandonHomeTourCreate()
+    if (!isSubmittingHomeTourCreateRef.current) abandonHomeTourCreate()
 
     setIsShowCreateModal(false)
   }, [abandonHomeTourCreate])
@@ -433,8 +440,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       hideTryAppPanel()
 
       const appId = currApp?.app.id
-      if (!appId)
-        return
+      if (!appId) return
 
       const { export_data, mode } = await fetchAppDetail(appId)
       currentCreateAppModeRef.current = mode
@@ -466,7 +472,14 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
         abandonHomeTourCreate()
       }
     },
-    [abandonHomeTourCreate, completeHomeTourAfterCreate, currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp],
+    [
+      abandonHomeTourCreate,
+      completeHomeTourAfterCreate,
+      currApp?.app.id,
+      handleImportDSL,
+      hideTryAppPanel,
+      trackCurrentCreateApp,
+    ],
   )
 
   const onConfirmDSL = useCallback(async () => {
@@ -486,8 +499,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     abandonHomeTourCreate()
   }, [abandonHomeTourCreate])
 
-  if (homeQueries.isAppListError)
-    return null
+  if (homeQueries.isAppListError) return null
 
   return (
     <div
@@ -496,52 +508,43 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       )}
     >
       <div className="flex flex-1 flex-col overflow-y-auto">
-        {homeQueries.isPending
-          ? (
-              <ExploreHomeSkeleton showBanner={systemFeatures.enable_explore_banner} />
-            )
-          : (
-              <>
-                {systemFeatures.enable_explore_banner && (
-                  <Banner banners={homeQueries.banners} />
-                )}
-                <ExploreRecommendations
-                  canCreate={canCreateApp}
-                  continueWorkApps={homeQueries.continueWorkApps}
-                  forceShowLearnDify={shouldForceShowLearnDifyForTour}
-                  onCreate={handleCreateFromLearnDify}
-                  onTry={handleTryAppFromLearnDify}
-                />
+        {homeQueries.isPending ? (
+          <ExploreHomeSkeleton showBanner={systemFeatures.enable_explore_banner} />
+        ) : (
+          <>
+            {systemFeatures.enable_explore_banner && <Banner banners={homeQueries.banners} />}
+            <ExploreRecommendations
+              canCreate={canCreateApp}
+              continueWorkApps={homeQueries.continueWorkApps}
+              forceShowLearnDify={shouldForceShowLearnDifyForTour}
+              onCreate={handleCreateFromLearnDify}
+              onTry={handleTryAppFromLearnDify}
+            />
 
-                <ExploreAppListHeader
-                  allCategoriesEn={allCategoriesEn}
-                  categories={visibleCategories}
-                  currCategory={activeCategory}
-                  keywords={keywords}
-                  onCategoryChange={setCurrCategory}
-                  onKeywordsChange={handleKeywordsChange}
-                />
+            <ExploreAppListHeader
+              allCategoriesEn={allCategoriesEn}
+              categories={visibleCategories}
+              currCategory={activeCategory}
+              keywords={keywords}
+              onCategoryChange={setCurrCategory}
+              onKeywordsChange={handleKeywordsChange}
+            />
 
-                <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
-                  <nav
-                    className={cn(
-                      s.appList,
-                      'grid shrink-0 content-start gap-3 px-8',
-                    )}
-                  >
-                    {searchFilteredList.map(app => (
-                      <AppCard
-                        key={app.app_id}
-                        app={app}
-                        canCreate={canCreateApp}
-                        onCreate={() => handleCreateFromAppList(app)}
-                        onTry={handleTryApp}
-                      />
-                    ))}
-                  </nav>
-                </div>
-              </>
-            )}
+            <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
+              <nav className={cn(s.appList, 'grid shrink-0 content-start gap-3 px-8')}>
+                {searchFilteredList.map((app) => (
+                  <AppCard
+                    key={app.app_id}
+                    app={app}
+                    canCreate={canCreateApp}
+                    onCreate={() => handleCreateFromAppList(app)}
+                    onTry={handleTryApp}
+                  />
+                ))}
+              </nav>
+            </div>
+          </>
+        )}
       </div>
       {isShowCreateModal && (
         <CreateAppModal

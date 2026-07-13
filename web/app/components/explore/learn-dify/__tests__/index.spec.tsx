@@ -57,10 +57,7 @@ const renderLearnDify = ({
   })
 
   return render(
-    <LearnDify
-      forceVisible={forceVisible}
-      stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.home}
-    />,
+    <LearnDify forceVisible={forceVisible} stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.home} />,
     { wrapper },
   )
 }
@@ -78,7 +75,9 @@ describe('LearnDify', () => {
 
     renderLearnDify()
 
-    expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should show hidden content when forceVisible is set for the step tour', () => {
@@ -100,6 +99,8 @@ describe('LearnDify', () => {
 
     renderLearnDify({ enableLearnApp: false, forceVisible: true })
 
-    expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
+    ).not.toBeInTheDocument()
   })
 })

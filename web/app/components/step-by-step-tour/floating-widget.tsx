@@ -84,7 +84,12 @@ export function FloatingChecklist({
           </div>
           {!completionPrompt && (
             <>
-              <Button variant="ghost" size="small" className="h-6 px-1.5 text-text-tertiary" onClick={onSkip}>
+              <Button
+                variant="ghost"
+                size="small"
+                className="h-6 px-1.5 text-text-tertiary"
+                onClick={onSkip}
+              >
                 {skipLabel}
               </Button>
               <Button
@@ -99,10 +104,14 @@ export function FloatingChecklist({
             </>
           )}
         </div>
-        <TourProgress ariaValueText={progress.ariaValueText} completed={progress.completed} total={progress.total} />
+        <TourProgress
+          ariaValueText={progress.ariaValueText}
+          completed={progress.completed}
+          total={progress.total}
+        />
       </div>
       <div className="flex w-full shrink-0 flex-col gap-1 p-2">
-        {tasks.map(task => (
+        {tasks.map((task) => (
           <TourTaskRow
             key={task.id}
             task={task}
@@ -146,7 +155,13 @@ function TourCompletionPrompt({
       </span>
       <h3 className="system-md-semibold text-text-primary">{title}</h3>
       <p className="mt-1 system-sm-regular text-text-tertiary">{description}</p>
-      <Button ref={dismissRef} variant="secondary" size="medium" className="mt-4 min-w-20" onClick={onDismiss}>
+      <Button
+        ref={dismissRef}
+        variant="secondary"
+        size="medium"
+        className="mt-4 min-w-20"
+        onClick={onDismiss}
+      >
         {dismissLabel}
       </Button>
     </section>

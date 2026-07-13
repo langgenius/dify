@@ -3,9 +3,7 @@ import type { StepByStepTourAccountState, StepByStepTourUiState } from '../types
 import { useHydrateAtoms } from 'jotai/utils'
 import { useEffect } from 'react'
 import { stepByStepTourUiStateAtom } from '../atoms'
-import {
-  useStepByStepTourAccountStateValue,
-} from '../storage'
+import { useStepByStepTourAccountStateValue } from '../storage'
 
 type StepByStepTourTestStateObserverProps = {
   onChange: (state: StepByStepTourAccountState) => void

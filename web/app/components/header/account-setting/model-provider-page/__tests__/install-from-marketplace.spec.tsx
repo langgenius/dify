@@ -2,7 +2,10 @@ import type { Mock } from 'vitest'
 import type { ModelProvider } from '../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { getStepByStepTourTargetSelector, STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
+import {
+  getStepByStepTourTargetSelector,
+  STEP_BY_STEP_TOUR_TARGETS,
+} from '@/app/components/step-by-step-tour/target-registry'
 import { useMarketplaceAllPlugins } from '../hooks'
 import InstallFromMarketplace from '../install-from-marketplace'
 
@@ -121,7 +124,7 @@ describe('InstallFromMarketplace', () => {
   })
 
   it('should anchor the tour target to the heading and first marketplace row', () => {
-    (useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
+    ;(useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
       plugins: [
         { plugin_id: '1', name: 'Plugin 1' },
         { plugin_id: '2', name: 'Plugin 2' },
@@ -139,12 +142,16 @@ describe('InstallFromMarketplace', () => {
       />,
     )
 
-    const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderInstall)
+    const selector = getStepByStepTourTargetSelector(
+      STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderInstall,
+    )
     const target = document.querySelector<HTMLElement>(selector)
 
     expect(target).toHaveClass('absolute', 'inset-x-0', 'top-0', 'h-[174px]')
     expect(target).toHaveAttribute('aria-hidden', 'true')
-    expect(target?.parentElement).toContainElement(screen.getByRole('button', { name: /common\.modelProvider\.installProvider/ }))
+    expect(target?.parentElement).toContainElement(
+      screen.getByRole('button', { name: /common\.modelProvider\.installProvider/ }),
+    )
     expect(target?.parentElement).toContainElement(screen.getByTestId('plugin-list'))
   })
 

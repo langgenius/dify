@@ -1,7 +1,10 @@
 import type { PluginDeclaration, PluginDetail } from '../../../types'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getStepByStepTourTargetSelector, STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
+import {
+  getStepByStepTourTargetSelector,
+  STEP_BY_STEP_TOUR_TARGETS,
+} from '@/app/components/step-by-step-tour/target-registry'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
 // ==================== Imports (after mocks) ====================
 import PluginList from '../index'
@@ -423,7 +426,9 @@ describe('PluginList', () => {
         />,
       )
 
-      const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginFirstCard)
+      const selector = getStepByStepTourTargetSelector(
+        STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginFirstCard,
+      )
       const target = document.querySelector<HTMLElement>(selector)
       const firstPluginItem = screen.getByText('plugin-1')
       const secondPluginItem = screen.getByText('plugin-2')

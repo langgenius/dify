@@ -1,11 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { getStepByStepTourDropdownMenuContentProps, useStepByStepTourControlledDropdown } from '../dropdown-menu'
+import {
+  getStepByStepTourDropdownMenuContentProps,
+  useStepByStepTourControlledDropdown,
+} from '../dropdown-menu'
 
 const STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR = 'data-step-by-step-tour-highlight-part'
 
 const getHighlightPartValue = (props: unknown): string | undefined => {
-  if (!props || typeof props !== 'object')
-    return undefined
+  if (!props || typeof props !== 'object') return undefined
 
   const value = (props as Record<string, unknown>)[STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR]
   return typeof value === 'string' ? value : undefined
@@ -108,10 +110,11 @@ describe('getStepByStepTourDropdownMenuContentProps', () => {
   it('blocks presentation menu interactions without letting clicks bubble through', () => {
     const onAction = vi.fn()
     const onBackgroundClick = vi.fn()
-    const { popupClassName, popupProps, positionerProps } = getStepByStepTourDropdownMenuContentProps({
-      highlightPart: 'tour-menu',
-      interactionMode: 'presentation',
-    })
+    const { popupClassName, popupProps, positionerProps } =
+      getStepByStepTourDropdownMenuContentProps({
+        highlightPart: 'tour-menu',
+        interactionMode: 'presentation',
+      })
 
     render(
       <div role="button" tabIndex={0} onClick={onBackgroundClick} onKeyDown={noopKeyboardHandler}>
@@ -131,7 +134,9 @@ describe('getStepByStepTourDropdownMenuContentProps', () => {
             onMouseDownCapture={popupProps?.onMouseDownCapture}
             onPointerDownCapture={popupProps?.onPointerDownCapture}
           >
-            <button type="button" role="menuitem" onClick={onAction}>Delete</button>
+            <button type="button" role="menuitem" onClick={onAction}>
+              Delete
+            </button>
           </div>
         </div>
       </div>,
@@ -142,7 +147,10 @@ describe('getStepByStepTourDropdownMenuContentProps', () => {
     expect(onAction).not.toHaveBeenCalled()
     expect(onBackgroundClick).not.toHaveBeenCalled()
     expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
-    expect(screen.getByTestId('positioner')).toHaveAttribute('data-step-by-step-tour-highlight-part', 'tour-menu')
+    expect(screen.getByTestId('positioner')).toHaveAttribute(
+      'data-step-by-step-tour-highlight-part',
+      'tour-menu',
+    )
     expect(popupClassName).toContain('pointer-events-none')
   })
 
@@ -159,8 +167,15 @@ describe('getStepByStepTourDropdownMenuContentProps', () => {
 
     render(
       <div role="button" tabIndex={0} onClick={onBackgroundClick} onKeyDown={noopKeyboardHandler}>
-        <div role="menu" tabIndex={-1} aria-hidden={popupProps?.['aria-hidden']} onClickCapture={popupProps?.onClickCapture}>
-          <button type="button" role="menuitem" onClick={onAction}>Delete</button>
+        <div
+          role="menu"
+          tabIndex={-1}
+          aria-hidden={popupProps?.['aria-hidden']}
+          onClickCapture={popupProps?.onClickCapture}
+        >
+          <button type="button" role="menuitem" onClick={onAction}>
+            Delete
+          </button>
         </div>
       </div>,
     )
@@ -192,7 +207,9 @@ describe('getStepByStepTourDropdownMenuContentProps', () => {
           onClickCapture={positionerProps?.onClickCapture}
         >
           <div role="menu" aria-hidden={popupProps?.['aria-hidden']}>
-            <button type="button" role="menuitem" onClick={onAction}>Delete</button>
+            <button type="button" role="menuitem" onClick={onAction}>
+              Delete
+            </button>
           </div>
         </div>
       </div>,
@@ -203,7 +220,10 @@ describe('getStepByStepTourDropdownMenuContentProps', () => {
     expect(onPositionerClickCapture).toHaveBeenCalledTimes(1)
     expect(onAction).not.toHaveBeenCalled()
     expect(onBackgroundClick).not.toHaveBeenCalled()
-    expect(screen.getByTestId('positioner')).toHaveAttribute('data-step-by-step-tour-highlight-part', 'tour-menu')
+    expect(screen.getByTestId('positioner')).toHaveAttribute(
+      'data-step-by-step-tour-highlight-part',
+      'tour-menu',
+    )
   })
 
   it('leaves interactive menus clickable without bubbling through', () => {
@@ -221,8 +241,16 @@ describe('getStepByStepTourDropdownMenuContentProps', () => {
     render(
       <div role="button" tabIndex={0} onClick={onBackgroundClick} onKeyDown={noopKeyboardHandler}>
         <div data-step-by-step-tour-highlight-part={getHighlightPartValue(positionerProps)}>
-          <div role="menu" tabIndex={-1} aria-hidden={popupProps?.['aria-hidden']} onClick={popupProps?.onClick} onKeyDown={noopKeyboardHandler}>
-            <button type="button" role="menuitem" onClick={onAction}>Create</button>
+          <div
+            role="menu"
+            tabIndex={-1}
+            aria-hidden={popupProps?.['aria-hidden']}
+            onClick={popupProps?.onClick}
+            onKeyDown={noopKeyboardHandler}
+          >
+            <button type="button" role="menuitem" onClick={onAction}>
+              Create
+            </button>
           </div>
         </div>
       </div>,

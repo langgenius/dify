@@ -22,8 +22,7 @@ const applyPatchBody = (
 ): StepByStepTourStateResponse => {
   switch (body.action) {
     case 'complete_task': {
-      if (!body.task_id)
-        return state
+      if (!body.task_id) return state
 
       return {
         ...state,
@@ -36,7 +35,9 @@ const applyPatchBody = (
       return {
         ...state,
         skipped: true,
-        manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(id => id !== 'workspace-1'),
+        manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(
+          (id) => id !== 'workspace-1',
+        ),
       }
     default:
       return state
@@ -44,7 +45,11 @@ const applyPatchBody = (
 }
 
 const patchStepByStepTourState = vi.fn(
-  async ({ body }: { body: StepByStepTourStatePatchPayload }): Promise<StepByStepTourStateResponse> => {
+  async ({
+    body,
+  }: {
+    body: StepByStepTourStatePatchPayload
+  }): Promise<StepByStepTourStateResponse> => {
     mockStepByStepTourState = applyPatchBody(mockStepByStepTourState, body)
     return mockStepByStepTourState
   },
@@ -89,15 +94,16 @@ const createStepByStepTourState = (
   ...overrides,
 })
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    mutations: { retry: false },
-    queries: {
-      retry: false,
-      staleTime: Infinity,
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      mutations: { retry: false },
+      queries: {
+        retry: false,
+        staleTime: Infinity,
+      },
     },
-  },
-})
+  })
 
 describe('step-by-step tour storage', () => {
   let queryClient: QueryClient
@@ -105,9 +111,7 @@ describe('step-by-step tour storage', () => {
 
   const wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider store={jotaiStore}>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </JotaiProvider>
   )
 
@@ -121,42 +125,63 @@ describe('step-by-step tour storage', () => {
   })
 
   it('derives the current workspace switch state from persisted workspace overrides', () => {
-    expect(getStepByStepTourEnabledForCurrentWorkspace({
-      firstWorkspaceId: undefined,
-      manuallyDisabledWorkspaceIds: [],
-      manuallyEnabledWorkspaceIds: [],
-      skipped: false,
-    }, 'workspace-1')).toBe(false)
+    expect(
+      getStepByStepTourEnabledForCurrentWorkspace(
+        {
+          firstWorkspaceId: undefined,
+          manuallyDisabledWorkspaceIds: [],
+          manuallyEnabledWorkspaceIds: [],
+          skipped: false,
+        },
+        'workspace-1',
+      ),
+    ).toBe(false)
 
-    expect(getStepByStepTourEnabledForCurrentWorkspace({
-      firstWorkspaceId: undefined,
-      manuallyDisabledWorkspaceIds: [],
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
-      skipped: false,
-    }, 'workspace-1')).toBe(true)
+    expect(
+      getStepByStepTourEnabledForCurrentWorkspace(
+        {
+          firstWorkspaceId: undefined,
+          manuallyDisabledWorkspaceIds: [],
+          manuallyEnabledWorkspaceIds: ['workspace-1'],
+          skipped: false,
+        },
+        'workspace-1',
+      ),
+    ).toBe(true)
 
-    expect(getStepByStepTourEnabledForCurrentWorkspace({
-      firstWorkspaceId: 'workspace-1',
-      manuallyDisabledWorkspaceIds: [],
-      manuallyEnabledWorkspaceIds: [],
-      skipped: true,
-    }, 'workspace-1')).toBe(false)
+    expect(
+      getStepByStepTourEnabledForCurrentWorkspace(
+        {
+          firstWorkspaceId: 'workspace-1',
+          manuallyDisabledWorkspaceIds: [],
+          manuallyEnabledWorkspaceIds: [],
+          skipped: true,
+        },
+        'workspace-1',
+      ),
+    ).toBe(false)
   })
 
   it('combines backend persistent state with Jotai UI state', () => {
-    queryClient.setQueryData(stepByStepTourStateQueryKey, createStepByStepTourState({
-      completed_task_ids: ['studio'],
-      manually_enabled_workspace_ids: ['workspace-2'],
-    }))
+    queryClient.setQueryData(
+      stepByStepTourStateQueryKey,
+      createStepByStepTourState({
+        completed_task_ids: ['studio'],
+        manually_enabled_workspace_ids: ['workspace-2'],
+      }),
+    )
 
-    const { result } = renderHook(() => {
-      // eslint-disable-next-line react/use-state -- Step-by-step tour state hooks are not React useState calls.
-      const updateTourState = useSetStepByStepTourAccountState()
-      // eslint-disable-next-line react/use-state -- Step-by-step tour state hooks are not React useState calls.
-      const value = useStepByStepTourAccountStateValue()
+    const { result } = renderHook(
+      () => {
+        // eslint-disable-next-line react/use-state -- Step-by-step tour state hooks are not React useState calls.
+        const updateTourState = useSetStepByStepTourAccountState()
+        // eslint-disable-next-line react/use-state -- Step-by-step tour state hooks are not React useState calls.
+        const value = useStepByStepTourAccountStateValue()
 
-      return { updateTourState, value }
-    }, { wrapper })
+        return { updateTourState, value }
+      },
+      { wrapper },
+    )
 
     act(() => {
       result.current.updateTourState({
@@ -176,11 +201,14 @@ describe('step-by-step tour storage', () => {
   })
 
   it('ignores legacy localStorage tour UI state', () => {
-    localStorage.setItem('step-by-step-tour-ui-state', JSON.stringify({
-      activeGuideIndex: 1,
-      activeTaskId: 'studio',
-      minimized: true,
-    }))
+    localStorage.setItem(
+      'step-by-step-tour-ui-state',
+      JSON.stringify({
+        activeGuideIndex: 1,
+        activeTaskId: 'studio',
+        minimized: true,
+      }),
+    )
 
     // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
     const { result } = renderHook(() => useStepByStepTourAccountStateValue(), { wrapper })
@@ -207,8 +235,10 @@ describe('step-by-step tour storage', () => {
         task_id: 'home',
       },
     })
-    expect(queryClient.getQueryData<StepByStepTourStateResponse>(stepByStepTourStateQueryKey)?.completed_task_ids)
-      .toEqual(['home'])
+    expect(
+      queryClient.getQueryData<StepByStepTourStateResponse>(stepByStepTourStateQueryKey)
+        ?.completed_task_ids,
+    ).toEqual(['home'])
     expect(localStorage.getItem('step-by-step-tour-ui-state')).toBeNull()
   })
 
@@ -232,11 +262,12 @@ describe('step-by-step tour storage', () => {
         action: 'skip',
       },
     })
-    expect(queryClient.getQueryData<StepByStepTourStateResponse>(stepByStepTourStateQueryKey))
-      .toMatchObject({
-        manually_enabled_workspace_ids: ['workspace-2'],
-        skipped: true,
-      })
+    expect(
+      queryClient.getQueryData<StepByStepTourStateResponse>(stepByStepTourStateQueryKey),
+    ).toMatchObject({
+      manually_enabled_workspace_ids: ['workspace-2'],
+      skipped: true,
+    })
     expect(localStorage.getItem('step-by-step-tour-ui-state')).toBeNull()
   })
 })

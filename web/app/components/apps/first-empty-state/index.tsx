@@ -6,7 +6,10 @@ import LearnDify from '@/app/components/explore/learn-dify'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import FirstEmptyActionCard from './action-card'
 
-const EMPTY_PLACEHOLDER_CARD_IDS = Array.from({ length: 16 }, (_, index) => `placeholder-card-${index}`)
+const EMPTY_PLACEHOLDER_CARD_IDS = Array.from(
+  { length: 16 },
+  (_, index) => `placeholder-card-${index}`,
+)
 
 type EmptyCreateAction = {
   id: string
@@ -24,36 +27,31 @@ type Props = {
   showLearnDify: boolean
 }
 
-function FirstEmptyState({
-  onCreateBlank,
-  onCreateTemplate,
-  onImportDSL,
-  showLearnDify,
-}: Props) {
+function FirstEmptyState({ onCreateBlank, onCreateTemplate, onImportDSL, showLearnDify }: Props) {
   const { t } = useTranslation()
 
   const actions: EmptyCreateAction[] = [
     {
       id: 'template',
       icon: <span aria-hidden className="i-ri-function-add-line size-4" />,
-      title: t($ => $['newApp.startFromTemplate'], { ns: 'app' }),
-      description: t($ => $['firstEmpty.templateDescription'], { ns: 'app' }),
+      title: t(($) => $['newApp.startFromTemplate'], { ns: 'app' }),
+      description: t(($) => $['firstEmpty.templateDescription'], { ns: 'app' }),
       onClick: onCreateTemplate,
       target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyTemplate,
     },
     {
       id: 'blank',
       icon: <span aria-hidden className="i-ri-add-box-line size-4" />,
-      title: t($ => $['newApp.startFromBlank'], { ns: 'app' }),
-      description: t($ => $['firstEmpty.blankDescription'], { ns: 'app' }),
+      title: t(($) => $['newApp.startFromBlank'], { ns: 'app' }),
+      description: t(($) => $['firstEmpty.blankDescription'], { ns: 'app' }),
       onClick: onCreateBlank,
       target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyBlank,
     },
     {
       id: 'dsl',
       icon: <span aria-hidden className="i-ri-file-upload-line size-4" />,
-      title: t($ => $.importDSL, { ns: 'app' }),
-      description: t($ => $['firstEmpty.importDescription'], { ns: 'app' }),
+      title: t(($) => $.importDSL, { ns: 'app' }),
+      description: t(($) => $['firstEmpty.importDescription'], { ns: 'app' }),
       onClick: onImportDSL,
       target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL,
     },
@@ -63,12 +61,15 @@ function FirstEmptyState({
     <div className="flex grow flex-col overflow-hidden">
       <div className="relative min-h-[430px] flex-1 overflow-hidden">
         <div className="pointer-events-none absolute inset-x-8 inset-y-2 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
-          {EMPTY_PLACEHOLDER_CARD_IDS.map(id => (
+          {EMPTY_PLACEHOLDER_CARD_IDS.map((id) => (
             <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
           ))}
         </div>
         <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-background-body/0 to-background-body" />
-        <section className="absolute inset-0 flex items-center justify-center overflow-hidden p-2" aria-labelledby="apps-first-empty-title">
+        <section
+          className="absolute inset-0 flex items-center justify-center overflow-hidden p-2"
+          aria-labelledby="apps-first-empty-title"
+        >
           <div className="flex w-full max-w-[520px] flex-col items-center gap-6">
             <div className="flex flex-col items-center gap-3">
               <div className="flex size-14 items-center justify-center rounded-[10px]">
@@ -77,12 +78,12 @@ function FirstEmptyState({
                 </div>
               </div>
               <h2 id="apps-first-empty-title" className="system-sm-regular text-text-tertiary">
-                {t($ => $['firstEmpty.title'], { ns: 'app' })}
+                {t(($) => $['firstEmpty.title'], { ns: 'app' })}
               </h2>
             </div>
             <div className="flex w-full flex-col gap-2">
               <div className="flex flex-col gap-2">
-                {actions.slice(0, 2).map(action => (
+                {actions.slice(0, 2).map((action) => (
                   <FirstEmptyActionCard
                     key={action.id}
                     description={action.description}
@@ -96,7 +97,9 @@ function FirstEmptyState({
               </div>
               <div className="flex items-center gap-2 text-text-tertiary">
                 <div className="h-px min-w-0 flex-1 bg-linear-to-r from-background-body/0 to-divider-regular" />
-                <span className="system-xs-medium-uppercase uppercase">{t($ => $['firstEmpty.or'], { ns: 'app' })}</span>
+                <span className="system-xs-medium-uppercase uppercase">
+                  {t(($) => $['firstEmpty.or'], { ns: 'app' })}
+                </span>
                 <div className="h-px min-w-0 flex-1 bg-linear-to-r from-divider-regular to-background-body/0" />
               </div>
               <FirstEmptyActionCard
@@ -118,7 +121,7 @@ function FirstEmptyState({
             dismissible={false}
             itemLimit={4}
             showDescription
-            title={t($ => $['firstEmpty.learnDifyTitle'], { ns: 'app' })}
+            title={t(($) => $['firstEmpty.learnDifyTitle'], { ns: 'app' })}
           />
         </div>
       )}

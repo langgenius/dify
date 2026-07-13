@@ -4,15 +4,15 @@ export type StepByStepTourTaskId = 'home' | 'studio' | 'knowledge' | 'integratio
 
 export type StepByStepTourTaskStatus = 'completed' | 'current' | 'pending' | 'disabled'
 
-export type StepByStepTourGuideGroup
-  = 'homeNoCreate'
-    | 'studioEmpty'
-    | 'studioWithApps'
-    | 'studioNoCreateEmpty'
-    | 'studioNoCreateWithApps'
-    | 'knowledgeEmpty'
-    | 'knowledgeWithDatasets'
-    | 'integrationLimitedAccess'
+export type StepByStepTourGuideGroup =
+  | 'homeNoCreate'
+  | 'studioEmpty'
+  | 'studioWithApps'
+  | 'studioNoCreateEmpty'
+  | 'studioNoCreateWithApps'
+  | 'knowledgeEmpty'
+  | 'knowledgeWithDatasets'
+  | 'integrationLimitedAccess'
 
 export type StepByStepTourAccountState = {
   firstWorkspaceId?: string
@@ -40,9 +40,7 @@ export type StepByStepTourUiState = {
   minimized: boolean
 }
 
-type StepByStepTourPermissionFallback
-  = | 'show-parent-empty-state'
-    | 'show-disabled-reason'
+type StepByStepTourPermissionFallback = 'show-parent-empty-state' | 'show-disabled-reason'
 
 export type StepByStepTourTaskDefinition = {
   id: StepByStepTourTaskId

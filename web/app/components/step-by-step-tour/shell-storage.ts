@@ -10,9 +10,10 @@ const [
   _useStepByStepTourShellMode,
   useStepByStepTourShellModeValue,
   useSetStepByStepTourShellMode,
-] = createLocalStorageState<StepByStepTourShellMode>(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'expanded', { raw: true })
+] = createLocalStorageState<StepByStepTourShellMode>(
+  STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY,
+  'expanded',
+  { raw: true },
+)
 
-export {
-  useSetStepByStepTourShellMode,
-  useStepByStepTourShellModeValue,
-}
+export { useSetStepByStepTourShellMode, useStepByStepTourShellModeValue }

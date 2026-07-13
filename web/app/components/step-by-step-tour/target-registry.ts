@@ -14,7 +14,8 @@ export const STEP_BY_STEP_TOUR_TARGETS = {
   studioWithAppsCreate: 'step-by-step-tour-studio-with-apps-create',
   studioWithAppsCreateMenu: 'step-by-step-tour-studio-with-apps-create-menu',
   studioWithAppsFirstAppCard: 'step-by-step-tour-studio-with-apps-first-app-card',
-  studioWithAppsFirstAppCardActionsMenu: 'step-by-step-tour-studio-with-apps-first-app-card-actions-menu',
+  studioWithAppsFirstAppCardActionsMenu:
+    'step-by-step-tour-studio-with-apps-first-app-card-actions-menu',
   studioNoCreateEmpty: 'step-by-step-tour-studio-no-create-empty',
   studioNoCreateFirstAppCard: 'step-by-step-tour-studio-no-create-first-app-card',
   studioNoCreateFirstAppRowCard: 'step-by-step-tour-studio-no-create-first-app-row-card',
@@ -25,7 +26,8 @@ export const STEP_BY_STEP_TOUR_TARGETS = {
   knowledgeWithDatasetsCreate: 'step-by-step-tour-knowledge-with-datasets-create',
   knowledgeWithDatasetsCreateMenu: 'step-by-step-tour-knowledge-with-datasets-create-menu',
   knowledgeWithDatasetsFirstCard: 'step-by-step-tour-knowledge-with-datasets-first-card',
-  knowledgeWithDatasetsFirstCardActionsMenu: 'step-by-step-tour-knowledge-with-datasets-first-card-actions-menu',
+  knowledgeWithDatasetsFirstCardActionsMenu:
+    'step-by-step-tour-knowledge-with-datasets-first-card-actions-menu',
   integration: 'step-by-step-tour-integration',
   integrationModelProviderNav: 'step-by-step-tour-integration-model-provider-nav',
   integrationToolPluginNav: 'step-by-step-tour-integration-tool-plugin-nav',
@@ -84,8 +86,7 @@ export function getStepByStepTourGuideInteractionPolicy(
   guide: StepByStepTourGuide,
   canClickThrough: boolean,
 ): StepByStepTourGuideInteractionPolicy {
-  if (guide.interactionPolicy)
-    return guide.interactionPolicy
+  if (guide.interactionPolicy) return guide.interactionPolicy
 
   if (getStepByStepTourGuideKind(guide) === 'action')
     return canClickThrough ? 'target-only' : 'blocked'
@@ -93,7 +94,13 @@ export function getStepByStepTourGuideInteractionPolicy(
   return 'blocked'
 }
 
-const STEP_BY_STEP_TOUR_STUDIO_GUIDES: Record<Extract<StepByStepTourGuideGroup, 'studioEmpty' | 'studioWithApps' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps'>, StepByStepTourGuide[]> = {
+const STEP_BY_STEP_TOUR_STUDIO_GUIDES: Record<
+  Extract<
+    StepByStepTourGuideGroup,
+    'studioEmpty' | 'studioWithApps' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps'
+  >,
+  StepByStepTourGuide[]
+> = {
   studioEmpty: [
     {
       taskId: 'studio',
@@ -149,7 +156,9 @@ const STEP_BY_STEP_TOUR_STUDIO_GUIDES: Record<Extract<StepByStepTourGuideGroup, 
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
       highlightPartSelectors: [
-        getStepByStepTourHighlightPartSelector(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu),
+        getStepByStepTourHighlightPartSelector(
+          STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu,
+        ),
       ],
       optional: true,
     },
@@ -173,13 +182,18 @@ const STEP_BY_STEP_TOUR_STUDIO_GUIDES: Record<Extract<StepByStepTourGuideGroup, 
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
       highlightPartSelectors: [
-        getStepByStepTourHighlightPartSelector(STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard),
+        getStepByStepTourHighlightPartSelector(
+          STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard,
+        ),
       ],
     },
   ],
 }
 
-const STEP_BY_STEP_TOUR_KNOWLEDGE_GUIDES: Record<Extract<StepByStepTourGuideGroup, 'knowledgeEmpty' | 'knowledgeWithDatasets'>, StepByStepTourGuide[]> = {
+const STEP_BY_STEP_TOUR_KNOWLEDGE_GUIDES: Record<
+  Extract<StepByStepTourGuideGroup, 'knowledgeEmpty' | 'knowledgeWithDatasets'>,
+  StepByStepTourGuide[]
+> = {
   knowledgeEmpty: [
     {
       taskId: 'knowledge',
@@ -215,7 +229,9 @@ const STEP_BY_STEP_TOUR_KNOWLEDGE_GUIDES: Record<Extract<StepByStepTourGuideGrou
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
       highlightPartSelectors: [
-        getStepByStepTourHighlightPartSelector(STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu),
+        getStepByStepTourHighlightPartSelector(
+          STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu,
+        ),
       ],
     },
     {
@@ -226,7 +242,9 @@ const STEP_BY_STEP_TOUR_KNOWLEDGE_GUIDES: Record<Extract<StepByStepTourGuideGrou
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
       highlightPartSelectors: [
-        getStepByStepTourHighlightPartSelector(STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu),
+        getStepByStepTourHighlightPartSelector(
+          STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu,
+        ),
       ],
       optional: true,
     },
@@ -379,16 +397,18 @@ const STEP_BY_STEP_TOUR_INTEGRATION_LIMITED_ACCESS_GUIDES: StepByStepTourGuide[]
 
 const isStepByStepTourHomeGuideGroup = (
   guideGroup?: StepByStepTourGuideGroup,
-): guideGroup is Extract<StepByStepTourGuideGroup, 'homeNoCreate'> =>
-  guideGroup === 'homeNoCreate'
+): guideGroup is Extract<StepByStepTourGuideGroup, 'homeNoCreate'> => guideGroup === 'homeNoCreate'
 
 const isStepByStepTourStudioGuideGroup = (
   guideGroup?: StepByStepTourGuideGroup,
-): guideGroup is Extract<StepByStepTourGuideGroup, 'studioEmpty' | 'studioWithApps' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps'> =>
-  guideGroup === 'studioEmpty'
-  || guideGroup === 'studioWithApps'
-  || guideGroup === 'studioNoCreateEmpty'
-  || guideGroup === 'studioNoCreateWithApps'
+): guideGroup is Extract<
+  StepByStepTourGuideGroup,
+  'studioEmpty' | 'studioWithApps' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps'
+> =>
+  guideGroup === 'studioEmpty' ||
+  guideGroup === 'studioWithApps' ||
+  guideGroup === 'studioNoCreateEmpty' ||
+  guideGroup === 'studioNoCreateWithApps'
 
 const isStepByStepTourKnowledgeGuideGroup = (
   guideGroup?: StepByStepTourGuideGroup,
@@ -408,10 +428,14 @@ export const getStepByStepTourGuides = (
     return STEP_BY_STEP_TOUR_HOME_NO_CREATE_GUIDES
 
   if (taskId === 'studio')
-    return isStepByStepTourStudioGuideGroup(guideGroup) ? STEP_BY_STEP_TOUR_STUDIO_GUIDES[guideGroup] : []
+    return isStepByStepTourStudioGuideGroup(guideGroup)
+      ? STEP_BY_STEP_TOUR_STUDIO_GUIDES[guideGroup]
+      : []
 
   if (taskId === 'knowledge')
-    return isStepByStepTourKnowledgeGuideGroup(guideGroup) ? STEP_BY_STEP_TOUR_KNOWLEDGE_GUIDES[guideGroup] : []
+    return isStepByStepTourKnowledgeGuideGroup(guideGroup)
+      ? STEP_BY_STEP_TOUR_KNOWLEDGE_GUIDES[guideGroup]
+      : []
 
   if (taskId === 'integration' && isStepByStepTourIntegrationGuideGroup(guideGroup))
     return STEP_BY_STEP_TOUR_INTEGRATION_LIMITED_ACCESS_GUIDES

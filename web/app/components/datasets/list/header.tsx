@@ -1,11 +1,20 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
-import { getStepByStepTourDropdownMenuContentProps, useStepByStepTourControlledDropdown } from '@/app/components/step-by-step-tour/dropdown-menu'
+import {
+  getStepByStepTourDropdownMenuContentProps,
+  useStepByStepTourControlledDropdown,
+} from '@/app/components/step-by-step-tour/dropdown-menu'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import ServiceApi from '../extra-info/service-api'
 
@@ -59,7 +68,9 @@ const DatasetListHeader = ({
   return (
     <div className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-8 pt-4 pb-2">
       <div className="flex h-6 w-full items-center gap-2">
-        <h1 className="min-w-0 flex-1 text-[18px]/[21.6px] font-semibold text-text-primary">{t($ => $.knowledge, { ns: 'dataset' })}</h1>
+        <h1 className="min-w-0 flex-1 text-[18px]/[21.6px] font-semibold text-text-primary">
+          {t(($) => $.knowledge, { ns: 'dataset' })}
+        </h1>
         <div className="flex shrink-0 items-center gap-2">
           {canConnectExternalDataset && (
             <button
@@ -67,8 +78,13 @@ const DatasetListHeader = ({
               className="flex h-6 items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover"
               onClick={onExternalApiClick}
             >
-              <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0" />
-              <span className="px-0.5 system-xs-medium">{t($ => $.externalAPIPanelTitle, { ns: 'dataset' })}</span>
+              <span
+                aria-hidden
+                className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0"
+              />
+              <span className="px-0.5 system-xs-medium">
+                {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
+              </span>
             </button>
           )}
           <ServiceApi apiBaseUrl={apiBaseUrl} />
@@ -83,30 +99,30 @@ const DatasetListHeader = ({
             onOpenTagManagement={onOpenTagManagement}
             showLeadingIcon={false}
           />
-          <SearchInput
-            className="w-[200px]"
-            value={keywords}
-            onValueChange={onKeywordsChange}
-          />
+          <SearchInput className="w-[200px]" value={keywords} onValueChange={onKeywordsChange} />
           {isCurrentWorkspaceOwner && (
             <>
               <div className="h-3.5 w-px bg-divider-regular" />
               <CheckboxWithLabel
                 isChecked={includeAll}
                 onChange={onIncludeAllChange}
-                label={t($ => $.allKnowledge, { ns: 'dataset' })}
+                label={t(($) => $.allKnowledge, { ns: 'dataset' })}
                 labelClassName="system-md-regular text-text-tertiary"
                 className="h-8"
-                tooltip={t($ => $.allKnowledgeDescription, { ns: 'dataset' }) as string}
+                tooltip={t(($) => $.allKnowledgeDescription, { ns: 'dataset' }) as string}
               />
             </>
           )}
         </div>
         <div className="flex items-center gap-2">
           {showCreateMenu && (
-            <DropdownMenu modal={false} open={createMenu.open} onOpenChange={createMenu.onOpenChange}>
+            <DropdownMenu
+              modal={false}
+              open={createMenu.open}
+              onOpenChange={createMenu.onOpenChange}
+            >
               <DropdownMenuTrigger
-                render={(
+                render={
                   <Button
                     variant="primary"
                     size="medium"
@@ -114,17 +130,21 @@ const DatasetListHeader = ({
                     data-step-by-step-tour-target={stepByStepTourCreateMenuTarget}
                   >
                     <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-                    <span className="pl-1">{t($ => $['operation.create'], { ns: 'common' })}</span>
+                    <span className="pl-1">
+                      {t(($) => $['operation.create'], { ns: 'common' })}
+                    </span>
                     <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
                   </Button>
-                )}
+                }
               />
               <DropdownMenuContent
                 placement="bottom-end"
                 sideOffset={4}
                 {...getStepByStepTourDropdownMenuContentProps({
                   disableMotion: createMenu.controlled,
-                  highlightPart: createMenu.controlled ? stepByStepTourCreateMenuHighlightPart : undefined,
+                  highlightPart: createMenu.controlled
+                    ? stepByStepTourCreateMenuHighlightPart
+                    : undefined,
                   interactionMode: createMenu.controlled ? 'presentation' : 'interactive',
                   popupClassName: 'w-80',
                 })}
@@ -135,15 +155,25 @@ const DatasetListHeader = ({
                       className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
                       onClick={onCreateDataset}
                     >
-                      <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
-                      <span className="min-w-0 flex-1 truncate px-1">{t($ => $['firstEmpty.createTitle'], { ns: 'dataset' })}</span>
+                      <span
+                        aria-hidden
+                        className="i-ri-add-line size-4 shrink-0 text-text-secondary"
+                      />
+                      <span className="min-w-0 flex-1 truncate px-1">
+                        {t(($) => $['firstEmpty.createTitle'], { ns: 'dataset' })}
+                      </span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
                       onClick={onCreateFromPipeline}
                     >
-                      <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4 shrink-0 text-text-secondary" />
-                      <span className="min-w-0 flex-1 truncate px-1">{t($ => $['firstEmpty.pipelineTitle'], { ns: 'dataset' })}</span>
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-pipeline-pipeline-line size-4 shrink-0 text-text-secondary"
+                      />
+                      <span className="min-w-0 flex-1 truncate px-1">
+                        {t(($) => $['firstEmpty.pipelineTitle'], { ns: 'dataset' })}
+                      </span>
                     </DropdownMenuItem>
                   </>
                 )}
@@ -155,8 +185,13 @@ const DatasetListHeader = ({
                     className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
                     onClick={onConnectDataset}
                   >
-                    <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-4 shrink-0 text-text-secondary" />
-                    <span className="min-w-0 flex-1 truncate px-1">{t($ => $.connectDataset, { ns: 'dataset' })}</span>
+                    <span
+                      aria-hidden
+                      className="i-custom-vender-solid-development-api-connection-mod size-4 shrink-0 text-text-secondary"
+                    />
+                    <span className="min-w-0 flex-1 truncate px-1">
+                      {t(($) => $.connectDataset, { ns: 'dataset' })}
+                    </span>
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

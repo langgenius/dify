@@ -86,16 +86,23 @@ export const getStepByStepTourCoachmarkPosition = (
   const maxBubbleTop = viewportSize.height - bubbleSize.height - VIEWPORT_PADDING
   const bottomBubbleTop = placementRect.top + placementRect.height + BUBBLE_SIDE_OFFSET
   const topBubbleTop = placementRect.top - bubbleSize.height - BUBBLE_SIDE_OFFSET
-  const hasBottomRoom = bottomBubbleTop + bubbleSize.height <= viewportSize.height - VIEWPORT_PADDING
+  const hasBottomRoom =
+    bottomBubbleTop + bubbleSize.height <= viewportSize.height - VIEWPORT_PADDING
   const hasTopRoom = topBubbleTop >= VIEWPORT_PADDING
   const spaceBelow = viewportSize.height - VIEWPORT_PADDING - bottomBubbleTop
   const spaceAbove = placementRect.top - VIEWPORT_PADDING - BUBBLE_SIDE_OFFSET
-  const resolvedPlacement = placement === 'bottom'
-    ? (!hasBottomRoom && (hasTopRoom || spaceAbove > spaceBelow) ? 'top' : 'bottom')
-    : (!hasTopRoom && (hasBottomRoom || spaceBelow > spaceAbove) ? 'bottom' : 'top')
-  const preferredBubbleTop = resolvedPlacement === 'top'
-    ? placementRect.top - bubbleSize.height - BUBBLE_SIDE_OFFSET
-    : placementRect.top + placementRect.height + BUBBLE_SIDE_OFFSET
+  const resolvedPlacement =
+    placement === 'bottom'
+      ? !hasBottomRoom && (hasTopRoom || spaceAbove > spaceBelow)
+        ? 'top'
+        : 'bottom'
+      : !hasTopRoom && (hasBottomRoom || spaceBelow > spaceAbove)
+        ? 'bottom'
+        : 'top'
+  const preferredBubbleTop =
+    resolvedPlacement === 'top'
+      ? placementRect.top - bubbleSize.height - BUBBLE_SIDE_OFFSET
+      : placementRect.top + placementRect.height + BUBBLE_SIDE_OFFSET
   const bubbleTop = clamp(
     preferredBubbleTop,
     VIEWPORT_PADDING,
@@ -140,5 +147,11 @@ export const useStepByStepTourCoachmarkPosition = (
     }
   }, [])
 
-  return getStepByStepTourCoachmarkPosition(placementRect, viewportSize, placement, anchorRect, bubbleSize)
+  return getStepByStepTourCoachmarkPosition(
+    placementRect,
+    viewportSize,
+    placement,
+    anchorRect,
+    bubbleSize,
+  )
 }

@@ -5,7 +5,10 @@ import type {
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { StepByStepTourAccountState, StepByStepTourUiState } from '@/app/components/step-by-step-tour/types'
+import type {
+  StepByStepTourAccountState,
+  StepByStepTourUiState,
+} from '@/app/components/step-by-step-tour/types'
 import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
 import type { App as WorkspaceApp } from '@/types/app'
@@ -33,7 +36,10 @@ const mockAppContextState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
 
-let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
+let mockExploreData: { categories: string[]; allList: App[] } | undefined = {
+  categories: [],
+  allList: [],
+}
 let mockLearnDifyApps: App[] = []
 let mockLearnDifyLoading = false
 let mockWorkspaceApps: WorkspaceApp[] = []
@@ -72,42 +78,59 @@ const mockStepByStepTour = vi.hoisted(() => {
   let uiState: StepByStepTourUiState = createUiState()
   let observedState: StepByStepTourAccountState | undefined
   const patchState = vi.fn(
-    async ({ body }: { body: StepByStepTourStatePatchPayload }): Promise<StepByStepTourStateResponse> => {
+    async ({
+      body,
+    }: {
+      body: StepByStepTourStatePatchPayload
+    }): Promise<StepByStepTourStateResponse> => {
       switch (body.action) {
         case 'complete_task':
           state = {
             ...state,
-            completed_task_ids: body.task_id && !state.completed_task_ids?.includes(body.task_id)
-              ? [...(state.completed_task_ids ?? []), body.task_id]
-              : state.completed_task_ids,
+            completed_task_ids:
+              body.task_id && !state.completed_task_ids?.includes(body.task_id)
+                ? [...(state.completed_task_ids ?? []), body.task_id]
+                : state.completed_task_ids,
           }
           break
         case 'uncomplete_task':
           state = {
             ...state,
-            completed_task_ids: (state.completed_task_ids ?? []).filter(taskId => taskId !== body.task_id),
+            completed_task_ids: (state.completed_task_ids ?? []).filter(
+              (taskId) => taskId !== body.task_id,
+            ),
           }
           break
         case 'skip':
           state = {
             ...state,
             skipped: true,
-            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(id => id !== 'workspace-1'),
+            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(
+              (id) => id !== 'workspace-1',
+            ),
           }
           break
         case 'enable_current_workspace':
           state = {
             ...state,
             skipped: false,
-            manually_enabled_workspace_ids: Array.from(new Set([...(state.manually_enabled_workspace_ids ?? []), 'workspace-1'])),
-            manually_disabled_workspace_ids: (state.manually_disabled_workspace_ids ?? []).filter(id => id !== 'workspace-1'),
+            manually_enabled_workspace_ids: Array.from(
+              new Set([...(state.manually_enabled_workspace_ids ?? []), 'workspace-1']),
+            ),
+            manually_disabled_workspace_ids: (state.manually_disabled_workspace_ids ?? []).filter(
+              (id) => id !== 'workspace-1',
+            ),
           }
           break
         case 'disable_current_workspace':
           state = {
             ...state,
-            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(id => id !== 'workspace-1'),
-            manually_disabled_workspace_ids: Array.from(new Set([...(state.manually_disabled_workspace_ids ?? []), 'workspace-1'])),
+            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(
+              (id) => id !== 'workspace-1',
+            ),
+            manually_disabled_workspace_ids: Array.from(
+              new Set([...(state.manually_disabled_workspace_ids ?? []), 'workspace-1']),
+            ),
           }
           break
       }
@@ -147,15 +170,26 @@ const mockStepByStepTour = vi.hoisted(() => {
 })
 const toastMocks = vi.hoisted(() => {
   const record = vi.fn()
-  const api = Object.assign(vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options })), {
-    success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
-    error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
-    warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
-    info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
+  const api = Object.assign(
+    vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options })),
+    {
+      success: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'success', message, ...options }),
+      ),
+      error: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'error', message, ...options }),
+      ),
+      warning: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'warning', message, ...options }),
+      ),
+      info: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'info', message, ...options }),
+      ),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  )
   return { record, api }
 })
 
@@ -244,12 +278,24 @@ vi.mock('@/service/client', () => ({
     explore: {
       apps: {
         get: {
-          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', 'get', input],
+          queryKey: ({ input }: { input?: unknown } = {}) => [
+            'console',
+            'explore',
+            'apps',
+            'get',
+            input,
+          ],
         },
       },
       banners: {
         get: {
-          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', 'get', input],
+          queryKey: ({ input }: { input?: unknown } = {}) => [
+            'console',
+            'explore',
+            'banners',
+            'get',
+            input,
+          ],
         },
       },
     },
@@ -283,7 +329,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateJotaiMock(importOriginal)
 })
@@ -323,23 +370,26 @@ vi.mock('@/config', async (importOriginal) => {
 
 vi.mock('@/app/components/explore/create-app-modal', () => ({
   default: (props: CreateAppModalProps) => {
-    if (!props.show)
-      return null
+    if (!props.show) return null
     return (
       <div data-testid="create-app-modal">
         <button
           data-testid="confirm-create"
-          onClick={() => props.onConfirm({
-            name: 'New App',
-            icon_type: 'emoji',
-            icon: '🤖',
-            icon_background: '#fff',
-            description: 'desc',
-          })}
+          onClick={() =>
+            props.onConfirm({
+              name: 'New App',
+              icon_type: 'emoji',
+              icon: '🤖',
+              icon_background: '#fff',
+              description: 'desc',
+            })
+          }
         >
           confirm
         </button>
-        <button data-testid="hide-create" onClick={props.onHide}>hide</button>
+        <button data-testid="hide-create" onClick={props.onHide}>
+          hide
+        </button>
       </div>
     )
   },
@@ -367,22 +417,30 @@ vi.mock('../../try-app', () => ({
           create
         </button>
       )}
-      <button data-testid="try-app-close" onClick={onClose}>close</button>
+      <button data-testid="try-app-close" onClick={onClose}>
+        close
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../../banner/banner', () => ({
   default: ({ banners }: { banners: BannerType[] }) => (
-    <div data-testid="explore-banner" data-banner-count={banners.length}>banner</div>
+    <div data-testid="explore-banner" data-banner-count={banners.length}>
+      banner
+    </div>
   ),
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal', () => ({
-  default: ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
+  default: ({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) => (
     <div data-testid="dsl-confirm-modal">
-      <button data-testid="dsl-confirm" onClick={onConfirm}>confirm</button>
-      <button data-testid="dsl-cancel" onClick={onCancel}>cancel</button>
+      <button data-testid="dsl-confirm" onClick={onConfirm}>
+        confirm
+      </button>
+      <button data-testid="dsl-cancel" onClick={onCancel}>
+        cancel
+      </button>
     </div>
   ),
 }))
@@ -414,41 +472,42 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   is_agent: overrides.is_agent ?? false,
 })
 
-const createWorkspaceApp = (overrides: Partial<WorkspaceApp> = {}): WorkspaceApp => ({
-  id: overrides.id ?? 'workspace-app-1',
-  name: overrides.name ?? 'Workspace App',
-  description: overrides.description ?? 'Workspace app description',
-  author_name: overrides.author_name ?? 'Evan',
-  icon_type: overrides.icon_type ?? 'emoji',
-  icon: overrides.icon ?? '😀',
-  icon_background: overrides.icon_background ?? '#fff',
-  icon_url: overrides.icon_url ?? null,
-  use_icon_as_answer_icon: overrides.use_icon_as_answer_icon ?? false,
-  mode: overrides.mode ?? AppModeEnum.CHAT,
-  created_at: overrides.created_at ?? 1704067200,
-  updated_at: overrides.updated_at ?? 1704153600,
-  enable_site: overrides.enable_site ?? false,
-  enable_api: overrides.enable_api ?? false,
-  api_rpm: overrides.api_rpm ?? 60,
-  api_rph: overrides.api_rph ?? 3600,
-  is_demo: overrides.is_demo ?? false,
-  model_config: overrides.model_config,
-  app_model_config: overrides.app_model_config,
-  site: overrides.site,
-  api_base_url: overrides.api_base_url ?? '',
-  tags: overrides.tags ?? [],
-  access_mode: overrides.access_mode,
-  permission_keys: overrides.permission_keys,
-} as WorkspaceApp)
+const createWorkspaceApp = (overrides: Partial<WorkspaceApp> = {}): WorkspaceApp =>
+  ({
+    id: overrides.id ?? 'workspace-app-1',
+    name: overrides.name ?? 'Workspace App',
+    description: overrides.description ?? 'Workspace app description',
+    author_name: overrides.author_name ?? 'Evan',
+    icon_type: overrides.icon_type ?? 'emoji',
+    icon: overrides.icon ?? '😀',
+    icon_background: overrides.icon_background ?? '#fff',
+    icon_url: overrides.icon_url ?? null,
+    use_icon_as_answer_icon: overrides.use_icon_as_answer_icon ?? false,
+    mode: overrides.mode ?? AppModeEnum.CHAT,
+    created_at: overrides.created_at ?? 1704067200,
+    updated_at: overrides.updated_at ?? 1704153600,
+    enable_site: overrides.enable_site ?? false,
+    enable_api: overrides.enable_api ?? false,
+    api_rpm: overrides.api_rpm ?? 60,
+    api_rph: overrides.api_rph ?? 3600,
+    is_demo: overrides.is_demo ?? false,
+    model_config: overrides.model_config,
+    app_model_config: overrides.app_model_config,
+    site: overrides.site,
+    api_base_url: overrides.api_base_url ?? '',
+    tags: overrides.tags ?? [],
+    access_mode: overrides.access_mode,
+    permission_keys: overrides.permission_keys,
+  }) as WorkspaceApp
 
 const createBanner = (overrides: Partial<BannerType> = {}): BannerType => ({
   id: overrides.id ?? 'banner-1',
   status: overrides.status ?? 'enabled',
   link: overrides.link ?? 'https://example.com',
   content: overrides.content ?? {
-    'category': 'Featured',
-    'title': 'Explore Banner',
-    'description': 'Banner description',
+    category: 'Featured',
+    title: 'Explore Banner',
+    description: 'Banner description',
     'img-src': 'https://example.com/banner.png',
   },
   sort: overrides.sort ?? 1,
@@ -456,7 +515,9 @@ const createBanner = (overrides: Partial<BannerType> = {}): BannerType => ({
 })
 
 const mockAppCreatePermission = (hasEditPermission: boolean) => {
-  mockAppContextState.workspacePermissionKeys = hasEditPermission ? ['app.create_and_management'] : []
+  mockAppContextState.workspacePermissionKeys = hasEditPermission
+    ? ['app.create_and_management']
+    : []
 }
 
 type RenderOptions = {
@@ -496,11 +557,9 @@ const renderAppList = (
 
   if (mockIsLoading) {
     mockFetchAppList.mockImplementation(() => new Promise(() => {}))
-  }
-  else if (mockIsError) {
+  } else if (mockIsError) {
     mockFetchAppList.mockRejectedValue(new Error('Failed to load explore apps'))
-  }
-  else {
+  } else {
     mockFetchAppList.mockResolvedValue({
       categories: mockExploreData?.categories ?? [],
       recommended_apps: mockExploreData?.allList ?? [],
@@ -509,8 +568,7 @@ const renderAppList = (
 
   if (mockBannersLoading) {
     mockFetchBanners.mockImplementation(() => new Promise(() => {}))
-  }
-  else {
+  } else {
     mockFetchBanners.mockResolvedValue(mockBanners)
   }
 
@@ -526,7 +584,9 @@ const renderAppList = (
     </JotaiProvider>
   )
   const rendered = renderWithNuqs(
-    <Wrapped><AppList onSuccess={onSuccess} /></Wrapped>,
+    <Wrapped>
+      <AppList onSuccess={onSuccess} />
+    </Wrapped>,
     { searchParams },
   )
   return { ...rendered, queryClient }
@@ -542,14 +602,16 @@ function SkipHomeGuideProbe() {
     <button
       type="button"
       data-testid="skip-home-guide"
-      onClick={() => setStepByStepTourAccountState({
-        ...stepByStepTourAccountState,
-        activeTaskId: undefined,
-        activeGuideIndex: undefined,
-        activeGuideGroup: undefined,
-        activeGuideIndexes: undefined,
-        minimized: false,
-      })}
+      onClick={() =>
+        setStepByStepTourAccountState({
+          ...stepByStepTourAccountState,
+          activeTaskId: undefined,
+          activeGuideIndex: undefined,
+          activeGuideGroup: undefined,
+          activeGuideIndexes: undefined,
+          minimized: false,
+        })
+      }
     >
       skip home guide
     </button>
@@ -613,7 +675,9 @@ describe('AppList', () => {
 
       renderAppList()
 
-      expect(screen.queryByRole('heading', { name: 'explore.continueWork.title' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'explore.continueWork.title' }),
+      ).not.toBeInTheDocument()
       expect(screen.getAllByRole('status', { name: 'common.loading' })).toHaveLength(1)
     })
 
@@ -627,7 +691,9 @@ describe('AppList', () => {
 
       renderAppList()
 
-      expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
+      ).not.toBeInTheDocument()
       expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
     })
 
@@ -642,14 +708,23 @@ describe('AppList', () => {
 
       renderAppList()
 
-      expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
+      ).not.toBeInTheDocument()
       expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
     })
 
     it('should render app cards when data is available', () => {
       mockExploreData = {
         categories: ['Writing', 'Translate'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, categories: ['Translate'] })],
+        allList: [
+          createApp(),
+          createApp({
+            app_id: 'app-2',
+            app: { ...createApp().app, name: 'Beta' },
+            categories: ['Translate'],
+          }),
+        ],
       }
 
       renderAppList()
@@ -665,7 +740,12 @@ describe('AppList', () => {
         allList: [createApp()],
       }
       mockWorkspaceApps = [
-        createWorkspaceApp({ id: 'app-1', name: 'Email Reply', author_name: 'Evan', permission_keys: [AppACLPermission.Monitor] }),
+        createWorkspaceApp({
+          id: 'app-1',
+          name: 'Email Reply',
+          author_name: 'Evan',
+          permission_keys: [AppACLPermission.Monitor],
+        }),
         createWorkspaceApp({ id: 'app-2', name: 'Feature Copilot', author_name: 'Maggie' }),
         createWorkspaceApp({ id: 'app-3', name: 'Book Translation', author_name: 'Alex' }),
         createWorkspaceApp({ id: 'app-4', name: 'Logo Design', author_name: 'Taylor' }),
@@ -678,7 +758,9 @@ describe('AppList', () => {
 
       renderAppList()
 
-      expect(screen.getByRole('heading', { name: 'explore.continueWork.title' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: 'explore.continueWork.title' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('Email Reply')).toBeInTheDocument()
       expect(screen.getByText('Feature Copilot')).toBeInTheDocument()
       expect(screen.getByText('Book Translation')).toBeInTheDocument()
@@ -689,9 +771,16 @@ describe('AppList', () => {
       expect(screen.getByText('Support Draft')).toBeInTheDocument()
       expect(screen.queryByText('Hidden Ninth App')).not.toBeInTheDocument()
       expect(screen.getByText('Maggie')).toBeInTheDocument()
-      expect(screen.getAllByText('explore.continueWork.editedAt:{"time":"3 minutes ago"}')).toHaveLength(8)
-      expect(screen.getByRole('link', { name: /Email Reply/ })).toHaveAttribute('href', '/app/app-1/overview')
-      expect(screen.getByRole('link', { name: 'explore.continueWork.exploreStudio' })).toHaveAttribute('href', '/apps')
+      expect(
+        screen.getAllByText('explore.continueWork.editedAt:{"time":"3 minutes ago"}'),
+      ).toHaveLength(8)
+      expect(screen.getByRole('link', { name: /Email Reply/ })).toHaveAttribute(
+        'href',
+        '/app/app-1/overview',
+      )
+      expect(
+        screen.getByRole('link', { name: 'explore.continueWork.exploreStudio' }),
+      ).toHaveAttribute('href', '/apps')
     })
 
     it('should render preview-only continue work app as a dimmed card and warn on click', () => {
@@ -733,7 +822,9 @@ describe('AppList', () => {
 
       renderAppList()
 
-      expect(screen.queryByRole('heading', { name: 'explore.continueWork.title' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'explore.continueWork.title' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render learn dify templates without badges or template metadata', () => {
@@ -752,7 +843,9 @@ describe('AppList', () => {
       )
       expect(screen.getByText('Learn Workflow Basics')).toBeInTheDocument()
       expect(screen.getByText('Learn Agent Basics')).toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: 'explore.learnDify.moreTemplates' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('link', { name: 'explore.learnDify.moreTemplates' }),
+      ).not.toBeInTheDocument()
       expect(screen.queryByText('Run this first')).not.toBeInTheDocument()
       expect(screen.queryByText('Then try this')).not.toBeInTheDocument()
       expect(screen.queryByText('workflow')).not.toBeInTheDocument()
@@ -767,7 +860,9 @@ describe('AppList', () => {
 
       renderAppList(false, undefined, undefined, { enableLearnApp: false })
 
-      expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
+      ).not.toBeInTheDocument()
       expect(screen.queryByText('Learn Workflow Basics')).not.toBeInTheDocument()
     })
 
@@ -781,7 +876,9 @@ describe('AppList', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'explore.learnDify.hide' }))
 
-      const learnDifySection = screen.getByRole('heading', { name: 'explore.learnDify.title' }).closest('section')
+      const learnDifySection = screen
+        .getByRole('heading', { name: 'explore.learnDify.title' })
+        .closest('section')
       expect(learnDifySection).toHaveClass('z-50', 'opacity-20')
       expect(learnDifySection).toHaveStyle({ transform: 'scale(0.08)' })
 
@@ -789,7 +886,9 @@ describe('AppList', () => {
         await vi.advanceTimersByTimeAsync(800)
       })
 
-      expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
+      ).not.toBeInTheDocument()
       expect(localStorage.getItem(LEARN_DIFY_HIDDEN_STORAGE_KEY)).toBe('true')
     })
   })
@@ -798,7 +897,14 @@ describe('AppList', () => {
     it('should filter apps by selected category', () => {
       mockExploreData = {
         categories: ['Writing', 'Translate'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, categories: ['Translate'] })],
+        allList: [
+          createApp(),
+          createApp({
+            app_id: 'app-2',
+            app: { ...createApp().app, name: 'Beta' },
+            categories: ['Translate'],
+          }),
+        ],
       }
 
       renderAppList(false, undefined, { category: 'Writing' })
@@ -822,7 +928,14 @@ describe('AppList', () => {
     it('should keep selected category when clearing search text', async () => {
       mockExploreData = {
         categories: ['Writing', 'Translate'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, categories: ['Translate'] })],
+        allList: [
+          createApp(),
+          createApp({
+            app_id: 'app-2',
+            app: { ...createApp().app, name: 'Beta' },
+            categories: ['Translate'],
+          }),
+        ],
       }
 
       renderAppList(false, undefined, { category: 'Writing' })
@@ -846,7 +959,10 @@ describe('AppList', () => {
     it('should filter apps by search keywords', async () => {
       mockExploreData = {
         categories: ['Writing'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } })],
+        allList: [
+          createApp(),
+          createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } }),
+        ],
       }
       renderAppList()
 
@@ -868,13 +984,20 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void, onPending?: () => void }) => {
-        options.onPending?.()
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml-content',
+        mode: AppModeEnum.CHAT,
       })
-      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-      })
+      mockHandleImportDSL.mockImplementation(
+        async (_payload: unknown, options: { onSuccess?: () => void; onPending?: () => void }) => {
+          options.onPending?.()
+        },
+      )
+      mockHandleImportDSLConfirm.mockImplementation(
+        async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        },
+      )
 
       renderAppList(true, onSuccess)
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
@@ -904,10 +1027,18 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml-content',
+        mode: AppModeEnum.CHAT,
       })
+      mockHandleImportDSL.mockImplementation(
+        async (
+          _payload: unknown,
+          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+        ) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        },
+      )
 
       renderAppList(true)
       fireEvent.click(screen.getByRole('button', { name: 'Learn Workflow Basics' }))
@@ -1033,11 +1164,19 @@ describe('AppList', () => {
         activeGuideIndex: 0,
         activeGuideIndexes: [0, 1],
         minimized: true,
-      });
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml-content',
+        mode: AppModeEnum.CHAT,
+      })
+      mockHandleImportDSL.mockImplementation(
+        async (
+          _payload: unknown,
+          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+        ) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        },
+      )
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
@@ -1070,14 +1209,21 @@ describe('AppList', () => {
         activeTaskId: 'home',
         activeGuideIndex: 0,
         minimized: true,
-      });
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
-        options.onPending?.()
       })
-      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml-content',
+        mode: AppModeEnum.CHAT,
       })
+      mockHandleImportDSL.mockImplementation(
+        async (_payload: unknown, options: { onPending?: () => void }) => {
+          options.onPending?.()
+        },
+      )
+      mockHandleImportDSLConfirm.mockImplementation(
+        async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        },
+      )
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
@@ -1196,7 +1342,10 @@ describe('AppList', () => {
     it('should reset search results when clear icon is clicked', async () => {
       mockExploreData = {
         categories: ['Writing'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } })],
+        allList: [
+          createApp(),
+          createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } }),
+        ],
       }
       renderAppList()
 
@@ -1242,8 +1391,11 @@ describe('AppList', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
-      };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
+      }
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml',
+        mode: AppModeEnum.CHAT,
+      })
 
       renderAppList(true)
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
@@ -1261,11 +1413,19 @@ describe('AppList', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
-      };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+      }
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml',
+        mode: AppModeEnum.CHAT,
       })
+      mockHandleImportDSL.mockImplementation(
+        async (
+          _payload: unknown,
+          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+        ) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        },
+      )
 
       renderAppList(true)
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
@@ -1281,11 +1441,16 @@ describe('AppList', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
-      };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
-        options.onPending?.()
+      }
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml',
+        mode: AppModeEnum.CHAT,
       })
+      mockHandleImportDSL.mockImplementation(
+        async (_payload: unknown, options: { onPending?: () => void }) => {
+          options.onPending?.()
+        },
+      )
 
       renderAppList(true)
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
@@ -1327,11 +1492,19 @@ describe('AppList', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
-      };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+      }
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml',
+        mode: AppModeEnum.CHAT,
       })
+      mockHandleImportDSL.mockImplementation(
+        async (
+          _payload: unknown,
+          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+        ) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        },
+      )
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 

@@ -31,16 +31,12 @@ const BuiltinMarketplacePanel = ({
   keywords,
   tagFilterValue,
 }: BuiltinMarketplacePanelProps) => {
-  const {
-    isMarketplaceArrowVisible,
-    marketplaceContext,
-    showMarketplacePanel,
-    toolListTailRef,
-  } = useToolMarketplacePanel({
-    containerRef,
-    keywords,
-    tagFilterValue,
-  })
+  const { isMarketplaceArrowVisible, marketplaceContext, showMarketplacePanel, toolListTailRef } =
+    useToolMarketplacePanel({
+      containerRef,
+      keywords,
+      tagFilterValue,
+    })
 
   return (
     <>
@@ -120,10 +116,7 @@ const PluginsPanelResults = ({
         role={scrollAreaLabel ? 'region' : undefined}
       >
         <ScrollAreaContent
-          className={cn(
-            'flex min-h-full flex-col',
-            isAgentStrategyIntegrationPage && 'pt-2',
-          )}
+          className={cn('flex min-h-full flex-col', isAgentStrategyIntegrationPage && 'pt-2')}
         >
           {(hasVisiblePlugins || hasVisibleBuiltinTools) && (
             <List
@@ -138,7 +131,9 @@ const PluginsPanelResults = ({
                   type="button"
                   aria-pressed={currentBuiltinToolID === collection.id}
                   className="min-w-0 cursor-pointer appearance-none border-0 bg-transparent p-0 text-left"
-                  data-step-by-step-tour-target={filteredList.length === 0 && index === 0 ? firstBuiltinToolTarget : undefined}
+                  data-step-by-step-tour-target={
+                    filteredList.length === 0 && index === 0 ? firstBuiltinToolTarget : undefined
+                  }
                   onClick={() => setCurrentBuiltinToolID(collection.id)}
                 >
                   <IntegrationsToolProviderCard
@@ -152,13 +147,13 @@ const PluginsPanelResults = ({
           )}
           {!isLastPage && (
             <div className="flex w-full justify-center py-4">
-              {isFetching
-                ? <Loading className="size-8" />
-                : (
-                    <Button onClick={loadNextPage}>
-                      {t($ => $['common.loadMore'], { ns: 'workflow' })}
-                    </Button>
-                  )}
+              {isFetching ? (
+                <Loading className="size-8" />
+              ) : (
+                <Button onClick={loadNextPage}>
+                  {t(($) => $['common.loadMore'], { ns: 'workflow' })}
+                </Button>
+              )}
             </div>
           )}
           {hasToolMarketplacePanel && (
