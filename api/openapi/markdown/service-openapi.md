@@ -3609,7 +3609,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| datasource_info_list | [  ] | List of datasource objects to process. The expected item structure depends on `datasource_type`. | Yes |
+| datasource_info_list | [ object<br>object<br>object<br>object ] | List of datasource objects to process. The expected item structure depends on `datasource_type`. | Yes |
 | datasource_type | string, <br>**Available values:** "local_file", "online_document", "online_drive", "website_crawl" | Type of the datasource. Determines which fields are expected in `datasource_info_list` items.<br>*Enum:* `"local_file"`, `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
 | inputs | object | Key-value pairs for pipeline input variables defined in the workflow. Pass `{}` if the pipeline has no input variables. | Yes |
 | is_published | boolean | Whether to run the published or draft version of the pipeline. `true` runs the latest published version; `false` runs the current draft (useful for testing unpublished changes). | Yes |

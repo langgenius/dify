@@ -18669,7 +18669,7 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| invitation_results | [  ] |  | Yes |
+| invitation_results | [ [MemberInviteSuccessResponse](#memberinvitesuccessresponse)<br>[MemberInviteAlreadyMemberResponse](#memberinvitealreadymemberresponse)<br>[MemberInviteFailedResponse](#memberinvitefailedresponse) ] |  | Yes |
 | result | string |  | Yes |
 | tenant_id | string |  | Yes |
 
