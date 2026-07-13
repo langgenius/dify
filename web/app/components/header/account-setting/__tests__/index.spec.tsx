@@ -283,7 +283,11 @@ describe('AccountSetting', () => {
       expect(screen.queryByText('common.settings.dataSource'))!.not.toBeInTheDocument()
       expect(screen.queryByText('common.settings.customEndpoint'))!.not.toBeInTheDocument()
       expect(screen.getByText('custom.custom'))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'custom.custom' }).compareDocumentPosition(screen.getByRole('button', { name: 'appLog.archives.title' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+      expect(
+        screen
+          .getByRole('button', { name: 'custom.custom' })
+          .compareDocumentPosition(screen.getByRole('button', { name: 'appLog.archives.title' })),
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
       expect(screen.getByText('common.settings.preferences'))!.toBeInTheDocument()
     })
 
@@ -538,7 +542,9 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      expect(screen.queryByRole('button', { name: 'appLog.archives.title' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'appLog.archives.title' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should hide workflow log archives from custom RBAC roles that are not owner or admin', () => {
@@ -562,7 +568,9 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      expect(screen.queryByRole('button', { name: 'appLog.archives.title' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'appLog.archives.title' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should not render workflow log archives page outside cloud edition', () => {

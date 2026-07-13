@@ -176,10 +176,12 @@ describe('Logs', () => {
 
     render(
       <Logs
-        appDetail={{
-          id: 'app-4',
-          mode: AppModeEnum.CHAT,
-        } as any}
+        appDetail={
+          {
+            id: 'app-4',
+            mode: AppModeEnum.CHAT,
+          } as any
+        }
       />,
     )
 

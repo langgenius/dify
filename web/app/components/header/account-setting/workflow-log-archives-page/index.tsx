@@ -32,8 +32,7 @@ function formatNumber(value: number) {
 }
 
 function formatBytes(bytes: number) {
-  if (bytes <= 0)
-    return '0 B'
+  if (bytes <= 0) return '0 B'
 
   let value = bytes
   let unitIndex = 0
@@ -49,8 +48,7 @@ function formatMonth(year: number, month: number) {
 }
 
 function formatDate(value: string | null | undefined) {
-  if (!value)
-    return '-'
+  if (!value) return '-'
   return value.slice(0, 10)
 }
 
@@ -70,9 +68,11 @@ export default function WorkflowLogArchivesPage() {
   const [visibleArchiveMonthCount, setVisibleArchiveMonthCount] = useState(ARCHIVE_MONTH_PAGE_SIZE)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const canViewArchiveContent = IS_CLOUD_EDITION && enableBilling && plan.type !== Plan.sandbox
-  const archiveListQuery = useQuery(consoleQuery.workflowRunArchives.get.queryOptions({
-    enabled: canViewArchiveContent,
-  }))
+  const archiveListQuery = useQuery(
+    consoleQuery.workflowRunArchives.get.queryOptions({
+      enabled: canViewArchiveContent,
+    }),
+  )
   const archiveData = archiveListQuery.data
   const archiveMonths = archiveData?.months ?? []
   const visibleArchiveMonths = archiveMonths.slice(0, visibleArchiveMonthCount)
@@ -81,19 +81,21 @@ export default function WorkflowLogArchivesPage() {
   const hasMoreArchives = visibleArchiveMonths.length < archiveMonths.length
 
   useEffect(() => {
-    if (!hasMoreArchives)
-      return
+    if (!hasMoreArchives) return
 
     const loadMoreElement = loadMoreRef.current
-    if (!loadMoreElement)
-      return
+    if (!loadMoreElement) return
 
-    const observer = new IntersectionObserver((entries) => {
-      if (!entries[0]?.isIntersecting)
-        return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return
 
-      setVisibleArchiveMonthCount(count => Math.min(count + ARCHIVE_MONTH_PAGE_SIZE, archiveMonths.length))
-    }, { rootMargin: '120px' })
+        setVisibleArchiveMonthCount((count) =>
+          Math.min(count + ARCHIVE_MONTH_PAGE_SIZE, archiveMonths.length),
+        )
+      },
+      { rootMargin: '120px' },
+    )
     observer.observe(loadMoreElement)
 
     return () => observer.disconnect()
@@ -134,18 +136,21 @@ export default function WorkflowLogArchivesPage() {
     <div data-testid="workflow-log-archives-page" className="flex flex-col gap-4 pb-6">
       <div className="rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn p-2">
         <div className="grid grid-cols-2 gap-1 lg:grid-cols-4">
-          {summaryItems.map(item => (
-            <div key={item.label} className="flex min-h-[92px] flex-col gap-2 rounded-xl bg-components-panel-bg p-4">
+          {summaryItems.map((item) => (
+            <div
+              key={item.label}
+              className="flex min-h-[92px] flex-col gap-2 rounded-xl bg-components-panel-bg p-4"
+            >
               <span className={cn(item.icon, 'size-4 text-text-tertiary')} aria-hidden="true" />
               <div className="system-xs-medium text-text-tertiary">{item.label}</div>
               <div className="flex min-h-6 items-center">
-                {isLoading
-                  ? (
-                      <SkeletonRectangle className="h-5 w-20 animate-pulse rounded-md" />
-                    )
-                  : (
-                      <div className="system-md-semibold whitespace-nowrap text-text-primary">{item.value}</div>
-                    )}
+                {isLoading ? (
+                  <SkeletonRectangle className="h-5 w-20 animate-pulse rounded-md" />
+                ) : (
+                  <div className="system-md-semibold whitespace-nowrap text-text-primary">
+                    {item.value}
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -155,7 +160,12 @@ export default function WorkflowLogArchivesPage() {
       <div className="overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs">
         <div className="overflow-x-auto">
           <div className="min-w-[460px]">
-            <div className={cn('grid h-8 items-center gap-3 border-b border-divider-subtle bg-background-section-burn px-4 system-xs-medium-uppercase text-text-tertiary', tableGridClassName)}>
+            <div
+              className={cn(
+                'grid h-8 items-center gap-3 border-b border-divider-subtle bg-background-section-burn px-4 system-xs-medium-uppercase text-text-tertiary',
+                tableGridClassName,
+              )}
+            >
               <div className="text-center">{t('archives.table.month', { ns: 'appLog' })}</div>
               <div className="text-center">{t('archives.table.runs', { ns: 'appLog' })}</div>
               <div className="text-center">{t('archives.table.size', { ns: 'appLog' })}</div>
@@ -163,45 +173,68 @@ export default function WorkflowLogArchivesPage() {
             </div>
             {isLoading && (
               <>
-                {['first', 'second', 'third'].map(key => (
+                {['first', 'second', 'third'].map((key) => (
                   <div
                     key={key}
-                    className={cn('grid min-h-15 items-center gap-3 border-b border-divider-subtle px-4 py-3 last:border-b-0', tableGridClassName)}
+                    className={cn(
+                      'grid min-h-15 items-center gap-3 border-b border-divider-subtle px-4 py-3 last:border-b-0',
+                      tableGridClassName,
+                    )}
                   >
-                    <div className="flex justify-center"><SkeletonRectangle className="h-4 w-16 animate-pulse" /></div>
-                    <div className="flex justify-center"><SkeletonRectangle className="h-4 w-16 animate-pulse" /></div>
-                    <div className="flex justify-center"><SkeletonRectangle className="h-4 w-14 animate-pulse" /></div>
-                    <div className="flex justify-center"><SkeletonRectangle className="h-8 w-24 animate-pulse rounded-lg" /></div>
+                    <div className="flex justify-center">
+                      <SkeletonRectangle className="h-4 w-16 animate-pulse" />
+                    </div>
+                    <div className="flex justify-center">
+                      <SkeletonRectangle className="h-4 w-16 animate-pulse" />
+                    </div>
+                    <div className="flex justify-center">
+                      <SkeletonRectangle className="h-4 w-14 animate-pulse" />
+                    </div>
+                    <div className="flex justify-center">
+                      <SkeletonRectangle className="h-8 w-24 animate-pulse rounded-lg" />
+                    </div>
                   </div>
                 ))}
               </>
             )}
             {!isLoading && archiveListQuery.isError && (
               <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 text-center">
-                <span className="i-ri-error-warning-line size-6 text-text-tertiary" aria-hidden="true" />
-                <div className="system-sm-semibold text-text-secondary">{t('archives.error.title', { ns: 'appLog' })}</div>
-                <div className="system-xs-regular text-text-tertiary">{t('archives.error.description', { ns: 'appLog' })}</div>
+                <span
+                  className="i-ri-error-warning-line size-6 text-text-tertiary"
+                  aria-hidden="true"
+                />
+                <div className="system-sm-semibold text-text-secondary">
+                  {t('archives.error.title', { ns: 'appLog' })}
+                </div>
+                <div className="system-xs-regular text-text-tertiary">
+                  {t('archives.error.description', { ns: 'appLog' })}
+                </div>
               </div>
             )}
             {!isLoading && !archiveListQuery.isError && archiveMonths.length === 0 && (
               <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 text-center">
                 <span className="i-ri-archive-line size-6 text-text-tertiary" aria-hidden="true" />
-                <div className="system-sm-semibold text-text-secondary">{t('archives.empty.title', { ns: 'appLog' })}</div>
-                <div className="system-xs-regular text-text-tertiary">{t('archives.empty.description', { ns: 'appLog' })}</div>
+                <div className="system-sm-semibold text-text-secondary">
+                  {t('archives.empty.title', { ns: 'appLog' })}
+                </div>
+                <div className="system-xs-regular text-text-tertiary">
+                  {t('archives.empty.description', { ns: 'appLog' })}
+                </div>
               </div>
             )}
-            {!isLoading && !archiveListQuery.isError && visibleArchiveMonths.map((archive) => {
-              const archiveMonth = formatMonth(archive.year, archive.month)
+            {!isLoading &&
+              !archiveListQuery.isError &&
+              visibleArchiveMonths.map((archive) => {
+                const archiveMonth = formatMonth(archive.year, archive.month)
 
-              return (
-                <WorkflowArchiveMonthRow
-                  key={archiveMonth}
-                  archive={archive}
-                />
-              )
-            })}
+                return <WorkflowArchiveMonthRow key={archiveMonth} archive={archive} />
+              })}
             {!isLoading && !archiveListQuery.isError && hasMoreArchives && (
-              <div ref={loadMoreRef} className="flex h-10 items-center justify-center border-t border-divider-subtle bg-components-card-bg" aria-hidden="true">
+              <div
+                ref={loadMoreRef}
+                className="flex h-10 items-center justify-center border-t border-divider-subtle bg-components-card-bg"
+                aria-hidden="true"
+              >
                 <SkeletonRectangle className="h-4 w-20 animate-pulse rounded-md" />
               </div>
             )}
@@ -220,7 +253,9 @@ function ArchivedLogsUpgradeBanner() {
     <div className="flex flex-col gap-4 rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs sm:flex-row sm:items-center sm:justify-between">
       <div className="space-y-1 text-text-primary-on-surface">
         <div className="title-xl-semi-bold">{t('archives.upgradeTip.title', { ns: 'appLog' })}</div>
-        <div className="system-sm-regular">{t('archives.upgradeTip.description', { ns: 'appLog' })}</div>
+        <div className="system-sm-regular">
+          {t('archives.upgradeTip.description', { ns: 'appLog' })}
+        </div>
       </div>
       <button
         type="button"
@@ -235,24 +270,31 @@ function ArchivedLogsUpgradeBanner() {
 
 function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonthResponse }) {
   const { t } = useTranslation()
-  const [downloadTask, setDownloadTask] = useState<WorkflowRunArchiveDownloadTaskResponse | null>(null)
+  const [downloadTask, setDownloadTask] = useState<WorkflowRunArchiveDownloadTaskResponse | null>(
+    null,
+  )
   const archiveMonth = formatMonth(archive.year, archive.month)
   const cachedTask = downloadTask ?? archive.download_task ?? null
   const downloadTaskId = cachedTask?.download_id
-  const taskQuery = useQuery(consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryOptions({
-    input: downloadTaskId
-      ? {
-          params: {
-            download_id: downloadTaskId,
-          },
-        }
-      : skipToken,
-    enabled: !!downloadTaskId && isPreparingStatus(cachedTask?.status),
-    refetchInterval: query => isPreparingStatus(query.state.data?.status ?? cachedTask?.status)
-      ? DOWNLOAD_TASK_POLLING_INTERVAL
-      : false,
-  }))
-  const createDownloadMutation = useMutation(consoleQuery.workflowRunArchives.downloads.post.mutationOptions())
+  const taskQuery = useQuery(
+    consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryOptions({
+      input: downloadTaskId
+        ? {
+            params: {
+              download_id: downloadTaskId,
+            },
+          }
+        : skipToken,
+      enabled: !!downloadTaskId && isPreparingStatus(cachedTask?.status),
+      refetchInterval: (query) =>
+        isPreparingStatus(query.state.data?.status ?? cachedTask?.status)
+          ? DOWNLOAD_TASK_POLLING_INTERVAL
+          : false,
+    }),
+  )
+  const createDownloadMutation = useMutation(
+    consoleQuery.workflowRunArchives.downloads.post.mutationOptions(),
+  )
   const currentTask = taskQuery.data ?? cachedTask
   const isPreparing = createDownloadMutation.isPending || isPreparingStatus(currentTask?.status)
   const isReady = currentTask?.status === 'ready'
@@ -269,40 +311,41 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
         : t('archives.downloadHint.prepare', { ns: 'appLog' })
 
   const prepareDownload = () => {
-    if (createDownloadMutation.isPending)
-      return
+    if (createDownloadMutation.isPending) return
 
-    createDownloadMutation.mutate({
-      body: {
-        year: archive.year,
-        month: archive.month,
+    createDownloadMutation.mutate(
+      {
+        body: {
+          year: archive.year,
+          month: archive.month,
+        },
       },
-    }, {
-      onSuccess: (task) => {
-        setDownloadTask(task)
-        const messageKey = task.status === 'ready' ? 'archives.action.downloadReady' : 'archives.action.prepareStarted'
-        toast.success(t(messageKey, { ns: 'appLog' }))
+      {
+        onSuccess: (task) => {
+          setDownloadTask(task)
+          const messageKey =
+            task.status === 'ready'
+              ? 'archives.action.downloadReady'
+              : 'archives.action.prepareStarted'
+          toast.success(t(messageKey, { ns: 'appLog' }))
+        },
+        onError: () => {
+          toast.error(t('archives.action.prepareFailed', { ns: 'appLog' }))
+        },
       },
-      onError: () => {
-        toast.error(t('archives.action.prepareFailed', { ns: 'appLog' }))
-      },
-    })
+    )
   }
 
   const downloadArchive = () => {
-    if (!currentTask || currentTask.status !== 'ready')
-      return
+    if (!currentTask || currentTask.status !== 'ready') return
 
     globalThis.location.assign(buildArchiveDownloadFileUrl(currentTask.download_id))
   }
 
   const buttonContent = (() => {
-    if (isPreparing)
-      return t('archives.action.preparing', { ns: 'appLog' })
-    if (isReady)
-      return t('operation.download', { ns: 'common' })
-    if (isFailed)
-      return t('operation.retry', { ns: 'common' })
+    if (isPreparing) return t('archives.action.preparing', { ns: 'appLog' })
+    if (isReady) return t('operation.download', { ns: 'common' })
+    if (isFailed) return t('operation.retry', { ns: 'common' })
     return t('archives.action.prepareDownload', { ns: 'appLog' })
   })()
 
@@ -314,17 +357,24 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
 
   return (
     <div
-      className={cn('grid min-h-15 items-center gap-3 border-b border-divider-subtle px-4 py-3 last:border-b-0', tableGridClassName)}
+      className={cn(
+        'grid min-h-15 items-center gap-3 border-b border-divider-subtle px-4 py-3 last:border-b-0',
+        tableGridClassName,
+      )}
     >
       <div className="min-w-0 text-center">
         <span className="truncate system-sm-semibold text-text-primary">{archiveMonth}</span>
       </div>
-      <div className="text-center system-sm-medium text-text-secondary tabular-nums">{formatNumber(archive.workflow_run_count)}</div>
-      <div className="text-center system-sm-medium text-text-secondary tabular-nums">{formatBytes(archive.archive_bytes)}</div>
+      <div className="text-center system-sm-medium text-text-secondary tabular-nums">
+        {formatNumber(archive.workflow_run_count)}
+      </div>
+      <div className="text-center system-sm-medium text-text-secondary tabular-nums">
+        {formatBytes(archive.archive_bytes)}
+      </div>
       <div className="flex min-w-0 justify-center">
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <Button
                 size="small"
                 variant="secondary"
@@ -334,10 +384,12 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                 aria-label={buttonAriaLabel}
                 onClick={onAction}
               >
-                {!isPreparing && <span className={cn(buttonIconClassName, 'size-3.5')} aria-hidden="true" />}
+                {!isPreparing && (
+                  <span className={cn(buttonIconClassName, 'size-3.5')} aria-hidden="true" />
+                )}
                 {buttonContent}
               </Button>
-            )}
+            }
           />
           <TooltipContent
             placement="top"

@@ -95,5 +95,5 @@ export const zGetWorkflowRunArchivesDownloadsByDownloadIdPath = z.object({
 /**
  * Success
  */
-export const zGetWorkflowRunArchivesDownloadsByDownloadIdResponse
-  = zWorkflowRunArchiveDownloadTaskResponse
+export const zGetWorkflowRunArchivesDownloadsByDownloadIdResponse =
+  zWorkflowRunArchiveDownloadTaskResponse

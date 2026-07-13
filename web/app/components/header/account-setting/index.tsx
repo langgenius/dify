@@ -70,7 +70,10 @@ export default function AccountSetting({
   const activeMenu = (() => {
     if (normalizedActiveTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
       return ACCOUNT_SETTING_TAB.PREFERENCES
-    if (normalizedActiveTab === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && !canViewWorkflowLogArchives)
+    if (
+      normalizedActiveTab === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES &&
+      !canViewWorkflowLogArchives
+    )
       return ACCOUNT_SETTING_TAB.MEMBERS
     if (
       (normalizedActiveTab === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS ||
@@ -164,8 +167,7 @@ export default function AccountSetting({
 
     if (enableReplaceWebAppLogo || enableBilling) visibleTabs.push(ACCOUNT_SETTING_TAB.CUSTOM)
 
-    if (canViewWorkflowLogArchives)
-      visibleTabs.push(ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES)
+    if (canViewWorkflowLogArchives) visibleTabs.push(ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES)
 
     return visibleTabs
       .map((tab) => settingItems.find((item) => item.key === tab))
@@ -293,7 +295,9 @@ export default function AccountSetting({
               )}
               {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && <WorkflowLogArchivesPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
+                <WorkflowLogArchivesPage />
+              )}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}

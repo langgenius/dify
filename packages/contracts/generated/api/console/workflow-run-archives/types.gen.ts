@@ -62,8 +62,8 @@ export type GetWorkflowRunArchivesResponses = {
   200: WorkflowRunArchiveListResponse
 }
 
-export type GetWorkflowRunArchivesResponse
-  = GetWorkflowRunArchivesResponses[keyof GetWorkflowRunArchivesResponses]
+export type GetWorkflowRunArchivesResponse =
+  GetWorkflowRunArchivesResponses[keyof GetWorkflowRunArchivesResponses]
 
 export type PostWorkflowRunArchivesDownloadsData = {
   body: WorkflowRunArchiveDownloadPayload
@@ -76,8 +76,8 @@ export type PostWorkflowRunArchivesDownloadsResponses = {
   202: WorkflowRunArchiveDownloadTaskResponse
 }
 
-export type PostWorkflowRunArchivesDownloadsResponse
-  = PostWorkflowRunArchivesDownloadsResponses[keyof PostWorkflowRunArchivesDownloadsResponses]
+export type PostWorkflowRunArchivesDownloadsResponse =
+  PostWorkflowRunArchivesDownloadsResponses[keyof PostWorkflowRunArchivesDownloadsResponses]
 
 export type GetWorkflowRunArchivesDownloadsByDownloadIdData = {
   body?: never
@@ -92,5 +92,5 @@ export type GetWorkflowRunArchivesDownloadsByDownloadIdResponses = {
   200: WorkflowRunArchiveDownloadTaskResponse
 }
 
-export type GetWorkflowRunArchivesDownloadsByDownloadIdResponse
-  = GetWorkflowRunArchivesDownloadsByDownloadIdResponses[keyof GetWorkflowRunArchivesDownloadsByDownloadIdResponses]
+export type GetWorkflowRunArchivesDownloadsByDownloadIdResponse =
+  GetWorkflowRunArchivesDownloadsByDownloadIdResponses[keyof GetWorkflowRunArchivesDownloadsByDownloadIdResponses]

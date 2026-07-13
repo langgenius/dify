@@ -71,7 +71,10 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   })
   const total = workflowLogs?.total
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
-  const showArchivedLogsNotice = shouldShowArchivedLogsNotice(queryParams.period, TIME_PERIOD_MAPPING)
+  const showArchivedLogsNotice = shouldShowArchivedLogsNotice(
+    queryParams.period,
+    TIME_PERIOD_MAPPING,
+  )
 
   return (
     <div className="flex h-full flex-col">

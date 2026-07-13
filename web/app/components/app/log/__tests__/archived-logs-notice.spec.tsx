@@ -32,7 +32,8 @@ vi.mock('@/context/app-context-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -56,13 +57,15 @@ const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseModalContextSelector = vi.mocked(useModalContextSelector)
 
 function mockProviderPlan(planType: Plan) {
-  mockUseProviderContext.mockReturnValue(createMockProviderContextValue({
-    enableBilling: true,
-    plan: {
-      ...defaultPlan,
-      type: planType,
-    },
-  }))
+  mockUseProviderContext.mockReturnValue(
+    createMockProviderContextValue({
+      enableBilling: true,
+      plan: {
+        ...defaultPlan,
+        type: planType,
+      },
+    }),
+  )
 }
 
 describe('ArchivedLogsNotice', () => {
@@ -74,7 +77,7 @@ describe('ArchivedLogsNotice', () => {
       isCurrentWorkspaceManager: true,
     }
     mockProviderPlan(Plan.professional)
-    mockUseModalContextSelector.mockImplementation(selector =>
+    mockUseModalContextSelector.mockImplementation((selector) =>
       selector({
         setShowAccountSettingModal,
       } as unknown as Parameters<typeof selector>[0]),

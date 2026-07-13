@@ -2,7 +2,10 @@ import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import {
+  createTestQueryClient,
+  renderWithSystemFeatures,
+} from '@/__tests__/utils/mock-system-features'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import { useModalContext } from '@/context/modal-context'
@@ -59,13 +62,15 @@ const archiveData: GetWorkflowRunArchivesResponse = {
 }
 
 function mockPlan(planType: Plan.sandbox | Plan.professional) {
-  mockUseProviderContext.mockReturnValue(createMockProviderContextValue({
-    enableBilling: true,
-    plan: {
-      ...defaultPlan,
-      type: planType,
-    },
-  }))
+  mockUseProviderContext.mockReturnValue(
+    createMockProviderContextValue({
+      enableBilling: true,
+      plan: {
+        ...defaultPlan,
+        type: planType,
+      },
+    }),
+  )
 }
 
 function renderPage() {
