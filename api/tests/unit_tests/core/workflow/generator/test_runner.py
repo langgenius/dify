@@ -1944,11 +1944,10 @@ class TestWorkflowGeneratorStructuredErrors:
         codes = [e["code"] for e in result["errors"]]
         assert "MISSING_TERMINAL" in codes
 
-    def test_validator_emits_unresolved_reference_for_non_start_node(self):
-        # The LLM node tries to reference a key the CODE node never declares
-        # (its ``outputs`` dict only has ``summary``, not ``mystery``). The
-        # postprocess only auto-injects MISSING ``start`` vars, so the
-        # validator must surface non-start unresolved refs.
+    def test_repairs_unresolved_reference_when_source_has_one_output(self):
+        # The LLM node references a key the CODE node never declares, but the
+        # source exposes exactly one output. Postprocessing can therefore
+        # repair the selector without guessing or changing the graph shape.
         planner = self._planner(
             [
                 {"label": "Start", "node_type": "start", "purpose": "x"},
@@ -1987,7 +1986,11 @@ class TestWorkflowGeneratorStructuredErrors:
                     "id": "node4",
                     "type": "custom",
                     "position": {"x": 0, "y": 0},
-                    "data": {"type": "end", "title": "End"},
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        "outputs": [{"variable": "out", "value_selector": ["node2", "mystery"]}],
+                    },
                 },
             ],
             edges=[
@@ -2007,11 +2010,43 @@ class TestWorkflowGeneratorStructuredErrors:
             mode="workflow",
             instruction="x",
         )
-        codes = [e["code"] for e in result["errors"]]
-        assert "UNRESOLVED_REFERENCE" in codes
-        # Detail should mention the offending key so the user can find it.
-        unresolved = next(e for e in result["errors"] if e["code"] == "UNRESOLVED_REFERENCE")
-        assert "mystery" in unresolved["detail"]
+        assert result["error"] == ""
+        llm_node = next(node for node in result["graph"]["nodes"] if node["id"] == "node3")
+        assert llm_node["data"]["prompt_template"][0]["text"] == "Look at {{#node2.summary#}}."
+        end_node = next(node for node in result["graph"]["nodes"] if node["id"] == "node4")
+        assert end_node["data"]["outputs"][0]["value_selector"] == ["node2", "summary"]
+
+    def test_keeps_unresolved_reference_when_source_outputs_are_ambiguous(self):
+        nodes = [
+            {
+                "id": "node2",
+                "data": {
+                    "type": "code",
+                    "outputs": {
+                        "summary": {"type": "string"},
+                        "details": {"type": "string"},
+                    },
+                },
+            },
+            {
+                "id": "node3",
+                "data": {
+                    "type": "llm",
+                    "prompt_template": [{"role": "user", "text": "Look at {{#node2.mystery#}}."}],
+                },
+            },
+        ]
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow")
+        assert errors == [
+            {
+                "code": "UNRESOLVED_REFERENCE",
+                "detail": "Reference {#node2.mystery#} not declared on node 'node2'",
+                "node_id": "node2",
+            }
+        ]
 
     def test_planner_json_failure_retries_once_then_recovers(self):
         # First planner response is non-JSON (the LLM wrapped the response in

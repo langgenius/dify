@@ -15,7 +15,7 @@ Pipeline:
 Intentionally NOT here (deferred to a future iteration):
 
     - Mermaid rendering
-    - Heuristic node/edge auto-repair beyond default fill
+    - Broad semantic auto-repair when multiple valid graph interpretations exist
     - Multi-step validation engine with classification of fixable vs. user-required errors
     - Tool / model catalogue filtering
 
@@ -719,7 +719,7 @@ class WorkflowGenerator:
     # ------------------------------------------------------------------
     @classmethod
     def _postprocess_graph(cls, *, graph: GraphDict, mode: WorkflowGenerationMode) -> GraphDict:
-        """Fill safe defaults, normalise positions and dedupe edges."""
+        """Fill safe defaults and apply only deterministic graph repairs."""
 
         # Internally treat nodes/edges as untyped dicts — TypedDicts forbid the
         # arbitrary-key setdefault writes we need here, but the caller only sees
@@ -835,7 +835,9 @@ class WorkflowGenerator:
         # fails at run time with "variable not found". The dominant failure
         # mode is a prompt that references ``{#start.url#}`` when the start
         # node has ``variables: []``, so we auto-inject missing start-node
-        # variables before we surface them as errors.
+        # variables. We also repair a mistaken output name when its source
+        # exposes exactly one valid output; ambiguous references still fail
+        # closed in the structural validator.
         cls._reconcile_variable_references(nodes=nodes, mode=mode)
 
         # Schema backstop: a "file" / "file-list" start variable MUST carry a
@@ -903,9 +905,13 @@ class WorkflowGenerator:
     @classmethod
     def _reconcile_variable_references(cls, *, nodes: list[dict[str, Any]], mode: WorkflowGenerationMode) -> None:
         """
-        Walk every variable reference, ensure it resolves; auto-fix missing
-        start-node variables (the safe, dominant case) by adding a stub
-        ``paragraph`` entry to ``start.data.variables``.
+        Apply deterministic repairs to unresolved variable references.
+
+        Missing start-node inputs are added as ``paragraph`` variables. For
+        non-start nodes, a mistaken output name is rewritten only when the
+        source exposes exactly one declared output. Sources with zero or
+        multiple outputs remain untouched so validation fails closed instead
+        of guessing which value the workflow should consume.
 
         For Advanced-Chat mode, ``sys.query`` and ``sys.files`` are always
         treated as resolved without any declaration. Tool nodes' parameter
@@ -934,12 +940,76 @@ class WorkflowGenerator:
                 continue
             if cls._declares_variable(target, var):
                 continue
-            # Missing variable. Auto-fix start-node references; let everything
-            # else fall through and surface in the result's ``error`` field
-            # via the post-postprocess validator below.
             if start_node is not None and target is start_node:
                 cls._inject_start_variable(start_node, var)
                 logger.info("Workflow generator: auto-injected missing start variable %r", var)
+                continue
+
+            replacement = cls._sole_declared_variable(target)
+            if replacement is None:
+                continue
+            for node in nodes:
+                data = node.get("data")
+                if isinstance(data, dict):
+                    cls._rewrite_variable_reference_in_data(
+                        data,
+                        node_id=node_id,
+                        old_variable=var,
+                        new_variable=replacement,
+                    )
+            logger.info(
+                "Workflow generator: rewrote unresolved reference %s.%s to sole output %s.%s",
+                node_id,
+                var,
+                node_id,
+                replacement,
+            )
+
+    @classmethod
+    def _rewrite_variable_reference_in_data(
+        cls,
+        value: Any,
+        *,
+        node_id: str,
+        old_variable: str,
+        new_variable: str,
+    ) -> Any:
+        """Rewrite one exact placeholder or selector reference recursively."""
+        if isinstance(value, str):
+            return cls._VAR_REF_RE.sub(
+                lambda match: (
+                    f"{{{{#{node_id}.{new_variable}#}}}}"
+                    if match.group(1) == node_id and match.group(2) == old_variable
+                    else match.group(0)
+                ),
+                value,
+            )
+        if isinstance(value, dict):
+            for key, item in list(value.items()):
+                if (
+                    isinstance(item, list)
+                    and len(item) == 2
+                    and item == [node_id, old_variable]
+                    and key not in cls._NON_SELECTOR_LIST_KEYS
+                ):
+                    value[key] = [node_id, new_variable]
+                    continue
+                value[key] = cls._rewrite_variable_reference_in_data(
+                    item,
+                    node_id=node_id,
+                    old_variable=old_variable,
+                    new_variable=new_variable,
+                )
+            return value
+        if isinstance(value, list):
+            for index, item in enumerate(value):
+                value[index] = cls._rewrite_variable_reference_in_data(
+                    item,
+                    node_id=node_id,
+                    old_variable=old_variable,
+                    new_variable=new_variable,
+                )
+        return value
 
     @classmethod
     def _collect_refs_in_data(cls, value: Any, out: set[tuple[str, str]]) -> None:
@@ -1021,6 +1091,37 @@ class WorkflowGenerator:
         # Other node types (if-else, iteration-start, loop-start, ...) don't
         # produce outputs of their own.
         return False
+
+    @classmethod
+    def _sole_declared_variable(cls, node: dict[str, Any]) -> str | None:
+        """Return the only output exposed by ``node``, or ``None`` when ambiguous."""
+        data = node.get("data") or {}
+        node_type = data.get("type")
+        if node_type == BuiltinNodeTypes.LLM:
+            schema = ((data.get("structured_output") or {}).get("schema") or {}).get("properties") or {}
+            return "text" if not schema else None
+        if node_type == BuiltinNodeTypes.CODE:
+            outputs = [key for key in (data.get("outputs") or {}) if isinstance(key, str)]
+            return outputs[0] if len(outputs) == 1 else None
+        if node_type == BuiltinNodeTypes.PARAMETER_EXTRACTOR:
+            parameters = [
+                parameter.get("name")
+                for parameter in (data.get("parameters") or [])
+                if isinstance(parameter, dict) and isinstance(parameter.get("name"), str)
+            ]
+            return parameters[0] if len(parameters) == 1 else None
+        if not isinstance(node_type, str):
+            return None
+        single_output_by_type: dict[str, str] = {
+            BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: "result",
+            BuiltinNodeTypes.TEMPLATE_TRANSFORM: "output",
+            BuiltinNodeTypes.ITERATION: "output",
+            BuiltinNodeTypes.LOOP: "output",
+            BuiltinNodeTypes.DOCUMENT_EXTRACTOR: "text",
+            BuiltinNodeTypes.VARIABLE_AGGREGATOR: "output",
+            BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR: "output",
+        }
+        return single_output_by_type.get(node_type)
 
     @classmethod
     def _sanitize_node_ids(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
@@ -1690,8 +1791,9 @@ class WorkflowGenerator:
         """
         Walk every variable reference and flag anything pointing at a node
         that doesn't declare it. The postprocess step has already
-        auto-injected missing start-node variables, so by the time this
-        runs only NON-start references should ever fail.
+        auto-injected missing start-node variables and repaired references to
+        sole outputs, so by the time this runs only ambiguous or impossible
+        references should fail.
         """
         out: list[WorkflowGenerateErrorDict] = []
         by_id: dict[str, dict[str, Any]] = {n.get("id", ""): n for n in nodes if n.get("id")}
