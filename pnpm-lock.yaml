@@ -336,9 +336,6 @@ catalogs:
     eslint-plugin-antfu:
       specifier: 3.2.3
       version: 3.2.3
-    eslint-plugin-better-tailwindcss:
-      specifier: 4.6.1
-      version: 4.6.1
     eslint-plugin-command:
       specifier: 3.5.2
       version: 3.5.2
@@ -707,9 +704,6 @@ importers:
       eslint-plugin-antfu:
         specifier: 'catalog:'
         version: 3.2.3(eslint@10.6.0(jiti@2.7.0)(supports-color@10.2.2))
-      eslint-plugin-better-tailwindcss:
-        specifier: 'catalog:'
-        version: 4.6.1(@typescript/typescript6@6.0.2)(eslint@10.6.0(jiti@2.7.0)(supports-color@10.2.2))(oxlint@1.72.0(oxlint-tsgolint@0.24.0)(vite-plus@0.2.4(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.4(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.10.6)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0)))(tailwindcss@4.3.2)
       eslint-plugin-command:
         specifier: 'catalog:'
         version: 3.5.2(@typescript-eslint/typescript-estree@8.63.0(@typescript/typescript6@6.0.2))(@typescript-eslint/utils@8.63.0(@typescript/typescript6@6.0.2)(eslint@10.6.0(jiti@2.7.0)(supports-color@10.2.2)))(eslint@10.6.0(jiti@2.7.0)(supports-color@10.2.2))
@@ -6373,19 +6367,6 @@ packages:
     resolution: {integrity: sha512-U2fnz/H0gFPxpuC7QpaHa0Jv2AgCZ5hunp36SOP/yWo8yFzgvMh8X4pZ4uN4IKoqtBhk7G3HuVa93Urf51+sZg==}
     peerDependencies:
       eslint: '*'
-
-  eslint-plugin-better-tailwindcss@4.6.1:
-    resolution: {integrity: sha512-Lr8mPyuaZ+dS6ATuJaPwcOFOpOUsRBs5TXyOPqiTzLy0SvK4+0G6usbklCuQn4QabwFtNKdSXwl2WxOIPvu0lQ==}
-    engines: {node: ^20.19.0 || ^22.12.0 || >=23.0.0}
-    peerDependencies:
-      eslint: ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0
-      oxlint: ^1.35.0
-      tailwindcss: ^3.3.0 || ^4.1.17
-    peerDependenciesMeta:
-      eslint:
-        optional: true
-      oxlint:
-        optional: true
 
   eslint-plugin-command@3.5.2:
     resolution: {integrity: sha512-PA59QAkQDwvcCMEt5lYLJLI3zDGVKJeC4id/pcRY2XdRYhSGW7iyYT1VC1N3bmpuvu6Qb/9QptiS3GJMjeGTJg==}
@@ -14628,24 +14609,6 @@ snapshots:
     dependencies:
       eslint: 10.6.0(jiti@2.7.0)(supports-color@10.2.2)
 
-  eslint-plugin-better-tailwindcss@4.6.1(@typescript/typescript6@6.0.2)(eslint@10.6.0(jiti@2.7.0)(supports-color@10.2.2))(oxlint@1.72.0(oxlint-tsgolint@0.24.0)(vite-plus@0.2.4(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.4(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.10.6)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0)))(tailwindcss@4.3.2):
-    dependencies:
-      '@eslint/css-tree': 4.0.4
-      '@valibot/to-json-schema': 1.7.1(valibot@1.4.2(@typescript/typescript6@6.0.2))
-      enhanced-resolve: 5.24.1
-      jiti: 2.7.0
-      synckit: 0.11.13
-      tailwind-csstree: 0.3.3
-      tailwindcss: 4.3.2
-      tsconfig-paths-webpack-plugin: 4.2.0
-      valibot: 1.4.2(@typescript/typescript6@6.0.2)
-    optionalDependencies:
-      eslint: 10.6.0(jiti@2.7.0)(supports-color@10.2.2)
-      oxlint: 1.72.0(oxlint-tsgolint@0.24.0)(vite-plus@0.2.4(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.4(@types/node@26.0.1)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.10.6)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
-    transitivePeerDependencies:
-      - '@eslint/css'
-      - typescript
-
   eslint-plugin-command@3.5.2(@typescript-eslint/typescript-estree@8.63.0(@typescript/typescript6@6.0.2))(@typescript-eslint/utils@8.63.0(@typescript/typescript6@6.0.2)(eslint@10.6.0(jiti@2.7.0)(supports-color@10.2.2)))(eslint@10.6.0(jiti@2.7.0)(supports-color@10.2.2)):
     dependencies:
       '@es-joy/jsdoccomment': 0.84.0
@@ -19339,7 +19302,6 @@ time:
   es-toolkit@1.49.0: '2026-06-26T00:26:01.050Z'
   eslint-markdown@0.12.1: '2026-07-10T23:35:26.055Z'
   eslint-plugin-antfu@3.2.3: '2026-05-11T02:24:38.348Z'
-  eslint-plugin-better-tailwindcss@4.6.1: '2026-07-03T15:13:24.013Z'
   eslint-plugin-command@3.5.2: '2026-02-25T04:29:02.155Z'
   eslint-plugin-erasable-syntax-only@0.4.2: '2026-06-18T00:56:01.038Z'
   eslint-plugin-hyoban@0.14.1: '2026-03-08T02:51:00.805Z'

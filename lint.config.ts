@@ -2,8 +2,6 @@ import type { OxlintConfig } from 'vite-plus/lint'
 import path from 'node:path'
 
 const rootDir = import.meta.dirname
-const webDir = path.resolve(rootDir, 'web')
-const webTailwindEntry = path.resolve(webDir, 'app/styles/globals.css')
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
 
 /**
@@ -81,10 +79,6 @@ export const lintConfig = {
     'eslint-plugin-no-barrel-files',
     '@tanstack/eslint-plugin-query',
     'eslint-plugin-storybook',
-    {
-      name: 'tailwindcss',
-      specifier: 'eslint-plugin-better-tailwindcss',
-    },
     'eslint-plugin-hyoban',
   ],
   options: {
@@ -94,10 +88,6 @@ export const lintConfig = {
     typeCheck: true,
   },
   settings: {
-    'better-tailwindcss': {
-      cwd: webDir,
-      entryPoint: webTailwindEntry,
-    },
     'react-x': {
       additionalStateHooks: '/^use\\w*State(?:s)?|useAtom$/u',
     },
@@ -829,14 +819,6 @@ export const lintConfig = {
       rules: {
         'storybook/no-uninstalled-addons': 'error',
       },
-    },
-    {
-      files: ['web/**/*.{ts,cts,mts}', 'web/**/*.tsx'],
-      rules: {
-        'tailwindcss/no-duplicate-classes': 'error',
-        'tailwindcss/no-unknown-classes': 'warn',
-      },
-      excludeFiles: ['web/**/__tests__/**', 'web/**/*.spec.{ts,tsx}', 'web/**/*.test.{ts,tsx}'],
     },
     {
       files: ['web/**/*.tsx'],

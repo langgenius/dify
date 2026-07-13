@@ -27,7 +27,6 @@
     "eslint": "catalog:",
     "eslint-markdown": "catalog:",
     "eslint-plugin-antfu": "catalog:",
-    "eslint-plugin-better-tailwindcss": "catalog:",
     "eslint-plugin-command": "catalog:",
     "eslint-plugin-erasable-syntax-only": "catalog:",
     "eslint-plugin-hyoban": "catalog:",
