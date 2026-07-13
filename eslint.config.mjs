@@ -12,6 +12,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 import dify from './web/plugins/eslint/index.js'
 
 const codeFiles = '**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'
+const mdPlugin = /** @type {import('eslint').ESLint.Plugin} */ (/** @type {unknown} */ (md))
 
 /**
  * Migration tradeoff: ESLint is intentionally restricted to non-code files.
@@ -385,7 +386,7 @@ export default defineConfig([
     plugins: {
       markdown,
       'markdown-preferences': markdownPreferences,
-      md,
+      md: mdPlugin,
     },
     rules: {
       'markdown/fenced-code-language': 'off',
