@@ -257,7 +257,7 @@ export function EmailRecipientsField({
           }
           value={draft}
           className={cn(
-            'h-6 flex-1 rounded-none border-0 bg-transparent p-0 shadow-none hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none data-invalid:border-transparent data-invalid:bg-transparent',
+            'h-6 w-0 flex-1 rounded-none border-0 bg-transparent p-0 shadow-none hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none disabled:bg-transparent disabled:hover:bg-transparent data-invalid:border-transparent data-invalid:bg-transparent',
             recipients.length > 0 ? 'min-w-12' : 'min-w-40',
           )}
           onChange={(event) => {
