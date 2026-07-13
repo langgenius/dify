@@ -176,4 +176,44 @@ describe('WorkflowGeneratorModal', () => {
       }
     })
   })
+
+  describe('Generation result', () => {
+    it('should show the generated app identity', async () => {
+      const user = userEvent.setup()
+      mockGenerateWorkflowStream.mockImplementation(
+        (_body: unknown, callbacks: GenerateWorkflowStreamCallbacks) => {
+          callbacks.onResult?.({
+            app_name: 'Research assistant',
+            icon: '🧭',
+            graph: {
+              nodes: [
+                {
+                  id: 'start',
+                  type: 'custom',
+                  position: { x: 0, y: 0 },
+                  data: { type: 'start', title: 'Start' },
+                },
+              ],
+              edges: [],
+              viewport: { x: 0, y: 0, zoom: 1 },
+            },
+          })
+        },
+      )
+      render(<WorkflowGeneratorModal />)
+
+      await user.type(
+        screen.getByRole('textbox', { name: /workflowGenerator\.instruction/i }),
+        'Build a researched answer',
+      )
+      const generateButton = screen.getByRole('button', {
+        name: /workflowGenerator\.generate/i,
+      })
+      await waitFor(() => expect(generateButton).toBeEnabled())
+      await user.click(generateButton)
+
+      expect(await screen.findByText('🧭')).toBeInTheDocument()
+      expect(screen.getByText('Research assistant')).toBeInTheDocument()
+    })
+  })
 })
