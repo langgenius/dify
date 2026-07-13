@@ -3,20 +3,23 @@ import type { AppModeEnum } from '@/types/app'
 // no-restricted-imports rule targets production imports, not test
 // instrumentation — mirrors sibling service specs (annotation.spec.ts etc.).
 // oxlint-disable-next-line no-restricted-imports
-import { get, post, sseGeneratorPost, ssePost } from './base'
+import { get, post, ssePost } from './base'
+import { consoleClient, streamWorkflowGeneration } from './client'
 import {
   fetchConversationMessages,
   fetchPromptTemplate,
   fetchSuggestedQuestions,
   fetchTextGenerationMessage,
-  fetchWorkflowInstructionSuggestions,
   generateBasicAppFirstTimeRule,
   generateRule,
-  generateWorkflow,
-  generateWorkflowStream,
   sendCompletionMessage,
   stopChatMessageResponding,
 } from './debug'
+import {
+  fetchWorkflowInstructionSuggestions,
+  generateWorkflow,
+  generateWorkflowStream,
+} from './workflow-generator'
 
 // Stub the shared `post` wrapper so tests verify only what `generateWorkflow`
 // composes on top of it — URL, body, and the typed response surface.
@@ -24,7 +27,18 @@ vi.mock('./base', () => ({
   post: vi.fn(),
   get: vi.fn(),
   ssePost: vi.fn(),
-  sseGeneratorPost: vi.fn(),
+}))
+
+vi.mock('./client', () => ({
+  streamWorkflowGeneration: vi.fn(),
+  consoleClient: {
+    workflowGenerate: {
+      post: vi.fn(),
+      suggestions: {
+        post: vi.fn(),
+      },
+    },
+  },
 }))
 
 describe('debug service — generateWorkflow', () => {
@@ -34,17 +48,25 @@ describe('debug service — generateWorkflow', () => {
 
   // The new endpoint lives at /workflow-generate; the controller mirrors
   // /rule-generate so the body must flow through unchanged.
-  it('should POST to /workflow-generate with the body verbatim', () => {
+  it('should call the generated workflow contract with the body verbatim', () => {
     const body = {
       mode: 'workflow' as const,
       instruction: 'Summarize a URL',
       ideal_output: 'A 3-sentence summary.',
-      model_config: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
+      model_config: {
+        provider: 'openai',
+        name: 'gpt-4o',
+        mode: 'chat' as const,
+        completion_params: {},
+      },
     }
 
     generateWorkflow(body)
 
-    expect(post).toHaveBeenCalledWith('/workflow-generate', { body })
+    expect(consoleClient.workflowGenerate.post).toHaveBeenCalledWith(
+      { body },
+      { signal: expect.any(AbortSignal) },
+    )
   })
 
   // The optional fields must still POST cleanly — `ideal_output` defaulting
@@ -53,46 +75,47 @@ describe('debug service — generateWorkflow', () => {
     const body = {
       mode: 'advanced-chat' as const,
       instruction: 'Friendly support bot',
-      model_config: { provider: 'openai', name: 'gpt-4o', mode: 'chat' },
+      model_config: { provider: 'openai', name: 'gpt-4o', mode: 'chat' as const },
     }
 
     generateWorkflow(body)
 
-    expect(post).toHaveBeenCalledWith('/workflow-generate', { body })
+    expect(consoleClient.workflowGenerate.post).toHaveBeenCalledWith(
+      { body },
+      { signal: expect.any(AbortSignal) },
+    )
   })
 
-  // When the caller threads a ``getAbortController`` callback (the modal's
-  // pattern for cancelling the in-flight request on close / double-click /
-  // 60 s timeout), it must reach ``post()`` as the third argument so the
-  // shared fetch wrapper wires it into the AbortController plumbing.
-  // Without this the modal cannot abort the request and a close-while-
-  // loading leaks the request beyond its UI surface.
-  it('should forward getAbortController to post when provided', () => {
+  it('should expose the controller whose signal is passed to the generated client', () => {
     const body = {
       mode: 'workflow' as const,
       instruction: 'Long-running generation',
-      model_config: { provider: 'openai', name: 'gpt-4o', mode: 'chat' },
+      model_config: { provider: 'openai', name: 'gpt-4o', mode: 'chat' as const },
     }
     const getAbortController = vi.fn()
 
     generateWorkflow(body, { getAbortController })
 
-    expect(post).toHaveBeenCalledWith('/workflow-generate', { body }, { getAbortController })
+    const controller = getAbortController.mock.calls[0]![0]
+    expect(consoleClient.workflowGenerate.post).toHaveBeenCalledWith(
+      { body },
+      { signal: controller.signal },
+    )
   })
 
-  // No options → no third argument. Keeps the call site clean and lets the
-  // shared wrapper apply its own defaults without a phantom empty object.
-  it('should NOT pass a third argument when no options are provided', () => {
+  it('should create an internal abort signal when no callback is provided', () => {
     const body = {
       mode: 'workflow' as const,
       instruction: 'Plain call',
-      model_config: { provider: 'openai', name: 'gpt-4o', mode: 'chat' },
+      model_config: { provider: 'openai', name: 'gpt-4o', mode: 'chat' as const },
     }
 
     generateWorkflow(body)
 
-    expect(post).toHaveBeenCalledWith('/workflow-generate', { body })
-    expect(vi.mocked(post).mock.calls[0]).toHaveLength(2)
+    expect(consoleClient.workflowGenerate.post).toHaveBeenCalledWith(
+      { body },
+      { signal: expect.any(AbortSignal) },
+    )
   })
 
   describe('other endpoints', () => {
@@ -152,7 +175,7 @@ describe('debug service — generateWorkflow', () => {
       const body = {
         mode: 'workflow' as const,
         instruction: 'test',
-        model_config: { provider: 'test', name: 'test', mode: 'chat' },
+        model_config: { provider: 'test', name: 'test', mode: 'chat' as const },
       }
       const callbacks = {
         onPlan: vi.fn(),
@@ -162,7 +185,7 @@ describe('debug service — generateWorkflow', () => {
         getAbortController: vi.fn(),
       }
 
-      vi.mocked(sseGeneratorPost).mockImplementation((_url, _body, options) => {
+      vi.mocked(streamWorkflowGeneration).mockImplementation((_url, _body, options) => {
         options?.onPlan?.({ title: 'plan' })
         options?.onResult?.({ graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } } })
         return Promise.resolve()
@@ -170,25 +193,26 @@ describe('debug service — generateWorkflow', () => {
 
       await generateWorkflowStream(body, callbacks)
 
-      expect(sseGeneratorPost).toHaveBeenCalled()
+      expect(streamWorkflowGeneration).toHaveBeenCalled()
       expect(callbacks.onPlan).toHaveBeenCalled()
       expect(callbacks.onResult).toHaveBeenCalled()
     })
 
     it('fetchWorkflowInstructionSuggestions without getAbortController', async () => {
       await fetchWorkflowInstructionSuggestions({ mode: 'workflow' })
-      expect(post).toHaveBeenCalledWith('/workflow-generate/suggestions', {
-        body: { mode: 'workflow' },
-      })
+      expect(consoleClient.workflowGenerate.suggestions.post).toHaveBeenCalledWith(
+        { body: { mode: 'workflow' } },
+        { signal: expect.any(AbortSignal) },
+      )
     })
 
     it('fetchWorkflowInstructionSuggestions with getAbortController', async () => {
       const getAbortController = vi.fn()
       await fetchWorkflowInstructionSuggestions({ mode: 'workflow' }, { getAbortController })
-      expect(post).toHaveBeenCalledWith(
-        '/workflow-generate/suggestions',
+      const controller = getAbortController.mock.calls[0]![0]
+      expect(consoleClient.workflowGenerate.suggestions.post).toHaveBeenCalledWith(
         { body: { mode: 'workflow' } },
-        { getAbortController },
+        { signal: controller.signal },
       )
     })
 

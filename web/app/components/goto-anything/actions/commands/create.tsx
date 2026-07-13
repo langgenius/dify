@@ -73,7 +73,7 @@ export const createCommand: SlashCommandHandler = {
   aliases: ['new', 'generate'],
   // Fallback only — the palette localises the root row via the slashKeyMap in
   // command-selector.tsx (gotoAnything.actions.createCategoryDesc).
-  description: 'Create an AI-generated workflow or chatflow',
+  description: getI18n().t(($) => $['gotoAnything.actions.createCategoryDesc'], { ns: 'app' }),
   mode: 'submenu',
 
   async search(args: string, locale?: string) {
