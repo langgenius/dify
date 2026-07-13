@@ -70,6 +70,7 @@ from services.errors.audio import (
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
     ProviderNotSupportTextToSpeechServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -346,7 +347,7 @@ class TestAudioServiceASR:
         app = factory.create_app_mock(mode=AppMode.AGENT)
         file = factory.create_file_storage_mock()
 
-        with pytest.raises(ValueError, match="Speech to text is not enabled"):
+        with pytest.raises(SpeechToTextDisabledServiceError):
             AudioService.transcript_agent_asr(app_model=app, agent_soul=agent_soul, file=file)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
@@ -376,7 +377,7 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
         agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": False}}})
 
-        with pytest.raises(ValueError, match="Speech to text is not enabled"):
+        with pytest.raises(SpeechToTextDisabledServiceError):
             AudioService.transcript_agent_asr(app_model=app, agent_soul=agent_soul, file=file)
 
     def test_transcript_asr_raises_error_when_feature_disabled_chat_mode(self, factory: AudioServiceTestDataFactory):
@@ -390,7 +391,7 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Speech to text is not enabled"):
+        with pytest.raises(SpeechToTextDisabledServiceError):
             AudioService.transcript_asr(app_model=app, file=file)
 
     def test_transcript_asr_raises_error_when_feature_disabled_workflow_mode(
@@ -406,7 +407,7 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Speech to text is not enabled"):
+        with pytest.raises(SpeechToTextDisabledServiceError):
             AudioService.transcript_asr(app_model=app, file=file)
 
     def test_transcript_asr_raises_error_when_workflow_missing(self, factory: AudioServiceTestDataFactory):
@@ -419,7 +420,7 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Speech to text is not enabled"):
+        with pytest.raises(SpeechToTextDisabledServiceError):
             AudioService.transcript_asr(app_model=app, file=file)
 
     def test_transcript_asr_raises_error_when_no_file_uploaded(self, factory: AudioServiceTestDataFactory):

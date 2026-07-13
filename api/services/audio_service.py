@@ -24,6 +24,7 @@ from services.errors.audio import (
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
     ProviderNotSupportTextToSpeechServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 from services.workflow_service import WorkflowService
@@ -46,6 +47,14 @@ class AudioService:
 
     @classmethod
     def transcript_asr(cls, app_model: App, file: FileStorage | None, end_user: str | None = None) -> dict[str, str]:
+        """Transcribe audio after enforcing the effective feature configuration.
+
+        Published Agent Apps use their active Agent Soul. Historical Agent Apps
+        without a backing roster Agent retain the legacy AppModelConfig fallback.
+
+        Raises:
+            SpeechToTextDisabledServiceError: If the effective feature configuration disables STT.
+        """
         if app_model.mode == AppMode.AGENT:
             agent_soul = AgentRosterService(db.session).get_published_agent_soul_for_app(
                 tenant_id=app_model.tenant_id,
@@ -62,18 +71,18 @@ class AudioService:
         if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
-                raise ValueError("Speech to text is not enabled")
+                raise SpeechToTextDisabledServiceError()
 
             features_dict = workflow.features_dict
             if "speech_to_text" not in features_dict or not features_dict["speech_to_text"].get("enabled"):
-                raise ValueError("Speech to text is not enabled")
+                raise SpeechToTextDisabledServiceError()
         else:
             app_model_config = app_model.app_model_config
             if not app_model_config:
-                raise ValueError("Speech to text is not enabled")
+                raise SpeechToTextDisabledServiceError()
 
             if not app_model_config.speech_to_text_dict["enabled"]:
-                raise ValueError("Speech to text is not enabled")
+                raise SpeechToTextDisabledServiceError()
 
         return cls._invoke_speech_to_text(app_model=app_model, file=file, end_user=end_user)
 
@@ -85,13 +94,17 @@ class AudioService:
         file: FileStorage | None,
         end_user: str | None = None,
     ) -> dict[str, str]:
-        """Transcribe Agent audio after applying the Agent runtime feature projection."""
+        """Transcribe Agent audio after applying Soul-first runtime feature projection.
+
+        Raises:
+            SpeechToTextDisabledServiceError: If the merged Agent feature configuration disables STT.
+        """
         features = merge_agent_app_features(
             agent_soul=agent_soul,
             app_model_config=app_model.app_model_config,
         )
         if not features.get("speech_to_text", {}).get("enabled"):
-            raise ValueError("Speech to text is not enabled")
+            raise SpeechToTextDisabledServiceError()
 
         return cls._invoke_speech_to_text(app_model=app_model, file=file, end_user=end_user)
 

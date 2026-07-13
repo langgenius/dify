@@ -9,7 +9,7 @@ from uuid import UUID
 import pytest
 from flask import Flask
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import InternalServerError
+from werkzeug.exceptions import Forbidden, InternalServerError
 
 from controllers.console.app import audio as audio_module
 from controllers.console.app.audio import (
@@ -27,6 +27,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -43,6 +44,7 @@ from services.errors.audio import (
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
     ProviderNotSupportTextToSpeechLanageServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -81,7 +83,11 @@ def test_agent_console_audio_api_uses_agent_draft(app: Flask, monkeypatch: pytes
         calls["asr"] = kwargs
         return {"text": "agent transcript"}
 
+    def enforce_rbac_access(**kwargs):
+        calls["rbac"] = kwargs
+
     monkeypatch.setattr(audio_module, "resolve_agent_runtime_app_model", resolve_agent_runtime_app_model)
+    monkeypatch.setattr(audio_module, "enforce_rbac_access", enforce_rbac_access)
     monkeypatch.setattr(AgentComposerService, "load_agent_soul_for_debug", load_agent_soul_for_debug)
     monkeypatch.setattr(AudioService, "transcript_agent_asr", transcript_agent_asr)
 
@@ -104,6 +110,13 @@ def test_agent_console_audio_api_uses_agent_draft(app: Flask, monkeypatch: pytes
 
     assert response == {"text": "agent transcript"}
     assert calls["resolver"] == {"tenant_id": "tenant-1", "agent_id": agent_id}
+    assert calls["rbac"] == {
+        "tenant_id": "tenant-1",
+        "account_id": "account-1",
+        "resource_type": audio_module.RBACResourceScope.APP,
+        "scene": audio_module.RBACPermission.APP_TEST_AND_RUN,
+        "path_args": {"app_id": "backing-app-1"},
+    }
     assert calls["draft"] == {
         "tenant_id": "tenant-1",
         "agent_id": str(agent_id),
@@ -154,6 +167,44 @@ def test_agent_console_audio_api_defaults_to_normal_draft(app: Flask, monkeypatc
     assert captured["draft_type"] == AgentConfigDraftType.DRAFT
 
 
+def test_agent_console_audio_api_checks_rbac_with_backing_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
+    app_model = SimpleNamespace(id="backing-app-1")
+    soul_loaded = False
+
+    monkeypatch.setattr(audio_module, "resolve_agent_runtime_app_model", lambda **_kwargs: app_model)
+
+    def deny_access(**kwargs):
+        assert kwargs["path_args"] == {"app_id": "backing-app-1"}
+        raise Forbidden()
+
+    def load_agent_soul_for_debug(**_kwargs):
+        nonlocal soul_loaded
+        soul_loaded = True
+        return AgentSoulConfig()
+
+    monkeypatch.setattr(audio_module, "enforce_rbac_access", deny_access)
+    monkeypatch.setattr(AgentComposerService, "load_agent_soul_for_debug", load_agent_soul_for_debug)
+
+    api = AgentChatMessageAudioApi()
+    handler = unwrap(api.post)
+    with app.test_request_context(
+        f"/console/api/agent/{agent_id}/audio-to-text",
+        method="POST",
+        data={"file": _file_data()},
+    ):
+        with pytest.raises(Forbidden):
+            handler(
+                api,
+                session=SimpleNamespace(),
+                current_tenant_id="tenant-1",
+                current_user=SimpleNamespace(id="account-1"),
+                agent_id=agent_id,
+            )
+
+    assert soul_loaded is False
+
+
 def test_agent_console_audio_api_preserves_missing_build_draft_404(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
     monkeypatch.setattr(
@@ -192,6 +243,7 @@ def test_agent_console_audio_api_preserves_missing_build_draft_404(app: Flask, m
         (AudioTooLargeServiceError("too big"), AudioTooLargeError),
         (UnsupportedAudioTypeServiceError(), UnsupportedAudioTypeError),
         (ProviderNotSupportSpeechToTextServiceError(), ProviderNotSupportSpeechToTextError),
+        (SpeechToTextDisabledServiceError(), SpeechToTextDisabledError),
         (ProviderTokenNotInitError("token"), ProviderNotInitializeError),
         (QuotaExceededError(), ProviderQuotaExceededError),
         (ModelCurrentlyNotSupportError(), ProviderModelCurrentlyNotSupportError),

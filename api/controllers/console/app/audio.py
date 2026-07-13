@@ -10,6 +10,7 @@ from werkzeug.exceptions import HTTPException, InternalServerError
 
 import services
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.wraps import enforce_rbac_access
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
@@ -21,6 +22,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from controllers.console.app.wraps import get_app_model, with_session
@@ -50,6 +52,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -146,6 +149,8 @@ def _transcribe_audio_to_text(
         raise UnsupportedAudioTypeError()
     except ProviderNotSupportSpeechToTextServiceError:
         raise ProviderNotSupportSpeechToTextError()
+    except SpeechToTextDisabledServiceError:
+        raise SpeechToTextDisabledError()
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
     except QuotaExceededError:
@@ -206,7 +211,6 @@ class AgentChatMessageAudioApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -219,6 +223,14 @@ class AgentChatMessageAudioApi(Resource):
     ):
         payload = AgentAudioTranscriptFormPayload.model_validate(request.form.to_dict(flat=True))
         app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        # Agent routes expose Agent ids, while APP RBAC is keyed by the resolved runtime App id.
+        enforce_rbac_access(
+            tenant_id=current_tenant_id,
+            account_id=current_user.id,
+            resource_type=RBACResourceScope.APP,
+            scene=RBACPermission.APP_TEST_AND_RUN,
+            path_args={"app_id": app_model.id},
+        )
         agent_soul = AgentComposerService.load_agent_soul_for_debug(
             tenant_id=current_tenant_id,
             agent_id=str(agent_id),
