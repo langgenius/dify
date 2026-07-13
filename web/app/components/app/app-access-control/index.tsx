@@ -69,7 +69,16 @@ export default function AccessControl(props: AccessControlProps) {
     await updateAccessMode(submitData)
     toast.success(t(($) => $['accessControlDialog.updateSuccess'], { ns: 'app' }))
     onConfirm?.()
-  }, [updateAccessMode, app, specificGroups, specificMembers, t, onConfirm, currentMenu, confirmDisabled])
+  }, [
+    updateAccessMode,
+    app,
+    specificGroups,
+    specificMembers,
+    t,
+    onConfirm,
+    currentMenu,
+    confirmDisabled,
+  ])
   return (
     <AccessControlDialog show onClose={onClose}>
       <div className="flex flex-col gap-y-3">
