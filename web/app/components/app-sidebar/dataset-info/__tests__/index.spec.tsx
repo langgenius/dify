@@ -3,11 +3,7 @@ import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import {
-  ChunkingMode,
-  DatasetPermission,
-  DataSourceType,
-} from '@/models/datasets'
+import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetInfo from '..'
@@ -32,11 +28,12 @@ const mockAppContextState = vi.hoisted(() => ({
   },
 }))
 
-const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
-  systemFeatures: {
-    rbac_enabled: mockIsRbacEnabled,
-  },
-})
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: {
+      rbac_enabled: mockIsRbacEnabled,
+    },
+  })
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -118,7 +115,8 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) => selector({ dataset: mockDataset }),
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) =>
+    selector({ dataset: mockDataset }),
 }))
 
 vi.mock('@/context/account-state', async (importOriginal) => {
@@ -143,7 +141,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -183,12 +182,15 @@ vi.mock('@/app/components/datasets/rename-modal', () => ({
     onClose: () => void
     onSuccess?: () => void
   }) => {
-    if (!show)
-      return null
+    if (!show) return null
     return (
       <div data-testid="rename-modal">
-        <button type="button" onClick={onSuccess}>Success</button>
-        <button type="button" onClick={onClose}>Close</button>
+        <button type="button" onClick={onSuccess}>
+          Success
+        </button>
+        <button type="button" onClick={onClose}>
+          Close
+        </button>
       </div>
     )
   },
@@ -344,7 +346,9 @@ describe('Menu', () => {
 
       // Assert
       expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
-      expect(screen.queryByText('datasetPipeline.operations.exportPipeline')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('datasetPipeline.operations.exportPipeline'),
+      ).not.toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
   })
@@ -441,10 +445,7 @@ describe('Dropdown', () => {
       mockDataset = createDataset({
         pipeline_id: 'pipeline-1',
         runtime_mode: 'rag_pipeline',
-        permission_keys: [
-          DatasetACLPermission.Edit,
-          DatasetACLPermission.ImportExportDSL,
-        ],
+        permission_keys: [DatasetACLPermission.Edit, DatasetACLPermission.ImportExportDSL],
       })
       render(<Dropdown expand />)
 

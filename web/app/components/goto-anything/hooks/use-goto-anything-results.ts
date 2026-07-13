@@ -49,35 +49,36 @@ export const useGotoAnythingResults = (
   // (Actions contains functions which are not serializable)
   const actionKeys = useMemo(() => Object.keys(Actions).sort(), [Actions])
 
-  const { data: searchResults = [], isLoading, isError, error } = useQuery(
-    {
-
-      queryKey: [
-        'goto-anything',
-        'search-result',
-        searchQueryDebouncedValue,
-        searchMode,
-        isWorkflowPage,
-        isRagPipelinePage,
-        defaultLocale,
-        actionKeys,
-      ],
-      queryFn: async () => {
-        const query = searchQueryDebouncedValue.toLowerCase()
-        const action = matchAction(query, Actions)
-        return await searchAnything(defaultLocale, query, action, Actions)
-      },
-      enabled: !!searchQueryDebouncedValue && !isCommandsMode,
-      staleTime: 30000,
-      gcTime: 300000,
+  const {
+    data: searchResults = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: [
+      'goto-anything',
+      'search-result',
+      searchQueryDebouncedValue,
+      searchMode,
+      isWorkflowPage,
+      isRagPipelinePage,
+      defaultLocale,
+      actionKeys,
+    ],
+    queryFn: async () => {
+      const query = searchQueryDebouncedValue.toLowerCase()
+      const action = matchAction(query, Actions)
+      return await searchAnything(defaultLocale, query, action, Actions)
     },
-  )
+    enabled: !!searchQueryDebouncedValue && !isCommandsMode,
+    staleTime: 30000,
+    gcTime: 300000,
+  })
 
   // Build recent items to show when search is empty
   const recentResults = useMemo((): RecentSearchResult[] => {
-    if (searchQueryDebouncedValue || isCommandsMode)
-      return []
-    return getRecentItems().map(item => ({
+    if (searchQueryDebouncedValue || isCommandsMode) return []
+    return getRecentItems().map((item) => ({
       id: `recent-${item.id}`,
       title: item.title,
       description: item.description,
@@ -86,7 +87,10 @@ export const useGotoAnythingResults = (
       path: item.path,
       icon: React.createElement(
         'div',
-        { className: 'flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg' },
+        {
+          className:
+            'flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg',
+        },
         React.createElement(RiTimeLine, { className: 'h-4 w-4 text-text-tertiary' }),
       ),
       data: { path: item.path },
@@ -98,34 +102,38 @@ export const useGotoAnythingResults = (
     const seen = new Set<string>()
     return allResults.filter((result) => {
       const key = `${result.type}-${result.id}`
-      if (seen.has(key))
-        return false
+      if (seen.has(key)) return false
       seen.add(key)
       return true
     })
   }, [searchResults, recentResults])
 
   // Group results by type
-  const groupedResults = useMemo(() => dedupedResults.reduce((acc, result) => {
-    if (!acc[result.type])
-      acc[result.type] = []
+  const groupedResults = useMemo(
+    () =>
+      dedupedResults.reduce(
+        (acc, result) => {
+          if (!acc[result.type]) acc[result.type] = []
 
-    acc[result.type]!.push(result)
-    return acc
-  }, {} as Record<string, SearchResult[]>), [dedupedResults])
+          acc[result.type]!.push(result)
+          return acc
+        },
+        {} as Record<string, SearchResult[]>,
+      ),
+    [dedupedResults],
+  )
 
   // Auto-select first result when results change
   useEffect(() => {
-    if (isCommandsMode)
-      return
+    if (isCommandsMode) return
 
-    if (!dedupedResults.length)
-      return
+    if (!dedupedResults.length) return
 
-    const currentValueExists = dedupedResults.some(result => `${result.type}-${result.id}` === cmdVal)
+    const currentValueExists = dedupedResults.some(
+      (result) => `${result.type}-${result.id}` === cmdVal,
+    )
 
-    if (!currentValueExists)
-      setCmdVal(`${dedupedResults[0]!.type}-${dedupedResults[0]!.id}`)
+    if (!currentValueExists) setCmdVal(`${dedupedResults[0]!.type}-${dedupedResults[0]!.id}`)
   }, [isCommandsMode, dedupedResults, cmdVal, setCmdVal])
 
   return {

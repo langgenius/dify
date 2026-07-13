@@ -34,80 +34,91 @@ export function WebAppAccessCard({
   const apiBaseUrl = agent?.api_base_url
   const site = agent?.site
   const accessToken = site?.access_token ?? site?.code
-  const appBaseUrl = site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
+  const appBaseUrl =
+    site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
   const webAppUrl = getAgentWebAppUrl(agent)
   const isEnabled = Boolean(agent?.enable_site)
   const canManageWebApp = Boolean(appId)
-  const embeddedConfig = appId && accessToken
-    ? {
-        accessToken,
-        appBaseUrl,
-        siteInfo: {
-          title: site?.title ?? agent?.name ?? '',
-          chat_color_theme: site?.chat_color_theme ?? undefined,
-          chat_color_theme_inverted: site?.chat_color_theme_inverted ?? undefined,
-        },
-      }
-    : null
+  const embeddedConfig =
+    appId && accessToken
+      ? {
+          accessToken,
+          appBaseUrl,
+          siteInfo: {
+            title: site?.title ?? agent?.name ?? '',
+            chat_color_theme: site?.chat_color_theme ?? undefined,
+            chat_color_theme_inverted: site?.chat_color_theme_inverted ?? undefined,
+          },
+        }
+      : null
   const settingsAppInfo = agent ? createSettingsAppInfo(agent) : null
-  const customizeConfig = appId && apiBaseUrl
-    ? {
-        apiBaseUrl,
-        appId,
-      }
-    : null
+  const customizeConfig =
+    appId && apiBaseUrl
+      ? {
+          apiBaseUrl,
+          appId,
+        }
+      : null
   const showSsoBadge = agent?.access_mode === AccessMode.EXTERNAL_MEMBERS
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
   const [showEmbeddedModal, setShowEmbeddedModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
-  const agentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } })
-  const toggleSiteMutation = useMutation(consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
-    onSuccess: (_updatedApp, variables) => {
-      queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
-        agentDetailQueryKey,
-        agentDetail => agentDetail
-          ? {
-              ...agentDetail,
-              enable_site: variables.body.enable_site,
-            }
-          : agentDetail,
-      )
-      toast.success(tCommon('actionMsg.modifiedSuccessfully'))
-    },
-    onError: () => {
-      toast.error(tCommon('actionMsg.modifiedUnsuccessfully'))
-    },
-  }))
-  const resetAccessTokenMutation = useMutation(consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
-    onSuccess: (site) => {
-      queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
-        agentDetailQueryKey,
-        (agentDetail) => {
-          if (!agentDetail || !agentDetail.site)
-            return agentDetail
+  const agentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({
+    input: { params: { agent_id: agentId } },
+  })
+  const toggleSiteMutation = useMutation(
+    consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
+      onSuccess: (_updatedApp, variables) => {
+        queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
+          agentDetailQueryKey,
+          (agentDetail) =>
+            agentDetail
+              ? {
+                  ...agentDetail,
+                  enable_site: variables.body.enable_site,
+                }
+              : agentDetail,
+        )
+        toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
+      },
+      onError: () => {
+        toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
+      },
+    }),
+  )
+  const resetAccessTokenMutation = useMutation(
+    consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
+      onSuccess: (site) => {
+        queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
+          agentDetailQueryKey,
+          (agentDetail) => {
+            if (!agentDetail || !agentDetail.site) return agentDetail
 
-          return {
-            ...agentDetail,
-            site: {
-              ...agentDetail.site,
-              ...site,
-              access_token: site.code,
-            },
-          }
-        },
-      )
-      toast.success(tCommon('actionMsg.generatedSuccessfully'))
-    },
-    onError: () => {
-      toast.error(tCommon('actionMsg.generatedUnsuccessfully'))
-    },
-  }))
+            return {
+              ...agentDetail,
+              site: {
+                ...agentDetail.site,
+                ...site,
+                access_token: site.code,
+              },
+            }
+          },
+        )
+        toast.success(tCommon(($) => $['actionMsg.generatedSuccessfully']))
+      },
+      onError: () => {
+        toast.error(tCommon(($) => $['actionMsg.generatedUnsuccessfully']))
+      },
+    }),
+  )
   const updateSiteMutation = useMutation(consoleQuery.apps.byAppId.site.post.mutationOptions())
-  const isBusy = toggleSiteMutation.isPending || resetAccessTokenMutation.isPending || updateSiteMutation.isPending
+  const isBusy =
+    toggleSiteMutation.isPending ||
+    resetAccessTokenMutation.isPending ||
+    updateSiteMutation.isPending
 
   function handleEnabledChange(enabled: boolean) {
-    if (!appId)
-      return
+    if (!appId) return
 
     toggleSiteMutation.mutate({
       params: {
@@ -120,8 +131,7 @@ export function WebAppAccessCard({
   }
 
   function handleRefreshUrl() {
-    if (!appId)
-      return
+    if (!appId) return
 
     resetAccessTokenMutation.mutate({
       params: {
@@ -131,8 +141,7 @@ export function WebAppAccessCard({
   }
 
   async function handleSaveSettings(params: ConfigParams) {
-    if (!appId)
-      return
+    if (!appId) return
 
     const { enable_sso: _enableSso, ...body } = params
     const sitePayload = body satisfies AppSiteUpdatePayload
@@ -147,80 +156,86 @@ export function WebAppAccessCard({
 
       queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
         agentDetailQueryKey,
-        agentDetail => agentDetail
-          ? {
-              ...agentDetail,
-              site: {
-                ...agentDetail.site,
-                ...updatedSite,
-                ...sitePayload,
-                access_token: updatedSite.code ?? agentDetail.site?.access_token ?? agentDetail.site?.code ?? null,
-                code: updatedSite.code ?? agentDetail.site?.code ?? agentDetail.site?.access_token ?? null,
-                app_base_url: agentDetail.site?.app_base_url ?? site?.app_base_url ?? null,
-                icon_url: null,
-              },
-            }
-          : agentDetail,
+        (agentDetail) =>
+          agentDetail
+            ? {
+                ...agentDetail,
+                site: {
+                  ...agentDetail.site,
+                  ...updatedSite,
+                  ...sitePayload,
+                  access_token:
+                    updatedSite.code ??
+                    agentDetail.site?.access_token ??
+                    agentDetail.site?.code ??
+                    null,
+                  code:
+                    updatedSite.code ??
+                    agentDetail.site?.code ??
+                    agentDetail.site?.access_token ??
+                    null,
+                  app_base_url: agentDetail.site?.app_base_url ?? site?.app_base_url ?? null,
+                  icon_url: null,
+                },
+              }
+            : agentDetail,
       )
       await queryClient.invalidateQueries({ queryKey: agentDetailQueryKey })
-      toast.success(tCommon('actionMsg.modifiedSuccessfully'))
-    }
-    catch {
-      toast.error(tCommon('actionMsg.modifiedUnsuccessfully'))
+      toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
+    } catch {
+      toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
     }
   }
 
   return (
     <AccessSurfaceCard
-      title={t('agentDetail.access.webApp.title')}
+      title={t(($) => $['agentDetail.access.webApp.title'])}
       icon="i-ri-window-line"
       iconClassName="bg-state-accent-solid text-text-primary-on-surface"
-      endpointLabel={t('agentDetail.access.webApp.accessUrl')}
+      endpointLabel={t(($) => $['agentDetail.access.webApp.accessUrl'])}
       endpoint={webAppUrl}
       enabled={isEnabled}
       onEnabledChange={handleEnabledChange}
-      copyLabel={t('agentDetail.access.copyAccessUrl')}
+      copyLabel={t(($) => $['agentDetail.access.copyAccessUrl'])}
       badge={showSsoBadge ? <SsoBadge /> : undefined}
-      endpointActions={webAppUrl
-        ? (
-            <>
-              <span className="mx-1.5 h-3.5 w-px shrink-0 bg-divider-regular" />
-              <ShareQRCode content={webAppUrl} />
-              <Button
-                variant="ghost"
-                size="small"
-                className="size-6 shrink-0 px-0 text-text-tertiary hover:text-text-secondary"
-                aria-label={t('agentDetail.access.webApp.refreshUrl')}
-                disabled={!canManageWebApp || isBusy}
-                onClick={handleRefreshUrl}
-              >
-                <span aria-hidden className="i-ri-refresh-line size-4" />
-              </Button>
-            </>
-          )
-        : undefined}
+      endpointActions={
+        webAppUrl ? (
+          <>
+            <span className="mx-1.5 h-3.5 w-px shrink-0 bg-divider-regular" />
+            <ShareQRCode content={webAppUrl} />
+            <Button
+              variant="ghost"
+              size="small"
+              className="size-6 shrink-0 px-0 text-text-tertiary hover:text-text-secondary"
+              aria-label={t(($) => $['agentDetail.access.webApp.refreshUrl'])}
+              disabled={!canManageWebApp || isBusy}
+              onClick={handleRefreshUrl}
+            >
+              <span aria-hidden className="i-ri-refresh-line size-4" />
+            </Button>
+          </>
+        ) : undefined
+      }
       disabled={isLoading || !canManageWebApp}
       busy={isBusy}
     >
-      {webAppUrl && isEnabled
-        ? (
-            <a
-              href={webAppUrl}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={t('agentDetail.access.webApp.actions.launch')}
-              className={accessSurfaceActionClassName}
-            >
-              <span aria-hidden className="i-ri-external-link-line size-4" />
-              {t('agentDetail.access.webApp.actions.launch')}
-            </a>
-          )
-        : (
-            <Button variant="secondary" size="medium" className="gap-1.5 px-3" disabled>
-              <span aria-hidden className="i-ri-external-link-line size-4" />
-              {t('agentDetail.access.webApp.actions.launch')}
-            </Button>
-          )}
+      {webAppUrl && isEnabled ? (
+        <a
+          href={webAppUrl}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={t(($) => $['agentDetail.access.webApp.actions.launch'])}
+          className={accessSurfaceActionClassName}
+        >
+          <span aria-hidden className="i-ri-external-link-line size-4" />
+          {t(($) => $['agentDetail.access.webApp.actions.launch'])}
+        </a>
+      ) : (
+        <Button variant="secondary" size="medium" className="gap-1.5 px-3" disabled>
+          <span aria-hidden className="i-ri-external-link-line size-4" />
+          {t(($) => $['agentDetail.access.webApp.actions.launch'])}
+        </Button>
+      )}
       <Button
         variant="secondary"
         size="medium"
@@ -229,7 +244,7 @@ export function WebAppAccessCard({
         onClick={() => setShowEmbeddedModal(true)}
       >
         <span aria-hidden className="i-ri-window-line size-4" />
-        {t('agentDetail.access.webApp.actions.embedded')}
+        {t(($) => $['agentDetail.access.webApp.actions.embedded'])}
       </Button>
       <Button
         variant="secondary"
@@ -239,7 +254,7 @@ export function WebAppAccessCard({
         onClick={() => setShowCustomizeModal(true)}
       >
         <span aria-hidden className="i-ri-paint-brush-line size-4" />
-        {t('agentDetail.access.webApp.actions.customize')}
+        {t(($) => $['agentDetail.access.webApp.actions.customize'])}
       </Button>
       <Button
         variant="secondary"
@@ -249,7 +264,7 @@ export function WebAppAccessCard({
         onClick={() => setShowSettingsModal(true)}
       >
         <span aria-hidden className="i-ri-palette-line size-4" />
-        {t('agentDetail.access.webApp.actions.settings')}
+        {t(($) => $['agentDetail.access.webApp.actions.settings'])}
       </Button>
       {settingsAppInfo && (
         <SettingsModal
@@ -286,8 +301,7 @@ export function WebAppAccessCard({
 function createSettingsAppInfo(agent: AgentAppDetailWithSite): SettingsAppInfo | null {
   const site = agent.site
   const appId = agent.app_id
-  if (!site || !appId)
-    return null
+  if (!site || !appId) return null
   const icon = getSettingsIcon(agent)
 
   return {
@@ -296,7 +310,8 @@ function createSettingsAppInfo(agent: AgentAppDetailWithSite): SettingsAppInfo |
     site: {
       title: site.title ?? agent.name,
       description: site.description ?? agent.description ?? '',
-      default_language: (site.default_language ?? 'en-US') as SettingsAppInfo['site']['default_language'],
+      default_language: (site.default_language ??
+        'en-US') as SettingsAppInfo['site']['default_language'],
       chat_color_theme: site.chat_color_theme ?? '',
       chat_color_theme_inverted: site.chat_color_theme_inverted ?? false,
       copyright: site.copyright ?? '',
@@ -333,9 +348,7 @@ function getSettingsIcon(agent: AgentAppDetailWithSite) {
       icon_type: agent.icon_type,
       icon: agent.icon,
       icon_background: agent.icon_background ?? null,
-      icon_url: agent.icon_type === 'image' || agent.icon_type === 'link'
-        ? agent.icon_url
-        : null,
+      icon_url: agent.icon_type === 'image' || agent.icon_type === 'link' ? agent.icon_url : null,
     }
   }
 
@@ -350,10 +363,10 @@ function getSettingsIcon(agent: AgentAppDetailWithSite) {
 function getAgentWebAppUrl(agent?: AgentAppDetailWithSite) {
   const site = agent?.site
   const token = site?.access_token ?? site?.code
-  if (!token)
-    return ''
+  if (!token) return ''
 
-  const baseUrl = site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
+  const baseUrl =
+    site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
   return `${baseUrl.replace(/\/$/, '')}/agent/${token}`
 }
 
@@ -363,7 +376,7 @@ function SsoBadge() {
   return (
     <span className="inline-flex h-4.5 shrink-0 items-center gap-1 rounded-sm border border-divider-deep px-1.5 system-2xs-semibold-uppercase text-text-tertiary">
       <span aria-hidden className="i-ri-shield-check-line size-3" />
-      {t('agentDetail.access.webApp.ssoEnabled')}
+      {t(($) => $['agentDetail.access.webApp.ssoEnabled'])}
     </span>
   )
 }

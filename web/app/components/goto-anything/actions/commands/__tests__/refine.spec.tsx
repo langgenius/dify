@@ -5,13 +5,6 @@ import { refineCommand } from '../refine'
 vi.mock('@remixicon/react', () => ({
   RiSparkling2Line: () => null,
 }))
-
-// search() localises its title/description via getI18n(); echo the key back
-// so assertions stay deterministic without a real i18n init.
-vi.mock('react-i18next', () => ({
-  getI18n: () => ({ t: (key: string) => key }),
-}))
-
 // Spy on the generator store so we can observe what /refine opens it with.
 const mockOpenGenerator = vi.fn()
 vi.mock('@/app/components/workflow/workflow-generator/store', () => ({
@@ -22,7 +15,7 @@ vi.mock('@/app/components/workflow/workflow-generator/store', () => ({
 
 // Controllable app-store state — /refine reads appDetail to gate availability
 // and to pick the mode + id it refines. Mutated per-test; read lazily.
-const mockAppStore: { appDetail: { id: string, mode: string } | undefined } = {
+const mockAppStore: { appDetail: { id: string; mode: string } | undefined } = {
   appDetail: undefined,
 }
 vi.mock('@/app/components/app/store', () => ({

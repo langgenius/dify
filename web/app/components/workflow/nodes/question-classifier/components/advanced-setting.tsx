@@ -45,18 +45,20 @@ const AdvancedSetting: FC<Props> = ({
   return (
     <>
       <Editor
-        title={(
+        title={
           <div className="flex items-center space-x-1">
-            <span className="uppercase">{t(`${i18nPrefix}.instruction`, { ns: 'workflow' })}</span>
+            <span className="uppercase">
+              {t(($) => $[`${i18nPrefix}.instruction`], { ns: 'workflow' })}
+            </span>
             <Infotip
-              aria-label={t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
+              aria-label={t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
               className="ml-0.5 size-3.5"
               popupClassName="w-[120px]"
             >
-              {t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
             </Infotip>
           </div>
-        )}
+        }
         value={instruction}
         onChange={onInstructionChange}
         readOnly={readonly}

@@ -14,18 +14,24 @@ const mockHandleWorkflowRunAllTriggersInWorkflow = vi.fn()
 const mockHandleStopRun = vi.fn()
 const mockNotify = vi.fn()
 const mockTrackEvent = vi.fn()
-const hotkeyRegistrations = vi.hoisted(() => new Map<string, {
-  callback: () => void
-  options?: { ignoreInputs?: boolean }
-}>())
+const hotkeyRegistrations = vi.hoisted(
+  () =>
+    new Map<
+      string,
+      {
+        callback: () => void
+        options?: { ignoreInputs?: boolean }
+      }
+    >(),
+)
 
 let mockWarningNodes: Array<{ id: string }> = []
-let mockWorkflowRunningData: { result: { status: WorkflowRunningStatus }, task_id: string } | undefined
+let mockWorkflowRunningData:
+  | { result: { status: WorkflowRunningStatus }; task_id: string }
+  | undefined
 let mockIsListening = false
 let mockCanRun = true
-let mockDynamicOptions = [
-  { type: TriggerType.UserInput, nodeId: 'start-node' },
-]
+let mockDynamicOptions = [{ type: TriggerType.UserInput, nodeId: 'start-node' }]
 
 vi.mock('@/app/components/workflow/hooks', () => ({
   useWorkflowStartRun: () => ({
@@ -44,8 +50,9 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store/workflow', () => ({
-  useStore: (selector: (state: { workflowRunningData?: unknown, isListening: boolean }) => unknown) =>
-    selector({ workflowRunningData: mockWorkflowRunningData, isListening: mockIsListening }),
+  useStore: (
+    selector: (state: { workflowRunningData?: unknown; isListening: boolean }) => unknown,
+  ) => selector({ workflowRunningData: mockWorkflowRunningData, isListening: mockIsListening }),
 }))
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
@@ -94,7 +101,17 @@ vi.mock('@/context/event-emitter', () => ({
 
 vi.mock('../test-run-menu', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../test-run-menu')>()
-  const TestRunMenuMock = ({ children, options, onSelect, ref }: { children: ReactNode, options: Array<{ type: TriggerType, nodeId?: string, relatedNodeIds?: string[] }>, onSelect: (option: { type: TriggerType, nodeId?: string, relatedNodeIds?: string[] }) => void, ref?: React.Ref<TestRunMenuRef> }) => {
+  const TestRunMenuMock = ({
+    children,
+    options,
+    onSelect,
+    ref,
+  }: {
+    children: ReactNode
+    options: Array<{ type: TriggerType; nodeId?: string; relatedNodeIds?: string[] }>
+    onSelect: (option: { type: TriggerType; nodeId?: string; relatedNodeIds?: string[] }) => void
+    ref?: React.Ref<TestRunMenuRef>
+  }) => {
     React.useImperativeHandle(ref, () => ({
       toggle: vi.fn(),
     }))
@@ -122,9 +139,7 @@ describe('RunMode', () => {
     mockIsListening = false
     mockCanRun = true
     hotkeyRegistrations.clear()
-    mockDynamicOptions = [
-      { type: TriggerType.UserInput, nodeId: 'start-node' },
-    ]
+    mockDynamicOptions = [{ type: TriggerType.UserInput, nodeId: 'start-node' }]
   })
 
   it('should render the run trigger and start the workflow when a valid trigger is selected', () => {
@@ -134,7 +149,9 @@ describe('RunMode', () => {
     fireEvent.click(screen.getByTestId('trigger-option'))
 
     expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalledTimes(1)
-    expect(mockTrackEvent).toHaveBeenCalledWith('app_start_action_time', { action_type: 'user_input' })
+    expect(mockTrackEvent).toHaveBeenCalledWith('app_start_action_time', {
+      action_type: 'user_input',
+    })
   })
 
   it('should show an error toast instead of running when the selected trigger has checklist warnings', () => {
@@ -159,7 +176,9 @@ describe('RunMode', () => {
     render(<RunMode />)
 
     expect(screen.getByText(/running/i))!.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+    )
 
     expect(mockHandleStopRun).toHaveBeenCalledWith('task-1')
   })
@@ -191,7 +210,9 @@ describe('RunMode', () => {
 
     expect(screen.getByRole('button', { name: /run/i })).toBeDisabled()
     expect(screen.queryByTestId('trigger-option')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+    ).not.toBeInTheDocument()
     expect(mockHandleWorkflowStartRunInWorkflow).not.toHaveBeenCalled()
   })
 })

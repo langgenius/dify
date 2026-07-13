@@ -26,20 +26,22 @@ describe('Log', () => {
   })
 
   beforeEach(() => {
-    vi.mocked(useAppStore).mockImplementation(selector => selector({
-      // State properties
-      currentLogModalActiveTab: 'question',
-      showPromptLogModal: false,
-      showAgentLogModal: false,
-      showMessageLogModal: false,
-      showAppConfigureFeaturesModal: false, // Fixed: Added missing required property
-      currentLogItem: null,
-      // Action functions
-      setCurrentLogItem: mockSetCurrentLogItem,
-      setShowPromptLogModal: mockSetShowPromptLogModal,
-      setShowAgentLogModal: mockSetShowAgentLogModal,
-      setShowMessageLogModal: mockSetShowMessageLogModal,
-    } as unknown as Parameters<typeof selector>[0])) // Fixed: Double cast to avoid overlap error
+    vi.mocked(useAppStore).mockImplementation((selector) =>
+      selector({
+        // State properties
+        currentLogModalActiveTab: 'question',
+        showPromptLogModal: false,
+        showAgentLogModal: false,
+        showMessageLogModal: false,
+        showAppConfigureFeaturesModal: false, // Fixed: Added missing required property
+        currentLogItem: null,
+        // Action functions
+        setCurrentLogItem: mockSetCurrentLogItem,
+        setShowPromptLogModal: mockSetShowPromptLogModal,
+        setShowAgentLogModal: mockSetShowAgentLogModal,
+        setShowMessageLogModal: mockSetShowMessageLogModal,
+      } as unknown as Parameters<typeof selector>[0]),
+    ) // Fixed: Double cast to avoid overlap error
   })
 
   it('should render correctly', () => {
@@ -53,8 +55,7 @@ describe('Log', () => {
 
     render(<Log logItem={logItem} />)
     const container = screen.getByRole('button').parentElement
-    if (container)
-      await user.click(container)
+    if (container) await user.click(container)
 
     expect(mockSetCurrentLogItem).toHaveBeenCalledWith(logItem)
     expect(mockSetShowMessageLogModal).toHaveBeenCalledWith(true)
@@ -79,8 +80,7 @@ describe('Log', () => {
 
     render(<Log logItem={logItem} />)
     const container = screen.getByRole('button').parentElement
-    if (container)
-      await user.click(container)
+    if (container) await user.click(container)
 
     expect(mockSetCurrentLogItem).toHaveBeenCalledWith(logItem)
     expect(mockSetShowAgentLogModal).toHaveBeenCalledWith(true)
@@ -95,8 +95,7 @@ describe('Log', () => {
 
     render(<Log logItem={logItem} />)
     const container = screen.getByRole('button').parentElement
-    if (container)
-      await user.click(container)
+    if (container) await user.click(container)
 
     expect(mockSetCurrentLogItem).toHaveBeenCalledWith(logItem)
     expect(mockSetShowPromptLogModal).toHaveBeenCalledWith(true)
@@ -114,8 +113,7 @@ describe('Log', () => {
     // Find the container div that has the onClick handler
     const container = screen.getByRole('button').parentElement
 
-    if (container)
-      await user.click(container)
+    if (container) await user.click(container)
 
     // 2. Assert that both were called
     expect(stopPropagationSpy).toHaveBeenCalled()

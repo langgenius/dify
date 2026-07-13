@@ -1,6 +1,10 @@
 'use client'
 
-import type { AgentAppDetailWithSite, AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentAppDetailWithSite,
+  AgentIconType,
+  AgentSoulConfig,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { useAgentConfigureData } from '../hooks'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -23,7 +27,10 @@ import {
   resetAgentConfigureConversationAtom,
   setAgentConfigureConversationIdAtom,
 } from '../state'
-import { useAgentConfigureBuildDraftActions, useAgentConfigureBuildDraftData } from '../use-agent-configure-build-draft'
+import {
+  useAgentConfigureBuildDraftActions,
+  useAgentConfigureBuildDraftData,
+} from '../use-agent-configure-build-draft'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
 import { AgentOrchestratePanel } from './orchestrate'
 import { AgentBuildDraftBar } from './orchestrate/build-draft-bar'
@@ -31,7 +38,10 @@ import { AgentConfigurePageLoading } from './page-loading'
 import { AgentBuildPanelBackground } from './preview/build-background'
 import { AgentChatFeaturesPanel } from './preview/chat-features-panel'
 import { AgentPreviewHeader } from './preview/header'
-import { invalidateAgentWorkingDirectoryFiles, useAgentWorkingDirectoryPanel } from './preview/hook/use-working-directory-panel'
+import {
+  invalidateAgentWorkingDirectoryFiles,
+  useAgentWorkingDirectoryPanel,
+} from './preview/hook/use-working-directory-panel'
 import { AgentConfigureRightPanelChat } from './preview/right-panel-chat'
 import { AgentPreviewVersionsPanel } from './preview/versions-panel'
 import { AgentConfigurePreviewSurface, AgentConfigureWorkspace } from './workspace'
@@ -50,12 +60,7 @@ export function AgentConfigureComposerScope({
   onSelectVersion: (versionId: string | null) => void
 }) {
   const { t } = useTranslation('agentV2')
-  const {
-    composerQuery,
-    selectedVersionId,
-    activeVersionId,
-    agentSoulConfig,
-  } = configureData
+  const { composerQuery, selectedVersionId, activeVersionId, agentSoulConfig } = configureData
   const soulSourceOverride = useAtomValue(agentConfigureSoulSourceOverrideAtom)
   const setSoulSourceOverride = useSetAtom(agentConfigureSoulSourceOverrideAtom)
   const isViewingVersion = !!selectedVersionId
@@ -70,9 +75,7 @@ export function AgentConfigureComposerScope({
   })
 
   if (buildDraft.isPending) {
-    return (
-      <AgentConfigurePageLoading label={t('agentDetail.sections.configure')} />
-    )
+    return <AgentConfigurePageLoading label={t(($) => $['agentDetail.sections.configure'])} />
   }
 
   const composerSessionKey = `${agentId}:${activeVersionId ?? selectedVersionId ?? 'draft'}:${composerRebaseRevision}`
@@ -107,43 +110,45 @@ function AgentConfigurePageComposerSession({
   onComposerRebase: () => void
   onSelectVersion: (versionId: string | null) => void
 }) {
-  const {
-    agentQuery,
-  } = configureData
+  const { agentQuery } = configureData
   const queryClient = useQueryClient()
   const agentIconType = agentQuery.data?.icon_type as AgentIconType | null | undefined
-  const refreshDebugConversationMutation = useMutation(consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
-    onSuccess: ({
-      debug_conversation_id,
-      debug_conversation_has_messages,
-      debug_conversation_message_count,
-    }) => {
-      queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
-        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
-        (agentDetail) => {
-          if (!agentDetail)
-            return agentDetail
+  const refreshDebugConversationMutation = useMutation(
+    consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
+      onSuccess: ({
+        debug_conversation_id,
+        debug_conversation_has_messages,
+        debug_conversation_message_count,
+      }) => {
+        queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
+          consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+          (agentDetail) => {
+            if (!agentDetail) return agentDetail
 
-          return {
-            ...agentDetail,
-            debug_conversation_id,
-            debug_conversation_has_messages: debug_conversation_has_messages ?? false,
-            debug_conversation_message_count: debug_conversation_message_count ?? 0,
-          }
-        },
-      )
-    },
-  }))
+            return {
+              ...agentDetail,
+              debug_conversation_id,
+              debug_conversation_has_messages: debug_conversation_has_messages ?? false,
+              debug_conversation_message_count: debug_conversation_message_count ?? 0,
+            }
+          },
+        )
+      },
+    }),
+  )
   const {
     mutate: refreshDebugConversationRequest,
     mutateAsync: refreshDebugConversationRequestAsync,
     isPending: isRefreshingDebugConversation,
   } = refreshDebugConversationMutation
-  const refreshDebugConversationInput = useCallback(() => ({
-    params: {
-      agent_id: agentId,
-    },
-  }), [agentId])
+  const refreshDebugConversationInput = useCallback(
+    () => ({
+      params: {
+        agent_id: agentId,
+      },
+    }),
+    [agentId],
+  )
   const refreshDebugConversation = useCallback(() => {
     refreshDebugConversationRequest(refreshDebugConversationInput())
   }, [refreshDebugConversationInput, refreshDebugConversationRequest])
@@ -154,10 +159,13 @@ function AgentConfigurePageComposerSession({
   return (
     <ScopeProvider
       atoms={[
-        [agentConfigureConversationIdsAtom, {
-          build: agentQuery.data?.debug_conversation_id ?? null,
-          preview: null,
-        }],
+        [
+          agentConfigureConversationIdsAtom,
+          {
+            build: agentQuery.data?.debug_conversation_id ?? null,
+            preview: null,
+          },
+        ],
       ]}
       name="AgentConfigureConversation"
     >
@@ -218,7 +226,9 @@ function AgentConfigurePageComposerContent({
   const { t: tCommon } = useTranslation('common')
   const [buildDraftActionsDisabled, setBuildDraftActionsDisabled] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
-  const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(null)
+  const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(
+    null,
+  )
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const rightPanelChatMode = useAtomValue(agentConfigureRightPanelChatModeAtom)
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel({
@@ -238,30 +248,24 @@ function AgentConfigurePageComposerContent({
   const resetBuildChatSession = useCallback(async () => {
     try {
       await onRefreshDebugConversationAsync()
-    }
-    finally {
+    } finally {
       setCompletedBuildConversationId(null)
       setConversationId({ mode: 'build', conversationId: null })
       setClearPreviewChat(true)
     }
   }, [onRefreshDebugConversationAsync, setClearPreviewChat, setConversationId])
-  const rebaseComposerDraftFromSoulConfig = useCallback((agentSoulConfig?: AgentSoulConfig) => {
-    rebaseComposerDraft({
-      draft: agentSoulConfigToFormState(agentSoulConfig),
-      originalConfig: agentSoulConfig,
-    })
-  }, [rebaseComposerDraft])
-  const {
-    currentModel,
-    setConfigureModel,
-    textGenerationModelList,
-  } = useAgentConfigureModelOptions()
-  const {
-    draftSavedAt,
-    isPublishing,
-    publishDraft,
-    saveDraft,
-  } = useAgentConfigureSync({
+  const rebaseComposerDraftFromSoulConfig = useCallback(
+    (agentSoulConfig?: AgentSoulConfig) => {
+      rebaseComposerDraft({
+        draft: agentSoulConfigToFormState(agentSoulConfig),
+        originalConfig: agentSoulConfig,
+      })
+    },
+    [rebaseComposerDraft],
+  )
+  const { currentModel, setConfigureModel, textGenerationModelList } =
+    useAgentConfigureModelOptions()
+  const { draftSavedAt, isPublishing, publishDraft, saveDraft } = useAgentConfigureSync({
     agentId,
     baseConfig: agentSoulConfig,
     currentModel,
@@ -280,37 +284,39 @@ function AgentConfigurePageComposerContent({
     onComposerRebased: onComposerRebase,
     setSoulSourceOverride: buildDraft.setSoulSourceOverride,
   })
-  const selectVersion = useCallback((versionId: string | null) => {
-    onSelectVersion(versionId)
-  }, [onSelectVersion])
-  const hasRestartCurrentChatTarget = rightPanelChatMode === 'build'
-    ? (agentQuery.data?.debug_conversation_has_messages ?? false) || buildDraft.isActive
-    : !!conversationIds[rightPanelChatMode]
-  const isRestartCurrentChatDisabled = !hasRestartCurrentChatTarget
-    || buildDraftActionsDisabled
-    || isRefreshingDebugConversation
-    || buildDraftActions.isApplyingBuildDraft
-    || buildDraftActions.isDiscardingBuildDraft
-  const isChatFeaturesReadOnly = (isViewingVersion && versionQuery.isPending) || buildDraft.isActive
-  const buildConversationHasAgentResponse = !!conversationIds.build && (
-    conversationIds.build === completedBuildConversationId
-    || (
-      conversationIds.build === agentQuery.data?.debug_conversation_id
-      && (agentQuery.data?.debug_conversation_has_messages ?? false)
-    )
+  const selectVersion = useCallback(
+    (versionId: string | null) => {
+      onSelectVersion(versionId)
+    },
+    [onSelectVersion],
   )
-  const showWorkingDirectoryAction = rightPanelChatMode === 'build' && buildConversationHasAgentResponse
+  const hasRestartCurrentChatTarget =
+    rightPanelChatMode === 'build'
+      ? (agentQuery.data?.debug_conversation_has_messages ?? false) || buildDraft.isActive
+      : !!conversationIds[rightPanelChatMode]
+  const isRestartCurrentChatDisabled =
+    !hasRestartCurrentChatTarget ||
+    buildDraftActionsDisabled ||
+    isRefreshingDebugConversation ||
+    buildDraftActions.isApplyingBuildDraft ||
+    buildDraftActions.isDiscardingBuildDraft
+  const isChatFeaturesReadOnly = (isViewingVersion && versionQuery.isPending) || buildDraft.isActive
+  const buildConversationHasAgentResponse =
+    !!conversationIds.build &&
+    (conversationIds.build === completedBuildConversationId ||
+      (conversationIds.build === agentQuery.data?.debug_conversation_id &&
+        (agentQuery.data?.debug_conversation_has_messages ?? false)))
+  const showWorkingDirectoryAction =
+    rightPanelChatMode === 'build' && buildConversationHasAgentResponse
   const restartCurrentChat = () => {
-    if (isRestartCurrentChatDisabled)
-      return
+    if (isRestartCurrentChatDisabled) return
 
     if (rightPanelChatMode === 'build' && buildDraft.isActive) {
       void buildDraftActions.discardBuildDraft()
       return
     }
 
-    if (rightPanelChatMode === 'build')
-      onRefreshDebugConversation()
+    if (rightPanelChatMode === 'build') onRefreshDebugConversation()
 
     resetConversation(rightPanelChatMode)
     setClearPreviewChat(true)
@@ -319,7 +325,7 @@ function AgentConfigurePageComposerContent({
   return (
     <AgentConfigureWorkspace
       aria-busy={agentQuery.isFetching}
-      leftPanel={(
+      leftPanel={
         <AgentOrchestratePanel
           agentId={agentId}
           activeConfigIsPublished={agentQuery.data?.active_config_is_published}
@@ -336,23 +342,23 @@ function AgentConfigurePageComposerContent({
           buildDraftChangedKeys={buildDraft.changedKeys}
           showPublishBar={!buildDraft.isActive}
           workflowReferencesEnabled={agentQuery.isSuccess}
-          bottomAction={showBuildDraftBar
-            ? (
-                <AgentBuildDraftBar
-                  changeSummary={buildDraft.changeSummary}
-                  changesCount={buildDraft.changesCount}
-                  disabled={buildDraftActionsDisabled}
-                  isApplying={buildDraftActions.isApplyingBuildDraft}
-                  isDiscarding={buildDraftActions.isDiscardingBuildDraft}
-                  onApply={() => {
-                    void buildDraftActions.applyBuildDraft()
-                  }}
-                  onDiscard={() => {
-                    void buildDraftActions.discardBuildDraft()
-                  }}
-                />
-              )
-            : undefined}
+          bottomAction={
+            showBuildDraftBar ? (
+              <AgentBuildDraftBar
+                changeSummary={buildDraft.changeSummary}
+                changesCount={buildDraft.changesCount}
+                disabled={buildDraftActionsDisabled}
+                isApplying={buildDraftActions.isApplyingBuildDraft}
+                isDiscarding={buildDraftActions.isDiscardingBuildDraft}
+                onApply={() => {
+                  void buildDraftActions.applyBuildDraft()
+                }}
+                onDiscard={() => {
+                  void buildDraftActions.discardBuildDraft()
+                }}
+              />
+            ) : undefined
+          }
           onSelectModel={setConfigureModel}
           onPublish={publishDraft}
           onOpenVersions={() => {
@@ -361,17 +367,17 @@ function AgentConfigurePageComposerContent({
           }}
           onExitVersions={() => selectVersion(null)}
         />
-      )}
-      rightPanel={(
+      }
+      rightPanel={
         <AgentConfigurePreviewSurface
           background={<AgentBuildPanelBackground visible={rightPanelChatMode === 'build'} />}
-          header={(
+          header={
             <AgentPreviewHeader
               mode={rightPanelChatMode}
               previewEnabled={false}
               isChatFeaturesOpen={showChatFeatures}
               onModeChange={setRightPanelMode}
-              onToggleChatFeatures={() => setShowChatFeatures(open => !open)}
+              onToggleChatFeatures={() => setShowChatFeatures((open) => !open)}
               onOpenWorkingDirectory={() => {
                 setShowPreviewVersions(false)
                 workingDirectoryPanel.openWorkingDirectory()
@@ -380,8 +386,8 @@ function AgentConfigurePageComposerContent({
               refreshDisabled={isRestartCurrentChatDisabled}
               showWorkingDirectoryAction={showWorkingDirectoryAction}
             />
-          )}
-          chat={(
+          }
+          chat={
             <AgentConfigureRightPanelChat
               agentId={agentId}
               agentIcon={agentQuery.data?.icon}
@@ -402,38 +408,40 @@ function AgentConfigurePageComposerContent({
                     conversationId: completedConversationId,
                     queryClient,
                   })
-                  buildDraftActions.refreshBuildDraftAfterBuildChat(() => setBuildDraftActionsDisabled(false))
+                  buildDraftActions.refreshBuildDraftAfterBuildChat(() =>
+                    setBuildDraftActionsDisabled(false),
+                  )
                 }
               }}
               onConversationIdChange={(mode, conversationId) => {
                 setConversationId({ mode, conversationId })
               }}
-              onSaveDraftBeforeRun={rightPanelChatMode === 'build'
-                ? async () => {
-                  if (!currentModel?.provider || !currentModel.model) {
-                    toast.error(tCommon('modelProvider.selectModel'))
-                    throw new Error('Agent model is required.')
-                  }
+              onSaveDraftBeforeRun={
+                rightPanelChatMode === 'build'
+                  ? async () => {
+                      if (!currentModel?.provider || !currentModel.model) {
+                        toast.error(tCommon(($) => $['modelProvider.selectModel']))
+                        throw new Error('Agent model is required.')
+                      }
 
-                  setBuildDraftActionsDisabled(true)
-                  try {
-                    return await buildDraftActions.prepareBuildDraftBeforeRun()
-                  }
-                  catch (error) {
-                    setBuildDraftActionsDisabled(false)
-                    throw error
-                  }
-                }
-                : saveDraft}
+                      setBuildDraftActionsDisabled(true)
+                      try {
+                        return await buildDraftActions.prepareBuildDraftBeforeRun()
+                      } catch (error) {
+                        setBuildDraftActionsDisabled(false)
+                        throw error
+                      }
+                    }
+                  : saveDraft
+              }
               onSendInterrupted={() => {
-                if (rightPanelChatMode === 'build')
-                  setBuildDraftActionsDisabled(false)
+                if (rightPanelChatMode === 'build') setBuildDraftActionsDisabled(false)
               }}
             />
-          )}
+          }
         />
-      )}
-      sidePanels={(
+      }
+      sidePanels={
         <>
           {showPreviewVersions && (
             <AgentPreviewVersionsPanel
@@ -451,7 +459,7 @@ function AgentConfigurePageComposerContent({
             onClose={() => setShowChatFeatures(false)}
           />
         </>
-      )}
+      }
     />
   )
 }

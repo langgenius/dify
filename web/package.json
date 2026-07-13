@@ -1,26 +1,14 @@
 {
   "name": "dify-web",
-  "type": "module",
   "version": "1.16.0-rc1",
   "private": true,
+  "type": "module",
   "imports": {
     "#i18n": {
       "react-server": "./i18n-config/lib.server.ts",
       "default": "./i18n-config/lib.client.ts"
     }
   },
-  "browserslist": [
-    "last 1 Chrome version",
-    "last 1 Firefox version",
-    "last 1 Edge version",
-    "last 1 Safari version",
-    "iOS >=15",
-    "Android >= 10",
-    "and_chr >= 126",
-    "and_ff >= 137",
-    "and_uc >= 15.5",
-    "and_qq >= 14.9"
-  ],
   "scripts": {
     "analyze": "next experimental-analyze",
     "build": "next build",
@@ -29,9 +17,10 @@
     "dev:inspect": "next dev --inspect",
     "dev:proxy": "dev-proxy --config ./dev-proxy.config.ts --env-file ./.env.local",
     "dev:vinext": "vinext dev",
-    "gen-doc-paths": "tsx ./scripts/gen-doc-paths.ts",
-    "gen-icons": "pnpm --filter @dify/iconify-collections generate && node ./scripts/gen-icons.mjs && eslint --fix app/components/base/icons/src/",
+    "gen-doc-paths": "tsx ./scripts/gen-doc-paths.ts && vp fmt types/doc-paths.ts",
+    "gen-icons": "pnpm --filter @dify/iconify-collections generate && node ./scripts/gen-icons.mjs && eslint --fix app/components/base/icons/src/ && vp fmt app/components/base/icons/src/",
     "i18n:check": "tsx ./scripts/check-i18n.js",
+    "i18n:migrate-selectors": "tsx ./scripts/migrate-i18n-selectors.ts",
     "i18n:prune-unused": "tsx ./scripts/prune-unused-i18n.ts",
     "knip": "knip",
     "knip:production": "knip --production --include files",
@@ -232,5 +221,17 @@
     "vite-plus": "catalog:",
     "vitest": "catalog:",
     "vitest-canvas-mock": "catalog:"
-  }
+  },
+  "browserslist": [
+    "last 1 Chrome version",
+    "last 1 Firefox version",
+    "last 1 Edge version",
+    "last 1 Safari version",
+    "iOS >=15",
+    "Android >= 10",
+    "and_chr >= 126",
+    "and_ff >= 137",
+    "and_uc >= 15.5",
+    "and_qq >= 14.9"
+  ]
 }

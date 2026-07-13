@@ -24,7 +24,9 @@ async function getDehydratedState(searchParams?: Promise<SearchParams>) {
   const queryClient = getQueryClientServer()
 
   await queryClient.prefetchQuery({
-    queryKey: marketplaceQuery.collections.queryKey({ input: { query: getCollectionsParams(params.category) } }),
+    queryKey: marketplaceQuery.collections.queryKey({
+      input: { query: getCollectionsParams(params.category) },
+    }),
     queryFn: () => getMarketplaceCollectionsAndPlugins(getCollectionsParams(params.category)),
   })
   return dehydrate(queryClient)
@@ -38,9 +40,5 @@ export async function HydrateQueryClient({
   children: React.ReactNode
 }) {
   const dehydratedState = await getDehydratedState(searchParams)
-  return (
-    <HydrationBoundary state={dehydratedState}>
-      {children}
-    </HydrationBoundary>
-  )
+  return <HydrationBoundary state={dehydratedState}>{children}</HydrationBoundary>
 }

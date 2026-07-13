@@ -38,14 +38,17 @@ vi.mock('@/app/components/workflow/nodes/_base/components/remove-effect-var-conf
     isShow: boolean
     onCancel: () => void
     onConfirm: () => void
-  }) => isShow
-    ? (
-        <div data-testid="remove-var-confirm">
-          <button data-testid="confirm-cancel" onClick={onCancel}>Cancel</button>
-          <button data-testid="confirm-ok" onClick={onConfirm}>Confirm</button>
-        </div>
-      )
-    : null,
+  }) =>
+    isShow ? (
+      <div data-testid="remove-var-confirm">
+        <button data-testid="confirm-cancel" onClick={onCancel}>
+          Cancel
+        </button>
+        <button data-testid="confirm-ok" onClick={onConfirm}>
+          Confirm
+        </button>
+      </div>
+    ) : null,
 }))
 
 const createInputVar = (overrides?: Partial<InputVar>): InputVar => ({
@@ -70,7 +73,8 @@ const createInputVarList = (count: number): InputVar[] => {
     createInputVar({
       variable: `var_${i}`,
       label: `Label ${i}`,
-    }))
+    }),
+  )
 }
 
 const createSortableItem = (
@@ -101,14 +105,7 @@ describe('FieldItem', () => {
     it('should render field item with variable name', () => {
       const payload = createInputVar({ variable: 'my_field' })
 
-      render(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={vi.fn()}
-          onRemove={vi.fn()}
-        />,
-      )
+      render(<FieldItem payload={payload} index={0} onClickEdit={vi.fn()} onRemove={vi.fn()} />)
 
       expect(screen.getByText('my_field'))!.toBeInTheDocument()
     })
@@ -116,14 +113,7 @@ describe('FieldItem', () => {
     it('should render field item with label when provided', () => {
       const payload = createInputVar({ variable: 'field', label: 'Field Label' })
 
-      render(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={vi.fn()}
-          onRemove={vi.fn()}
-        />,
-      )
+      render(<FieldItem payload={payload} index={0} onClickEdit={vi.fn()} onRemove={vi.fn()} />)
 
       expect(screen.getByText('Field Label'))!.toBeInTheDocument()
     })
@@ -131,14 +121,7 @@ describe('FieldItem', () => {
     it('should not render label when empty', () => {
       const payload = createInputVar({ variable: 'field', label: '' })
 
-      render(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={vi.fn()}
-          onRemove={vi.fn()}
-        />,
-      )
+      render(<FieldItem payload={payload} index={0} onClickEdit={vi.fn()} onRemove={vi.fn()} />)
 
       expect(screen.queryByText('·')).not.toBeInTheDocument()
     })
@@ -146,14 +129,7 @@ describe('FieldItem', () => {
     it('should render required badge when not hovering and required is true', () => {
       const payload = createInputVar({ required: true })
 
-      render(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={vi.fn()}
-          onRemove={vi.fn()}
-        />,
-      )
+      render(<FieldItem payload={payload} index={0} onClickEdit={vi.fn()} onRemove={vi.fn()} />)
 
       expect(screen.getByText(/required/i))!.toBeInTheDocument()
     })
@@ -161,14 +137,7 @@ describe('FieldItem', () => {
     it('should not render required badge when required is false', () => {
       const payload = createInputVar({ required: false })
 
-      render(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={vi.fn()}
-          onRemove={vi.fn()}
-        />,
-      )
+      render(<FieldItem payload={payload} index={0} onClickEdit={vi.fn()} onRemove={vi.fn()} />)
 
       expect(screen.queryByText(/required/i)).not.toBeInTheDocument()
     })
@@ -177,12 +146,7 @@ describe('FieldItem', () => {
       const payload = createInputVar()
 
       const { container } = render(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={vi.fn()}
-          onRemove={vi.fn()}
-        />,
+        <FieldItem payload={payload} index={0} onClickEdit={vi.fn()} onRemove={vi.fn()} />,
       )
 
       const icons = container.querySelectorAll('svg')
@@ -250,12 +214,7 @@ describe('FieldItem', () => {
       const payload = createInputVar({ variable: 'test_var' })
 
       const { container } = render(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={onClickEdit}
-          onRemove={vi.fn()}
-        />,
+        <FieldItem payload={payload} index={0} onClickEdit={onClickEdit} onRemove={vi.fn()} />,
       )
       fireEvent.mouseEnter(container.firstChild!)
       const buttons = screen.getAllByRole('button')
@@ -269,12 +228,7 @@ describe('FieldItem', () => {
       const payload = createInputVar()
 
       const { container } = render(
-        <FieldItem
-          payload={payload}
-          index={5}
-          onClickEdit={vi.fn()}
-          onRemove={onRemove}
-        />,
+        <FieldItem payload={payload} index={5} onClickEdit={vi.fn()} onRemove={onRemove} />,
       )
       fireEvent.mouseEnter(container.firstChild!)
       const buttons = screen.getAllByRole('button')
@@ -318,12 +272,7 @@ describe('FieldItem', () => {
 
       const { container } = render(
         <div onClick={parentClick}>
-          <FieldItem
-            payload={payload}
-            index={0}
-            onClickEdit={onClickEdit}
-            onRemove={vi.fn()}
-          />
+          <FieldItem payload={payload} index={0} onClickEdit={onClickEdit} onRemove={vi.fn()} />
         </div>,
       )
       fireEvent.mouseEnter(container.querySelector('.handle')!)
@@ -341,12 +290,7 @@ describe('FieldItem', () => {
 
       const { container } = render(
         <div onClick={parentClick}>
-          <FieldItem
-            payload={payload}
-            index={0}
-            onClickEdit={vi.fn()}
-            onRemove={onRemove}
-          />
+          <FieldItem payload={payload} index={0} onClickEdit={vi.fn()} onRemove={onRemove} />
         </div>,
       )
       fireEvent.mouseEnter(container.querySelector('.handle')!)
@@ -364,24 +308,14 @@ describe('FieldItem', () => {
       const payload = createInputVar()
 
       const { container, rerender } = render(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={onClickEdit}
-          onRemove={vi.fn()}
-        />,
+        <FieldItem payload={payload} index={0} onClickEdit={onClickEdit} onRemove={vi.fn()} />,
       )
       fireEvent.mouseEnter(container.firstChild!)
       const buttons = screen.getAllByRole('button')
       fireEvent.click(buttons[0]!)
 
       rerender(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={onClickEdit}
-          onRemove={vi.fn()}
-        />,
+        <FieldItem payload={payload} index={0} onClickEdit={onClickEdit} onRemove={vi.fn()} />,
       )
       fireEvent.mouseEnter(container.firstChild!)
       const buttonsAfterRerender = screen.getAllByRole('button')
@@ -396,14 +330,7 @@ describe('FieldItem', () => {
       const longVariable = 'a'.repeat(200)
       const payload = createInputVar({ variable: longVariable })
 
-      render(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={vi.fn()}
-          onRemove={vi.fn()}
-        />,
-      )
+      render(<FieldItem payload={payload} index={0} onClickEdit={vi.fn()} onRemove={vi.fn()} />)
 
       const varElement = screen.getByTitle(longVariable)
       expect(varElement)!.toHaveClass('truncate')
@@ -413,14 +340,7 @@ describe('FieldItem', () => {
       const longLabel = 'b'.repeat(200)
       const payload = createInputVar({ label: longLabel })
 
-      render(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={vi.fn()}
-          onRemove={vi.fn()}
-        />,
-      )
+      render(<FieldItem payload={payload} index={0} onClickEdit={vi.fn()} onRemove={vi.fn()} />)
 
       const labelElement = screen.getByTitle(longLabel)
       expect(labelElement)!.toHaveClass('truncate')
@@ -432,14 +352,7 @@ describe('FieldItem', () => {
         label: '<label>&"test\'',
       })
 
-      render(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={vi.fn()}
-          onRemove={vi.fn()}
-        />,
-      )
+      render(<FieldItem payload={payload} index={0} onClickEdit={vi.fn()} onRemove={vi.fn()} />)
 
       expect(screen.getByText('<test>&"var\''))!.toBeInTheDocument()
       expect(screen.getByText('<label>&"test\''))!.toBeInTheDocument()
@@ -451,14 +364,7 @@ describe('FieldItem', () => {
         label: '标签_😀',
       })
 
-      render(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={vi.fn()}
-          onRemove={vi.fn()}
-        />,
-      )
+      render(<FieldItem payload={payload} index={0} onClickEdit={vi.fn()} onRemove={vi.fn()} />)
 
       expect(screen.getByText('变量_🎉'))!.toBeInTheDocument()
       expect(screen.getByText('标签_😀'))!.toBeInTheDocument()
@@ -479,12 +385,7 @@ describe('FieldItem', () => {
         const payload = createInputVar({ type })
 
         const { unmount } = render(
-          <FieldItem
-            payload={payload}
-            index={0}
-            onClickEdit={vi.fn()}
-            onRemove={vi.fn()}
-          />,
+          <FieldItem payload={payload} index={0} onClickEdit={vi.fn()} onRemove={vi.fn()} />,
         )
 
         expect(screen.getByText('test_variable'))!.toBeInTheDocument()
@@ -500,21 +401,11 @@ describe('FieldItem', () => {
       const onRemove = vi.fn()
 
       const { rerender } = render(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={onClickEdit}
-          onRemove={onRemove}
-        />,
+        <FieldItem payload={payload} index={0} onClickEdit={onClickEdit} onRemove={onRemove} />,
       )
 
       rerender(
-        <FieldItem
-          payload={payload}
-          index={0}
-          onClickEdit={onClickEdit}
-          onRemove={onRemove}
-        />,
+        <FieldItem payload={payload} index={0} onClickEdit={onClickEdit} onRemove={onRemove} />,
       )
 
       expect(screen.getByText('test_variable'))!.toBeInTheDocument()
@@ -728,7 +619,7 @@ describe('FieldListContainer', () => {
     it('should convert InputVar[] to SortableItem[] with correct structure', () => {
       // Verify the conversion contract: id from variable, default sortable flags
       const inputFields = createInputVarList(2)
-      const converted: SortableItem[] = inputFields.map(content => ({
+      const converted: SortableItem[] = inputFields.map((content) => ({
         id: content.variable,
         chosen: false,
         selected: false,
@@ -865,9 +756,7 @@ describe('FieldList', () => {
         />,
       )
 
-      const addButton = screen.getAllByRole('button').find(btn =>
-        btn.querySelector('svg'),
-      )
+      const addButton = screen.getAllByRole('button').find((btn) => btn.querySelector('svg'))
       expect(addButton)!.toBeInTheDocument()
     })
 
@@ -885,9 +774,7 @@ describe('FieldList', () => {
         />,
       )
 
-      const addButton = screen.getAllByRole('button').find(btn =>
-        btn.querySelector('svg'),
-      )
+      const addButton = screen.getAllByRole('button').find((btn) => btn.querySelector('svg'))
       expect(addButton)!.toBeDisabled()
     })
 
@@ -923,11 +810,8 @@ describe('FieldList', () => {
           allVariableNames={[]}
         />,
       )
-      const addButton = screen.getAllByRole('button').find(btn =>
-        btn.querySelector('svg'),
-      )
-      if (addButton)
-        fireEvent.click(addButton)
+      const addButton = screen.getAllByRole('button').find((btn) => btn.querySelector('svg'))
+      if (addButton) fireEvent.click(addButton)
 
       expect(mockToggleInputFieldEditPanel).toHaveBeenCalled()
     })
@@ -945,11 +829,8 @@ describe('FieldList', () => {
           readonly={true}
         />,
       )
-      const addButton = screen.getAllByRole('button').find(btn =>
-        btn.querySelector('svg'),
-      )
-      if (addButton)
-        fireEvent.click(addButton)
+      const addButton = screen.getAllByRole('button').find((btn) => btn.querySelector('svg'))
+      if (addButton) fireEvent.click(addButton)
 
       expect(mockToggleInputFieldEditPanel).not.toHaveBeenCalled()
     })
@@ -974,8 +855,7 @@ describe('FieldList', () => {
       // Trigger field change via remove action
       fireEvent.mouseEnter(container.querySelector('.handle')!)
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1]!)
+      if (fieldItemButtons.length >= 2) fireEvent.click(fieldItemButtons[1]!)
 
       expect(handleInputFieldsChange).toHaveBeenCalledWith('node-1', expect.any(Array))
     })
@@ -998,8 +878,7 @@ describe('FieldList', () => {
       fireEvent.mouseEnter(container.querySelector('.handle')!)
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1]!)
+      if (fieldItemButtons.length >= 2) fireEvent.click(fieldItemButtons[1]!)
 
       await waitFor(() => {
         expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
@@ -1022,8 +901,7 @@ describe('FieldList', () => {
       fireEvent.mouseEnter(container.querySelector('.handle')!)
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1]!)
+      if (fieldItemButtons.length >= 2) fireEvent.click(fieldItemButtons[1]!)
 
       await waitFor(() => {
         expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
@@ -1053,8 +931,7 @@ describe('FieldList', () => {
       fireEvent.mouseEnter(container.querySelector('.handle')!)
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1]!)
+      if (fieldItemButtons.length >= 2) fireEvent.click(fieldItemButtons[1]!)
 
       await waitFor(() => {
         expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
@@ -1085,8 +962,7 @@ describe('FieldList', () => {
       fireEvent.mouseEnter(container.querySelector('.handle')!)
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1]!)
+      if (fieldItemButtons.length >= 2) fireEvent.click(fieldItemButtons[1]!)
 
       expect(screen.queryByTestId('remove-var-confirm')).not.toBeInTheDocument()
       expect(handleInputFieldsChange).toHaveBeenCalled()
@@ -1204,8 +1080,7 @@ describe('FieldList', () => {
       // After rerender, the callback chain should still work correctly
       fireEvent.mouseEnter(container.querySelector('.handle')!)
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1]!)
+      if (fieldItemButtons.length >= 2) fireEvent.click(fieldItemButtons[1]!)
 
       expect(handleInputFieldsChange).toHaveBeenCalledWith('node-1', expect.any(Array))
     })
@@ -1258,12 +1133,14 @@ describe('useFieldList Hook', () => {
       const onInputFieldsChange = vi.fn()
       const initialFields = createInputVarList(2)
 
-      const { result } = renderHook(() => useFieldList({
-        initialInputFields: initialFields,
-        onInputFieldsChange,
-        nodeId: 'node-1',
-        allVariableNames: [],
-      }))
+      const { result } = renderHook(() =>
+        useFieldList({
+          initialInputFields: initialFields,
+          onInputFieldsChange,
+          nodeId: 'node-1',
+          allVariableNames: [],
+        }),
+      )
 
       // Simulate sort change by calling handleListSortChange directly
       const reorderedList: SortableItem[] = [
@@ -1285,12 +1162,14 @@ describe('useFieldList Hook', () => {
       const onInputFieldsChange = vi.fn()
       const initialFields = createInputVarList(1)
 
-      const { result } = renderHook(() => useFieldList({
-        initialInputFields: initialFields,
-        onInputFieldsChange,
-        nodeId: 'node-1',
-        allVariableNames: [],
-      }))
+      const { result } = renderHook(() =>
+        useFieldList({
+          initialInputFields: initialFields,
+          onInputFieldsChange,
+          nodeId: 'node-1',
+          allVariableNames: [],
+        }),
+      )
 
       const sortableList: SortableItem[] = [
         createSortableItem(initialFields[0]!, { chosen: true, selected: true }),
@@ -1325,8 +1204,7 @@ describe('useFieldList Hook', () => {
       fireEvent.mouseEnter(container.querySelector('.handle')!)
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1]!)
+      if (fieldItemButtons.length >= 2) fireEvent.click(fieldItemButtons[1]!)
 
       await waitFor(() => {
         expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
@@ -1350,8 +1228,7 @@ describe('useFieldList Hook', () => {
       fireEvent.mouseEnter(container.querySelector('.handle')!)
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1]!)
+      if (fieldItemButtons.length >= 2) fireEvent.click(fieldItemButtons[1]!)
 
       expect(screen.queryByTestId('remove-var-confirm')).not.toBeInTheDocument()
       expect(handleInputFieldsChange).toHaveBeenCalled()
@@ -1374,8 +1251,7 @@ describe('useFieldList Hook', () => {
       fireEvent.mouseEnter(container.querySelector('.handle')!)
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1]!)
+      if (fieldItemButtons.length >= 2) fireEvent.click(fieldItemButtons[1]!)
 
       await waitFor(() => {
         expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
@@ -1399,8 +1275,7 @@ describe('useFieldList Hook', () => {
       fireEvent.mouseEnter(container.querySelector('.handle')!)
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1]!)
+      if (fieldItemButtons.length >= 2) fireEvent.click(fieldItemButtons[1]!)
 
       expect(mockIsVarUsedInNodes).toHaveBeenCalledWith(['rag', 'test-node-123', 'my_test_var'])
     })
@@ -1422,8 +1297,7 @@ describe('useFieldList Hook', () => {
       fireEvent.mouseEnter(container.querySelector('.handle')!)
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1]!)
+      if (fieldItemButtons.length >= 2) fireEvent.click(fieldItemButtons[1]!)
 
       expect(mockIsVarUsedInNodes).toHaveBeenCalledWith(['rag', 'node-1', ''])
     })
@@ -1443,11 +1317,10 @@ describe('useFieldList Hook', () => {
         />,
       )
       const fieldItemRoots = container.querySelectorAll('.handle')
-      fieldItemRoots.forEach(el => fireEvent.mouseEnter(el))
+      fieldItemRoots.forEach((el) => fireEvent.mouseEnter(el))
 
       const allFieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (allFieldItemButtons.length >= 4)
-        fireEvent.click(allFieldItemButtons[3]!)
+      if (allFieldItemButtons.length >= 4) fireEvent.click(allFieldItemButtons[3]!)
 
       await waitFor(() => {
         expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
@@ -1477,11 +1350,8 @@ describe('useFieldList Hook', () => {
           allVariableNames={[]}
         />,
       )
-      const addButton = screen.getAllByRole('button').find(btn =>
-        btn.querySelector('svg'),
-      )
-      if (addButton)
-        fireEvent.click(addButton)
+      const addButton = screen.getAllByRole('button').find((btn) => btn.querySelector('svg'))
+      if (addButton) fireEvent.click(addButton)
 
       expect(mockToggleInputFieldEditPanel).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1505,8 +1375,7 @@ describe('useFieldList Hook', () => {
       )
       fireEvent.mouseEnter(container.querySelector('.handle')!)
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (fieldItemButtons.length >= 1)
-        fireEvent.click(fieldItemButtons[0]!)
+      if (fieldItemButtons.length >= 1) fireEvent.click(fieldItemButtons[0]!)
 
       expect(mockToggleInputFieldEditPanel).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1537,8 +1406,7 @@ describe('useFieldList Hook', () => {
       fireEvent.mouseEnter(container.querySelector('.handle')!)
 
       const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-      if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1]!)
+      if (fieldItemButtons.length >= 2) fireEvent.click(fieldItemButtons[1]!)
 
       await waitFor(() => {
         expect(screen.getByTestId('remove-var-confirm'))!.toBeInTheDocument()
@@ -1608,8 +1476,7 @@ describe('handleSubmitField', () => {
     fireEvent.mouseEnter(container.querySelector('.handle')!)
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-    if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0]!)
+    if (fieldItemButtons.length >= 1) fireEvent.click(fieldItemButtons[0]!)
 
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
@@ -1642,8 +1509,7 @@ describe('handleSubmitField', () => {
     fireEvent.mouseEnter(container.querySelector('.handle')!)
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-    if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0]!)
+    if (fieldItemButtons.length >= 1) fireEvent.click(fieldItemButtons[0]!)
 
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
@@ -1676,8 +1542,7 @@ describe('handleSubmitField', () => {
     fireEvent.mouseEnter(container.querySelector('.handle')!)
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-    if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0]!)
+    if (fieldItemButtons.length >= 1) fireEvent.click(fieldItemButtons[0]!)
 
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
@@ -1704,8 +1569,7 @@ describe('handleSubmitField', () => {
     fireEvent.mouseEnter(container.querySelector('.handle')!)
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-    if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0]!)
+    if (fieldItemButtons.length >= 1) fireEvent.click(fieldItemButtons[0]!)
 
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
@@ -1732,8 +1596,7 @@ describe('handleSubmitField', () => {
     fireEvent.mouseEnter(container.querySelector('.handle')!)
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-    if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0]!)
+    if (fieldItemButtons.length >= 1) fireEvent.click(fieldItemButtons[0]!)
 
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
@@ -1766,8 +1629,7 @@ describe('handleSubmitField', () => {
     fireEvent.mouseEnter(container.querySelector('.handle')!)
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-    if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0]!)
+    if (fieldItemButtons.length >= 1) fireEvent.click(fieldItemButtons[0]!)
 
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
@@ -1861,7 +1723,9 @@ describe('Duplicate Variable Name Handling', () => {
     editorProps.onSubmit(duplicateFieldData)
 
     expect(handleInputFieldsChange).not.toHaveBeenCalled()
-    expect(toastErrorSpy).toHaveBeenCalledWith('datasetPipeline.inputFieldPanel.error.variableDuplicate')
+    expect(toastErrorSpy).toHaveBeenCalledWith(
+      'datasetPipeline.inputFieldPanel.error.variableDuplicate',
+    )
   })
 
   it('should allow updating field to same variable name', () => {
@@ -1880,8 +1744,7 @@ describe('Duplicate Variable Name Handling', () => {
     fireEvent.mouseEnter(container.querySelector('.handle')!)
 
     const fieldItemButtons = container.querySelectorAll('.handle button.action-btn')
-    if (fieldItemButtons.length >= 1)
-      fireEvent.click(fieldItemButtons[0]!)
+    if (fieldItemButtons.length >= 1) fireEvent.click(fieldItemButtons[0]!)
 
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
 
@@ -1948,8 +1811,7 @@ describe('Integration Tests', () => {
         expect(mockToggleInputFieldEditPanel).toHaveBeenCalledTimes(2)
       }
 
-      if (fieldItemButtons.length >= 2)
-        fireEvent.click(fieldItemButtons[1]!)
+      if (fieldItemButtons.length >= 2) fireEvent.click(fieldItemButtons[1]!)
 
       expect(handleInputFieldsChange).toHaveBeenCalled()
     })
@@ -1970,9 +1832,7 @@ describe('Integration Tests', () => {
         />,
       )
 
-      const addButton = screen.getAllByRole('button').find(btn =>
-        btn.querySelector('svg'),
-      )
+      const addButton = screen.getAllByRole('button').find((btn) => btn.querySelector('svg'))
       expect(addButton)!.toBeDisabled()
     })
   })

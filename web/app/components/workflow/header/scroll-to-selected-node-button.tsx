@@ -8,10 +8,9 @@ import { scrollToWorkflowNode } from '../utils/node-navigation'
 const ScrollToSelectedNodeButton: FC = () => {
   const { t } = useTranslation()
   const nodes = useNodes<CommonNodeType>()
-  const selectedNode = nodes.find(node => node.data.selected)
+  const selectedNode = nodes.find((node) => node.data.selected)
 
-  if (!selectedNode)
-    return null
+  if (!selectedNode) return null
 
   return (
     <div
@@ -20,7 +19,7 @@ const ScrollToSelectedNodeButton: FC = () => {
       )}
       onClick={() => scrollToWorkflowNode(selectedNode.id)}
     >
-      {t('panel.scrollToSelectedNode', { ns: 'workflow' })}
+      {t(($) => $['panel.scrollToSelectedNode'], { ns: 'workflow' })}
     </div>
   )
 }

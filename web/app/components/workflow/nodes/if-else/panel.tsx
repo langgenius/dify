@@ -2,12 +2,8 @@ import type { FC } from 'react'
 import type { IfElseNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  RiAddLine,
-} from '@remixicon/react'
-import {
-  memo,
-} from 'react'
+import { RiAddLine } from '@remixicon/react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ConditionWrap from './components/condition-wrap'
@@ -15,10 +11,7 @@ import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.ifElse'
 
-const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
-  id,
-  data,
-}) => {
+const Panel: FC<NodePanelProps<IfElseNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
   const {
     readOnly,
@@ -56,7 +49,9 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
         handleAddSubVariableCondition={handleAddSubVariableCondition}
         handleRemoveSubVariableCondition={handleRemoveSubVariableCondition}
         handleUpdateSubVariableCondition={handleUpdateSubVariableCondition}
-        handleToggleSubVariableConditionLogicalOperator={handleToggleSubVariableConditionLogicalOperator}
+        handleToggleSubVariableConditionLogicalOperator={
+          handleToggleSubVariableConditionLogicalOperator
+        }
         nodesOutputVars={nodesOutputVars}
         availableNodes={availableNodes}
         varsIsVarFileAttribute={varsIsVarFileAttribute}
@@ -74,11 +69,10 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
         </Button>
       </div>
       <div className="mx-3 my-2 h-px bg-divider-subtle"></div>
-      <Field
-        title={t(`${i18nPrefix}.else`, { ns: 'workflow' })}
-        className="px-4 py-2"
-      >
-        <div className="text-xs leading-[18px] font-normal text-text-tertiary">{t(`${i18nPrefix}.elseDescription`, { ns: 'workflow' })}</div>
+      <Field title={t(($) => $[`${i18nPrefix}.else`], { ns: 'workflow' })} className="px-4 py-2">
+        <div className="text-xs leading-[18px] font-normal text-text-tertiary">
+          {t(($) => $[`${i18nPrefix}.elseDescription`], { ns: 'workflow' })}
+        </div>
       </Field>
     </div>
   )

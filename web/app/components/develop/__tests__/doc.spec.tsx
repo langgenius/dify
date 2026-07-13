@@ -60,14 +60,15 @@ vi.mock('@/i18n-config/language', () => ({
 }))
 
 describe('Doc', () => {
-  const makeAppDetail = (mode: AppModeEnum, variables: Array<{ key: string, name: string }> = []) => ({
-    mode,
-    model_config: {
-      configs: {
-        prompt_variables: variables,
+  const makeAppDetail = (mode: AppModeEnum, variables: Array<{ key: string; name: string }> = []) =>
+    ({
+      mode,
+      model_config: {
+        configs: {
+          prompt_variables: variables,
+        },
       },
-    },
-  }) as unknown as Parameters<typeof Doc>[0]['appDetail']
+    }) as unknown as Parameters<typeof Doc>[0]['appDetail']
 
   beforeEach(() => {
     vi.clearAllMocks()

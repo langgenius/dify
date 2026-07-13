@@ -34,26 +34,26 @@ export const useGotoAnythingSearch = (): UseGotoAnythingSearchReturn => {
 
   const isCommandsMode = useMemo(() => {
     const trimmed = searchQuery.trim()
-    return trimmed === '@' || trimmed === '/'
-      || (trimmed.startsWith('@') && !matchAction(trimmed, Actions))
-      || (trimmed.startsWith('/') && !matchAction(trimmed, Actions))
+    return (
+      trimmed === '@' ||
+      trimmed === '/' ||
+      (trimmed.startsWith('@') && !matchAction(trimmed, Actions)) ||
+      (trimmed.startsWith('/') && !matchAction(trimmed, Actions))
+    )
   }, [searchQuery, Actions])
 
   const searchMode = useMemo(() => {
     if (isCommandsMode) {
       // Distinguish between @ (scopes) and / (commands) mode
-      if (searchQuery.trim().startsWith('@'))
-        return 'scopes'
-      else if (searchQuery.trim().startsWith('/'))
-        return 'commands'
+      if (searchQuery.trim().startsWith('@')) return 'scopes'
+      else if (searchQuery.trim().startsWith('/')) return 'commands'
       return 'commands' // default fallback
     }
 
     const query = searchQueryDebouncedValue.toLowerCase()
     const action = matchAction(query, Actions)
 
-    if (!action)
-      return 'general'
+    if (!action) return 'general'
 
     return action.key === '/' ? '@command' : action.key
   }, [searchQueryDebouncedValue, Actions, isCommandsMode, searchQuery])

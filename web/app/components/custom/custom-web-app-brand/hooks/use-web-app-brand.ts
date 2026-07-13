@@ -32,7 +32,9 @@ const useWebAppBrand = () => {
   const webappBrandRemoved = currentWorkspace.custom_config?.remove_webapp_brand
   const canManageCustomBrand = hasPermission(workspacePermissionKeys, 'customization.manage')
   const uploadDisabled = isSandbox || webappBrandRemoved || !canManageCustomBrand
-  const workspaceLogo = systemFeatures.branding.enabled ? systemFeatures.branding.workspace_logo : ''
+  const workspaceLogo = systemFeatures.branding.enabled
+    ? systemFeatures.branding.workspace_logo
+    : ''
   const persistWorkspaceBrand = async (body: Record<string, unknown>) => {
     await updateCurrentWorkspace({
       url: CUSTOM_CONFIG_URL,
@@ -42,25 +44,32 @@ const useWebAppBrand = () => {
   }
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file)
-      return
+    if (!file) return
     if (file.size > MAX_LOGO_FILE_SIZE) {
-      toast.error(t('imageUploader.uploadFromComputerLimit', { ns: 'common', size: 5 }))
+      toast.error(t(($) => $['imageUploader.uploadFromComputerLimit'], { ns: 'common', size: 5 }))
       return
     }
-    imageUpload({
-      file,
-      onProgressCallback: setUploadProgress,
-      onSuccessCallback: (res) => {
-        setUploadProgress(100)
-        setFileId(res.id)
+    imageUpload(
+      {
+        file,
+        onProgressCallback: setUploadProgress,
+        onSuccessCallback: (res) => {
+          setUploadProgress(100)
+          setFileId(res.id)
+        },
+        onErrorCallback: (error) => {
+          const errorMessage = getImageUploadErrorMessage(
+            error,
+            t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
+            t,
+          )
+          toast.error(errorMessage)
+          setUploadProgress(-1)
+        },
       },
-      onErrorCallback: (error) => {
-        const errorMessage = getImageUploadErrorMessage(error, t('imageUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
-        toast.error(errorMessage)
-        setUploadProgress(-1)
-      },
-    }, false, WEB_APP_LOGO_UPLOAD_URL)
+      false,
+      WEB_APP_LOGO_UPLOAD_URL,
+    )
   }
   const handleApply = async () => {
     await persistWorkspaceBrand({

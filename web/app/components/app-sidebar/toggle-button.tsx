@@ -12,16 +12,18 @@ type ToggleTooltipContentProps = {
 
 const TOGGLE_SHORTCUT = ['Mod', 'B']
 
-const ToggleTooltipContent = ({
-  expand,
-}: ToggleTooltipContentProps) => {
+const ToggleTooltipContent = ({ expand }: ToggleTooltipContentProps) => {
   const { t } = useTranslation()
 
   return (
     <div className="flex items-center gap-x-1">
-      <span className="px-0.5 system-xs-medium text-text-secondary">{expand ? t('sidebar.collapseSidebar', { ns: 'layout' }) : t('sidebar.expandSidebar', { ns: 'layout' })}</span>
+      <span className="px-0.5 system-xs-medium text-text-secondary">
+        {expand
+          ? t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })
+          : t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
+      </span>
       <KbdGroup>
-        {TOGGLE_SHORTCUT.map(key => (
+        {TOGGLE_SHORTCUT.map((key) => (
           <Kbd key={key}>{formatForDisplay(key)}</Kbd>
         ))}
       </KbdGroup>
@@ -47,20 +49,22 @@ const ToggleButton = ({
   return (
     <Tooltip>
       <TooltipTrigger
-        render={(
+        render={
           <Button
             size="small"
             onClick={handleToggle}
             className={cn('rounded-full px-1', className)}
           />
-        )}
+        }
       >
-        {icon
-          || (iconClassName
-            ? <span aria-hidden className={cn('size-4', iconClassName)} />
-            : expand
-              ? <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-              : <span aria-hidden className="i-ri-arrow-right-s-line size-4" />)}
+        {icon ||
+          (iconClassName ? (
+            <span aria-hidden className={cn('size-4', iconClassName)} />
+          ) : expand ? (
+            <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+          ) : (
+            <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
+          ))}
       </TooltipTrigger>
       <TooltipContent placement="right" className="rounded-lg p-1.5">
         <ToggleTooltipContent expand={expand} />

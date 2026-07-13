@@ -30,7 +30,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 type FileUploadOptions = {
   file: File
   onProgressCallback?: (progress: number) => void
-  onSuccessCallback?: (res: { id: string, extension: string, mime_type: string, size: number }) => void
+  onSuccessCallback?: (res: {
+    id: string
+    extension: string
+    mime_type: string
+    size: number
+  }) => void
   onErrorCallback?: (error?: Error) => void
 }
 
@@ -43,11 +48,7 @@ vi.mock('@/app/components/base/file-uploader/utils', () => ({
 }))
 
 const createWrapper = () => {
-  return ({ children }: PropsWithChildren) => (
-    <FileContextProvider>
-      {children}
-    </FileContextProvider>
-  )
+  return ({ children }: PropsWithChildren) => <FileContextProvider>{children}</FileContextProvider>
 }
 
 const createMockFile = (name = 'test.png', _size = 1024, type = 'image/png') => {
@@ -64,25 +65,24 @@ class MockFileReader {
   private listeners: Record<string, EventCallback[]> = {}
 
   addEventListener(event: string, callback: EventCallback) {
-    if (!this.listeners[event])
-      this.listeners[event] = []
+    if (!this.listeners[event]) this.listeners[event] = []
     this.listeners[event].push(callback)
   }
 
   removeEventListener(event: string, callback: EventCallback) {
     if (this.listeners[event])
-      this.listeners[event] = this.listeners[event].filter(cb => cb !== callback)
+      this.listeners[event] = this.listeners[event].filter((cb) => cb !== callback)
   }
 
   readAsDataURL(_file: File) {
     setTimeout(() => {
       this.result = 'data:image/png;base64,mockBase64Data'
-      this.listeners.load?.forEach(cb => cb())
+      this.listeners.load?.forEach((cb) => cb())
     }, 0)
   }
 
   triggerError() {
-    this.listeners.error?.forEach(cb => cb())
+    this.listeners.error?.forEach((cb) => cb())
   }
 }
 
@@ -91,7 +91,12 @@ describe('useUpload hook', () => {
     vi.clearAllMocks()
     mockFileUpload.mockImplementation(({ onSuccessCallback }) => {
       setTimeout(() => {
-        onSuccessCallback?.({ id: 'uploaded-id', extension: 'png', mime_type: 'image/png', size: 1024 })
+        onSuccessCallback?.({
+          id: 'uploaded-id',
+          extension: 'png',
+          mime_type: 'image/png',
+          size: 1024,
+        })
       }, 0)
     })
     // Mock FileReader globally
@@ -209,7 +214,9 @@ describe('useUpload hook', () => {
       type ToastCall = [string]
       const mockNotify = vi.mocked(toast.error)
       const calls = mockNotify.mock.calls as ToastCall[]
-      const typeErrorCalls = calls.filter(call => call[0].includes('common.fileUploader.fileExtensionNotSupport'))
+      const typeErrorCalls = calls.filter((call) =>
+        call[0].includes('common.fileUploader.fileExtensionNotSupport'),
+      )
       expect(typeErrorCalls.length).toBe(0)
     })
   })
@@ -338,9 +345,7 @@ describe('useUpload hook', () => {
         result.current.handleRemoveFile('file1')
       })
 
-      expect(onChange).toHaveBeenCalledWith([
-        { id: 'file2', name: 'test2.png', progress: 100 },
-      ])
+      expect(onChange).toHaveBeenCalledWith([{ id: 'file2', name: 'test2.png', progress: 100 }])
     })
   })
 
@@ -348,7 +353,12 @@ describe('useUpload hook', () => {
     it('should re-upload file when called with valid fileId', async () => {
       const onChange = vi.fn()
       const initialFiles: Partial<FileEntity>[] = [
-        { id: 'file1', name: 'test1.png', progress: -1, originalFile: new File(['test'], 'test1.png') },
+        {
+          id: 'file1',
+          name: 'test1.png',
+          progress: -1,
+          originalFile: new File(['test'], 'test1.png'),
+        },
       ]
 
       const wrapper = ({ children }: PropsWithChildren) => (
@@ -371,7 +381,12 @@ describe('useUpload hook', () => {
     it('should not re-upload when fileId is not found', () => {
       const onChange = vi.fn()
       const initialFiles: Partial<FileEntity>[] = [
-        { id: 'file1', name: 'test1.png', progress: -1, originalFile: new File(['test'], 'test1.png') },
+        {
+          id: 'file1',
+          name: 'test1.png',
+          progress: -1,
+          originalFile: new File(['test'], 'test1.png'),
+        },
       ]
 
       const wrapper = ({ children }: PropsWithChildren) => (
@@ -399,7 +414,12 @@ describe('useUpload hook', () => {
 
       const onChange = vi.fn()
       const initialFiles: Partial<FileEntity>[] = [
-        { id: 'file1', name: 'test1.png', progress: -1, originalFile: new File(['test'], 'test1.png') },
+        {
+          id: 'file1',
+          name: 'test1.png',
+          progress: -1,
+          originalFile: new File(['test'], 'test1.png'),
+        },
       ]
 
       const wrapper = ({ children }: PropsWithChildren) => (
@@ -422,20 +442,25 @@ describe('useUpload hook', () => {
 
   describe('handleLocalFileUpload', () => {
     it('should upload file and update progress', async () => {
-      mockFileUpload.mockImplementation(({ onProgressCallback, onSuccessCallback }: FileUploadOptions) => {
-        setTimeout(() => {
-          onProgressCallback?.(50)
+      mockFileUpload.mockImplementation(
+        ({ onProgressCallback, onSuccessCallback }: FileUploadOptions) => {
           setTimeout(() => {
-            onSuccessCallback?.({ id: 'uploaded-id', extension: 'png', mime_type: 'image/png', size: 1024 })
-          }, 10)
-        }, 0)
-      })
+            onProgressCallback?.(50)
+            setTimeout(() => {
+              onSuccessCallback?.({
+                id: 'uploaded-id',
+                extension: 'png',
+                mime_type: 'image/png',
+                size: 1024,
+              })
+            }, 10)
+          }, 0)
+        },
+      )
 
       const onChange = vi.fn()
       const wrapper = ({ children }: PropsWithChildren) => (
-        <FileContextProvider onChange={onChange}>
-          {children}
-        </FileContextProvider>
+        <FileContextProvider onChange={onChange}>{children}</FileContextProvider>
       )
 
       const { result } = renderHook(() => useUpload(), { wrapper })
@@ -460,9 +485,7 @@ describe('useUpload hook', () => {
 
       const onChange = vi.fn()
       const wrapper = ({ children }: PropsWithChildren) => (
-        <FileContextProvider onChange={onChange}>
-          {children}
-        </FileContextProvider>
+        <FileContextProvider onChange={onChange}>{children}</FileContextProvider>
       )
 
       const { result } = renderHook(() => useUpload(), { wrapper })
@@ -500,10 +523,7 @@ describe('useUpload hook', () => {
       // Try to add 2 more files (would exceed limit of 20)
       const mockEvent = {
         target: {
-          files: [
-            createMockFile('new1.png'),
-            createMockFile('new2.png'),
-          ],
+          files: [createMockFile('new1.png'), createMockFile('new2.png')],
         },
       } as unknown as React.ChangeEvent<HTMLInputElement>
 
@@ -561,20 +581,19 @@ describe('useUpload hook', () => {
         private listeners: Record<string, EventCallback[]> = {}
 
         addEventListener(event: string, callback: EventCallback) {
-          if (!this.listeners[event])
-            this.listeners[event] = []
+          if (!this.listeners[event]) this.listeners[event] = []
           this.listeners[event].push(callback)
         }
 
         removeEventListener(event: string, callback: EventCallback) {
           if (this.listeners[event])
-            this.listeners[event] = this.listeners[event].filter(cb => cb !== callback)
+            this.listeners[event] = this.listeners[event].filter((cb) => cb !== callback)
         }
 
         readAsDataURL(_file: File) {
           // Trigger error instead of load
           setTimeout(() => {
-            this.listeners.error?.forEach(cb => cb())
+            this.listeners.error?.forEach((cb) => cb())
           }, 0)
         }
       }
@@ -583,9 +602,7 @@ describe('useUpload hook', () => {
 
       const onChange = vi.fn()
       const wrapper = ({ children }: PropsWithChildren) => (
-        <FileContextProvider onChange={onChange}>
-          {children}
-        </FileContextProvider>
+        <FileContextProvider onChange={onChange}>{children}</FileContextProvider>
       )
 
       const { result } = renderHook(() => useUpload(), { wrapper })
@@ -699,10 +716,12 @@ describe('useUpload hook', () => {
       await act(async () => {
         fireEvent.drop(dropZone, {
           dataTransfer: {
-            items: [{
-              webkitGetAsEntry: () => null,
-              getAsFile: () => mockFile,
-            }],
+            items: [
+              {
+                webkitGetAsEntry: () => null,
+                getAsFile: () => mockFile,
+              },
+            ],
           },
         })
       })
@@ -747,10 +766,12 @@ describe('useUpload hook', () => {
       await act(async () => {
         fireEvent.drop(dropZone, {
           dataTransfer: {
-            items: [{
-              webkitGetAsEntry: () => null,
-              getAsFile: () => invalidFile,
-            }],
+            items: [
+              {
+                webkitGetAsEntry: () => null,
+                getAsFile: () => invalidFile,
+              },
+            ],
           },
         })
       })
@@ -783,10 +804,12 @@ describe('useUpload hook', () => {
       await act(async () => {
         fireEvent.drop(dropZone, {
           dataTransfer: {
-            items: [{
-              webkitGetAsEntry: () => mockFileEntry,
-              getAsFile: () => mockFile,
-            }],
+            items: [
+              {
+                webkitGetAsEntry: () => mockFileEntry,
+                getAsFile: () => mockFile,
+              },
+            ],
           },
         })
       })

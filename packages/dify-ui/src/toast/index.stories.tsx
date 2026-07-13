@@ -2,8 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { toast, ToastHost } from '.'
 
-const buttonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-2 text-sm text-text-secondary shadow-xs outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
-const cardClassName = 'flex min-h-[220px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6 shadow-sm shadow-shadow-shadow-3'
+const buttonClassName =
+  'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-2 text-sm text-text-secondary shadow-xs outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const cardClassName =
+  'flex min-h-[220px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6 shadow-sm shadow-shadow-shadow-3'
 
 const ExampleCard = ({
   eyebrow,
@@ -19,19 +21,11 @@ const ExampleCard = ({
   return (
     <section className={cardClassName}>
       <div className="space-y-2">
-        <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">
-          {eyebrow}
-        </div>
-        <h3 className="text-base leading-6 font-semibold text-text-primary">
-          {title}
-        </h3>
-        <p className="text-sm leading-6 text-text-secondary">
-          {description}
-        </p>
+        <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">{eyebrow}</div>
+        <h3 className="text-base leading-6 font-semibold text-text-primary">{title}</h3>
+        <p className="text-sm leading-6 text-text-secondary">{description}</p>
       </div>
-      <div className="mt-auto flex flex-wrap gap-3">
-        {children}
-      </div>
+      <div className="mt-auto flex flex-wrap gap-3">{children}</div>
     </section>
   )
 }
@@ -68,13 +62,21 @@ const VariantExamples = () => {
       title="Tone-specific notifications"
       description="Trigger the four supported tones from the shared viewport to validate iconography, gradient treatment, and copy density."
     >
-      <button type="button" className={buttonClassName} onClick={() => createVariantToast('success')}>
+      <button
+        type="button"
+        className={buttonClassName}
+        onClick={() => createVariantToast('success')}
+      >
         Success
       </button>
       <button type="button" className={buttonClassName} onClick={() => createVariantToast('info')}>
         Info
       </button>
-      <button type="button" className={buttonClassName} onClick={() => createVariantToast('warning')}>
+      <button
+        type="button"
+        className={buttonClassName}
+        onClick={() => createVariantToast('warning')}
+      >
         Warning
       </button>
       <button type="button" className={buttonClassName} onClick={() => createVariantToast('error')}>
@@ -119,7 +121,8 @@ const StackExamples = () => {
 
   const createVaryingHeightStack = () => {
     toast.info('Long background toast', {
-      description: 'This longer toast intentionally spans multiple lines so the collapsed stack can be checked against the shorter frontmost toast height without panel overflow.',
+      description:
+        'This longer toast intentionally spans multiple lines so the collapsed stack can be checked against the shorter frontmost toast height without panel overflow.',
     })
     toast.success('Short front toast', {
       description: 'Short message.',
@@ -157,7 +160,7 @@ const PromiseExamples = () => {
         title: 'Deploying workflow',
         description: 'Provisioning runtime and publishing the latest version.',
       },
-      success: result => ({
+      success: (result) => ({
         type: 'success',
         title: 'Deployment complete',
         description: result,
@@ -222,7 +225,8 @@ const ActionExamples = () => {
 
   const createLongCopyToast = () => {
     toast.info('Knowledge ingestion in progress', {
-      description: 'This longer example helps validate line wrapping, close button alignment, and action button placement when the content spans multiple rows.',
+      description:
+        'This longer example helps validate line wrapping, close button alignment, and action button placement when the content spans multiple rows.',
       actionProps: {
         children: 'View details',
         onClick: () => {
@@ -255,9 +259,10 @@ const DeduplicateExamples = () => {
     saveCountRef.current += 1
     toast.success('Draft saved', {
       id: 'draft-save-status',
-      description: saveCountRef.current === 1
-        ? 'Click again while this toast is visible to update the same mounted toast.'
-        : `Same toast updated ${saveCountRef.current} times.`,
+      description:
+        saveCountRef.current === 1
+          ? 'Click again while this toast is visible to update the same mounted toast.'
+          : `Same toast updated ${saveCountRef.current} times.`,
     })
   }
 
@@ -325,7 +330,9 @@ const ToastDocsDemo = () => {
               Shared stacked toast examples
             </h2>
             <p className="max-w-3xl text-sm leading-6 text-text-secondary">
-              Each example card below triggers the same shared toast viewport in the top-right corner, so you can review stacking, state transitions, actions, and tone variants the same way the official Base UI documentation demonstrates toast behavior.
+              Each example card below triggers the same shared toast viewport in the top-right
+              corner, so you can review stacking, state transitions, actions, and tone variants the
+              same way the official Base UI documentation demonstrates toast behavior.
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -349,7 +356,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Dify toast host built on Base UI Toast. The story is organized as multiple example panels that all feed the same shared toast viewport, matching the way the Base UI documentation showcases toast behavior.',
+        component:
+          'Dify toast host built on Base UI Toast. The story is organized as multiple example panels that all feed the same shared toast viewport, matching the way the Base UI documentation showcases toast behavior.',
       },
     },
   },

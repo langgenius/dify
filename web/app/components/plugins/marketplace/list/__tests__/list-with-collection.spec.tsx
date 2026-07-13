@@ -5,14 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ListWithCollection from '../list-with-collection'
 
 const mockMoreClick = vi.fn()
-
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('../../atoms', () => ({
   useMarketplaceMoreClick: () => mockMoreClick,
 }))
@@ -114,7 +106,11 @@ describe('ListWithCollection', () => {
       <ListWithCollection
         marketplaceCollections={collections}
         marketplaceCollectionPluginsMap={pluginsMap}
-        cardRender={plugin => <div key={plugin.plugin_id} data-testid="custom-card">{plugin.name}</div>}
+        cardRender={(plugin) => (
+          <div key={plugin.plugin_id} data-testid="custom-card">
+            {plugin.name}
+          </div>
+        )}
       />,
     )
 
@@ -139,14 +135,17 @@ describe('ListWithCollection', () => {
         marketplaceCollections={[partnerCollection, collections[0]!]}
         marketplaceCollectionPluginsMap={{
           'partner-template': [{ plugin_id: 'partner-plugin', name: 'Partner Plugin' }] as Plugin[],
-          'featured': [{ plugin_id: 'featured-plugin', name: 'Featured Plugin' }] as Plugin[],
+          featured: [{ plugin_id: 'featured-plugin', name: 'Featured Plugin' }] as Plugin[],
         }}
       />,
     )
 
     const partnerLink = screen.getByRole('link', { name: 'plugin.marketplace.becomePartner' })
 
-    expect(partnerLink).toHaveAttribute('href', 'https://share-na2.hsforms.com/1NiS4r9lsSqGcuNBB77DeEQ40s9fk')
+    expect(partnerLink).toHaveAttribute(
+      'href',
+      'https://share-na2.hsforms.com/1NiS4r9lsSqGcuNBB77DeEQ40s9fk',
+    )
     expect(partnerLink).toHaveAttribute('target', '_blank')
     expect(partnerLink).toHaveAttribute('rel', 'noopener noreferrer')
     expect(partnerLink.querySelector('.i-ri-external-link-line')).toHaveClass('size-3')
@@ -171,12 +170,16 @@ describe('ListWithCollection', () => {
       <ListWithCollection
         marketplaceCollections={[misspelledPartnerCollection]}
         marketplaceCollectionPluginsMap={{
-          parters: [{ plugin_id: 'misspelled-partner-plugin', name: 'Misspelled Partner Plugin' }] as Plugin[],
+          parters: [
+            { plugin_id: 'misspelled-partner-plugin', name: 'Misspelled Partner Plugin' },
+          ] as Plugin[],
         }}
       />,
     )
 
-    expect(screen.queryByRole('link', { name: 'plugin.marketplace.becomePartner' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'plugin.marketplace.becomePartner' }),
+    ).not.toBeInTheDocument()
   })
 
   it('uses carousel navigation instead of view more when collection exceeds two rows', () => {

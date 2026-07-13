@@ -23,97 +23,148 @@ type Props = Readonly<{
   datasetId: string
   documentNum: number
   list: MetadataItemInBatchEdit[]
-  onSave: (editedList: MetadataItemInBatchEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => void
+  onSave: (
+    editedList: MetadataItemInBatchEdit[],
+    addedList: MetadataItemInBatchEdit[],
+    isApplyToAllSelectDocument: boolean,
+  ) => void
   onHide: () => void
   onShowManage: () => void
 }>
-const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSave, onHide, onShowManage }) => {
+const EditMetadataBatchModal: FC<Props> = ({
+  datasetId,
+  documentNum,
+  list,
+  onSave,
+  onHide,
+  onShowManage,
+}) => {
   const { t } = useTranslation()
   const [templeList, setTempleList] = useState<MetadataItemWithEdit[]>(list)
-  const handleTemplesChange = useCallback((payload: MetadataItemWithEdit) => {
-    const newTempleList = produce(templeList, (draft) => {
-      const index = draft.findIndex(i => i.id === payload.id)
-      if (index !== -1) {
-        draft[index] = payload
-        draft[index].isUpdated = true
-        draft[index].updateType = UpdateType.changeValue
-      }
-    })
-    setTempleList(newTempleList)
-  }, [templeList])
-  const handleTempleItemRemove = useCallback((id: string) => {
-    const newTempleList = produce(templeList, (draft) => {
-      const index = draft.findIndex(i => i.id === id)
-      if (index !== -1) {
-        draft[index]!.isUpdated = true
-        draft[index]!.updateType = UpdateType.delete
-      }
-    })
-    setTempleList(newTempleList)
-  }, [templeList])
-  const handleItemReset = useCallback((id: string) => {
-    const newTempleList = produce(templeList, (draft) => {
-      const index = draft.findIndex(i => i.id === id)
-      if (index !== -1) {
-        draft[index] = { ...list[index]! }
-        draft[index]!.isUpdated = false
-        delete draft[index]!.updateType
-      }
-    })
-    setTempleList(newTempleList)
-  }, [list, templeList])
+  const handleTemplesChange = useCallback(
+    (payload: MetadataItemWithEdit) => {
+      const newTempleList = produce(templeList, (draft) => {
+        const index = draft.findIndex((i) => i.id === payload.id)
+        if (index !== -1) {
+          draft[index] = payload
+          draft[index].isUpdated = true
+          draft[index].updateType = UpdateType.changeValue
+        }
+      })
+      setTempleList(newTempleList)
+    },
+    [templeList],
+  )
+  const handleTempleItemRemove = useCallback(
+    (id: string) => {
+      const newTempleList = produce(templeList, (draft) => {
+        const index = draft.findIndex((i) => i.id === id)
+        if (index !== -1) {
+          draft[index]!.isUpdated = true
+          draft[index]!.updateType = UpdateType.delete
+        }
+      })
+      setTempleList(newTempleList)
+    },
+    [templeList],
+  )
+  const handleItemReset = useCallback(
+    (id: string) => {
+      const newTempleList = produce(templeList, (draft) => {
+        const index = draft.findIndex((i) => i.id === id)
+        if (index !== -1) {
+          draft[index] = { ...list[index]! }
+          draft[index]!.isUpdated = false
+          delete draft[index]!.updateType
+        }
+      })
+      setTempleList(newTempleList)
+    },
+    [list, templeList],
+  )
   const { checkName } = useCheckMetadataName()
   const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
-  const handleAddMetaData = useCallback(async (payload: BuiltInMetadataItem) => {
-    const errorMsg = checkName(payload.name).errorMsg
-    if (errorMsg) {
-      toast.error(errorMsg)
-      return Promise.reject(new Error(errorMsg))
-    }
-    await doAddMetaData(payload)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
-  }, [checkName, doAddMetaData, t])
+  const handleAddMetaData = useCallback(
+    async (payload: BuiltInMetadataItem) => {
+      const errorMsg = checkName(payload.name).errorMsg
+      if (errorMsg) {
+        toast.error(errorMsg)
+        return Promise.reject(new Error(errorMsg))
+      }
+      await doAddMetaData(payload)
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+    },
+    [checkName, doAddMetaData, t],
+  )
   const [addedList, setAddedList] = useState<MetadataItemWithEdit[]>([])
-  const handleAddedListChange = useCallback((payload: MetadataItemWithEdit) => {
-    const newAddedList = addedList.map(i => i.id === payload.id ? payload : i)
-    setAddedList(newAddedList)
-  }, [addedList])
-  const handleAddedItemRemove = useCallback((removeIndex: number) => {
-    return () => {
-      const newAddedList = addedList.filter((i, index) => index !== removeIndex)
+  const handleAddedListChange = useCallback(
+    (payload: MetadataItemWithEdit) => {
+      const newAddedList = addedList.map((i) => (i.id === payload.id ? payload : i))
       setAddedList(newAddedList)
-    }
-  }, [addedList])
+    },
+    [addedList],
+  )
+  const handleAddedItemRemove = useCallback(
+    (removeIndex: number) => {
+      return () => {
+        const newAddedList = addedList.filter((i, index) => index !== removeIndex)
+        setAddedList(newAddedList)
+      }
+    },
+    [addedList],
+  )
   const [isApplyToAllSelectDocument, setIsApplyToAllSelectDocument] = useState(false)
   const handleSave = useCallback(() => {
-    onSave(templeList.filter(item => item.updateType !== UpdateType.delete), addedList, isApplyToAllSelectDocument)
+    onSave(
+      templeList.filter((item) => item.updateType !== UpdateType.delete),
+      addedList,
+      isApplyToAllSelectDocument,
+    )
   }, [templeList, addedList, isApplyToAllSelectDocument, onSave])
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onHide()
+        if (!open) onHide()
       }}
     >
       <DialogContent className="w-full max-w-[640px]! overflow-hidden! border-none text-left align-middle">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(`${i18nPrefix}.editMetadata`, { ns: 'dataset' })}
+          {t(($) => $[`${i18nPrefix}.editMetadata`], { ns: 'dataset' })}
         </DialogTitle>
 
-        <div className="mt-1 system-xs-medium text-text-accent">{t(`${i18nPrefix}.editDocumentsNum`, { ns: 'dataset', num: documentNum })}</div>
+        <div className="mt-1 system-xs-medium text-text-accent">
+          {t(($) => $[`${i18nPrefix}.editDocumentsNum`], { ns: 'dataset', num: documentNum })}
+        </div>
         <div className="max-h-[305px] overflow-x-hidden overflow-y-auto">
           <div className="mt-4 space-y-2">
-            {templeList.map(item => (<EditMetadataBatchItem key={item.id} payload={item} onChange={handleTemplesChange} onRemove={handleTempleItemRemove} onReset={handleItemReset} />))}
+            {templeList.map((item) => (
+              <EditMetadataBatchItem
+                key={item.id}
+                payload={item}
+                onChange={handleTemplesChange}
+                onRemove={handleTempleItemRemove}
+                onReset={handleItemReset}
+              />
+            ))}
           </div>
           <div className="mt-4 pl-[18px]">
             <div className="flex items-center">
-              <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('metadata.createMetadata.title', { ns: 'dataset' })}</div>
+              <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">
+                {t(($) => $['metadata.createMetadata.title'], { ns: 'dataset' })}
+              </div>
               <Divider bgStyle="gradient" />
             </div>
             <div className="mt-2 space-y-2">
-              {addedList.map((item, i) => (<AddedMetadataItem key={i} payload={item} onChange={handleAddedListChange} onRemove={handleAddedItemRemove(i)} />))}
+              {addedList.map((item, i) => (
+                <AddedMetadataItem
+                  key={i}
+                  payload={item}
+                  onChange={handleAddedListChange}
+                  onRemove={handleAddedItemRemove(i)}
+                />
+              ))}
             </div>
             <div className="mt-3">
               <DatasetMetadataPicker
@@ -122,7 +173,9 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
                 sideOffset={4}
                 alignOffset={0}
                 onCreateMetadata={handleAddMetaData}
-                onSelectMetadata={data => setAddedList([...addedList, data as MetadataItemWithEdit])}
+                onSelectMetadata={(data) =>
+                  setAddedList([...addedList, data as MetadataItemWithEdit])
+                }
                 onOpenMetadataManagement={onShowManage}
               />
             </div>
@@ -137,23 +190,23 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
                 onCheckedChange={setIsApplyToAllSelectDocument}
               />
               <span className="mr-1 ml-2 system-xs-medium text-text-secondary">
-                {t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}
+                {t(($) => $[`${i18nPrefix}.applyToAllSelectDocument`], { ns: 'dataset' })}
               </span>
             </label>
             <Infotip
-              aria-label={t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}
+              aria-label={t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], {
+                ns: 'dataset',
+              })}
               className="p-px text-text-tertiary"
               popupClassName="max-w-[240px]"
             >
-              {t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}
+              {t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], { ns: 'dataset' })}
             </Infotip>
           </div>
           <div className="flex items-center space-x-2">
-            <Button onClick={onHide}>
-              {t('operation.cancel', { ns: 'common' })}
-            </Button>
+            <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
             <Button onClick={handleSave} variant="primary">
-              {t('operation.save', { ns: 'common' })}
+              {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           </div>
         </div>

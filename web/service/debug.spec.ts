@@ -102,23 +102,40 @@ describe('debug service — generateWorkflow', () => {
     })
 
     it('sendCompletionMessage', async () => {
-      const callbacks = { onData: vi.fn(), onCompleted: vi.fn(), onError: vi.fn(), onMessageReplace: vi.fn() }
+      const callbacks = {
+        onData: vi.fn(),
+        onCompleted: vi.fn(),
+        onError: vi.fn(),
+        onMessageReplace: vi.fn(),
+      }
       await sendCompletionMessage('app-1', { text: 'hello' }, callbacks)
-      expect(ssePost).toHaveBeenCalledWith('apps/app-1/completion-messages', {
-        body: { text: 'hello', response_mode: 'streaming' },
-      }, callbacks)
+      expect(ssePost).toHaveBeenCalledWith(
+        'apps/app-1/completion-messages',
+        {
+          body: { text: 'hello', response_mode: 'streaming' },
+        },
+        callbacks,
+      )
     })
 
     it('fetchSuggestedQuestions', async () => {
       const getAbortController = vi.fn()
       await fetchSuggestedQuestions('app-1', 'msg-1', getAbortController)
-      expect(get).toHaveBeenCalledWith('apps/app-1/chat-messages/msg-1/suggested-questions', {}, { getAbortController })
+      expect(get).toHaveBeenCalledWith(
+        'apps/app-1/chat-messages/msg-1/suggested-questions',
+        {},
+        { getAbortController },
+      )
     })
 
     it('fetchConversationMessages', async () => {
       const getAbortController = vi.fn()
       await fetchConversationMessages('app-1', 'conv-1', getAbortController)
-      expect(get).toHaveBeenCalledWith('apps/app-1/chat-messages', { params: { conversation_id: 'conv-1' } }, { getAbortController })
+      expect(get).toHaveBeenCalledWith(
+        'apps/app-1/chat-messages',
+        { params: { conversation_id: 'conv-1' } },
+        { getAbortController },
+      )
     })
 
     it('generateBasicAppFirstTimeRule', async () => {
@@ -132,8 +149,18 @@ describe('debug service — generateWorkflow', () => {
     })
 
     it('generateWorkflowStream', async () => {
-      const body = { mode: 'workflow' as const, instruction: 'test', model_config: { provider: 'test', name: 'test', mode: 'chat' } }
-      const callbacks = { onPlan: vi.fn(), onResult: vi.fn(), onError: vi.fn(), onCompleted: vi.fn(), getAbortController: vi.fn() }
+      const body = {
+        mode: 'workflow' as const,
+        instruction: 'test',
+        model_config: { provider: 'test', name: 'test', mode: 'chat' },
+      }
+      const callbacks = {
+        onPlan: vi.fn(),
+        onResult: vi.fn(),
+        onError: vi.fn(),
+        onCompleted: vi.fn(),
+        getAbortController: vi.fn(),
+      }
 
       vi.mocked(sseGeneratorPost).mockImplementation((_url, _body, options) => {
         options?.onPlan?.({ title: 'plan' })
@@ -150,17 +177,28 @@ describe('debug service — generateWorkflow', () => {
 
     it('fetchWorkflowInstructionSuggestions without getAbortController', async () => {
       await fetchWorkflowInstructionSuggestions({ mode: 'workflow' })
-      expect(post).toHaveBeenCalledWith('/workflow-generate/suggestions', { body: { mode: 'workflow' } })
+      expect(post).toHaveBeenCalledWith('/workflow-generate/suggestions', {
+        body: { mode: 'workflow' },
+      })
     })
 
     it('fetchWorkflowInstructionSuggestions with getAbortController', async () => {
       const getAbortController = vi.fn()
       await fetchWorkflowInstructionSuggestions({ mode: 'workflow' }, { getAbortController })
-      expect(post).toHaveBeenCalledWith('/workflow-generate/suggestions', { body: { mode: 'workflow' } }, { getAbortController })
+      expect(post).toHaveBeenCalledWith(
+        '/workflow-generate/suggestions',
+        { body: { mode: 'workflow' } },
+        { getAbortController },
+      )
     })
 
     it('fetchPromptTemplate', async () => {
-      await fetchPromptTemplate({ appMode: 'chat' as AppModeEnum, mode: 'chat', modelName: 'gpt-4', hasSetDataSet: true })
+      await fetchPromptTemplate({
+        appMode: 'chat' as AppModeEnum,
+        mode: 'chat',
+        modelName: 'gpt-4',
+        hasSetDataSet: true,
+      })
       expect(get).toHaveBeenCalledWith('/app/prompt-templates', {
         params: {
           app_mode: 'chat',

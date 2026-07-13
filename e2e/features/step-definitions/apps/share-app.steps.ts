@@ -49,7 +49,9 @@ When('I open the shared app URL', async function (this: DifyWorld) {
 
 Then('the shared app page should be accessible', async function (this: DifyWorld) {
   await expect(this.getPage()).toHaveURL(/\/(workflow|chat)\/[a-zA-Z0-9]+/, { timeout: 15_000 })
-  await expect(this.getPage().getByRole('button', { name: 'Execute' })).toBeVisible({ timeout: 10_000 })
+  await expect(this.getPage().getByRole('button', { name: 'Execute' })).toBeVisible({
+    timeout: 10_000,
+  })
 })
 
 When('I run the shared workflow app', async function (this: DifyWorld) {
@@ -61,5 +63,7 @@ When('I run the shared workflow app', async function (this: DifyWorld) {
 })
 
 Then('the shared workflow run should succeed', async function (this: DifyWorld) {
-  await expect(this.getPage().getByRole('img', { name: 'Workflow Process succeeded' })).toBeVisible({ timeout: 55_000 })
+  await expect(this.getPage().getByRole('img', { name: 'Workflow Process succeeded' })).toBeVisible(
+    { timeout: 55_000 },
+  )
 })

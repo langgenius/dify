@@ -1,4 +1,7 @@
-import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  Model,
+  ModelItem,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const agentIncompatibleModelPatterns: RegExp[] = [
   // openai
@@ -91,9 +94,9 @@ const agentSuggestedModelPatterns: RegExp[] = [
 ]
 
 export function isAgentCompatibleModel(_provider: Model, modelItem: ModelItem) {
-  return !agentIncompatibleModelPatterns.some(pattern => pattern.test(modelItem.label.en_US))
+  return !agentIncompatibleModelPatterns.some((pattern) => pattern.test(modelItem.label.en_US))
 }
 
 export function isAgentSuggestedModel(_provider: Model, modelItem: ModelItem) {
-  return agentSuggestedModelPatterns.some(pattern => pattern.test(modelItem.label.en_US))
+  return agentSuggestedModelPatterns.some((pattern) => pattern.test(modelItem.label.en_US))
 }

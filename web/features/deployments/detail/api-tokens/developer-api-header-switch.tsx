@@ -13,24 +13,29 @@ import {
   developerApiSettingsIsLoadingAtom,
 } from './state'
 
-function DeveloperApiSwitch({ checked, accessChannels, disabled }: {
+function DeveloperApiSwitch({
+  checked,
+  accessChannels,
+  disabled,
+}: {
   checked: boolean
   accessChannels?: AccessChannels
   disabled?: boolean
 }) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
-  const toggleDeveloperAPI = useMutation(consoleQuery.enterprise.accessService.updateAccessChannels.mutationOptions())
+  const toggleDeveloperAPI = useMutation(
+    consoleQuery.enterprise.accessService.updateAccessChannels.mutationOptions(),
+  )
 
   return (
     <Switch
-      aria-label={t('access.api.developerTitle')}
+      aria-label={t(($) => $['access.api.developerTitle'])}
       checked={checked}
       disabled={disabled || !appInstanceId}
       loading={toggleDeveloperAPI.isPending}
       onCheckedChange={(enabled) => {
-        if (!appInstanceId)
-          return
+        if (!appInstanceId) return
 
         toggleDeveloperAPI.mutate({
           params: { appInstanceId },
@@ -53,19 +58,14 @@ export function DeveloperApiHeaderSwitch() {
   const accessChannels = developerApiSettings?.accessChannels
   const apiEnabled = accessChannels?.developerApiEnabled ?? false
 
-  if (isLoading)
-    return <SwitchSkeleton />
+  if (isLoading) return <SwitchSkeleton />
 
   return (
     <div className="flex items-center gap-2">
       <span className="system-xs-medium text-text-tertiary">
-        {apiEnabled ? t('overview.enabled') : t('overview.disabled')}
+        {apiEnabled ? t(($) => $['overview.enabled']) : t(($) => $['overview.disabled'])}
       </span>
-      <DeveloperApiSwitch
-        checked={apiEnabled}
-        accessChannels={accessChannels}
-        disabled={isError}
-      />
+      <DeveloperApiSwitch checked={apiEnabled} accessChannels={accessChannels} disabled={isError} />
     </div>
   )
 }

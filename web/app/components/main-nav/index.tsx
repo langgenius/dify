@@ -10,7 +10,10 @@ import Badge from '@/app/components/base/badge'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
-import { isCurrentWorkspaceDatasetOperatorAtom, isCurrentWorkspaceEditorAtom } from '@/context/workspace-state'
+import {
+  isCurrentWorkspaceDatasetOperatorAtom,
+  isCurrentWorkspaceEditorAtom,
+} from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import dynamic from '@/next/dynamic'
@@ -25,9 +28,7 @@ import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 
 const WebAppsSection = dynamic(() => import('./components/web-apps-section'), { ssr: false })
 
-export function MainNav({
-  className,
-}: MainNavProps) {
+export function MainNav({ className }: MainNavProps) {
   const { t } = useTranslation()
   const pathname = usePathname()
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
@@ -35,26 +36,41 @@ export function MainNav({
   const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const agentV2Enabled = isAgentV2Enabled()
-  const showEnvTag = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
+  const showEnvTag =
+    langGeniusVersionInfo.current_env === 'TESTING' ||
+    langGeniusVersionInfo.current_env === 'DEVELOPMENT'
   const canUseAppDeploy = isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy
 
-  const navItems = useMemo<MainNavItem[]>(() => MAIN_NAV_ROUTES
-    .filter(route => isMainNavRouteVisible(route, {
+  const navItems = useMemo<MainNavItem[]>(
+    () =>
+      MAIN_NAV_ROUTES.filter((route) =>
+        isMainNavRouteVisible(route, {
+          agentV2Enabled,
+          canUseAppDeploy,
+          isCurrentWorkspaceDatasetOperator,
+          marketplaceEnabled: systemFeatures.enable_marketplace,
+        }),
+      ).map((route) => ({
+        href: route.href,
+        label: 'label' in route ? route.label : t(($) => $[route.labelKey], { ns: 'common' }),
+        active: route.active,
+        icon: route.icon,
+        activeIcon: route.activeIcon,
+      })),
+    [
       agentV2Enabled,
       canUseAppDeploy,
       isCurrentWorkspaceDatasetOperator,
-      marketplaceEnabled: systemFeatures.enable_marketplace,
-    }))
-    .map(route => ({
-      href: route.href,
-      label: 'label' in route ? route.label : t(route.labelKey, { ns: 'common' }),
-      active: route.active,
-      icon: route.icon,
-      activeIcon: route.activeIcon,
-    })), [agentV2Enabled, canUseAppDeploy, isCurrentWorkspaceDatasetOperator, systemFeatures.enable_marketplace, t])
+      systemFeatures.enable_marketplace,
+      t,
+    ],
+  )
 
   const renderLogo = () => {
-    const appTitle = systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'
+    const appTitle =
+      systemFeatures.branding.enabled && systemFeatures.branding.application_title
+        ? systemFeatures.branding.application_title
+        : 'Dify'
 
     return (
       <Link
@@ -62,15 +78,15 @@ export function MainNav({
         className="flex h-8 shrink-0 items-center overflow-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         aria-label={appTitle}
       >
-        {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-          ? (
-              <img
-                src={systemFeatures.branding.workspace_logo}
-                className="block h-5.5 w-auto object-contain"
-                alt=""
-              />
-            )
-          : <DifyLogo alt="" />}
+        {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo ? (
+          <img
+            src={systemFeatures.branding.workspace_logo}
+            className="block h-5.5 w-auto object-contain"
+            alt=""
+          />
+        ) : (
+          <DifyLogo alt="" />
+        )}
       </Link>
     )
   }
@@ -91,13 +107,13 @@ export function MainNav({
           <WorkspaceCard />
         </div>
         <nav className="isolate flex flex-col gap-px p-2">
-          {navItems.map(item => (
+          {navItems.map((item) => (
             <MainNavLink key={item.href} item={item} pathname={pathname}>
               {item.href === '/agents' && (
                 <Badge
                   size="xs"
                   variant="dimm"
-                  text={t('menus.status', { ns: 'common' })}
+                  text={t(($) => $['menus.status'], { ns: 'common' })}
                   className="ml-auto shrink-0"
                 />
               )}

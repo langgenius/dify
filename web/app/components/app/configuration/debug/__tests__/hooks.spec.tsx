@@ -53,7 +53,9 @@ describe('configuration debug hooks', () => {
 
     expect(result.current.debugWithMultipleModel).toBe(true)
     expect(result.current.multipleModelConfigs).toHaveLength(1)
-    expect(JSON.parse(localStorage.getItem('app-debug-with-single-or-multiple-models') || '{}')).toEqual({
+    expect(
+      JSON.parse(localStorage.getItem('app-debug-with-single-or-multiple-models') || '{}'),
+    ).toEqual({
       'app-1': {
         multiple: true,
         configs: [
@@ -111,13 +113,15 @@ describe('configuration debug hooks', () => {
 
     const { result } = renderHook(() => useConfigFromDebugContext())
 
-    expect(result.current).toEqual(expect.objectContaining({
-      appId: 'app-1',
-      dataset_query_variable: '',
-      opening_statement: 'hello',
-      pre_prompt: 'hello {{name}}',
-      suggested_questions: ['how are you?'],
-    }))
+    expect(result.current).toEqual(
+      expect.objectContaining({
+        appId: 'app-1',
+        dataset_query_variable: '',
+        opening_statement: 'hello',
+        pre_prompt: 'hello {{name}}',
+        suggested_questions: ['how are you?'],
+      }),
+    )
     expect(result.current.agent_mode?.strategy).toBe(AgentStrategy.functionCall)
     expect(result.current.dataset_configs?.datasets?.datasets).toEqual([
       { dataset: { enabled: true, id: 'dataset-1' } },

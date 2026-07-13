@@ -21,19 +21,17 @@ const createWrapper = (contextValue: {
   parentMode?: 'paragraph' | 'full-doc'
 }) => {
   return ({ children }: { children: React.ReactNode }) => (
-    <DocumentContext.Provider value={contextValue}>
-      {children}
-    </DocumentContext.Provider>
+    <DocumentContext.Provider value={contextValue}>{children}</DocumentContext.Provider>
   )
 }
 
 const getEscCallback = (): ((e: KeyboardEvent) => void) | undefined => {
-  const escCall = mockUseHotkey.mock.calls.find(call => call[0] === 'Escape')
+  const escCall = mockUseHotkey.mock.calls.find((call) => call[0] === 'Escape')
   return escCall?.[1]
 }
 
 const getCtrlSCallback = (): ((e: KeyboardEvent) => void) | undefined => {
-  const ctrlSCall = mockUseHotkey.mock.calls.find(call => call[0] === 'Mod+S')
+  const ctrlSCall = mockUseHotkey.mock.calls.find((call) => call[0] === 'Mod+S')
   return ctrlSCall?.[1]
 }
 
@@ -46,11 +44,7 @@ describe('ActionButtons', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       const { container } = render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          loading={false}
-        />,
+        <ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />,
         { wrapper: createWrapper({}) },
       )
 
@@ -58,53 +52,33 @@ describe('ActionButtons', () => {
     })
 
     it('should render cancel button', () => {
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          loading={false}
-        />,
-        { wrapper: createWrapper({}) },
-      )
+      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
+        wrapper: createWrapper({}),
+      })
 
       expect(screen.getByText(/operation\.cancel/i))!.toBeInTheDocument()
     })
 
     it('should render save button', () => {
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          loading={false}
-        />,
-        { wrapper: createWrapper({}) },
-      )
+      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
+        wrapper: createWrapper({}),
+      })
 
       expect(screen.getByText(/operation\.save/i))!.toBeInTheDocument()
     })
 
     it('should render ESC keyboard hint on cancel button', () => {
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          loading={false}
-        />,
-        { wrapper: createWrapper({}) },
-      )
+      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
+        wrapper: createWrapper({}),
+      })
 
       expect(screen.getByText('Esc'))!.toBeInTheDocument()
     })
 
     it('should render S keyboard hint on save button', () => {
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          loading={false}
-        />,
-        { wrapper: createWrapper({}) },
-      )
+      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
+        wrapper: createWrapper({}),
+      })
 
       expect(screen.getByText('S'))!.toBeInTheDocument()
     })
@@ -114,11 +88,7 @@ describe('ActionButtons', () => {
     it('should call handleCancel when cancel button is clicked', () => {
       const mockHandleCancel = vi.fn()
       render(
-        <ActionButtons
-          handleCancel={mockHandleCancel}
-          handleSave={vi.fn()}
-          loading={false}
-        />,
+        <ActionButtons handleCancel={mockHandleCancel} handleSave={vi.fn()} loading={false} />,
         { wrapper: createWrapper({}) },
       )
 
@@ -130,14 +100,9 @@ describe('ActionButtons', () => {
 
     it('should call handleSave when save button is clicked', () => {
       const mockHandleSave = vi.fn()
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={mockHandleSave}
-          loading={false}
-        />,
-        { wrapper: createWrapper({}) },
-      )
+      render(<ActionButtons handleCancel={vi.fn()} handleSave={mockHandleSave} loading={false} />, {
+        wrapper: createWrapper({}),
+      })
 
       const buttons = screen.getAllByRole('button')
       const saveButton = buttons[buttons.length - 1] // Save button is last
@@ -147,14 +112,9 @@ describe('ActionButtons', () => {
     })
 
     it('should disable save button when loading is true', () => {
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          loading={true}
-        />,
-        { wrapper: createWrapper({}) },
-      )
+      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={true} />, {
+        wrapper: createWrapper({}),
+      })
 
       const buttons = screen.getAllByRole('button')
       const saveButton = buttons[buttons.length - 1]
@@ -248,8 +208,7 @@ describe('ActionButtons', () => {
       )
 
       const regenerationButton = screen.getByText(/operation\.saveAndRegenerate/i).closest('button')
-      if (regenerationButton)
-        fireEvent.click(regenerationButton)
+      if (regenerationButton) fireEvent.click(regenerationButton)
 
       expect(mockHandleRegeneration).toHaveBeenCalledTimes(1)
     })
@@ -336,34 +295,21 @@ describe('ActionButtons', () => {
     it('should handle missing context values gracefully', () => {
       // Arrange & Act & Assert - should not throw
       expect(() => {
-        render(
-          <ActionButtons
-            handleCancel={vi.fn()}
-            handleSave={vi.fn()}
-            loading={false}
-          />,
-          { wrapper: createWrapper({}) },
-        )
+        render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
+          wrapper: createWrapper({}),
+        })
       }).not.toThrow()
     })
 
     it('should maintain structure when rerendered', () => {
       const { rerender } = render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          loading={false}
-        />,
+        <ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />,
         { wrapper: createWrapper({}) },
       )
 
       rerender(
         <DocumentContext.Provider value={{}}>
-          <ActionButtons
-            handleCancel={vi.fn()}
-            handleSave={vi.fn()}
-            loading={true}
-          />
+          <ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={true} />
         </DocumentContext.Provider>,
       )
 
@@ -374,14 +320,9 @@ describe('ActionButtons', () => {
 
   describe('Keyboard Shortcuts', () => {
     it('should display ctrl key hint on save button', () => {
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          loading={false}
-        />,
-        { wrapper: createWrapper({}) },
-      )
+      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
+        wrapper: createWrapper({}),
+      })
 
       const kbdElements = document.querySelectorAll('kbd')
       expect(kbdElements.length).toBeGreaterThan(0)
@@ -391,11 +332,7 @@ describe('ActionButtons', () => {
       const mockHandleCancel = vi.fn()
       const mockPreventDefault = vi.fn()
       render(
-        <ActionButtons
-          handleCancel={mockHandleCancel}
-          handleSave={vi.fn()}
-          loading={false}
-        />,
+        <ActionButtons handleCancel={mockHandleCancel} handleSave={vi.fn()} loading={false} />,
         { wrapper: createWrapper({}) },
       )
 
@@ -411,14 +348,9 @@ describe('ActionButtons', () => {
     it('should call handleSave and preventDefault when Ctrl+S is pressed and not loading', () => {
       const mockHandleSave = vi.fn()
       const mockPreventDefault = vi.fn()
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={mockHandleSave}
-          loading={false}
-        />,
-        { wrapper: createWrapper({}) },
-      )
+      render(<ActionButtons handleCancel={vi.fn()} handleSave={mockHandleSave} loading={false} />, {
+        wrapper: createWrapper({}),
+      })
 
       // Act - get the Ctrl+S callback and invoke it
       const ctrlSCallback = getCtrlSCallback()
@@ -432,14 +364,9 @@ describe('ActionButtons', () => {
     it('should not call handleSave when Ctrl+S is pressed while loading', () => {
       const mockHandleSave = vi.fn()
       const mockPreventDefault = vi.fn()
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={mockHandleSave}
-          loading={true}
-        />,
-        { wrapper: createWrapper({}) },
-      )
+      render(<ActionButtons handleCancel={vi.fn()} handleSave={mockHandleSave} loading={true} />, {
+        wrapper: createWrapper({}),
+      })
 
       // Act - get the Ctrl+S callback and invoke it
       const ctrlSCallback = getCtrlSCallback()
@@ -451,16 +378,11 @@ describe('ActionButtons', () => {
     })
 
     it('should register the Mod+S hotkey', () => {
-      render(
-        <ActionButtons
-          handleCancel={vi.fn()}
-          handleSave={vi.fn()}
-          loading={false}
-        />,
-        { wrapper: createWrapper({}) },
-      )
+      render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
+        wrapper: createWrapper({}),
+      })
 
-      const ctrlSCall = mockUseHotkey.mock.calls.find(call => call[0] === 'Mod+S')
+      const ctrlSCall = mockUseHotkey.mock.calls.find((call) => call[0] === 'Mod+S')
       expect(ctrlSCall).toBeDefined()
     })
   })

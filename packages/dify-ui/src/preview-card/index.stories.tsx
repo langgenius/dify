@@ -1,21 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Placement } from '.'
 import * as React from 'react'
-import {
-  createPreviewCardHandle,
-  PreviewCard,
-  PreviewCardContent,
-  PreviewCardTrigger,
-} from '.'
+import { createPreviewCardHandle, PreviewCard, PreviewCardContent, PreviewCardTrigger } from '.'
 
-const rowButtonClassName
-  = 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const rowButtonClassName =
+  'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
-const triggerButtonClassName
-  = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const triggerButtonClassName =
+  'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
-const inlineLinkClassName
-  = 'text-text-accent underline decoration-text-accent/60 decoration-1 underline-offset-2 outline-hidden hover:decoration-text-accent focus-visible:rounded-xs focus-visible:no-underline focus-visible:ring-1 focus-visible:ring-components-input-border-active data-[popup-open]:decoration-text-accent'
+const inlineLinkClassName =
+  'text-text-accent underline decoration-text-accent/60 decoration-1 underline-offset-2 outline-hidden hover:decoration-text-accent focus-visible:rounded-xs focus-visible:no-underline focus-visible:ring-1 focus-visible:ring-components-input-border-active data-[popup-open]:decoration-text-accent'
 
 const meta = {
   title: 'Base/UI/PreviewCard',
@@ -25,7 +20,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Hover- and focus-activated rich preview for triggers whose primary click has its own destination (following a link, selecting a row, jumping to a definition). Built on Base UI PreviewCard.\n\n**A11y contract:** touch and screen-reader users cannot open the preview. Never place information or actions in the popup that are not also reachable from the trigger\'s primary click destination. If that is unavoidable, add a separate click affordance (Popover) or move the unique content onto the destination.',
+          "Hover- and focus-activated rich preview for triggers whose primary click has its own destination (following a link, selecting a row, jumping to a definition). Built on Base UI PreviewCard.\n\n**A11y contract:** touch and screen-reader users cannot open the preview. Never place information or actions in the popup that are not also reachable from the trigger's primary click destination. If that is unavoidable, add a separate click affordance (Popover) or move the unique content onto the destination.",
       },
     },
   },
@@ -56,8 +51,7 @@ export const LinkPreview: Story = {
   render: () => (
     <div className="max-w-md p-6 text-sm leading-6 text-text-secondary">
       <p>
-        The principles of good
-        {' '}
+        The principles of good{' '}
         <PreviewCardTrigger
           handle={typographyPreview}
           href="https://en.wikipedia.org/wiki/Typography"
@@ -66,8 +60,7 @@ export const LinkPreview: Story = {
           className={inlineLinkClassName}
         >
           typography
-        </PreviewCardTrigger>
-        {' '}
+        </PreviewCardTrigger>{' '}
         remain in the digital age.
       </p>
 
@@ -82,9 +75,8 @@ export const LinkPreview: Story = {
               alt="Station Hofplein signage in Rotterdam, Netherlands"
             />
             <p className="m-0 text-xs leading-5 text-text-secondary">
-              <strong className="text-text-primary">Typography</strong>
-              {' '}
-              is the art and science of arranging type to make written language legible, readable, and visually appealing.
+              <strong className="text-text-primary">Typography</strong> is the art and science of
+              arranging type to make written language legible, readable, and visually appealing.
             </p>
           </div>
         </PreviewCardContent>
@@ -106,17 +98,14 @@ export const Supplementary: Story = {
   render: () => (
     <PreviewCard>
       <PreviewCardTrigger
-        render={(
+        render={
           <button type="button" className={rowButtonClassName}>
             <span className="i-ri-sparkling-fill h-4 w-4 text-text-accent" />
             <span>gpt-4o</span>
           </button>
-        )}
+        }
       />
-      <PreviewCardContent
-        placement="right"
-        popupClassName="w-[220px] p-3"
-      >
+      <PreviewCardContent placement="right" popupClassName="w-[220px] p-3">
         <div className="flex flex-col gap-2">
           <div className="text-sm font-medium text-text-primary">gpt-4o</div>
           <div className="text-xs text-text-tertiary">
@@ -149,7 +138,7 @@ const PlacementsDemo = () => {
   return (
     <div className="flex flex-col items-center gap-4 p-20">
       <div className="grid grid-cols-3 gap-2 text-xs">
-        {PLACEMENTS.map(value => (
+        {PLACEMENTS.map((value) => (
           <button
             key={value}
             type="button"
@@ -164,14 +153,17 @@ const PlacementsDemo = () => {
       </div>
       <PreviewCard open>
         <PreviewCardTrigger
-          render={<button type="button" className={triggerButtonClassName}>Hover me</button>}
+          render={
+            <button type="button" className={triggerButtonClassName}>
+              Hover me
+            </button>
+          }
         />
         <PreviewCardContent placement={placement} popupClassName="w-56 p-3">
           <div className="flex flex-col gap-1">
             <div className="text-sm font-semibold text-text-primary">
               placement="
-              {placement}
-              "
+              {placement}"
             </div>
             <div className="text-xs text-text-secondary">
               Preview positions itself relative to the trigger.
@@ -195,13 +187,18 @@ const CustomDelayDemo = () => (
     <PreviewCardTrigger
       delay={100}
       closeDelay={100}
-      render={<button type="button" className={triggerButtonClassName}>Snappy trigger</button>}
+      render={
+        <button type="button" className={triggerButtonClassName}>
+          Snappy trigger
+        </button>
+      }
     />
     <PreviewCardContent popupClassName="w-64 p-3">
       <div className="flex flex-col gap-1">
         <div className="text-sm font-semibold text-text-primary">Fast hover</div>
         <div className="text-xs text-text-secondary">
-          Base UI defaults (600ms / 300ms) are tuned for link previews. Override per trigger for denser UIs.
+          Base UI defaults (600ms / 300ms) are tuned for link previews. Override per trigger for
+          denser UIs.
         </div>
       </div>
     </PreviewCardContent>

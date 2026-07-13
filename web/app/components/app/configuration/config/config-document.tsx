@@ -5,7 +5,6 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-
 import { useContext } from 'use-context-selector'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { Document } from '@/app/components/base/icons/src/vender/features'
@@ -15,38 +14,35 @@ import ConfigContext from '@/context/debug-configuration'
 
 const ConfigDocument: FC = () => {
   const { t } = useTranslation()
-  const file = useFeatures(s => s.features.file)
+  const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
   const { isShowDocumentConfig, readonly } = useContext(ConfigContext)
 
-  const isDocumentEnabled = file?.allowed_file_types?.includes(SupportUploadFileTypes.document) ?? false
+  const isDocumentEnabled =
+    file?.allowed_file_types?.includes(SupportUploadFileTypes.document) ?? false
 
-  const handleChange = useCallback((value: boolean) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
+  const handleChange = useCallback(
+    (value: boolean) => {
+      const { features, setFeatures } = featuresStore!.getState()
 
-    const newFeatures = produce(features, (draft) => {
-      if (value) {
-        draft.file!.allowed_file_types = Array.from(new Set([
-          ...(draft.file?.allowed_file_types || []),
-          SupportUploadFileTypes.document,
-        ]))
-      }
-      else {
-        draft.file!.allowed_file_types = draft.file!.allowed_file_types?.filter(
-          type => type !== SupportUploadFileTypes.document,
-        )
-      }
-      if (draft.file)
-        draft.file.enabled = (draft.file.allowed_file_types?.length ?? 0) > 0
-    })
-    setFeatures(newFeatures)
-  }, [featuresStore])
+      const newFeatures = produce(features, (draft) => {
+        if (value) {
+          draft.file!.allowed_file_types = Array.from(
+            new Set([...(draft.file?.allowed_file_types || []), SupportUploadFileTypes.document]),
+          )
+        } else {
+          draft.file!.allowed_file_types = draft.file!.allowed_file_types?.filter(
+            (type) => type !== SupportUploadFileTypes.document,
+          )
+        }
+        if (draft.file) draft.file.enabled = (draft.file.allowed_file_types?.length ?? 0) > 0
+      })
+      setFeatures(newFeatures)
+    },
+    [featuresStore],
+  )
 
-  if (!isShowDocumentConfig || (readonly && !isDocumentEnabled))
-    return null
+  if (!isShowDocumentConfig || (readonly && !isDocumentEnabled)) return null
 
   return (
     <div className="mt-2 flex items-center gap-2 rounded-xl border-t-[0.5px] border-l-[0.5px] bg-background-section-burn p-2">
@@ -56,22 +52,20 @@ const ConfigDocument: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="mr-1 system-sm-semibold text-text-secondary">{t('feature.documentUpload.title', { ns: 'appDebug' })}</div>
+        <div className="mr-1 system-sm-semibold text-text-secondary">
+          {t(($) => $['feature.documentUpload.title'], { ns: 'appDebug' })}
+        </div>
         <Infotip
-          aria-label={t('feature.documentUpload.description', { ns: 'appDebug' })}
+          aria-label={t(($) => $['feature.documentUpload.description'], { ns: 'appDebug' })}
           popupClassName="w-[180px]"
         >
-          {t('feature.documentUpload.description', { ns: 'appDebug' })}
+          {t(($) => $['feature.documentUpload.description'], { ns: 'appDebug' })}
         </Infotip>
       </div>
       {!readonly && (
         <div className="flex shrink-0 items-center">
           <div className="mr-3 ml-1 h-3.5 w-px bg-divider-subtle"></div>
-          <Switch
-            checked={isDocumentEnabled}
-            onCheckedChange={handleChange}
-            size="md"
-          />
+          <Switch checked={isDocumentEnabled} onCheckedChange={handleChange} size="md" />
         </div>
       )}
     </div>

@@ -1,11 +1,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { AgentBuildGridTexture } from '../build-grid-texture'
 
-export function AgentBuildPanelBackground({
-  visible,
-}: {
-  visible: boolean
-}) {
+export function AgentBuildPanelBackground({ visible }: { visible: boolean }) {
   return (
     <div
       aria-hidden

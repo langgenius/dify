@@ -33,11 +33,13 @@ describe('RosterLayout', () => {
 
     const { default: RosterLayout } = await import('../layout')
 
-    expect(() => render(
-      <RosterLayout>
-        <div>Roster content</div>
-      </RosterLayout>,
-    )).toThrow('NEXT_NOT_FOUND')
+    expect(() =>
+      render(
+        <RosterLayout>
+          <div>Roster content</div>
+        </RosterLayout>,
+      ),
+    ).toThrow('NEXT_NOT_FOUND')
     expect(mocks.guardAgentV2Route).toHaveBeenCalled()
   })
 })

@@ -28,12 +28,10 @@ function BannerImpressionTracker({
   const { selectedIndex } = useCarousel()
 
   useEffect(() => {
-    if (!accountId)
-      return
+    if (!accountId) return
 
     const currentBanner = banners[selectedIndex]
-    if (!currentBanner || trackedBannerIdsRef.current.has(currentBanner.id))
-      return
+    if (!currentBanner || trackedBannerIdsRef.current.has(currentBanner.id)) return
 
     trackEvent('explore_banner_impression', {
       banner_id: currentBanner.id,
@@ -55,9 +53,7 @@ type BannerProps = {
   banners: BannerType[]
 }
 
-function Banner({
-  banners,
-}: BannerProps) {
+function Banner({ banners }: BannerProps) {
   const { t } = useTranslation()
   const locale = useLocale()
   const userProfile = useAtomValue(userProfileAtom)
@@ -69,7 +65,7 @@ function Banner({
   const trackedBannerIdsRef = useRef<Set<string>>(new Set())
 
   const enabledBanners = useMemo(
-    () => banners?.filter(banner => banner.status === 'enabled') ?? [],
+    () => banners?.filter((banner) => banner.status === 'enabled') ?? [],
     [banners],
   )
 
@@ -81,8 +77,7 @@ function Banner({
     const handleResize = () => {
       setIsResizing(true)
 
-      if (resizeTimerRef.current)
-        clearTimeout(resizeTimerRef.current)
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current)
 
       resizeTimerRef.current = setTimeout(() => {
         setIsResizing(false)
@@ -93,8 +88,7 @@ function Banner({
 
     return () => {
       window.removeEventListener('resize', handleResize)
-      if (resizeTimerRef.current)
-        clearTimeout(resizeTimerRef.current)
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current)
     }
   }, [])
 
@@ -106,49 +100,48 @@ function Banner({
     >
       <div className="flex w-full flex-col gap-1">
         <p className="truncate title-3xl-semi-bold text-text-primary">
-          {t('banner.greeting', { name: userName, ns: 'explore' })}
+          {t(($) => $['banner.greeting'], { name: userName, ns: 'explore' })}
         </p>
         <p className="truncate body-sm-regular text-text-secondary">
-          {t('banner.tagline', { ns: 'explore' })}
+          {t(($) => $['banner.tagline'], { ns: 'explore' })}
         </p>
       </div>
 
-      {!notShowSlider
-        && (
-          <Carousel
-            opts={{ loop: true }}
-            plugins={[
-              Carousel.Plugin.Fade(),
-              Carousel.Plugin.Autoplay({
-                delay: AUTOPLAY_DELAY,
-                stopOnInteraction: false,
-                stopOnMouseEnter: true,
-              }),
-            ]}
-            className="w-full rounded-2xl"
-          >
-            <BannerImpressionTracker
-              banners={enabledBanners}
-              accountId={accountId}
-              language={locale}
-              trackedBannerIdsRef={trackedBannerIdsRef}
-            />
-            <Carousel.Content>
-              {enabledBanners.map((banner, index) => (
-                <Carousel.Item key={banner.id} data-banner-id={banner.id}>
-                  <BannerItem
-                    banner={banner}
-                    autoplayDelay={AUTOPLAY_DELAY}
-                    isPaused={isPaused}
-                    sort={index + 1}
-                    language={locale}
-                    accountId={accountId}
-                  />
-                </Carousel.Item>
-              ))}
-            </Carousel.Content>
-          </Carousel>
-        )}
+      {!notShowSlider && (
+        <Carousel
+          opts={{ loop: true }}
+          plugins={[
+            Carousel.Plugin.Fade(),
+            Carousel.Plugin.Autoplay({
+              delay: AUTOPLAY_DELAY,
+              stopOnInteraction: false,
+              stopOnMouseEnter: true,
+            }),
+          ]}
+          className="w-full rounded-2xl"
+        >
+          <BannerImpressionTracker
+            banners={enabledBanners}
+            accountId={accountId}
+            language={locale}
+            trackedBannerIdsRef={trackedBannerIdsRef}
+          />
+          <Carousel.Content>
+            {enabledBanners.map((banner, index) => (
+              <Carousel.Item key={banner.id} data-banner-id={banner.id}>
+                <BannerItem
+                  banner={banner}
+                  autoplayDelay={AUTOPLAY_DELAY}
+                  isPaused={isPaused}
+                  sort={index + 1}
+                  language={locale}
+                  accountId={accountId}
+                />
+              </Carousel.Item>
+            ))}
+          </Carousel.Content>
+        </Carousel>
+      )}
     </div>
   )
 }

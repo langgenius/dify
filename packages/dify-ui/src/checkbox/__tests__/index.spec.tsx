@@ -1,10 +1,5 @@
 import { render } from 'vitest-browser-react'
-import {
-  Checkbox,
-  CheckboxIndicator,
-  CheckboxRoot,
-  CheckboxSkeleton,
-} from '../index'
+import { Checkbox, CheckboxIndicator, CheckboxRoot, CheckboxSkeleton } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
@@ -58,14 +53,23 @@ describe('Checkbox', () => {
     expect(onCheckedChange.mock.calls[0]?.[0]).toBe(true)
     await expect.element(checkbox).toHaveAttribute('aria-checked', 'false')
 
-    await screen.rerender(<Checkbox checked aria-label="Accept terms" onCheckedChange={onCheckedChange} />)
-    await expect.element(screen.getByRole('checkbox', { name: 'Accept terms' })).toHaveAttribute('aria-checked', 'true')
+    await screen.rerender(
+      <Checkbox checked aria-label="Accept terms" onCheckedChange={onCheckedChange} />,
+    )
+    await expect
+      .element(screen.getByRole('checkbox', { name: 'Accept terms' }))
+      .toHaveAttribute('aria-checked', 'true')
   })
 
   it('should ignore interaction when disabled', async () => {
     const onCheckedChange = vi.fn()
     const screen = await render(
-      <Checkbox checked={false} disabled aria-label="Accept terms" onCheckedChange={onCheckedChange} />,
+      <Checkbox
+        checked={false}
+        disabled
+        aria-label="Accept terms"
+        onCheckedChange={onCheckedChange}
+      />,
     )
     const checkbox = screen.getByRole('checkbox', { name: 'Accept terms' })
 
@@ -109,7 +113,9 @@ describe('Checkbox', () => {
       </CheckboxRoot>,
     )
 
-    await expect.element(screen.getByRole('checkbox', { name: 'Custom checkbox' })).toHaveClass('custom-root')
+    await expect
+      .element(screen.getByRole('checkbox', { name: 'Custom checkbox' }))
+      .toHaveClass('custom-root')
     expect(screen.container.querySelector('.custom-indicator')).toBeInTheDocument()
   })
 })

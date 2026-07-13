@@ -38,15 +38,18 @@ const PromptEditor: FC<PromptEditorProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const handleInstructionChange = useCallback((value: string) => {
-    onInstructionChange(value)
-  }, [onInstructionChange])
+  const handleInstructionChange = useCallback(
+    (value: string) => {
+      onInstructionChange(value)
+    },
+    [onInstructionChange],
+  )
 
   return (
     <div className="relative flex w-[480px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
       <button
         type="button"
-        aria-label={t('operation.close', { ns: 'common' })}
+        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
         className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center border-none bg-transparent p-0"
         onClick={onClose}
       >
@@ -55,16 +58,16 @@ const PromptEditor: FC<PromptEditorProps> = ({
       {/* Title */}
       <div className="flex flex-col gap-y-[0.5px] px-3 pt-3.5 pb-1">
         <div className="flex pr-8 pl-1 system-xl-semibold text-text-primary">
-          {t('nodes.llm.jsonSchema.generateJsonSchema', { ns: 'workflow' })}
+          {t(($) => $['nodes.llm.jsonSchema.generateJsonSchema'], { ns: 'workflow' })}
         </div>
         <div className="flex px-1 system-xs-regular text-text-tertiary">
-          {t('nodes.llm.jsonSchema.generationTip', { ns: 'workflow' })}
+          {t(($) => $['nodes.llm.jsonSchema.generationTip'], { ns: 'workflow' })}
         </div>
       </div>
       {/* Content */}
       <div className="flex flex-col gap-y-1 px-4 py-2">
         <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
-          {t('modelProvider.model', { ns: 'common' })}
+          {t(($) => $['modelProvider.model'], { ns: 'common' })}
         </div>
         <ModelParameterModal
           popupClassName="w-[448px]!"
@@ -79,20 +82,20 @@ const PromptEditor: FC<PromptEditorProps> = ({
       </div>
       <div className="flex flex-col gap-y-1 px-4 py-2">
         <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
-          <span>{t('nodes.llm.jsonSchema.instruction', { ns: 'workflow' })}</span>
+          <span>{t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflow' })}</span>
           <Infotip
-            aria-label={t('nodes.llm.jsonSchema.promptTooltip', { ns: 'workflow' })}
+            aria-label={t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
             className="size-3.5"
           >
-            {t('nodes.llm.jsonSchema.promptTooltip', { ns: 'workflow' })}
+            {t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
           </Infotip>
         </div>
         <div className="flex items-center">
           <Textarea
-            aria-label={t('nodes.llm.jsonSchema.instruction', { ns: 'workflow' })}
+            aria-label={t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflow' })}
             className="h-[364px] resize-none px-2 py-1"
             value={instruction}
-            placeholder={t('nodes.llm.jsonSchema.promptPlaceholder', { ns: 'workflow' })}
+            placeholder={t(($) => $['nodes.llm.jsonSchema.promptPlaceholder'], { ns: 'workflow' })}
             onValueChange={handleInstructionChange}
           />
         </div>
@@ -100,15 +103,11 @@ const PromptEditor: FC<PromptEditorProps> = ({
       {/* Footer */}
       <div className="flex justify-end gap-x-2 p-4 pt-2">
         <Button variant="secondary" onClick={onClose}>
-          {t('operation.cancel', { ns: 'common' })}
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-        <Button
-          variant="primary"
-          className="flex items-center gap-x-0.5"
-          onClick={onGenerate}
-        >
+        <Button variant="primary" className="flex items-center gap-x-0.5" onClick={onGenerate}>
           <RiSparklingFill className="size-4" />
-          <span>{t('nodes.llm.jsonSchema.generate', { ns: 'workflow' })}</span>
+          <span>{t(($) => $['nodes.llm.jsonSchema.generate'], { ns: 'workflow' })}</span>
         </Button>
       </div>
     </div>
