@@ -156,7 +156,7 @@ export const importDSL = ({
   icon_type?: AppIconType
   icon?: string
   icon_background?: string
-}): Promise<DSLImportResponse> => {
+}, { silent }: { silent?: boolean } = {}): Promise<DSLImportResponse> => {
   return post<DSLImportResponse>('apps/imports', {
     body: {
       mode,
@@ -169,15 +169,15 @@ export const importDSL = ({
       icon_type,
       icon_background,
     },
-  })
+  }, { silent })
 }
 
 export const importDSLConfirm = ({
   import_id,
 }: {
   import_id: string
-}): Promise<DSLImportResponse> => {
-  return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} })
+}, { silent }: { silent?: boolean } = {}): Promise<DSLImportResponse> => {
+  return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} }, { silent })
 }
 
 export const switchApp = ({

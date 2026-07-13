@@ -82,6 +82,19 @@ class CheckDependenciesPendingData(BaseModel):
     app_id: str | None = None
 
 
+def _normalize_variable_id_mappings(mappings: list[Any]) -> list[Any]:
+    """Coerce each variable mapping's ``id`` to a valid UUID string when needed."""
+    normalized: list[Any] = []
+    for mapping in mappings:
+        if isinstance(mapping, Mapping):
+            try:
+                uuid.UUID(str(mapping.get("id")))
+            except (ValueError, TypeError):
+                mapping = {**mapping, "id": str(uuid4())}
+        normalized.append(mapping)
+    return normalized
+
+
 class AppDslService:
     def __init__(self, session: Session):
         self._session = session
@@ -179,6 +192,8 @@ class AppDslService:
                     error="Invalid YAML format: content must be a mapping",
                 )
 
+            original_top_level_keys = [k for k in data if isinstance(k, str)]
+
             # Validate and fix DSL version
             if not data.get("version"):
                 data["version"] = "0.1.0"
@@ -194,10 +209,17 @@ class AppDslService:
             # Extract app data
             app_data = data.get("app")
             if not app_data:
+                found = ", ".join(k for k in original_top_level_keys if k != "app")
+                if len(found) > 80:
+                    found = found[:80].rstrip(", ") + "…"
                 return Import(
                     id=import_id,
                     status=ImportStatus.FAILED,
-                    error="Missing app data in YAML content",
+                    error=(
+                        f"Not a valid Dify app DSL: missing the top-level 'app' section "
+                        f"(found: {found or 'none'}). "
+                        "An app export must contain 'app' plus 'workflow' or 'model_config'."
+                    ),
                 )
 
             # If app_id is provided, check if it exists
@@ -463,11 +485,15 @@ class AppDslService:
                 if not workflow_data or not isinstance(workflow_data, dict):
                     raise ValueError("Missing workflow data for workflow/advanced chat app")
 
-                environment_variables_list = workflow_data.get("environment_variables", [])
+                environment_variables_list = _normalize_variable_id_mappings(
+                    workflow_data.get("environment_variables", [])
+                )
                 environment_variables = [
                     variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
                 ]
-                conversation_variables_list = workflow_data.get("conversation_variables", [])
+                conversation_variables_list = _normalize_variable_id_mappings(
+                    workflow_data.get("conversation_variables", [])
+                )
                 conversation_variables = [
                     variable_factory.build_conversation_variable_from_mapping(obj)
                     for obj in conversation_variables_list

@@ -26,6 +26,7 @@ import { importDSL, importDSLConfirm } from '@/service/apps'
 import { useInvalidateAppList } from '@/service/use-apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { getDSLImportErrorMessage } from '@/utils/dsl-import-error'
 import Uploader from './uploader'
 
 type CreateFromDSLModalProps = {
@@ -106,13 +107,13 @@ const CreateFromDSLModal = ({
         response = await importDSL({
           mode: DSLImportMode.YAML_CONTENT,
           yaml_content: fileContent || '',
-        })
+        }, { silent: true })
       }
       if (currentTab === CreateFromDSLModalTab.FROM_URL) {
         response = await importDSL({
           mode: DSLImportMode.YAML_URL,
           yaml_url: dslUrlValue || '',
-        })
+        }, { silent: true })
       }
 
       if (!response) return
@@ -170,8 +171,8 @@ const CreateFromDSLModal = ({
       } else {
         toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
       }
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    } catch (error) {
+      toast.error(await getDSLImportErrorMessage(error, t(($) => $['newApp.appCreateFailed'], { ns: 'app' })))
     }
     isCreatingRef.current = false
   }
@@ -198,7 +199,7 @@ const CreateFromDSLModal = ({
       if (!importId) return
       const response = await importDSLConfirm({
         import_id: importId,
-      })
+      }, { silent: true })
 
       const { status, app_id, app_mode, permission_keys } = response
 
@@ -222,8 +223,8 @@ const CreateFromDSLModal = ({
       } else if (status === DSLImportStatus.FAILED) {
         toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
       }
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    } catch (error) {
+      toast.error(await getDSLImportErrorMessage(error, t(($) => $['newApp.appCreateFailed'], { ns: 'app' })))
     }
   }
 
