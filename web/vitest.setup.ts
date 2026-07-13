@@ -310,6 +310,7 @@ const testSystemFeatures = {
     },
     allow_email_code_login: false,
     allow_email_password_login: false,
+    allow_public_access: true,
   },
   plugin_installation_permission: {
     plugin_installation_scope: 'all',
