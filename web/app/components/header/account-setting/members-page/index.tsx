@@ -1,6 +1,7 @@
 'use client'
+import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { InvitationResult, Member } from '@/models/common'
+import type { Member } from '@/models/common'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -40,7 +41,9 @@ const MembersPage = () => {
   const { data, refetch } = useMembers(language)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
-  const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
+  const [invitationResults, setInvitationResults] = useState<
+    MemberInviteResponse['invitation_results']
+  >([])
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
   const accounts = data?.accounts || []
   const { plan, enableBilling, isAllowTransferWorkspace } = useProviderContext()

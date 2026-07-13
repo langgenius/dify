@@ -1,5 +1,5 @@
 'use client'
-import type { SuccessInvitationResult } from '.'
+import type { MemberInviteSuccessResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import s from './index.module.css'
 
 type IInvitationLinkProps = {
-  value: SuccessInvitationResult
+  value: MemberInviteSuccessResponse
 }
 
 const InvitationLink = ({ value }: IInvitationLinkProps) => {

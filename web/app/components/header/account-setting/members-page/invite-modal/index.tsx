@@ -1,10 +1,10 @@
 'use client'
 
+import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FormProps } from '@langgenius/dify-ui/form'
 import type { ReactElement } from 'react'
 import type { EmailRecipient } from './email-recipients'
 import type { Role } from '@/models/access-control'
-import type { InvitationResult } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -32,7 +32,7 @@ type InviteModalProps = {
   trigger: ReactElement
   isEmailSetup: boolean
   onOpenChange: (open: boolean) => void
-  onSend: (invitationResults: InvitationResult[]) => void
+  onSend: (invitationResults: MemberInviteResponse['invitation_results']) => void
 }
 
 type SubmitError = {
