@@ -7,10 +7,20 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const targetLanguage = 'en-US'
+const pluralSuffixPattern = /_(zero|one|two|few|many|other)$/
 
 const languages = data.languages
   .filter((language) => language.supported)
   .map((language) => language.value)
+
+function isLocaleSpecificPluralKey(key, targetKeys) {
+  const baseKey = key.replace(pluralSuffixPattern, '')
+  if (baseKey === key) return false
+
+  return targetKeys.some(
+    (targetKey) => targetKey !== baseKey && targetKey.replace(pluralSuffixPattern, '') === baseKey,
+  )
+}
 
 function parseArgs(argv) {
   const args = {
@@ -229,13 +239,13 @@ async function main() {
         )
       : allLanguagesKeys
 
-    const keysCount = languagesKeys.map((keys) => keys.length)
-    const targetKeysCount = targetKeys.length
-
     const comparison = languagesToProcess.reduce((result, language, index) => {
-      const languageKeysCount = keysCount[index]
-      const difference = targetKeysCount - languageKeysCount
-      result[language] = difference
+      const languageKeys = languagesKeys[index]
+      const missingKeys = targetKeys.filter((key) => !languageKeys.includes(key))
+      const extraKeys = languageKeys.filter(
+        (key) => !targetKeys.includes(key) && !isLocaleSpecificPluralKey(key, targetKeys),
+      )
+      result[language] = missingKeys.length - extraKeys.length
       return result
     }, {})
 
@@ -246,7 +256,9 @@ async function main() {
       const language = languagesToProcess[index]
       const languageKeys = languagesKeys[index]
       const missingKeys = targetKeys.filter((key) => !languageKeys.includes(key))
-      const extraKeys = languageKeys.filter((key) => !targetKeys.includes(key))
+      const extraKeys = languageKeys.filter(
+        (key) => !targetKeys.includes(key) && !isLocaleSpecificPluralKey(key, targetKeys),
+      )
 
       console.log(`Missing keys in ${language}:`, missingKeys)
       if (missingKeys.length > 0) hasDiff = true
