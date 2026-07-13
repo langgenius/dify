@@ -11,21 +11,14 @@ type DialogProps = {
   onClose?: () => void
 }
 
-const MenuDialog = ({
-  backdropClassName,
-  className,
-  children,
-  show,
-  onClose,
-}: DialogProps) => {
+const MenuDialog = ({ backdropClassName, className, children, show, onClose }: DialogProps) => {
   const close = useCallback(() => onClose?.(), [onClose])
 
   return (
     <Dialog
       open={show}
       onOpenChange={(open) => {
-        if (!open)
-          close()
+        if (!open) close()
       }}
     >
       <DialogContent

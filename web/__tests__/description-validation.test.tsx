@@ -59,8 +59,7 @@ describe('Description Validation Logic', () => {
       const invalidDescription = 'x'.repeat(401)
       try {
         validateDescriptionLength(invalidDescription)
-      }
-      catch (error) {
+      } catch (error) {
         expect((error as Error).message).toBe(expectedErrorMessage)
       }
     })
@@ -85,8 +84,7 @@ describe('Description Validation Logic', () => {
         if (shouldPass) {
           expect(() => validateDescriptionLength(testDescription)).not.toThrow()
           expect(validateDescriptionLength(testDescription)).toBe(testDescription)
-        }
-        else {
+        } else {
           expect(() => validateDescriptionLength(testDescription)).toThrow(
             'Description cannot exceed 400 characters.',
           )

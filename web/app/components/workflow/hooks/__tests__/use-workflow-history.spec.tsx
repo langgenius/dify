@@ -25,27 +25,31 @@ vi.mock('reactflow', async () => {
     }),
   }
 })
-const nodes: Node[] = [{
-  id: 'node-1',
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  data: {
-    type: BlockEnum.Start,
-    title: 'Start',
-    desc: '',
+const nodes: Node[] = [
+  {
+    id: 'node-1',
+    type: 'custom',
+    position: { x: 0, y: 0 },
+    data: {
+      type: BlockEnum.Start,
+      title: 'Start',
+      desc: '',
+    },
   },
-}]
+]
 
-const edges: Edge[] = [{
-  id: 'edge-1',
-  source: 'node-1',
-  target: 'node-2',
-  type: 'custom',
-  data: {
-    sourceType: BlockEnum.Start,
-    targetType: BlockEnum.End,
+const edges: Edge[] = [
+  {
+    id: 'edge-1',
+    source: 'node-1',
+    target: 'node-2',
+    type: 'custom',
+    data: {
+      sourceType: BlockEnum.Start,
+      targetType: BlockEnum.End,
+    },
   },
-}]
+]
 
 describe('useWorkflowHistory', () => {
   beforeEach(() => {
@@ -94,8 +98,12 @@ describe('useWorkflowHistory', () => {
       },
     })
 
-    expect(result.current.getHistoryLabel(WorkflowHistoryEvent.NodeDelete)).toEqual(expect.stringMatching(/(?:^|\.)changeHistory\.nodeDelete(?=$|:)/))
-    expect(result.current.getHistoryLabel('Unknown' as keyof typeof WorkflowHistoryEvent)).toBe('Unknown Event')
+    expect(result.current.getHistoryLabel(WorkflowHistoryEvent.NodeDelete)).toEqual(
+      expect.stringMatching(/(?:^|\.)changeHistory\.nodeDelete(?=$|:)/),
+    )
+    expect(result.current.getHistoryLabel('Unknown' as keyof typeof WorkflowHistoryEvent)).toBe(
+      'Unknown Event',
+    )
   })
 
   it('runs registered undo and redo callbacks', () => {

@@ -12,28 +12,40 @@ vi.mock('@/i18n-config/language', () => ({
 let mockModalVisible = false
 
 // Mock SettingBuiltInTool modal - complex component that needs mocking
-vi.mock('@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool', () => ({
-  default: ({ onHide, collection, toolName, readonly, isBuiltIn, isModel }: {
-    onHide: () => void
-    collection: Collection
-    toolName: string
-    readonly: boolean
-    isBuiltIn: boolean
-    isModel: boolean
-  }) => {
-    mockModalVisible = true
-    return (
-      <div data-testid="setting-built-in-tool-modal">
-        <span data-testid="modal-tool-name">{toolName}</span>
-        <span data-testid="modal-collection-id">{collection.id}</span>
-        <span data-testid="modal-readonly">{readonly.toString()}</span>
-        <span data-testid="modal-is-builtin">{isBuiltIn.toString()}</span>
-        <span data-testid="modal-is-model">{isModel.toString()}</span>
-        <button data-testid="close-modal" onClick={onHide}>Close</button>
-      </div>
-    )
-  },
-}))
+vi.mock(
+  '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool',
+  () => ({
+    default: ({
+      onHide,
+      collection,
+      toolName,
+      readonly,
+      isBuiltIn,
+      isModel,
+    }: {
+      onHide: () => void
+      collection: Collection
+      toolName: string
+      readonly: boolean
+      isBuiltIn: boolean
+      isModel: boolean
+    }) => {
+      mockModalVisible = true
+      return (
+        <div data-testid="setting-built-in-tool-modal">
+          <span data-testid="modal-tool-name">{toolName}</span>
+          <span data-testid="modal-collection-id">{collection.id}</span>
+          <span data-testid="modal-readonly">{readonly.toString()}</span>
+          <span data-testid="modal-is-builtin">{isBuiltIn.toString()}</span>
+          <span data-testid="modal-is-model">{isModel.toString()}</span>
+          <button data-testid="close-modal" onClick={onHide}>
+            Close
+          </button>
+        </div>
+      )
+    },
+  }),
+)
 
 describe('ToolItem', () => {
   // Factory function for creating mock collection
@@ -247,7 +259,10 @@ describe('ToolItem', () => {
       render(<ToolItem {...defaultProps} />)
 
       const descriptionElement = screen.getByText('Test tool description for testing purposes')
-      expect(descriptionElement).toHaveAttribute('title', 'Test tool description for testing purposes')
+      expect(descriptionElement).toHaveAttribute(
+        'title',
+        'Test tool description for testing purposes',
+      )
     })
 
     it('should apply line-clamp-2 to description for text overflow', () => {

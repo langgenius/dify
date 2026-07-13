@@ -12,11 +12,7 @@ import {
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
-function TestFileTree({
-  onPreview = vi.fn(),
-}: {
-  onPreview?: (itemId: string) => void
-}) {
+function TestFileTree({ onPreview = vi.fn() }: { onPreview?: (itemId: string) => void }) {
   return (
     <FileTree aria-label="Project files">
       <FileTreeList>
@@ -79,12 +75,16 @@ describe('FileTree', () => {
 
     src.click()
 
-    await expect.element(screen.getByRole('button', { name: 'src' })).toHaveAttribute('aria-expanded', 'false')
+    await expect
+      .element(screen.getByRole('button', { name: 'src' }))
+      .toHaveAttribute('aria-expanded', 'false')
     expect(screen.container.textContent).not.toContain('components')
 
     src.click()
 
-    await expect.element(screen.getByRole('button', { name: 'src' })).toHaveAttribute('aria-expanded', 'true')
+    await expect
+      .element(screen.getByRole('button', { name: 'src' }))
+      .toHaveAttribute('aria-expanded', 'true')
     await expect.element(screen.getByRole('button', { name: 'components' })).toBeInTheDocument()
   })
 
@@ -95,7 +95,9 @@ describe('FileTree', () => {
     asHTMLElement(screen.getByRole('button', { name: 'README.md' }).element()).click()
 
     expect(onPreview).toHaveBeenCalledWith('readme')
-    await expect.element(screen.getByRole('button', { name: 'README.md' })).not.toHaveAttribute('href')
+    await expect
+      .element(screen.getByRole('button', { name: 'README.md' }))
+      .not.toHaveAttribute('href')
   })
 
   it('does not activate disabled file buttons', async () => {
@@ -115,7 +117,9 @@ describe('FileTree', () => {
 
     expect(onPreview).not.toHaveBeenCalled()
     await expect.element(screen.getByRole('button', { name: 'disabled.txt' })).toBeDisabled()
-    await expect.element(screen.getByRole('button', { name: 'disabled.txt' })).toHaveAttribute('data-disabled')
+    await expect
+      .element(screen.getByRole('button', { name: 'disabled.txt' }))
+      .toHaveAttribute('data-disabled')
   })
 
   it('resolves disabled folder triggers through the collapsible state', async () => {

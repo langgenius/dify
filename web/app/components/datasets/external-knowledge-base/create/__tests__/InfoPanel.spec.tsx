@@ -57,13 +57,19 @@ describe('InfoPanel', () => {
     it('should have correct href for external knowledge API doc link', () => {
       render(<InfoPanel />)
       const docLink = screen.getByText(/connectDatasetIntro\.content\.link/)
-      expect(docLink).toHaveAttribute('href', 'https://docs.dify.ai/use-dify/knowledge/external-knowledge-api')
+      expect(docLink).toHaveAttribute(
+        'href',
+        'https://docs.dify.ai/use-dify/knowledge/external-knowledge-api',
+      )
     })
 
     it('should have correct href for learn more link', () => {
       render(<InfoPanel />)
       const learnMoreLink = screen.getByText(/connectDatasetIntro\.learnMore/)
-      expect(learnMoreLink).toHaveAttribute('href', 'https://docs.dify.ai/use-dify/knowledge/connect-external-knowledge-base')
+      expect(learnMoreLink).toHaveAttribute(
+        'href',
+        'https://docs.dify.ai/use-dify/knowledge/connect-external-knowledge-base',
+      )
     })
 
     it('should open links in new tab', () => {

@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from typing import Annotated, Literal
 from urllib import parse
 from uuid import UUID
 
@@ -43,7 +44,7 @@ from services.feature_service import FeatureService
 
 
 class MemberInvitePayload(BaseModel):
-    emails: list[str] = Field(default_factory=list)
+    emails: list[str] = Field(min_length=1)
     role: str
     language: str | None = None
 
@@ -70,11 +71,28 @@ class OwnerTransferPayload(BaseModel):
     token: str
 
 
-class MemberInviteResultResponse(ResponseModel):
-    status: str
+class MemberInviteSuccessResponse(ResponseModel):
+    status: Literal["success"]
     email: str
-    url: str | None = None
-    message: str | None = None
+    url: str
+
+
+class MemberInviteAlreadyMemberResponse(ResponseModel):
+    status: Literal["already_member"]
+    email: str
+    message: str
+
+
+class MemberInviteFailedResponse(ResponseModel):
+    status: Literal["failed"]
+    email: str
+    message: str
+
+
+MemberInviteResultResponse = Annotated[
+    MemberInviteSuccessResponse | MemberInviteAlreadyMemberResponse | MemberInviteFailedResponse,
+    Field(discriminator="status"),
+]
 
 
 class MemberActionResponse(ResponseModel):
@@ -83,7 +101,7 @@ class MemberActionResponse(ResponseModel):
 
 
 class MemberInviteResponse(ResponseModel):
-    result: str
+    result: Literal["success"]
     invitation_results: list[MemberInviteResultResponse]
     tenant_id: str
 
@@ -103,7 +121,9 @@ register_response_schema_models(
     AccountWithRoleListResponse,
     MemberActionResponse,
     MemberInviteResponse,
-    MemberInviteResultResponse,
+    MemberInviteSuccessResponse,
+    MemberInviteAlreadyMemberResponse,
+    MemberInviteFailedResponse,
     SimpleResultDataResponse,
     SimpleResultResponse,
     VerificationTokenResponse,
@@ -279,7 +299,7 @@ class MemberInviteEmailApi(Resource):
                     )
                     encoded_invitee_email = parse.quote(invitee_email)
                     invitation_results.append(
-                        MemberInviteResultResponse(
+                        MemberInviteSuccessResponse(
                             status="success",
                             email=invitee_email,
                             url=f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
@@ -287,7 +307,7 @@ class MemberInviteEmailApi(Resource):
                     )
                 except AccountAlreadyInTenantError:
                     invitation_results.append(
-                        MemberInviteResultResponse(
+                        MemberInviteAlreadyMemberResponse(
                             status="already_member",
                             email=invitee_email,
                             message="Account already in workspace.",
@@ -295,14 +315,20 @@ class MemberInviteEmailApi(Resource):
                     )
                 except Exception as e:
                     invitation_results.append(
-                        MemberInviteResultResponse(status="failed", email=invitee_email, message=str(e))
+                        MemberInviteFailedResponse(status="failed", email=invitee_email, message=str(e))
                     )
 
-        return MemberInviteResponse(
-            result="success",
-            invitation_results=invitation_results,
-            tenant_id=inviter.current_tenant.id if inviter.current_tenant else "",
-        ).model_dump(mode="json"), HTTPStatus.CREATED
+        return (
+            dump_response(
+                MemberInviteResponse,
+                {
+                    "result": "success",
+                    "invitation_results": invitation_results,
+                    "tenant_id": inviter.current_tenant.id if inviter.current_tenant else "",
+                },
+            ),
+            HTTPStatus.CREATED,
+        )
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>")

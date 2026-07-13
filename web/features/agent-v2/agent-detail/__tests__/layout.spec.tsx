@@ -37,7 +37,7 @@ vi.mock('@/service/client', () => ({
     agent: {
       byAgentId: {
         get: {
-          queryOptions: vi.fn(input => input),
+          queryOptions: vi.fn((input) => input),
         },
       },
     },

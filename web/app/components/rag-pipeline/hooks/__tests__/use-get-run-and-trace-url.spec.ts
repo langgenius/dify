@@ -1,6 +1,5 @@
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-
 import { useGetRunAndTraceUrl } from '../use-get-run-and-trace-url'
 
 vi.mock('@/app/components/workflow/store', () => ({

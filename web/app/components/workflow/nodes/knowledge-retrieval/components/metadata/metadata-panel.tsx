@@ -20,7 +20,7 @@ const MetadataPanel = ({
     <div className="w-[420px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl">
       <div className="relative px-3 pt-3.5">
         <div className="system-xl-semibold text-text-primary">
-          {t($ => $['nodes.knowledgeRetrieval.metadata.panel.title'], { ns: 'workflow' })}
+          {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.title'], { ns: 'workflow' })}
         </div>
         <div
           className="absolute right-2.5 bottom-0 flex size-8 cursor-pointer items-center justify-center"
@@ -38,10 +38,7 @@ const MetadataPanel = ({
               {...restProps}
             />
           </div>
-          <AddCondition
-            metadataList={metadataList}
-            handleAddCondition={handleAddCondition}
-          />
+          <AddCondition metadataList={metadataList} handleAddCondition={handleAddCondition} />
         </div>
       </div>
     </div>

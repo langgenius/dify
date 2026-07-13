@@ -16,6 +16,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from controllers.console.explore.wraps import InstalledAppResource
@@ -30,6 +31,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -69,6 +71,8 @@ class ChatAudioApi(InstalledAppResource):
             raise UnsupportedAudioTypeError()
         except ProviderNotSupportSpeechToTextServiceError:
             raise ProviderNotSupportSpeechToTextError()
+        except SpeechToTextDisabledServiceError:
+            raise SpeechToTextDisabledError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

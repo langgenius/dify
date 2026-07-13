@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "Passez à la version supérieure pour télécharger plusieurs documents à la fois",
   "upgrade.workflowRestore.description": "La restauration des versions du workflow n'est pas disponible avec votre plan actuel.",
   "upgrade.workflowRestore.title": "Mettez à niveau pour restaurer les versions du workflow",
+  "upgrade.workflowVersionRun.description": "L’exécution d’une version spécifique du workflow via son ID n’est pas disponible avec votre plan actuel.",
+  "upgrade.workflowVersionRun.title": "Mettez à niveau pour exécuter des versions spécifiques du workflow",
   "upgradeBtn.encourage": "Mettre à niveau maintenant",
   "upgradeBtn.encourageShort": "Mise à niveau",
   "upgradeBtn.plain": "Mettre à jour le plan",

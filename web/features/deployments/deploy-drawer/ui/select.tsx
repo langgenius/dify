@@ -3,13 +3,24 @@
 import type { Environment, EnvironmentStatus } from '@dify/contracts/enterprise/types.gen'
 import { EnvironmentStatus as EnvironmentStatusEnum } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '../../shared/components/title-tooltip'
 import { ModeBadge } from './status-badge'
 
-export function Field({ label, hint, children }: {
+export function Field({
+  label,
+  hint,
+  children,
+}: {
   label: string
   hint?: string
   children: React.ReactNode
@@ -40,60 +51,59 @@ type SelectProps = {
   placeholder?: string
 }
 
-export function DeploymentSelect({ value, onChange, options, ariaLabel, placeholder }: SelectProps) {
+export function DeploymentSelect({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+  placeholder,
+}: SelectProps) {
   const { t } = useTranslation('deployments')
-  const selectedOption = options.find(option => option.value === value)
+  const selectedOption = options.find((option) => option.value === value)
 
   return (
     <Select
       value={value ?? null}
       onValueChange={(next) => {
-        if (!next)
-          return
+        if (!next) return
         onChange(next)
       }}
       disabled={options.length === 0}
     >
       <SelectTrigger
-        aria-label={ariaLabel ?? placeholder ?? t($ => $['deployDrawer.defaultSelect'])}
+        aria-label={ariaLabel ?? placeholder ?? t(($) => $['deployDrawer.defaultSelect'])}
         className={cn(
           'h-8 min-w-0 px-2 text-left system-sm-medium',
           !selectedOption && 'text-text-quaternary',
         )}
       >
-        {selectedOption?.label ?? placeholder ?? t($ => $['deployDrawer.defaultSelect'])}
+        {selectedOption?.label ?? placeholder ?? t(($) => $['deployDrawer.defaultSelect'])}
       </SelectTrigger>
       <SelectContent popupClassName="w-(--anchor-width)">
-        {options.map(opt => opt.value
-          ? (
-              <SelectItem
-                key={opt.value}
-                value={opt.value}
-                disabled={opt.disabled}
-              >
-                <TitleTooltip content={opt.disabled ? opt.disabledReason : undefined}>
-                  <SelectItemText>{opt.label}</SelectItemText>
-                </TitleTooltip>
-                <SelectItemIndicator />
-              </SelectItem>
-            )
-          : null)}
+        {options.map((opt) =>
+          opt.value ? (
+            <SelectItem key={opt.value} value={opt.value} disabled={opt.disabled}>
+              <TitleTooltip content={opt.disabled ? opt.disabledReason : undefined}>
+                <SelectItemText>{opt.label}</SelectItemText>
+              </TitleTooltip>
+              <SelectItemIndicator />
+            </SelectItem>
+          ) : null,
+        )}
       </SelectContent>
     </Select>
   )
 }
 
-function EnvironmentHealthDot({ status }: {
-  status: EnvironmentStatus
-}) {
+function EnvironmentHealthDot({ status }: { status: EnvironmentStatus }) {
   const { t } = useTranslation('deployments')
-  const label = t($ => $[`health.${status}`])
+  const label = t(($) => $[`health.${status}`])
   const isReady = status === EnvironmentStatusEnum.ENVIRONMENT_STATUS_READY
 
   return (
     <Tooltip>
       <TooltipTrigger
-        render={(
+        render={
           <span
             aria-label={label}
             className={cn(
@@ -109,7 +119,7 @@ function EnvironmentHealthDot({ status }: {
               )}
             />
           </span>
-        )}
+        }
       />
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -118,7 +128,7 @@ function EnvironmentHealthDot({ status }: {
 
 export function EnvironmentRow({ env }: { env: Environment }) {
   const { t } = useTranslation('deployments')
-  const summary = env.description.trim() || t($ => $[`backend.${env.backend}`])
+  const summary = env.description.trim() || t(($) => $[`backend.${env.backend}`])
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-components-panel-border bg-components-panel-bg-blur px-3 py-2">

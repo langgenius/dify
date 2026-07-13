@@ -301,22 +301,35 @@ describe('node-handle', () => {
     })
 
     it.each([
-      ['succeeded', NodeRunningStatus.Succeeded, undefined, 'after:bg-workflow-link-line-success-handle'],
+      [
+        'succeeded',
+        NodeRunningStatus.Succeeded,
+        undefined,
+        'after:bg-workflow-link-line-success-handle',
+      ],
       ['failed', NodeRunningStatus.Failed, undefined, 'after:bg-workflow-link-line-error-handle'],
-      ['exception', NodeRunningStatus.Exception, true, 'after:bg-workflow-link-line-failure-handle'],
-    ])('should render the source %s status class', (_label, runningStatus, showExceptionStatus, expectedClass) => {
-      renderSourceHandle(
-        {
-          _runningStatus: runningStatus,
-        },
-        {
-          showExceptionStatus,
-        },
-      )
+      [
+        'exception',
+        NodeRunningStatus.Exception,
+        true,
+        'after:bg-workflow-link-line-failure-handle',
+      ],
+    ])(
+      'should render the source %s status class',
+      (_label, runningStatus, showExceptionStatus, expectedClass) => {
+        renderSourceHandle(
+          {
+            _runningStatus: runningStatus,
+          },
+          {
+            showExceptionStatus,
+          },
+        )
 
-      expect(screen.getByTestId('handle-source-handle')).toHaveClass(expectedClass)
-      expect(screen.getByTestId('handle-source-handle')).toHaveClass('custom-source-handle')
-    })
+        expect(screen.getByTestId('handle-source-handle')).toHaveClass(expectedClass)
+        expect(screen.getByTestId('handle-source-handle')).toHaveClass('custom-source-handle')
+      },
+    )
   })
 
   // Auto-open tests cover workflow start-trigger variants, chat-mode bypass, and store fallback paths.
@@ -357,7 +370,9 @@ describe('node-handle', () => {
 
       renderSourceHandle({ type: BlockEnum.Start })
 
-      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ shouldAutoOpenStartNodeSelector: false })
+      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
+        shouldAutoOpenStartNodeSelector: false,
+      })
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ hasSelectedStartNode: false })
     })
 

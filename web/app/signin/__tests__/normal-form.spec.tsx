@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import NormalForm from '../normal-form'
 
 vi.mock('@tanstack/react-query', async () => {
-  const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
+  const actual =
+    await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
   return {
     ...actual,
     useQuery: vi.fn(),
@@ -113,6 +114,21 @@ describe('NormalForm', () => {
         expect(mockReplace).toHaveBeenCalledWith('/')
       })
     })
+
+    it('should send logged-in visitors with an external redirect target to the console home', async () => {
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams('redirect_url=https%3A%2F%2Fgoogle.com'),
+      )
+      mockUseQuery
+        .mockReturnValueOnce(loggedInQueryResult as unknown as ReturnType<typeof useQuery>)
+        .mockReturnValueOnce(nonInviteQueryResult as unknown as ReturnType<typeof useQuery>)
+
+      render(<NormalForm />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/')
+      })
+    })
   })
 
   describe('Invite Redirects', () => {
@@ -125,7 +141,9 @@ describe('NormalForm', () => {
       render(<NormalForm />)
 
       await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith('/signin/invite-settings?invite_token=invite-token')
+        expect(mockReplace).toHaveBeenCalledWith(
+          '/signin/invite-settings?invite_token=invite-token',
+        )
       })
     })
   })

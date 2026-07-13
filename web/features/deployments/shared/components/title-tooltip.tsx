@@ -14,8 +14,7 @@ function normalizeText(value: string) {
 }
 
 function contentText(content: ReactNode) {
-  if (typeof content === 'string' || typeof content === 'number')
-    return String(content)
+  if (typeof content === 'string' || typeof content === 'number') return String(content)
 }
 
 function isOverflowing(element: HTMLElement) {
@@ -24,11 +23,9 @@ function isOverflowing(element: HTMLElement) {
 
 function shouldShowTooltipContent(element: HTMLElement, content: ReactNode) {
   const text = contentText(content)
-  if (text === undefined)
-    return true
+  if (text === undefined) return true
 
-  if (normalizeText(text) !== normalizeText(element.textContent ?? ''))
-    return true
+  if (normalizeText(text) !== normalizeText(element.textContent ?? '')) return true
 
   return isOverflowing(element)
 }
@@ -42,8 +39,7 @@ export function TitleTooltip({
 }) {
   const [shouldShowContent, setShouldShowContent] = useState(false)
 
-  if (!content)
-    return children
+  if (!content) return children
 
   const childProps = children.props as TriggerProps
 
@@ -51,7 +47,7 @@ export function TitleTooltip({
     setShouldShowContent(shouldShowTooltipContent(element, content))
   }
 
-  // eslint-disable-next-line react/no-clone-element -- Preserve the trigger element while adding overflow checks.
+  // oxlint-disable-next-line react/no-clone-element -- Preserve the trigger element while adding overflow checks.
   const trigger = cloneElement(children as ReactElement<TriggerProps>, {
     onFocusCapture: (event) => {
       childProps.onFocusCapture?.(event)
@@ -66,9 +62,7 @@ export function TitleTooltip({
   return (
     <Tooltip>
       <TooltipTrigger render={trigger} />
-      {shouldShowContent && (
-        <TooltipContent>{content}</TooltipContent>
-      )}
+      {shouldShowContent && <TooltipContent>{content}</TooltipContent>}
     </Tooltip>
   )
 }

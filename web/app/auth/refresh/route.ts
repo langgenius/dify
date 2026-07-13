@@ -1,29 +1,58 @@
+import type { LoginRedirectTarget } from '@/utils/login-redirect'
+import { IS_CLOUD_EDITION } from '@/config'
 import { resolveServerConsoleApiUrl } from '@/service/server'
+import { getServerLoginFallback, resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 
 const REFRESH_TOKEN_PATH = '/refresh-token'
 const AUTH_REFRESH_PATH = `${basePath}/auth/refresh`
-const DEFAULT_REDIRECT_PATH = `${basePath}/`
+const INTERNAL_PATH_PARSE_BASE = 'https://login-redirect.invalid'
 
-const resolveSafeRedirectPath = (request: Request) => {
+function normalizeRoutePathname(pathname: string) {
+  let decodedPathname = pathname
+  for (let decodeCount = 0; decodeCount < 2; decodeCount += 1) {
+    try {
+      const nextPathname = decodeURIComponent(decodedPathname)
+      if (nextPathname === decodedPathname) break
+      decodedPathname = nextPathname
+    } catch {
+      break
+    }
+  }
+
+  const collapsedPathname = decodedPathname.replace(/\/{2,}/g, '/')
+  if (collapsedPathname === '/') return collapsedPathname
+  return collapsedPathname.replace(/\/+$/, '')
+}
+
+const addBasePathToInternalTarget = (target: LoginRedirectTarget): LoginRedirectTarget => {
+  if (!basePath || target.kind !== 'internal') return target
+
+  const targetUrl = new URL(target.href, INTERNAL_PATH_PARSE_BASE)
+  if (targetUrl.pathname === basePath || targetUrl.pathname.startsWith(`${basePath}/`))
+    return target
+
+  return { kind: 'internal', href: `${basePath}${target.href}` }
+}
+
+const resolveSafeRedirectTarget = (request: Request): LoginRedirectTarget => {
   const requestUrl = new URL(request.url)
   const redirectUrl = requestUrl.searchParams.get('redirect_url')
+  const fallback = getServerLoginFallback(IS_CLOUD_EDITION, basePath)
 
-  if (!redirectUrl)
-    return DEFAULT_REDIRECT_PATH
+  if (!redirectUrl) return fallback
 
-  try {
-    const target = new URL(redirectUrl, requestUrl.origin)
-    if (target.origin !== requestUrl.origin)
-      return DEFAULT_REDIRECT_PATH
-    if (target.pathname === AUTH_REFRESH_PATH)
-      return DEFAULT_REDIRECT_PATH
+  const target = resolveLoginRedirectTarget(redirectUrl, {
+    allowSameOriginAbsolute: false,
+  })
+  if (!target) return fallback
 
-    return `${target.pathname}${target.search}`
-  }
-  catch {
-    return DEFAULT_REDIRECT_PATH
-  }
+  const normalizedTarget = addBasePathToInternalTarget(target)
+  const targetUrl = new URL(normalizedTarget.href, INTERNAL_PATH_PARSE_BASE)
+  if (normalizeRoutePathname(targetUrl.pathname) === normalizeRoutePathname(AUTH_REFRESH_PATH))
+    return fallback
+
+  return normalizedTarget
 }
 
 const getSetCookieHeaders = (headers: Headers) => {
@@ -43,11 +72,10 @@ const getSetCookieHeaders = (headers: Headers) => {
 const createRedirectResponse = (pathname: string, setCookies: string[] = []) => {
   const headers = new Headers({
     'Cache-Control': 'no-store',
-    'Location': pathname,
+    Location: pathname,
   })
 
-  for (const cookie of setCookies)
-    headers.append('Set-Cookie', cookie)
+  for (const cookie of setCookies) headers.append('Set-Cookie', cookie)
 
   return new Response(null, {
     status: 303,
@@ -55,16 +83,17 @@ const createRedirectResponse = (pathname: string, setCookies: string[] = []) => 
   })
 }
 
-const createSigninRedirectResponse = (redirectPath: string) =>
-  createRedirectResponse(`${basePath}/signin?redirect_url=${encodeURIComponent(redirectPath)}`)
+const createSigninRedirectResponse = (redirectTarget: LoginRedirectTarget) =>
+  createRedirectResponse(
+    `${basePath}/signin?redirect_url=${encodeURIComponent(redirectTarget.href)}`,
+  )
 
 export async function GET(request: Request) {
-  const redirectPath = resolveSafeRedirectPath(request)
+  const redirectTarget = resolveSafeRedirectTarget(request)
   const refreshUrl = resolveServerConsoleApiUrl(REFRESH_TOKEN_PATH)
   const cookie = request.headers.get('cookie')
 
-  if (!refreshUrl || !cookie)
-    return createSigninRedirectResponse(redirectPath)
+  if (!refreshUrl || !cookie) return createSigninRedirectResponse(redirectTarget)
 
   try {
     const response = await fetch(refreshUrl, {
@@ -76,12 +105,10 @@ export async function GET(request: Request) {
       cache: 'no-store',
     })
 
-    if (!response.ok)
-      return createSigninRedirectResponse(redirectPath)
+    if (!response.ok) return createSigninRedirectResponse(redirectTarget)
 
-    return createRedirectResponse(redirectPath, getSetCookieHeaders(response.headers))
-  }
-  catch {
-    return createSigninRedirectResponse(redirectPath)
+    return createRedirectResponse(redirectTarget.href, getSetCookieHeaders(response.headers))
+  } catch {
+    return createSigninRedirectResponse(redirectTarget)
   }
 }

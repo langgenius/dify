@@ -2,9 +2,11 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import VarPanel from '../var-panel'
 
 vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
-  default: ({ url, title, onCancel }: { url: string, title: string, onCancel: () => void }) => (
+  default: ({ url, title, onCancel }: { url: string; title: string; onCancel: () => void }) => (
     <div data-testid="image-preview" data-url={url} data-title={title}>
-      <button onClick={onCancel} data-testid="close-preview">Close</button>
+      <button onClick={onCancel} data-testid="close-preview">
+        Close
+      </button>
     </div>
   ),
 }))
@@ -152,7 +154,10 @@ describe('VarPanel', () => {
       fireEvent.click(thumbnail!)
 
       expect(screen.getByTestId('image-preview')).toBeInTheDocument()
-      expect(screen.getByTestId('image-preview')).toHaveAttribute('data-url', 'https://example.com/image1.jpg')
+      expect(screen.getByTestId('image-preview')).toHaveAttribute(
+        'data-url',
+        'https://example.com/image1.jpg',
+      )
     })
 
     it('should close image preview when close button is clicked', () => {

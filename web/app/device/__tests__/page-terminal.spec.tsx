@@ -64,7 +64,9 @@ beforeEach(async () => {
     mockSearchParams = {}
   })
   mockUseQuery.mockReturnValue({ data: undefined, isError: false } as ReturnType<typeof useQuery>)
-  const mod = await import('@/service/device-flow') as { DeviceFlowError: MockDeviceFlowErrorCtor }
+  const mod = (await import('@/service/device-flow')) as {
+    DeviceFlowError: MockDeviceFlowErrorCtor
+  }
   MockDeviceFlowError = mod.DeviceFlowError
 })
 
@@ -85,7 +87,9 @@ describe('error_expired terminal state', () => {
   it('ghost button resets to code_entry', async () => {
     await reachTerminal(new Error('expired'))
     await screen.findByText('deviceFlow.errorExpired.title')
-    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.errorExpired.tryDifferentCode/i }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /deviceFlow.errorExpired.tryDifferentCode/i }),
+    )
     expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.queryByText('deviceFlow.errorExpired.title')).not.toBeInTheDocument()
   })

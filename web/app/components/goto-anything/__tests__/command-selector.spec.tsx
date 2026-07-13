@@ -9,12 +9,14 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/app',
 }))
 
-const slashCommandsMock = [{
-  name: 'docs',
-  description: 'Docs',
-  mode: 'direct',
-  isAvailable: () => true,
-}]
+const slashCommandsMock = [
+  {
+    name: 'docs',
+    description: 'Docs',
+    mode: 'direct',
+    isAvailable: () => true,
+  },
+]
 
 vi.mock('../actions/commands/registry', () => ({
   slashCommandRegistry: {

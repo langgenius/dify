@@ -10,10 +10,10 @@ import Line from '../line'
 // Mock i18n translation hook
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
+  return {
     useTranslation: () => ({
       t: withSelectorKey((key: string, options?: { ns?: string }) => {
-      // Build full key with namespace prefix if provided
+        // Build full key with namespace prefix if provided
         const fullKey = options?.ns ? `${options.ns}.${key}` : key
         const translations: Record<string, string> = {
           'plugin.marketplace.noPluginFound': 'No plugin found',
@@ -21,7 +21,7 @@ vi.mock('#i18n', async () => {
         return translations[fullKey] || key
       }),
     }),
-  })
+  }
 })
 
 // Mock useTheme hook with controllable theme value
@@ -203,9 +203,7 @@ describe('Line', () => {
     })
 
     it('should handle Tailwind utility classes', () => {
-      const { container } = render(
-        <Line className="absolute -right-px top-1/2 -translate-y-1/2" />,
-      )
+      const { container } = render(<Line className="absolute top-1/2 -right-px -translate-y-1/2" />)
 
       const svg = container.querySelector('svg')
       expect(svg).toHaveClass('absolute')
@@ -372,7 +370,8 @@ describe('Empty', () => {
     })
 
     it('should render long custom text', () => {
-      const longText = 'This is a very long message that describes why there are no plugins found in the current search results and what the user might want to do next to find what they are looking for'
+      const longText =
+        'This is a very long message that describes why there are no plugins found in the current search results and what the user might want to do next to find what they are looking for'
       render(<Empty text={longText} />)
 
       expect(screen.getByText(longText)).toBeInTheDocument()
@@ -603,11 +602,7 @@ describe('Empty', () => {
   describe('Combined Props', () => {
     it('should handle all props together', () => {
       const { container } = render(
-        <Empty
-          text="Custom message"
-          lightCard
-          className="custom-wrapper"
-        />,
+        <Empty text="Custom message" lightCard className="custom-wrapper" />,
       )
 
       expect(screen.getByText('Custom message')).toBeInTheDocument()
@@ -616,18 +611,14 @@ describe('Empty', () => {
     })
 
     it('should render correctly with lightCard false and custom text', () => {
-      const { container } = render(
-        <Empty text="No results" lightCard={false} />,
-      )
+      const { container } = render(<Empty text="No results" lightCard={false} />)
 
       expect(screen.getByText('No results')).toBeInTheDocument()
       expect(container.querySelector('.bg-marketplace-plugin-empty')).toBeInTheDocument()
     })
 
     it('should handle className with lightCard prop', () => {
-      const { container } = render(
-        <Empty className="test-class" lightCard />,
-      )
+      const { container } = render(<Empty className="test-class" lightCard />)
 
       const element = container.querySelector('.test-class')
       expect(element).toBeInTheDocument()

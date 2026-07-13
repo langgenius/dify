@@ -730,7 +730,7 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| loc | [  ], <br>**Default:**  |  | No |
+| loc | [ string<br>integer ] |  | No |
 | msg | string |  | Yes |
 | type | string |  | Yes |
 

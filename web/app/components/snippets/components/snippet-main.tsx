@@ -6,13 +6,7 @@ import type { SnippetCanvasData, SnippetDetailPayload, SnippetInputField } from 
 import type { SnippetDraftSyncPayload } from '@/types/snippet'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
@@ -20,10 +14,7 @@ import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import {
-  initialEdges,
-  initialNodes,
-} from '@/app/components/workflow/utils'
+import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useSnippetDraftStore } from '../draft-store'
 import { useConfigsMap } from '../hooks/use-configs-map'
@@ -73,9 +64,10 @@ type LocalDraftState = {
 }
 
 const hasSnippetDraftNodes = (payload?: Omit<SnippetDraftSyncPayload, 'hash'> | void) => {
-  const nodes = payload?.graph && typeof payload.graph === 'object'
-    ? (payload.graph as { nodes?: unknown }).nodes
-    : undefined
+  const nodes =
+    payload?.graph && typeof payload.graph === 'object'
+      ? (payload.graph as { nodes?: unknown }).nodes
+      : undefined
 
   return Array.isArray(nodes) && nodes.length > 0
 }
@@ -89,26 +81,21 @@ const SnippetMainContent = ({
   onSaved,
 }: SnippetMainContentProps) => {
   const { t } = useTranslation('snippet')
-  const {
-    handlePublish,
-    isPublishing,
-  } = useSnippetPublish({
+  const { handlePublish, isPublishing } = useSnippetPublish({
     snippetId,
   })
 
   const handlePublishSnippet = useCallback(async () => {
     const syncedDraftPayload = await onBeforePublish()
-    if (!syncedDraftPayload)
-      return false
+    if (!syncedDraftPayload) return false
 
     if (!hasSnippetDraftNodes(syncedDraftPayload)) {
-      toast.error(t($ => $.emptyGraphSaveError))
+      toast.error(t(($) => $.emptyGraphSaveError))
       return false
     }
 
     const didSave = await handlePublish()
-    if (didSave)
-      onSaved(syncedDraftPayload)
+    if (didSave) onSaved(syncedDraftPayload)
 
     return didSave
   }, [handlePublish, onBeforePublish, onSaved, t])
@@ -138,7 +125,9 @@ const SnippetMain = ({
     setLocalDraftState(undefined)
     setLocalDraftSnippetId(snippetId)
   }
-  const currentCanvasNodeCount = useStore(state => state.nodes.filter(node => !node.data?._isTempNode).length)
+  const currentCanvasNodeCount = useStore(
+    (state) => state.nodes.filter((node) => !node.data?._isTempNode).length,
+  )
   const effectiveDraftPayload = localDraftState?.payload ?? draftPayload
   const effectiveDraftNodes = localDraftState?.nodes ?? draftNodes
   const effectiveDraftEdges = localDraftState?.edges ?? draftEdges
@@ -147,10 +136,8 @@ const SnippetMain = ({
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canEditSnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const canSave = canEditSnippet && currentCanvasNodeCount > 0
-  const {
-    doSyncWorkflowDraft: syncWorkflowDraft,
-    syncWorkflowDraftWhenPageClose,
-  } = useNodesSyncDraft(snippetId)
+  const { doSyncWorkflowDraft: syncWorkflowDraft, syncWorkflowDraftWhenPageClose } =
+    useNodesSyncDraft(snippetId)
   const workflowStore = useWorkflowStore()
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
   const {
@@ -182,11 +169,11 @@ const SnippetMain = ({
   } = useInspectVarsCrud(snippetId)
   const workflowAvailableNodesMetaData = useAvailableNodesMetaData()
   const availableNodesMetaData = useMemo(() => {
-    const nodes = workflowAvailableNodesMetaData.nodes.filter(node =>
-      !unsupportedSnippetBlockTypes.has(node.metaData.type))
+    const nodes = workflowAvailableNodesMetaData.nodes.filter(
+      (node) => !unsupportedSnippetBlockTypes.has(node.metaData.type),
+    )
 
-    if (!workflowAvailableNodesMetaData.nodesMap)
-      return { nodes }
+    if (!workflowAvailableNodesMetaData.nodesMap) return { nodes }
 
     const {
       [BlockEnum.HumanInput]: _humanInput,
@@ -200,31 +187,23 @@ const SnippetMain = ({
       nodesMap,
     }
   }, [workflowAvailableNodesMetaData])
-  const {
-    reset,
-    setNavigationState,
-  } = useSnippetDetailStore(useShallow(state => ({
-    reset: state.reset,
-    setNavigationState: state.setNavigationState,
-  })))
-  const {
-    hydrateDraft,
-    setInputFields,
-  } = useSnippetDraftStore(useShallow(state => ({
-    hydrateDraft: state.hydrateDraft,
-    setInputFields: state.setInputFields,
-  })))
-  const {
-    fields,
-    handleFieldsChange: handleSnippetFieldsChange,
-  } = useSnippetInputFieldActions({
+  const { reset, setNavigationState } = useSnippetDetailStore(
+    useShallow((state) => ({
+      reset: state.reset,
+      setNavigationState: state.setNavigationState,
+    })),
+  )
+  const { hydrateDraft, setInputFields } = useSnippetDraftStore(
+    useShallow((state) => ({
+      hydrateDraft: state.hydrateDraft,
+      setInputFields: state.setInputFields,
+    })),
+  )
+  const { fields, handleFieldsChange: handleSnippetFieldsChange } = useSnippetInputFieldActions({
     canEdit: canEditSnippet,
     snippetId,
   })
-  const {
-    handleStartWorkflowRun,
-    handleWorkflowStartRunInWorkflow,
-  } = useSnippetStartRun({
+  const { handleStartWorkflowRun, handleWorkflowStartRunInWorkflow } = useSnippetStartRun({
     handleRun,
   })
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl(snippetId)
@@ -261,25 +240,27 @@ const SnippetMain = ({
     workflowStore.temporal.getState().resume()
   }, [effectiveDraftEdges, effectiveDraftNodes, workflowStore])
 
-  const doSyncWorkflowDraft = useCallback((
-    ...args: Parameters<typeof syncWorkflowDraft>
-  ) => {
-    if (!canEditSnippet)
-      return Promise.resolve()
+  const doSyncWorkflowDraft = useCallback(
+    (...args: Parameters<typeof syncWorkflowDraft>) => {
+      if (!canEditSnippet) return Promise.resolve()
 
-    return syncWorkflowDraft(...args)
-  }, [canEditSnippet, syncWorkflowDraft])
+      return syncWorkflowDraft(...args)
+    },
+    [canEditSnippet, syncWorkflowDraft],
+  )
 
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
-    if (!canEditSnippet)
-      return
+    if (!canEditSnippet) return
 
     syncWorkflowDraftWhenPageClose()
   }, [canEditSnippet, syncWorkflowDraftWhenPageClose])
 
-  const handleFieldsChange = useCallback((nextFields: SnippetInputField[]) => {
-    handleSnippetFieldsChange(nextFields)
-  }, [handleSnippetFieldsChange])
+  const handleFieldsChange = useCallback(
+    (nextFields: SnippetInputField[]) => {
+      handleSnippetFieldsChange(nextFields)
+    },
+    [handleSnippetFieldsChange],
+  )
 
   useEffect(() => {
     setNavigationState({
@@ -290,37 +271,42 @@ const SnippetMain = ({
     })
   }, [canEditSnippet, handleFieldsChange, setNavigationState, snippet, snippetId])
 
-  const updateLocalDraftFromSyncPayload = useCallback((
-    syncedDraftPayload?: Omit<SnippetDraftSyncPayload, 'hash'> | void,
-  ) => {
-    const graph = syncedDraftPayload?.graph
-    if (!graph || typeof graph !== 'object')
-      return
+  const updateLocalDraftFromSyncPayload = useCallback(
+    (syncedDraftPayload?: Omit<SnippetDraftSyncPayload, 'hash'> | void) => {
+      const graph = syncedDraftPayload?.graph
+      if (!graph || typeof graph !== 'object') return
 
-    const graphRecord = graph as Record<string, unknown>
-    const draftGraph: SnippetCanvasData = {
-      nodes: Array.isArray(graphRecord.nodes) ? graphRecord.nodes as SnippetCanvasData['nodes'] : [],
-      edges: Array.isArray(graphRecord.edges) ? graphRecord.edges as SnippetCanvasData['edges'] : [],
-      viewport: graphRecord.viewport && typeof graphRecord.viewport === 'object'
-        ? graphRecord.viewport as SnippetCanvasData['viewport']
-        : { x: 0, y: 0, zoom: 1 },
-    }
-    const inputFields = Array.isArray(syncedDraftPayload.input_fields)
-      ? syncedDraftPayload.input_fields as SnippetInputField[]
-      : fields
+      const graphRecord = graph as Record<string, unknown>
+      const draftGraph: SnippetCanvasData = {
+        nodes: Array.isArray(graphRecord.nodes)
+          ? (graphRecord.nodes as SnippetCanvasData['nodes'])
+          : [],
+        edges: Array.isArray(graphRecord.edges)
+          ? (graphRecord.edges as SnippetCanvasData['edges'])
+          : [],
+        viewport:
+          graphRecord.viewport && typeof graphRecord.viewport === 'object'
+            ? (graphRecord.viewport as SnippetCanvasData['viewport'])
+            : { x: 0, y: 0, zoom: 1 },
+      }
+      const inputFields = Array.isArray(syncedDraftPayload.input_fields)
+        ? (syncedDraftPayload.input_fields as SnippetInputField[])
+        : fields
 
-    setLocalDraftState({
-      payload: {
-        ...draftPayload,
-        graph: draftGraph,
-        inputFields,
-      },
-      nodes: initialNodes(draftGraph.nodes, draftGraph.edges),
-      edges: initialEdges(draftGraph.edges, draftGraph.nodes),
-      viewport: draftGraph.viewport,
-    })
-    setInputFields(inputFields)
-  }, [draftPayload, fields, setInputFields])
+      setLocalDraftState({
+        payload: {
+          ...draftPayload,
+          graph: draftGraph,
+          inputFields,
+        },
+        nodes: initialNodes(draftGraph.nodes, draftGraph.edges),
+        edges: initialEdges(draftGraph.edges, draftGraph.nodes),
+        viewport: draftGraph.viewport,
+      })
+      setInputFields(inputFields)
+    },
+    [draftPayload, fields, setInputFields],
+  )
 
   const hooksStore = useMemo(() => {
     return {

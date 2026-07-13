@@ -27,7 +27,8 @@ type LinkActionCardProps = BaseProps & {
 
 type FirstEmptyActionCardProps = ButtonActionCardProps | LinkActionCardProps
 
-const baseCardClassName = 'relative flex rounded-xl bg-components-button-secondary-bg text-left shadow-xs transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden'
+const baseCardClassName =
+  'relative flex rounded-xl bg-components-button-secondary-bg text-left shadow-xs transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden'
 const compactBadgeClassName = {
   basic: {
     corner: 'text-util-colors-orange-orange-50',
@@ -83,32 +84,48 @@ function ActionCardContent({
           {icon}
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate system-md-medium text-text-secondary" title={title}>{title}</span>
-          <span className="truncate system-xs-regular text-text-tertiary" title={description}>{description}</span>
+          <span className="truncate system-md-medium text-text-secondary" title={title}>
+            {title}
+          </span>
+          <span className="truncate system-xs-regular text-text-tertiary" title={description}>
+            {description}
+          </span>
         </span>
       </>
     )
   }
 
   const isCompact = visualStyle === 'compact'
-  const badgeNode = badge
-    ? isCompact
-      ? <CompactBadge badge={badge} badgeVariant={badgeVariant} />
-      : (
-          <span className="absolute top-4 right-4 flex min-w-[18px] items-center justify-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary">
-            {badge}
-          </span>
-        )
-    : null
+  const badgeNode = badge ? (
+    isCompact ? (
+      <CompactBadge badge={badge} badgeVariant={badgeVariant} />
+    ) : (
+      <span className="absolute top-4 right-4 flex min-w-[18px] items-center justify-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary">
+        {badge}
+      </span>
+    )
+  ) : null
 
   return (
     <>
       {badgeNode}
-      <span className={`${isCompact ? 'size-10 rounded-lg border border-divider-regular text-2xl/7' : 'size-12 rounded-xl text-2xl/8'} flex items-center justify-center bg-components-icon-bg-teal-soft text-text-accent`}>
+      <span
+        className={`${isCompact ? 'size-10 rounded-lg border border-divider-regular text-2xl/7' : 'size-12 rounded-xl text-2xl/8'} flex items-center justify-center bg-components-icon-bg-teal-soft text-text-accent`}
+      >
         {icon}
       </span>
-      <span className={`${isCompact ? 'mt-1 system-md-semibold text-text-secondary' : 'mt-5 system-md-semibold text-text-primary'} w-full truncate`} title={title}>{title}</span>
-      <span className={`${isCompact ? 'mt-3 line-clamp-3 system-xs-regular' : 'mt-2 system-sm-regular'} text-text-tertiary`} title={description}>{description}</span>
+      <span
+        className={`${isCompact ? 'mt-1 system-md-semibold text-text-secondary' : 'mt-5 system-md-semibold text-text-primary'} w-full truncate`}
+        title={title}
+      >
+        {title}
+      </span>
+      <span
+        className={`${isCompact ? 'mt-3 line-clamp-3 system-xs-regular' : 'mt-2 system-sm-regular'} text-text-tertiary`}
+        title={description}
+      >
+        {description}
+      </span>
     </>
   )
 }

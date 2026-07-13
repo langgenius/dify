@@ -10,7 +10,9 @@ class MockFileReader {
   onload: ((this: FileReader, event: ProgressEvent<FileReader>) => void) | null = null
 
   readAsText(_file: Blob) {
-    const event = { target: { result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: tool\n' } } as unknown as ProgressEvent<FileReader>
+    const event = {
+      target: { result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: tool\n' },
+    } as unknown as ProgressEvent<FileReader>
     this.onload?.call(this as unknown as FileReader, event)
   }
 }
@@ -54,12 +56,13 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { id: string, mode: string } }) => unknown) => selector({
-    appDetail: {
-      id: 'app-1',
-      mode: 'chat',
-    },
-  }),
+  useStore: (selector: (state: { appDetail: { id: string; mode: string } }) => unknown) =>
+    selector({
+      appDetail: {
+        id: 'app-1',
+        mode: 'chat',
+      },
+    }),
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
@@ -67,7 +70,7 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
     <input
       data-testid="dsl-file-input"
       type="file"
-      onChange={event => updateFile(event.target.files?.[0])}
+      onChange={(event) => updateFile(event.target.files?.[0])}
     />
   ),
 }))
@@ -115,7 +118,9 @@ describe('UpdateDSLModal', () => {
   it('should keep import disabled until a file is selected', () => {
     renderModal()
 
-    expect(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }),
+    ).toBeDisabled()
   })
 
   it('should call backup handler from the warning area', () => {
@@ -154,15 +159,19 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
-      expect(mockImportDSL).toHaveBeenCalledWith(expect.objectContaining({
-        app_id: 'app-1',
-        yaml_content: expect.stringContaining('workflow:'),
-      }))
+      expect(mockImportDSL).toHaveBeenCalledWith(
+        expect.objectContaining({
+          app_id: 'app-1',
+          yaml_content: expect.stringContaining('workflow:'),
+        }),
+      )
     })
 
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'WORKFLOW_DATA_UPDATE',
-    }))
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'WORKFLOW_DATA_UPDATE',
+      }),
+    )
     expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
     expect(defaultProps.onImport).toHaveBeenCalledTimes(1)
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
@@ -235,9 +244,12 @@ describe('UpdateDSLModal', () => {
       expect(mockImportDSL).toHaveBeenCalled()
     })
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
-    }, { timeout: 1000 })
+    await waitFor(
+      () => {
+        expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
+      },
+      { timeout: 1000 },
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
 
@@ -275,7 +287,11 @@ describe('UpdateDSLModal', () => {
   it('should show an error when the selected file content is invalid for the current app mode', async () => {
     class InvalidDSLFileReader extends MockFileReader {
       override readAsText(_file: Blob) {
-        const event = { target: { result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: answer\n' } } as unknown as ProgressEvent<FileReader>
+        const event = {
+          target: {
+            result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: answer\n',
+          },
+        } as unknown as ProgressEvent<FileReader>
         this.onload?.call(this as unknown as FileReader, event)
       }
     }

@@ -1,9 +1,6 @@
 import type { Node } from '@/app/components/workflow/types'
 import { renderHook } from '@testing-library/react'
-import {
-  createIterationNode,
-  createNode,
-} from '@/app/components/workflow/__tests__/fixtures'
+import { createIterationNode, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { ITERATION_PADDING } from '@/app/components/workflow/constants'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useNodeIterationInteractions } from '../use-interactions'
@@ -85,14 +82,16 @@ describe('useNodeIterationInteractions', () => {
     ])
 
     const { result } = renderHook(() => useNodeIterationInteractions())
-    const dragResult = result.current.handleNodeIterationChildDrag(createNode({
-      id: 'child-node',
-      parentId: 'iteration-node',
-      position: { x: -10, y: -5 },
-      width: 80,
-      height: 60,
-      data: { type: BlockEnum.Code, title: 'Child', desc: '', isInIteration: true },
-    }))
+    const dragResult = result.current.handleNodeIterationChildDrag(
+      createNode({
+        id: 'child-node',
+        parentId: 'iteration-node',
+        position: { x: -10, y: -5 },
+        width: 80,
+        height: 60,
+        data: { type: BlockEnum.Code, title: 'Child', desc: '', isInIteration: true },
+      }),
+    )
 
     expect(dragResult.restrictPosition).toEqual({
       x: ITERATION_PADDING.left,
@@ -154,20 +153,31 @@ describe('useNodeIterationInteractions', () => {
       newNode: createNode({
         id: 'generated',
         parentId: 'new-iteration',
-        data: { type: BlockEnum.Code, title: 'blocks.code 3', desc: '', iteration_id: 'new-iteration' },
+        data: {
+          type: BlockEnum.Code,
+          title: 'blocks.code 3',
+          desc: '',
+          iteration_id: 'new-iteration',
+        },
       }),
     })
 
     const { result } = renderHook(() => useNodeIterationInteractions())
-    const copyResult = result.current.handleNodeIterationChildrenCopy('iteration-node', 'new-iteration', { existing: 'mapped' })
+    const copyResult = result.current.handleNodeIterationChildrenCopy(
+      'iteration-node',
+      'new-iteration',
+      { existing: 'mapped' },
+    )
 
-    expect(mockGenerateNewNode).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'custom',
-      parentId: 'new-iteration',
-    }))
+    expect(mockGenerateNewNode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'custom',
+        parentId: 'new-iteration',
+      }),
+    )
     expect(copyResult.copyChildren).toHaveLength(1)
     expect(copyResult.newIdMapping).toEqual({
-      'existing': 'mapped',
+      existing: 'mapped',
       'child-node': 'new-iterationgenerated0',
     })
   })

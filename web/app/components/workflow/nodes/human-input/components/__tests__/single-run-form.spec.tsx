@@ -21,23 +21,23 @@ vi.mock('@/app/components/base/chat/chat/answer/human-input-content/content-item
     onInputChange: (name: string, value: HumanInputFieldValue) => void
   }) => {
     const fieldName = /\{\{#\$output\.([^#]+)#\}\}/.exec(content)?.[1]
-    if (!fieldName)
-      return <div>{content}</div>
+    if (!fieldName) return <div>{content}</div>
 
-    const field = formInputFields.find(field => field.output_variable_name === fieldName)
-    if (!field)
-      return null
+    const field = formInputFields.find((field) => field.output_variable_name === fieldName)
+    if (!field) return null
 
     if (field.type === 'select') {
       return (
         <select
           aria-label={fieldName}
           value={typeof inputs[fieldName] === 'string' ? inputs[fieldName] : ''}
-          onChange={event => onInputChange(fieldName, event.target.value)}
+          onChange={(event) => onInputChange(fieldName, event.target.value)}
         >
           <option value="">Select</option>
-          {field.option_source.value.map(option => (
-            <option key={option} value={option}>{option}</option>
+          {field.option_source.value.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
           ))}
         </select>
       )
@@ -48,7 +48,7 @@ vi.mock('@/app/components/base/chat/chat/answer/human-input-content/content-item
         <textarea
           aria-label={fieldName}
           value={typeof inputs[fieldName] === 'string' ? inputs[fieldName] : ''}
-          onChange={event => onInputChange(fieldName, event.target.value)}
+          onChange={(event) => onInputChange(fieldName, event.target.value)}
         />
       )
     }
@@ -62,20 +62,24 @@ const createFormData = (overrides: Partial<HumanInputFormData> = {}): HumanInput
   node_id: 'human-1',
   node_title: 'Review',
   form_content: 'Please review {{#$output.review#}}',
-  inputs: [{
-    type: InputVarType.paragraph,
-    output_variable_name: 'review',
-    default: {
-      selector: [],
-      type: 'constant',
-      value: 'initial review',
+  inputs: [
+    {
+      type: InputVarType.paragraph,
+      output_variable_name: 'review',
+      default: {
+        selector: [],
+        type: 'constant',
+        value: 'initial review',
+      },
     },
-  }],
-  actions: [{
-    id: 'approve',
-    title: 'Approve',
-    button_style: UserActionButtonType.Primary,
-  }],
+  ],
+  actions: [
+    {
+      id: 'approve',
+      title: 'Approve',
+      button_style: UserActionButtonType.Primary,
+    },
+  ],
   form_token: 'token',
   resolved_default_values: {},
   display_in_ui: true,
@@ -101,7 +105,9 @@ describe('SingleRunForm', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.humanInput\.singleRun\.back(?=$|:)/ }))
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)nodes\.humanInput\.singleRun\.back(?=$|:)/ }),
+    )
 
     expect(handleBack).toHaveBeenCalledTimes(1)
   })
@@ -110,13 +116,7 @@ describe('SingleRunForm', () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn().mockResolvedValue(undefined)
 
-    render(
-      <SingleRunForm
-        nodeName="Review"
-        data={createFormData()}
-        onSubmit={onSubmit}
-      />,
-    )
+    render(<SingleRunForm nodeName="Review" data={createFormData()} onSubmit={onSubmit} />)
 
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
@@ -132,13 +132,7 @@ describe('SingleRunForm', () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn().mockResolvedValue(undefined)
 
-    render(
-      <SingleRunForm
-        nodeName="Review"
-        data={createFormData()}
-        onSubmit={onSubmit}
-      />,
-    )
+    render(<SingleRunForm nodeName="Review" data={createFormData()} onSubmit={onSubmit} />)
 
     await user.clear(screen.getByRole('textbox', { name: 'review' }))
     await user.type(screen.getByRole('textbox', { name: 'review' }), 'updated review')
@@ -160,15 +154,17 @@ describe('SingleRunForm', () => {
       <SingleRunForm
         nodeName="Review"
         data={createFormData({
-          inputs: [{
-            type: InputVarType.paragraph,
-            output_variable_name: 'review',
-            default: {
-              selector: ['source', 'answer'],
-              type: 'variable',
-              value: 'fallback review',
+          inputs: [
+            {
+              type: InputVarType.paragraph,
+              output_variable_name: 'review',
+              default: {
+                selector: ['source', 'answer'],
+                type: 'variable',
+                value: 'fallback review',
+              },
             },
-          }],
+          ],
           resolved_default_values: {
             review: 'resolved review',
           },
@@ -196,15 +192,17 @@ describe('SingleRunForm', () => {
         nodeName="Review"
         data={createFormData({
           form_content: 'Choose {{#$output.choice#}}',
-          inputs: [{
-            type: InputVarType.select,
-            output_variable_name: 'choice',
-            option_source: {
-              selector: [],
-              type: 'constant',
-              value: ['approve', 'reject'],
+          inputs: [
+            {
+              type: InputVarType.select,
+              output_variable_name: 'choice',
+              option_source: {
+                selector: [],
+                type: 'constant',
+                value: ['approve', 'reject'],
+              },
             },
-          }],
+          ],
         })}
         onSubmit={onSubmit}
       />,

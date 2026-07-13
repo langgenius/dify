@@ -15,8 +15,7 @@ export async function skipMissingPreseededAgentBackendApiKey(
   agentName: string,
 ): Promise<'skipped' | PreseededResource> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped')
-    return agent
+  if (agent === 'skipped') return agent
 
   const ctx = await createApiContext()
   try {
@@ -46,8 +45,7 @@ export async function skipMissingPreseededAgentBackendApiKey(
       kind: 'api-key',
       name: `${agentName} Backend service API key`,
     }
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -57,8 +55,7 @@ export async function skipMissingPreseededAgentPublishedWebApp(
   agentName: string,
 ): Promise<'skipped' | PreseededResource> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped')
-    return agent
+  if (agent === 'skipped') return agent
 
   const ctx = await createApiContext()
   try {
@@ -89,8 +86,7 @@ export async function skipMissingPreseededAgentPublishedWebApp(
       kind: 'agent',
       name: agent.name,
     }
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -101,12 +97,10 @@ export async function skipMissingPreseededAgentWorkflowReference(
   workflowName: string,
 ): Promise<'skipped' | PreseededResource> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped')
-    return agent
+  if (agent === 'skipped') return agent
 
   const workflow = await skipMissingPreseededWorkflow(world, workflowName)
-  if (workflow === 'skipped')
-    return workflow
+  if (workflow === 'skipped') return workflow
 
   const ctx = await createApiContext()
   try {
@@ -114,7 +108,7 @@ export async function skipMissingPreseededAgentWorkflowReference(
     await expectApiResponseOK(response, `Check preseeded Agent workflow reference ${agentName}`)
     const references = (await response.json()) as AgentReferencingWorkflowsResponse
     const reference = references.data?.find(
-      item => item.app_id === workflow.id || item.app_name === workflow.name,
+      (item) => item.app_id === workflow.id || item.app_name === workflow.name,
     )
 
     if (!reference) {
@@ -136,8 +130,7 @@ export async function skipMissingPreseededAgentWorkflowReference(
       kind: 'workflow',
       name: workflow.name,
     }
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }

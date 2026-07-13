@@ -6,7 +6,9 @@ import { PluginCategoryEnum, TaskStatus } from '../../../../types'
 import Install from '../install'
 
 // Factory functions for test data
-const createMockManifest = (overrides: Partial<PluginManifestInMarket> = {}): PluginManifestInMarket => ({
+const createMockManifest = (
+  overrides: Partial<PluginManifestInMarket> = {},
+): PluginManifestInMarket => ({
   plugin_unique_identifier: 'test-unique-identifier',
   name: 'Test Plugin',
   org: 'test-org',
@@ -51,7 +53,9 @@ const createMockPlugin = (overrides: Partial<Plugin> = {}): Plugin => ({
 })
 
 // Mock variables for controlling test behavior
-let mockInstalledInfo: Record<string, { installedId: string, installedVersion: string, uniqueIdentifier: string }> | undefined
+let mockInstalledInfo:
+  | Record<string, { installedId: string; installedVersion: string; uniqueIdentifier: string }>
+  | undefined
 let mockIsLoading = false
 const mockInstallPackageFromMarketPlace = vi.fn()
 const mockUpdatePackageFromMarketPlace = vi.fn()
@@ -67,7 +71,7 @@ const mockAppContextState = vi.hoisted(() => ({
 
 // Mock useCheckInstalled
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () => ({
-  default: ({ pluginIds: _pluginIds }: { pluginIds: string[], enabled: boolean }) => ({
+  default: ({ pluginIds: _pluginIds }: { pluginIds: string[]; enabled: boolean }) => ({
     installedInfo: mockInstalledInfo,
     isLoading: mockIsLoading,
     error: null,
@@ -137,7 +141,12 @@ vi.mock('../../../hooks/use-install-plugin-limit', () => ({
 
 // Mock Card component
 vi.mock('../../../../card', () => ({
-  default: ({ payload, titleLeft, className: _className, limitedInstall }: {
+  default: ({
+    payload,
+    titleLeft,
+    className: _className,
+    limitedInstall,
+  }: {
     payload: Record<string, unknown>
     titleLeft?: React.ReactNode
     className?: string
@@ -153,7 +162,11 @@ vi.mock('../../../../card', () => ({
 
 // Mock Version component
 vi.mock('../../../base/version', () => ({
-  default: ({ hasInstalled, installedVersion, toInstallVersion }: {
+  default: ({
+    hasInstalled,
+    installedVersion,
+    toInstallVersion,
+  }: {
     hasInstalled: boolean
     installedVersion?: string
     toInstallVersion: string
@@ -284,7 +297,10 @@ describe('Install Component (steps/install.tsx)', () => {
     })
 
     it('should fallback to latest_version when version is undefined', () => {
-      const manifest = createMockManifest({ version: undefined as unknown as string, latest_version: '3.0.0' })
+      const manifest = createMockManifest({
+        version: undefined as unknown as string,
+        latest_version: '3.0.0',
+      })
       render(<Install {...defaultProps} payload={manifest} />)
 
       expect(screen.getByTestId('to-install-version')).toHaveTextContent('3.0.0')
@@ -597,7 +613,7 @@ describe('Install Component (steps/install.tsx)', () => {
       render(<Install {...defaultProps} payload={plugin} />)
 
       // Wait a bit to ensure onInstalled is not called
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       expect(defaultProps.onInstalled).not.toHaveBeenCalled()
     })
   })

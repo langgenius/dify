@@ -27,8 +27,7 @@ vi.mock('@/context/system-features-state', () => ({
 vi.mock('jotai', () => {
   return {
     useAtomValue: (atom: unknown) => {
-      if (atom === mockCurrentWorkspaceIdAtom)
-        return 'workspace-123'
+      if (atom === mockCurrentWorkspaceIdAtom) return 'workspace-123'
 
       throw new Error('Unexpected atom')
     },

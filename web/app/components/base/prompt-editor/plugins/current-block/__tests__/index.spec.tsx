@@ -25,11 +25,7 @@ const renderCurrentBlock = (props?: {
   onInsert?: () => void
   onDelete?: () => void
 }) => {
-  const {
-    generatorType = GeneratorType.prompt,
-    onInsert,
-    onDelete,
-  } = props ?? {}
+  const { generatorType = GeneratorType.prompt, onInsert, onDelete } = props ?? {}
 
   return renderLexicalEditor({
     namespace: 'current-block-plugin-test',
@@ -42,7 +38,7 @@ const renderCurrentBlock = (props?: {
 
 const getCurrentNodeGeneratorTypes = (editor: LexicalEditor) => {
   return readEditorStateValue(editor, () => {
-    return $nodesOfType(CurrentBlockNode).map(node => node.getGeneratorType())
+    return $nodesOfType(CurrentBlockNode).map((node) => node.getGeneratorType())
   })
 }
 

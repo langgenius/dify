@@ -72,26 +72,30 @@ describe('resolveConfig', () => {
   })
 
   it('resolves up-to-date and behind environments to drawer actions', () => {
-    expect(resolveConfig({
-      drift: { kind: 'up-to-date' },
-      status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY,
-      hasAnyRelease: true,
-      latestId: 'release-2',
-      currentReleaseId: 'release-2',
-    })).toMatchObject({
+    expect(
+      resolveConfig({
+        drift: { kind: 'up-to-date' },
+        status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY,
+        hasAnyRelease: true,
+        latestId: 'release-2',
+        currentReleaseId: 'release-2',
+      }),
+    ).toMatchObject({
       kind: 'latest',
       status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY,
       intent: 'drawer',
       releaseId: 'release-2',
     })
 
-    expect(resolveConfig({
-      drift: { kind: 'behind', steps: 2 },
-      status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY,
-      hasAnyRelease: true,
-      latestId: 'release-3',
-      currentReleaseId: 'release-1',
-    })).toMatchObject({
+    expect(
+      resolveConfig({
+        drift: { kind: 'behind', steps: 2 },
+        status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY,
+        hasAnyRelease: true,
+        latestId: 'release-3',
+        currentReleaseId: 'release-1',
+      }),
+    ).toMatchObject({
       kind: 'behind',
       status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DRIFTED,
       intent: 'drawer',
@@ -132,13 +136,23 @@ describe('environment tile copy helpers', () => {
     expect(renderStatus('older', { kind: 'unknown' }, t)).toBe('overview.chip.olderRelease')
     expect(renderStatus('deploying', { kind: 'unknown' }, t)).toBe('overview.chip.deploying')
     expect(renderStatus('failed', { kind: 'unknown' }, t)).toBe('overview.chip.failed')
-    expect(renderStatus('behind', { kind: 'behind', steps: 3 }, t)).toBe('overview.chip.behind:{"count":3}')
+    expect(renderStatus('behind', { kind: 'behind', steps: 3 }, t)).toBe(
+      'overview.chip.behind:{"count":3}',
+    )
 
-    expect(renderDriftTitle('latest', { kind: 'up-to-date' }, t)).toBe('overview.chip.latestTooltip')
-    expect(renderDriftTitle('behind', { kind: 'behind', steps: 2 }, t)).toBe('overview.chip.behindTooltip:{"count":2}')
-    expect(renderDriftTitle('older', { kind: 'unknown' }, t)).toBe('overview.chip.olderReleaseTooltip')
+    expect(renderDriftTitle('latest', { kind: 'up-to-date' }, t)).toBe(
+      'overview.chip.latestTooltip',
+    )
+    expect(renderDriftTitle('behind', { kind: 'behind', steps: 2 }, t)).toBe(
+      'overview.chip.behindTooltip:{"count":2}',
+    )
+    expect(renderDriftTitle('older', { kind: 'unknown' }, t)).toBe(
+      'overview.chip.olderReleaseTooltip',
+    )
     expect(renderDriftTitle('empty', { kind: 'undeployed' }, t)).toBe('overview.chip.emptyTooltip')
-    expect(renderDriftTitle('deploying', { kind: 'unknown' }, t)).toBe('overview.chip.deployingTooltip')
+    expect(renderDriftTitle('deploying', { kind: 'unknown' }, t)).toBe(
+      'overview.chip.deployingTooltip',
+    )
     expect(renderDriftTitle('failed', { kind: 'unknown' }, t)).toBe('overview.chip.failedTooltip')
   })
 })

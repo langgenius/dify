@@ -23,7 +23,13 @@ describe('knowledgeAction', () => {
     const { fetchDatasets } = await import('@/service/datasets')
     vi.mocked(fetchDatasets).mockResolvedValue({
       data: [
-        { id: 'ds-1', name: 'My Knowledge', description: 'A KB', provider: 'vendor', embedding_available: true } as unknown as DataSet,
+        {
+          id: 'ds-1',
+          name: 'My Knowledge',
+          description: 'A KB',
+          provider: 'vendor',
+          embedding_available: true,
+        } as unknown as DataSet,
       ],
       has_more: false,
       limit: 10,
@@ -49,7 +55,13 @@ describe('knowledgeAction', () => {
     const { fetchDatasets } = await import('@/service/datasets')
     vi.mocked(fetchDatasets).mockResolvedValue({
       data: [
-        { id: 'ds-ext', name: 'External', description: '', provider: 'external', embedding_available: true } as unknown as DataSet,
+        {
+          id: 'ds-ext',
+          name: 'External',
+          description: '',
+          provider: 'external',
+          embedding_available: true,
+        } as unknown as DataSet,
       ],
       has_more: false,
       limit: 10,
@@ -66,7 +78,13 @@ describe('knowledgeAction', () => {
     const { fetchDatasets } = await import('@/service/datasets')
     vi.mocked(fetchDatasets).mockResolvedValue({
       data: [
-        { id: 'ds-2', name: 'Internal', description: '', provider: 'vendor', embedding_available: true } as unknown as DataSet,
+        {
+          id: 'ds-2',
+          name: 'Internal',
+          description: '',
+          provider: 'vendor',
+          embedding_available: true,
+        } as unknown as DataSet,
       ],
       has_more: false,
       limit: 10,

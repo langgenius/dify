@@ -4,10 +4,7 @@ import { atom } from 'jotai'
 import { atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
 import { initialWorkspaceInfo } from './app-context-defaults'
-import {
-  getWorkspaceRoleFlags,
-  normalizeCurrentWorkspace,
-} from './app-context-normalizers'
+import { getWorkspaceRoleFlags, normalizeCurrentWorkspace } from './app-context-normalizers'
 
 const currentWorkspaceQueryAtom = atomWithQuery(() => {
   return consoleQuery.workspaces.current.post.queryOptions({

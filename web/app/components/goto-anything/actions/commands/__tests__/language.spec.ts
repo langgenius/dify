@@ -28,7 +28,7 @@ describe('languageCommand', () => {
       const results = await languageCommand.search('', 'en')
 
       expect(results).toHaveLength(3) // 3 supported languages
-      expect(results.every(r => r.type === 'command')).toBe(true)
+      expect(results.every((r) => r.type === 'command')).toBe(true)
     })
 
     it('filters languages by name query', async () => {

@@ -2,11 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { expect } from 'storybook/test'
 import { Switch, SwitchSkeleton } from '.'
-import {
-  Field,
-  FieldDescription,
-  FieldLabel,
-} from '../field'
+import { Field, FieldDescription, FieldLabel } from '../field'
 
 const meta = {
   title: 'Base/Form/Switch',
@@ -15,7 +11,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Toggle switch primitive with controlled and uncontrolled state support, loading state, and skeleton placeholder.',
+        component:
+          'Toggle switch primitive with controlled and uncontrolled state support, loading state, and skeleton placeholder.',
       },
     },
   },
@@ -47,7 +44,9 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-type SwitchDemoProps = Partial<Omit<React.ComponentProps<typeof Switch>, 'checked' | 'defaultChecked' | 'onCheckedChange'>> & {
+type SwitchDemoProps = Partial<
+  Omit<React.ComponentProps<typeof Switch>, 'checked' | 'defaultChecked' | 'onCheckedChange'>
+> & {
   checked?: boolean
 }
 
@@ -58,11 +57,7 @@ const SwitchDemo = (args: SwitchDemoProps) => {
     <Field name="autoRetry" className="w-72">
       <FieldLabel className="flex items-center justify-between gap-3">
         <span>Enable auto retry</span>
-        <Switch
-          {...args}
-          checked={enabled}
-          onCheckedChange={setEnabled}
-        />
+        <Switch {...args} checked={enabled} onCheckedChange={setEnabled} />
       </FieldLabel>
       <FieldDescription>
         {enabled ? 'Failures will retry automatically.' : 'Failures require manual retry.'}
@@ -72,7 +67,7 @@ const SwitchDemo = (args: SwitchDemoProps) => {
 }
 
 export const Default: Story = {
-  render: args => <SwitchDemo {...args} />,
+  render: (args) => <SwitchDemo {...args} />,
   args: {
     size: 'md',
     checked: false,
@@ -92,7 +87,7 @@ export const Default: Story = {
 }
 
 export const DefaultOn: Story = {
-  render: args => <SwitchDemo {...args} />,
+  render: (args) => <SwitchDemo {...args} />,
   args: {
     size: 'md',
     checked: true,
@@ -101,7 +96,7 @@ export const DefaultOn: Story = {
 }
 
 export const DisabledOff: Story = {
-  render: args => <SwitchDemo {...args} />,
+  render: (args) => <SwitchDemo {...args} />,
   args: {
     size: 'md',
     checked: false,
@@ -110,7 +105,7 @@ export const DisabledOff: Story = {
 }
 
 export const DisabledOn: Story = {
-  render: args => <SwitchDemo {...args} />,
+  render: (args) => <SwitchDemo {...args} />,
   args: {
     size: 'md',
     checked: true,
@@ -134,25 +129,55 @@ const AllStatesDemo = () => {
           </tr>
         </thead>
         <tbody>
-          {sizes.map(size => (
+          {sizes.map((size) => (
             <tr key={size} className="border-t border-gray-100">
               <td className="py-3 font-medium text-gray-900">{size}</td>
               <td className="py-3">
                 <div className="flex gap-2">
-                  <Switch size={size} checked={false} onCheckedChange={() => {}} aria-label={`${size} unchecked switch`} />
-                  <Switch size={size} checked={true} onCheckedChange={() => {}} aria-label={`${size} checked switch`} />
+                  <Switch
+                    size={size}
+                    checked={false}
+                    onCheckedChange={() => {}}
+                    aria-label={`${size} unchecked switch`}
+                  />
+                  <Switch
+                    size={size}
+                    checked={true}
+                    onCheckedChange={() => {}}
+                    aria-label={`${size} checked switch`}
+                  />
                 </div>
               </td>
               <td className="py-3">
                 <div className="flex gap-2">
-                  <Switch size={size} checked={false} disabled aria-label={`${size} disabled unchecked switch`} />
-                  <Switch size={size} checked={true} disabled aria-label={`${size} disabled checked switch`} />
+                  <Switch
+                    size={size}
+                    checked={false}
+                    disabled
+                    aria-label={`${size} disabled unchecked switch`}
+                  />
+                  <Switch
+                    size={size}
+                    checked={true}
+                    disabled
+                    aria-label={`${size} disabled checked switch`}
+                  />
                 </div>
               </td>
               <td className="py-3">
                 <div className="flex gap-2">
-                  <Switch size={size} checked={false} loading aria-label={`${size} loading unchecked switch`} />
-                  <Switch size={size} checked={true} loading aria-label={`${size} loading checked switch`} />
+                  <Switch
+                    size={size}
+                    checked={false}
+                    loading
+                    aria-label={`${size} loading unchecked switch`}
+                  />
+                  <Switch
+                    size={size}
+                    checked={true}
+                    loading
+                    aria-label={`${size} loading checked switch`}
+                  />
                 </div>
               </td>
               <td className="py-3">
@@ -189,25 +214,41 @@ const SizeComparisonDemo = () => {
     <div className="flex flex-col items-center space-y-4">
       <Field name="extraSmallSwitch">
         <FieldLabel className="flex items-center gap-3">
-          <Switch size="xs" checked={states.xs} onCheckedChange={v => setStates({ ...states, xs: v })} />
+          <Switch
+            size="xs"
+            checked={states.xs}
+            onCheckedChange={(v) => setStates({ ...states, xs: v })}
+          />
           Extra Small (xs) - 14x10
         </FieldLabel>
       </Field>
       <Field name="smallSwitch">
         <FieldLabel className="flex items-center gap-3">
-          <Switch size="sm" checked={states.sm} onCheckedChange={v => setStates({ ...states, sm: v })} />
+          <Switch
+            size="sm"
+            checked={states.sm}
+            onCheckedChange={(v) => setStates({ ...states, sm: v })}
+          />
           Small (sm) - 20x12
         </FieldLabel>
       </Field>
       <Field name="regularSwitch">
         <FieldLabel className="flex items-center gap-3">
-          <Switch size="md" checked={states.md} onCheckedChange={v => setStates({ ...states, md: v })} />
+          <Switch
+            size="md"
+            checked={states.md}
+            onCheckedChange={(v) => setStates({ ...states, md: v })}
+          />
           Regular (md) - 28x16
         </FieldLabel>
       </Field>
       <Field name="largeSwitch">
         <FieldLabel className="flex items-center gap-3">
-          <Switch size="lg" checked={states.lg} onCheckedChange={v => setStates({ ...states, lg: v })} />
+          <Switch
+            size="lg"
+            checked={states.lg}
+            onCheckedChange={(v) => setStates({ ...states, lg: v })}
+          />
           Large (lg) - 36x20
         </FieldLabel>
       </Field>
@@ -283,7 +324,7 @@ export const Loading: Story = {
   },
 }
 
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 function useMockAutoRetrySettingQuery() {
   const [enabled, setEnabled] = React.useState(false)
@@ -305,11 +346,10 @@ function useMockUpdateAutoRetrySettingMutation({
   const [isPending, startTransition] = React.useTransition()
 
   const mutate = (nextValue: boolean) => {
-    if (isPending)
-      return
+    if (isPending) return
 
     startTransition(async () => {
-      setRequestCount(current => current + 1)
+      setRequestCount((current) => current + 1)
       await wait(1200)
       onSuccess(nextValue)
     })
@@ -349,11 +389,7 @@ const MutationLoadingDemo = () => {
       </Field>
 
       <span className="text-xs text-text-tertiary" aria-live="polite">
-        {statusText}
-        {' '}
-        Save attempts:
-        {' '}
-        {updateAutoRetrySetting.requestCount}
+        {statusText} Save attempts: {updateAutoRetrySetting.requestCount}
       </span>
     </div>
   )
@@ -403,7 +439,7 @@ export const Skeleton: Story = {
 }
 
 export const Playground: Story = {
-  render: args => <SwitchDemo {...args} />,
+  render: (args) => <SwitchDemo {...args} />,
   args: {
     size: 'md',
     checked: false,

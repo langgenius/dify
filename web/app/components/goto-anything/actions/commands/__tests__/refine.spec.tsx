@@ -15,7 +15,7 @@ vi.mock('@/app/components/workflow/workflow-generator/store', () => ({
 
 // Controllable app-store state — /refine reads appDetail to gate availability
 // and to pick the mode + id it refines. Mutated per-test; read lazily.
-const mockAppStore: { appDetail: { id: string, mode: string } | undefined } = {
+const mockAppStore: { appDetail: { id: string; mode: string } | undefined } = {
   appDetail: undefined,
 }
 vi.mock('@/app/components/app/store', () => ({
