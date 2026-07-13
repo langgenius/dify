@@ -553,8 +553,7 @@ def test_create_imported_inline_agent_uses_import_provenance() -> None:
     assert result.warnings == [warning]
     assert service._create_workflow_only_agent.call_args.kwargs["source"] == AgentSource.IMPORTED
     assert (
-        service._create_workflow_only_agent.call_args.kwargs["operation"]
-        == AgentConfigRevisionOperation.IMPORT_PACKAGE
+        service._create_workflow_only_agent.call_args.kwargs["operation"] == AgentConfigRevisionOperation.IMPORT_PACKAGE
     )
 
 
@@ -718,9 +717,7 @@ def test_require_helpers_and_graph_detection() -> None:
         service._require_agent(tenant_id="tenant-1", agent_id="missing")
     with pytest.raises(ValueError, match="source snapshot"):
         service._require_snapshot(tenant_id="tenant-1", agent_id="agent-1", snapshot_id=None)
-    assert (
-        service._require_snapshot(tenant_id="tenant-1", agent_id="agent-1", snapshot_id="snapshot-1") is snapshot
-    )
+    assert service._require_snapshot(tenant_id="tenant-1", agent_id="agent-1", snapshot_id="snapshot-1") is snapshot
     with pytest.raises(ValueError, match="source snapshot"):
         service._require_snapshot(tenant_id="tenant-1", agent_id="agent-1", snapshot_id="missing")
 
