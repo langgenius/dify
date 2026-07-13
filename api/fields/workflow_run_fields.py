@@ -200,7 +200,7 @@ class WorkflowRunNodeExecutionResponse(ResponseModel):
     inputs_truncated: bool | None = None
     outputs_truncated: bool | None = None
     process_data_truncated: bool | None = None
-    retry_index: int | None = None
+    retry_index: int | None = Field(default=None, exclude_if=lambda value: value is None)
 
     @field_validator("status", mode="before")
     @classmethod

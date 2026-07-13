@@ -154,3 +154,4 @@ def test_virtual_trace_validates_through_node_execution_response() -> None:
     response = WorkflowRunNodeExecutionListResponse.model_validate({"data": traces}, from_attributes=True)
 
     assert response.data[0].retry_index == 1
+    assert response.model_dump(mode="json")["data"][0]["retry_index"] == 1
