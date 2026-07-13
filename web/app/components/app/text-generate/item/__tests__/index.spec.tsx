@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AppSourceType } from '@/service/share'
 import GenerationItem from '../index'

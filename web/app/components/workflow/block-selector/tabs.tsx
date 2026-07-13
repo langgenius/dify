@@ -123,7 +123,7 @@ const TabHeaderItem = ({
     tab.disabled
       ? 'cursor-not-allowed text-text-disabled opacity-60'
       : activeTab === tab.key
-        ? // eslint-disable-next-line tailwindcss/no-unknown-classes
+        ? // oxlint-disable-next-line tailwindcss/no-unknown-classes
           'sm-no-bottom cursor-default bg-components-panel-bg text-text-accent'
         : 'cursor-pointer text-text-tertiary',
   )

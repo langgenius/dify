@@ -1,7 +1,7 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { queryOptions } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
-// eslint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports
 import { get } from '@/service/base'
 import { consoleQuery } from '@/service/client'
 

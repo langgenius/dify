@@ -90,7 +90,7 @@ export function OutputEditCard({
               </FieldLabel>
               <FieldControl
                 aria-describedby={hasNameError ? nameErrorId : undefined}
-                // eslint-disable-next-line jsx-a11y/no-autofocus -- Inline editor opens from an explicit user action and should focus the first editable field.
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- Inline editor opens from an explicit user action and should focus the first editable field.
                 autoFocus
                 required
                 pattern={OUTPUT_NAME_PATTERN_SOURCE}
