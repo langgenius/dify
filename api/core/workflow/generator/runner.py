@@ -885,21 +885,52 @@ class WorkflowGenerator:
                 cls._normalize_sys_query_reference_in_data(data, target_node_id=target_node_id)
 
     @classmethod
-    def _normalize_sys_query_reference_in_data(cls, value: Any, *, target_node_id: str) -> Any:
-        """Rewrite malformed query placeholders and selector arrays recursively."""
+    def _normalize_sys_query_reference_in_data(
+        cls,
+        value: Any,
+        *,
+        target_node_id: str,
+        allow_selector: bool = True,
+    ) -> Any:
+        """Rewrite query placeholders and selectors at any node-data depth.
+
+        Some node schemas store selectors inside another list, for example a
+        parameter extractor's ``query`` or a variable aggregator's
+        ``variables``. Literal string-list fields opt out so an option list
+        such as ``["sys", "query"]`` is preserved.
+        """
         target_placeholder = f"{{{{#{target_node_id}.query#}}}}"
         if isinstance(value, str):
             return value.replace("{{#sys.query#}}", target_placeholder).replace("{{#sys,query#}}", target_placeholder)
         if isinstance(value, dict):
             for key, item in list(value.items()):
-                if key not in cls._NON_SELECTOR_LIST_KEYS and cls._is_sys_query_selector(item):
+                item_allows_selector = allow_selector and key not in cls._NON_SELECTOR_LIST_KEYS
+                if item_allows_selector and cls._is_sys_query_selector(item):
                     value[key] = [target_node_id, "query"]
                     continue
-                value[key] = cls._normalize_sys_query_reference_in_data(item, target_node_id=target_node_id)
+                if (
+                    item_allows_selector
+                    and cls._is_selector_field(key)
+                    and isinstance(item, str)
+                    and cls._is_sys_query_token(item)
+                ):
+                    value[key] = [target_node_id, "query"]
+                    continue
+                value[key] = cls._normalize_sys_query_reference_in_data(
+                    item,
+                    target_node_id=target_node_id,
+                    allow_selector=item_allows_selector,
+                )
             return value
         if isinstance(value, list):
+            if allow_selector and cls._is_sys_query_selector(value):
+                return [target_node_id, "query"]
             for index, item in enumerate(value):
-                value[index] = cls._normalize_sys_query_reference_in_data(item, target_node_id=target_node_id)
+                value[index] = cls._normalize_sys_query_reference_in_data(
+                    item,
+                    target_node_id=target_node_id,
+                    allow_selector=allow_selector,
+                )
         return value
 
     @staticmethod
@@ -909,7 +940,17 @@ class WorkflowGenerator:
             return True
         if not isinstance(value, list) or len(value) != 1 or not isinstance(value[0], str):
             return False
-        return value[0].replace(" ", "") in {"sys.query", "sys,query"}
+        return WorkflowGenerator._is_sys_query_token(value[0])
+
+    @staticmethod
+    def _is_sys_query_token(value: str) -> bool:
+        """Return whether a string is a compact malformed query selector."""
+        return value.replace(" ", "") in {"sys.query", "sys,query"}
+
+    @staticmethod
+    def _is_selector_field(key: str) -> bool:
+        """Return whether a data field explicitly stores one selector."""
+        return key == "selector" or key.endswith("_selector")
 
     # Detects ``{{#node_id.var#}}`` placeholders. We match the EXACT regex
     # Dify's workflow runtime uses (see
@@ -1031,8 +1072,9 @@ class WorkflowGenerator:
         node_id: str,
         old_variable: str,
         new_variable: str,
+        allow_selector: bool = True,
     ) -> Any:
-        """Rewrite one exact placeholder or selector reference recursively."""
+        """Rewrite one exact placeholder or selector at any data depth."""
         if isinstance(value, str):
             return cls._VAR_REF_RE.sub(
                 lambda match: (
@@ -1044,34 +1086,36 @@ class WorkflowGenerator:
             )
         if isinstance(value, dict):
             for key, item in list(value.items()):
-                if (
-                    isinstance(item, list)
-                    and len(item) == 2
-                    and item == [node_id, old_variable]
-                    and key not in cls._NON_SELECTOR_LIST_KEYS
-                ):
-                    value[key] = [node_id, new_variable]
-                    continue
                 value[key] = cls._rewrite_variable_reference_in_data(
                     item,
                     node_id=node_id,
                     old_variable=old_variable,
                     new_variable=new_variable,
+                    allow_selector=allow_selector and key not in cls._NON_SELECTOR_LIST_KEYS,
                 )
             return value
         if isinstance(value, list):
+            if allow_selector and value == [node_id, old_variable]:
+                return [node_id, new_variable]
             for index, item in enumerate(value):
                 value[index] = cls._rewrite_variable_reference_in_data(
                     item,
                     node_id=node_id,
                     old_variable=old_variable,
                     new_variable=new_variable,
+                    allow_selector=allow_selector,
                 )
         return value
 
     @classmethod
-    def _collect_refs_in_data(cls, value: Any, out: set[tuple[str, str]]) -> None:
-        """Recursively walk a node's ``data`` and harvest every reference."""
+    def _collect_refs_in_data(
+        cls,
+        value: Any,
+        out: set[tuple[str, str]],
+        *,
+        allow_selector: bool = True,
+    ) -> None:
+        """Recursively harvest placeholders and selectors at any data depth."""
         if isinstance(value, str):
             for match in cls._VAR_REF_RE.finditer(value):
                 node_id, var = match.group(1).strip(), match.group(2).strip()
@@ -1079,28 +1123,20 @@ class WorkflowGenerator:
                     out.add((node_id, var))
             return
         if isinstance(value, dict):
-            # Known selector shapes: 2-element [node_id, var] lists.
             for k, v in value.items():
-                # ``value_selector`` / ``query_variable_selector`` / etc.: a
-                # flat 2-element list of strings. Skip keys whose value is a
-                # plain string list that merely HAPPENS to have two entries —
-                # a 2-option ``select`` or a file variable's two allowed upload
-                # methods are NOT ``[node_id, var]`` selectors and must not be
-                # mistaken for references.
-                if (
-                    isinstance(v, list)
-                    and len(v) == 2
-                    and all(isinstance(x, str) for x in v)
-                    and k not in cls._NON_SELECTOR_LIST_KEYS
-                ):
-                    node_id, var = v[0].strip(), v[1].strip()
-                    if node_id and var:
-                        out.add((node_id, var))
-                cls._collect_refs_in_data(v, out)
+                cls._collect_refs_in_data(
+                    v,
+                    out,
+                    allow_selector=allow_selector and k not in cls._NON_SELECTOR_LIST_KEYS,
+                )
             return
         if isinstance(value, list):
+            if allow_selector and len(value) == 2 and all(isinstance(item, str) for item in value):
+                node_id, var = value[0].strip(), value[1].strip()
+                if node_id and var:
+                    out.add((node_id, var))
             for item in value:
-                cls._collect_refs_in_data(item, out)
+                cls._collect_refs_in_data(item, out, allow_selector=allow_selector)
 
     @classmethod
     def _declares_variable(cls, node: dict[str, Any], var: str) -> bool:

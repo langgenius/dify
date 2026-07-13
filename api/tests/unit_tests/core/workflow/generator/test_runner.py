@@ -8,6 +8,7 @@ readable error envelope.
 """
 
 import json
+from copy import deepcopy
 from typing import Any, cast
 from unittest.mock import MagicMock
 
@@ -1444,6 +1445,70 @@ class TestWorkflowGeneratorVariableReferences:
         assert code_node["data"]["variables"][0]["value_selector"] == expected_selector
         assert [variable["variable"] for variable in start_node["data"]["variables"]] == expected_start_variables
         assert WorkflowGenerator._validate_structure(graph=result, mode=mode) == []
+
+    @pytest.mark.parametrize(
+        "consumer_data",
+        [
+            {
+                "type": "llm",
+                "prompt_template": [{"role": "user", "text": "Question: {{#sys,query#}}"}],
+            },
+            {"type": "question-classifier", "query_variable_selector": ["sys.query"]},
+            {"type": "knowledge-retrieval", "query_variable_selector": "sys.query"},
+            {
+                "type": "if-else",
+                "cases": [{"conditions": [{"variable_selector": ["sys,query"]}]}],
+            },
+            {"type": "parameter-extractor", "query": [["sys", "query"]]},
+            {"type": "variable-aggregator", "variables": [["sys.query"]]},
+            {
+                "type": "tool",
+                "tool_parameters": {"query": {"type": "variable", "value": ["sys,query"]}},
+            },
+        ],
+    )
+    @pytest.mark.parametrize(("mode", "expected_node_id"), [("advanced-chat", "sys"), ("workflow", "node1")])
+    def test_normalizes_sys_query_references_across_node_types(self, consumer_data, mode, expected_node_id):
+        graph = cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "start",
+                            "title": "Start",
+                            "variables": [],
+                            # These are literals, not selectors, even though
+                            # their values happen to resemble one.
+                            "options": ["sys", "query"],
+                        },
+                    },
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"title": "Consumer", **deepcopy(consumer_data)},
+                    },
+                ],
+                "edges": [],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            },
+        )
+
+        result = WorkflowGenerator._postprocess_graph(graph=graph, mode=mode)
+
+        refs: set[tuple[str, str]] = set()
+        consumer = next(node for node in result["nodes"] if node["id"] == "node2")
+        WorkflowGenerator._collect_refs_in_data(consumer["data"], refs)
+        assert refs == {(expected_node_id, "query")}
+
+        start = next(node for node in result["nodes"] if node["id"] == "node1")
+        assert start["data"]["options"] == ["sys", "query"]
+        expected_start_variables = [] if mode == "advanced-chat" else ["query"]
+        assert [variable["variable"] for variable in start["data"]["variables"]] == expected_start_variables
 
     def test_start_inputs_flow_into_builder_user_prompt(self):
         # The planner's ``start_inputs`` must be visible to the builder so
