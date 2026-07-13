@@ -49,33 +49,35 @@ export const lintConfig = {
     'web/public/**',
     'web/types/doc-paths.ts',
   ],
-  plugins: ['import', 'unicorn', 'node', 'jsdoc', 'typescript', 'vitest', 'react', 'jsx-a11y'],
+  plugins: ['import', 'jsdoc', 'jsx-a11y', 'node', 'react', 'typescript', 'unicorn', 'vitest'],
+  // Keep JavaScript plugins ordered by rule namespace. The `-js` aliases distinguish
+  // plugins that supplement an active native Oxlint plugin with the same namespace.
   jsPlugins: [
+    '@tanstack/eslint-plugin-query',
     'eslint-plugin-antfu',
+    'eslint-plugin-command',
+    'eslint-plugin-erasable-syntax-only',
     {
       name: 'eslint-comments',
       specifier: '@eslint-community/eslint-plugin-eslint-comments',
     },
-    'eslint-plugin-command',
-    'eslint-plugin-perfectionist',
-    'eslint-plugin-regexp',
-    'eslint-plugin-erasable-syntax-only',
     {
       name: 'eslint-react',
       specifier: '@eslint-react/eslint-plugin',
     },
-    {
-      name: 'node-js',
-      specifier: 'eslint-plugin-n',
-    },
+    'eslint-plugin-hyoban',
     {
       name: 'jsdoc-js',
       specifier: 'eslint-plugin-jsdoc',
     },
     'eslint-plugin-no-barrel-files',
-    '@tanstack/eslint-plugin-query',
+    {
+      name: 'node-js',
+      specifier: 'eslint-plugin-n',
+    },
+    'eslint-plugin-perfectionist',
+    'eslint-plugin-regexp',
     'eslint-plugin-storybook',
-    'eslint-plugin-hyoban',
   ],
   options: {
     reportUnusedDisableDirectives: 'warn',
@@ -648,11 +650,6 @@ export const lintConfig = {
         '@tanstack/query/infinite-query-property-order': 'error',
         '@tanstack/query/no-void-query-fn': 'error',
         '@tanstack/query/mutation-property-order': 'error',
-      },
-    },
-    {
-      files: ['web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
-      rules: {
         'react/exhaustive-deps': 'warn',
         'react/no-array-index-key': 'warn',
         'react/no-clone-element': 'warn',
@@ -1128,6 +1125,8 @@ export const lintConfig = {
         'react/rules-of-hooks': 'error',
         'react/jsx-no-comment-textnodes': 'warn',
         'react/only-export-components': 'off',
+        'eslint-react/no-context-provider': 'off',
+        'eslint-react/no-use-context': 'off',
       },
     },
     {
@@ -1266,13 +1265,6 @@ export const lintConfig = {
             packageJsonLocation: difyUiPackageJson,
           },
         ],
-      },
-    },
-    {
-      files: ['packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
-      rules: {
-        'eslint-react/no-context-provider': 'off',
-        'eslint-react/no-use-context': 'off',
       },
     },
     {
