@@ -2,7 +2,7 @@
 name = "dify-vdb-analyticdb"
 version = "0.0.1"
 dependencies = [
-    "alibabacloud_gpdb20160503~=5.2.0",
+    "alibabacloud_gpdb20160503~=5.8.0",
     "alibabacloud_tea_openapi==0.4.4",
     "clickhouse-connect==0.15.1",
 ]
