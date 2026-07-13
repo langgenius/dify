@@ -30,6 +30,16 @@ Produces three binaries in `bin/`:
 - `shellctl-sanitize-pty` — PTY sanitizer for tmux pipe-pane
 - `shellctl-runner-exit` — exit state writer
 
+
+### Building docker image
+
+```
+docker build -f shellctl-go/docker/Dockerfile \
+  --build-context agent=./dify-agent \
+  -t shellctl-go:latest \
+  shellctl-go/
+```
+
 ## Testing
 
 ```bash

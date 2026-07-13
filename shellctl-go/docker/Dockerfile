@@ -105,6 +105,11 @@ COPY --from=go-builder /bin/shellctl /usr/local/bin/shellctl
 COPY --from=go-builder /bin/shellctl-sanitize-pty /usr/local/bin/shellctl-sanitize-pty
 COPY --from=go-builder /bin/shellctl-runner-exit /usr/local/bin/shellctl-runner-exit
 
+# Remove Python shellctl console scripts so the Go binaries take precedence
+RUN rm -f /opt/dify-agent-tools/bin/shellctl \
+          /opt/dify-agent-tools/bin/shellctl-sanitize-pty \
+          /opt/dify-agent-tools/bin/shellctl-runner-exit
+
 RUN useradd --create-home --shell /bin/sh dify \
     && mkdir -p /mnt/drive \
     && chown dify:dify /home \
