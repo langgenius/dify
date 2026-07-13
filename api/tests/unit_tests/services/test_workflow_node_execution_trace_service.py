@@ -35,8 +35,14 @@ def _execution(process_data: dict[str, object]) -> WorkflowNodeExecutionModel:
         WorkflowNodeExecutionModel,
         SimpleNamespace(
             id="exec-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            triggered_from="workflow-run",
+            workflow_run_id="run-1",
             index=3,
             predecessor_node_id="previous-node",
+            node_execution_id="node-execution-1",
             node_id="node-1",
             node_type="http-request",
             title="HTTP Request",
@@ -50,13 +56,13 @@ def _execution(process_data: dict[str, object]) -> WorkflowNodeExecutionModel:
             extras={},
             created_at=datetime(2023, 11, 14, tzinfo=UTC),
             created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account-1",
             created_by_account=None,
             created_by_end_user=None,
             finished_at=datetime(2023, 11, 14, 0, 0, 4, tzinfo=UTC),
             inputs_truncated=False,
             outputs_truncated=False,
             process_data_truncated=False,
-            workflow_run_id="run-1",
         ),
     )
 
@@ -83,6 +89,14 @@ def test_assemble_expands_retry_history_before_terminal_trace() -> None:
     assert traces[0].outputs == {"status_code": 500, "body": "failure-1"}
     assert traces[0].execution_metadata == {"iteration_id": "iteration-1"}
     assert RETRY_HISTORY_PROCESS_DATA_KEY not in traces[-1].process_data
+    for trace in traces:
+        assert trace.tenant_id == "tenant-1"
+        assert trace.app_id == "app-1"
+        assert trace.workflow_id == "workflow-1"
+        assert trace.triggered_from == "workflow-run"
+        assert trace.workflow_run_id == "run-1"
+        assert trace.node_execution_id == "node-execution-1"
+        assert trace.created_by == "account-1"
     repository.load_full_process_data.assert_called_once_with(execution)
 
 

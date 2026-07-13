@@ -19,11 +19,17 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowNodeExecutionTrace(BaseModel):
-    """Response-neutral read model for a persisted terminal or virtual retry trace."""
+    """Read model preserving node-execution identity for terminal and virtual retry traces."""
 
     id: str
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    triggered_from: str
+    workflow_run_id: str | None = None
     index: int | None = None
     predecessor_node_id: str | None = None
+    node_execution_id: str | None = None
     node_id: str | None = None
     node_type: str | None = None
     title: str | None = None
@@ -37,6 +43,7 @@ class WorkflowNodeExecutionTrace(BaseModel):
     extras: Any = None
     created_at: int | None = None
     created_by_role: str | None = None
+    created_by: str
     created_by_account: Any = None
     created_by_end_user: Any = None
     finished_at: int | None = None
@@ -134,8 +141,14 @@ def _retry_trace(
     execution_metadata = {**terminal_metadata, **attempt.execution_metadata}
     return WorkflowNodeExecutionTrace(
         id=f"{execution.id}:retry:{attempt.retry_index}",
+        tenant_id=execution.tenant_id,
+        app_id=execution.app_id,
+        workflow_id=execution.workflow_id,
+        triggered_from=_enum_value(execution.triggered_from) or "",
+        workflow_run_id=execution.workflow_run_id,
         index=execution.index,
         predecessor_node_id=execution.predecessor_node_id,
+        node_execution_id=execution.node_execution_id,
         node_id=execution.node_id,
         node_type=execution.node_type,
         title=execution.title,
@@ -149,6 +162,7 @@ def _retry_trace(
         extras=execution.extras,
         created_at=attempt.created_at,
         created_by_role=_enum_value(execution.created_by_role),
+        created_by=execution.created_by,
         created_by_account=execution.created_by_account,
         created_by_end_user=execution.created_by_end_user,
         finished_at=attempt.finished_at,
@@ -166,8 +180,14 @@ def _terminal_trace(execution: WorkflowNodeExecutionModel) -> WorkflowNodeExecut
         process_data.pop(RETRY_HISTORY_PROCESS_DATA_KEY, None)
     return WorkflowNodeExecutionTrace(
         id=execution.id,
+        tenant_id=execution.tenant_id,
+        app_id=execution.app_id,
+        workflow_id=execution.workflow_id,
+        triggered_from=_enum_value(execution.triggered_from) or "",
+        workflow_run_id=execution.workflow_run_id,
         index=execution.index,
         predecessor_node_id=execution.predecessor_node_id,
+        node_execution_id=execution.node_execution_id,
         node_id=execution.node_id,
         node_type=execution.node_type,
         title=execution.title,
@@ -181,6 +201,7 @@ def _terminal_trace(execution: WorkflowNodeExecutionModel) -> WorkflowNodeExecut
         extras=execution.extras,
         created_at=to_timestamp(execution.created_at),
         created_by_role=_enum_value(execution.created_by_role),
+        created_by=execution.created_by,
         created_by_account=execution.created_by_account,
         created_by_end_user=execution.created_by_end_user,
         finished_at=to_timestamp(execution.finished_at),
