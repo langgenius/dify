@@ -31,6 +31,12 @@ class NotWorkflowAppError(BaseHTTPException):
     code = 400
 
 
+class WorkflowVersionExecutionNotAllowedError(BaseHTTPException):
+    error_code = "workflow_version_execution_not_allowed"
+    description = "Workflow version execution is not available on your current plan. Please upgrade to a paid plan."
+    code = 403
+
+
 class ConversationCompletedError(BaseHTTPException):
     error_code = "conversation_completed"
     description = "The conversation has ended. Please start a new conversation."
