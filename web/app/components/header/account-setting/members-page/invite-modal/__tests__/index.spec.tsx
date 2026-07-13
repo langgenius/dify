@@ -126,7 +126,15 @@ describe('InviteModal', () => {
     expect(within(dialog).getByRole('form')).toBeInTheDocument()
     expect(
       within(dialog).getByRole('textbox', { name: /members\.emailRecipients/i }),
-    ).toHaveAttribute('type', 'email')
+    ).toHaveAttribute('inputmode', 'email')
+  })
+
+  it('should place initial focus in the email composer', async () => {
+    renderModal()
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: /members\.emailRecipients/i })).toHaveFocus()
+    })
   })
 
   it('does not render dialog content while controlled closed', () => {
@@ -194,6 +202,94 @@ describe('InviteModal', () => {
     })
   })
 
+  it('should submit a manually typed email list without requiring Enter', async () => {
+    const user = userEvent.setup()
+    inviteMember.mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+      tenant_id: 'tenant-id',
+    } satisfies MemberInviteResponse)
+    renderModal()
+
+    await selectAdminRole(user)
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.type(input, 'first@gmail.com,second@gmail.com')
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(inviteMember).toHaveBeenCalledOnce()
+      expect(inviteMember.mock.calls[0]?.[0]).toEqual({
+        body: {
+          emails: ['first@gmail.com', 'second@gmail.com'],
+          role: 'admin',
+          language: 'en-US',
+        },
+      })
+    })
+  })
+
+  it('should create exactly one non-empty recipient when a single draft is submitted', async () => {
+    const user = userEvent.setup()
+    let resolveInvite!: (response: MemberInviteResponse) => void
+    inviteMember.mockReturnValue(
+      new Promise<MemberInviteResponse>((resolve) => {
+        resolveInvite = resolve
+      }),
+    )
+    renderModal()
+
+    await selectAdminRole(user)
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.type(input, 'only@gmail.com')
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('listitem')).toHaveLength(1)
+      expect(screen.getByText('only@gmail.com')).toBeInTheDocument()
+      expect(input).toHaveValue('')
+    })
+
+    await act(async () => {
+      resolveInvite({
+        result: 'success',
+        invitation_results: [],
+        tenant_id: 'tenant-id',
+      })
+    })
+  })
+
+  it('should commit a non-empty draft before Enter submits the form', async () => {
+    const user = userEvent.setup()
+    inviteMember.mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+      tenant_id: 'tenant-id',
+    } satisfies MemberInviteResponse)
+    renderModal()
+
+    await selectAdminRole(user)
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.type(input, 'draft@example.com{Enter}')
+
+    expect(screen.getByText('draft@example.com')).toBeInTheDocument()
+    expect(input).toHaveValue('')
+    expect(input).toHaveFocus()
+    expect(inviteMember).not.toHaveBeenCalled()
+
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(inviteMember).toHaveBeenCalledOnce()
+      expect(inviteMember.mock.calls[0]?.[0]).toEqual({
+        body: {
+          emails: ['draft@example.com'],
+          role: 'admin',
+          language: 'en-US',
+        },
+      })
+    })
+  })
+
   it('accepts an address allowed by the browser without requiring a dotted domain', async () => {
     const user = userEvent.setup()
     inviteMember.mockResolvedValue({
@@ -224,6 +320,42 @@ describe('InviteModal', () => {
     expect(inviteMember).not.toHaveBeenCalled()
   })
 
+  it('should preserve and refocus an invalid draft until the user corrects it', async () => {
+    const user = userEvent.setup()
+    inviteMember.mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+      tenant_id: 'tenant-id',
+    } satisfies MemberInviteResponse)
+    renderModal()
+
+    await selectAdminRole(user)
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.type(input, 'not-an-email')
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    expect(input).toHaveValue('not-an-email')
+    expect(input).toHaveFocus()
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByText(/members\.emailInvalid/i)).toBeInTheDocument()
+    expect(inviteMember).not.toHaveBeenCalled()
+
+    await user.clear(input)
+    await user.type(input, 'corrected@example.com')
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(inviteMember).toHaveBeenCalledOnce()
+      expect(inviteMember.mock.calls[0]?.[0]).toEqual({
+        body: {
+          emails: ['corrected@example.com'],
+          role: 'admin',
+          language: 'en-US',
+        },
+      })
+    })
+  })
+
   it('shows the required error and focuses the email field after an empty submission', async () => {
     const user = userEvent.setup()
     renderModal()
@@ -234,6 +366,41 @@ describe('InviteModal', () => {
     expect(screen.getByText(/members\.emailRequired/i)).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: /members\.emailRecipients/i })).toHaveFocus()
     expect(inviteMember).not.toHaveBeenCalled()
+  })
+
+  it('should preserve the email draft while the user resolves a missing role', async () => {
+    const user = userEvent.setup()
+    inviteMember.mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+      tenant_id: 'tenant-id',
+    } satisfies MemberInviteResponse)
+    renderModal()
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.type(input, 'draft@example.com')
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    const roleTrigger = screen.getByRole('combobox', { name: /members\.role/i })
+    expect(roleTrigger).toHaveFocus()
+    expect(roleTrigger).toHaveAttribute('aria-invalid', 'true')
+    expect(input).toHaveValue('draft@example.com')
+    expect(inviteMember).not.toHaveBeenCalled()
+
+    await user.click(roleTrigger)
+    await user.click(screen.getByRole('option', { name: /Admin/i }))
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(inviteMember).toHaveBeenCalledOnce()
+      expect(inviteMember.mock.calls[0]?.[0]).toEqual({
+        body: {
+          emails: ['draft@example.com'],
+          role: 'admin',
+          language: 'en-US',
+        },
+      })
+    })
   })
 
   it('freezes all editable controls while invitations are being sent', async () => {
@@ -320,6 +487,44 @@ describe('InviteModal', () => {
       }),
     ).toHaveFocus()
     expect(onOpenChange).not.toHaveBeenCalled()
+  })
+
+  it('should clear an email server error when the user edits and successfully retries', async () => {
+    const user = userEvent.setup()
+    inviteMember
+      .mockRejectedValueOnce({
+        code: 'BAD_REQUEST',
+        data: { body: { code: 'limit_exceeded', message: 'Backend message' } },
+      })
+      .mockResolvedValueOnce({
+        result: 'success',
+        invitation_results: [],
+        tenant_id: 'tenant-id',
+      } satisfies MemberInviteResponse)
+    renderModal()
+
+    await addRecipients(user, 'first@example.com, second@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    expect(await screen.findByText(/members\.inviteLimitExceeded/i)).toBeInTheDocument()
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.type(input, 'third@example.com')
+    expect(screen.queryByText(/members\.inviteLimitExceeded/i)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(inviteMember).toHaveBeenCalledTimes(2)
+      expect(inviteMember.mock.calls[1]?.[0]).toEqual({
+        body: {
+          emails: ['first@example.com', 'second@example.com', 'third@example.com'],
+          role: 'admin',
+          language: 'en-US',
+        },
+      })
+    })
   })
 
   it('keeps unknown request failures as a persistent form error', async () => {

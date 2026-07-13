@@ -22,7 +22,7 @@ import { useLocale } from '@/context/i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import { commonQueryKeys } from '@/service/use-common'
-import { createEmailRecipient, mergeEmailRecipients } from './email-recipients'
+import { mergeEmailRecipients } from './email-recipients'
 import { EmailRecipientsField } from './email-recipients-field'
 import { getInviteErrorCode } from './invite-error'
 import { RoleSelector } from './role-selector'
@@ -94,7 +94,8 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
     const submittedDraft = new FormData(event.currentTarget).get('emails')
     const draftValue = typeof submittedDraft === 'string' ? submittedDraft : draft
 
-    if (draftValue.trim() && !createEmailRecipient(draftValue).isValid) {
+    const submittedDraftRecipients = mergeEmailRecipients([], draftValue)
+    if (draftValue.trim() && submittedDraftRecipients.some(({ isValid }) => !isValid)) {
       emailInputRef.current?.focus()
       return
     }

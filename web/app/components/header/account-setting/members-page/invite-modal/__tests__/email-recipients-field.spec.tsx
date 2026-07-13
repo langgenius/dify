@@ -39,8 +39,8 @@ describe('EmailRecipientsField', () => {
 
     const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
 
-    expect(input).toHaveAttribute('type', 'email')
-    expect(input).toHaveAttribute('multiple')
+    expect(input).toHaveAttribute('type', 'text')
+    expect(input).toHaveAttribute('inputmode', 'email')
     expect(input).toHaveAccessibleDescription(/members\.emailRecipientsTip/i)
   })
 
@@ -55,6 +55,19 @@ describe('EmailRecipientsField', () => {
     expect(input).toHaveValue('draft@example.com')
     expect(screen.queryByRole('list')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Next control' })).toHaveFocus()
+  })
+
+  it('should keep a single pasted address in the draft for further editing', async () => {
+    const user = userEvent.setup()
+    render(<EmailRecipientsFieldWrapper />)
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.click(input)
+    await user.paste('Person@Example.com')
+
+    expect(input).toHaveValue('Person@Example.com')
+    expect(input).toHaveFocus()
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
   })
 
   it('commits a valid draft with Enter and keeps focus in the composer', async () => {
@@ -96,6 +109,48 @@ describe('EmailRecipientsField', () => {
     expect(screen.queryByRole('list')).not.toBeInTheDocument()
   })
 
+  it('should wait for Enter before committing manually typed separators', async () => {
+    const user = userEvent.setup()
+    render(<EmailRecipientsFieldWrapper />)
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.type(input, 'first@example.com,second@example.com;third@example.com')
+
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
+
+    await user.keyboard('{Enter}')
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(input).toHaveValue('')
+    expect(input).toHaveFocus()
+  })
+
+  it('should not report a valid delimited draft as invalid when focus leaves', async () => {
+    const user = userEvent.setup()
+    render(<EmailRecipientsFieldWrapper />)
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.type(input, 'first@example.com,second@example.com')
+    await user.tab()
+
+    expect(input).toHaveValue('first@example.com,second@example.com')
+    expect(input).not.toHaveAttribute('aria-invalid', 'true')
+    expect(screen.queryByText(/members\.emailInvalid/i)).not.toBeInTheDocument()
+  })
+
+  it('should not split manually typed addresses on spaces', async () => {
+    const user = userEvent.setup()
+    render(<EmailRecipientsFieldWrapper />)
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.type(input, 'first@example.com second@example.com{Enter}')
+
+    expect(input).toHaveValue('first@example.com second@example.com')
+    expect(input).toHaveFocus()
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
+    expect(screen.getByText(/members\.emailInvalid/i)).toBeInTheDocument()
+  })
+
   it('parses batch paste delimiters and removes duplicates case-insensitively', async () => {
     const user = userEvent.setup()
     render(<EmailRecipientsFieldWrapper />)
@@ -112,6 +167,50 @@ describe('EmailRecipientsField', () => {
     expect(within(recipientList).getByText('second@example.com')).toBeInTheDocument()
     expect(within(recipientList).getByText('third@example.com')).toBeInTheDocument()
     expect(within(recipientList).getByText('fourth@example.com')).toBeInTheDocument()
+  })
+
+  it('should combine a batch paste with the draft at the current caret', async () => {
+    const user = userEvent.setup()
+    render(<EmailRecipientsFieldWrapper />)
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.type(input, 'first@example.com')
+    await user.paste(', second@example.com')
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(getRecipient('first@example.com')).toBeInTheDocument()
+    expect(getRecipient('second@example.com')).toBeInTheDocument()
+    expect(input).toHaveValue('')
+  })
+
+  it('should replace a selected draft when a batch is pasted', async () => {
+    const user = userEvent.setup()
+    render(<EmailRecipientsFieldWrapper />)
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.type(input, 'stale@example.com')
+    await user.tripleClick(input)
+    await user.paste('first@example.com, second@example.com')
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(getRecipient('first@example.com')).toBeInTheDocument()
+    expect(getRecipient('second@example.com')).toBeInTheDocument()
+    expect(screen.queryByText('stale@example.com')).not.toBeInTheDocument()
+    expect(input).toHaveValue('')
+  })
+
+  it('should deduplicate a later batch against existing recipients', async () => {
+    const user = userEvent.setup()
+    render(<EmailRecipientsFieldWrapper />)
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.click(input)
+    await user.paste('first@example.com,')
+    await user.paste('FIRST@example.com, second@example.com')
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(getRecipient('first@example.com')).toBeInTheDocument()
+    expect(getRecipient('second@example.com')).toBeInTheDocument()
   })
 
   it('moves an invalid pasted address back into the input for editing', async () => {
@@ -169,6 +268,62 @@ describe('EmailRecipientsField', () => {
     await user.type(input, 'last@example.com{Enter}')
     await user.tab()
     expect(screen.getByRole('button', { name: 'Next control' })).toHaveFocus()
+  })
+
+  it('should return focus to the input after moving past the last chip', async () => {
+    const user = userEvent.setup()
+    render(<EmailRecipientsFieldWrapper />)
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.click(input)
+    await user.paste('first@example.com, second@example.com')
+    await user.keyboard('{ArrowLeft}{ArrowRight}')
+
+    expect(input).toHaveFocus()
+  })
+
+  it('should focus the next chip after deleting a middle chip', async () => {
+    const user = userEvent.setup()
+    render(<EmailRecipientsFieldWrapper />)
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.click(input)
+    await user.paste('first@example.com, second@example.com, third@example.com')
+    await user.keyboard('{ArrowLeft}{ArrowLeft}{Delete}')
+
+    expect(screen.queryByText('second@example.com')).not.toBeInTheDocument()
+    expect(getChip('third@example.com')).toHaveFocus()
+  })
+
+  it.each(['{Enter}', ' '])(
+    'should return focus to the input when a valid chip is activated with %j',
+    async (key) => {
+      const user = userEvent.setup()
+      render(<EmailRecipientsFieldWrapper />)
+
+      const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+      await user.click(input)
+      await user.paste('person@example.com,')
+      await user.keyboard(`{ArrowLeft}${key}`)
+
+      expect(getRecipient('person@example.com')).toBeInTheDocument()
+      expect(input).toHaveFocus()
+    },
+  )
+
+  it('should move an invalid chip into the focused input when activated from the keyboard', async () => {
+    const user = userEvent.setup()
+    render(<EmailRecipientsFieldWrapper />)
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.click(input)
+    await user.paste('valid@example.com, not-an-email')
+    await user.keyboard('{ArrowLeft}{Enter}')
+
+    expect(screen.queryByText('not-an-email')).not.toBeInTheDocument()
+    expect(input).toHaveValue('not-an-email')
+    expect(input).toHaveFocus()
+    expect(getRecipient('valid@example.com')).toBeInTheDocument()
   })
 
   it('immediately removes the last chip with Backspace from an empty input', async () => {

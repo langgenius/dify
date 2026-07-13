@@ -12,7 +12,7 @@ import {
 } from '@langgenius/dify-ui/field'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { createEmailRecipient, hasEmailDelimiter, mergeEmailRecipients } from './email-recipients'
+import { hasEmailDelimiter, mergeEmailRecipients } from './email-recipients'
 
 type EmailRecipientsFieldProps = {
   recipients: EmailRecipient[]
@@ -46,8 +46,9 @@ export function EmailRecipientsField({
   const [draftTouched, setDraftTouched] = useState(false)
   const inputRef = externalInputRef ?? internalInputRef
   const hasInvalidRecipient = recipients.some(({ isValid }) => !isValid)
+  const draftRecipients = mergeEmailRecipients([], draft)
   const hasInvalidDraft = Boolean(
-    draftTouched && draft.trim() && !createEmailRecipient(draft).isValid,
+    draftTouched && draft.trim() && draftRecipients.some(({ isValid }) => !isValid),
   )
   const fieldError =
     hasInvalidRecipient || hasInvalidDraft
@@ -108,7 +109,7 @@ export function EmailRecipientsField({
   const commitDraft = () => {
     if (!draft.trim()) return
 
-    if (!createEmailRecipient(draft).isValid) {
+    if (draftRecipients.some(({ isValid }) => !isValid)) {
       setDraftTouched(true)
       return
     }
@@ -244,8 +245,7 @@ export function EmailRecipientsField({
         )}
         <FieldControl
           ref={inputRef}
-          type="email"
-          multiple
+          type="text"
           disabled={disabled}
           autoComplete="off"
           spellCheck={false}
@@ -295,13 +295,18 @@ export function EmailRecipientsField({
             if (!hasEmailDelimiter(pastedText)) return
 
             event.preventDefault()
-            updateRecipients(mergeEmailRecipients(recipients, pastedText))
+            const input = event.currentTarget
+            const selectionStart = input.selectionStart ?? input.value.length
+            const selectionEnd = input.selectionEnd ?? selectionStart
+            const nextValue = `${input.value.slice(0, selectionStart)}${pastedText}${input.value.slice(selectionEnd)}`
+            updateRecipients(mergeEmailRecipients(recipients, nextValue))
+            updateDraft('')
             setDraftTouched(false)
           }}
         />
       </div>
       {fieldError ? (
-        <FieldError>{fieldError}</FieldError>
+        <FieldError match>{fieldError}</FieldError>
       ) : (
         <FieldDescription>
           {t(($) => $['members.emailRecipientsTip'], { ns: 'common' })}
