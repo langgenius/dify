@@ -30,7 +30,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -75,8 +76,6 @@ describe('EnvNav', () => {
     mockUseAppContext.mockReturnValue(appContextValue)
 
     render(<EnvNav />)
-    expect(
-      screen.getByText('common.environment.development'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('common.environment.development')).toBeInTheDocument()
   })
 })

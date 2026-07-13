@@ -344,10 +344,12 @@ describe('ComponentName', () => {
    ```typescript
    import { createReactI18nextMock } from '@/test/i18n-mock'
 
-   vi.mock('react-i18next', () => createReactI18nextMock({
-     'my.custom.key': 'Custom translation',
-     'button.save': 'Save',
-   }))
+   vi.mock('react-i18next', () =>
+     createReactI18nextMock({
+       'my.custom.key': 'Custom translation',
+       'button.save': 'Save',
+     }),
+   )
    ```
 
    **Avoid**: Manually defining `useTranslation` mocks that just return the key - the global mock already does this.
@@ -367,8 +369,7 @@ vi.mock('external-overlay-library', () => ({
   },
   OverlayContent: ({ children }) => {
     // ✅ Matches actual: returns null when open is false
-    if (!mockOverlayOpenState)
-      return null
+    if (!mockOverlayOpenState) return null
     return <div>{children}</div>
   },
 }))

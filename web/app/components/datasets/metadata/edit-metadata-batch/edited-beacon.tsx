@@ -11,40 +11,37 @@ type Props = Readonly<{
   onReset: () => void
 }>
 
-const EditedBeacon: FC<Props> = ({
-  onReset,
-}) => {
+const EditedBeacon: FC<Props> = ({ onReset }) => {
   const { t } = useTranslation()
   const ref = useRef(null)
   const isHovering = useHover(ref)
 
   return (
     <div ref={ref} className="size-4 cursor-pointer">
-      {isHovering
-        ? (
-            <Tooltip>
-              <TooltipTrigger
-                render={(
-                  <button
-                    type="button"
-                    aria-label={t($ => $['operation.reset'], { ns: 'common' })}
-                    className="flex size-4 items-center justify-center rounded-full border-none bg-text-accent-secondary p-0"
-                    onClick={onReset}
-                  >
-                    <RiResetLeftLine className="size-[10px] text-text-primary-on-surface" aria-hidden="true" />
-                  </button>
-                )}
-              />
-              <TooltipContent>
-                {t($ => $['operation.reset'], { ns: 'common' })}
-              </TooltipContent>
-            </Tooltip>
-          )
-        : (
-            <div className="flex size-4 items-center justify-center">
-              <div className="size-1 rounded-full bg-text-accent-secondary"></div>
-            </div>
-          )}
+      {isHovering ? (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                aria-label={t(($) => $['operation.reset'], { ns: 'common' })}
+                className="flex size-4 items-center justify-center rounded-full border-none bg-text-accent-secondary p-0"
+                onClick={onReset}
+              >
+                <RiResetLeftLine
+                  className="size-[10px] text-text-primary-on-surface"
+                  aria-hidden="true"
+                />
+              </button>
+            }
+          />
+          <TooltipContent>{t(($) => $['operation.reset'], { ns: 'common' })}</TooltipContent>
+        </Tooltip>
+      ) : (
+        <div className="flex size-4 items-center justify-center">
+          <div className="size-1 rounded-full bg-text-accent-secondary"></div>
+        </div>
+      )}
     </div>
   )
 }

@@ -15,29 +15,26 @@ type SettingContentProps = {
   onClose: () => void
   onChange?: OnFeaturesChange
 }
-const SettingContent = ({
-  imageUpload,
-  onClose,
-  onChange,
-}: SettingContentProps) => {
+const SettingContent = ({ imageUpload, onClose, onChange }: SettingContentProps) => {
   const { t } = useTranslation()
   const featuresStore = useFeaturesStore()
-  const file = useFeatures(state => state.features.file)
+  const file = useFeatures((state) => state.features.file)
   const fileSettingPayload = useMemo(() => {
     return {
-      allowed_file_upload_methods: file?.allowed_file_upload_methods || ['local_file', 'remote_url'],
+      allowed_file_upload_methods: file?.allowed_file_upload_methods || [
+        'local_file',
+        'remote_url',
+      ],
       allowed_file_types: file?.allowed_file_types || [SupportUploadFileTypes.image],
-      allowed_file_extensions: file?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image],
+      allowed_file_extensions:
+        file?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image],
       max_length: file?.number_limits || 3,
     } as UploadFileSetting
   }, [file])
   const [tempPayload, setTempPayload] = useState<UploadFileSetting>(fileSettingPayload)
 
   const handleChange = useCallback(() => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
+    const { features, setFeatures } = featuresStore!.getState()
 
     const newFeatures = produce(features, (draft) => {
       draft.file = {
@@ -50,17 +47,20 @@ const SettingContent = ({
     })
 
     setFeatures(newFeatures)
-    if (onChange)
-      onChange()
+    if (onChange) onChange()
   }, [featuresStore, onChange, tempPayload])
 
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <div className="system-xl-semibold text-text-primary">{!imageUpload ? t($ => $['feature.fileUpload.modalTitle'], { ns: 'appDebug' }) : t($ => $['feature.imageUpload.modalTitle'], { ns: 'appDebug' })}</div>
+        <div className="system-xl-semibold text-text-primary">
+          {!imageUpload
+            ? t(($) => $['feature.fileUpload.modalTitle'], { ns: 'appDebug' })
+            : t(($) => $['feature.imageUpload.modalTitle'], { ns: 'appDebug' })}
+        </div>
         <button
           type="button"
-          aria-label={t($ => $['operation.close'], { ns: 'common' })}
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={onClose}
         >
@@ -75,18 +75,15 @@ const SettingContent = ({
         onChange={(p: UploadFileSetting) => setTempPayload(p)}
       />
       <div className="mt-4 flex items-center justify-end">
-        <Button
-          onClick={onClose}
-          className="mr-2"
-        >
-          {t($ => $['operation.cancel'], { ns: 'common' })}
+        <Button onClick={onClose} className="mr-2">
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <Button
           variant="primary"
           onClick={handleChange}
           disabled={tempPayload.allowed_file_types.length === 0}
         >
-          {t($ => $['operation.save'], { ns: 'common' })}
+          {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
       </div>
     </>

@@ -14,7 +14,9 @@ vi.mock('@langgenius/dify-ui/cn', () => ({
 vi.mock('../strategy-detail', () => ({
   default: ({ onHide }: { onHide: () => void }) => (
     <div data-testid="strategy-detail-panel">
-      <button data-testid="hide-btn" onClick={onHide}>Hide</button>
+      <button data-testid="hide-btn" onClick={onHide}>
+        Hide
+      </button>
     </div>
   ),
 }))

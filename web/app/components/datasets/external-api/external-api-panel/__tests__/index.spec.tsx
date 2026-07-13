@@ -29,8 +29,19 @@ vi.mock('@/context/external-knowledge-api-context', () => ({
 
 // Mock the ExternalKnowledgeAPICard to avoid mocking its internal dependencies
 vi.mock('../../external-knowledge-api-card', () => ({
-  default: ({ api, canManageExternalKnowledgeApi }: { api: ExternalAPIItem, canManageExternalKnowledgeApi: boolean }) => (
-    <div data-testid={`api-card-${api.id}`} data-can-manage-external-knowledge-api={canManageExternalKnowledgeApi}>{api.name}</div>
+  default: ({
+    api,
+    canManageExternalKnowledgeApi,
+  }: {
+    api: ExternalAPIItem
+    canManageExternalKnowledgeApi: boolean
+  }) => (
+    <div
+      data-testid={`api-card-${api.id}`}
+      data-can-manage-external-knowledge-api={canManageExternalKnowledgeApi}
+    >
+      {api.name}
+    </div>
   ),
 }))
 
@@ -64,7 +75,10 @@ describe('ExternalAPIPanel', () => {
       render(<ExternalAPIPanel {...defaultProps} />)
       const docLink = screen.getByText('dataset.externalAPIPanelDocumentation')
       expect(docLink)!.toBeInTheDocument()
-      expect(docLink.closest('a'))!.toHaveAttribute('href', 'https://docs.example.com/use-dify/knowledge/external-knowledge-api')
+      expect(docLink.closest('a'))!.toHaveAttribute(
+        'href',
+        'https://docs.example.com/use-dify/knowledge/external-knowledge-api',
+      )
     })
 
     it('should render create button', () => {
@@ -79,7 +93,8 @@ describe('ExternalAPIPanel', () => {
 
     it('should render close button', () => {
       const { container } = render(<ExternalAPIPanel {...defaultProps} />)
-      const closeButton = container.querySelector('[class*="action-button"]') || screen.getAllByRole('button')[0]
+      const closeButton =
+        container.querySelector('[class*="action-button"]') || screen.getAllByRole('button')[0]
       expect(closeButton)!.toBeInTheDocument()
     })
   })
@@ -89,9 +104,10 @@ describe('ExternalAPIPanel', () => {
       mockIsLoading = true
       const { container } = render(<ExternalAPIPanel {...defaultProps} />)
       // Loading component should be rendered
-      const loadingElement = container.querySelector('[class*="loading"]')
-        || container.querySelector('.animate-spin')
-        || screen.queryByRole('status')
+      const loadingElement =
+        container.querySelector('[class*="loading"]') ||
+        container.querySelector('.animate-spin') ||
+        screen.queryByRole('status')
       expect(loadingElement || container.textContent).toBeTruthy()
     })
   })
@@ -129,7 +145,10 @@ describe('ExternalAPIPanel', () => {
       render(<ExternalAPIPanel {...defaultProps} />)
       expect(screen.getByTestId('api-card-api-1'))!.toBeInTheDocument()
       expect(screen.getByTestId('api-card-api-2'))!.toBeInTheDocument()
-      expect(screen.getByTestId('api-card-api-1')).toHaveAttribute('data-can-manage-external-knowledge-api', 'true')
+      expect(screen.getByTestId('api-card-api-1')).toHaveAttribute(
+        'data-can-manage-external-knowledge-api',
+        'true',
+      )
       expect(screen.getByText('Test API 1'))!.toBeInTheDocument()
       expect(screen.getByText('Test API 2'))!.toBeInTheDocument()
     })
@@ -141,8 +160,8 @@ describe('ExternalAPIPanel', () => {
       render(<ExternalAPIPanel canManageExternalKnowledgeApi={true} onClose={onClose} />)
       // Find the close button (ActionButton with close icon)
       const buttons = screen.getAllByRole('button')
-      const closeButton = buttons.find(btn => btn.querySelector('svg[class*="ri-close"]'))
-        || buttons[0]
+      const closeButton =
+        buttons.find((btn) => btn.querySelector('svg[class*="ri-close"]')) || buttons[0]
       fireEvent.click(closeButton!)
       expect(onClose).toHaveBeenCalledTimes(1)
     })

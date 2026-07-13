@@ -69,10 +69,7 @@ export function AlertDialogCancelButton({
   ...buttonProps
 }: AlertDialogCancelButtonProps) {
   return (
-    <BaseAlertDialog.Close
-      {...closeProps}
-      render={<Button {...buttonProps} />}
-    >
+    <BaseAlertDialog.Close {...closeProps} render={<Button {...buttonProps} />}>
       {children}
     </BaseAlertDialog.Close>
   )
@@ -85,11 +82,5 @@ export function AlertDialogConfirmButton({
   tone = 'destructive',
   ...props
 }: AlertDialogConfirmButtonProps) {
-  return (
-    <Button
-      variant={variant}
-      tone={tone}
-      {...props}
-    />
-  )
+  return <Button variant={variant} tone={tone} {...props} />
 }

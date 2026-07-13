@@ -42,11 +42,7 @@ vi.mock('@/context/account-state', async (importOriginal) => {
       release_notes: '',
       can_auto_update: false,
     },
-    workspacePermissionKeys: [
-      'plugin.install',
-      'plugin.delete',
-      'plugin.plugin_preferences',
-    ],
+    workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.plugin_preferences'],
   }))
 })
 vi.mock('@/context/workspace-state', async (importOriginal) => {
@@ -63,11 +59,7 @@ vi.mock('@/context/workspace-state', async (importOriginal) => {
       release_notes: '',
       can_auto_update: false,
     },
-    workspacePermissionKeys: [
-      'plugin.install',
-      'plugin.delete',
-      'plugin.plugin_preferences',
-    ],
+    workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.plugin_preferences'],
   }))
 })
 vi.mock('@/context/permission-state', async (importOriginal) => {
@@ -84,11 +76,7 @@ vi.mock('@/context/permission-state', async (importOriginal) => {
       release_notes: '',
       can_auto_update: false,
     },
-    workspacePermissionKeys: [
-      'plugin.install',
-      'plugin.delete',
-      'plugin.plugin_preferences',
-    ],
+    workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.plugin_preferences'],
   }))
 })
 vi.mock('@/context/version-state', async (importOriginal) => {
@@ -105,11 +93,7 @@ vi.mock('@/context/version-state', async (importOriginal) => {
       release_notes: '',
       can_auto_update: false,
     },
-    workspacePermissionKeys: [
-      'plugin.install',
-      'plugin.delete',
-      'plugin.plugin_preferences',
-    ],
+    workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.plugin_preferences'],
   }))
 })
 vi.mock('@/context/system-features-state', async (importOriginal) => {
@@ -126,16 +110,13 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
       release_notes: '',
       can_auto_update: false,
     },
-    workspacePermissionKeys: [
-      'plugin.install',
-      'plugin.delete',
-      'plugin.plugin_preferences',
-    ],
+    workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.plugin_preferences'],
   }))
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -201,16 +182,12 @@ vi.mock('@/app/components/plugins/plugin-page/install-plugin-dropdown', () => ({
 }))
 
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
-  default: ({
-    uniqueIdentifier,
-    onClose,
-  }: {
-    uniqueIdentifier: string
-    onClose: () => void
-  }) => (
+  default: ({ uniqueIdentifier, onClose }: { uniqueIdentifier: string; onClose: () => void }) => (
     <div data-testid="install-from-marketplace-modal">
       <span>{uniqueIdentifier}</span>
-      <button type="button" onClick={onClose}>close-install-modal</button>
+      <button type="button" onClick={onClose}>
+        close-install-modal
+      </button>
     </div>
   ),
 }))

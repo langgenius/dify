@@ -10,7 +10,11 @@ vi.mock('@/app/components/base/chat/chat/answer/workflow-process', () => ({
 
 vi.mock('@/app/components/base/chat/chat/answer/human-input-form-list', () => ({
   default: ({ onHumanInputFormSubmit }: { onHumanInputFormSubmit: typeof mockSubmit }) => (
-    <button onClick={() => onHumanInputFormSubmit('token-1', { inputs: { name: 'dify' }, action: 'submit' })}>
+    <button
+      onClick={() =>
+        onHumanInputFormSubmit('token-1', { inputs: { name: 'dify' }, action: 'submit' })
+      }
+    >
       submit-human-input
     </button>
   ),
@@ -41,11 +45,13 @@ describe('WorkflowBody', () => {
         showResultTabs
         siteInfo={{ show_workflow_steps: true } as any}
         taskId="task-1"
-        workflowProcessData={{
-          resultText: 'done',
-          humanInputFormDataList: [{ formToken: 'token-1' }],
-          humanInputFilledFormDataList: [{ id: 'filled-1' }],
-        } as any}
+        workflowProcessData={
+          {
+            resultText: 'done',
+            humanInputFormDataList: [{ formToken: 'token-1' }],
+            humanInputFilledFormDataList: [{ id: 'filled-1' }],
+          } as any
+        }
       />,
     )
 
@@ -69,10 +75,12 @@ describe('WorkflowBody', () => {
         onSwitchTab={mockSwitchTab}
         showResultTabs
         siteInfo={null}
-        workflowProcessData={{
-          resultText: 'done',
-          humanInputFormDataList: [{ formToken: 'token-1' }],
-        } as any}
+        workflowProcessData={
+          {
+            resultText: 'done',
+            humanInputFormDataList: [{ formToken: 'token-1' }],
+          } as any
+        }
       />,
     )
 

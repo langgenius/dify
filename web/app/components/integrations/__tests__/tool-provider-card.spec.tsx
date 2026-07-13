@@ -5,12 +5,14 @@ import IntegrationsToolProviderCard from '../tool-provider-card'
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
+  return {
     useTranslation: () => ({
       i18n: { language: 'en-US' },
-      t: withSelectorKey((key: string, options?: { count?: number, ns?: string }) => options?.ns ? `${options.ns}.${key}${options.count ? `:${options.count}` : ''}` : key),
+      t: withSelectorKey((key: string, options?: { count?: number; ns?: string }) =>
+        options?.ns ? `${options.ns}.${key}${options.count ? `:${options.count}` : ''}` : key,
+      ),
     }),
-  })
+  }
 })
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
@@ -41,7 +43,9 @@ describe('IntegrationsToolProviderCard', () => {
   it('shows a built-in corner badge for builtin tools', () => {
     render(<IntegrationsToolProviderCard collection={createCollection()} showBuiltInBadge />)
 
-    expect(screen.getByTestId('corner-mark')).toHaveTextContent('dataset.metadata.datasetMetadata.builtIn')
+    expect(screen.getByTestId('corner-mark')).toHaveTextContent(
+      'dataset.metadata.datasetMetadata.builtIn',
+    )
   })
 
   it('does not infer built-in badge from a missing plugin id', () => {
@@ -57,19 +61,22 @@ describe('IntegrationsToolProviderCard', () => {
   })
 
   it('does not show a built-in corner badge for marketplace plugin tools', () => {
-    render(<IntegrationsToolProviderCard collection={createCollection({ plugin_id: 'author/provider' })} showBuiltInBadge />)
+    render(
+      <IntegrationsToolProviderCard
+        collection={createCollection({ plugin_id: 'author/provider' })}
+        showBuiltInBadge
+      />,
+    )
 
     expect(screen.queryByTestId('corner-mark')).not.toBeInTheDocument()
   })
 
   it('shows the built-in tool count without using endpoint copy', () => {
     render(
-      <IntegrationsToolProviderCard collection={createCollection({
-        tools: [
-          { name: 'tool-a' },
-          { name: 'tool-b' },
-        ] as Collection['tools'],
-      })}
+      <IntegrationsToolProviderCard
+        collection={createCollection({
+          tools: [{ name: 'tool-a' }, { name: 'tool-b' }] as Collection['tools'],
+        })}
       />,
     )
 
@@ -83,15 +90,17 @@ describe('IntegrationsToolProviderCard', () => {
         collection={createCollection({
           author: 'Evan',
           labels: ['Productivity', 'Utilities'],
-          tools: [
-            { name: 'tool-a' },
-          ] as Collection['tools'],
+          tools: [{ name: 'tool-a' }] as Collection['tools'],
         })}
         variant="labeled"
       />,
     )
 
-    expect(screen.getByTestId('card-builtin-provider')).toHaveClass('shadow-xs', 'hover:bg-components-panel-on-panel-item-bg-hover', 'hover:shadow-md')
+    expect(screen.getByTestId('card-builtin-provider')).toHaveClass(
+      'shadow-xs',
+      'hover:bg-components-panel-on-panel-item-bg-hover',
+      'hover:shadow-md',
+    )
     expect(screen.getByText('tools.author Evan')).toBeInTheDocument()
     expect(screen.getByText('Productivity')).toBeInTheDocument()
     expect(screen.getByText('Utilities')).toBeInTheDocument()

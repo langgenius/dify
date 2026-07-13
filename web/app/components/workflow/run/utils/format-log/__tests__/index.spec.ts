@@ -2,7 +2,6 @@ import type { WorkflowTranslate } from '../parallel'
 import type { NodeTracing } from '@/types/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
-
 import formatToTracingNodeList from '../index'
 
 const mockFormatAgentNode = vi.hoisted(() => vi.fn())
@@ -75,7 +74,9 @@ const createTrace = (overrides: Partial<NodeTracing> = {}): NodeTracing => ({
   finished_at: 1,
 })
 
-const createExecutionMetadata = (overrides: Partial<NonNullable<NodeTracing['execution_metadata']>> = {}): NonNullable<NodeTracing['execution_metadata']> => ({
+const createExecutionMetadata = (
+  overrides: Partial<NonNullable<NodeTracing['execution_metadata']>> = {},
+): NonNullable<NodeTracing['execution_metadata']> => ({
   total_tokens: 0,
   total_price: 0,
   currency: 'USD',
@@ -90,23 +91,29 @@ describe('formatToTracingNodeList', () => {
     mockFormatRetryNode.mockImplementation((list: NodeTracing[]) => list)
     mockAddChildrenToLoopNode.mockImplementation((item: NodeTracing, children: NodeTracing[]) => ({
       ...item,
-      loopChildren: children.map(child => child.node_id),
+      loopChildren: children.map((child) => child.node_id),
       details: [[{ id: 'loop-detail-row' }]],
     }))
-    mockAddChildrenToIterationNode.mockImplementation((item: NodeTracing, children: NodeTracing[]) => ({
-      ...item,
-      iterationChildren: children.map(child => child.node_id),
-      details: [[{ id: 'iteration-detail-row' }]],
-    }))
+    mockAddChildrenToIterationNode.mockImplementation(
+      (item: NodeTracing, children: NodeTracing[]) => ({
+        ...item,
+        iterationChildren: children.map((child) => child.node_id),
+        details: [[{ id: 'iteration-detail-row' }]],
+      }),
+    )
     mockFormatParallelNode.mockImplementation((list: unknown[]) =>
-      list.map(item => ({
+      list.map((item) => ({
         ...(item as Record<string, unknown>),
         parallelFormatted: true,
-      })))
+      })),
+    )
   })
 
   it('should sort the input by index and run the formatter pipeline in order', () => {
-    const t = withSelectorKey(vi.fn((key: string) => key), 'workflow') as WorkflowTranslate
+    const t = withSelectorKey(
+      vi.fn((key: string) => key),
+      'workflow',
+    ) as WorkflowTranslate
     const traces = [
       createTrace({ id: 'b', node_id: 'b', title: 'B', index: 2 }),
       createTrace({ id: 'a', node_id: 'a', title: 'A', index: 0 }),
@@ -120,8 +127,12 @@ describe('formatToTracingNodeList', () => {
       expect.objectContaining({ node_id: 'c' }),
       expect.objectContaining({ node_id: 'b' }),
     ])
-    expect(mockFormatHumanInputNode).toHaveBeenCalledWith(mockFormatAgentNode.mock.results[0]!.value)
-    expect(mockFormatRetryNode).toHaveBeenCalledWith(mockFormatHumanInputNode.mock.results[0]!.value)
+    expect(mockFormatHumanInputNode).toHaveBeenCalledWith(
+      mockFormatAgentNode.mock.results[0]!.value,
+    )
+    expect(mockFormatRetryNode).toHaveBeenCalledWith(
+      mockFormatHumanInputNode.mock.results[0]!.value,
+    )
     expect(mockFormatParallelNode).toHaveBeenLastCalledWith(expect.any(Array), t)
     expect(result).toEqual([
       expect.objectContaining({ node_id: 'a', parallelFormatted: true }),
@@ -131,7 +142,10 @@ describe('formatToTracingNodeList', () => {
   })
 
   it('should collapse loop and iteration children into parent nodes and propagate child failures', () => {
-    const t = withSelectorKey(vi.fn((key: string) => key), 'workflow') as WorkflowTranslate
+    const t = withSelectorKey(
+      vi.fn((key: string) => key),
+      'workflow',
+    ) as WorkflowTranslate
     const loopParent = createTrace({
       id: 'loop-parent',
       node_id: 'loop-parent',
@@ -161,12 +175,10 @@ describe('formatToTracingNodeList', () => {
       execution_metadata: createExecutionMetadata({ iteration_id: 'iteration-parent' }),
     })
 
-    const result = formatToTracingNodeList([
-      loopParent,
-      loopChild,
-      iterationParent,
-      iterationChild,
-    ], t)
+    const result = formatToTracingNodeList(
+      [loopParent, loopChild, iterationParent, iterationChild],
+      t,
+    )
 
     expect(mockAddChildrenToLoopNode).toHaveBeenCalledWith(
       expect.objectContaining({

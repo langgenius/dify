@@ -35,7 +35,7 @@ const PreviewPanel = () => {
       <div className="flex items-center gap-x-2 px-4 pt-1">
         <div className="grow py-1">
           <Badge className="border-text-accent-secondary bg-components-badge-bg-dimm text-text-accent-secondary">
-            {t($ => $['operations.preview'], { ns: 'datasetPipeline' })}
+            {t(($) => $['operations.preview'], { ns: 'datasetPipeline' })}
           </Badge>
         </div>
         <button
@@ -47,10 +47,7 @@ const PreviewPanel = () => {
         </button>
       </div>
       {/* Data source form Preview */}
-      <DataSource
-        onSelect={setDatasource}
-        dataSourceNodeId={datasource?.nodeId || ''}
-      />
+      <DataSource onSelect={setDatasource} dataSourceNodeId={datasource?.nodeId || ''} />
       <div className="px-4 py-2">
         <Divider type="horizontal" className="bg-divider-subtle" />
       </div>

@@ -27,7 +27,7 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock the Run component as it has complex dependencies
 vi.mock('@/app/components/workflow/run', () => ({
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>
@@ -128,8 +128,12 @@ describe('DetailPanel', () => {
       render(<DetailPanel runID="run-789" onClose={defaultOnClose} />)
 
       expect(screen.getByTestId('workflow-run')).toBeInTheDocument()
-      expect(screen.getByTestId('run-detail-url')).toHaveTextContent('/apps/app-456/workflow-runs/run-789')
-      expect(screen.getByTestId('tracing-list-url')).toHaveTextContent('/apps/app-456/workflow-runs/run-789/node-executions')
+      expect(screen.getByTestId('run-detail-url')).toHaveTextContent(
+        '/apps/app-456/workflow-runs/run-789',
+      )
+      expect(screen.getByTestId('tracing-list-url')).toHaveTextContent(
+        '/apps/app-456/workflow-runs/run-789/node-executions',
+      )
     })
 
     it('should render WorkflowContextProvider wrapper', () => {
@@ -146,13 +150,17 @@ describe('DetailPanel', () => {
     it('should not render replay button when canReplay is false (default)', () => {
       render(<DetailPanel runID="run-123" onClose={defaultOnClose} />)
 
-      expect(screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render replay button when canReplay is true', () => {
       render(<DetailPanel runID="run-123" onClose={defaultOnClose} canReplay={true} />)
 
-      expect(screen.getByRole('button', { name: 'appLog.runDetail.testWithParams' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'appLog.runDetail.testWithParams' }),
+      ).toBeInTheDocument()
     })
 
     it('should use empty URL when runID is empty', () => {
@@ -189,7 +197,9 @@ describe('DetailPanel', () => {
       const replayButton = screen.getByRole('button', { name: 'appLog.runDetail.testWithParams' })
       await user.click(replayButton)
 
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-replay-test/workflow?replayRunId=run-to-replay')
+      expect(mockRouterPush).toHaveBeenCalledWith(
+        '/app/app-replay-test/workflow?replayRunId=run-to-replay',
+      )
     })
 
     it('should not navigate when replay clicked but appDetail is missing', async () => {
@@ -214,7 +224,9 @@ describe('DetailPanel', () => {
 
       render(<DetailPanel runID="my-run" onClose={defaultOnClose} />)
 
-      expect(screen.getByTestId('run-detail-url')).toHaveTextContent('/apps/my-app/workflow-runs/my-run')
+      expect(screen.getByTestId('run-detail-url')).toHaveTextContent(
+        '/apps/my-app/workflow-runs/my-run',
+      )
     })
 
     it('should generate correct tracing list URL', () => {
@@ -222,7 +234,9 @@ describe('DetailPanel', () => {
 
       render(<DetailPanel runID="my-run" onClose={defaultOnClose} />)
 
-      expect(screen.getByTestId('tracing-list-url')).toHaveTextContent('/apps/my-app/workflow-runs/my-run/node-executions')
+      expect(screen.getByTestId('tracing-list-url')).toHaveTextContent(
+        '/apps/my-app/workflow-runs/my-run/node-executions',
+      )
     })
 
     it('should handle special characters in runID', () => {
@@ -230,7 +244,9 @@ describe('DetailPanel', () => {
 
       render(<DetailPanel runID="run-with-special-123" onClose={defaultOnClose} />)
 
-      expect(screen.getByTestId('run-detail-url')).toHaveTextContent('/apps/app-id/workflow-runs/run-with-special-123')
+      expect(screen.getByTestId('run-detail-url')).toHaveTextContent(
+        '/apps/app-id/workflow-runs/run-with-special-123',
+      )
     })
   })
 
@@ -243,7 +259,9 @@ describe('DetailPanel', () => {
 
       render(<DetailPanel runID="run-123" onClose={defaultOnClose} />)
 
-      expect(screen.getByTestId('run-detail-url')).toHaveTextContent('/apps/store-app-id/workflow-runs/run-123')
+      expect(screen.getByTestId('run-detail-url')).toHaveTextContent(
+        '/apps/store-app-id/workflow-runs/run-123',
+      )
     })
 
     it('should handle undefined appDetail from store gracefully', () => {
@@ -273,7 +291,9 @@ describe('DetailPanel', () => {
 
       render(<DetailPanel runID={longRunId} onClose={defaultOnClose} />)
 
-      expect(screen.getByTestId('run-detail-url')).toHaveTextContent(`/apps/app-id/workflow-runs/${longRunId}`)
+      expect(screen.getByTestId('run-detail-url')).toHaveTextContent(
+        `/apps/app-id/workflow-runs/${longRunId}`,
+      )
     })
 
     it('should render replay button with correct aria-label', () => {

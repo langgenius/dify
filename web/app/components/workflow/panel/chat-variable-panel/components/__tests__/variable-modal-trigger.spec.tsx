@@ -35,7 +35,9 @@ describe('VariableModalTrigger', () => {
       />,
     )
 
-    expect(screen.queryByPlaceholderText('workflow.chatVariable.modal.namePlaceholder')).not.toBeInTheDocument()
+    expect(
+      screen.queryByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'),
+    ).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'workflow.chatVariable.button' }))
 
@@ -61,16 +63,24 @@ describe('VariableModalTrigger', () => {
     )
 
     await user.clear(screen.getByDisplayValue('conversation_var'))
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'), 'updated_var')
-    await user.type(screen.getByPlaceholderText('workflow.chatVariable.modal.valuePlaceholder'), 'hello')
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'),
+      'updated_var',
+    )
+    await user.type(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.valuePlaceholder'),
+      'hello',
+    )
     await user.click(screen.getByText('common.operation.save'))
 
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'var-1',
-      name: 'updated_var',
-      value: 'hello',
-      value_type: ChatVarType.String,
-    }))
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'var-1',
+        name: 'updated_var',
+        value: 'hello',
+        value_type: ChatVarType.String,
+      }),
+    )
     expect(onClose).toHaveBeenCalled()
     expect(setOpen).toHaveBeenCalledWith(false)
   })
@@ -96,12 +106,16 @@ describe('VariableModalTrigger', () => {
 
     renderWorkflowComponent(<TriggerHarness />)
 
-    expect(screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder')).toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'),
+    ).toBeInTheDocument()
 
     await user.keyboard('{Escape}')
 
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('workflow.chatVariable.modal.namePlaceholder')).not.toBeInTheDocument()
+      expect(
+        screen.queryByPlaceholderText('workflow.chatVariable.modal.namePlaceholder'),
+      ).not.toBeInTheDocument()
     })
     expect(onClose).toHaveBeenCalled()
   })

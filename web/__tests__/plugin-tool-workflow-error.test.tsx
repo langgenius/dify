@@ -22,7 +22,7 @@ describe('Plugin Tool Workflow Error Reproduction', () => {
   it('should reproduce error when uniqueIdentifier is null', () => {
     expect(() => {
       mockSwitchPluginVersionLogic(null)
-    }).toThrow('Cannot read properties of null (reading \'split\')')
+    }).toThrow("Cannot read properties of null (reading 'split')")
   })
 
   /**
@@ -31,7 +31,7 @@ describe('Plugin Tool Workflow Error Reproduction', () => {
   it('should reproduce error when uniqueIdentifier is undefined', () => {
     expect(() => {
       mockSwitchPluginVersionLogic(undefined)
-    }).toThrow('Cannot read properties of undefined (reading \'split\')')
+    }).toThrow("Cannot read properties of undefined (reading 'split')")
   })
 
   /**
@@ -76,13 +76,14 @@ describe('Variable Processing Split Error', () => {
    * }
    */
   const mockGetDependentVars = (varInputs: Array<{ variable: string | null | undefined }>) => {
-    return varInputs.map((item) => {
-      // Guard against null/undefined variable to prevent app crash
-      if (!item.variable || typeof item.variable !== 'string')
-        return []
+    return varInputs
+      .map((item) => {
+        // Guard against null/undefined variable to prevent app crash
+        if (!item.variable || typeof item.variable !== 'string') return []
 
-      return item.variable.slice(1, -1).split('.')
-    }).filter(arr => arr.length > 0) // Filter out empty arrays
+        return item.variable.slice(1, -1).split('.')
+      })
+      .filter((arr) => arr.length > 0) // Filter out empty arrays
   }
 
   /**
@@ -167,7 +168,7 @@ describe('Plugin Tool Workflow Integration', () => {
       // Simulate the code path in switch-plugin-version.tsx:29
       // The actual problematic code doesn't use optional chaining
       const _pluginId = (incompletePluginData.uniqueIdentifier as any).split(':')[0]
-    }).toThrow('Cannot read properties of null (reading \'split\')')
+    }).toThrow("Cannot read properties of null (reading 'split')")
   })
 
   /**
@@ -195,8 +196,7 @@ describe('Plugin Tool Workflow Integration', () => {
         expect(() => {
           const _pluginId = (tool.uniqueIdentifier as any).split(':')[0]
         }).toThrow()
-      }
-      else {
+      } else {
         // Valid tools should work fine
         expect(() => {
           const _pluginId = tool.uniqueIdentifier.split(':')[0]

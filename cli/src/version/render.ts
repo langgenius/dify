@@ -39,14 +39,14 @@ export function renderVersionText(report: VersionReport, opts: RenderOptions = {
   lines.push('Server:')
   if (server.endpoint === '') {
     lines.push(`  ${c.dim('(skipped — no host configured or --client passed)')}`)
-  }
-  else if (!server.reachable) {
+  } else if (!server.reachable) {
     lines.push(`  Endpoint:  ${server.endpoint}`)
     lines.push(`  Version:   ${c.dim('(unreachable)')}`)
-  }
-  else {
+  } else {
     lines.push(`  Endpoint:  ${server.endpoint}`)
-    lines.push(`  Version:   ${server.version ?? ''}${server.edition !== undefined ? ` (${server.edition.toLowerCase()})` : ''}`)
+    lines.push(
+      `  Version:   ${server.version ?? ''}${server.edition !== undefined ? ` (${server.edition.toLowerCase()})` : ''}`,
+    )
   }
   lines.push('')
 
@@ -56,8 +56,7 @@ export function renderVersionText(report: VersionReport, opts: RenderOptions = {
 
   if (client.channel !== 'stable') {
     lines.push('')
-    for (const line of prereleaseWarning(client.channel))
-      lines.push(c.yellow(line))
+    for (const line of prereleaseWarning(client.channel)) lines.push(c.yellow(line))
   }
 
   return `${lines.join('\n')}\n`

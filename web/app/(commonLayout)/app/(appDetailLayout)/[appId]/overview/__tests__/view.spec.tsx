@@ -15,9 +15,10 @@ const testState = vi.hoisted(() => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T => selector({
-    appDetail: testState.appDetail,
-  }),
+  useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T =>
+    selector({
+      appDetail: testState.appDetail,
+    }),
 }))
 
 vi.mock('@/app/components/app/overview/apikey-info-panel', () => ({
@@ -25,11 +26,9 @@ vi.mock('@/app/components/app/overview/apikey-info-panel', () => ({
 }))
 
 vi.mock('../chart-view', () => ({
-  default: ({ appId, headerRight }: { appId: string, headerRight: ReactNode }) => (
+  default: ({ appId, headerRight }: { appId: string; headerRight: ReactNode }) => (
     <div>
-      chart view
-      {' '}
-      {appId}
+      chart view {appId}
       {headerRight}
     </div>
   ),
@@ -73,7 +72,10 @@ describe('OverviewView monitor permission', () => {
     })
 
     it('should render tracing entry when app tracing config permission is granted with monitor access', () => {
-      testState.appDetail.permission_keys = [AppACLPermission.Monitor, AppACLPermission.TracingConfig]
+      testState.appDetail.permission_keys = [
+        AppACLPermission.Monitor,
+        AppACLPermission.TracingConfig,
+      ]
 
       render(<OverviewView appId="app-1" />)
 

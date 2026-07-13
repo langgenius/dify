@@ -13,26 +13,22 @@ type Props = Readonly<{
   onChange: (dataSets: DataSet[]) => void
 }>
 
-const AddDataset: FC<Props> = ({
-  selectedIds,
-  modal,
-  onChange,
-}) => {
+const AddDataset: FC<Props> = ({ selectedIds, modal, onChange }) => {
   const { t } = useTranslation()
-  const [isShowModal, {
-    setTrue: showModal,
-    setFalse: hideModal,
-  }] = useBoolean(false)
+  const [isShowModal, { setTrue: showModal, setFalse: hideModal }] = useBoolean(false)
 
-  const handleSelect = useCallback((datasets: DataSet[]) => {
-    onChange(datasets)
-    hideModal()
-  }, [onChange, hideModal])
+  const handleSelect = useCallback(
+    (datasets: DataSet[]) => {
+      onChange(datasets)
+      hideModal()
+    },
+    [onChange, hideModal],
+  )
   return (
     <div>
       <button
         type="button"
-        aria-label={`${t($ => $['operation.add'], { ns: 'common' })} ${t($ => $['nodes.knowledgeRetrieval.knowledge'], { ns: 'workflow' })}`}
+        aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $['nodes.knowledgeRetrieval.knowledge'], { ns: 'workflow' })}`}
         className="cursor-pointer rounded-md border-none bg-transparent p-1 outline-hidden select-none hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         onClick={showModal}
       >

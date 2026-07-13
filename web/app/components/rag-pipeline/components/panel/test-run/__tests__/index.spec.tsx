@@ -39,9 +39,14 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   useToolIcon: () => 'mock-tool-icon',
 }))
 
-vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div data-testid="data-source-provider">{children}</div>,
-}))
+vi.mock(
+  '@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider',
+  () => ({
+    default: ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="data-source-provider">{children}</div>
+    ),
+  }),
+)
 
 vi.mock('../preparation', () => ({
   default: () => <div data-testid="preparation-component">Preparation</div>,
@@ -53,23 +58,13 @@ vi.mock('../result', () => ({
 
 vi.mock('@/app/components/workflow/run/result-panel', () => ({
   default: (props: Record<string, unknown>) => (
-    <div data-testid="result-panel">
-      ResultPanel -
-      {' '}
-      {props.status as string}
-    </div>
+    <div data-testid="result-panel">ResultPanel - {props.status as string}</div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/run/tracing-panel', () => ({
   default: (props: { list: unknown[] }) => (
-    <div data-testid="tracing-panel">
-      TracingPanel -
-      {' '}
-      {props.list?.length ?? 0}
-      {' '}
-      items
-    </div>
+    <div data-testid="tracing-panel">TracingPanel - {props.list?.length ?? 0} items</div>
   ),
 }))
 
@@ -81,7 +76,9 @@ vi.mock('@/config', () => ({
   RAG_PIPELINE_PREVIEW_CHUNK_NUM: 5,
 }))
 
-const createMockWorkflowRunningData = (overrides: Partial<WorkflowRunningData> = {}): WorkflowRunningData => ({
+const createMockWorkflowRunningData = (
+  overrides: Partial<WorkflowRunningData> = {},
+): WorkflowRunningData => ({
   result: {
     status: WorkflowRunningStatus.Succeeded,
     outputs: '{"test": "output"}',
@@ -103,7 +100,7 @@ const createMockWorkflowRunningData = (overrides: Partial<WorkflowRunningData> =
 
 const createMockGeneralOutputs = (chunkContents: string[] = ['chunk1', 'chunk2']) => ({
   chunk_structure: ChunkingMode.text,
-  preview: chunkContents.map(content => ({ content })),
+  preview: chunkContents.map((content) => ({ content })),
 })
 
 const createMockParentChildOutputs = (parentMode: 'paragraph' | 'full-doc' = 'paragraph') => ({
@@ -271,7 +268,11 @@ describe('Result', () => {
     })
 
     it('should switch to TRACING tab when clicked', async () => {
-      mockWorkflowRunningData.mockReturnValue(createMockWorkflowRunningData({ tracing: [{ id: '1' }] as unknown as WorkflowRunningData['tracing'] }))
+      mockWorkflowRunningData.mockReturnValue(
+        createMockWorkflowRunningData({
+          tracing: [{ id: '1' }] as unknown as WorkflowRunningData['tracing'],
+        }),
+      )
       render(<Result />)
 
       const tracingTab = screen.getByRole('button', { name: /runLog\.tracing/i })
@@ -369,7 +370,9 @@ describe('ResultPreview', () => {
       )
 
       expect(screen.getByText('pipeline.result.resultPreview.error')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'pipeline.result.resultPreview.viewDetails' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'pipeline.result.resultPreview.viewDetails' }),
+      ).toBeInTheDocument()
     })
 
     it('should call onSwitchToDetail when View Details button is clicked', () => {
@@ -382,7 +385,9 @@ describe('ResultPreview', () => {
         />,
       )
 
-      const viewDetailsButton = screen.getByRole('button', { name: 'pipeline.result.resultPreview.viewDetails' })
+      const viewDetailsButton = screen.getByRole('button', {
+        name: 'pipeline.result.resultPreview.viewDetails',
+      })
       fireEvent.click(viewDetailsButton)
 
       expect(mockOnSwitchToDetail).toHaveBeenCalledTimes(1)
@@ -579,13 +584,7 @@ describe('Tabs', () => {
 
   describe('Disabled State', () => {
     it('should disable tabs when workflowRunningData is undefined', () => {
-      render(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={undefined}
-          switchTab={mockSwitchTab}
-        />,
-      )
+      render(<Tabs currentTab="RESULT" workflowRunningData={undefined} switchTab={mockSwitchTab} />)
 
       const resultTab = screen.getByRole('button', { name: /runLog\.result/i })
       expect(resultTab).toBeDisabled()
@@ -794,8 +793,16 @@ describe('formatPreviewChunks', () => {
 
       expect(result).toEqual({
         parent_child_chunks: [
-          { parent_content: 'parent1', child_contents: ['child1', 'child2'], parent_mode: 'paragraph' },
-          { parent_content: 'parent2', child_contents: ['child3', 'child4'], parent_mode: 'paragraph' },
+          {
+            parent_content: 'parent1',
+            child_contents: ['child1', 'child2'],
+            parent_mode: 'paragraph',
+          },
+          {
+            parent_content: 'parent2',
+            child_contents: ['child3', 'child4'],
+            parent_mode: 'paragraph',
+          },
         ],
         parent_mode: 'paragraph',
       })
@@ -848,7 +855,9 @@ describe('formatPreviewChunks', () => {
           answer: `A${i}`,
         })),
       }
-      const result = formatPreviewChunks(outputs) as { qa_chunks: Array<{ question: string, answer: string }> }
+      const result = formatPreviewChunks(outputs) as {
+        qa_chunks: Array<{ question: string; answer: string }>
+      }
 
       expect(result.qa_chunks).toHaveLength(5)
     })

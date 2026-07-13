@@ -55,7 +55,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -73,7 +74,11 @@ const defaultPayload = {
 describe('PluginAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContext.workspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
+    mockAppContext.workspacePermissionKeys = [
+      'credential.use',
+      'credential.create',
+      'credential.manage',
+    ]
   })
 
   afterEach(() => {
@@ -139,7 +144,9 @@ describe('PluginAuth', () => {
       notAllowCustomCredential: false,
     })
 
-    const { container } = render(<PluginAuth pluginPayload={defaultPayload} className="custom-class" />)
+    const { container } = render(
+      <PluginAuth pluginPayload={defaultPayload} className="custom-class" />,
+    )
     expect(container.innerHTML).toContain('custom-class')
   })
 
@@ -153,7 +160,9 @@ describe('PluginAuth', () => {
       notAllowCustomCredential: false,
     })
 
-    const { container } = render(<PluginAuth pluginPayload={defaultPayload} className="custom-class" />)
+    const { container } = render(
+      <PluginAuth pluginPayload={defaultPayload} className="custom-class" />,
+    )
     expect(container.innerHTML).not.toContain('custom-class')
   })
 
@@ -187,7 +196,9 @@ describe('PluginAuth', () => {
     expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeDisabled()
     expect(screen.getByText('plugin.auth.permissionHint.title')).toBeInTheDocument()
     expect(screen.getByText('plugin.auth.permissionHint.description')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' }),
+    ).toBeInTheDocument()
   })
 
   it('opens members settings when permission hint action is clicked', () => {

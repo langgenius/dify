@@ -32,82 +32,56 @@ const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
 
 const BASE_UI_RESTRICTED_IMPORT_PATTERNS = [
   {
-    group: [
-      '@base-ui/react',
-      '@base-ui/react/*',
-    ],
+    group: ['@base-ui/react', '@base-ui/react/*'],
     message: 'Do not import Base UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
   },
 ]
 
 const FLOATING_UI_RESTRICTED_IMPORT_PATTERNS = [
   {
-    group: [
-      '@floating-ui/*',
-    ],
-    message: 'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
+    group: ['@floating-ui/*'],
+    message:
+      'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
   },
 ]
 
 const LEGACY_WEB_INPUT_RESTRICTED_IMPORT_PATTERNS = [
   {
-    group: [
-      '**/base/input',
-      '**/base/input/*',
-    ],
-    message: 'Do not import the deprecated web base Input. Use @langgenius/dify-ui/input for standalone inputs, and @langgenius/dify-ui/field for labelled or validated form composition.',
+    group: ['**/base/input', '**/base/input/*'],
+    message:
+      'Do not import the deprecated web base Input. Use @langgenius/dify-ui/input for standalone inputs, and @langgenius/dify-ui/field for labelled or validated form composition.',
   },
 ]
 
 const LEGACY_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS = [
   {
-    group: [
-      '@/service/base',
-      '@/service/base/*',
-      '**/service/base',
-      '**/service/base/*',
-    ],
-    message: 'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
+    group: ['@/service/base', '@/service/base/*', '**/service/base', '**/service/base/*'],
+    message:
+      'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
   },
 ]
 
 const LEGACY_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS = [
   {
-    group: [
-      '@/service/fetch',
-      '@/service/fetch/*',
-      '**/service/fetch',
-      '**/service/fetch/*',
-    ],
-    message: 'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
+    group: ['@/service/fetch', '@/service/fetch/*', '**/service/fetch', '**/service/fetch/*'],
+    message:
+      'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
   },
 ]
 
 export const WEB_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS = [
   {
-    group: [
-      './base',
-      './base/*',
-      '../base',
-      '../base/*',
-      '../../base',
-      '../../base/*',
-    ],
-    message: 'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
+    group: ['./base', './base/*', '../base', '../base/*', '../../base', '../../base/*'],
+    message:
+      'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
   },
 ]
 
 export const WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS = [
   {
-    group: [
-      './fetch',
-      './fetch/*',
-      '../fetch',
-      '../fetch/*',
-      '../../fetch',
-      '../../fetch/*',
-    ],
-    message: 'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
+    group: ['./fetch', './fetch/*', '../fetch', '../fetch/*', '../../fetch', '../../fetch/*'],
+    message:
+      'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
   },
 ]
 

@@ -18,44 +18,56 @@ export const useLocalFileUpload = ({
   allowedExtensions,
   supportBatchUpload = true,
 }: UseLocalFileUploadOptions) => {
-  const localFileList = useDataSourceStoreWithSelector(state => state.localFileList)
+  const localFileList = useDataSourceStoreWithSelector((state) => state.localFileList)
   const dataSourceStore = useDataSourceStore()
   const fileListRef = useRef<FileItem[]>([])
 
   // Sync fileListRef with localFileList for internal tracking
   fileListRef.current = localFileList
 
-  const prepareFileList = useCallback((files: FileItem[]) => {
-    const { setLocalFileList } = dataSourceStore.getState()
-    setLocalFileList(files)
-    fileListRef.current = files
-  }, [dataSourceStore])
+  const prepareFileList = useCallback(
+    (files: FileItem[]) => {
+      const { setLocalFileList } = dataSourceStore.getState()
+      setLocalFileList(files)
+      fileListRef.current = files
+    },
+    [dataSourceStore],
+  )
 
-  const onFileUpdate = useCallback((fileItem: FileItem, progress: number, list: FileItem[]) => {
-    const { setLocalFileList } = dataSourceStore.getState()
-    const newList = produce(list, (draft) => {
-      const targetIndex = draft.findIndex(file => file.fileID === fileItem.fileID)
-      if (targetIndex !== -1) {
-        draft[targetIndex] = {
-          ...draft[targetIndex],
-          ...fileItem,
-          progress,
+  const onFileUpdate = useCallback(
+    (fileItem: FileItem, progress: number, list: FileItem[]) => {
+      const { setLocalFileList } = dataSourceStore.getState()
+      const newList = produce(list, (draft) => {
+        const targetIndex = draft.findIndex((file) => file.fileID === fileItem.fileID)
+        if (targetIndex !== -1) {
+          draft[targetIndex] = {
+            ...draft[targetIndex],
+            ...fileItem,
+            progress,
+          }
         }
-      }
-    })
-    setLocalFileList(newList)
-  }, [dataSourceStore])
+      })
+      setLocalFileList(newList)
+    },
+    [dataSourceStore],
+  )
 
-  const onFileListUpdate = useCallback((files: FileItem[]) => {
-    const { setLocalFileList } = dataSourceStore.getState()
-    setLocalFileList(files)
-    fileListRef.current = files
-  }, [dataSourceStore])
+  const onFileListUpdate = useCallback(
+    (files: FileItem[]) => {
+      const { setLocalFileList } = dataSourceStore.getState()
+      setLocalFileList(files)
+      fileListRef.current = files
+    },
+    [dataSourceStore],
+  )
 
-  const onPreview = useCallback((file: File) => {
-    const { setCurrentLocalFile } = dataSourceStore.getState()
-    setCurrentLocalFile(file)
-  }, [dataSourceStore])
+  const onPreview = useCallback(
+    (file: File) => {
+      const { setCurrentLocalFile } = dataSourceStore.getState()
+      setCurrentLocalFile(file)
+    },
+    [dataSourceStore],
+  )
 
   const {
     dropRef,

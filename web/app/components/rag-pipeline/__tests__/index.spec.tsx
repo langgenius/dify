@@ -2,7 +2,6 @@ import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { cleanup, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
-
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { usePipelineInit } from '../hooks'
 import RagPipelineWrapper from '../index'
@@ -32,7 +31,15 @@ vi.mock('../components/conversion', () => ({
 }))
 
 vi.mock('../components/rag-pipeline-main', () => ({
-  default: ({ nodes, edges, viewport }: { nodes?: unknown[], edges?: unknown[], viewport?: { zoom?: number } }) => (
+  default: ({
+    nodes,
+    edges,
+    viewport,
+  }: {
+    nodes?: unknown[]
+    edges?: unknown[]
+    viewport?: { zoom?: number }
+  }) => (
     <div data-testid="rag-pipeline-main">
       <span data-testid="nodes-count">{nodes?.length ?? 0}</span>
       <span data-testid="edges-count">{edges?.length ?? 0}</span>
@@ -58,29 +65,42 @@ const mockUsePipelineInit = vi.mocked(usePipelineInit)
 const mockProcessNodesWithoutDataSource = vi.mocked(processNodesWithoutDataSource)
 
 const mockSelectorWithDataset = (pipelineId: string | null | undefined) => {
-  mockUseDatasetDetailContextWithSelector.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-    const mockState = { dataset: pipelineId ? { pipeline_id: pipelineId } : null }
-    return selector(mockState)
-  })
+  mockUseDatasetDetailContextWithSelector.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) => {
+      const mockState = { dataset: pipelineId ? { pipeline_id: pipelineId } : null }
+      return selector(mockState)
+    },
+  )
 }
 
-const createMockWorkflowData = (overrides?: Partial<FetchWorkflowDraftResponse>): FetchWorkflowDraftResponse => ({
-  graph: {
-    nodes: [
-      { id: 'node-1', type: 'custom', data: { type: BlockEnum.Start, title: 'Start' }, position: { x: 100, y: 100 } },
-      { id: 'node-2', type: 'custom', data: { type: BlockEnum.End, title: 'End' }, position: { x: 300, y: 100 } },
-    ],
-    edges: [
-      { id: 'edge-1', source: 'node-1', target: 'node-2', type: 'custom' },
-    ],
-    viewport: { x: 0, y: 0, zoom: 1 },
-  },
-  hash: 'test-hash-123',
-  updated_at: 1234567890,
-  tool_published: false,
-  environment_variables: [],
-  ...overrides,
-} as FetchWorkflowDraftResponse)
+const createMockWorkflowData = (
+  overrides?: Partial<FetchWorkflowDraftResponse>,
+): FetchWorkflowDraftResponse =>
+  ({
+    graph: {
+      nodes: [
+        {
+          id: 'node-1',
+          type: 'custom',
+          data: { type: BlockEnum.Start, title: 'Start' },
+          position: { x: 100, y: 100 },
+        },
+        {
+          id: 'node-2',
+          type: 'custom',
+          data: { type: BlockEnum.End, title: 'End' },
+          position: { x: 300, y: 100 },
+        },
+      ],
+      edges: [{ id: 'edge-1', source: 'node-1', target: 'node-2', type: 'custom' }],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    },
+    hash: 'test-hash-123',
+    updated_at: 1234567890,
+    tool_published: false,
+    environment_variables: [],
+    ...overrides,
+  }) as FetchWorkflowDraftResponse
 
 afterEach(() => {
   cleanup()
@@ -286,7 +306,14 @@ describe('RagPipeline', () => {
     it('should handle empty edges array', () => {
       const mockData = createMockWorkflowData({
         graph: {
-          nodes: [{ id: 'node-1', type: 'custom', data: { type: BlockEnum.Start, title: 'Start', desc: '' }, position: { x: 0, y: 0 } }],
+          nodes: [
+            {
+              id: 'node-1',
+              type: 'custom',
+              data: { type: BlockEnum.Start, title: 'Start', desc: '' },
+              position: { x: 0, y: 0 },
+            },
+          ],
           edges: [],
           viewport: { x: 0, y: 0, zoom: 1 },
         },
@@ -414,7 +441,14 @@ describe('processNodesWithoutDataSource utility integration', () => {
     const mockData = createMockWorkflowData()
     mockUsePipelineInit.mockReturnValue({ data: mockData, isLoading: false })
     mockProcessNodesWithoutDataSource.mockReturnValue({
-      nodes: [{ id: 'processed-node', type: 'custom', data: { type: BlockEnum.Start, title: 'Processed', desc: '' }, position: { x: 0, y: 0 } }] as unknown as ReturnType<typeof processNodesWithoutDataSource>['nodes'],
+      nodes: [
+        {
+          id: 'processed-node',
+          type: 'custom',
+          data: { type: BlockEnum.Start, title: 'Processed', desc: '' },
+          position: { x: 0, y: 0 },
+        },
+      ] as unknown as ReturnType<typeof processNodesWithoutDataSource>['nodes'],
       viewport: { x: 0, y: 0, zoom: 2 },
     })
 

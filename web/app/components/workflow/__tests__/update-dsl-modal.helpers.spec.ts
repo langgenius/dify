@@ -38,23 +38,33 @@ workflow:
 
     it('should reject malformed yaml and answer nodes in non-advanced mode', () => {
       expect(validateDSLContent('[', AppModeEnum.CHAT)).toBe(false)
-      expect(validateDSLContent(`
+      expect(
+        validateDSLContent(
+          `
 workflow:
   graph:
     nodes:
       - data:
           type: answer
-`, AppModeEnum.CHAT)).toBe(false)
+`,
+          AppModeEnum.CHAT,
+        ),
+      ).toBe(false)
     })
 
     it('should accept valid node types for advanced chat mode', () => {
-      expect(validateDSLContent(`
+      expect(
+        validateDSLContent(
+          `
 workflow:
   graph:
     nodes:
       - data:
           type: tool
-`, AppModeEnum.ADVANCED_CHAT)).toBe(true)
+`,
+          AppModeEnum.ADVANCED_CHAT,
+        ),
+      ).toBe(true)
     })
 
     it('should accept empty yaml content', () => {

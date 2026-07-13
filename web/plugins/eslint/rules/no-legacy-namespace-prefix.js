@@ -11,7 +11,7 @@ export default {
     schema: [],
     messages: {
       legacyNamespacePrefix:
-        'Translation key "{{key}}" should not include namespace prefix. Use t(\'{{localKey}}\') with useTranslation(\'{{ns}}\') instead.',
+        "Translation key \"{{key}}\" should not include namespace prefix. Use t('{{localKey}}') with useTranslation('{{ns}}') instead.",
       legacyNamespacePrefixInVariable:
         'Variable "{{name}}" contains namespace prefix "{{ns}}". Remove the prefix and use useTranslation(\'{{ns}}\') instead.',
     },
@@ -33,7 +33,7 @@ export default {
       // Check if first quasi starts with namespace
       const extracted = extractNamespace(firstQuasi)
       if (extracted) {
-        const fixedQuasis = [extracted.localKey, ...quasis.slice(1).map(q => q.value.raw)]
+        const fixedQuasis = [extracted.localKey, ...quasis.slice(1).map((q) => q.value.raw)]
         return { ns: extracted.ns, canFix: true, fixedQuasis, variableToUpdate: null }
       }
 
@@ -76,23 +76,19 @@ export default {
     }
 
     function hasNsArgument(node) {
-      if (node.arguments.length < 2)
-        return false
+      if (node.arguments.length < 2) return false
       const secondArg = node.arguments[1]
-      if (secondArg.type !== 'ObjectExpression')
-        return false
+      if (secondArg.type !== 'ObjectExpression') return false
       return secondArg.properties.some(
-        prop => prop.type === 'Property'
-          && prop.key.type === 'Identifier'
-          && prop.key.name === 'ns',
+        (prop) =>
+          prop.type === 'Property' && prop.key.type === 'Identifier' && prop.key.name === 'ns',
       )
     }
 
     return {
       // Track variable declarations
       VariableDeclarator(node) {
-        if (node.id.type !== 'Identifier' || !node.init)
-          return
+        if (node.id.type !== 'Identifier' || !node.init) return
 
         // Case 1: Static string literal
         if (node.init.type === 'Literal' && typeof node.init.value === 'string') {
@@ -133,19 +129,15 @@ export default {
 
       CallExpression(node) {
         // Check for t() calls - both direct t() and i18n.t()
-        const isTCall = (
-          node.callee.type === 'Identifier'
-          && node.callee.name === 't'
-        ) || (
-          node.callee.type === 'MemberExpression'
-          && node.callee.property.type === 'Identifier'
-          && node.callee.property.name === 't'
-        )
+        const isTCall =
+          (node.callee.type === 'Identifier' && node.callee.name === 't') ||
+          (node.callee.type === 'MemberExpression' &&
+            node.callee.property.type === 'Identifier' &&
+            node.callee.property.name === 't')
 
         if (isTCall && node.arguments.length > 0) {
           // Skip if already has ns argument
-          if (hasNsArgument(node))
-            return
+          if (hasNsArgument(node)) return
 
           // Unwrap TSAsExpression (e.g., `key as any`)
           let firstArg = node.arguments[0]
@@ -238,8 +230,7 @@ export default {
       },
 
       'Program:exit': function (program) {
-        if (namespacesUsed.size === 0)
-          return
+        if (namespacesUsed.size === 0) return
 
         // Report variables with namespace prefix (once per variable)
         for (const [, varInfo] of variablesToFix) {
@@ -281,8 +272,7 @@ export default {
                   )
                   const newTemplate = buildTemplateLiteral(quasis, templateLiteral.expressions)
                   fixes.push(fixer.replaceText(varInfo.node.init, newTemplate))
-                }
-                else {
+                } else {
                   fixes.push(fixer.replaceText(varInfo.node.init, `'${varInfo.newValue}'`))
                 }
               }
@@ -308,18 +298,24 @@ export default {
                   if (secondArg.properties.length === 0) {
                     // Empty object: {} -> { ns: 'xxx' }
                     fixes.push(fixer.replaceText(secondArg, `{ ns: '${ns}' }`))
-                  }
-                  else {
+                  } else {
                     // Non-empty object: { foo } -> { ns: 'xxx', foo }
                     const firstProp = secondArg.properties[0]
                     fixes.push(fixer.insertTextBefore(firstProp, `ns: '${ns}', `))
                   }
-                }
-                else if (hasSecondArg && secondArg.type === 'Literal' && typeof secondArg.value === 'string') {
+                } else if (
+                  hasSecondArg &&
+                  secondArg.type === 'Literal' &&
+                  typeof secondArg.value === 'string'
+                ) {
                   // Second arg is a string (default value): 'default' -> { ns: 'xxx', defaultValue: 'default' }
-                  fixes.push(fixer.replaceText(secondArg, `{ ns: '${ns}', defaultValue: ${sourceCode.getText(secondArg)} }`))
-                }
-                else if (!hasSecondArg) {
+                  fixes.push(
+                    fixer.replaceText(
+                      secondArg,
+                      `{ ns: '${ns}', defaultValue: ${sourceCode.getText(secondArg)} }`,
+                    ),
+                  )
+                } else if (!hasSecondArg) {
                   // No second argument, add new object
                   fixes.push(fixer.insertTextAfter(originalFirstArg, `, { ns: '${ns}' }`))
                 }
@@ -331,46 +327,49 @@ export default {
                 if (extracted) {
                   // Replace key (preserve as any if present)
                   if (hasTsAs) {
-                    fixes.push(fixer.replaceText(originalFirstArg, `'${extracted.localKey}' as any`))
-                  }
-                  else {
+                    fixes.push(
+                      fixer.replaceText(originalFirstArg, `'${extracted.localKey}' as any`),
+                    )
+                  } else {
                     fixes.push(fixer.replaceText(firstArg, `'${extracted.localKey}'`))
                   }
                   // Add ns
                   addNsToArgs(extracted.ns)
                 }
-              }
-              else if (firstArg.type === 'TemplateLiteral') {
+              } else if (firstArg.type === 'TemplateLiteral') {
                 const analysis = analyzeTemplateLiteral(firstArg)
                 if (analysis.canFix && analysis.fixedQuasis) {
                   // For template literals with namespace prefix directly in template
-                  const newTemplate = buildTemplateLiteral(analysis.fixedQuasis, firstArg.expressions)
+                  const newTemplate = buildTemplateLiteral(
+                    analysis.fixedQuasis,
+                    firstArg.expressions,
+                  )
                   if (hasTsAs) {
                     fixes.push(fixer.replaceText(originalFirstArg, `${newTemplate} as any`))
-                  }
-                  else {
+                  } else {
                     fixes.push(fixer.replaceText(firstArg, newTemplate))
                   }
                   addNsToArgs(analysis.ns)
-                }
-                else if (analysis.canFix && analysis.variableToUpdate) {
+                } else if (analysis.canFix && analysis.variableToUpdate) {
                   // Variable's namespace prefix is being removed
-                  const quasis = firstArg.quasis.map(q => q.value.raw)
+                  const quasis = firstArg.quasis.map((q) => q.value.raw)
                   // If variable becomes empty and next quasi starts with '.', remove the dot
-                  if (analysis.variableToUpdate.newValue === '' && quasis.length > 1 && quasis[1].startsWith('.')) {
+                  if (
+                    analysis.variableToUpdate.newValue === '' &&
+                    quasis.length > 1 &&
+                    quasis[1].startsWith('.')
+                  ) {
                     quasis[1] = quasis[1].slice(1)
                   }
                   const newTemplate = buildTemplateLiteral(quasis, firstArg.expressions)
                   if (hasTsAs) {
                     fixes.push(fixer.replaceText(originalFirstArg, `${newTemplate} as any`))
-                  }
-                  else {
+                  } else {
                     fixes.push(fixer.replaceText(firstArg, newTemplate))
                   }
                   addNsToArgs(analysis.ns)
                 }
-              }
-              else if (firstArg.type === 'ConditionalExpression') {
+              } else if (firstArg.type === 'ConditionalExpression') {
                 const consequent = firstArg.consequent
                 const alternate = firstArg.alternate
                 let ns = null

@@ -6,7 +6,8 @@ import FileUploader from '../index'
 
 const mockNotify = vi.fn()
 vi.mock('use-context-selector', async () => {
-  const actual = await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
+  const actual =
+    await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
   return {
     ...actual,
     useContext: vi.fn(() => ({ notify: mockNotify })),
@@ -49,29 +50,29 @@ vi.mock('@/types/app', () => ({
 
 // Mock DocumentFileIcon - uses relative path from file-list-item.tsx
 vi.mock('@/app/components/datasets/common/document-file-icon', () => ({
-  default: ({ extension }: { extension: string }) => <div data-testid="document-icon">{extension}</div>,
+  default: ({ extension }: { extension: string }) => (
+    <div data-testid="document-icon">{extension}</div>
+  ),
 }))
 
 // Mock SimplePieChart
 vi.mock('@/next/dynamic', () => ({
   default: () => {
     const Component = ({ percentage }: { percentage: number }) => (
-      <div data-testid="pie-chart">
-        {percentage}
-        %
-      </div>
+      <div data-testid="pie-chart">{percentage}%</div>
     )
     return Component
   },
 }))
 
 describe('FileUploader', () => {
-  const createMockFile = (overrides: Partial<File> = {}): File => ({
-    name: 'test.pdf',
-    size: 1024,
-    type: 'application/pdf',
-    ...overrides,
-  } as File)
+  const createMockFile = (overrides: Partial<File> = {}): File =>
+    ({
+      name: 'test.pdf',
+      size: 1024,
+      type: 'application/pdf',
+      ...overrides,
+    }) as File
 
   const createMockFileItem = (overrides: Partial<FileItem> = {}): FileItem => ({
     fileID: `file-${Date.now()}`,
@@ -145,14 +146,18 @@ describe('FileUploader', () => {
 
     it('should show single file text when batch upload disabled', () => {
       render(<FileUploader {...defaultProps} supportBatchUpload={false} />)
-      expect(screen.getByText(/datasetCreation\.stepOne\.uploader\.buttonSingleFile/)).toBeInTheDocument()
+      expect(
+        screen.getByText(/datasetCreation\.stepOne\.uploader\.buttonSingleFile/),
+      ).toBeInTheDocument()
     })
 
     it('should hide dropzone when not batch upload and has files', () => {
       const fileList = [createMockFileItem()]
       render(<FileUploader {...defaultProps} supportBatchUpload={false} fileList={fileList} />)
 
-      expect(screen.queryByText(/datasetCreation\.stepOne\.uploader\.button/)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(/datasetCreation\.stepOne\.uploader\.button/),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -163,12 +168,13 @@ describe('FileUploader', () => {
         file: createMockFile({ id: 'file-id' } as Partial<File>),
       })
 
-      const { container } = render(<FileUploader {...defaultProps} fileList={[fileItem]} onPreview={onPreview} />)
+      const { container } = render(
+        <FileUploader {...defaultProps} fileList={[fileItem]} onPreview={onPreview} />,
+      )
 
       // Find the file list item container by its class pattern
       const fileElement = container.querySelector('[class*="flex h-12"]')
-      if (fileElement)
-        fireEvent.click(fileElement)
+      if (fileElement) fireEvent.click(fileElement)
 
       expect(onPreview).toHaveBeenCalledWith(fileItem.file)
     })
@@ -178,15 +184,18 @@ describe('FileUploader', () => {
       const fileItem = createMockFileItem()
 
       const { container } = render(
-        <FileUploader {...defaultProps} fileList={[fileItem]} onFileListUpdate={onFileListUpdate} />,
+        <FileUploader
+          {...defaultProps}
+          fileList={[fileItem]}
+          onFileListUpdate={onFileListUpdate}
+        />,
       )
 
       // Find the delete button (the span with cursor-pointer containing the icon)
       const deleteButtons = container.querySelectorAll('[class*="cursor-pointer"]')
       // Get the last one which should be the delete button (not the browse label)
       const deleteButton = deleteButtons[deleteButtons.length - 1]
-      if (deleteButton)
-        fireEvent.click(deleteButton)
+      if (deleteButton) fireEvent.click(deleteButton)
 
       expect(onFileListUpdate).toHaveBeenCalled()
     })

@@ -14,10 +14,7 @@ type PlanRangeSwitcherProps = {
   onChange: (value: PlanRange) => void
 }
 
-const PlanRangeSwitcher: FC<PlanRangeSwitcherProps> = ({
-  value,
-  onChange,
-}) => {
+const PlanRangeSwitcher: FC<PlanRangeSwitcherProps> = ({ value, onChange }) => {
   const { t } = useTranslation()
 
   return (
@@ -30,7 +27,7 @@ const PlanRangeSwitcher: FC<PlanRangeSwitcherProps> = ({
         }}
       />
       <span className="system-md-regular text-text-tertiary">
-        {t($ => $['plansCommon.annualBilling'], { ns: 'billing', percent: 17 })}
+        {t(($) => $['plansCommon.annualBilling'], { ns: 'billing', percent: 17 })}
       </span>
     </div>
   )

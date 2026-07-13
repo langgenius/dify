@@ -12,10 +12,7 @@ type Props = Readonly<{
 }>
 
 const allTypes = [PromptRole.system, PromptRole.user, PromptRole.assistant]
-const MessageTypeSelector: FC<Props> = ({
-  value,
-  onChange,
-}) => {
+const MessageTypeSelector: FC<Props> = ({ value, onChange }) => {
   const [showOption, { setFalse: setHide, toggle: toggleShow }] = useBoolean(false)
   const ref = React.useRef(null)
   useClickAway(() => {
@@ -25,14 +22,17 @@ const MessageTypeSelector: FC<Props> = ({
     <div className="relative left-[-8px]" ref={ref}>
       <div
         onClick={toggleShow}
-        className={cn(showOption && 'bg-indigo-100', 'flex h-7 cursor-pointer items-center space-x-0.5 rounded-lg pr-1 pl-1.5 text-indigo-800')}
+        className={cn(
+          showOption && 'bg-indigo-100',
+          'flex h-7 cursor-pointer items-center space-x-0.5 rounded-lg pr-1 pl-1.5 text-indigo-800',
+        )}
       >
         <div className="text-sm font-semibold uppercase">{value}</div>
         <ChevronSelectorVertical className="size-3" />
       </div>
       {showOption && (
         <div className="absolute top-[30px] z-10 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
-          {allTypes.map(type => (
+          {allTypes.map((type) => (
             <div
               key={type}
               onClick={() => {

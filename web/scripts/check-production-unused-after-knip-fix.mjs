@@ -20,17 +20,16 @@ function run(command, args, options = {}) {
 
     let stdout = ''
     let stderr = ''
-    child.stdout.on('data', data => stdout += data)
-    child.stderr.on('data', data => stderr += data)
+    child.stdout.on('data', (data) => (stdout += data))
+    child.stderr.on('data', (data) => (stderr += data))
     child.on('error', reject)
-    child.on('close', status => resolve({ status, stdout, stderr }))
+    child.on('close', (status) => resolve({ status, stdout, stderr }))
   })
 }
 
 function parseVpLintJson(stdout) {
   const jsonStart = stdout.indexOf('{')
-  if (jsonStart === -1)
-    return { diagnostics: [] }
+  if (jsonStart === -1) return { diagnostics: [] }
 
   return JSON.parse(stdout.slice(jsonStart))
 }
@@ -39,7 +38,10 @@ function relativeDiagnostic(diagnostic) {
   const label = diagnostic.labels?.[0]
   const diagnosticFile = label?.file ?? diagnostic.filename
   const filePath = diagnosticFile
-    ? path.relative(webDir, path.isAbsolute(diagnosticFile) ? diagnosticFile : path.join(webDir, diagnosticFile))
+    ? path.relative(
+        webDir,
+        path.isAbsolute(diagnosticFile) ? diagnosticFile : path.join(webDir, diagnosticFile),
+      )
     : '<unknown>'
   const span = label?.span ? `:${label.span.line}:${label.span.column}` : ''
 
@@ -53,8 +55,7 @@ async function ensureCleanWorktree() {
     throw new Error('Failed to check git status.')
   }
 
-  if (!result.stdout.trim())
-    return
+  if (!result.stdout.trim()) return
 
   console.error('This check runs knip --fix and must start from a clean worktree.')
   console.error('Commit or stash your changes first, then run it again.')
@@ -63,14 +64,18 @@ async function ensureCleanWorktree() {
 }
 
 async function restoreWorktree() {
-  const restoreResult = await run('git', ['restore', '--staged', '--worktree', '.'], { cwd: repoRoot })
+  const restoreResult = await run('git', ['restore', '--staged', '--worktree', '.'], {
+    cwd: repoRoot,
+  })
   if (restoreResult.status !== 0) {
     process.stdout.write(restoreResult.stdout)
     process.stderr.write(restoreResult.stderr)
     throw new Error('Failed to restore tracked files after knip --fix.')
   }
 
-  const cleanResult = await run('git', ['clean', '-fd', '--', 'web', '.eslintcache'], { cwd: repoRoot })
+  const cleanResult = await run('git', ['clean', '-fd', '--', 'web', '.eslintcache'], {
+    cwd: repoRoot,
+  })
   if (cleanResult.status !== 0) {
     process.stdout.write(cleanResult.stdout)
     process.stderr.write(cleanResult.stderr)
@@ -96,38 +101,41 @@ try {
   }
 
   console.log('Running Vite+ unused checks after knip --fix...')
-  const lintResult = await run(vp, [
-    'lint',
-    '-A',
-    'all',
-    '-D',
-    'no-unused-vars',
-    '--format',
-    'json',
-    '--ignore-pattern',
-    'public/**',
-    '--ignore-pattern',
-    'coverage/**',
-    '--ignore-pattern',
-    '.next/**',
-    '--ignore-pattern',
-    '**/__tests__/**',
-    '--ignore-pattern',
-    '**/*.spec.ts',
-    '--ignore-pattern',
-    '**/*.spec.tsx',
-    '--ignore-pattern',
-    '**/*.test.ts',
-    '--ignore-pattern',
-    '**/*.test.tsx',
-    '.',
-  ], { cwd: webDir })
+  const lintResult = await run(
+    vp,
+    [
+      'lint',
+      '-A',
+      'all',
+      '-D',
+      'no-unused-vars',
+      '--format',
+      'json',
+      '--ignore-pattern',
+      'public/**',
+      '--ignore-pattern',
+      'coverage/**',
+      '--ignore-pattern',
+      '.next/**',
+      '--ignore-pattern',
+      '**/__tests__/**',
+      '--ignore-pattern',
+      '**/*.spec.ts',
+      '--ignore-pattern',
+      '**/*.spec.tsx',
+      '--ignore-pattern',
+      '**/*.test.ts',
+      '--ignore-pattern',
+      '**/*.test.tsx',
+      '.',
+    ],
+    { cwd: webDir },
+  )
 
   let lintOutput
   try {
     lintOutput = parseVpLintJson(lintResult.stdout)
-  }
-  catch {
+  } catch {
     process.stdout.write(lintResult.stdout)
     process.stderr.write(lintResult.stderr)
     throw new Error('Failed to parse Vite+ lint JSON output.')
@@ -138,20 +146,18 @@ try {
   if (unusedMessages.length > 0) {
     hasUnusedMessages = true
     console.error('Unused declarations remain after applying knip --production --fix.')
-    console.error('Remove these declarations; if they are only referenced by tests, remove the matching tests too.')
-    for (const message of unusedMessages)
-      console.error(message)
-  }
-  else {
+    console.error(
+      'Remove these declarations; if they are only referenced by tests, remove the matching tests too.',
+    )
+    for (const message of unusedMessages) console.error(message)
+  } else {
     console.log('No Vite+ unused declarations remain after knip --production --fix.')
   }
-}
-finally {
+} finally {
   if (shouldRestore) {
     console.log('Restoring checkout after knip --fix...')
     await restoreWorktree()
   }
 }
 
-if (hasUnusedMessages)
-  process.exit(1)
+if (hasUnusedMessages) process.exit(1)

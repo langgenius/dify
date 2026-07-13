@@ -8,7 +8,7 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 const mockDebugKey = vi.hoisted(() => ({
-  data: null as null | { key: string, host: string, port: number },
+  data: null as null | { key: string; host: string; port: number },
   isLoading: false,
 }))
 
@@ -27,9 +27,7 @@ vi.mock('../../base/key-value-item', () => ({
     maskedValue?: string
   }) => (
     <div data-testid={`kv-${label}`}>
-      {label}
-      :
-      {maskedValue || value}
+      {label}:{maskedValue || value}
     </div>
   ),
 }))
@@ -65,7 +63,14 @@ describe('DebugInfo', () => {
 
     const trigger = screen.getByRole('button', { name: 'Debugging' })
 
-    expect(trigger).toHaveClass('h-8', 'w-full', 'py-1', 'pr-1', 'pl-2', 'text-components-menu-item-text')
+    expect(trigger).toHaveClass(
+      'h-8',
+      'w-full',
+      'py-1',
+      'pr-1',
+      'pl-2',
+      'text-components-menu-item-text',
+    )
     expect(trigger).not.toHaveClass('p-2', 'text-components-button-secondary-text')
   })
 
@@ -88,7 +93,10 @@ describe('DebugInfo', () => {
     await user.click(trigger)
 
     expect(screen.getByText('plugin.debugInfo.title')).toBeInTheDocument()
-    expect(screen.getByText('plugin.debugInfo.title').closest('.w-\\[360px\\]')).toHaveClass('rounded-2xl', 'shadow-2xl')
+    expect(screen.getByText('plugin.debugInfo.title').closest('.w-\\[360px\\]')).toHaveClass(
+      'rounded-2xl',
+      'shadow-2xl',
+    )
     expect(screen.getByRole('link')).toHaveAttribute(
       'href',
       'https://docs.example.com/develop-plugin/features-and-specs/plugin-types/remote-debug-a-plugin',

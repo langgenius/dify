@@ -1,11 +1,5 @@
 import { render } from 'vitest-browser-react'
-import {
-  Meter,
-  MeterIndicator,
-  MeterLabel,
-  MeterTrack,
-  MeterValue,
-} from '../index'
+import { Meter, MeterIndicator, MeterLabel, MeterTrack, MeterValue } from '../index'
 
 describe('Meter compound primitives', () => {
   it('exposes role="meter" with ARIA value metadata', async () => {

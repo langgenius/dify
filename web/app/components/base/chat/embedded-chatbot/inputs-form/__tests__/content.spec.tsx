@@ -16,17 +16,23 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
-
-}))
+vi.mock('@langgenius/dify-ui/toast', () => ({}))
 
 // Mock CodeEditor to trigger onChange easily
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value, onChange, placeholder }: { value: string, onChange: (v: string) => void, placeholder: string | React.ReactNode }) => (
+  default: ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: string
+    onChange: (v: string) => void
+    placeholder: string | React.ReactNode
+  }) => (
     <textarea
       data-testid="mock-code-editor"
       value={value}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
       placeholder={typeof placeholder === 'string' ? placeholder : 'json-placeholder'}
     />
   ),
@@ -34,10 +40,17 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
 
 // Mock FileUploaderInAttachmentWrapper to trigger onChange easily
 vi.mock('@/app/components/base/file-uploader', () => ({
-
-  FileUploaderInAttachmentWrapper: ({ value, onChange }: { value: any[], onChange: (v: any[]) => void }) => (
+  FileUploaderInAttachmentWrapper: ({
+    value,
+    onChange,
+  }: {
+    value: any[]
+    onChange: (v: any[]) => void
+  }) => (
     <div data-testid="mock-file-uploader">
-      <button onClick={() => onChange([new File([''], 'test.png', { type: 'image/png' })])}>Upload</button>
+      <button onClick={() => onChange([new File([''], 'test.png', { type: 'image/png' })])}>
+        Upload
+      </button>
       <span>{value.length > 0 ? value[0].name : 'no file'}</span>
     </div>
   ),
@@ -188,9 +201,8 @@ describe('InputsFormContent', () => {
 
   it('should handle select input changes', async () => {
     render(<InputsFormContent />)
-    const selectTrigger = screen.getAllByText(/Select Label/i).find(el => el.tagName === 'SPAN')
-    if (!selectTrigger)
-      throw new Error('Select trigger not found')
+    const selectTrigger = screen.getAllByText(/Select Label/i).find((el) => el.tagName === 'SPAN')
+    if (!selectTrigger) throw new Error('Select trigger not found')
 
     await user.click(selectTrigger)
     const option = screen.getByText('Option 1')
@@ -202,9 +214,8 @@ describe('InputsFormContent', () => {
 
   it('should render select dropdown on the shared dify-ui overlay layer', async () => {
     render(<InputsFormContent />)
-    const selectTrigger = screen.getAllByText(/Select Label/i).find(el => el.tagName === 'SPAN')
-    if (!selectTrigger)
-      throw new Error('Select trigger not found')
+    const selectTrigger = screen.getAllByText(/Select Label/i).find((el) => el.tagName === 'SPAN')
+    if (!selectTrigger) throw new Error('Select trigger not found')
 
     await user.click(selectTrigger)
 

@@ -4,7 +4,9 @@ import dayjs from '../../utils/dayjs'
 import Header from '../header'
 
 // Factory for Header props
-const createHeaderProps = (overrides: Partial<DatePickerHeaderProps> = {}): DatePickerHeaderProps => ({
+const createHeaderProps = (
+  overrides: Partial<DatePickerHeaderProps> = {},
+): DatePickerHeaderProps => ({
   handleOpenYearMonthPicker: vi.fn(),
   currentDate: dayjs('2024-06-15'),
   onClickNextMonth: vi.fn(),

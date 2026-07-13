@@ -173,7 +173,10 @@ describe('Prompt config component', () => {
     expect(renderedMessages).toHaveLength(2)
     expect(renderedMessages[0])!.toHaveAttribute('data-context-missing', 'true')
     fireEvent.click(screen.getAllByText('hide-context')[0]!)
-    expect(screen.getAllByTestId('advanced-message-input')[0])!.toHaveAttribute('data-context-missing', 'false')
+    expect(screen.getAllByTestId('advanced-message-input')[0])!.toHaveAttribute(
+      'data-context-missing',
+      'false',
+    )
   })
 
   // Chat message mutations
@@ -220,12 +223,10 @@ describe('Prompt config component', () => {
     )
 
     fireEvent.click(screen.getAllByText('type')[1]!)
-    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith(
-      [
-        { role: PromptRole.user, text: 'first' },
-        { role: PromptRole.assistant, text: 'second' },
-      ],
-    )
+    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith([
+      { role: PromptRole.user, text: 'first' },
+      { role: PromptRole.assistant, text: 'second' },
+    ])
   })
 
   it('should delete chat prompt item', () => {
@@ -245,14 +246,14 @@ describe('Prompt config component', () => {
     )
 
     fireEvent.click(screen.getAllByText('delete')[0]!)
-    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith([{ role: PromptRole.assistant, text: 'second' }])
+    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith([
+      { role: PromptRole.assistant, text: 'second' },
+    ])
   })
 
   // Add message behavior
   it('should append a mirrored role message when clicking add in chat mode', () => {
-    const currentAdvancedPrompt: PromptItem[] = [
-      { role: PromptRole.user, text: 'first' },
-    ]
+    const currentAdvancedPrompt: PromptItem[] = [{ role: PromptRole.user, text: 'first' }]
     const setCurrentAdvancedPrompt = vi.fn()
     renderComponent(
       {},
@@ -272,9 +273,7 @@ describe('Prompt config component', () => {
   })
 
   it('should append a user role when the last chat prompt is from assistant', () => {
-    const currentAdvancedPrompt: PromptItem[] = [
-      { role: PromptRole.assistant, text: 'reply' },
-    ]
+    const currentAdvancedPrompt: PromptItem[] = [{ role: PromptRole.assistant, text: 'reply' }]
     const setCurrentAdvancedPrompt = vi.fn()
     renderComponent(
       {},
@@ -341,6 +340,9 @@ describe('Prompt config component', () => {
 
     fireEvent.click(screen.getByText('change'))
 
-    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith({ role: PromptRole.user, text: 'updated text' }, true)
+    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith(
+      { role: PromptRole.user, text: 'updated text' },
+      true,
+    )
   })
 })

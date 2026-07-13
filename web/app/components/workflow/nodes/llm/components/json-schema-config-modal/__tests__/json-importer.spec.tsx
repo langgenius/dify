@@ -18,7 +18,8 @@ vi.mock('../visual-editor/context', () => ({
 }))
 
 vi.mock('../visual-editor/store', () => ({
-  useVisualEditorStore: (selector: (state: typeof visualEditorState) => unknown) => selector(visualEditorState),
+  useVisualEditorStore: (selector: (state: typeof visualEditorState) => unknown) =>
+    selector(visualEditorState),
 }))
 
 vi.mock('../../../utils', () => ({
@@ -26,18 +27,8 @@ vi.mock('../../../utils', () => ({
 }))
 
 vi.mock('../code-editor', () => ({
-  default: ({
-    value,
-    onUpdate,
-  }: {
-    value: string
-    onUpdate: (value: string) => void
-  }) => (
-    <textarea
-      aria-label="json-editor"
-      value={value}
-      onChange={e => onUpdate(e.target.value)}
-    />
+  default: ({ value, onUpdate }: { value: string; onUpdate: (value: string) => void }) => (
+    <textarea aria-label="json-editor" value={value} onChange={(e) => onUpdate(e.target.value)} />
   ),
 }))
 
@@ -53,25 +44,26 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     onOpenChange?: (open: boolean) => void
   } | null>(null)
 
-  const PopoverTrigger = ReactModule.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
-    ({ children, onClick, ...props }, ref) => {
-      const context = ReactModule.useContext(PopoverContext)
+  const PopoverTrigger = ReactModule.forwardRef<
+    HTMLButtonElement,
+    React.ButtonHTMLAttributes<HTMLButtonElement>
+  >(({ children, onClick, ...props }, ref) => {
+    const context = ReactModule.useContext(PopoverContext)
 
-      return (
-        <button
-          ref={ref}
-          type="button"
-          {...props}
-          onClick={(event) => {
-            onClick?.(event)
-            context?.onOpenChange?.(!context.open)
-          }}
-        >
-          {children}
-        </button>
-      )
-    },
-  )
+    return (
+      <button
+        ref={ref}
+        type="button"
+        {...props}
+        onClick={(event) => {
+          onClick?.(event)
+          context?.onOpenChange?.(!context.open)
+        }}
+      >
+        {children}
+      </button>
+    )
+  })
 
   PopoverTrigger.displayName = 'PopoverTrigger'
 
@@ -85,15 +77,12 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
       open: boolean
       onOpenChange?: (open: boolean) => void
     }) => (
-      <PopoverContext.Provider value={{ open, onOpenChange }}>
-        {children}
-      </PopoverContext.Provider>
+      <PopoverContext.Provider value={{ open, onOpenChange }}>{children}</PopoverContext.Provider>
     ),
     PopoverTrigger,
     PopoverContent: ({ children }: { children: React.ReactNode }) => {
       const context = ReactModule.useContext(PopoverContext)
-      if (!context?.open)
-        return null
+      if (!context?.open) return null
 
       return <div data-testid="popover-content">{children}</div>
     },
@@ -132,16 +121,13 @@ describe('JsonImporter', () => {
   it('measures the trigger width and opens the importer without quitting editing by default', async () => {
     const user = userEvent.setup()
 
-    render(
-      <JsonImporter
-        onSubmit={mockOnSubmit}
-        updateBtnWidth={mockUpdateBtnWidth}
-      />,
-    )
+    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
 
     expect(mockUpdateBtnWidth).toHaveBeenCalledWith(88)
 
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
+    )
 
     expect(screen.getByTestId('popover-content')).toBeInTheDocument()
     expect(mockEmit).not.toHaveBeenCalled()
@@ -151,14 +137,11 @@ describe('JsonImporter', () => {
     visualEditorState.advancedEditing = true
     const user = userEvent.setup()
 
-    render(
-      <JsonImporter
-        onSubmit={mockOnSubmit}
-        updateBtnWidth={mockUpdateBtnWidth}
-      />,
-    )
+    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
 
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
+    )
 
     expect(mockEmit).toHaveBeenCalledWith('quitEditing', {})
   })
@@ -166,18 +149,17 @@ describe('JsonImporter', () => {
   it('shows a parse error when the root value is not an object', async () => {
     const user = userEvent.setup()
 
-    render(
-      <JsonImporter
-        onSubmit={mockOnSubmit}
-        updateBtnWidth={mockUpdateBtnWidth}
-      />,
-    )
+    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
 
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
+    )
     fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '[]' } })
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
-    expect(screen.getByTestId('error-message')).toHaveTextContent('Root must be an object, not an array or primitive value.')
+    expect(screen.getByTestId('error-message')).toHaveTextContent(
+      'Root must be an object, not an array or primitive value.',
+    )
     expect(mockOnSubmit).not.toHaveBeenCalled()
   })
 
@@ -185,18 +167,19 @@ describe('JsonImporter', () => {
     mockCheckJsonDepth.mockReturnValue(JSON_SCHEMA_MAX_DEPTH + 1)
     const user = userEvent.setup()
 
-    render(
-      <JsonImporter
-        onSubmit={mockOnSubmit}
-        updateBtnWidth={mockUpdateBtnWidth}
-      />,
-    )
+    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
 
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
-    fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '{"foo":{"bar":1}}' } })
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
+    )
+    fireEvent.change(screen.getByLabelText('json-editor'), {
+      target: { value: '{"foo":{"bar":1}}' },
+    })
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
-    expect(screen.getByTestId('error-message')).toHaveTextContent(`Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`)
+    expect(screen.getByTestId('error-message')).toHaveTextContent(
+      `Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`,
+    )
     expect(mockOnSubmit).not.toHaveBeenCalled()
   })
 
@@ -206,14 +189,11 @@ describe('JsonImporter', () => {
       throw new Error('Malformed JSON payload')
     })
 
-    render(
-      <JsonImporter
-        onSubmit={mockOnSubmit}
-        updateBtnWidth={mockUpdateBtnWidth}
-      />,
-    )
+    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
 
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
+    )
     fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '{"foo":1}' } })
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
@@ -225,16 +205,15 @@ describe('JsonImporter', () => {
 
   it('falls back to the default invalid JSON message when JSON.parse throws a non-Error value', async () => {
     const user = userEvent.setup()
-    const parseSpy = vi.spyOn(JSON, 'parse').mockImplementationOnce(() => throwUnknown(Object.create(null)))
+    const parseSpy = vi
+      .spyOn(JSON, 'parse')
+      .mockImplementationOnce(() => throwUnknown(Object.create(null)))
 
-    render(
-      <JsonImporter
-        onSubmit={mockOnSubmit}
-        updateBtnWidth={mockUpdateBtnWidth}
-      />,
+    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
+
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
     )
-
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
     fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '{"foo":1}' } })
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
@@ -247,21 +226,20 @@ describe('JsonImporter', () => {
   it('submits valid JSON and closes the popover from footer actions', async () => {
     const user = userEvent.setup()
 
-    render(
-      <JsonImporter
-        onSubmit={mockOnSubmit}
-        updateBtnWidth={mockUpdateBtnWidth}
-      />,
-    )
+    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
 
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
+    )
     fireEvent.change(screen.getByLabelText('json-editor'), { target: { value: '{"foo":"bar"}' } })
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
     expect(mockOnSubmit).toHaveBeenCalledWith({ foo: 'bar' })
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }))
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
+    )
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.cancel(?=$|:)/ }))
 
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()

@@ -4,15 +4,16 @@ import { withSelectorKey } from '@/test/i18n-mock'
 import nodeDefault from '../default'
 import { isAgentV2NodeData } from '../types'
 
-const t = withSelectorKey(vi.fn((key: string, options?: Record<string, unknown>) => {
-  if (key === 'errorMsg.fieldRequired')
-    return `required:${options?.field}`
+const t = withSelectorKey(
+  vi.fn((key: string, options?: Record<string, unknown>) => {
+    if (key === 'errorMsg.fieldRequired') return `required:${options?.field}`
 
-  if (key === 'nodes.agent.roster.label')
-    return 'Agent'
+    if (key === 'nodes.agent.roster.label') return 'Agent'
 
-  return key
-}), 'workflow')
+    return key
+  }),
+  'workflow',
+)
 
 const createPayload = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType => ({
   title: 'Agent',
@@ -33,12 +34,15 @@ describe('agent/default', () => {
   })
 
   it('requires a roster agent id', () => {
-    const result = nodeDefault.checkValid(createPayload({
-      agent_binding: {
-        binding_type: 'roster_agent',
-        agent_id: '',
-      },
-    }), t)
+    const result = nodeDefault.checkValid(
+      createPayload({
+        agent_binding: {
+          binding_type: 'roster_agent',
+          agent_id: '',
+        },
+      }),
+      t,
+    )
 
     expect(result).toEqual({
       isValid: false,
@@ -65,11 +69,14 @@ describe('agent/default', () => {
   })
 
   it('requires complete inline agent binding', () => {
-    const result = nodeDefault.checkValid(createPayload({
-      agent_binding: {
-        binding_type: 'inline_agent',
-      },
-    }), t)
+    const result = nodeDefault.checkValid(
+      createPayload({
+        agent_binding: {
+          binding_type: 'inline_agent',
+        },
+      }),
+      t,
+    )
 
     expect(result).toEqual({
       isValid: false,
@@ -78,13 +85,16 @@ describe('agent/default', () => {
   })
 
   it('passes validation for complete inline agent binding', () => {
-    const result = nodeDefault.checkValid(createPayload({
-      agent_binding: {
-        binding_type: 'inline_agent',
-        agent_id: 'inline-agent-1',
-        current_snapshot_id: 'inline-snapshot-1',
-      },
-    }), t)
+    const result = nodeDefault.checkValid(
+      createPayload({
+        agent_binding: {
+          binding_type: 'inline_agent',
+          agent_id: 'inline-agent-1',
+          current_snapshot_id: 'inline-snapshot-1',
+        },
+      }),
+      t,
+    )
 
     expect(result).toEqual({
       isValid: true,
@@ -108,11 +118,13 @@ describe('agent/default', () => {
 
   it('identifies version 2 agent data as Agent v2', () => {
     expect(isAgentV2NodeData(createPayload({ type: BlockEnum.Agent }))).toBe(true)
-    expect(isAgentV2NodeData({
-      title: 'Agent',
-      desc: '',
-      type: BlockEnum.Agent,
-      version: '2',
-    } as Parameters<typeof isAgentV2NodeData>[0])).toBe(false)
+    expect(
+      isAgentV2NodeData({
+        title: 'Agent',
+        desc: '',
+        type: BlockEnum.Agent,
+        version: '2',
+      } as Parameters<typeof isAgentV2NodeData>[0]),
+    ).toBe(false)
   })
 })

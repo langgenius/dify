@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CommentIcon } from './comment-icon'
 
-type Position = { x: number, y: number }
+type Position = { x: number; y: number }
 
 let mockUserId = 'user-1'
 const mockAppContextState = vi.hoisted(() => ({
@@ -81,13 +81,14 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/app/components/base/user-avatar-list', () => ({
   UserAvatarList: ({ users }: { users: Array<{ id: string }> }) => (
-    <div data-testid="avatar-list">{users.map(user => user.id).join(',')}</div>
+    <div data-testid="avatar-list">{users.map((user) => user.id).join(',')}</div>
   ),
 }))
 
@@ -146,11 +147,7 @@ describe('CommentIcon', () => {
     const onClick = vi.fn()
     const onPositionUpdate = vi.fn()
     const { container } = render(
-      <CommentIcon
-        comment={comment}
-        onClick={onClick}
-        onPositionUpdate={onPositionUpdate}
-      />,
+      <CommentIcon comment={comment} onClick={onClick} onPositionUpdate={onPositionUpdate} />,
     )
     const marker = container.querySelector('[data-role="comment-marker"]') as HTMLElement
 

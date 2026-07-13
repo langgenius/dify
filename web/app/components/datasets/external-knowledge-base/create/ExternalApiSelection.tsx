@@ -14,10 +14,14 @@ import ExternalApiSelect from './ExternalApiSelect'
 type ExternalApiSelectionProps = {
   external_knowledge_api_id: string
   external_knowledge_id: string
-  onChange: (data: { external_knowledge_api_id?: string, external_knowledge_id?: string }) => void
+  onChange: (data: { external_knowledge_api_id?: string; external_knowledge_id?: string }) => void
 }
 
-const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_knowledge_api_id, external_knowledge_id, onChange }) => {
+const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
+  external_knowledge_api_id,
+  external_knowledge_id,
+  onChange,
+}) => {
   const { t } = useTranslation()
   const router = useRouter()
   const { externalKnowledgeApiList } = useExternalKnowledgeApi()
@@ -25,7 +29,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
   const { mutateExternalKnowledgeApis } = useExternalKnowledgeApi()
 
-  const apiItems = externalKnowledgeApiList.map(api => ({
+  const apiItems = externalKnowledgeApiList.map((api) => ({
     value: api.id,
     name: api.name,
     url: api.settings.endpoint,
@@ -63,34 +67,40 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
     <form className="flex flex-col gap-4 self-stretch">
       <div className="flex flex-col gap-1 self-stretch">
         <div className="flex flex-col self-stretch">
-          <label className="system-sm-semibold text-text-secondary">{t($ => $.externalAPIPanelTitle, { ns: 'dataset' })}</label>
+          <label className="system-sm-semibold text-text-secondary">
+            {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
+          </label>
         </div>
-        {apiItems.length > 0
-          ? (
-              <ExternalApiSelect
-                items={apiItems}
-                value={selectedApiId}
-                onSelect={(e) => {
-                  setSelectedApiId(e.value)
-                  onChange({ external_knowledge_api_id: e.value, external_knowledge_id })
-                }}
-              />
-            )
-          : (
-              <Button variant="tertiary" onClick={handleAddNewAPI} className="justify-start gap-0.5">
-                <RiAddLine className="size-4 text-text-tertiary" />
-                <span className="system-sm-regular text-text-tertiary">{t($ => $.noExternalKnowledge, { ns: 'dataset' })}</span>
-              </Button>
-            )}
+        {apiItems.length > 0 ? (
+          <ExternalApiSelect
+            items={apiItems}
+            value={selectedApiId}
+            onSelect={(e) => {
+              setSelectedApiId(e.value)
+              onChange({ external_knowledge_api_id: e.value, external_knowledge_id })
+            }}
+          />
+        ) : (
+          <Button variant="tertiary" onClick={handleAddNewAPI} className="justify-start gap-0.5">
+            <RiAddLine className="size-4 text-text-tertiary" />
+            <span className="system-sm-regular text-text-tertiary">
+              {t(($) => $.noExternalKnowledge, { ns: 'dataset' })}
+            </span>
+          </Button>
+        )}
       </div>
       <div className="flex flex-col gap-1 self-stretch">
         <div className="flex flex-col self-stretch">
-          <label className="system-sm-semibold text-text-secondary">{t($ => $.externalKnowledgeId, { ns: 'dataset' })}</label>
+          <label className="system-sm-semibold text-text-secondary">
+            {t(($) => $.externalKnowledgeId, { ns: 'dataset' })}
+          </label>
         </div>
         <Input
           value={external_knowledge_id}
-          onChange={e => onChange({ external_knowledge_id: e.target.value, external_knowledge_api_id })}
-          placeholder={t($ => $.externalKnowledgeIdPlaceholder, { ns: 'dataset' }) ?? ''}
+          onChange={(e) =>
+            onChange({ external_knowledge_id: e.target.value, external_knowledge_api_id })
+          }
+          placeholder={t(($) => $.externalKnowledgeIdPlaceholder, { ns: 'dataset' }) ?? ''}
         />
       </div>
     </form>

@@ -28,8 +28,12 @@ const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
   const documentCountTooltip = useMemo(() => {
     const availableDocCount = dataset.total_available_documents ?? 0
     if (availableDocCount < dataset.document_count)
-      return t($ => $.partialEnabled, { ns: 'dataset', count: dataset.document_count, num: availableDocCount })
-    return t($ => $.docAllEnabled, { ns: 'dataset', count: availableDocCount })
+      return t(($) => $.partialEnabled, {
+        ns: 'dataset',
+        count: dataset.document_count,
+        num: availableDocCount,
+      })
+    return t(($) => $.docAllEnabled, { ns: 'dataset', count: availableDocCount })
   }, [t, dataset.document_count, dataset.total_available_documents])
 
   return (
@@ -41,34 +45,32 @@ const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
     >
       <Tooltip>
         <TooltipTrigger
-          render={(
+          render={
             <div className="flex items-center gap-x-1">
               <RiFileTextFill className="size-3 text-text-quaternary" />
               <span className="system-xs-medium">{documentCount}</span>
             </div>
-          )}
+          }
         />
-        <TooltipContent>
-          {documentCountTooltip}
-        </TooltipContent>
+        <TooltipContent>{documentCountTooltip}</TooltipContent>
       </Tooltip>
       {!isExternalProvider && (
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <div className="flex items-center gap-x-1">
                 <RiRobot2Fill className="size-3 text-text-quaternary" />
                 <span className="system-xs-medium">{dataset.app_count}</span>
               </div>
-            )}
+            }
           />
           <TooltipContent>
-            {`${dataset.app_count} ${t($ => $.appCount, { ns: 'dataset' })}`}
+            {`${dataset.app_count} ${t(($) => $.appCount, { ns: 'dataset' })}`}
           </TooltipContent>
         </Tooltip>
       )}
       <span className="system-xs-regular text-divider-deep">/</span>
-      <span className="system-xs-regular">{`${t($ => $.updated, { ns: 'dataset' })} ${formatTimeFromNow(dataset.updated_at * 1000)}`}</span>
+      <span className="system-xs-regular">{`${t(($) => $.updated, { ns: 'dataset' })} ${formatTimeFromNow(dataset.updated_at * 1000)}`}</span>
     </div>
   )
 }

@@ -86,18 +86,20 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: WorkflowStoreSelectionState) => unknown) => selector({
-    activeCommentId: storeState.activeCommentId,
-    setActiveCommentId: (...args: unknown[]) => mockSetActiveCommentId(...args),
-    setControlMode: (...args: unknown[]) => mockSetControlMode(...args),
-    showResolvedComments: storeState.showResolvedComments,
-    setShowResolvedComments: (...args: unknown[]) => mockSetShowResolvedComments(...args),
-  }),
+  useStore: (selector: (state: WorkflowStoreSelectionState) => unknown) =>
+    selector({
+      activeCommentId: storeState.activeCommentId,
+      setActiveCommentId: (...args: unknown[]) => mockSetActiveCommentId(...args),
+      setControlMode: (...args: unknown[]) => mockSetControlMode(...args),
+      showResolvedComments: storeState.showResolvedComments,
+      setShowResolvedComments: (...args: unknown[]) => mockSetShowResolvedComments(...args),
+    }),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-workflow-comment', () => ({
@@ -114,8 +116,18 @@ vi.mock('@/app/components/base/user-avatar-list', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange: (value: boolean) => void }) => (
-    <button type="button" data-testid="show-resolved-switch" onClick={() => onCheckedChange(!checked)}>
+  Switch: ({
+    checked,
+    onCheckedChange,
+  }: {
+    checked: boolean
+    onCheckedChange: (value: boolean) => void
+  }) => (
+    <button
+      type="button"
+      data-testid="show-resolved-switch"
+      onClick={() => onCheckedChange(!checked)}
+    >
       toggle
     </button>
   ),

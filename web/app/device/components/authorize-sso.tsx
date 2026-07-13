@@ -41,8 +41,7 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
         }
       })
       .catch((e) => {
-        if (!cancelled)
-          setLoadErr(approveErrorCopy(e, t))
+        if (!cancelled) setLoadErr(approveErrorCopy(e, t))
       })
     return () => {
       cancelled = true
@@ -50,17 +49,14 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
   }, [t])
 
   const approve = async () => {
-    if (!ctx)
-      return
+    if (!ctx) return
     setBusy(true)
     try {
       await approveExternal(ctx, ctx.user_code)
       onApproved()
-    }
-    catch (e) {
+    } catch (e) {
       onError(approveErrorCopy(e, t))
-    }
-    finally {
+    } finally {
       setBusy(false)
     }
   }
@@ -71,55 +67,50 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
   if (loadErr) {
     return (
       <div>
-        <h2 className="text-2xl font-semibold text-text-primary">{t($ => $['authorize.sessionInvalidTitle'])}</h2>
+        <h2 className="text-2xl font-semibold text-text-primary">
+          {t(($) => $['authorize.sessionInvalidTitle'])}
+        </h2>
         <p className="mt-2 text-sm text-text-secondary">
           <Trans
-            i18nKey={$ => $['authorize.sessionInvalidBody']}
+            i18nKey={($) => $['authorize.sessionInvalidBody']}
             ns="deviceFlow"
-            components={{ codeTag: <code className="rounded bg-components-input-bg-normal px-1 font-mono" /> }}
+            components={{
+              codeTag: <code className="rounded bg-components-input-bg-normal px-1 font-mono" />,
+            }}
           />
         </p>
       </div>
     )
   }
   if (!ctx) {
-    return <div className="text-sm text-text-secondary">{t($ => $['authorize.loadingSession'])}</div>
+    return (
+      <div className="text-sm text-text-secondary">{t(($) => $['authorize.loadingSession'])}</div>
+    )
   }
 
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-semibold text-text-primary">{t($ => $['authorize.title'])}</h2>
-        <p className="mt-2 text-sm text-text-secondary">
-          {t($ => $['authorize.ssoSubtitle'])}
-        </p>
+        <h2 className="text-2xl font-semibold text-text-primary">
+          {t(($) => $['authorize.title'])}
+        </h2>
+        <p className="mt-2 text-sm text-text-secondary">{t(($) => $['authorize.ssoSubtitle'])}</p>
       </div>
       <div className="flex items-center gap-2.5 rounded-lg bg-background-section-burn px-3 py-2.5">
-        <Avatar
-          size="md"
-          avatar={null}
-          name={ctx.subject_email}
-        />
+        <Avatar size="md" avatar={null} name={ctx.subject_email} />
         <div>
           <p className="text-sm font-semibold text-text-primary">{ctx.subject_email}</p>
-          <p className="text-xs text-text-secondary">{t($ => $['authorize.viaSSO'])}</p>
+          <p className="text-xs text-text-secondary">{t(($) => $['authorize.viaSSO'])}</p>
         </div>
       </div>
       {ctx.subject_issuer && (
         <div className="rounded-lg bg-background-section-burn px-3 py-2 text-sm text-text-secondary">
-          {t($ => $['authorize.identityProvider'])}
-          {' '}
+          {t(($) => $['authorize.identityProvider'])}{' '}
           <span className="font-semibold text-text-primary">{ctx.subject_issuer}</span>
         </div>
       )}
-      <Button
-        variant="primary"
-        size="large"
-        className="w-full"
-        onClick={approve}
-        disabled={busy}
-      >
-        {t($ => $['authorize.approve'])}
+      <Button variant="primary" size="large" className="w-full" onClick={approve} disabled={busy}>
+        {t(($) => $['authorize.approve'])}
       </Button>
     </div>
   )
