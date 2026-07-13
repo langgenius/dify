@@ -8,8 +8,7 @@ type AckArgs = unknown[]
 const isUnauthorizedAck = (...ackArgs: AckArgs): boolean => {
   const [first, second] = ackArgs
 
-  if (second === 401 || first === 401)
-    return true
+  if (second === 401 || first === 401) return true
 
   if (first && typeof first === 'object' && 'msg' in first) {
     const message = (first as { msg?: unknown }).msg
@@ -30,18 +29,12 @@ export const emitWithAuthGuard = (
   payload: unknown,
   options?: EmitAckOptions,
 ): void => {
-  if (!socket)
-    return
+  if (!socket) return
 
-  socket.emit(
-    event,
-    payload,
-    (...ackArgs: AckArgs) => {
-      options?.onAck?.(...ackArgs)
-      if (isUnauthorizedAck(...ackArgs))
-        options?.onUnauthorized?.(...ackArgs)
-    },
-  )
+  socket.emit(event, payload, (...ackArgs: AckArgs) => {
+    options?.onAck?.(...ackArgs)
+    if (isUnauthorizedAck(...ackArgs)) options?.onUnauthorized?.(...ackArgs)
+  })
 }
 
 export class WebSocketClient {
@@ -59,13 +52,11 @@ export class WebSocketClient {
 
   connect(appId: string): Socket {
     const existingSocket = this.connections.get(appId)
-    if (existingSocket?.connected)
-      return existingSocket
+    if (existingSocket?.connected) return existingSocket
 
     if (this.connecting.has(appId)) {
       const pendingSocket = this.connections.get(appId)
-      if (pendingSocket)
-        return pendingSocket
+      if (pendingSocket) return pendingSocket
     }
 
     if (existingSocket && !existingSocket.connected) {
@@ -101,9 +92,8 @@ export class WebSocketClient {
         this.connections.delete(appId)
         this.connecting.delete(appId)
       }
-    }
-    else {
-      this.connections.forEach(socket => socket.disconnect())
+    } else {
+      this.connections.forEach((socket) => socket.disconnect())
       this.connections.clear()
       this.connecting.clear()
     }
@@ -120,8 +110,7 @@ export class WebSocketClient {
   getConnectedApps(): string[] {
     const connectedApps: string[] = []
     this.connections.forEach((socket, appId) => {
-      if (socket.connected)
-        connectedApps.push(appId)
+      if (socket.connected) connectedApps.push(appId)
     })
     return connectedApps
   }

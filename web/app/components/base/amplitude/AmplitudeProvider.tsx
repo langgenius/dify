@@ -8,9 +8,7 @@ import { ensureAmplitudeInitialized } from './init'
 
 export type IAmplitudeProps = AmplitudeInitializationOptions
 
-const AmplitudeProvider: FC<IAmplitudeProps> = ({
-  sessionReplaySampleRate = 0.5,
-}) => {
+const AmplitudeProvider: FC<IAmplitudeProps> = ({ sessionReplaySampleRate = 0.5 }) => {
   useEffect(() => {
     ensureAmplitudeInitialized({
       sessionReplaySampleRate,

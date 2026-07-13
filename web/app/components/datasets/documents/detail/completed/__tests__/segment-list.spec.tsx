@@ -2,14 +2,15 @@ import type { SegmentDetailModel } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode } from '@/models/datasets'
-
 import SegmentList from '../segment-list'
 
 // Mock document context
 let mockDocForm = ChunkingMode.text
 let mockParentMode = 'paragraph'
 vi.mock('../../context', () => ({
-  useDocumentContext: (selector: (state: { docForm: ChunkingMode, parentMode: string }) => unknown) => {
+  useDocumentContext: (
+    selector: (state: { docForm: ChunkingMode; parentMode: string }) => unknown,
+  ) => {
     return selector({
       docForm: mockDocForm,
       parentMode: mockParentMode,
@@ -21,7 +22,12 @@ vi.mock('../../context', () => ({
 let mockCurrSegment: { segInfo: { id: string } } | null = null
 let mockCurrChildChunk: { childChunkInfo: { segment_id: string } } | null = null
 vi.mock('../index', () => ({
-  useSegmentListContext: (selector: (state: { currSegment: { segInfo: { id: string } } | null, currChildChunk: { childChunkInfo: { segment_id: string } } | null }) => unknown) => {
+  useSegmentListContext: (
+    selector: (state: {
+      currSegment: { segInfo: { id: string } } | null
+      currChildChunk: { childChunkInfo: { segment_id: string } } | null
+    }) => unknown,
+  ) => {
     return selector({
       currSegment: mockCurrSegment,
       currChildChunk: mockCurrChildChunk,
@@ -32,7 +38,9 @@ vi.mock('../index', () => ({
 vi.mock('../common/empty', () => ({
   default: ({ onClearFilter }: { onClearFilter: () => void }) => (
     <div data-testid="empty">
-      <button onClick={onClearFilter} data-testid="clear-filter-btn">Clear Filter</button>
+      <button onClick={onClearFilter} data-testid="clear-filter-btn">
+        Clear Filter
+      </button>
     </div>
   ),
 }))
@@ -61,7 +69,7 @@ vi.mock('../segment-card', () => ({
     onClickSlice: (childChunk: unknown) => void
     archived: boolean
     embeddingAvailable: boolean
-    focused: { segmentIndex: boolean, segmentContent: boolean }
+    focused: { segmentIndex: boolean; segmentContent: boolean }
   }) => (
     <div data-testid="segment-card" data-id={detail.id}>
       <span data-testid="segment-content">{detail.content}</span>
@@ -69,13 +77,30 @@ vi.mock('../segment-card', () => ({
       <span data-testid="embedding-available">{embeddingAvailable ? 'true' : 'false'}</span>
       <span data-testid="focused-index">{focused.segmentIndex ? 'true' : 'false'}</span>
       <span data-testid="focused-content">{focused.segmentContent ? 'true' : 'false'}</span>
-      <button onClick={onClick} data-testid="card-click">Click</button>
-      <button onClick={onClickEdit} data-testid="edit-btn">Edit</button>
-      <button onClick={() => onChangeSwitch(true, detail.id)} data-testid="switch-btn">Switch</button>
-      <button onClick={() => onDelete(detail.id)} data-testid="delete-btn">Delete</button>
-      <button onClick={() => onDeleteChildChunk(detail.id, 'child-1')} data-testid="delete-child-btn">Delete Child</button>
-      <button onClick={() => handleAddNewChildChunk(detail.id)} data-testid="add-child-btn">Add Child</button>
-      <button onClick={() => onClickSlice({ id: 'slice-1' })} data-testid="click-slice-btn">Click Slice</button>
+      <button onClick={onClick} data-testid="card-click">
+        Click
+      </button>
+      <button onClick={onClickEdit} data-testid="edit-btn">
+        Edit
+      </button>
+      <button onClick={() => onChangeSwitch(true, detail.id)} data-testid="switch-btn">
+        Switch
+      </button>
+      <button onClick={() => onDelete(detail.id)} data-testid="delete-btn">
+        Delete
+      </button>
+      <button
+        onClick={() => onDeleteChildChunk(detail.id, 'child-1')}
+        data-testid="delete-child-btn"
+      >
+        Delete Child
+      </button>
+      <button onClick={() => handleAddNewChildChunk(detail.id)} data-testid="add-child-btn">
+        Add Child
+      </button>
+      <button onClick={() => onClickSlice({ id: 'slice-1' })} data-testid="click-slice-btn">
+        Click Slice
+      </button>
     </div>
   ),
 }))
@@ -97,27 +122,28 @@ describe('SegmentList', () => {
     mockCurrChildChunk = null
   })
 
-  const createMockSegment = (id: string, content: string): SegmentDetailModel => ({
-    id,
-    content,
-    position: 1,
-    word_count: 10,
-    tokens: 5,
-    hit_count: 0,
-    enabled: true,
-    status: 'completed',
-    created_at: Date.now(),
-    updated_at: Date.now(),
-    keywords: [],
-    document_id: 'doc-1',
-    sign_content: content,
-    index_node_id: `index-${id}`,
-    index_node_hash: `hash-${id}`,
-    answer: '',
-    error: null,
-    disabled_at: null,
-    disabled_by: null,
-  } as unknown as SegmentDetailModel)
+  const createMockSegment = (id: string, content: string): SegmentDetailModel =>
+    ({
+      id,
+      content,
+      position: 1,
+      word_count: 10,
+      tokens: 5,
+      hit_count: 0,
+      enabled: true,
+      status: 'completed',
+      created_at: Date.now(),
+      updated_at: Date.now(),
+      keywords: [],
+      document_id: 'doc-1',
+      sign_content: content,
+      index_node_id: `index-${id}`,
+      index_node_hash: `hash-${id}`,
+      answer: '',
+      error: null,
+      disabled_at: null,
+      disabled_by: null,
+    }) as unknown as SegmentDetailModel
 
   const defaultProps = {
     ref: null,
@@ -268,10 +294,7 @@ describe('SegmentList', () => {
       rerender(
         <SegmentList
           {...defaultProps}
-          items={[
-            createMockSegment('seg-2', 'Content 2'),
-            createMockSegment('seg-3', 'Content 3'),
-          ]}
+          items={[createMockSegment('seg-2', 'Content 2'), createMockSegment('seg-3', 'Content 3')]}
         />,
       )
 
@@ -290,7 +313,9 @@ describe('SegmentList', () => {
     it('should label each segment checkbox', () => {
       render(<SegmentList {...defaultProps} />)
 
-      expect(screen.getByRole('checkbox', { name: 'datasetDocuments.segment.chunk 1' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('checkbox', { name: 'datasetDocuments.segment.chunk 1' }),
+      ).toBeInTheDocument()
     })
   })
 

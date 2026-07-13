@@ -23,7 +23,7 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
       >
         <button
           type="button"
-          aria-label={t($ => $['operation.close'], { ns: 'common' })}
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2"
           onClick={onClose}
         >
@@ -32,14 +32,20 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
         <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-section p-3 shadow-xl">
           <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
         </div>
-        <DialogTitle className="relative mt-3 text-xl leading-[30px] font-semibold text-text-primary">{t($ => $['createTool.confirmTitle'], { ns: 'tools' })}</DialogTitle>
+        <DialogTitle className="relative mt-3 text-xl leading-[30px] font-semibold text-text-primary">
+          {t(($) => $['createTool.confirmTitle'], { ns: 'tools' })}
+        </DialogTitle>
         <div className="my-1 text-sm/5 text-text-tertiary">
-          {t($ => $['createTool.confirmTip'], { ns: 'tools' })}
+          {t(($) => $['createTool.confirmTip'], { ns: 'tools' })}
         </div>
         <div className="flex items-center justify-end pt-6">
           <div className="flex items-center">
-            <Button className="mr-2" onClick={onClose}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
-            <Button variant="primary" tone="destructive" onClick={onConfirm}>{t($ => $['operation.confirm'], { ns: 'common' })}</Button>
+            <Button className="mr-2" onClick={onClose}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
+            <Button variant="primary" tone="destructive" onClick={onConfirm}>
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
+            </Button>
           </div>
         </div>
       </DialogContent>

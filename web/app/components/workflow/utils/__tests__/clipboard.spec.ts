@@ -53,12 +53,14 @@ describe('workflow clipboard storage', () => {
   it('should allow reading clipboard data with different version', async () => {
     const nodes = [createNode({ id: 'node-1' })]
     const edges = [createEdge({ id: 'edge-1', source: 'node-1', target: 'node-2' })]
-    readTextMock.mockResolvedValue(JSON.stringify({
-      kind: 'dify-workflow-clipboard',
-      version: '0.5.0',
-      nodes,
-      edges,
-    }))
+    readTextMock.mockResolvedValue(
+      JSON.stringify({
+        kind: 'dify-workflow-clipboard',
+        version: '0.5.0',
+        nodes,
+        edges,
+      }),
+    )
 
     await expect(readWorkflowClipboard(currentVersion)).resolves.toEqual({
       nodes,
@@ -77,12 +79,17 @@ describe('workflow clipboard storage', () => {
   })
 
   it('should return empty clipboard data for invalid structure', () => {
-    expect(parseWorkflowClipboardText(JSON.stringify({
-      kind: 'unknown',
-      version: 1,
-      nodes: [],
-      edges: [],
-    }), currentVersion)).toEqual({
+    expect(
+      parseWorkflowClipboardText(
+        JSON.stringify({
+          kind: 'unknown',
+          version: 1,
+          nodes: [],
+          edges: [],
+        }),
+        currentVersion,
+      ),
+    ).toEqual({
       nodes: [],
       edges: [],
       isVersionMismatch: false,

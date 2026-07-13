@@ -79,7 +79,7 @@ export const createCommand: SlashCommandHandler = {
   async search(args: string, locale?: string) {
     const i18n = getI18n()
     const tr = (key: (typeof OPTIONS)[number]['titleKey' | 'descKey']) =>
-      i18n.t($ => $[key], { ns: 'app', lng: locale })
+      i18n.t(($) => $[key], { ns: 'app', lng: locale })
 
     const renderIcon = (Icon: CreateOption['icon']) => (
       <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
@@ -105,19 +105,20 @@ export const createCommand: SlashCommandHandler = {
     // submenu-filter behaviour, no instruction captured.
     if (tokens.length <= 1) {
       const query = trimmed.toLowerCase()
-      return OPTIONS
-        .filter(opt => !query || opt.id.includes(query) || tr(opt.titleKey).toLowerCase().includes(query))
-        .map(opt => toResult(opt, ''))
+      return OPTIONS.filter(
+        (opt) => !query || opt.id.includes(query) || tr(opt.titleKey).toLowerCase().includes(query),
+      ).map((opt) => toResult(opt, ''))
     }
 
     // Multi-token: inline capture. If the first word names a mode, use it and
     // treat the rest as the instruction; otherwise keep every option with the
     // full text as the instruction so the user just picks the type.
     const first = tokens[0]!.toLowerCase()
-    const matched = OPTIONS.find(opt => opt.id === first || tr(opt.titleKey).toLowerCase() === first)
-    if (matched)
-      return [toResult(matched, tokens.slice(1).join(' '))]
-    return OPTIONS.map(opt => toResult(opt, trimmed))
+    const matched = OPTIONS.find(
+      (opt) => opt.id === first || tr(opt.titleKey).toLowerCase() === first,
+    )
+    if (matched) return [toResult(matched, tokens.slice(1).join(' '))]
+    return OPTIONS.map((opt) => toResult(opt, trimmed))
   },
 
   register() {
@@ -135,8 +136,8 @@ export const createCommand: SlashCommandHandler = {
         // different from the open Studio, so applying to the current draft is
         // unsafe.
         const appDetail = useAppStore.getState().appDetail
-        const currentAppMode: WorkflowGeneratorMode | null
-          = appDetail?.mode === AppModeEnum.WORKFLOW
+        const currentAppMode: WorkflowGeneratorMode | null =
+          appDetail?.mode === AppModeEnum.WORKFLOW
             ? 'workflow'
             : appDetail?.mode === AppModeEnum.ADVANCED_CHAT
               ? 'advanced-chat'

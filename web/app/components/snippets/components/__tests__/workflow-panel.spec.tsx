@@ -23,18 +23,21 @@ describe('SnippetWorkflowPanel', () => {
   // Verifies snippet panel wires version history support into the shared workflow panel.
   describe('Rendering', () => {
     it('should pass snippet version history panel props to the shared workflow panel', async () => {
-      render(
-        <SnippetWorkflowPanel
-          snippetId="snippet-1"
-          fields={defaultFields}
-        />,
-      )
+      render(<SnippetWorkflowPanel snippetId="snippet-1" fields={defaultFields} />)
 
       await waitFor(() => {
-        expect(capturedPanelProps?.versionHistoryPanelProps?.getVersionListUrl).toBe('/snippets/snippet-1/workflows')
-        expect(capturedPanelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-1')).toBe('/snippets/snippet-1/workflows/version-1')
-        expect(capturedPanelProps?.versionHistoryPanelProps?.restoreVersionUrl('version-1')).toBe('/snippets/snippet-1/workflows/version-1/restore')
-        expect(capturedPanelProps?.versionHistoryPanelProps?.updateVersionUrl?.('version-1')).toBe('/snippets/snippet-1/workflows/version-1')
+        expect(capturedPanelProps?.versionHistoryPanelProps?.getVersionListUrl).toBe(
+          '/snippets/snippet-1/workflows',
+        )
+        expect(capturedPanelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-1')).toBe(
+          '/snippets/snippet-1/workflows/version-1',
+        )
+        expect(capturedPanelProps?.versionHistoryPanelProps?.restoreVersionUrl('version-1')).toBe(
+          '/snippets/snippet-1/workflows/version-1/restore',
+        )
+        expect(capturedPanelProps?.versionHistoryPanelProps?.updateVersionUrl?.('version-1')).toBe(
+          '/snippets/snippet-1/workflows/version-1',
+        )
         expect(capturedPanelProps?.versionHistoryPanelProps?.latestVersionId).toBe('')
         expect(capturedPanelProps?.components?.right).toBeTruthy()
       })

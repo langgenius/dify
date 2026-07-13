@@ -10,19 +10,27 @@ import { consoleQuery } from '@/service/client'
 import { openDeployDrawerAtom } from '../../../deploy-drawer/state'
 import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { createDeploymentIdempotencyKey } from '../../../shared/domain/idempotency'
-import { isRuntimeDeploymentInProgress, isUndeployedDeploymentRow } from '../../../shared/domain/runtime-status'
+import {
+  isRuntimeDeploymentInProgress,
+  isUndeployedDeploymentRow,
+} from '../../../shared/domain/runtime-status'
 import { DeploymentErrorDialog } from './deployment-error-dialog'
 import { DeploymentActionsDropdown } from './deployment-row-actions-menu'
 import { UndeployDeploymentDialog } from './undeploy-deployment-dialog'
 
-export function DeploymentRowActions({ envId, row }: {
+export function DeploymentRowActions({
+  envId,
+  row,
+}: {
   envId: string
   row: EnvironmentDeployment
 }) {
   const { t } = useTranslation('deployments')
   const routeAppInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
-  const undeployDeployment = useMutation(consoleQuery.enterprise.deploymentService.undeploy.mutationOptions())
+  const undeployDeployment = useMutation(
+    consoleQuery.enterprise.deploymentService.undeploy.mutationOptions(),
+  )
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
   const [showErrorDetail, setShowErrorDetail] = useState(false)
   const isUndeployed = isUndeployedDeploymentRow(row)
@@ -34,11 +42,10 @@ export function DeploymentRowActions({ envId, row }: {
   const currentReleaseId = row.currentRelease?.id
   const failedReleaseId = row.desiredRelease?.id ?? row.currentRelease?.id
   const deployActionLabel = isUndeployed
-    ? t($ => $['deployDrawer.deploy'])
-    : t($ => $['deployTab.deployOtherVersion'])
+    ? t(($) => $['deployDrawer.deploy'])
+    : t(($) => $['deployTab.deployOtherVersion'])
 
-  if (!routeAppInstanceId)
-    return null
+  if (!routeAppInstanceId) return null
 
   const appInstanceId = routeAppInstanceId
 
@@ -47,8 +54,7 @@ export function DeploymentRowActions({ envId, row }: {
   }
 
   function handleUndeploy() {
-    if (isUndeployRequesting)
-      return
+    if (isUndeployRequesting) return
 
     undeployDeployment.mutate(
       {
@@ -71,8 +77,8 @@ export function DeploymentRowActions({ envId, row }: {
     <div
       role="presentation"
       className="flex shrink-0 items-center"
-      onClick={e => e.stopPropagation()}
-      onKeyDown={e => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
     >
       <DeploymentActionsDropdown
         currentReleaseId={currentReleaseId}
@@ -88,11 +94,7 @@ export function DeploymentRowActions({ envId, row }: {
       />
 
       {isDeployFailed && (
-        <DeploymentErrorDialog
-          open={showErrorDetail}
-          row={row}
-          onOpenChange={setShowErrorDetail}
-        />
+        <DeploymentErrorDialog open={showErrorDetail} row={row} onOpenChange={setShowErrorDetail} />
       )}
 
       {!isUndeployed && !isDeploymentInProgress && (

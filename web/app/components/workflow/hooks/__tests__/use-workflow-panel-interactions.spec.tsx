@@ -1,10 +1,7 @@
 import { act } from '@testing-library/react'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { ControlMode, WorkflowRunningStatus } from '../../types'
-import {
-  useWorkflowInteractions,
-  useWorkflowMoveMode,
-} from '../use-workflow-panel-interactions'
+import { useWorkflowInteractions, useWorkflowMoveMode } from '../use-workflow-panel-interactions'
 
 const mockHandleSelectionCancel = vi.hoisted(() => vi.fn())
 const mockHandleNodeCancelRunningStatus = vi.hoisted(() => vi.fn())
@@ -29,13 +26,15 @@ vi.mock('../use-selection-interactions', () => ({
 
 vi.mock('../use-nodes-interactions-without-sync', () => ({
   useNodesInteractionsWithoutSync: () => ({
-    handleNodeCancelRunningStatus: (...args: unknown[]) => mockHandleNodeCancelRunningStatus(...args),
+    handleNodeCancelRunningStatus: (...args: unknown[]) =>
+      mockHandleNodeCancelRunningStatus(...args),
   }),
 }))
 
 vi.mock('../use-edges-interactions-without-sync', () => ({
   useEdgesInteractionsWithoutSync: () => ({
-    handleEdgeCancelRunningStatus: (...args: unknown[]) => mockHandleEdgeCancelRunningStatus(...args),
+    handleEdgeCancelRunningStatus: (...args: unknown[]) =>
+      mockHandleEdgeCancelRunningStatus(...args),
   }),
 }))
 

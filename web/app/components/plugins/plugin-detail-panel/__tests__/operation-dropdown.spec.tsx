@@ -33,7 +33,9 @@ describe('OperationDropdown', () => {
     it('should render the actions trigger', () => {
       render(<OperationDropdown {...defaultProps} />)
 
-      expect(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
+      ).toBeInTheDocument()
     })
 
     it('should render GitHub actions when marketplace is enabled', () => {
@@ -89,7 +91,9 @@ describe('OperationDropdown', () => {
         />,
       )
 
-      expect(screen.queryByRole('button', { name: 'plugin.detailPanel.operation.moreActions' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
+      ).not.toBeInTheDocument()
     })
   })
 

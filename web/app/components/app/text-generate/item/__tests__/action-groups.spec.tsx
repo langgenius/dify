@@ -9,16 +9,6 @@ const mockOnMoreLikeThis = vi.fn()
 const mockOnOpenLogModal = vi.fn()
 const mockOnRetry = vi.fn()
 const mockOnSave = vi.fn()
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('copy-to-clipboard', () => ({
   default: (...args: unknown[]) => mockCopy(...args),
 }))
@@ -53,10 +43,12 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.copy' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.copy(?=$|:)/ }))
 
     expect(mockCopy).toHaveBeenCalledWith('hello world')
-    expect(mockSuccess).toHaveBeenCalledWith('actionMsg.copySuccessfully')
+    expect(mockSuccess).toHaveBeenCalledWith(
+      expect.stringMatching(/(?:^|\.)actionMsg\.copySuccessfully(?=$|:)/),
+    )
   })
 
   it('should handle more-like-this and feedback actions', () => {
@@ -80,9 +72,11 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'feature.moreLikeThis.title' }))
-    fireEvent.click(screen.getByRole('button', { name: 'operation.agree' }))
-    fireEvent.click(screen.getByRole('button', { name: 'operation.save' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.agree(?=$|:)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.save(?=$|:)/ }))
 
     expect(mockOnMoreLikeThis).toHaveBeenCalledTimes(1)
     expect(mockOnFeedback).toHaveBeenCalledWith({ rating: 'like' })
@@ -106,7 +100,9 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'feature.moreLikeThis.title' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
+    ).toBeDisabled()
   })
 
   it('should stringify non-string content before copying', () => {
@@ -125,7 +121,7 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.copy' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.copy(?=$|:)/ }))
 
     expect(mockCopy).toHaveBeenCalledWith(JSON.stringify({ result: 'hello world' }))
   })
@@ -148,7 +144,9 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'generation.batchFailed.retry' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /(?:^|\.)generation\.batchFailed\.retry(?=$|:)/ }),
+    )
 
     expect(mockOnRetry).toHaveBeenCalledTimes(1)
   })
@@ -171,7 +169,7 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.disagree' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.disagree(?=$|:)/ }))
     expect(mockOnFeedback).toHaveBeenCalledWith({ rating: 'dislike' })
 
     rerender(
@@ -191,7 +189,7 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.cancelAgree' }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.cancelAgree(?=$|:)/ }))
     expect(mockOnFeedback).toHaveBeenCalledWith({ rating: null })
 
     rerender(
@@ -211,7 +209,9 @@ describe('GenerationActionGroups', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'operation.cancelDisagree' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /(?:^|\.)operation\.cancelDisagree(?=$|:)/ }),
+    )
     expect(mockOnFeedback).toHaveBeenCalledWith({ rating: null })
   })
 })

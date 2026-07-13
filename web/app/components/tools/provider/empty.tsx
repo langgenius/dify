@@ -30,25 +30,24 @@ const getLink = (type?: ToolTypeEnum) => {
       return buildIntegrationPath('custom-tool')
   }
 }
-const Empty = ({
-  type,
-  isAgent,
-}: Props) => {
+const Empty = ({ type, isAgent }: Props) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { theme } = useTheme()
 
   const hasLink = type && [ToolTypeEnum.Custom, ToolTypeEnum.MCP].includes(type)
-  const renderType = isAgent ? 'agent' as const : type
-  const hasTitle = renderType && t($ => $[`addToolModal.${renderType}.title`], { ns: 'tools' }) !== `addToolModal.${renderType}.title`
+  const renderType = isAgent ? ('agent' as const) : type
+  const hasTitle =
+    renderType &&
+    t(($) => $[`addToolModal.${renderType}.title`], { ns: 'tools' }) !==
+      `addToolModal.${renderType}.title`
   const tipClassName = cn(
     'flex items-center text-[13px] leading-[18px] text-text-tertiary',
     hasLink && 'cursor-pointer hover:text-text-accent',
   )
   const tipContent = renderType && (
     <>
-      {t($ => $[`addToolModal.${renderType}.tip`], { ns: 'tools' })}
-      {' '}
+      {t(($) => $[`addToolModal.${renderType}.tip`], { ns: 'tools' })}{' '}
       {hasLink && <RiArrowRightUpLine className="ml-0.5 size-3" />}
     </>
   )
@@ -58,10 +57,10 @@ const Empty = ({
       <div className="flex w-full max-w-[1060px] flex-col items-center gap-8 text-center">
         <div className="flex w-full max-w-[739px] flex-col items-center gap-1">
           <div className="text-[24px] font-semibold text-text-primary">
-            {t($ => $['workflowToolEmpty.title'], { ns: 'tools' })}
+            {t(($) => $['workflowToolEmpty.title'], { ns: 'tools' })}
           </div>
           <div className="system-xs-regular text-text-tertiary">
-            {t($ => $['workflowToolEmpty.description'], { ns: 'tools' })}
+            {t(($) => $['workflowToolEmpty.description'], { ns: 'tools' })}
           </div>
         </div>
         <div className="flex w-full flex-col items-center gap-4">
@@ -78,7 +77,7 @@ const Empty = ({
                   <div className="h-px flex-1 bg-divider-subtle" />
                 </div>
                 <div className="text-left system-md-semibold text-text-secondary">
-                  {t($ => $[stepKey], { ns: 'tools' })}
+                  {t(($) => $[stepKey], { ns: 'tools' })}
                 </div>
               </div>
             ))}
@@ -87,7 +86,7 @@ const Empty = ({
             href="/apps"
             className="flex h-7 items-center gap-1.5 py-1 system-sm-semibold text-text-accent hover:text-text-accent-secondary"
           >
-            {t($ => $['workflowToolEmpty.goToStudio'], { ns: 'tools' })}
+            {t(($) => $['workflowToolEmpty.goToStudio'], { ns: 'tools' })}
             <span className="flex size-5 items-center justify-center rounded-full bg-text-accent text-text-primary-on-surface">
               <RiArrowRightLine className="size-4" />
             </span>
@@ -99,7 +98,7 @@ const Empty = ({
           rel="noreferrer"
           className="rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary hover:text-text-accent"
         >
-          {t($ => $['workflowToolEmpty.learnMore'], { ns: 'tools' })}
+          {t(($) => $['workflowToolEmpty.learnMore'], { ns: 'tools' })}
         </Link>
       </div>
     )
@@ -109,22 +108,17 @@ const Empty = ({
     <div className="flex flex-col items-center justify-center">
       <NoToolPlaceholder className={theme === 'dark' ? 'invert' : ''} />
       <div className="mt-2 mb-1 text-[13px] leading-[18px] font-medium text-text-primary">
-        {(hasTitle && renderType) ? t($ => $[`addToolModal.${renderType}.title`], { ns: 'tools' }) : 'No tools available'}
+        {hasTitle && renderType
+          ? t(($) => $[`addToolModal.${renderType}.title`], { ns: 'tools' })
+          : 'No tools available'}
       </div>
       {!!(!isAgent && hasTitle && renderType && hasLink) && (
-        <Link
-          href={getLink(type)}
-          target="_blank"
-          rel="noreferrer"
-          className={tipClassName}
-        >
+        <Link href={getLink(type)} target="_blank" rel="noreferrer" className={tipClassName}>
           {tipContent}
         </Link>
       )}
       {!!(!isAgent && hasTitle && renderType && !hasLink) && (
-        <div className={tipClassName}>
-          {tipContent}
-        </div>
+        <div className={tipClassName}>{tipContent}</div>
       )}
     </div>
   )

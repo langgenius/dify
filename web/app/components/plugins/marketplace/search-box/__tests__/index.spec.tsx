@@ -13,10 +13,10 @@ import ToolSelectorTrigger from '../trigger/tool-selector'
 // Mock i18n translation hook
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
+  return {
     useTranslation: () => ({
       t: withSelectorKey((key: string, options?: { ns?: string }) => {
-      // Build full key with namespace prefix if provided
+        // Build full key with namespace prefix if provided
         const fullKey = options?.ns ? `${options.ns}.${key}` : key
         const translations: Record<string, string> = {
           'pluginTags.allTags': 'All Tags',
@@ -26,11 +26,16 @@ vi.mock('#i18n', async () => {
         return translations[fullKey] || key
       }),
     }),
-  })
+  }
 })
 
 // Mock marketplace state hooks
-const { mockSearchPluginText, mockHandleSearchPluginTextChange, mockFilterPluginTags, mockHandleFilterPluginTagsChange } = vi.hoisted(() => {
+const {
+  mockSearchPluginText,
+  mockHandleSearchPluginTextChange,
+  mockFilterPluginTags,
+  mockHandleFilterPluginTagsChange,
+} = vi.hoisted(() => {
   return {
     mockSearchPluginText: '',
     mockHandleSearchPluginTextChange: vi.fn(),
@@ -53,10 +58,13 @@ const mockTags: Tag[] = [
   { name: 'videos', label: 'Videos' },
 ]
 
-const mockTagsMap: Record<string, Tag> = mockTags.reduce((acc, tag) => {
-  acc[tag.name] = tag
-  return acc
-}, {} as Record<string, Tag>)
+const mockTagsMap: Record<string, Tag> = mockTags.reduce(
+  (acc, tag) => {
+    acc[tag.name] = tag
+    return acc
+  },
+  {} as Record<string, Tag>,
+)
 
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
@@ -70,7 +78,11 @@ let mockPortalOpenState = false
 let mockPopoverOnOpenChange: ((open: boolean) => void) | undefined
 
 vi.mock('@langgenius/dify-ui/popover', () => ({
-  Popover: ({ children, open, onOpenChange }: {
+  Popover: ({
+    children,
+    open,
+    onOpenChange,
+  }: {
     children: React.ReactNode
     open: boolean
     onOpenChange?: (open: boolean) => void
@@ -83,7 +95,11 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
       </div>
     )
   },
-  PopoverTrigger: ({ children, render, className }: {
+  PopoverTrigger: ({
+    children,
+    render,
+    className,
+  }: {
     children?: React.ReactNode
     render?: React.ReactNode
     className?: string
@@ -96,13 +112,9 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
       {render ?? children}
     </div>
   ),
-  PopoverContent: ({ children, className }: {
-    children: React.ReactNode
-    className?: string
-  }) => {
+  PopoverContent: ({ children, className }: { children: React.ReactNode; className?: string }) => {
     // Only render content when portal is open
-    if (!mockPortalOpenState)
-      return null
+    if (!mockPortalOpenState) return null
     return (
       <div data-testid="portal-content" className={className}>
         {children}
@@ -138,9 +150,7 @@ describe('SearchBox', () => {
     })
 
     it('should render with marketplace mode styling', () => {
-      const { container } = render(
-        <SearchBox {...defaultProps} usedInMarketplace />,
-      )
+      const { container } = render(<SearchBox {...defaultProps} usedInMarketplace />)
 
       // In marketplace mode, TagsFilter comes before input
       // In marketplace mode, TagsFilter comes before input
@@ -148,9 +158,7 @@ describe('SearchBox', () => {
     })
 
     it('should render with non-marketplace mode styling', () => {
-      const { container } = render(
-        <SearchBox {...defaultProps} usedInMarketplace={false} />,
-      )
+      const { container } = render(<SearchBox {...defaultProps} usedInMarketplace={false} />)
 
       // In non-marketplace mode, search icon appears first
       // In non-marketplace mode, search icon appears first
@@ -215,13 +223,13 @@ describe('SearchBox', () => {
   // ================================
   describe('Non-Marketplace Mode', () => {
     it('should render search icon at the beginning', () => {
-      const { container } = render(
-        <SearchBox {...defaultProps} usedInMarketplace={false} />,
-      )
+      const { container } = render(<SearchBox {...defaultProps} usedInMarketplace={false} />)
 
       // Search icon should be present
       // Search icon should be present
-      expect(container.querySelector('.text-components-input-text-placeholder'))!.toBeInTheDocument()
+      expect(
+        container.querySelector('.text-components-input-text-placeholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should render clear button when search has value', () => {
@@ -330,9 +338,7 @@ describe('SearchBox', () => {
     })
 
     it('should not render add custom tool button when supportAddCustomTool is false', () => {
-      const { container } = render(
-        <SearchBox {...defaultProps} supportAddCustomTool={false} />,
-      )
+      const { container } = render(<SearchBox {...defaultProps} supportAddCustomTool={false} />)
 
       // Check for the rounded-full button which is the add button
       const addButton = container.querySelector('.rounded-full')
@@ -351,9 +357,7 @@ describe('SearchBox', () => {
 
       // Find the add button (it has rounded-full class)
       const buttons = screen.getAllByRole('button')
-      const addButton = buttons.find(btn =>
-        btn.className.includes('rounded-full'),
-      )
+      const addButton = buttons.find((btn) => btn.className.includes('rounded-full'))
 
       if (addButton) {
         fireEvent.click(addButton)
@@ -522,9 +526,7 @@ describe('MarketplaceTrigger', () => {
     })
 
     it('should show arrow down icon when no tags selected', () => {
-      const { container } = render(
-        <MarketplaceTrigger {...defaultProps} selectedTagsLength={0} />,
-      )
+      const { container } = render(<MarketplaceTrigger {...defaultProps} selectedTagsLength={0} />)
 
       // Arrow down icon should be present
       // Arrow down icon should be present
@@ -534,24 +536,14 @@ describe('MarketplaceTrigger', () => {
 
   describe('Selected Tags Display', () => {
     it('should show selected tag labels when tags are selected', () => {
-      render(
-        <MarketplaceTrigger
-          {...defaultProps}
-          selectedTagsLength={1}
-          tags={['agent']}
-        />,
-      )
+      render(<MarketplaceTrigger {...defaultProps} selectedTagsLength={1} tags={['agent']} />)
 
       expect(screen.getByText('Agent'))!.toBeInTheDocument()
     })
 
     it('should show multiple tag labels separated by comma', () => {
       render(
-        <MarketplaceTrigger
-          {...defaultProps}
-          selectedTagsLength={2}
-          tags={['agent', 'rag']}
-        />,
+        <MarketplaceTrigger {...defaultProps} selectedTagsLength={2} tags={['agent', 'rag']} />,
       )
 
       expect(screen.getByText('Agent,RAG'))!.toBeInTheDocument()
@@ -586,11 +578,7 @@ describe('MarketplaceTrigger', () => {
   describe('Clear Tags Button', () => {
     it('should show clear button when tags are selected', () => {
       const { container } = render(
-        <MarketplaceTrigger
-          {...defaultProps}
-          selectedTagsLength={1}
-          tags={['agent']}
-        />,
+        <MarketplaceTrigger {...defaultProps} selectedTagsLength={1} tags={['agent']} />,
       )
 
       // RiCloseCircleFill icon should be present
@@ -599,9 +587,7 @@ describe('MarketplaceTrigger', () => {
     })
 
     it('should not show clear button when no tags selected', () => {
-      const { container } = render(
-        <MarketplaceTrigger {...defaultProps} selectedTagsLength={0} />,
-      )
+      const { container } = render(<MarketplaceTrigger {...defaultProps} selectedTagsLength={0} />)
 
       // Clear button should not be present
       // Clear button should not be present
@@ -668,22 +654,18 @@ describe('MarketplaceTrigger', () => {
 
     it('should apply border styling when tags are selected', () => {
       const { container } = render(
-        <MarketplaceTrigger
-          {...defaultProps}
-          selectedTagsLength={1}
-          tags={['agent']}
-        />,
+        <MarketplaceTrigger {...defaultProps} selectedTagsLength={1} tags={['agent']} />,
       )
 
-      expect(container.querySelector('.border-components-button-secondary-border'))!.toBeInTheDocument()
+      expect(
+        container.querySelector('.border-components-button-secondary-border'),
+      )!.toBeInTheDocument()
     })
   })
 
   describe('Props Variations', () => {
     it('should handle empty tagsMap', () => {
-      const { container } = render(
-        <MarketplaceTrigger {...defaultProps} tagsMap={{}} tags={[]} />,
-      )
+      const { container } = render(<MarketplaceTrigger {...defaultProps} tagsMap={{}} tags={[]} />)
 
       expect(container)!.toBeInTheDocument()
     })
@@ -722,24 +704,14 @@ describe('ToolSelectorTrigger', () => {
 
   describe('Selected Tags Display', () => {
     it('should show selected tag labels when tags are selected', () => {
-      render(
-        <ToolSelectorTrigger
-          {...defaultProps}
-          selectedTagsLength={1}
-          tags={['agent']}
-        />,
-      )
+      render(<ToolSelectorTrigger {...defaultProps} selectedTagsLength={1} tags={['agent']} />)
 
       expect(screen.getByText('Agent'))!.toBeInTheDocument()
     })
 
     it('should show multiple tag labels separated by comma', () => {
       render(
-        <ToolSelectorTrigger
-          {...defaultProps}
-          selectedTagsLength={2}
-          tags={['agent', 'rag']}
-        />,
+        <ToolSelectorTrigger {...defaultProps} selectedTagsLength={2} tags={['agent', 'rag']} />,
       )
 
       expect(screen.getByText('Agent,RAG'))!.toBeInTheDocument()
@@ -767,20 +739,14 @@ describe('ToolSelectorTrigger', () => {
   describe('Clear Tags Button', () => {
     it('should show clear button when tags are selected', () => {
       const { container } = render(
-        <ToolSelectorTrigger
-          {...defaultProps}
-          selectedTagsLength={1}
-          tags={['agent']}
-        />,
+        <ToolSelectorTrigger {...defaultProps} selectedTagsLength={1} tags={['agent']} />,
       )
 
       expect(container.querySelector('.text-text-quaternary'))!.toBeInTheDocument()
     })
 
     it('should not show clear button when no tags selected', () => {
-      const { container } = render(
-        <ToolSelectorTrigger {...defaultProps} selectedTagsLength={0} />,
-      )
+      const { container } = render(<ToolSelectorTrigger {...defaultProps} selectedTagsLength={0} />)
 
       expect(container.querySelector('.text-text-quaternary')).not.toBeInTheDocument()
     })
@@ -839,29 +805,24 @@ describe('ToolSelectorTrigger', () => {
 
     it('should apply border styling when tags are selected', () => {
       const { container } = render(
-        <ToolSelectorTrigger
-          {...defaultProps}
-          selectedTagsLength={1}
-          tags={['agent']}
-        />,
+        <ToolSelectorTrigger {...defaultProps} selectedTagsLength={1} tags={['agent']} />,
       )
 
-      expect(container.querySelector('.border-components-button-secondary-border'))!.toBeInTheDocument()
+      expect(
+        container.querySelector('.border-components-button-secondary-border'),
+      )!.toBeInTheDocument()
     })
 
     it('should not apply hover styling when open but has tags', () => {
       const { container } = render(
-        <ToolSelectorTrigger
-          {...defaultProps}
-          open
-          selectedTagsLength={1}
-          tags={['agent']}
-        />,
+        <ToolSelectorTrigger {...defaultProps} open selectedTagsLength={1} tags={['agent']} />,
       )
 
       // Should have border styling, not hover
       // Should have border styling, not hover
-      expect(container.querySelector('.border-components-button-secondary-border'))!.toBeInTheDocument()
+      expect(
+        container.querySelector('.border-components-button-secondary-border'),
+      )!.toBeInTheDocument()
     })
   })
 
@@ -895,14 +856,7 @@ describe('TagsFilter', () => {
 
   describe('Integration with SearchBox', () => {
     it('should render TagsFilter within SearchBox', () => {
-      render(
-        <SearchBox
-          search=""
-          onSearchChange={vi.fn()}
-          tags={[]}
-          onTagsChange={vi.fn()}
-        />,
-      )
+      render(<SearchBox search="" onSearchChange={vi.fn()} tags={[]} onTagsChange={vi.fn()} />)
 
       expect(screen.getByTestId('portal-elem'))!.toBeInTheDocument()
     })
@@ -940,14 +894,7 @@ describe('TagsFilter', () => {
 
   describe('Dropdown Behavior', () => {
     it('should open dropdown when trigger is clicked', async () => {
-      render(
-        <SearchBox
-          search=""
-          onSearchChange={vi.fn()}
-          tags={[]}
-          onTagsChange={vi.fn()}
-        />,
-      )
+      render(<SearchBox search="" onSearchChange={vi.fn()} tags={[]} onTagsChange={vi.fn()} />)
 
       const trigger = screen.getByTestId('portal-trigger')
       fireEvent.click(trigger)
@@ -958,14 +905,7 @@ describe('TagsFilter', () => {
     })
 
     it('should close dropdown when trigger is clicked again', async () => {
-      render(
-        <SearchBox
-          search=""
-          onSearchChange={vi.fn()}
-          tags={[]}
-          onTagsChange={vi.fn()}
-        />,
-      )
+      render(<SearchBox search="" onSearchChange={vi.fn()} tags={[]} onTagsChange={vi.fn()} />)
 
       const trigger = screen.getByTestId('portal-trigger')
 
@@ -985,14 +925,7 @@ describe('TagsFilter', () => {
 
   describe('Tag Selection', () => {
     it('should display tag options when dropdown is open', async () => {
-      render(
-        <SearchBox
-          search=""
-          onSearchChange={vi.fn()}
-          tags={[]}
-          onTagsChange={vi.fn()}
-        />,
-      )
+      render(<SearchBox search="" onSearchChange={vi.fn()} tags={[]} onTagsChange={vi.fn()} />)
 
       const trigger = screen.getByTestId('portal-trigger')
       fireEvent.click(trigger)
@@ -1005,14 +938,7 @@ describe('TagsFilter', () => {
 
     it('should call onTagsChange when a tag is selected', async () => {
       const onTagsChange = vi.fn()
-      render(
-        <SearchBox
-          search=""
-          onSearchChange={vi.fn()}
-          tags={[]}
-          onTagsChange={onTagsChange}
-        />,
-      )
+      render(<SearchBox search="" onSearchChange={vi.fn()} tags={[]} onTagsChange={onTagsChange} />)
 
       const trigger = screen.getByTestId('portal-trigger')
       fireEvent.click(trigger)
@@ -1080,14 +1006,7 @@ describe('TagsFilter', () => {
 
   describe('Search Tags Feature', () => {
     it('should render search input in dropdown', async () => {
-      render(
-        <SearchBox
-          search=""
-          onSearchChange={vi.fn()}
-          tags={[]}
-          onTagsChange={vi.fn()}
-        />,
-      )
+      render(<SearchBox search="" onSearchChange={vi.fn()} tags={[]} onTagsChange={vi.fn()} />)
 
       const trigger = screen.getByTestId('portal-trigger')
       fireEvent.click(trigger)
@@ -1099,14 +1018,7 @@ describe('TagsFilter', () => {
     })
 
     it('should filter tags based on search text', async () => {
-      render(
-        <SearchBox
-          search=""
-          onSearchChange={vi.fn()}
-          tags={[]}
-          onTagsChange={vi.fn()}
-        />,
-      )
+      render(<SearchBox search="" onSearchChange={vi.fn()} tags={[]} onTagsChange={vi.fn()} />)
 
       const trigger = screen.getByTestId('portal-trigger')
       fireEvent.click(trigger)
@@ -1116,8 +1028,8 @@ describe('TagsFilter', () => {
       })
 
       const inputs = screen.getAllByRole('textbox')
-      const searchInput = inputs.find(input =>
-        input.getAttribute('placeholder') === 'Search tags',
+      const searchInput = inputs.find(
+        (input) => input.getAttribute('placeholder') === 'Search tags',
       )
 
       if (searchInput) {
@@ -1131,12 +1043,7 @@ describe('TagsFilter', () => {
     // Note: The Checkbox component is a custom div-based component, not native checkbox
     it('should display tag options with proper selection state', async () => {
       render(
-        <SearchBox
-          search=""
-          onSearchChange={vi.fn()}
-          tags={['agent']}
-          onTagsChange={vi.fn()}
-        />,
+        <SearchBox search="" onSearchChange={vi.fn()} tags={['agent']} onTagsChange={vi.fn()} />,
       )
 
       const trigger = screen.getByTestId('portal-trigger')
@@ -1153,14 +1060,7 @@ describe('TagsFilter', () => {
     })
 
     it('should render tag options when dropdown is open', async () => {
-      render(
-        <SearchBox
-          search=""
-          onSearchChange={vi.fn()}
-          tags={[]}
-          onTagsChange={vi.fn()}
-        />,
-      )
+      render(<SearchBox search="" onSearchChange={vi.fn()} tags={[]} onTagsChange={vi.fn()} />)
 
       const trigger = screen.getByTestId('portal-trigger')
       fireEvent.click(trigger)

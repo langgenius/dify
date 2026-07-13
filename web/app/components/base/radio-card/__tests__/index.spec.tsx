@@ -15,8 +15,13 @@ function RadioCardTypeExamples() {
         title="Advanced"
         description="Typed option"
       />
-      {/* @ts-expect-error RadioCard values should stay within the selected RadioGroup value type */}
-      <RadioCard<ExampleMode> value="invalid" icon={<span>i</span>} title="Invalid" description="Invalid option" />
+      <RadioCard<ExampleMode>
+        // @ts-expect-error RadioCard values should stay within the selected RadioGroup value type
+        value="invalid"
+        icon={<span>i</span>}
+        title="Invalid"
+        description="Invalid option"
+      />
     </RadioGroup>
   )
 }
@@ -78,7 +83,9 @@ describe('RadioCard', () => {
     expect(radio).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByText('Config')).toBeInTheDocument()
     expect(radio.parentElement).toHaveClass('has-[[data-checked]]:border-[1.5px]')
-    expect(radio.parentElement).toHaveClass('has-[[data-checked]]:bg-components-option-card-option-selected-bg')
+    expect(radio.parentElement).toHaveClass(
+      'has-[[data-checked]]:bg-components-option-card-option-selected-bg',
+    )
   })
 
   it('should apply custom className to the card root and config wrapper', () => {

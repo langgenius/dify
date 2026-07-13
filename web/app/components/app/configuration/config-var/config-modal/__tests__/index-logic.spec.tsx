@@ -12,16 +12,6 @@ import ConfigModal from '../index'
 
 const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 let latestFormProps: Record<string, any> | null = null
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('../form-fields', () => ({
   default: (props: Record<string, any>) => {
     latestFormProps = props
@@ -32,26 +22,62 @@ vi.mock('../form-fields', () => ({
         <div data-testid="payload-label">{String(props.tempPayload.label ?? '')}</div>
         <div data-testid="payload-schema">{String(props.tempPayload.json_schema ?? '')}</div>
         <div data-testid="payload-default">{String(props.tempPayload.default ?? '')}</div>
-        <button data-testid="invalid-key-blur" onClick={() => props.onVarKeyBlur({ target: { value: 'invalid key' } })}>invalid-key-blur</button>
-        <button data-testid="valid-key-blur" onClick={() => props.onVarKeyBlur({ target: { value: 'auto_label' } })}>valid-key-blur</button>
+        <button
+          data-testid="invalid-key-blur"
+          onClick={() => props.onVarKeyBlur({ target: { value: 'invalid key' } })}
+        >
+          invalid-key-blur
+        </button>
+        <button
+          data-testid="valid-key-blur"
+          onClick={() => props.onVarKeyBlur({ target: { value: 'auto_label' } })}
+        >
+          valid-key-blur
+        </button>
         <button
           data-testid="invalid-name-change"
-          onClick={() => props.onVarNameChange({
-            target: {
-              value: 'invalid-key!',
-              selectionStart: 0,
-              selectionEnd: 0,
-              setSelectionRange: vi.fn(),
-            },
-          })}
+          onClick={() =>
+            props.onVarNameChange({
+              target: {
+                value: 'invalid-key!',
+                selectionStart: 0,
+                selectionEnd: 0,
+                setSelectionRange: vi.fn(),
+              },
+            })
+          }
         >
           invalid-name-change
         </button>
-        <button data-testid="valid-json-change" onClick={() => props.onJSONSchemaChange('{\n  "foo": "bar"\n}')}>valid-json-change</button>
-        <button data-testid="empty-json-change" onClick={() => props.onJSONSchemaChange('   ')}>empty-json-change</button>
-        <button data-testid="invalid-json-change" onClick={() => props.onJSONSchemaChange('{invalid-json}')}>invalid-json-change</button>
-        <button data-testid="type-change" onClick={() => props.onTypeChange({ value: InputVarType.singleFile })}>type-change</button>
-        <button data-testid="file-payload-change" onClick={() => props.onFilePayloadChange({ ...props.tempPayload, default: 'file-default' })}>file-payload-change</button>
+        <button
+          data-testid="valid-json-change"
+          onClick={() => props.onJSONSchemaChange('{\n  "foo": "bar"\n}')}
+        >
+          valid-json-change
+        </button>
+        <button data-testid="empty-json-change" onClick={() => props.onJSONSchemaChange('   ')}>
+          empty-json-change
+        </button>
+        <button
+          data-testid="invalid-json-change"
+          onClick={() => props.onJSONSchemaChange('{invalid-json}')}
+        >
+          invalid-json-change
+        </button>
+        <button
+          data-testid="type-change"
+          onClick={() => props.onTypeChange({ value: InputVarType.singleFile })}
+        >
+          type-change
+        </button>
+        <button
+          data-testid="file-payload-change"
+          onClick={() =>
+            props.onFilePayloadChange({ ...props.tempPayload, default: 'file-default' })
+          }
+        >
+          file-payload-change
+        </button>
       </div>
     )
   },
@@ -69,22 +95,20 @@ const createPayload = (overrides: Partial<InputVar> = {}): InputVar => ({
   ...overrides,
 })
 
-const renderConfigModal = (payload: InputVar = createPayload()) => render(
-  <DebugConfigurationContext.Provider value={{
-    mode: AppModeEnum.CHAT,
-    dataSets: [],
-    modelConfig: { model_id: 'model-1' },
-  } as any}
-  >
-    <ConfigModal
-      isCreate
-      isShow
-      payload={payload}
-      onClose={vi.fn()}
-      onConfirm={vi.fn()}
-    />
-  </DebugConfigurationContext.Provider>,
-)
+const renderConfigModal = (payload: InputVar = createPayload()) =>
+  render(
+    <DebugConfigurationContext.Provider
+      value={
+        {
+          mode: AppModeEnum.CHAT,
+          dataSets: [],
+          modelConfig: { model_id: 'model-1' },
+        } as any
+      }
+    >
+      <ConfigModal isCreate isShow payload={payload} onClose={vi.fn()} onConfirm={vi.fn()} />
+    </DebugConfigurationContext.Provider>,
+  )
 
 describe('ConfigModal logic', () => {
   beforeEach(() => {

@@ -37,7 +37,15 @@ export enum SelfHostedPlan {
   enterprise = 'enterprise',
 }
 
-export type UsagePlanInfo = Pick<PlanInfo, 'buildApps' | 'teamMembers' | 'annotatedResponse' | 'documentsUploadQuota' | 'apiRateLimit' | 'triggerEvents'> & { vectorSpace: number }
+export type UsagePlanInfo = Pick<
+  PlanInfo,
+  | 'buildApps'
+  | 'teamMembers'
+  | 'annotatedResponse'
+  | 'documentsUploadQuota'
+  | 'apiRateLimit'
+  | 'triggerEvents'
+> & { vectorSpace: number }
 
 export type UsageResetInfo = {
   apiRateLimit?: number | null

@@ -15,9 +15,14 @@ describe('ExecutedAction', () => {
 
     // Trans component mock from i18n-mock.ts renders a span with data-i18n-key
     const trans = screen.getByTestId('executed-action').querySelector('span')
-    expect(trans).toHaveAttribute('data-i18n-key', 'workflow.nodes.humanInput.userActions.triggered')
+    expect(trans).toHaveAttribute(
+      'data-i18n-key',
+      'workflow.nodes.humanInput.userActions.triggered',
+    )
 
     // Check for the trigger icon class
-    expect(screen.getByTestId('executed-action').querySelector('.i-custom-vender-workflow-trigger-all')).toBeInTheDocument()
+    expect(
+      screen.getByTestId('executed-action').querySelector('.i-custom-vender-workflow-trigger-all'),
+    ).toBeInTheDocument()
   })
 })

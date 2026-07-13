@@ -7,12 +7,7 @@ import SnippetDetailTop from './snippet-detail-top'
 export function SnippetDetailSidebar() {
   return (
     <DetailSidebarFrame
-      renderTop={({ expand, onToggle }) => (
-        <SnippetDetailTop
-          expand={expand}
-          onToggle={onToggle}
-        />
-      )}
+      renderTop={({ expand, onToggle }) => <SnippetDetailTop expand={expand} onToggle={onToggle} />}
       renderSection={({ expand }) => <SnippetDetailSection expand={expand} />}
     />
   )

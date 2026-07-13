@@ -10,7 +10,17 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock Next.js Link component
 vi.mock('@/next/link', () => ({
-  default: function MockLink({ children, href, className, title }: { children: React.ReactNode, href: string, className?: string, title?: string }) {
+  default: function MockLink({
+    children,
+    href,
+    className,
+    title,
+  }: {
+    children: React.ReactNode
+    href: string
+    className?: string
+    title?: string
+  }) {
     return (
       <a href={href} className={className} title={title} data-testid="nav-link">
         {children}
@@ -225,26 +235,14 @@ describe('NavLink Animation and Layout Issues', () => {
     })
 
     it('should not mark logs active on the annotations pathname', () => {
-      render(
-        <NavLink
-          {...mockProps}
-          href="/app/123/logs"
-          pathname="/app/123/annotations"
-        />,
-      )
+      render(<NavLink {...mockProps} href="/app/123/logs" pathname="/app/123/annotations" />)
 
       const linkElement = screen.getByRole('link', { name: 'Orchestrate' })
       expect(linkElement).not.toHaveClass('bg-components-menu-item-bg-active')
     })
 
     it('should use pathname to mark annotations active when rendered outside the app detail route segment', () => {
-      render(
-        <NavLink
-          {...mockProps}
-          href="/app/123/annotations"
-          pathname="/app/123/annotations"
-        />,
-      )
+      render(<NavLink {...mockProps} href="/app/123/annotations" pathname="/app/123/annotations" />)
 
       const linkElement = screen.getByRole('link', { name: 'Orchestrate' })
       expect(linkElement).toHaveClass('bg-components-menu-item-bg-active')

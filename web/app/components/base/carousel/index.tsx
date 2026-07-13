@@ -32,8 +32,7 @@ const CarouselContext = React.createContext<CarouselContextValue | null>(null)
 function useCarousel() {
   const context = React.useContext(CarouselContext)
 
-  if (!context)
-    throw new Error('useCarousel must be used within a <Carousel />')
+  if (!context) throw new Error('useCarousel must be used within a <Carousel />')
 
   return context
 }
@@ -68,12 +67,10 @@ const Carousel: TCarousel = React.forwardRef(
     }, [api])
 
     React.useEffect(() => {
-      if (!api)
-        return
+      if (!api) return
 
       const onSelect = (api: CarouselApi) => {
-        if (!api)
-          return
+        if (!api) return
 
         setSelectedIndex(api.selectedScrollSnap())
         setCanScrollPrev(api.canScrollPrev())
@@ -163,7 +160,8 @@ CarouselItem.displayName = 'CarouselItem'
 
 type CarouselActionProps = Readonly<{
   children?: React.ReactNode
-}> & Omit<React.HTMLAttributes<HTMLButtonElement>, 'disabled' | 'onClick'>
+}> &
+  Omit<React.HTMLAttributes<HTMLButtonElement>, 'disabled' | 'onClick'>
 
 const CarouselPrevious = React.forwardRef<HTMLButtonElement, CarouselActionProps>(
   ({ children, ...props }, ref) => {

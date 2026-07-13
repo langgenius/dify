@@ -27,17 +27,13 @@ type Props = Readonly<{
   hideLogout?: boolean
 }>
 
-const MenuDropdown: FC<Props> = ({
-  data,
-  placement,
-  hideLogout,
-}) => {
-  const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
+const MenuDropdown: FC<Props> = ({ data, placement, hideLogout }) => {
+  const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
   const router = useRouter()
   const pathname = usePathname()
   const { t } = useTranslation()
 
-  const shareCode = useWebAppStore(s => s.shareCode)
+  const shareCode = useWebAppStore((s) => s.shareCode)
   const handleLogout = async () => {
     await webAppLogout(shareCode!)
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
@@ -54,12 +50,12 @@ const MenuDropdown: FC<Props> = ({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
-          render={(
+          render={
             <ActionButton size="l" className="data-popup-open:bg-state-base-hover">
               <span aria-hidden className="i-ri-equalizer-2-line h-[18px] w-[18px]" />
             </ActionButton>
-          )}
-          aria-label={t($ => $['operation.more'], { ns: 'common' })}
+          }
+          aria-label={t(($) => $['operation.more'], { ns: 'common' })}
         />
         <DropdownMenuContent
           placement={placement || 'bottom-end'}
@@ -68,7 +64,7 @@ const MenuDropdown: FC<Props> = ({
         >
           <div className="px-3 py-1.5 system-md-regular text-text-secondary">
             <div className="flex items-center gap-2">
-              <div className="grow">{t($ => $['theme.theme'], { ns: 'common' })}</div>
+              <div className="grow">{t(($) => $['theme.theme'], { ns: 'common' })}</div>
               <ThemeSwitcher />
             </div>
           </div>
@@ -80,21 +76,21 @@ const MenuDropdown: FC<Props> = ({
               target="_blank"
               rel="noreferrer"
             >
-              <span className="grow">{t($ => $['chat.privacyPolicyMiddle'], { ns: 'share' })}</span>
+              <span className="grow">
+                {t(($) => $['chat.privacyPolicyMiddle'], { ns: 'share' })}
+              </span>
             </DropdownMenuLinkItem>
           )}
-          <DropdownMenuItem
-            className="px-3 system-md-regular"
-            onClick={handleOpenInfoModal}
-          >
-            {t($ => $['userProfile.about'], { ns: 'common' })}
+          <DropdownMenuItem className="px-3 system-md-regular" onClick={handleOpenInfoModal}>
+            {t(($) => $['userProfile.about'], { ns: 'common' })}
           </DropdownMenuItem>
-          {!(hideLogout || webAppAccessMode === AccessMode.EXTERNAL_MEMBERS || webAppAccessMode === AccessMode.PUBLIC) && (
-            <DropdownMenuItem
-              className="px-3 system-md-regular"
-              onClick={handleLogout}
-            >
-              {t($ => $['userProfile.logout'], { ns: 'common' })}
+          {!(
+            hideLogout ||
+            webAppAccessMode === AccessMode.EXTERNAL_MEMBERS ||
+            webAppAccessMode === AccessMode.PUBLIC
+          ) && (
+            <DropdownMenuItem className="px-3 system-md-regular" onClick={handleLogout}>
+              {t(($) => $['userProfile.logout'], { ns: 'common' })}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>

@@ -51,7 +51,9 @@ describe('ragPipelineNodesAction', () => {
     ]
     ragPipelineNodesAction.searchFn = vi.fn().mockReturnValue(results)
 
-    await expect(ragPipelineNodesAction.search('@node retrieve', 'retrieve', 'en')).resolves.toEqual(results)
+    await expect(
+      ragPipelineNodesAction.search('@node retrieve', 'retrieve', 'en'),
+    ).resolves.toEqual(results)
     expect(ragPipelineNodesAction.searchFn).toHaveBeenCalledWith('retrieve')
   })
 
@@ -61,7 +63,9 @@ describe('ragPipelineNodesAction', () => {
       throw new Error('failed')
     })
 
-    await expect(ragPipelineNodesAction.search('@node retrieve', 'retrieve', 'en')).resolves.toEqual([])
+    await expect(
+      ragPipelineNodesAction.search('@node retrieve', 'retrieve', 'en'),
+    ).resolves.toEqual([])
     expect(warnSpy).toHaveBeenCalledWith('RAG pipeline nodes search failed:', expect.any(Error))
 
     warnSpy.mockRestore()

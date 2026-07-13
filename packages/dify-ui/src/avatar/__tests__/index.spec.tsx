@@ -28,7 +28,9 @@ function stubImageLoader() {
 describe('Avatar', () => {
   describe('Rendering', () => {
     it('should keep the fallback visible when avatar URL is provided before image load', async () => {
-      const screen = await render(<Avatar name="John Doe" avatar="https://example.com/avatar.jpg" />)
+      const screen = await render(
+        <Avatar name="John Doe" avatar="https://example.com/avatar.jpg" />,
+      )
 
       await expect.element(screen.getByText('J')).toBeInTheDocument()
     })
@@ -49,9 +51,7 @@ describe('Avatar', () => {
 
   describe('className prop', () => {
     it('should merge className with avatar variant classes on root', async () => {
-      const screen = await render(
-        <Avatar name="Test" avatar={null} className="custom-class" />,
-      )
+      const screen = await render(<Avatar name="Test" avatar={null} className="custom-class" />)
 
       const root = screen.container.firstElementChild as HTMLElement
       expect(root).toHaveClass('custom-class')
@@ -86,11 +86,14 @@ describe('Avatar', () => {
     it.each([
       { name: '中文名', expected: '中', label: 'Chinese characters' },
       { name: '123User', expected: '1', label: 'number' },
-    ])('should display first character when name starts with $label', async ({ name, expected }) => {
-      const screen = await render(<Avatar name={name} avatar={null} />)
+    ])(
+      'should display first character when name starts with $label',
+      async ({ name, expected }) => {
+        const screen = await render(<Avatar name={name} avatar={null} />)
 
-      await expect.element(screen.getByText(expected)).toBeInTheDocument()
-    })
+        await expect.element(screen.getByText(expected)).toBeInTheDocument()
+      },
+    )
 
     it('should handle empty string avatar as falsy value', async () => {
       const screen = await render(<Avatar name="Test" avatar="" />)
@@ -123,8 +126,7 @@ describe('Avatar', () => {
         await vi.waitFor(() => {
           expect(onStatusChange).toHaveBeenCalledWith('loaded')
         })
-      }
-      finally {
+      } finally {
         restore()
       }
     })

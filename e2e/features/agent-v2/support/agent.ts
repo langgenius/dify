@@ -8,7 +8,11 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import { createApiContext, expectApiResponseOK } from '../../../support/api'
 import { assertE2EResourceName, createE2EResourceName } from '../../../support/naming'
-import { createPublishableAgentSoulConfig, defaultAgentSoulConfig, normalAgentSoulConfig } from './agent-soul'
+import {
+  createPublishableAgentSoulConfig,
+  defaultAgentSoulConfig,
+  normalAgentSoulConfig,
+} from './agent-soul'
 
 export type AgentSeed = Pick<
   AgentAppDetailWithSite,
@@ -54,8 +58,7 @@ export async function createTestAgent({
     })
     await expectApiResponseOK(response, 'Create Agent v2 test agent')
     return (await response.json()) as AgentSeed
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -78,8 +81,7 @@ export async function getTestAgent(agentId: string): Promise<AgentSeed> {
     const response = await ctx.get(`/console/api/agent/${agentId}`)
     await expectApiResponseOK(response, `Get Agent v2 test agent ${agentId}`)
     return (await response.json()) as AgentSeed
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -93,8 +95,7 @@ export async function getAgentVersionDetail(
     const response = await ctx.get(`/console/api/agent/${agentId}/versions/${versionId}`)
     await expectApiResponseOK(response, `Get Agent v2 version ${versionId} for ${agentId}`)
     return (await response.json()) as AgentConfigSnapshotDetailResponse
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -104,8 +105,7 @@ export async function deleteTestAgent(agentId: string): Promise<void> {
   try {
     const response = await ctx.delete(`/console/api/agent/${agentId}`)
     await expectApiResponseOK(response, `Delete Agent v2 test agent ${agentId}`)
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -125,21 +125,21 @@ export async function saveAgentComposerDraft(
     })
     await expectApiResponseOK(response, `Save Agent v2 composer draft for ${agentId}`)
     return (await response.json()) as AgentAppComposerResponse
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
 
-export async function getAgentReferencingWorkflows(agentId: string): Promise<AgentReferencingWorkflowResponse[]> {
+export async function getAgentReferencingWorkflows(
+  agentId: string,
+): Promise<AgentReferencingWorkflowResponse[]> {
   const ctx = await createApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agentId}/referencing-workflows`)
     await expectApiResponseOK(response, `Get Agent v2 referencing workflows for ${agentId}`)
     const body = (await response.json()) as AgentReferencingWorkflowsResponse
     return body.data ?? []
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -150,8 +150,7 @@ export async function getAgentComposerDraft(agentId: string): Promise<AgentAppCo
     const response = await ctx.get(`/console/api/agent/${agentId}/composer`)
     await expectApiResponseOK(response, `Get Agent v2 composer draft for ${agentId}`)
     return (await response.json()) as AgentAppComposerResponse
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -159,7 +158,10 @@ export async function getAgentComposerDraft(agentId: string): Promise<AgentAppCo
 export async function ensureAgentComposerDraftIsPublishable(agentId: string): Promise<void> {
   const composer = await getAgentComposerDraft(agentId)
   if (!composer.agent_soul?.model)
-    await saveAgentComposerDraft(agentId, createPublishableAgentSoulConfig(composer.agent_soul ?? defaultAgentSoulConfig))
+    await saveAgentComposerDraft(
+      agentId,
+      createPublishableAgentSoulConfig(composer.agent_soul ?? defaultAgentSoulConfig),
+    )
 }
 
 export async function publishAgent(agentId: string, versionNote = 'E2E publish'): Promise<void> {
@@ -169,8 +171,7 @@ export async function publishAgent(agentId: string, versionNote = 'E2E publish')
       data: { version_note: versionNote },
     })
     await expectApiResponseOK(response, `Publish Agent v2 test agent ${agentId}`)
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }

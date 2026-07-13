@@ -40,12 +40,14 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
+from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 
@@ -377,6 +379,15 @@ class ChatApi(Resource):
         streaming = _resolve_agent_app_streaming(app_mode=app_mode, response_mode=payload.response_mode)
 
         try:
+            # Eagerly validate conversation to avoid hanging on invalid conversation_id
+            if payload.conversation_id:
+                ConversationService.get_conversation(
+                    app_model=app_model,
+                    conversation_id=payload.conversation_id,
+                    user=end_user,
+                    session=db.session(),
+                )
+
             response = AppGenerateService.generate(
                 session=session,
                 app_model=app_model,

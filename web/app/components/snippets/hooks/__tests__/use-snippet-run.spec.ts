@@ -145,8 +145,12 @@ describe('useSnippetRun', () => {
       result.current.handleStopRun('task-1')
     })
 
-    expect(mocks.mockStopWorkflowRun).toHaveBeenCalledWith('/snippets/snippet-1/workflow-runs/tasks/task-1/stop')
-    expect(mocks.workflowStoreState.workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Stopped)
+    expect(mocks.mockStopWorkflowRun).toHaveBeenCalledWith(
+      '/snippets/snippet-1/workflow-runs/tasks/task-1/stop',
+    )
+    expect(mocks.workflowStoreState.workflowRunningData?.result.status).toBe(
+      WorkflowRunningStatus.Stopped,
+    )
   })
 
   it('does not fall back to the workflow running task id when stop is called without one', () => {
@@ -158,7 +162,9 @@ describe('useSnippetRun', () => {
     })
 
     expect(mocks.mockStopWorkflowRun).not.toHaveBeenCalled()
-    expect(mocks.workflowStoreState.workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Stopped)
+    expect(mocks.workflowStoreState.workflowRunningData?.result.status).toBe(
+      WorkflowRunningStatus.Stopped,
+    )
   })
 
   it('does not call the stop endpoint when task id is unavailable', () => {
@@ -170,6 +176,8 @@ describe('useSnippetRun', () => {
     })
 
     expect(mocks.mockStopWorkflowRun).not.toHaveBeenCalled()
-    expect(mocks.workflowStoreState.workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Stopped)
+    expect(mocks.workflowStoreState.workflowRunningData?.result.status).toBe(
+      WorkflowRunningStatus.Stopped,
+    )
   })
 })

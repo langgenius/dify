@@ -6,7 +6,7 @@ import { get } from '../base'
 const NAME_SPACE = 'workspace-permission-keys'
 
 const workspacePermissionKeysQueryKey = (workspaceId?: string) => {
-  return workspaceId ? [NAME_SPACE, workspaceId] as const : [NAME_SPACE] as const
+  return workspaceId ? ([NAME_SPACE, workspaceId] as const) : ([NAME_SPACE] as const)
 }
 
 export const workspacePermissionKeysQueryOptions = (workspaceId?: string) => {

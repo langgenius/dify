@@ -2,11 +2,11 @@ import { render, screen } from '@testing-library/react'
 import { Theme } from '@/types/app'
 import NoApps from '../index'
 
-let mockTheme = Theme.light
-
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
+
+let mockTheme = Theme.light
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: mockTheme }),

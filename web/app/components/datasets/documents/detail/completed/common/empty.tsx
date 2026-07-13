@@ -8,9 +8,7 @@ type IEmptyProps = {
 }
 
 const EmptyCard = React.memo(() => {
-  return (
-    <div className="h-32 w-full shrink-0 rounded-xl bg-background-section-burn opacity-30" />
-  )
+  return <div className="h-32 w-full shrink-0 rounded-xl bg-background-section-burn opacity-30" />
 })
 
 EmptyCard.displayName = 'EmptyCard'
@@ -19,14 +17,26 @@ type LineProps = {
   className?: string
 }
 
-const Line = React.memo(({
-  className,
-}: LineProps) => {
+const Line = React.memo(({ className }: LineProps) => {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="2" height="241" viewBox="0 0 2 241" fill="none" className={className}>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="2"
+      height="241"
+      viewBox="0 0 2 241"
+      fill="none"
+      className={className}
+    >
       <path d="M1 0.5L1 240.5" stroke="url(#paint0_linear_1989_74474)" />
       <defs>
-        <linearGradient id="paint0_linear_1989_74474" x1="-7.99584" y1="240.5" x2="-7.88094" y2="0.50004" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="paint0_linear_1989_74474"
+          x1="-7.99584"
+          y1="240.5"
+          x2="-7.88094"
+          y2="0.50004"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop stopColor="white" stopOpacity="0.01" />
           <stop offset="0.503965" stopColor="#101828" stopOpacity="0.08" />
           <stop offset="1" stopColor="white" stopOpacity="0.01" />
@@ -38,9 +48,7 @@ const Line = React.memo(({
 
 Line.displayName = 'Line'
 
-const Empty: FC<IEmptyProps> = ({
-  onClearFilter,
-}) => {
+const Empty: FC<IEmptyProps> = ({ onClearFilter }) => {
   const { t } = useTranslation()
 
   return (
@@ -54,22 +62,20 @@ const Empty: FC<IEmptyProps> = ({
           <Line className="absolute top-full left-1/2 -translate-1/2 rotate-90" />
         </div>
         <div className="mt-3 system-md-regular text-text-tertiary">
-          {t($ => $['segment.empty'], { ns: 'datasetDocuments' })}
+          {t(($) => $['segment.empty'], { ns: 'datasetDocuments' })}
         </div>
         <button
           type="button"
           className="mt-1 system-sm-medium text-text-accent"
           onClick={onClearFilter}
         >
-          {t($ => $['segment.clearFilter'], { ns: 'datasetDocuments' })}
+          {t(($) => $['segment.clearFilter'], { ns: 'datasetDocuments' })}
         </button>
       </div>
       <div className="absolute top-0 left-0 -z-20 flex size-full flex-col gap-y-3 overflow-hidden">
-        {
-          Array.from({ length: 10 }).map((_, i) => (
-            <EmptyCard key={i} />
-          ))
-        }
+        {Array.from({ length: 10 }).map((_, i) => (
+          <EmptyCard key={i} />
+        ))}
       </div>
       <div className="absolute top-0 left-0 -z-10 size-full bg-dataset-chunk-list-mask-bg" />
     </div>

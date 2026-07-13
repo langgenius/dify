@@ -14,11 +14,11 @@ const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
+  return {
     useTranslation: () => ({
       t: withSelectorKey((key: string, options?: Record<string, unknown>) => options?.key || key),
     }),
-  })
+  }
 })
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -47,7 +47,9 @@ vi.mock('@/service/apps', () => ({
 const mockedFetchWebhookUrl = vi.mocked(fetchWebhookUrl)
 const mockedToastError = vi.mocked(toast.error)
 
-const createPayload = (overrides: Partial<WebhookTriggerNodeType> = {}): WebhookTriggerNodeType => ({
+const createPayload = (
+  overrides: Partial<WebhookTriggerNodeType> = {},
+): WebhookTriggerNodeType => ({
   title: 'Webhook',
   desc: '',
   type: BlockEnum.TriggerWebhook,
@@ -78,8 +80,20 @@ describe('useConfig', () => {
       content_type: 'application/json',
       body: [{ name: 'payload', type: VarType.string, required: true }],
       variables: [
-        { variable: 'payload', label: 'body', required: true, value_selector: [], value_type: VarType.string },
-        { variable: 'token', label: 'header', required: false, value_selector: [], value_type: VarType.string },
+        {
+          variable: 'payload',
+          label: 'body',
+          required: true,
+          value_selector: [],
+          value_type: VarType.string,
+        },
+        {
+          variable: 'token',
+          label: 'header',
+          required: false,
+          value_selector: [],
+          value_type: VarType.string,
+        },
       ],
     })
     mockIsVarUsedInNodes.mockImplementation(([_, variable]) => variable === 'payload')
@@ -91,19 +105,23 @@ describe('useConfig', () => {
     result.current.handleStatusCodeChange(204)
     result.current.handleResponseBodyChange('ok')
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      method: 'GET',
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      content_type: 'text/plain',
-      body: [],
-      variables: [
-        expect.objectContaining({
-          variable: 'token',
-          label: 'header',
-        }),
-      ],
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: 'GET',
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content_type: 'text/plain',
+        body: [],
+        variables: [
+          expect.objectContaining({
+            variable: 'token',
+            label: 'header',
+          }),
+        ],
+      }),
+    )
     expect(mockRemoveUsedVarInNodes).toHaveBeenCalledWith(['webhook-node', 'payload'])
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ async_mode: true }))
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ status_code: 204 }))
@@ -113,7 +131,13 @@ describe('useConfig', () => {
   it('should sync params, headers and body variables and reject conflicting names', () => {
     const payload = createPayload({
       variables: [
-        { variable: 'existing_header', label: 'header', required: false, value_selector: [], value_type: VarType.string },
+        {
+          variable: 'existing_header',
+          label: 'header',
+          required: false,
+          value_selector: [],
+          value_type: VarType.string,
+        },
       ],
     })
     const { result } = renderHook(() => useConfig('webhook-node', payload))
@@ -121,36 +145,44 @@ describe('useConfig', () => {
     result.current.handleParamsChange([{ name: 'page', type: VarType.number, required: true }])
     result.current.handleHeadersChange([{ name: 'x-request-id', required: false }])
     result.current.handleBodyChange([{ name: 'body_field', type: VarType.string, required: true }])
-    result.current.handleParamsChange([{ name: 'existing_header', type: VarType.string, required: true }])
+    result.current.handleParamsChange([
+      { name: 'existing_header', type: VarType.string, required: true },
+    ])
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      params: [{ name: 'page', type: VarType.number, required: true }],
-      variables: expect.arrayContaining([
-        expect.objectContaining({
-          variable: 'page',
-          label: 'param',
-          value_type: VarType.number,
-        }),
-      ]),
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      headers: [{ name: 'x-request-id', required: false }],
-      variables: expect.arrayContaining([
-        expect.objectContaining({
-          variable: 'x_request_id',
-          label: 'header',
-        }),
-      ]),
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      body: [{ name: 'body_field', type: VarType.string, required: true }],
-      variables: expect.arrayContaining([
-        expect.objectContaining({
-          variable: 'body_field',
-          label: 'body',
-        }),
-      ]),
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: [{ name: 'page', type: VarType.number, required: true }],
+        variables: expect.arrayContaining([
+          expect.objectContaining({
+            variable: 'page',
+            label: 'param',
+            value_type: VarType.number,
+          }),
+        ]),
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: [{ name: 'x-request-id', required: false }],
+        variables: expect.arrayContaining([
+          expect.objectContaining({
+            variable: 'x_request_id',
+            label: 'header',
+          }),
+        ]),
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: [{ name: 'body_field', type: VarType.string, required: true }],
+        variables: expect.arrayContaining([
+          expect.objectContaining({
+            variable: 'body_field',
+            label: 'body',
+          }),
+        ]),
+      }),
+    )
     expect(mockedToastError).toHaveBeenCalledTimes(1)
   })
 
@@ -169,18 +201,22 @@ describe('useConfig', () => {
 
     await result.current.generateWebhookUrl()
     expect(mockedFetchWebhookUrl).toHaveBeenCalledWith({ appId: 'app-1', nodeId: 'webhook-node' })
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      webhook_url: 'https://example.com/hook',
-      webhook_debug_url: 'https://example.com/debug',
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        webhook_url: 'https://example.com/hook',
+        webhook_debug_url: 'https://example.com/debug',
+      }),
+    )
 
     rerender({
       payload: createPayload(),
     })
     await result.current.generateWebhookUrl()
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      webhook_url: '',
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        webhook_url: '',
+      }),
+    )
 
     rerender({
       payload: createPayload({ webhook_url: 'https://already-exists' }),

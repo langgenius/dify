@@ -58,64 +58,33 @@ describe('UsageInfo', () => {
     })
 
     it('displays unlimited text when total is infinite', () => {
-      render(
-        <UsageInfo
-          Icon={TestIcon}
-          name="Storage"
-          usage={10}
-          total={NUM_INFINITE}
-          unit="GB"
-        />,
-      )
+      render(<UsageInfo Icon={TestIcon} name="Storage" usage={10} total={NUM_INFINITE} unit="GB" />)
 
       expect(screen.getByText('billing.plansCommon.unlimited')).toBeInTheDocument()
     })
 
     it('applies the neutral / warning / error tone as usage crosses thresholds', () => {
       const { rerender, container } = render(
-        <UsageInfo
-          Icon={TestIcon}
-          name="Storage"
-          usage={30}
-          total={100}
-        />,
+        <UsageInfo Icon={TestIcon} name="Storage" usage={30} total={100} />,
       )
 
-      expect(container.querySelector('.bg-components-progress-bar-progress-solid')).toBeInTheDocument()
+      expect(
+        container.querySelector('.bg-components-progress-bar-progress-solid'),
+      ).toBeInTheDocument()
 
-      rerender(
-        <UsageInfo
-          Icon={TestIcon}
-          name="Storage"
-          usage={85}
-          total={100}
-        />,
-      )
+      rerender(<UsageInfo Icon={TestIcon} name="Storage" usage={85} total={100} />)
 
-      expect(container.querySelector('.bg-components-progress-warning-progress')).toBeInTheDocument()
+      expect(
+        container.querySelector('.bg-components-progress-warning-progress'),
+      ).toBeInTheDocument()
 
-      rerender(
-        <UsageInfo
-          Icon={TestIcon}
-          name="Storage"
-          usage={120}
-          total={100}
-        />,
-      )
+      rerender(<UsageInfo Icon={TestIcon} name="Storage" usage={120} total={100} />)
 
       expect(container.querySelector('.bg-components-progress-error-progress')).toBeInTheDocument()
     })
 
     it('does not render the icon when hideIcon is true', () => {
-      render(
-        <UsageInfo
-          Icon={TestIcon}
-          name="Storage"
-          usage={5}
-          total={100}
-          hideIcon
-        />,
-      )
+      render(<UsageInfo Icon={TestIcon} name="Storage" usage={5} total={100} hideIcon />)
 
       expect(screen.queryByTestId('usage-icon')).not.toBeInTheDocument()
     })
@@ -194,7 +163,9 @@ describe('UsageInfo', () => {
           />,
         )
 
-        const sandboxBarClass = container.querySelector('.bg-progress-bar-indeterminate-stripe')!.className
+        const sandboxBarClass = container.querySelector(
+          '.bg-progress-bar-indeterminate-stripe',
+        )!.className
 
         rerender(
           <UsageInfo
@@ -209,7 +180,9 @@ describe('UsageInfo', () => {
           />,
         )
 
-        const nonSandboxBarClass = container.querySelector('.bg-progress-bar-indeterminate-stripe')!.className
+        const nonSandboxBarClass = container.querySelector(
+          '.bg-progress-bar-indeterminate-stripe',
+        )!.className
         expect(sandboxBarClass).not.toBe(nonSandboxBarClass)
       })
     })

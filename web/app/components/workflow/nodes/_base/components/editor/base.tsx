@@ -10,10 +10,7 @@ import { useCallback, useRef, useState } from 'react'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
 import ActionButton from '@/app/components/base/action-button'
 import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
-import {
-  Copy,
-  CopyCheck,
-} from '@/app/components/base/icons/src/vender/line/files'
+import { Copy, CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import CodeGeneratorButton from '../code-generator-button'
 import ToggleExpandBtn from '../toggle-expand-btn'
@@ -62,13 +59,11 @@ const Base: FC<Props> = ({
   footer,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
-  const {
-    wrapClassName,
-    wrapStyle,
-    isExpand,
-    setIsExpand,
-    editorExpandHeight,
-  } = useToggleExpend({ ref, hasFooter: false, isInNode })
+  const { wrapClassName, wrapStyle, isExpand, setIsExpand, editorExpandHeight } = useToggleExpend({
+    ref,
+    hasFooter: false,
+    isInNode,
+  })
 
   const editorContentMinHeight = minHeight - 28
   const [editorContentHeight, setEditorContentHeight] = useState(editorContentMinHeight)
@@ -84,7 +79,16 @@ const Base: FC<Props> = ({
 
   return (
     <Wrap className={cn(wrapClassName)} style={wrapStyle} isInNode={isInNode} isExpand={isExpand}>
-      <div ref={ref} className={cn(className, isExpand ? 'h-full border-0' : 'rounded-lg border', !isFocus ? 'border-transparent bg-components-input-bg-normal' : 'overflow-hidden border-components-input-border-hover bg-components-input-bg-hover')}>
+      <div
+        ref={ref}
+        className={cn(
+          className,
+          isExpand ? 'h-full border-0' : 'rounded-lg border',
+          !isFocus
+            ? 'border-transparent bg-components-input-bg-normal'
+            : 'overflow-hidden border-components-input-border-hover bg-components-input-bg-hover',
+        )}
+      >
         <div className="flex h-7 items-center justify-between pt-1 pr-2 pl-3">
           <div className="system-xs-semibold-uppercase text-text-secondary">{title}</div>
           <div
@@ -106,13 +110,11 @@ const Base: FC<Props> = ({
               </div>
             )}
             <ActionButton className="ml-1" onClick={handleCopy}>
-              {!isCopied
-                ? (
-                    <Copy className="size-4 cursor-pointer" />
-                  )
-                : (
-                    <CopyCheck className="size-4" />
-                  )}
+              {!isCopied ? (
+                <Copy className="size-4 cursor-pointer" />
+              ) : (
+                <CopyCheck className="size-4" />
+              )}
             </ActionButton>
             <div className="ml-1">
               <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />
@@ -126,13 +128,9 @@ const Base: FC<Props> = ({
           onHeightChange={setEditorContentHeight}
           hideResize={isExpand}
         >
-          <div className="h-full pb-2 pl-2">
-            {children}
-          </div>
+          <div className="h-full pb-2 pl-2">{children}</div>
         </PromptEditorHeightResizeWrap>
-        {showFileList && fileList.length > 0 && (
-          <FileListInLog fileList={fileList} />
-        )}
+        {showFileList && fileList.length > 0 && <FileListInLog fileList={fileList} />}
         {footer}
       </div>
     </Wrap>

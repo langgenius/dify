@@ -11,8 +11,7 @@ export const getPreseededToolContract = (world: DifyWorld, resourceName: string)
 
   const parsedDisplayName = splitToolDisplayName(resource.name)
   const parsedToolId = splitToolResourceId(resource.id)
-  if (!parsedDisplayName.ok)
-    throw new Error(parsedDisplayName.reason)
+  if (!parsedDisplayName.ok) throw new Error(parsedDisplayName.reason)
   if (!parsedToolId.providerName || !parsedToolId.toolName)
     throw new Error(`Preseeded tool "${resource.id}" must include provider and tool id segments.`)
 

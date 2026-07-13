@@ -17,7 +17,8 @@ const InviteButton = (props: InviteButtonProps) => {
   const { t } = useTranslation()
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } = useWorkspacePermissions(currentWorkspaceId, systemFeatures.branding.enabled)
+  const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } =
+    useWorkspacePermissions(currentWorkspaceId, systemFeatures.branding.enabled)
   if (systemFeatures.branding.enabled) {
     if (isFetchingWorkspacePermissions) {
       return <Loading />
@@ -29,7 +30,7 @@ const InviteButton = (props: InviteButtonProps) => {
   return (
     <Button variant="primary" {...props}>
       <RiUserAddLine className="mr-1 size-4" />
-      {t($ => $['members.invite'], { ns: 'common' })}
+      {t(($) => $['members.invite'], { ns: 'common' })}
     </Button>
   )
 }

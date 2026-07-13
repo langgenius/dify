@@ -42,18 +42,21 @@ describe('E2E / difyctl run app — separated reasoning', () => {
     await fx.cleanup()
   })
 
-  reasoningIt('[P1] --think --stream surfaces reasoning on stderr, clean answer on stdout', async () => {
-    const result = await withRetry(
-      () => fx.r(['run', 'app', E.reasoningAppId, QUERY, '--think', '--stream']),
-      { attempts: 3, delayMs: 1000 },
-    )
+  reasoningIt(
+    '[P1] --think --stream surfaces reasoning on stderr, clean answer on stdout',
+    async () => {
+      const result = await withRetry(
+        () => fx.r(['run', 'app', E.reasoningAppId, QUERY, '--think', '--stream']),
+        { attempts: 3, delayMs: 1000 },
+      )
 
-    assertExitCode(result, 0)
-    expect(result.stdout.trim().length).toBeGreaterThan(0)
-    // Separated mode keeps the answer free of <think>; reasoning is framed on stderr.
-    expect(result.stdout).not.toContain('<think>')
-    assertStderrContains(result, '<think>')
-  })
+      assertExitCode(result, 0)
+      expect(result.stdout.trim().length).toBeGreaterThan(0)
+      // Separated mode keeps the answer free of <think>; reasoning is framed on stderr.
+      expect(result.stdout).not.toContain('<think>')
+      assertStderrContains(result, '<think>')
+    },
+  )
 
   reasoningIt('[P1] --think -o json persists reasoning under metadata.reasoning', async () => {
     const result = await withRetry(

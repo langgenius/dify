@@ -19,11 +19,11 @@ vi.mock('@/service/knowledge/use-create-dataset', () => ({
   useCreateDocument: () => ({ mutateAsync: mockCreateDocument, isPending: false }),
   getNotionInfo: (pages: { page_id: string }[], credentialId: string) => ({
     workspace_id: 'ws-1',
-    pages: pages.map(p => p.page_id),
+    pages: pages.map((p) => p.page_id),
     notion_credential_id: credentialId,
   }),
-  getWebsiteInfo: (opts: { websitePages: { url: string }[], websiteCrawlProvider: string }) => ({
-    urls: opts.websitePages.map(p => p.url),
+  getWebsiteInfo: (opts: { websitePages: { url: string }[]; websiteCrawlProvider: string }) => ({
+    urls: opts.websitePages.map((p) => p.url),
     only_main_content: true,
     provider: opts.websiteCrawlProvider,
   }),
@@ -48,22 +48,27 @@ vi.mock('@/app/components/base/amplitude', () => ({
 }))
 
 // Import hooks after mocks
-const { useSegmentationState, DEFAULT_SEGMENT_IDENTIFIER, DEFAULT_MAXIMUM_CHUNK_LENGTH, DEFAULT_OVERLAP }
-  = await import('@/app/components/datasets/create/step-two/hooks')
-const { useDocumentCreation, IndexingType }
-  = await import('@/app/components/datasets/create/step-two/hooks')
+const {
+  useSegmentationState,
+  DEFAULT_SEGMENT_IDENTIFIER,
+  DEFAULT_MAXIMUM_CHUNK_LENGTH,
+  DEFAULT_OVERLAP,
+} = await import('@/app/components/datasets/create/step-two/hooks')
+const { useDocumentCreation, IndexingType } =
+  await import('@/app/components/datasets/create/step-two/hooks')
 
-const createMockFile = (overrides?: Partial<CustomFile>): CustomFile => ({
-  id: 'file-1',
-  name: 'test.txt',
-  type: 'text/plain',
-  size: 1024,
-  extension: '.txt',
-  mime_type: 'text/plain',
-  created_at: 0,
-  created_by: '',
-  ...overrides,
-} as CustomFile)
+const createMockFile = (overrides?: Partial<CustomFile>): CustomFile =>
+  ({
+    id: 'file-1',
+    name: 'test.txt',
+    type: 'text/plain',
+    size: 1024,
+    extension: '.txt',
+    mime_type: 'text/plain',
+    created_at: 0,
+    created_by: '',
+    ...overrides,
+  }) as CustomFile
 
 describe('Create Dataset Flow - Cross-Step Data Contract', () => {
   beforeEach(() => {

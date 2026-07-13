@@ -38,13 +38,25 @@ describe('useBatchUpdateDocMetadata', () => {
         {
           document_id: 'doc-1',
           metadata_list: [
-            { key: 'title-1', id: '01', name: 'name-1', type: DataType.string, value: 'new title 01' },
+            {
+              key: 'title-1',
+              id: '01',
+              name: 'name-1',
+              type: DataType.string,
+              value: 'new title 01',
+            },
           ],
         },
         {
           document_id: 'doc-2',
           metadata_list: [
-            { key: 'title-2', id: '02', name: 'name-1', type: DataType.string, value: 'new title 02' },
+            {
+              key: 'title-2',
+              id: '02',
+              name: 'name-1',
+              type: DataType.string,
+              value: 'new title 02',
+            },
           ],
         },
       ],

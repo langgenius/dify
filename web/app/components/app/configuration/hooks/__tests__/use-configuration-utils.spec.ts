@@ -1,7 +1,14 @@
 /* eslint-disable ts/no-explicit-any */
 import type { VisionSettings } from '@/types/app'
 import { withSelectorKey } from '@/test/i18n-mock'
-import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
+import {
+  AgentStrategy,
+  AppModeEnum,
+  ModelModeType,
+  Resolution,
+  RETRIEVE_TYPE,
+  TransferMethod,
+} from '@/types/app'
 import {
   buildConfigurationDatasetConfigs,
   buildPublishBody,
@@ -42,11 +49,14 @@ vi.mock('@/service/tools', () => ({
 }))
 
 vi.mock('@/utils/completion-params', () => ({
-  fetchAndMergeValidCompletionParams: (...args: unknown[]) => mockFetchAndMergeValidCompletionParams(...args),
+  fetchAndMergeValidCompletionParams: (...args: unknown[]) =>
+    mockFetchAndMergeValidCompletionParams(...args),
 }))
 
 vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', async () => {
-  const actual = await vi.importActual<any>('@/app/components/workflow/nodes/knowledge-retrieval/utils')
+  const actual = await vi.importActual<any>(
+    '@/app/components/workflow/nodes/knowledge-retrieval/utils',
+  )
 
   return {
     ...actual,
@@ -149,21 +159,25 @@ describe('useConfiguration utils', () => {
     })
 
     expect(publishedConfig.completionParams).toEqual({ temperature: 0.7 })
-    expect(publishedConfig.modelConfig).toEqual(expect.objectContaining({
-      dataSets: [{ id: 'dataset-1' }],
-      mode: ModelModeType.chat,
-      model_id: 'gpt-4o',
-      more_like_this: { enabled: true },
-      opening_statement: 'hello',
-      provider: 'langgenius/openai/openai',
-      suggested_questions: ['how are you?'],
-    }))
+    expect(publishedConfig.modelConfig).toEqual(
+      expect.objectContaining({
+        dataSets: [{ id: 'dataset-1' }],
+        mode: ModelModeType.chat,
+        model_id: 'gpt-4o',
+        more_like_this: { enabled: true },
+        opening_statement: 'hello',
+        provider: 'langgenius/openai/openai',
+        suggested_questions: ['how are you?'],
+      }),
+    )
     expect(publishedConfig.modelConfig.configs.prompt_variables).toHaveLength(2)
-    expect(publishedConfig.modelConfig.agentConfig.tools[0]).toEqual(expect.objectContaining({
-      isDeleted: true,
-      notAuthor: true,
-      tool_name: 'search',
-    }))
+    expect(publishedConfig.modelConfig.agentConfig.tools[0]).toEqual(
+      expect.objectContaining({
+        isDeleted: true,
+        notAuthor: true,
+        tool_name: 'search',
+      }),
+    )
   })
 
   it('should build dataset configs with reranking defaults', () => {
@@ -183,9 +197,11 @@ describe('useConfiguration utils', () => {
     })
 
     expect(datasetConfigs.retrieval_model).toBe(RETRIEVE_TYPE.multiWay)
-    expect(datasetConfigs.reranking_model).toEqual(expect.objectContaining({
-      reranking_model_name: 'rerank-1',
-    }))
+    expect(datasetConfigs.reranking_model).toEqual(
+      expect.objectContaining({
+        reranking_model_name: 'rerank-1',
+      }),
+    )
   })
 
   it('should build a publish body for advanced prompts and dataset selections', () => {
@@ -208,7 +224,11 @@ describe('useConfiguration utils', () => {
       externalDataToolsConfig: [],
       features: {
         moreLikeThis: { enabled: true },
-        opening: { enabled: true, opening_statement: 'hello', suggested_questions: ['how are you?'] },
+        opening: {
+          enabled: true,
+          opening_statement: 'hello',
+          suggested_questions: ['how are you?'],
+        },
         moderation: { enabled: false },
         speech2text: { enabled: false },
         text2speech: { enabled: false, voice: '', language: '' },
@@ -250,24 +270,28 @@ describe('useConfiguration utils', () => {
       resolvedModelModeType: ModelModeType.chat,
     })
 
-    expect(body).toEqual(expect.objectContaining({
-      chat_prompt_config: { prompt: [{ role: 'system', text: 'hi' }] },
-      dataset_query_variable: 'context',
-      opening_statement: 'hello',
-      pre_prompt: '',
-      prompt_type: 'advanced',
-      suggested_questions: ['how are you?'],
-    }))
+    expect(body).toEqual(
+      expect.objectContaining({
+        chat_prompt_config: { prompt: [{ role: 'system', text: 'hi' }] },
+        dataset_query_variable: 'context',
+        opening_statement: 'hello',
+        pre_prompt: '',
+        prompt_type: 'advanced',
+        suggested_questions: ['how are you?'],
+      }),
+    )
     expect(body.agent_mode?.strategy).toBe(AgentStrategy.functionCall)
     expect(body.dataset_configs?.datasets?.datasets).toEqual([
       { dataset: { enabled: true, id: 'dataset-1' } },
     ])
-    expect(body.model).toEqual(expect.objectContaining({
-      completion_params: { temperature: 0.7 },
-      mode: ModelModeType.chat,
-      name: 'gpt-4o',
-      provider: 'langgenius/openai/openai',
-    }))
+    expect(body.model).toEqual(
+      expect.objectContaining({
+        completion_params: { temperature: 0.7 },
+        mode: ModelModeType.chat,
+        name: 'gpt-4o',
+        provider: 'langgenius/openai/openai',
+      }),
+    )
   })
 
   it('should load and normalize the initial configuration state', async () => {
@@ -350,12 +374,14 @@ describe('useConfiguration utils', () => {
     expect(state.collectionList[0]!.icon).toBe('/console/tool.svg')
     expect(state.promptMode).toBe('advanced')
     expect(state.nextDataSets).toEqual([{ id: 'dataset-1', name: 'Dataset One' }])
-    expect(state.annotationConfig).toEqual(expect.objectContaining({
-      enabled: true,
-      embedding_model: expect.objectContaining({
-        embedding_provider_name: 'langgenius/openai/openai',
+    expect(state.annotationConfig).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        embedding_model: expect.objectContaining({
+          embedding_provider_name: 'langgenius/openai/openai',
+        }),
       }),
-    }))
+    )
     expect(state.publishedConfig.modelConfig.model_id).toBe('gpt-4o')
   })
 
@@ -426,9 +452,11 @@ describe('useConfiguration utils', () => {
       },
     })
     expect(state.nextDataSets).toEqual([{ id: 'dataset-from-tool', name: 'Dataset From Tool' }])
-    expect(state.annotationConfig).toEqual(expect.objectContaining({
-      enabled: false,
-    }))
+    expect(state.annotationConfig).toEqual(
+      expect.objectContaining({
+        enabled: false,
+      }),
+    )
     expect(state.chatPromptConfig).toEqual(expect.any(Object))
   })
 
@@ -550,10 +578,7 @@ describe('useConfiguration utils', () => {
       setRerankSettingModalOpen: vi.fn(),
     })
 
-    handleSelect([
-      { id: 'dataset-1' },
-      { id: 'dataset-2', name: 'Dataset Two' },
-    ] as any)
+    handleSelect([{ id: 'dataset-1' }, { id: 'dataset-2', name: 'Dataset Two' }] as any)
 
     expect(setDataSets).toHaveBeenCalledWith([
       { id: 'dataset-1', name: 'Dataset One' },
@@ -718,14 +743,16 @@ describe('useConfiguration utils', () => {
     } as any)
 
     expect(result).toBe(true)
-    expect(mockUpdateAppModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      body: expect.objectContaining({
-        agent_mode: expect.objectContaining({
-          strategy: AgentStrategy.functionCall,
+    expect(mockUpdateAppModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_mode: expect.objectContaining({
+            strategy: AgentStrategy.functionCall,
+          }),
         }),
+        url: '/apps/app-1/model-config',
       }),
-      url: '/apps/app-1/model-config',
-    }))
+    )
     expect(setPublishedConfig).toHaveBeenCalledTimes(1)
     expect(mockToastSuccess).toHaveBeenCalledWith('api.success')
     expect(setCanReturnToSimpleMode).toHaveBeenCalledWith(false)
@@ -733,68 +760,76 @@ describe('useConfiguration utils', () => {
 
   it('should block publish when required prompt sections are missing', async () => {
     const mockUpdateAppModelConfig = vi.fn()
-    const createBasePublishHandler = (overrides: Record<string, unknown>) => createPublishHandler({
-      appId: 'app-1',
-      chatPromptConfig: { prompt: [{ role: 'system', text: 'hi' }] } as any,
-      citationConfig: { enabled: false } as any,
-      completionParamsState: { temperature: 0.7 },
-      completionPromptConfig: {
-        prompt: { text: 'completion' },
-        conversation_histories_role: {
-          assistant_prefix: 'assistant',
-          user_prefix: 'user',
+    const createBasePublishHandler = (overrides: Record<string, unknown>) =>
+      createPublishHandler({
+        appId: 'app-1',
+        chatPromptConfig: { prompt: [{ role: 'system', text: 'hi' }] } as any,
+        citationConfig: { enabled: false } as any,
+        completionParamsState: { temperature: 0.7 },
+        completionPromptConfig: {
+          prompt: { text: 'completion' },
+          conversation_histories_role: {
+            assistant_prefix: 'assistant',
+            user_prefix: 'user',
+          },
+        } as any,
+        contextVar: 'context',
+        contextVarEmpty: false,
+        dataSets: [] as any,
+        datasetConfigs: { datasets: { datasets: [] } } as any,
+        externalDataToolsConfig: [],
+        hasSetBlockStatus: {
+          history: true,
+          query: true,
         },
-      } as any,
-      contextVar: 'context',
-      contextVarEmpty: false,
-      dataSets: [] as any,
-      datasetConfigs: { datasets: { datasets: [] } } as any,
-      externalDataToolsConfig: [],
-      hasSetBlockStatus: {
-        history: true,
-        query: true,
-      },
-      introduction: 'hello',
-      isAdvancedMode: true,
-      isFunctionCall: false,
-      mode: AppModeEnum.CHAT,
-      modelConfig: {
-        configs: {
-          prompt_template: 'hello',
-          prompt_variables: [],
-        },
-        model_id: 'gpt-4o',
-        provider: 'langgenius/openai/openai',
-        system_parameters: {
-          audio_file_size_limit: 1,
-          file_size_limit: 1,
-          image_file_size_limit: 1,
-          video_file_size_limit: 1,
-          workflow_file_upload_limit: 1,
-        },
-      } as any,
-      moreLikeThisConfig: { enabled: false },
-      promptEmpty: false,
-      promptMode: 'advanced' as any,
-      resolvedModelModeType: ModelModeType.completion,
-      setCanReturnToSimpleMode: vi.fn(),
-      setPublishedConfig: vi.fn(),
-      speechToTextConfig: { enabled: false } as any,
-      suggestedQuestionsAfterAnswerConfig: { enabled: false } as any,
-      t,
-      textToSpeechConfig: { enabled: false, voice: '', language: '' } as any,
-      ...overrides,
-    })
+        introduction: 'hello',
+        isAdvancedMode: true,
+        isFunctionCall: false,
+        mode: AppModeEnum.CHAT,
+        modelConfig: {
+          configs: {
+            prompt_template: 'hello',
+            prompt_variables: [],
+          },
+          model_id: 'gpt-4o',
+          provider: 'langgenius/openai/openai',
+          system_parameters: {
+            audio_file_size_limit: 1,
+            file_size_limit: 1,
+            image_file_size_limit: 1,
+            video_file_size_limit: 1,
+            workflow_file_upload_limit: 1,
+          },
+        } as any,
+        moreLikeThisConfig: { enabled: false },
+        promptEmpty: false,
+        promptMode: 'advanced' as any,
+        resolvedModelModeType: ModelModeType.completion,
+        setCanReturnToSimpleMode: vi.fn(),
+        setPublishedConfig: vi.fn(),
+        speechToTextConfig: { enabled: false } as any,
+        suggestedQuestionsAfterAnswerConfig: { enabled: false } as any,
+        t,
+        textToSpeechConfig: { enabled: false, voice: '', language: '' } as any,
+        ...overrides,
+      })
 
     await createBasePublishHandler({ promptEmpty: true })(mockUpdateAppModelConfig)
-    await createBasePublishHandler({ hasSetBlockStatus: { history: false, query: true } })(mockUpdateAppModelConfig)
-    await createBasePublishHandler({ hasSetBlockStatus: { history: true, query: false } })(mockUpdateAppModelConfig)
+    await createBasePublishHandler({ hasSetBlockStatus: { history: false, query: true } })(
+      mockUpdateAppModelConfig,
+    )
+    await createBasePublishHandler({ hasSetBlockStatus: { history: true, query: false } })(
+      mockUpdateAppModelConfig,
+    )
     await createBasePublishHandler({ contextVarEmpty: true })(mockUpdateAppModelConfig)
 
     expect(mockToastError).toHaveBeenNthCalledWith(1, 'otherError.promptNoBeEmpty')
     expect(mockToastError).toHaveBeenNthCalledWith(2, 'otherError.historyNoBeEmpty')
     expect(mockToastError).toHaveBeenNthCalledWith(3, 'otherError.queryNoBeEmpty')
-    expect(mockToastError).toHaveBeenNthCalledWith(4, 'feature.dataSet.queryVariable.contextVarNotEmpty')
+    expect(mockToastError).toHaveBeenNthCalledWith(
+      4,
+      'feature.dataSet.queryVariable.contextVarNotEmpty',
+    )
     expect(mockUpdateAppModelConfig).not.toHaveBeenCalled()
   })
 
@@ -843,10 +878,13 @@ describe('useConfiguration utils', () => {
 
     expect(migrateToDefaultPrompt).toHaveBeenCalledWith(true, ModelModeType.completion)
     expect(setModelConfig).toHaveBeenCalledTimes(1)
-    expect(handleSetVisionConfig).toHaveBeenCalledWith({
-      ...baseVisionConfig,
-      enabled: true,
-    }, true)
+    expect(handleSetVisionConfig).toHaveBeenCalledWith(
+      {
+        ...baseVisionConfig,
+        enabled: true,
+      },
+      true,
+    )
     expect(setCompletionParams).toHaveBeenCalledWith({ temperature: 0.3 })
   })
 
@@ -903,7 +941,9 @@ describe('useConfiguration utils', () => {
 
     expect(migrateToDefaultPrompt).toHaveBeenCalledWith(true, ModelModeType.completion)
     expect(migrateToDefaultPrompt).toHaveBeenCalledWith(true, ModelModeType.chat)
-    expect(mockToastWarning).toHaveBeenCalledWith('modelProvider.parametersInvalidRemoved: top_k (unsupported)')
+    expect(mockToastWarning).toHaveBeenCalledWith(
+      'modelProvider.parametersInvalidRemoved: top_k (unsupported)',
+    )
     expect(mockToastError).toHaveBeenCalledWith('error')
     expect(setCompletionParams).toHaveBeenCalledWith({})
   })
