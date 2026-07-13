@@ -15,13 +15,9 @@
     "lint:oxlint": "vp lint",
     "lint:oxlint:fix": "vp lint --fix",
     "lint:oxlint:quiet": "vp lint --quiet",
-    "lint:oxlint:scope": "vp lint",
-    "lint:oxlint:scope:fix": "vp lint --fix",
     "lint:eslint": "eslint --concurrency=auto",
     "lint:eslint:fix": "eslint --fix --prune-suppressions --concurrency=auto",
-    "lint:eslint:quiet": "eslint --quiet --concurrency=auto",
-    "lint:eslint:scope": "eslint --no-error-on-unmatched-pattern",
-    "lint:eslint:scope:fix": "eslint --fix --pass-on-unpruned-suppressions --no-error-on-unmatched-pattern"
+    "lint:eslint:quiet": "eslint --quiet --concurrency=auto"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "catalog:",
