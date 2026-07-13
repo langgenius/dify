@@ -17,9 +17,9 @@
     "lint:oxlint:quiet": "vp lint --quiet packages web e2e vite.config.ts lint.config.ts",
     "lint:oxlint:scope": "vp lint",
     "lint:oxlint:scope:fix": "vp lint --fix",
-    "lint:eslint": "eslint --concurrency=auto packages web e2e package.json pnpm-workspace.yaml eslint.config.mjs vite.config.ts lint.config.ts",
-    "lint:eslint:fix": "eslint --fix --prune-suppressions --concurrency=auto packages web e2e package.json pnpm-workspace.yaml eslint.config.mjs vite.config.ts lint.config.ts",
-    "lint:eslint:quiet": "eslint --quiet --concurrency=auto packages web e2e package.json pnpm-workspace.yaml eslint.config.mjs vite.config.ts lint.config.ts",
+    "lint:eslint": "eslint --concurrency=auto",
+    "lint:eslint:fix": "eslint --fix --prune-suppressions --concurrency=auto",
+    "lint:eslint:quiet": "eslint --quiet --concurrency=auto",
     "lint:eslint:scope": "eslint --no-error-on-unmatched-pattern",
     "lint:eslint:scope:fix": "eslint --fix --pass-on-unpruned-suppressions --no-error-on-unmatched-pattern"
   },

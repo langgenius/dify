@@ -46,7 +46,7 @@ Use `pnpm lint:quiet` to hide warnings from both linters. Oxlint runs in paralle
 
 The primary rule baseline lives in `lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. Oxlint-native rules are preferred, and compatible ESLint rules can run through Oxlint's `jsPlugins` support. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
 
-The fallback baseline lives in `eslint.config.mjs`. It covers declaration files, structured data and Markdown, missing core rules, rules with incomplete Oxlint behavior such as `no-control-regex`, and rules that require override-scoped settings such as Dify UI's Tailwind entry point. This configuration lists only the required fallback rules and does not import or depend on the Antfu ESLint config.
+The fallback baseline and its repository-wide file scope live in `eslint.config.mjs`. It covers declaration files, structured data and Markdown, missing core rules, rules with incomplete Oxlint behavior such as `no-control-regex`, and rules that require override-scoped settings such as Dify UI's Tailwind entry point. This configuration lists only the required fallback rules and does not import or depend on the Antfu ESLint config.
 
 ### Auto-fix Workflow
 
@@ -84,8 +84,8 @@ The bulk-suppression flags are available in the bundled Oxlint version but are c
 ```sh
 pnpm lint:oxlint:scope packages web e2e cli sdks/nodejs-client vite.config.ts lint.config.ts --suppress-all
 pnpm lint:oxlint:scope packages web e2e cli sdks/nodejs-client vite.config.ts lint.config.ts --prune-suppressions
-pnpm lint:eslint:scope packages web e2e cli sdks/nodejs-client/src sdks/nodejs-client/tests package.json pnpm-workspace.yaml eslint.config.mjs vite.config.ts lint.config.ts --suppress-all
-pnpm lint:eslint:scope packages web e2e cli sdks/nodejs-client/src sdks/nodejs-client/tests package.json pnpm-workspace.yaml eslint.config.mjs vite.config.ts lint.config.ts --prune-suppressions
+pnpm lint:eslint:scope --suppress-all
+pnpm lint:eslint:scope --prune-suppressions
 ```
 
 The Oxc editor extension does not yet apply the bulk-suppression baseline, so the editor may still display findings that the CLI suppresses.
