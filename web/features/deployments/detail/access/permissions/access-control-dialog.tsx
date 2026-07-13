@@ -94,7 +94,8 @@ function DeploymentAccessControlDialogBody({
   const publicAccessDisabled = !systemFeatures.webapp_auth.allow_public_access
   const selectedSubjectCount = specificSelection.groups.length + specificSelection.members.length
   const specificEmpty = specificSelected && selectedSubjectCount === 0
-  const confirmDisabled = saving || (specificSelected && specificEmpty)
+  const publicSelectedDisabled = currentMenu === AppAccessMode.PUBLIC && publicAccessDisabled
+  const confirmDisabled = saving || (specificSelected && specificEmpty) || publicSelectedDisabled
 
   const handleConfirm = () => {
     if (confirmDisabled) return

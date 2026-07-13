@@ -13,16 +13,26 @@ const AccessControlItem: FC<AccessControlItemProps> = ({ type, children, disable
   const currentMenu = useAccessControlStore((s) => s.currentMenu)
   const setCurrentMenu = useAccessControlStore((s) => s.setCurrentMenu)
   if (currentMenu !== type) {
+    const selectOption = () => !disabled && setCurrentMenu(type)
     return (
       <div
+        role="button"
+        tabIndex={disabled ? -1 : 0}
         className={cn(
           'rounded-[10px] border border-components-option-card-option-border bg-components-option-card-option-bg',
+          'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
           disabled
             ? 'cursor-not-allowed opacity-60'
             : 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover',
         )}
         aria-disabled={disabled}
-        onClick={() => !disabled && setCurrentMenu(type)}
+        onClick={selectOption}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            selectOption()
+          }
+        }}
       >
         {children}
       </div>

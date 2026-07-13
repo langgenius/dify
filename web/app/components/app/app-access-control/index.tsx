@@ -45,7 +45,9 @@ export default function AccessControl(props: AccessControlProps) {
   }, [app, setAppId, setCurrentMenu])
 
   const { isPending, mutateAsync: updateAccessMode } = useUpdateAccessMode()
+  const confirmDisabled = isPending || (currentMenu === AccessMode.PUBLIC && publicAccessDisabled)
   const handleConfirm = useCallback(async () => {
+    if (confirmDisabled) return
     const submitData: {
       appId: string
       accessMode: AccessMode
@@ -67,7 +69,7 @@ export default function AccessControl(props: AccessControlProps) {
     await updateAccessMode(submitData)
     toast.success(t(($) => $['accessControlDialog.updateSuccess'], { ns: 'app' }))
     onConfirm?.()
-  }, [updateAccessMode, app, specificGroups, specificMembers, t, onConfirm, currentMenu])
+  }, [updateAccessMode, app, specificGroups, specificMembers, t, onConfirm, currentMenu, confirmDisabled])
   return (
     <AccessControlDialog show onClose={onClose}>
       <div className="flex flex-col gap-y-3">
@@ -131,7 +133,7 @@ export default function AccessControl(props: AccessControlProps) {
         <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
           <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button
-            disabled={isPending}
+            disabled={confirmDisabled}
             loading={isPending}
             variant="primary"
             onClick={handleConfirm}
