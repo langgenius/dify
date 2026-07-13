@@ -17,13 +17,7 @@ type IHeaderingProps = {
   titleAction?: React.ReactNode
 }
 
-export const Heading = function H2({
-  url,
-  method,
-  title,
-  name,
-  titleAction,
-}: IHeaderingProps) {
+export const Heading = function H2({ url, method, title, name, titleAction }: IHeaderingProps) {
   let style = ''
   switch (method) {
     case 'PUT':

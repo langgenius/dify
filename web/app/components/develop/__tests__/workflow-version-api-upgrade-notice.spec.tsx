@@ -15,24 +15,36 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/app/components/billing/plan-upgrade-modal', () => ({
-  PlanUpgradeModal: ({ show, title, description, onClose }: {
+  PlanUpgradeModal: ({
+    show,
+    title,
+    description,
+    onClose,
+  }: {
     show: boolean
     title: string
     description: string
     onClose: () => void
-  }) => show
-    ? (
-        <div data-testid="plan-upgrade-modal">
-          <div>{title}</div>
-          <div>{description}</div>
-          <button type="button" onClick={onClose}>close upgrade modal</button>
-        </div>
-      )
-    : null,
+  }) =>
+    show ? (
+      <div data-testid="plan-upgrade-modal">
+        <div>{title}</div>
+        <div>{description}</div>
+        <button type="button" onClick={onClose}>
+          close upgrade modal
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/app/components/billing/upgrade-btn', () => ({
-  default: ({ onClick, isShort, size, loc, className }: {
+  default: ({
+    onClick,
+    isShort,
+    size,
+    loc,
+    className,
+  }: {
     onClick: () => void
     isShort: boolean
     size: string
@@ -65,7 +77,9 @@ describe('WorkflowVersionApiUpgradeNotice', () => {
 
     render(<WorkflowVersionApiUpgradeNotice />)
 
-    expect(screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should not render when billing is disabled', () => {
@@ -74,13 +88,17 @@ describe('WorkflowVersionApiUpgradeNotice', () => {
 
     render(<WorkflowVersionApiUpgradeNotice />)
 
-    expect(screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should not render for paid plans', () => {
     render(<WorkflowVersionApiUpgradeNotice />)
 
-    expect(screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should show a small upgrade button and open the plan upgrade modal for sandbox plans', () => {
@@ -89,7 +107,9 @@ describe('WorkflowVersionApiUpgradeNotice', () => {
     render(<WorkflowVersionApiUpgradeNotice />)
 
     expect(screen.queryByText('billing.upgrade.workflowVersionRun.title')).not.toBeInTheDocument()
-    expect(screen.queryByText('billing.upgrade.workflowVersionRun.description')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('billing.upgrade.workflowVersionRun.description'),
+    ).not.toBeInTheDocument()
 
     const upgradeButton = screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' })
     expect(upgradeButton).toHaveAttribute('data-is-short', 'true')
@@ -102,6 +122,8 @@ describe('WorkflowVersionApiUpgradeNotice', () => {
     const modal = screen.getByTestId('plan-upgrade-modal')
     expect(modal).toBeInTheDocument()
     expect(within(modal).getByText('billing.upgrade.workflowVersionRun.title')).toBeInTheDocument()
-    expect(within(modal).getByText('billing.upgrade.workflowVersionRun.description')).toBeInTheDocument()
+    expect(
+      within(modal).getByText('billing.upgrade.workflowVersionRun.description'),
+    ).toBeInTheDocument()
   })
 })

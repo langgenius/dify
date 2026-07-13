@@ -12,11 +12,10 @@ const WorkflowVersionApiUpgradeNotice = () => {
   const { plan, enableBilling, isFetchedPlan } = useProviderContext()
   const [isPlanUpgradeModalOpen, setIsPlanUpgradeModalOpen] = useState(false)
 
-  if (!isFetchedPlan || !enableBilling || plan.type !== Plan.sandbox)
-    return null
+  if (!isFetchedPlan || !enableBilling || plan.type !== Plan.sandbox) return null
 
-  const title = t($ => $['upgrade.workflowVersionRun.title'])
-  const description = t($ => $['upgrade.workflowVersionRun.description'])
+  const title = t(($) => $['upgrade.workflowVersionRun.title'])
+  const description = t(($) => $['upgrade.workflowVersionRun.description'])
 
   return (
     <>
