@@ -11,6 +11,7 @@ import type {
 } from '@dify/contracts/api/console/datasets/types.gen'
 import type {
   AvailableModelListResponse,
+  DefaultModelDataResponse,
   ModelProviderListResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SeedContext, SeedResource, SeedTask } from '../../../support/seed'
@@ -65,6 +66,8 @@ type ToolResource = SeedResource & {
 }
 
 const modelCredentialEnv = 'E2E_MODEL_PROVIDER_CREDENTIALS_JSON'
+const speechToTextModelProviderEnv = 'E2E_SPEECH_TO_TEXT_MODEL_PROVIDER'
+const speechToTextModelNameEnv = 'E2E_SPEECH_TO_TEXT_MODEL_NAME'
 const marketplacePluginIdsEnv = 'E2E_MARKETPLACE_PLUGIN_IDS'
 const marketplacePluginUniqueIdentifiersEnv = 'E2E_MARKETPLACE_PLUGIN_UNIQUE_IDENTIFIERS'
 const oauthToolCredentialIdEnv = 'E2E_OAUTH_TOOL_CREDENTIAL_ID'
@@ -104,6 +107,12 @@ const agentDecisionModelConfig = (): StableModel => ({
   type: process.env.E2E_AGENT_DECISION_MODEL_TYPE?.trim() || 'llm',
 })
 
+const speechToTextModelConfig = (): StableModel => ({
+  name: process.env[speechToTextModelNameEnv]?.trim() || 'gpt-4o-mini-transcribe',
+  provider: process.env[speechToTextModelProviderEnv]?.trim() || 'openai',
+  type: 'speech2text',
+})
+
 const parseJsonEnv = (envName: string) => {
   const raw = process.env[envName]?.trim()
   if (!raw) return { ok: false as const, reason: `${envName} is required.` }
@@ -121,7 +130,7 @@ const parseJsonEnv = (envName: string) => {
   }
 }
 
-const findChatModel = async (config: StableModel, title: string) => {
+const findModel = async (config: StableModel, title: string) => {
   const ctx = await createApiContext()
   try {
     const response = await ctx.get(
@@ -237,7 +246,7 @@ const upsertStableProviderCredential = async (
   }
 }
 
-const seedChatModel = async (
+const seedModel = async (
   context: SeedContext,
   {
     config,
@@ -247,7 +256,7 @@ const seedChatModel = async (
     title: string
   },
 ) => {
-  const existing = await findChatModel(config, title)
+  const existing = await findModel(config, title)
   const resource = {
     id: `${existing?.provider ?? config.provider}/${existing?.name ?? config.name}`,
     kind: 'model',
@@ -303,7 +312,7 @@ const seedChatModel = async (
     }
   }
 
-  const seeded = await findChatModel(config, title)
+  const seeded = await findModel(config, title)
   if (seeded?.status !== activeModelStatus) {
     return blocked(
       title,
@@ -319,16 +328,99 @@ const seedChatModel = async (
 }
 
 const seedStableModel = async (context: SeedContext) =>
-  seedChatModel(context, {
+  seedModel(context, {
     config: stableModelConfig(),
     title: agentBuilderPreseededResources.stableChatModel,
   })
 
 const seedAgentDecisionModel = async (context: SeedContext) =>
-  seedChatModel(context, {
+  seedModel(context, {
     config: agentDecisionModelConfig(),
     title: agentBuilderPreseededResources.agentDecisionChatModel,
   })
+
+const getDefaultModel = async (modelType: string) => {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(
+      `/console/api/workspaces/current/default-model?${buildQuery({ model_type: modelType })}`,
+    )
+    await expectApiResponseOK(response, `Get default ${modelType} model`)
+    const body = (await response.json()) as DefaultModelDataResponse
+    return body.data
+  } finally {
+    await ctx.dispose()
+  }
+}
+
+const setDefaultModel = async (model: StableModel) => {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.post('/console/api/workspaces/current/default-model', {
+      data: {
+        model_settings: [
+          {
+            model: model.name,
+            model_type: model.type,
+            provider: model.provider,
+          },
+        ],
+      },
+    })
+    await expectApiResponseOK(response, `Set default ${model.type} model`)
+  } finally {
+    await ctx.dispose()
+  }
+}
+
+const seedSpeechToTextModel = async (context: SeedContext) => {
+  const config = speechToTextModelConfig()
+  const title = agentBuilderPreseededResources.speechToTextModel
+  const modelResult = await seedModel(context, { config, title })
+  if (modelResult.status === 'blocked' || modelResult.status === 'skipped') return modelResult
+
+  const model = await findModel(config, title)
+  if (!model || model.status !== activeModelStatus)
+    return blocked(title, `${config.provider}/${config.name} is not active after model setup.`)
+
+  const resource = {
+    id: `${model.provider}/${model.name}`,
+    kind: 'model',
+    name: title,
+  }
+  const defaultModel = await getDefaultModel(config.type)
+  const isExpectedDefault =
+    defaultModel?.model === model.name &&
+    matchesProvider(defaultModel.provider.provider, model.provider)
+
+  if (isExpectedDefault)
+    return modelResult.status === 'updated' ? modelResult : verified(title, resource)
+
+  if (context.dryRun)
+    return skipped(
+      title,
+      `Would set ${model.provider}/${model.name} as the workspace default Speech-to-Text model.`,
+    )
+
+  await setDefaultModel({
+    name: model.name,
+    provider: model.provider,
+    type: config.type,
+  })
+
+  const updatedDefaultModel = await getDefaultModel(config.type)
+  if (
+    updatedDefaultModel?.model !== model.name ||
+    !matchesProvider(updatedDefaultModel.provider.provider, model.provider)
+  ) {
+    return blocked(
+      title,
+      `${model.provider}/${model.name} was not selected as the workspace default Speech-to-Text model.`,
+    )
+  }
+
+  return updated(title, resource)
+}
 
 type BuiltinToolProvider = {
   label?: { en_US?: string; zh_Hans?: string }
@@ -1003,10 +1095,19 @@ const agentV2FullSeedTasks = (): SeedTask[] => [
   },
 ]
 
+const agentV2ExternalRuntimeSeedTasks = (): SeedTask[] => [
+  ...agentV2BaseSeedTasks(),
+  {
+    id: 'speech-to-text-model',
+    title: agentBuilderPreseededResources.speechToTextModel,
+    run: seedSpeechToTextModel,
+  },
+]
+
 export const createAgentV2SeedTasks = (profile: string = 'full'): SeedTask[] => {
   if (profile === 'full') return agentV2FullSeedTasks()
 
-  if (profile === 'external-runtime') return agentV2BaseSeedTasks()
+  if (profile === 'external-runtime') return agentV2ExternalRuntimeSeedTasks()
 
   throw new Error(`Unknown Agent V2 seed profile "${profile}".`)
 }

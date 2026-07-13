@@ -198,6 +198,7 @@ const ChatWrapper = ({
             supportCitationHitInfo: true,
           } as any
         }
+        speechToTextTarget={appDetail ? { type: 'consoleApp', appId: appDetail.id } : undefined}
         chatList={chatList}
         isResponding={isResponding}
         chatContainerClassName="px-3"

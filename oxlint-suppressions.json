@@ -2371,11 +2371,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/voice-input/__tests__/index.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/base/voice-input/index.stories.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 2
@@ -2393,17 +2388,9 @@
       "count": 1
     }
   },
-  "web/app/components/base/voice-input/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
-  "web/app/components/base/voice-input/utils.ts": {
-    "typescript/no-explicit-any": {
-      "count": 4
+  "web/app/components/base/voice-input/recorder.ts": {
+    "no-throw-literal": {
+      "count": 1
     }
   },
   "web/app/components/billing/plan/assets/index.tsx": {
@@ -7143,11 +7130,6 @@
   "web/types/common.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
-    }
-  },
-  "web/types/lamejs.d.ts": {
-    "typescript/no-explicit-any": {
-      "count": 3
     }
   },
   "web/types/pipeline.tsx": {

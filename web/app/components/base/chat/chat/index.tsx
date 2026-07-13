@@ -3,6 +3,7 @@ import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 import type { ChatConfig, ChatItem, Feedback, OnRegenerate, OnSend } from '../types'
 import type { HumanInputFormSubmitData } from './answer/human-input-content/type'
 import type { InputForm } from './type'
+import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { Node } from '@/app/components/workflow/types'
 import type { AppData, ToolIcon } from '@/models/share'
@@ -75,6 +76,8 @@ export type ChatProps = {
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
   sendOnEnter?: boolean
+  speechToTextTarget?: SpeechToTextTarget
+  onBeforeSpeechToText?: () => Promise<unknown>
   renderAgentContent?: (props: {
     item: ChatItem
     responding?: boolean
@@ -132,6 +135,8 @@ const Chat: FC<ChatProps> = ({
   sidebarCollapseState,
   hideAvatar,
   sendOnEnter,
+  speechToTextTarget,
+  onBeforeSpeechToText,
   renderAgentContent,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
@@ -281,6 +286,8 @@ const Chat: FC<ChatProps> = ({
                 onFeatureBarClick={onFeatureBarClick}
                 visionConfig={config?.file_upload}
                 speechToTextConfig={config?.speech_to_text}
+                speechToTextTarget={speechToTextTarget}
+                onBeforeSpeechToText={onBeforeSpeechToText}
                 onSend={onSend}
                 inputs={inputs}
                 inputsForm={inputsForm}
