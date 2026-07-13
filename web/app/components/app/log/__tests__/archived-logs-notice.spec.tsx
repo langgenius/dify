@@ -12,11 +12,13 @@ const mockAppContextState = vi.hoisted(() => ({
   current: null as AppContextStateMockState | null,
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return createReactI18nextMock({
+    'appLog.archives.notice.description': 'archives.notice.description',
+    'appLog.archives.notice.action': 'archives.notice.action',
+  })
+})
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -26,7 +28,7 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/workspace-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
 })

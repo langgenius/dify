@@ -32,7 +32,7 @@ export function ArchivedLogsNotice() {
         className="mt-0.5 i-ri-information-line size-4 shrink-0 text-util-colors-warning-warning-600"
       />
       <div className="min-w-0 flex-1 system-xs-regular text-util-colors-warning-warning-700">
-        {t('archives.notice.description', { ns: 'appLog' })}
+        {t(($) => $['archives.notice.description'], { ns: 'appLog' })}
         <button
           type="button"
           className="ml-1 system-xs-semibold text-util-colors-warning-warning-700 underline underline-offset-2 hover:text-text-primary"
@@ -42,7 +42,7 @@ export function ArchivedLogsNotice() {
             })
           }
         >
-          {t('archives.notice.action', { ns: 'appLog' })}
+          {t(($) => $['archives.notice.action'], { ns: 'appLog' })}
         </button>
       </div>
     </div>

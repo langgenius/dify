@@ -103,22 +103,22 @@ export default function WorkflowLogArchivesPage() {
 
   const summaryItems = [
     {
-      label: t('archives.summary.months', { ns: 'appLog' }),
+      label: t(($) => $['archives.summary.months'], { ns: 'appLog' }),
       value: summary ? formatNumber(summary.archived_month_count) : '0',
       icon: 'i-ri-calendar-2-line',
     },
     {
-      label: t('archives.summary.runs', { ns: 'appLog' }),
+      label: t(($) => $['archives.summary.runs'], { ns: 'appLog' }),
       value: summary ? formatNumber(summary.workflow_run_count) : '0',
       icon: 'i-ri-git-branch-line',
     },
     {
-      label: t('archives.summary.size', { ns: 'appLog' }),
+      label: t(($) => $['archives.summary.size'], { ns: 'appLog' }),
       value: summary ? formatBytes(summary.archive_bytes) : '0 B',
       icon: 'i-ri-hard-drive-2-line',
     },
     {
-      label: t('archives.summary.latest', { ns: 'appLog' }),
+      label: t(($) => $['archives.summary.latest'], { ns: 'appLog' }),
       value: formatDate(summary?.latest_archived_at),
       icon: 'i-ri-time-line',
     },
@@ -166,10 +166,18 @@ export default function WorkflowLogArchivesPage() {
                 tableGridClassName,
               )}
             >
-              <div className="text-center">{t('archives.table.month', { ns: 'appLog' })}</div>
-              <div className="text-center">{t('archives.table.runs', { ns: 'appLog' })}</div>
-              <div className="text-center">{t('archives.table.size', { ns: 'appLog' })}</div>
-              <div className="text-center">{t('archives.table.action', { ns: 'appLog' })}</div>
+              <div className="text-center">
+                {t(($) => $['archives.table.month'], { ns: 'appLog' })}
+              </div>
+              <div className="text-center">
+                {t(($) => $['archives.table.runs'], { ns: 'appLog' })}
+              </div>
+              <div className="text-center">
+                {t(($) => $['archives.table.size'], { ns: 'appLog' })}
+              </div>
+              <div className="text-center">
+                {t(($) => $['archives.table.action'], { ns: 'appLog' })}
+              </div>
             </div>
             {isLoading && (
               <>
@@ -204,10 +212,10 @@ export default function WorkflowLogArchivesPage() {
                   aria-hidden="true"
                 />
                 <div className="system-sm-semibold text-text-secondary">
-                  {t('archives.error.title', { ns: 'appLog' })}
+                  {t(($) => $['archives.error.title'], { ns: 'appLog' })}
                 </div>
                 <div className="system-xs-regular text-text-tertiary">
-                  {t('archives.error.description', { ns: 'appLog' })}
+                  {t(($) => $['archives.error.description'], { ns: 'appLog' })}
                 </div>
               </div>
             )}
@@ -215,10 +223,10 @@ export default function WorkflowLogArchivesPage() {
               <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-4 text-center">
                 <span className="i-ri-archive-line size-6 text-text-tertiary" aria-hidden="true" />
                 <div className="system-sm-semibold text-text-secondary">
-                  {t('archives.empty.title', { ns: 'appLog' })}
+                  {t(($) => $['archives.empty.title'], { ns: 'appLog' })}
                 </div>
                 <div className="system-xs-regular text-text-tertiary">
-                  {t('archives.empty.description', { ns: 'appLog' })}
+                  {t(($) => $['archives.empty.description'], { ns: 'appLog' })}
                 </div>
               </div>
             )}
@@ -252,9 +260,11 @@ function ArchivedLogsUpgradeBanner() {
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs sm:flex-row sm:items-center sm:justify-between">
       <div className="space-y-1 text-text-primary-on-surface">
-        <div className="title-xl-semi-bold">{t('archives.upgradeTip.title', { ns: 'appLog' })}</div>
+        <div className="title-xl-semi-bold">
+          {t(($) => $['archives.upgradeTip.title'], { ns: 'appLog' })}
+        </div>
         <div className="system-sm-regular">
-          {t('archives.upgradeTip.description', { ns: 'appLog' })}
+          {t(($) => $['archives.upgradeTip.description'], { ns: 'appLog' })}
         </div>
       </div>
       <button
@@ -262,7 +272,7 @@ function ArchivedLogsUpgradeBanner() {
         className="flex h-10 w-[120px] shrink-0 cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
         onClick={() => setShowPricingModal()}
       >
-        {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+        {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
       </button>
     </div>
   )
@@ -301,14 +311,17 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const isFailed = currentTask?.status === 'failed'
   const failureReason = isFailed ? currentTask?.error?.trim() : undefined
   const downloadHint = isReady
-    ? t('archives.downloadHint.ready', { ns: 'appLog' })
+    ? t(($) => $['archives.downloadHint.ready'], { ns: 'appLog' })
     : isFailed
       ? failureReason
-        ? t('archives.downloadHint.failedWithReason', { ns: 'appLog', reason: failureReason })
-        : t('archives.downloadHint.failed', { ns: 'appLog' })
+        ? t(($) => $['archives.downloadHint.failedWithReason'], {
+            ns: 'appLog',
+            reason: failureReason,
+          })
+        : t(($) => $['archives.downloadHint.failed'], { ns: 'appLog' })
       : isPreparing
-        ? t('archives.downloadHint.preparing', { ns: 'appLog' })
-        : t('archives.downloadHint.prepare', { ns: 'appLog' })
+        ? t(($) => $['archives.downloadHint.preparing'], { ns: 'appLog' })
+        : t(($) => $['archives.downloadHint.prepare'], { ns: 'appLog' })
 
   const prepareDownload = () => {
     if (createDownloadMutation.isPending) return
@@ -323,14 +336,14 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
       {
         onSuccess: (task) => {
           setDownloadTask(task)
-          const messageKey =
+          toast.success(
             task.status === 'ready'
-              ? 'archives.action.downloadReady'
-              : 'archives.action.prepareStarted'
-          toast.success(t(messageKey, { ns: 'appLog' }))
+              ? t(($) => $['archives.action.downloadReady'], { ns: 'appLog' })
+              : t(($) => $['archives.action.prepareStarted'], { ns: 'appLog' }),
+          )
         },
         onError: () => {
-          toast.error(t('archives.action.prepareFailed', { ns: 'appLog' }))
+          toast.error(t(($) => $['archives.action.prepareFailed'], { ns: 'appLog' }))
         },
       },
     )
@@ -343,15 +356,15 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   }
 
   const buttonContent = (() => {
-    if (isPreparing) return t('archives.action.preparing', { ns: 'appLog' })
-    if (isReady) return t('operation.download', { ns: 'common' })
-    if (isFailed) return t('operation.retry', { ns: 'common' })
-    return t('archives.action.prepareDownload', { ns: 'appLog' })
+    if (isPreparing) return t(($) => $['archives.action.preparing'], { ns: 'appLog' })
+    if (isReady) return t(($) => $['operation.download'], { ns: 'common' })
+    if (isFailed) return t(($) => $['operation.retry'], { ns: 'common' })
+    return t(($) => $['archives.action.prepareDownload'], { ns: 'appLog' })
   })()
 
   const buttonAriaLabel = isReady
-    ? t('archives.action.downloadMonth', { ns: 'appLog', month: archiveMonth })
-    : t('archives.action.prepareMonth', { ns: 'appLog', month: archiveMonth })
+    ? t(($) => $['archives.action.downloadMonth'], { ns: 'appLog', month: archiveMonth })
+    : t(($) => $['archives.action.prepareMonth'], { ns: 'appLog', month: archiveMonth })
   const buttonIconClassName = isReady ? 'i-ri-download-2-line' : 'i-ri-inbox-archive-line'
   const onAction = isReady ? downloadArchive : prepareDownload
 

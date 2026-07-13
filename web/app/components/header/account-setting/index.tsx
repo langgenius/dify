@@ -120,8 +120,8 @@ export default function AccountSetting({
     },
     {
       key: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES,
-      name: t('archives.title', { ns: 'appLog' }),
-      description: t('archives.description', { ns: 'appLog' }),
+      name: t(($) => $['archives.title'], { ns: 'appLog' }),
+      description: t(($) => $['archives.description'], { ns: 'appLog' }),
       icon: <span className={cn('i-ri-archive-drawer-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-archive-drawer-fill', iconClassName)} />,
     },
