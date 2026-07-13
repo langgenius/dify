@@ -376,7 +376,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             outputs=projected_outputs,
             error=event.node_run_result.error or event.error,
             elapsed_time=max((finished_at - event.start_at).total_seconds(), 0.0),
-            execution_metadata=event.node_run_result.metadata,
+            execution_metadata={key.value: value for key, value in event.node_run_result.metadata.items()},
             created_at=int(event.start_at.timestamp()),
             finished_at=int(finished_at.timestamp()),
         )

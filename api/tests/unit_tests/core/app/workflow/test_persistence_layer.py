@@ -14,6 +14,7 @@ from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowExecutionStatus,
+    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
@@ -358,7 +359,7 @@ class TestWorkflowPersistenceLayer:
                         inputs={"attempt": retry_index},
                         process_data={"request": f"attempt-{retry_index}"},
                         outputs={"status_code": 500, "body": f"failure-{retry_index}"},
-                        metadata={},
+                        metadata={WorkflowNodeExecutionMetadataKey.ITERATION_ID: "iteration-1"},
                     ),
                 )
             )
@@ -387,6 +388,7 @@ class TestWorkflowPersistenceLayer:
         assert retry_history[0]["process_data"] == {"request": "attempt-1"}
         assert retry_history[0]["outputs"] == {"status_code": 500, "body": "failure-1"}
         assert retry_history[0]["error"] == "attempt 1 failed"
+        assert retry_history[0]["execution_metadata"] == {"iteration_id": "iteration-1"}
 
     @pytest.mark.parametrize(
         ("event_type", "expected_status"),
