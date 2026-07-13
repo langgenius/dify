@@ -168,21 +168,42 @@ function unicodeToChar(text: string) {
 }
 
 const WBB_APP_LOGIN_PATH = '/webapp-signin'
+
+export function isWebAppSigninPath(pathname: string) {
+  const basePathSegment = basePath.replace(/^\/+|\/+$/g, '')
+  const signinPath = `${basePathSegment ? `/${basePathSegment}` : ''}${WBB_APP_LOGIN_PATH}`
+  return pathname === signinPath || pathname === `${signinPath}/`
+}
+
+export function buildWebAppSigninUrlWithRedirect(
+  origin: string,
+  pathname: string,
+  search: string,
+  message?: string,
+  code?: number,
+) {
+  const params = new URLSearchParams()
+  params.set('redirect_url', `${pathname}${search}`)
+  if (message) params.set('message', message)
+  if (code) params.set('code', String(code))
+
+  return `${origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
+}
+
 function requiredWebSSOLogin(message?: string, code?: number) {
   if (!isClient)
     return
 
-  const params = new URLSearchParams()
   // prevent redirect loop
-  if (window.location.pathname === WBB_APP_LOGIN_PATH)
-    return
+  if (isWebAppSigninPath(window.location.pathname)) return
 
-  params.append('redirect_url', encodeURIComponent(`${window.location.pathname}${window.location.search}`))
-  if (message)
-    params.append('message', message)
-  if (code)
-    params.append('code', String(code))
-  window.location.href = `${window.location.origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
+  window.location.href = buildWebAppSigninUrlWithRedirect(
+    window.location.origin,
+    window.location.pathname,
+    window.location.search,
+    message,
+    code,
+  )
 }
 
 function formatURL(url: string, isPublicAPI: boolean) {

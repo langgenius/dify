@@ -6,6 +6,10 @@ import type { AppData, AppMeta } from '@/models/share'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { create } from 'zustand'
+import {
+  isWebAppSigninPath,
+  resolveWebAppLoginRedirect,
+} from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
 import Loading from '@/app/components/base/loading'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -53,15 +57,8 @@ export const useWebAppStore = create<WebAppStore>(set => ({
 }))
 
 const getShareCodeFromRedirectUrl = (redirectUrl: string | null): string | null => {
-  if (!redirectUrl || redirectUrl.length === 0)
-    return null
-  try {
-    const url = new URL(decodeURIComponent(redirectUrl), 'https://dify.local')
-    return url.pathname.split('/').pop() || null
-  }
-  catch {
-    return null
-  }
+  const currentOrigin = typeof window === 'undefined' ? undefined : window.location.origin
+  return resolveWebAppLoginRedirect(redirectUrl, currentOrigin)?.appCode || null
 }
 const getShareCodeFromPathname = (pathname: string): string | null => {
   const code = pathname.split('/').pop() || null
@@ -82,7 +79,9 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   const searchParamsString = searchParams.toString()
 
   // Compute shareCode directly
-  const shareCode = getShareCodeFromRedirectUrl(redirectUrlParam) || getShareCodeFromPathname(pathname)
+  const redirectShareCode = getShareCodeFromRedirectUrl(redirectUrlParam)
+  const shareCode =
+    redirectShareCode || (isWebAppSigninPath(pathname) ? null : getShareCodeFromPathname(pathname))
   useEffect(() => {
     updateShareCode(shareCode)
   }, [shareCode, updateShareCode])
