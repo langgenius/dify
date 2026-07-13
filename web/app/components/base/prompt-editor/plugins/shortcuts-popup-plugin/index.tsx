@@ -359,8 +359,8 @@ export default function ShortcutsPopupPlugin({
         zIndex: 50,
         overflow: 'visible',
         visibility: 'visible',
-        ['--shortcut-popup-max-width' as string]: `${Math.min(POPUP_MAX_WIDTH, fixedPlacementState.availableWidth)}px`,
-        ['--shortcut-popup-max-height' as string]: `${fixedPlacementState.availableHeight}px`,
+        '--shortcut-popup-max-width': `${Math.min(POPUP_MAX_WIDTH, fixedPlacementState.availableWidth)}px`,
+        '--shortcut-popup-max-height': `${fixedPlacementState.availableHeight}px`,
       } as CSSProperties)
     : {}
 

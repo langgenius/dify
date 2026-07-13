@@ -1478,7 +1478,7 @@ export const zDailyTokenCostStatisticItem = z.object({
   token_count: z.int().nullish(),
   total_price: z
     .string()
-    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
     .nullish(),
 })
 

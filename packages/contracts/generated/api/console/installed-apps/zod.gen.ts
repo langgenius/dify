@@ -531,7 +531,7 @@ export const zExploreMessageListItem = z.object({
   status: z.string(),
   total_price: z
     .string()
-    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
     .nullish(),
   total_tokens: z.int().readonly(),
 })
@@ -570,7 +570,7 @@ export const zExploreMessageListItemWritable = z.object({
   status: z.string(),
   total_price: z
     .string()
-    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
     .nullish(),
 })
 

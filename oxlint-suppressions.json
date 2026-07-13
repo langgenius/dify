@@ -1322,9 +1322,6 @@
     }
   },
   "web/app/components/base/features/new-feature-panel/annotation-reply/__tests__/config-param-modal.spec.tsx": {
-    "jsx_a11y/no-redundant-roles": {
-      "count": 1
-    },
     "jsx_a11y/role-has-required-aria-props": {
       "count": 1
     }
@@ -2251,9 +2248,6 @@
   "web/app/components/base/prompt-editor/plugins/shortcuts-popup-plugin/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "no-useless-computed-key": {
-      "count": 2
     }
   },
   "web/app/components/base/prompt-editor/plugins/update-block.tsx": {
@@ -3237,9 +3231,6 @@
     }
   },
   "web/app/components/develop/md.tsx": {
-    "jsx_a11y/no-redundant-roles": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
