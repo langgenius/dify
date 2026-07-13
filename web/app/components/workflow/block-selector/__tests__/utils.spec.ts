@@ -92,7 +92,8 @@ describe('transformDataSourceToTool', () => {
     const dataSourceItem = createDataSourceItem({
       declaration: {
         ...baseDataSourceItem.declaration,
-        credentials_schema: undefined as unknown as DataSourceItem['declaration']['credentials_schema'],
+        credentials_schema:
+          undefined as unknown as DataSourceItem['declaration']['credentials_schema'],
         identity: {
           ...baseDataSourceItem.declaration.identity,
           tags: undefined as unknown as DataSourceItem['declaration']['identity']['tags'],

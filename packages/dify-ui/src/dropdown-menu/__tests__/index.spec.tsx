@@ -1,3 +1,4 @@
+import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   DropdownMenu,
@@ -11,11 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '../index'
 
-const renderWithSafeViewport = (ui: import('react').ReactNode) => render(
-  <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
-    {ui}
-  </div>,
-)
+const renderWithSafeViewport = (ui: React.ReactNode) =>
+  render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
 
 describe('dropdown-menu wrapper', () => {
   describe('DropdownMenuContent', () => {
@@ -23,15 +21,23 @@ describe('dropdown-menu wrapper', () => {
       const screen = await renderWithSafeViewport(
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent positionerProps={{ 'role': 'group', 'aria-label': 'content positioner' }}>
+          <DropdownMenuContent
+            positionerProps={{ role: 'group', 'aria-label': 'content positioner' }}
+          >
             <DropdownMenuItem>Content action</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>,
       )
 
-      await expect.element(screen.getByRole('group', { name: 'content positioner' })).toHaveAttribute('data-side', 'bottom')
-      await expect.element(screen.getByRole('group', { name: 'content positioner' })).toHaveAttribute('data-align', 'end')
-      await expect.element(screen.getByRole('menuitem', { name: 'Content action' })).toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('group', { name: 'content positioner' }))
+        .toHaveAttribute('data-side', 'bottom')
+      await expect
+        .element(screen.getByRole('group', { name: 'content positioner' }))
+        .toHaveAttribute('data-align', 'end')
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Content action' }))
+        .toBeInTheDocument()
     })
 
     it('should apply custom placement when custom positioning props are provided', async () => {
@@ -42,16 +48,22 @@ describe('dropdown-menu wrapper', () => {
             placement="top-start"
             sideOffset={12}
             alignOffset={-3}
-            positionerProps={{ 'role': 'group', 'aria-label': 'custom content positioner' }}
+            positionerProps={{ role: 'group', 'aria-label': 'custom content positioner' }}
           >
             <DropdownMenuItem>Custom content</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>,
       )
 
-      await expect.element(screen.getByRole('group', { name: 'custom content positioner' })).toHaveAttribute('data-side', 'top')
-      await expect.element(screen.getByRole('group', { name: 'custom content positioner' })).toHaveAttribute('data-align', 'start')
-      await expect.element(screen.getByRole('menuitem', { name: 'Custom content' })).toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('group', { name: 'custom content positioner' }))
+        .toHaveAttribute('data-side', 'top')
+      await expect
+        .element(screen.getByRole('group', { name: 'custom content positioner' }))
+        .toHaveAttribute('data-align', 'start')
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Custom content' }))
+        .toBeInTheDocument()
     })
 
     it('should forward passthrough attributes and handlers when positionerProps and popupProps are provided', async () => {
@@ -63,10 +75,10 @@ describe('dropdown-menu wrapper', () => {
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
           <DropdownMenuContent
             positionerProps={{
-              'role': 'group',
+              role: 'group',
               'aria-label': 'dropdown content positioner',
-              'id': 'dropdown-content-positioner',
-              'onMouseEnter': handlePositionerMouseEnter,
+              id: 'dropdown-content-positioner',
+              onMouseEnter: handlePositionerMouseEnter,
             }}
             popupProps={{
               role: 'menu',
@@ -82,7 +94,9 @@ describe('dropdown-menu wrapper', () => {
       await screen.getByRole('group', { name: 'dropdown content positioner' }).hover()
       await screen.getByRole('menu').click()
 
-      await expect.element(screen.getByRole('group', { name: 'dropdown content positioner' })).toHaveAttribute('id', 'dropdown-content-positioner')
+      await expect
+        .element(screen.getByRole('group', { name: 'dropdown content positioner' }))
+        .toHaveAttribute('id', 'dropdown-content-positioner')
       await expect.element(screen.getByRole('menu')).toHaveAttribute('id', 'dropdown-content-popup')
       expect(handlePositionerMouseEnter).toHaveBeenCalledTimes(1)
       expect(handlePopupClick).toHaveBeenCalledTimes(1)
@@ -97,7 +111,9 @@ describe('dropdown-menu wrapper', () => {
           <DropdownMenuContent>
             <DropdownMenuSub open>
               <DropdownMenuSubTrigger>More actions</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent positionerProps={{ 'role': 'group', 'aria-label': 'sub positioner' }}>
+              <DropdownMenuSubContent
+                positionerProps={{ role: 'group', 'aria-label': 'sub positioner' }}
+              >
                 <DropdownMenuItem>Sub action</DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
@@ -105,8 +121,12 @@ describe('dropdown-menu wrapper', () => {
         </DropdownMenu>,
       )
 
-      await expect.element(screen.getByRole('group', { name: 'sub positioner' })).toHaveAttribute('data-side', 'left')
-      await expect.element(screen.getByRole('group', { name: 'sub positioner' })).toHaveAttribute('data-align', 'start')
+      await expect
+        .element(screen.getByRole('group', { name: 'sub positioner' }))
+        .toHaveAttribute('data-side', 'left')
+      await expect
+        .element(screen.getByRole('group', { name: 'sub positioner' }))
+        .toHaveAttribute('data-align', 'start')
       await expect.element(screen.getByRole('menuitem', { name: 'Sub action' })).toBeInTheDocument()
     })
 
@@ -125,10 +145,10 @@ describe('dropdown-menu wrapper', () => {
                 sideOffset={6}
                 alignOffset={2}
                 positionerProps={{
-                  'role': 'group',
+                  role: 'group',
                   'aria-label': 'dropdown sub positioner',
-                  'id': 'dropdown-sub-positioner',
-                  'onFocus': handlePositionerFocus,
+                  id: 'dropdown-sub-positioner',
+                  onFocus: handlePositionerFocus,
                 }}
                 popupProps={{
                   role: 'menu',
@@ -143,15 +163,28 @@ describe('dropdown-menu wrapper', () => {
         </DropdownMenu>,
       )
 
-      screen.getByRole('group', { name: 'dropdown sub positioner' }).element().dispatchEvent(new FocusEvent('focus', {
-        bubbles: true,
-      }))
+      screen
+        .getByRole('group', { name: 'dropdown sub positioner' })
+        .element()
+        .dispatchEvent(
+          new FocusEvent('focus', {
+            bubbles: true,
+          }),
+        )
       await screen.getByRole('menu', { name: 'More actions' }).click()
 
-      await expect.element(screen.getByRole('group', { name: 'dropdown sub positioner' })).toHaveAttribute('data-side', 'right')
-      await expect.element(screen.getByRole('group', { name: 'dropdown sub positioner' })).toHaveAttribute('data-align', 'end')
-      await expect.element(screen.getByRole('group', { name: 'dropdown sub positioner' })).toHaveAttribute('id', 'dropdown-sub-positioner')
-      await expect.element(screen.getByRole('menu', { name: 'More actions' })).toHaveAttribute('id', 'dropdown-sub-popup')
+      await expect
+        .element(screen.getByRole('group', { name: 'dropdown sub positioner' }))
+        .toHaveAttribute('data-side', 'right')
+      await expect
+        .element(screen.getByRole('group', { name: 'dropdown sub positioner' }))
+        .toHaveAttribute('data-align', 'end')
+      await expect
+        .element(screen.getByRole('group', { name: 'dropdown sub positioner' }))
+        .toHaveAttribute('id', 'dropdown-sub-positioner')
+      await expect
+        .element(screen.getByRole('menu', { name: 'More actions' }))
+        .toHaveAttribute('id', 'dropdown-sub-popup')
       expect(handlePositionerFocus).toHaveBeenCalledTimes(1)
       expect(handlePopupClick).toHaveBeenCalledTimes(1)
     })
@@ -170,62 +203,78 @@ describe('dropdown-menu wrapper', () => {
         </DropdownMenu>,
       )
 
-      await expect.element(screen.getByRole('menuitem', { name: 'Trigger item' })).toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Trigger item' }))
+        .toBeInTheDocument()
     })
 
-    it.each(['default', 'destructive'] as const)('should remain interactive and set data-variant on submenu trigger when variant is %s', async (variant) => {
-      const handleClick = vi.fn()
+    it.each(['default', 'destructive'] as const)(
+      'should remain interactive and set data-variant on submenu trigger when variant is %s',
+      async (variant) => {
+        const handleClick = vi.fn()
 
-      const screen = await render(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuSub open>
-              <DropdownMenuSubTrigger
-                variant={variant}
-                aria-label="submenu action"
-                id={`submenu-trigger-${variant}`}
-                onClick={handleClick}
-              >
-                Trigger item
-              </DropdownMenuSubTrigger>
-            </DropdownMenuSub>
-          </DropdownMenuContent>
-        </DropdownMenu>,
-      )
+        const screen = await render(
+          <DropdownMenu open>
+            <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuSub open>
+                <DropdownMenuSubTrigger
+                  variant={variant}
+                  aria-label="submenu action"
+                  id={`submenu-trigger-${variant}`}
+                  onClick={handleClick}
+                >
+                  Trigger item
+                </DropdownMenuSubTrigger>
+              </DropdownMenuSub>
+            </DropdownMenuContent>
+          </DropdownMenu>,
+        )
 
-      await screen.getByRole('menuitem', { name: 'submenu action' }).click()
-      await expect.element(screen.getByRole('menuitem', { name: 'submenu action' })).toHaveAttribute('id', `submenu-trigger-${variant}`)
-      await expect.element(screen.getByRole('menuitem', { name: 'submenu action' })).toHaveAttribute('data-variant', variant)
-      expect(handleClick).toHaveBeenCalledTimes(1)
-    })
+        await screen.getByRole('menuitem', { name: 'submenu action' }).click()
+        await expect
+          .element(screen.getByRole('menuitem', { name: 'submenu action' }))
+          .toHaveAttribute('id', `submenu-trigger-${variant}`)
+        await expect
+          .element(screen.getByRole('menuitem', { name: 'submenu action' }))
+          .toHaveAttribute('data-variant', variant)
+        expect(handleClick).toHaveBeenCalledTimes(1)
+      },
+    )
   })
 
   describe('DropdownMenuItem', () => {
-    it.each(['default', 'destructive'] as const)('should remain interactive and set data-variant when variant is %s', async (variant) => {
-      const handleClick = vi.fn()
+    it.each(['default', 'destructive'] as const)(
+      'should remain interactive and set data-variant when variant is %s',
+      async (variant) => {
+        const handleClick = vi.fn()
 
-      const screen = await render(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem
-              variant={variant}
-              aria-label="menu action"
-              id={`menu-item-${variant}`}
-              onClick={handleClick}
-            >
-              Item label
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>,
-      )
+        const screen = await render(
+          <DropdownMenu open>
+            <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                variant={variant}
+                aria-label="menu action"
+                id={`menu-item-${variant}`}
+                onClick={handleClick}
+              >
+                Item label
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>,
+        )
 
-      await screen.getByRole('menuitem', { name: 'menu action' }).click()
-      await expect.element(screen.getByRole('menuitem', { name: 'menu action' })).toHaveAttribute('id', `menu-item-${variant}`)
-      await expect.element(screen.getByRole('menuitem', { name: 'menu action' })).toHaveAttribute('data-variant', variant)
-      expect(handleClick).toHaveBeenCalledTimes(1)
-    })
+        await screen.getByRole('menuitem', { name: 'menu action' }).click()
+        await expect
+          .element(screen.getByRole('menuitem', { name: 'menu action' }))
+          .toHaveAttribute('id', `menu-item-${variant}`)
+        await expect
+          .element(screen.getByRole('menuitem', { name: 'menu action' }))
+          .toHaveAttribute('data-variant', variant)
+        expect(handleClick).toHaveBeenCalledTimes(1)
+      },
+    )
   })
 
   describe('DropdownMenuLinkItem', () => {
@@ -234,7 +283,11 @@ describe('dropdown-menu wrapper', () => {
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuLinkItem href="https://example.com/docs" target="_blank" rel="noopener noreferrer">
+            <DropdownMenuLinkItem
+              href="https://example.com/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Docs
             </DropdownMenuLinkItem>
           </DropdownMenuContent>
@@ -275,10 +328,7 @@ describe('dropdown-menu wrapper', () => {
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuLinkItem
-              render={<a href="/account" />}
-              aria-label="account link"
-            >
+            <DropdownMenuLinkItem render={<a href="/account" />} aria-label="account link">
               Account settings
             </DropdownMenuLinkItem>
           </DropdownMenuContent>
@@ -291,37 +341,40 @@ describe('dropdown-menu wrapper', () => {
       expect(link).toHaveTextContent('Account settings')
     })
 
-    it.each(['default', 'destructive'] as const)('should remain interactive and set data-variant when variant is %s', async (variant) => {
-      const handleClick = vi.fn()
+    it.each(['default', 'destructive'] as const)(
+      'should remain interactive and set data-variant when variant is %s',
+      async (variant) => {
+        const handleClick = vi.fn()
 
-      const screen = await render(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuLinkItem
-              variant={variant}
-              href="https://example.com/docs"
-              aria-label="docs link"
-              id={`menu-link-${variant}`}
-              onClick={(event) => {
-                event.preventDefault()
-                handleClick(event)
-              }}
-            >
-              Docs
-            </DropdownMenuLinkItem>
-          </DropdownMenuContent>
-        </DropdownMenu>,
-      )
+        const screen = await render(
+          <DropdownMenu open>
+            <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLinkItem
+                variant={variant}
+                href="https://example.com/docs"
+                aria-label="docs link"
+                id={`menu-link-${variant}`}
+                onClick={(event) => {
+                  event.preventDefault()
+                  handleClick(event)
+                }}
+              >
+                Docs
+              </DropdownMenuLinkItem>
+            </DropdownMenuContent>
+          </DropdownMenu>,
+        )
 
-      await screen.getByRole('menuitem', { name: 'docs link' }).click()
+        await screen.getByRole('menuitem', { name: 'docs link' }).click()
 
-      const link = screen.getByRole('menuitem', { name: 'docs link' }).element()
-      expect(link.tagName.toLowerCase()).toBe('a')
-      expect(link).toHaveAttribute('id', `menu-link-${variant}`)
-      expect(link).toHaveAttribute('data-variant', variant)
-      expect(handleClick).toHaveBeenCalledTimes(1)
-    })
+        const link = screen.getByRole('menuitem', { name: 'docs link' }).element()
+        expect(link.tagName.toLowerCase()).toBe('a')
+        expect(link).toHaveAttribute('id', `menu-link-${variant}`)
+        expect(link).toHaveAttribute('data-variant', variant)
+        expect(handleClick).toHaveBeenCalledTimes(1)
+      },
+    )
   })
 
   describe('DropdownMenuSeparator', () => {
@@ -341,10 +394,17 @@ describe('dropdown-menu wrapper', () => {
         </DropdownMenu>,
       )
 
-      screen.getByRole('separator', { name: 'actions divider' }).element().dispatchEvent(new MouseEvent('mouseover', {
-        bubbles: true,
-      }))
-      await expect.element(screen.getByRole('separator', { name: 'actions divider' })).toHaveAttribute('id', 'menu-separator')
+      screen
+        .getByRole('separator', { name: 'actions divider' })
+        .element()
+        .dispatchEvent(
+          new MouseEvent('mouseover', {
+            bubbles: true,
+          }),
+        )
+      await expect
+        .element(screen.getByRole('separator', { name: 'actions divider' }))
+        .toHaveAttribute('id', 'menu-separator')
       expect(handleMouseEnter).toHaveBeenCalledTimes(1)
     })
 
@@ -360,8 +420,12 @@ describe('dropdown-menu wrapper', () => {
         </DropdownMenu>,
       )
 
-      await expect.element(screen.getByRole('menuitem', { name: 'First action' })).toBeInTheDocument()
-      await expect.element(screen.getByRole('menuitem', { name: 'Second action' })).toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'First action' }))
+        .toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Second action' }))
+        .toBeInTheDocument()
       expect(screen.getByRole('separator').elements()).toHaveLength(1)
     })
   })

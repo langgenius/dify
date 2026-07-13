@@ -26,7 +26,7 @@ vi.mock('@/app/components/plugins/card/base/org-info', () => ({
 
 vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
   triggerEventParametersToFormSchemas: (params: Array<Record<string, unknown>>) =>
-    params.map(p => ({
+    params.map((p) => ({
       label: (p.label as Record<string, string>) || { en_US: p.name as string },
       type: (p.type as string) || 'text-input',
       required: (p.required as boolean) || false,
@@ -34,9 +34,12 @@ vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
     })),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show/field', () => ({
-  default: ({ name }: { name: string }) => <div data-testid="output-field">{name}</div>,
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show/field',
+  () => ({
+    default: ({ name }: { name: string }) => <div data-testid="output-field">{name}</div>,
+  }),
+)
 
 const mockEventInfo = {
   name: 'test-event',
@@ -89,45 +92,96 @@ describe('EventDetailDrawer', () => {
 
   describe('Rendering', () => {
     it('should render drawer', () => {
-      render(<EventDetailDrawer eventInfo={mockEventInfo} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={mockEventInfo}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
-      expect(screen.getByRole('dialog'))!.toBeInTheDocument()
+      const dialog = screen.getByRole('dialog')
+
+      expect(dialog)!.toBeInTheDocument()
+      expect(dialog).toHaveClass(
+        'data-[swipe-direction=right]:top-2',
+        'data-[swipe-direction=right]:bottom-2',
+        'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
+        'data-[swipe-direction=right]:w-[400px]',
+        'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
+      )
     })
 
     it('should render event title', () => {
-      render(<EventDetailDrawer eventInfo={mockEventInfo} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={mockEventInfo}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('Test Event'))!.toBeInTheDocument()
     })
 
     it('should render event description', () => {
-      render(<EventDetailDrawer eventInfo={mockEventInfo} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={mockEventInfo}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByTestId('description'))!.toHaveTextContent('Test event description')
     })
 
     it('should render org info', () => {
-      render(<EventDetailDrawer eventInfo={mockEventInfo} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={mockEventInfo}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByTestId('org-info'))!.toBeInTheDocument()
     })
 
     it('should render parameters section', () => {
-      render(<EventDetailDrawer eventInfo={mockEventInfo} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={mockEventInfo}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('tools.setBuiltInTools.parameters'))!.toBeInTheDocument()
       expect(screen.getByText('Parameter 1'))!.toBeInTheDocument()
     })
 
     it('should render output section', () => {
-      render(<EventDetailDrawer eventInfo={mockEventInfo} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={mockEventInfo}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('pluginTrigger.events.output'))!.toBeInTheDocument()
       expect(screen.getByTestId('output-field'))!.toHaveTextContent('result')
     })
 
     it('should render back button', () => {
-      render(<EventDetailDrawer eventInfo={mockEventInfo} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={mockEventInfo}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('plugin.detailPanel.operation.back'))!.toBeInTheDocument()
     })
@@ -135,18 +189,31 @@ describe('EventDetailDrawer', () => {
 
   describe('User Interactions', () => {
     it('should call onClose when close button clicked', () => {
-      render(<EventDetailDrawer eventInfo={mockEventInfo} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={mockEventInfo}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       // Find the close button (ActionButton with action-btn class)
-      const closeButton = screen.getAllByRole('button').find(btn => btn.classList.contains('action-btn'))
-      if (closeButton)
-        fireEvent.click(closeButton)
+      const closeButton = screen
+        .getAllByRole('button')
+        .find((btn) => btn.classList.contains('action-btn'))
+      if (closeButton) fireEvent.click(closeButton)
 
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
 
     it('should call onClose when back clicked', () => {
-      render(<EventDetailDrawer eventInfo={mockEventInfo} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={mockEventInfo}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       fireEvent.click(screen.getByText('plugin.detailPanel.operation.back'))
 
@@ -157,14 +224,26 @@ describe('EventDetailDrawer', () => {
   describe('Edge Cases', () => {
     it('should handle no parameters', () => {
       const eventWithNoParams = { ...mockEventInfo, parameters: [] }
-      render(<EventDetailDrawer eventInfo={eventWithNoParams} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={eventWithNoParams}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('pluginTrigger.events.item.noParameters'))!.toBeInTheDocument()
     })
 
     it('should handle no output schema', () => {
       const eventWithNoOutput = { ...mockEventInfo, output_schema: {} }
-      render(<EventDetailDrawer eventInfo={eventWithNoOutput} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={eventWithNoOutput}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('pluginTrigger.events.output'))!.toBeInTheDocument()
       expect(screen.queryByTestId('output-field')).not.toBeInTheDocument()
@@ -177,7 +256,13 @@ describe('EventDetailDrawer', () => {
         ...mockEventInfo,
         parameters: [{ ...mockEventInfo.parameters[0]!, type: 'number-input' }],
       }
-      render(<EventDetailDrawer eventInfo={eventWithNumber} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={eventWithNumber}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('tools.setBuiltInTools.number'))!.toBeInTheDocument()
     })
@@ -187,7 +272,13 @@ describe('EventDetailDrawer', () => {
         ...mockEventInfo,
         parameters: [{ ...mockEventInfo.parameters[0]!, type: 'checkbox' }],
       }
-      render(<EventDetailDrawer eventInfo={eventWithCheckbox} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={eventWithCheckbox}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('boolean'))!.toBeInTheDocument()
     })
@@ -197,7 +288,13 @@ describe('EventDetailDrawer', () => {
         ...mockEventInfo,
         parameters: [{ ...mockEventInfo.parameters[0]!, type: 'file' }],
       }
-      render(<EventDetailDrawer eventInfo={eventWithFile} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={eventWithFile}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('tools.setBuiltInTools.file'))!.toBeInTheDocument()
     })
@@ -207,7 +304,13 @@ describe('EventDetailDrawer', () => {
         ...mockEventInfo,
         parameters: [{ ...mockEventInfo.parameters[0]!, type: 'custom-type' }],
       }
-      render(<EventDetailDrawer eventInfo={eventWithUnknown} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={eventWithUnknown}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('custom-type'))!.toBeInTheDocument()
     })
@@ -224,7 +327,13 @@ describe('EventDetailDrawer', () => {
           required: [],
         },
       }
-      render(<EventDetailDrawer eventInfo={eventWithArrayOutput} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={eventWithArrayOutput}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('pluginTrigger.events.output'))!.toBeInTheDocument()
     })
@@ -243,7 +352,13 @@ describe('EventDetailDrawer', () => {
           required: [],
         },
       }
-      render(<EventDetailDrawer eventInfo={eventWithNestedOutput} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={eventWithNestedOutput}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('pluginTrigger.events.output'))!.toBeInTheDocument()
     })
@@ -258,7 +373,13 @@ describe('EventDetailDrawer', () => {
           required: [],
         },
       }
-      render(<EventDetailDrawer eventInfo={eventWithEnumOutput} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={eventWithEnumOutput}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('pluginTrigger.events.output'))!.toBeInTheDocument()
     })
@@ -273,7 +394,13 @@ describe('EventDetailDrawer', () => {
           required: [],
         },
       }
-      render(<EventDetailDrawer eventInfo={eventWithArrayType} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
+      render(
+        <EventDetailDrawer
+          eventInfo={eventWithArrayType}
+          providerInfo={mockProviderInfo}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(screen.getByText('pluginTrigger.events.output'))!.toBeInTheDocument()
     })

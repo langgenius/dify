@@ -5,31 +5,33 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import PluginTypeSwitch from '../plugin-type-switch'
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const map: Record<string, string> = {
-        'category.all': 'All',
-        'category.models': 'Models',
-        'category.tools': 'Tools',
-        'category.datasources': 'Data Sources',
-        'category.triggers': 'Triggers',
-        'category.agents': 'Agents',
-        'category.extensions': 'Extensions',
-        'category.bundles': 'Bundles',
-      }
-      return map[key] || key
-    },
-  }),
-}))
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return {
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => {
+        const map: Record<string, string> = {
+          'category.all': 'All',
+          'marketplace.allPlugins': 'All plugins',
+          'category.models': 'Models',
+          'category.tools': 'Tools',
+          'category.datasources': 'Data Sources',
+          'category.triggers': 'Triggers',
+          'category.agents': 'Agents',
+          'category.extensions': 'Extensions',
+          'category.bundles': 'Bundles',
+        }
+        return map[key] || key
+      }),
+    }),
+  }
+})
 
 const createWrapper = (searchParams = '') => {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider>
-      <NuqsWrapper>
-        {children}
-      </NuqsWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
     </JotaiProvider>
   )
   return { Wrapper }
@@ -62,9 +64,44 @@ describe('PluginTypeSwitch', () => {
     expect(allButton?.className).toContain('bg-components-main-nav-nav-button-bg-active!')
   })
 
+  it('should not apply hover styling to the active category', () => {
+    const { Wrapper } = createWrapper('?category=all')
+    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+
+    const allButton = screen.getByText('All').closest('div')
+    const modelsButton = screen.getByText('Models').closest('div')
+    expect(allButton).not.toHaveClass('hover:bg-state-base-hover')
+    expect(allButton).not.toHaveClass('hover:text-text-secondary')
+    expect(modelsButton).toHaveClass('hover:bg-state-base-hover')
+    expect(modelsButton).toHaveClass('hover:text-text-secondary')
+  })
+
+  it('should render hero labels with plugin copy and no hover styling on the active category', () => {
+    const { Wrapper } = createWrapper('?category=all')
+    render(<PluginTypeSwitch variant="hero" />, { wrapper: Wrapper })
+
+    const allButton = screen.getByText('All plugins').closest('div')
+    const modelsButton = screen.getByText('Models').closest('div')
+    expect(allButton).not.toHaveClass('hover:bg-white/20')
+    expect(modelsButton).toHaveClass('hover:bg-white/20')
+  })
+
+  it('should render a hero divider between all plugins and the category filters', () => {
+    const { Wrapper } = createWrapper('?category=all')
+    render(<PluginTypeSwitch variant="hero" />, { wrapper: Wrapper })
+
+    const allButton = screen.getByText('All plugins').closest('div')
+    const divider = allButton?.nextElementSibling
+    expect(divider).toHaveTextContent('·')
+    expect(divider).toHaveClass('px-2')
+    expect(divider?.nextElementSibling).toHaveTextContent('Models')
+  })
+
   it('should apply custom className', () => {
     const { Wrapper } = createWrapper()
-    const { container } = render(<PluginTypeSwitch className="custom-class" />, { wrapper: Wrapper })
+    const { container } = render(<PluginTypeSwitch className="custom-class" />, {
+      wrapper: Wrapper,
+    })
 
     const outerDiv = container.firstChild as HTMLElement
     expect(outerDiv.className).toContain('custom-class')
@@ -114,7 +151,16 @@ describe('PluginTypeSwitch', () => {
     const { Wrapper } = createWrapper('?category=all')
     render(<PluginTypeSwitch />, { wrapper: Wrapper })
 
-    const categories = ['All', 'Models', 'Tools', 'Data Sources', 'Triggers', 'Agents', 'Extensions', 'Bundles']
+    const categories = [
+      'All',
+      'Models',
+      'Tools',
+      'Data Sources',
+      'Triggers',
+      'Agents',
+      'Extensions',
+      'Bundles',
+    ]
     categories.forEach((category) => {
       fireEvent.click(screen.getByText(category))
 

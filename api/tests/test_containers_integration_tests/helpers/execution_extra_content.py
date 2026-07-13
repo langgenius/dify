@@ -5,7 +5,7 @@ from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
-from graphon.nodes.human_input.entities import FormDefinition, UserActionConfig
+from core.workflow.nodes.human_input.entities import FormDefinition, UserActionConfig
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, InvokeFrom
@@ -132,6 +132,7 @@ def create_human_input_message_fixture(db_session) -> HumanInputMessageFixture:
         status=HumanInputFormStatus.SUBMITTED,
         expiration_time=naive_utc_now() + timedelta(days=1),
         selected_action_id=action_id,
+        submitted_data='{"name": "Alice"}',
     )
     db_session.add(form)
     db_session.flush()

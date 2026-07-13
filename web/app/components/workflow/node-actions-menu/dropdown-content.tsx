@@ -21,15 +21,16 @@ export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
   const hasRunGroup = model.canRun || model.canChangeBlock
   const hasEditGroup = !model.nodesReadOnly && !model.isSingleton
   const hasDeleteGroup = !model.nodesReadOnly && !model.isUndeletable
+  const singleRunActionLabel = model.isSingleRunning
+    ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })
+    : t(($) => $['panel.runThisStep'], { ns: 'workflow' })
 
   return (
     <>
       {hasRunGroup && (
         <DropdownMenuGroup>
           {model.canRun && (
-            <DropdownMenuItem onClick={model.handleRun}>
-              {t('panel.runThisStep', { ns: 'workflow' })}
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={model.handleRun}>{singleRunActionLabel}</DropdownMenuItem>
           )}
           {model.canChangeBlock && (
             <ChangeBlockMenuTrigger
@@ -40,7 +41,10 @@ export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
           )}
         </DropdownMenuGroup>
       )}
-      {hasRunGroup && (hasEditGroup || hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && <DropdownMenuSeparator />}
+      {hasRunGroup &&
+        (hasEditGroup || hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && (
+          <DropdownMenuSeparator />
+        )}
       {hasEditGroup && (
         <DropdownMenuGroup>
           <DropdownMenuItem
@@ -48,7 +52,7 @@ export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
             onClick={model.handleCopy}
           >
             <NodeActionsMenuItemContent shortcut="workflow.copy">
-              {t('common.copy', { ns: 'workflow' })}
+              {t(($) => $['common.copy'], { ns: 'workflow' })}
             </NodeActionsMenuItemContent>
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -56,12 +60,14 @@ export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
             onClick={model.handleDuplicate}
           >
             <NodeActionsMenuItemContent shortcut="workflow.duplicate">
-              {t('common.duplicate', { ns: 'workflow' })}
+              {t(($) => $['common.duplicate'], { ns: 'workflow' })}
             </NodeActionsMenuItemContent>
           </DropdownMenuItem>
         </DropdownMenuGroup>
       )}
-      {hasEditGroup && (hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && <DropdownMenuSeparator />}
+      {hasEditGroup && (hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && (
+        <DropdownMenuSeparator />
+      )}
       {hasDeleteGroup && (
         <DropdownMenuGroup>
           <DropdownMenuItem
@@ -69,7 +75,7 @@ export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
             onClick={model.handleDelete}
           >
             <NodeActionsMenuItemContent shortcut="workflow.delete">
-              {t('operation.delete', { ns: 'common' })}
+              {t(($) => $['operation.delete'], { ns: 'common' })}
             </NodeActionsMenuItemContent>
           </DropdownMenuItem>
         </DropdownMenuGroup>
@@ -77,8 +83,12 @@ export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
       {hasDeleteGroup && (model.workflowAppHref || model.helpLinkUri) && <DropdownMenuSeparator />}
       {model.workflowAppHref && (
         <DropdownMenuGroup>
-          <DropdownMenuLinkItem href={model.workflowAppHref} target="_blank" rel="noopener noreferrer">
-            {t('panel.openWorkflow', { ns: 'workflow' })}
+          <DropdownMenuLinkItem
+            href={model.workflowAppHref}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t(($) => $['panel.openWorkflow'], { ns: 'workflow' })}
           </DropdownMenuLinkItem>
         </DropdownMenuGroup>
       )}
@@ -86,15 +96,15 @@ export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
       {model.helpLinkUri && (
         <DropdownMenuGroup>
           <DropdownMenuLinkItem href={model.helpLinkUri} target="_blank" rel="noopener noreferrer">
-            {t('panel.helpLink', { ns: 'workflow' })}
+            {t(($) => $['panel.helpLink'], { ns: 'workflow' })}
           </DropdownMenuLinkItem>
         </DropdownMenuGroup>
       )}
       <DropdownMenuSeparator />
       <NodeActionsMenuAbout
-        title={t('panel.about', { ns: 'workflow' })}
+        title={t(($) => $['panel.about'], { ns: 'workflow' })}
         description={model.about.description}
-        author={`${t('panel.createdBy', { ns: 'workflow' })} ${model.about.author}`}
+        author={`${t(($) => $['panel.createdBy'], { ns: 'workflow' })} ${model.about.author}`}
       />
     </>
   )

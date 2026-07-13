@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import override
 
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
@@ -12,6 +13,7 @@ class CreatorUserRole(StrEnum):
     END_USER = "end_user"
 
     @classmethod
+    @override
     def _missing_(cls, value):
         if value == "end-user":
             return cls.END_USER
@@ -203,6 +205,28 @@ class InvokeFrom(StrEnum):
         return source_mapping.get(self, "dev")
 
 
+class EndUserType(StrEnum):
+    """Persisted type values for the ``end_users.type`` column."""
+
+    BROWSER = "browser"
+    MCP = "mcp"
+    OPENAPI = "openapi"
+    SERVICE_API = "service-api"
+    TRIGGER = "trigger"
+
+    @classmethod
+    @override
+    def _missing_(cls, value):
+        # Legacy rows persisted the service-api type with an underscore before it
+        # was normalized to the hyphenated value. The
+        # `4f7b2c8d9a10_normalize_legacy_end_user_type` migration rewrites those
+        # rows, but tolerate the old value here as well so an unmigrated end user
+        # keeps loading instead of failing enum validation on every request.
+        if value == "service_api":
+            return cls.SERVICE_API
+        return super()._missing_(value)
+
+
 class DocumentDocType(StrEnum):
     """Document doc_type classification"""
 
@@ -224,6 +248,7 @@ class TagType(StrEnum):
 
     KNOWLEDGE = "knowledge"
     APP = "app"
+    SNIPPET = "snippet"
 
 
 class DatasetMetadataType(StrEnum):

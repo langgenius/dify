@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { Checkbox } from '../../checkbox'
-import { FieldItem, FieldLabel, FieldRoot } from '../../field'
-import { FieldsetLegend, FieldsetRoot } from '../../fieldset'
+import { Field, FieldItem, FieldLabel } from '../../field'
+import { Fieldset, FieldsetLegend } from '../../fieldset'
 import { CheckboxGroup } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
@@ -10,7 +10,7 @@ const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElem
 describe('CheckboxGroup', () => {
   it('should manage selected values and parent mixed state', async () => {
     function PermissionsDemo() {
-      const [value, setValue] = useState(['read'])
+      const [value, setValue] = React.useState(['read'])
 
       return (
         <CheckboxGroup value={value} onValueChange={setValue} allValues={['read', 'write']}>
@@ -46,8 +46,8 @@ describe('CheckboxGroup', () => {
   it('should compose with Dify UI Field and Fieldset without losing labels', async () => {
     const onValueChange = vi.fn()
     const screen = await render(
-      <FieldRoot name="features">
-        <FieldsetRoot render={<CheckboxGroup value={['search']} onValueChange={onValueChange} />}>
+      <Field name="features">
+        <Fieldset render={<CheckboxGroup value={['search']} onValueChange={onValueChange} />}>
           <FieldsetLegend>Features</FieldsetLegend>
           <FieldItem>
             <FieldLabel>
@@ -61,8 +61,8 @@ describe('CheckboxGroup', () => {
               Analytics
             </FieldLabel>
           </FieldItem>
-        </FieldsetRoot>
-      </FieldRoot>,
+        </Fieldset>
+      </Field>,
     )
 
     const analytics = screen.getByRole('checkbox', { name: 'Analytics' })

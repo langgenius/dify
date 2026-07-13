@@ -20,7 +20,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderIdentity,
     ToolProviderType,
 )
-from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
+from models.tools import ApiToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 
@@ -38,75 +38,6 @@ class TestToolTransformService:
                 yield {
                     "dify_config": mock_dify_config,
                 }
-
-    def _create_test_tool_provider(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, provider_type="api"
-    ):
-        """
-        Helper method to create a test tool provider for testing.
-
-        Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
-            mock_external_service_dependencies: Mock dependencies
-            provider_type: Type of provider to create
-
-        Returns:
-            Tool provider instance
-        """
-        fake = Faker()
-
-        if provider_type == "api":
-            provider = ApiToolProvider(
-                name=fake.company(),
-                description=fake.text(max_nb_chars=100),
-                icon='{"background": "#FF6B6B", "content": "🔧"}',
-                tenant_id="test_tenant_id",
-                user_id="test_user_id",
-                credentials_str='{"auth_type": "api_key_header", "api_key": "test_key"}',
-                schema="{}",
-                schema_type_str=ApiProviderSchemaType.OPENAPI,
-                tools_str="[]",
-            )
-        elif provider_type == "builtin":
-            provider = BuiltinToolProvider(
-                name=fake.company(),
-                tenant_id="test_tenant_id",
-                user_id="test_user_id",
-                provider="test_provider",
-                credential_type="api_key",
-                encrypted_credentials='{"api_key": "test_key"}',
-            )
-        elif provider_type == "workflow":
-            provider = WorkflowToolProvider(
-                name=fake.company(),
-                description=fake.text(max_nb_chars=100),
-                icon='{"background": "#FF6B6B", "content": "🔧"}',
-                tenant_id="test_tenant_id",
-                user_id="test_user_id",
-                app_id="test_workflow_id",
-                label="Test Workflow",
-                version="1.0.0",
-                parameter_configuration="[]",
-            )
-        elif provider_type == "mcp":
-            provider = MCPToolProvider(
-                name=fake.company(),
-                icon='{"background": "#FF6B6B", "content": "🔧"}',
-                tenant_id="test_tenant_id",
-                user_id="test_user_id",
-                server_url="https://mcp.example.com",
-                server_url_hash="test_server_url_hash",
-                server_identifier="test_server",
-                tools='[{"name": "test_tool", "description": "Test tool"}]',
-                authed=True,
-            )
-        else:
-            raise ValueError(f"Unknown provider type: {provider_type}")
-
-        db_session_with_containers.add(provider)
-        db_session_with_containers.commit()
-
-        return provider
 
     def test_get_plugin_icon_url_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """

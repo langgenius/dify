@@ -40,6 +40,11 @@ export const zPipelineTemplateDetailResponse = z.object({
 })
 
 /**
+ * RagPipelineOpaqueResponse
+ */
+export const zRagPipelineOpaqueResponse = z.unknown()
+
+/**
  * RagPipelineImportPayload
  */
 export const zRagPipelineImportPayload = z.object({
@@ -59,6 +64,28 @@ export const zRagPipelineImportPayload = z.object({
  */
 export const zSimpleResultResponse = z.object({
   result: z.string(),
+})
+
+/**
+ * DefaultBlockConfigsResponse
+ */
+export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unknown()))
+
+/**
+ * DefaultBlockConfigResponse
+ */
+export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
+
+/**
+ * DraftWorkflowSyncPayload
+ */
+export const zDraftWorkflowSyncPayload = z.object({
+  conversation_variables: z.array(z.record(z.string(), z.unknown())).nullish(),
+  environment_variables: z.array(z.record(z.string(), z.unknown())).nullish(),
+  features: z.record(z.string(), z.unknown()).nullish(),
+  graph: z.record(z.string(), z.unknown()),
+  hash: z.string().nullish(),
+  rag_pipeline_variables: z.array(z.record(z.string(), z.unknown())).nullish(),
 })
 
 /**
@@ -104,6 +131,13 @@ export const zNodeRunRequiredPayload = z.object({
 })
 
 /**
+ * RagPipelineStepParametersResponse
+ */
+export const zRagPipelineStepParametersResponse = z.object({
+  variables: z.unknown(),
+})
+
+/**
  * DraftWorkflowRunPayload
  */
 export const zDraftWorkflowRunPayload = z.object({
@@ -111,6 +145,41 @@ export const zDraftWorkflowRunPayload = z.object({
   datasource_type: z.string(),
   inputs: z.record(z.string(), z.unknown()),
   start_node_id: z.string(),
+})
+
+export const zWorkflowDraftVariable = z.object({
+  description: z.string().optional(),
+  edited: z.boolean().optional(),
+  full_content: z.record(z.string(), z.unknown()).optional(),
+  id: z.string().optional(),
+  is_truncated: z.boolean().optional(),
+  name: z.string().optional(),
+  selector: z.array(z.string()).optional(),
+  type: z.string().optional(),
+  value: z
+    .union([
+      z.string(),
+      z.int(),
+      z.number(),
+      z.boolean(),
+      z.record(z.string(), z.unknown()),
+      z.array(z.unknown()),
+    ])
+    .nullish(),
+  value_type: z.string().optional(),
+  visible: z.boolean().optional(),
+})
+
+export const zWorkflowDraftVariableList = z.object({
+  items: z.array(zWorkflowDraftVariable).optional(),
+})
+
+/**
+ * WorkflowDraftVariablePatchPayload
+ */
+export const zWorkflowDraftVariablePatchPayload = z.object({
+  name: z.string().nullish(),
+  value: z.unknown().nullish(),
 })
 
 /**
@@ -141,6 +210,14 @@ export const zPublishedWorkflowRunPayload = z.object({
   original_document_id: z.string().nullish(),
   response_mode: z.enum(['blocking', 'streaming']).optional().default('streaming'),
   start_node_id: z.string(),
+})
+
+/**
+ * WorkflowUpdatePayload
+ */
+export const zWorkflowUpdatePayload = z.object({
+  marked_comment: z.string().max(100).nullish(),
+  marked_name: z.string().max(20).nullish(),
 })
 
 /**
@@ -240,9 +317,9 @@ export const zPipelineTemplateListResponse = z.object({
 })
 
 /**
- * SimpleAccount
+ * SimpleAccountResponse
  */
-export const zSimpleAccount = z.object({
+export const zSimpleAccountResponse = z.object({
   email: z.string(),
   id: z.string(),
   name: z.string(),
@@ -253,7 +330,7 @@ export const zSimpleAccount = z.object({
  */
 export const zWorkflowRunForListResponse = z.object({
   created_at: z.int().nullish(),
-  created_by_account: zSimpleAccount.optional(),
+  created_by_account: zSimpleAccountResponse.nullish(),
   elapsed_time: z.number().nullish(),
   exceptions_count: z.int().nullish(),
   finished_at: z.int().nullish(),
@@ -289,8 +366,8 @@ export const zSimpleEndUser = z.object({
  */
 export const zWorkflowRunDetailResponse = z.object({
   created_at: z.int().nullish(),
-  created_by_account: zSimpleAccount.optional(),
-  created_by_end_user: zSimpleEndUser.optional(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  created_by_end_user: zSimpleEndUser.nullish(),
   created_by_role: z.string().nullish(),
   elapsed_time: z.number().nullish(),
   error: z.string().nullish(),
@@ -311,8 +388,8 @@ export const zWorkflowRunDetailResponse = z.object({
  */
 export const zWorkflowRunNodeExecutionResponse = z.object({
   created_at: z.int().nullish(),
-  created_by_account: zSimpleAccount.optional(),
-  created_by_end_user: zSimpleEndUser.optional(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  created_by_end_user: zSimpleEndUser.nullish(),
   created_by_role: z.string().nullish(),
   elapsed_time: z.number().nullish(),
   error: z.string().nullish(),
@@ -348,7 +425,7 @@ export const zWorkflowConversationVariableResponse = z.object({
   description: z.string(),
   id: z.string(),
   name: z.string(),
-  value: z.record(z.string(), z.unknown()),
+  value: z.unknown(),
   value_type: z.string(),
 })
 
@@ -359,7 +436,7 @@ export const zWorkflowEnvironmentVariableResponse = z.object({
   description: z.string(),
   id: z.string(),
   name: z.string(),
-  value: z.record(z.string(), z.unknown()),
+  value: z.unknown(),
   value_type: z.string(),
 })
 
@@ -371,7 +448,7 @@ export const zPipelineVariableResponse = z.object({
   allowed_file_types: z.array(z.string()).nullish(),
   allowed_file_upload_methods: z.array(z.string()).nullish(),
   belong_to_node_id: z.string(),
-  default_value: z.record(z.string(), z.unknown()).optional(),
+  default_value: z.unknown().optional(),
   label: z.string(),
   max_length: z.int().nullish(),
   options: z.array(z.string()).nullish(),
@@ -389,7 +466,7 @@ export const zPipelineVariableResponse = z.object({
 export const zWorkflowResponse = z.object({
   conversation_variables: z.array(zWorkflowConversationVariableResponse),
   created_at: z.int(),
-  created_by: zSimpleAccount.optional(),
+  created_by: zSimpleAccountResponse.nullish(),
   environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
   features: z.record(z.string(), z.unknown()),
   graph: z.record(z.string(), z.unknown()),
@@ -400,7 +477,7 @@ export const zWorkflowResponse = z.object({
   rag_pipeline_variables: z.array(zPipelineVariableResponse),
   tool_published: z.boolean(),
   updated_at: z.int(),
-  updated_by: zSimpleAccount.optional(),
+  updated_by: zSimpleAccountResponse.nullish(),
   version: z.string(),
 })
 
@@ -415,6 +492,46 @@ export const zWorkflowPaginationResponse = z.object({
 })
 
 /**
+ * EnvironmentVariableItemResponse
+ */
+export const zEnvironmentVariableItemResponse = z.object({
+  description: z.string().nullish(),
+  editable: z.boolean(),
+  edited: z.boolean(),
+  id: z.string(),
+  name: z.string(),
+  selector: z.array(z.string()),
+  type: z.string(),
+  value: z.unknown(),
+  value_type: z.string(),
+  visible: z.boolean(),
+})
+
+/**
+ * EnvironmentVariableListResponse
+ */
+export const zEnvironmentVariableListResponse = z.object({
+  items: z.array(zEnvironmentVariableItemResponse),
+})
+
+export const zWorkflowDraftVariableWithoutValue = z.object({
+  description: z.string().optional(),
+  edited: z.boolean().optional(),
+  id: z.string().optional(),
+  is_truncated: z.boolean().optional(),
+  name: z.string().optional(),
+  selector: z.array(z.string()).optional(),
+  type: z.string().optional(),
+  value_type: z.string().optional(),
+  visible: z.boolean().optional(),
+})
+
+export const zWorkflowDraftVariableListWithoutValue = z.object({
+  items: z.array(zWorkflowDraftVariableWithoutValue).optional(),
+  total: z.int().optional(),
+})
+
+/**
  * DatasetRerankingModelResponse
  */
 export const zDatasetRerankingModelResponse = z.object({
@@ -423,25 +540,9 @@ export const zDatasetRerankingModelResponse = z.object({
 })
 
 /**
- * Type
+ * PluginDependencyType
  */
-export const zType = z.enum(['github', 'marketplace', 'package'])
-
-/**
- * PluginDependency
- */
-export const zPluginDependency = z.object({
-  current_identifier: z.string().nullish(),
-  type: zType,
-  value: z.unknown(),
-})
-
-/**
- * RagPipelineImportCheckDependenciesResponse
- */
-export const zRagPipelineImportCheckDependenciesResponse = z.object({
-  leaked_dependencies: z.array(zPluginDependency).optional(),
-})
+export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package'])
 
 /**
  * Github
@@ -467,6 +568,22 @@ export const zMarketplace = z.object({
 export const zPackage = z.object({
   plugin_unique_identifier: z.string(),
   version: z.string().nullish(),
+})
+
+/**
+ * PluginDependency
+ */
+export const zPluginDependency = z.object({
+  current_identifier: z.string().nullish(),
+  type: zPluginDependencyType,
+  value: z.union([zGithub, zMarketplace, zPackage]),
+})
+
+/**
+ * RagPipelineImportCheckDependenciesResponse
+ */
+export const zRagPipelineImportCheckDependenciesResponse = z.object({
+  leaked_dependencies: z.array(zPluginDependency).optional(),
 })
 
 /**
@@ -505,7 +622,7 @@ export const zDatasetRetrievalModelResponse = z.object({
   score_threshold_enabled: z.boolean(),
   search_method: z.string(),
   top_k: z.int(),
-  weights: zDatasetWeightedScoreResponse.optional(),
+  weights: zDatasetWeightedScoreResponse.nullish(),
 })
 
 /**
@@ -528,14 +645,16 @@ export const zDatasetDetailResponse = z.object({
   embedding_model_provider: z.string().nullable(),
   enable_api: z.boolean(),
   external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
-  external_retrieval_model: zDatasetExternalRetrievalModelResponse,
+  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
   icon_info: zDatasetIconInfoResponse.optional(),
   id: z.string(),
   indexing_technique: z.string().nullable(),
   is_multimodal: z.boolean(),
   is_published: z.boolean(),
+  maintainer: z.string().nullish(),
   name: z.string(),
   permission: z.string(),
+  permission_keys: z.array(z.string()).optional(),
   pipeline_id: z.string().nullable(),
   provider: z.string(),
   retrieval_model_dict: zDatasetRetrievalModelResponse,
@@ -556,13 +675,10 @@ export const zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
 /**
  * Pipeline template deleted
  */
-export const zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse = z.record(
-  z.string(),
-  z.never(),
-)
+export const zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse = z.void()
 
-export const zPatchRagPipelineCustomizedTemplatesByTemplateIdBody
-  = zCustomizedPipelineTemplatePayload
+export const zPatchRagPipelineCustomizedTemplatesByTemplateIdBody =
+  zCustomizedPipelineTemplatePayload
 
 export const zPatchRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
   template_id: z.string(),
@@ -571,10 +687,7 @@ export const zPatchRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
 /**
  * Pipeline template updated
  */
-export const zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse = z.record(
-  z.string(),
-  z.never(),
-)
+export const zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse = z.void()
 
 export const zPostRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
   template_id: z.string(),
@@ -623,7 +736,7 @@ export const zGetRagPipelineTemplatesByTemplateIdResponse = zPipelineTemplateDet
 /**
  * Success
  */
-export const zGetRagPipelinesDatasourcePluginsResponse = z.record(z.string(), z.unknown())
+export const zGetRagPipelinesDatasourcePluginsResponse = zRagPipelineOpaqueResponse
 
 export const zPostRagPipelinesImportsBody = zRagPipelineImportPayload
 
@@ -648,25 +761,26 @@ export const zGetRagPipelinesImportsByPipelineIdCheckDependenciesPath = z.object
 /**
  * Dependencies checked
  */
-export const zGetRagPipelinesImportsByPipelineIdCheckDependenciesResponse
-  = zRagPipelineImportCheckDependenciesResponse
+export const zGetRagPipelinesImportsByPipelineIdCheckDependenciesResponse =
+  zRagPipelineImportCheckDependenciesResponse
 
-/**
- * Success
- */
-export const zGetRagPipelinesRecommendedPluginsResponse = z.record(z.string(), z.unknown())
-
-export const zPostRagPipelinesTransformDatasetsByDatasetIdPath = z.object({
-  dataset_id: z.string(),
+export const zGetRagPipelinesRecommendedPluginsQuery = z.object({
+  type: z.string().optional().default('all'),
 })
 
 /**
  * Success
  */
-export const zPostRagPipelinesTransformDatasetsByDatasetIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetRagPipelinesRecommendedPluginsResponse = zRagPipelineOpaqueResponse
+
+export const zPostRagPipelinesTransformDatasetsByDatasetIdPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPostRagPipelinesTransformDatasetsByDatasetIdResponse = zRagPipelineOpaqueResponse
 
 export const zPostRagPipelinesByPipelineIdCustomizedPublishBody = zCustomizedPipelineTemplatePayload
 
@@ -677,10 +791,7 @@ export const zPostRagPipelinesByPipelineIdCustomizedPublishPath = z.object({
 /**
  * Pipeline template published
  */
-export const zPostRagPipelinesByPipelineIdCustomizedPublishResponse = z.record(
-  z.string(),
-  z.never(),
-)
+export const zPostRagPipelinesByPipelineIdCustomizedPublishResponse = z.void()
 
 export const zGetRagPipelinesByPipelineIdExportsPath = z.object({
   pipeline_id: z.string(),
@@ -696,7 +807,12 @@ export const zGetRagPipelinesByPipelineIdExportsQuery = z.object({
 export const zGetRagPipelinesByPipelineIdExportsResponse = zSimpleDataResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowRunsPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
+})
+
+export const zGetRagPipelinesByPipelineIdWorkflowRunsQuery = z.object({
+  last_id: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
 /**
@@ -705,19 +821,19 @@ export const zGetRagPipelinesByPipelineIdWorkflowRunsPath = z.object({
 export const zGetRagPipelinesByPipelineIdWorkflowRunsResponse = zWorkflowRunPaginationResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
   task_id: z.string(),
 })
 
 /**
  * Task stopped successfully
  */
-export const zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse
-  = zSimpleResultResponse
+export const zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse =
+  zSimpleResultResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdPath = z.object({
-  pipeline_id: z.string(),
-  run_id: z.string(),
+  pipeline_id: z.uuid(),
+  run_id: z.uuid(),
 })
 
 /**
@@ -726,18 +842,25 @@ export const zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdPath = z.object({
 export const zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponse = zWorkflowRunDetailResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsPath = z.object({
-  pipeline_id: z.string(),
-  run_id: z.string(),
+  pipeline_id: z.uuid(),
+  run_id: z.uuid(),
 })
 
 /**
  * Node executions retrieved successfully
  */
-export const zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse
-  = zWorkflowRunNodeExecutionListResponse
+export const zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse =
+  zWorkflowRunNodeExecutionListResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
+})
+
+export const zGetRagPipelinesByPipelineIdWorkflowsQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(10),
+  named_only: z.boolean().optional().default(false),
+  page: z.int().gte(1).lte(99999).optional().default(1),
+  user_id: z.string().optional(),
 })
 
 /**
@@ -746,31 +869,34 @@ export const zGetRagPipelinesByPipelineIdWorkflowsPath = z.object({
 export const zGetRagPipelinesByPipelineIdWorkflowsResponse = zWorkflowPaginationResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
- * Success
+ * Default block configs retrieved successfully
  */
-export const zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse =
+  zDefaultBlockConfigsResponse
 
-export const zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypePath
-  = z.object({
+export const zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypePath =
+  z.object({
     block_type: z.string(),
-    pipeline_id: z.string(),
+    pipeline_id: z.uuid(),
+  })
+
+export const zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeQuery =
+  z.object({
+    q: z.string().optional(),
   })
 
 /**
- * Success
+ * Default block config retrieved successfully
  */
-export const zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse
-  = z.record(z.string(), z.unknown())
+export const zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse =
+  zDefaultBlockConfigResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
@@ -778,8 +904,10 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftPath = z.object({
  */
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftResponse = zWorkflowResponse
 
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftBody = zDraftWorkflowSyncPayload
+
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
@@ -787,251 +915,235 @@ export const zPostRagPipelinesByPipelineIdWorkflowsDraftPath = z.object({
  */
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftResponse = zRagPipelineWorkflowSyncResponse
 
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunBody
-  = zDatasourceNodeRunPayload
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunBody =
+  zDatasourceNodeRunPayload
 
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunPath = z.object({
   node_id: z.string(),
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse
-  = z.record(z.string(), z.unknown())
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse =
+  zRagPipelineOpaqueResponse
 
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectBody
-  = zDatasourceVariablesPayload
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectBody =
+  zDatasourceVariablesPayload
 
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
  * Datasource variables set successfully
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponse
-  = zWorkflowRunNodeExecutionResponse
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponse =
+  zWorkflowRunNodeExecutionResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
- * Success
+ * Environment variables retrieved successfully
  */
-export const zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse =
+  zEnvironmentVariableListResponse
 
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunBody
-  = zNodeRunPayload
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunBody =
+  zNodeRunPayload
 
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunPath = z.object({
   node_id: z.string(),
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse
-  = z.record(z.string(), z.unknown())
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse =
+  zRagPipelineOpaqueResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunBody = zNodeRunPayload
 
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunPath = z.object({
   node_id: z.string(),
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse =
+  zRagPipelineOpaqueResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunPath = z.object({
   node_id: z.string(),
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
  * Node last run retrieved successfully
  */
-export const zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponse
-  = zWorkflowRunNodeExecutionResponse
+export const zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponse =
+  zWorkflowRunNodeExecutionResponse
 
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunBody
-  = zNodeRunRequiredPayload
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunBody =
+  zNodeRunRequiredPayload
 
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunPath = z.object({
   node_id: z.string(),
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
  * Node run started successfully
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse
-  = zWorkflowRunNodeExecutionResponse
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse =
+  zWorkflowRunNodeExecutionResponse
 
 export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath = z.object({
   node_id: z.string(),
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
- * Success
+ * Node variables deleted successfully
  */
-export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse = z.void()
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath = z.object({
   node_id: z.string(),
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
- * Success
+ * Node variables retrieved successfully
  */
-export const zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse =
+  zWorkflowDraftVariableList
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
+})
+
+export const zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersQuery = z.object({
+  node_id: z.string(),
 })
 
 /**
  * Success
  */
-export const zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse =
+  zRagPipelineStepParametersResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
+})
+
+export const zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersQuery = z.object({
+  node_id: z.string(),
 })
 
 /**
  * Success
  */
-export const zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse =
+  zRagPipelineStepParametersResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftRunBody = zDraftWorkflowRunPayload
 
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftRunPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftRunResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftRunResponse = zRagPipelineOpaqueResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
- * Success
+ * System variables retrieved successfully
  */
-export const zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse =
+  zWorkflowDraftVariableList
 
 export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
- * Success
+ * Workflow variables deleted successfully
  */
-export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse = z.void()
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
+})
+
+export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).lte(100000).optional().default(1),
 })
 
 /**
- * Success
+ * Workflow variables retrieved successfully
  */
-export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse =
+  zWorkflowDraftVariableListWithoutValue
 
 export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath = z.object({
-  pipeline_id: z.string(),
-  variable_id: z.string(),
+  pipeline_id: z.uuid(),
+  variable_id: z.uuid(),
 })
 
 /**
- * Success
+ * Variable deleted successfully
  */
-export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse = z.void()
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath = z.object({
-  pipeline_id: z.string(),
-  variable_id: z.string(),
+  pipeline_id: z.uuid(),
+  variable_id: z.uuid(),
 })
 
 /**
- * Success
+ * Variable retrieved successfully
  */
-export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse =
+  zWorkflowDraftVariable
+
+export const zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody =
+  zWorkflowDraftVariablePatchPayload
 
 export const zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath = z.object({
-  pipeline_id: z.string(),
-  variable_id: z.string(),
+  pipeline_id: z.uuid(),
+  variable_id: z.uuid(),
 })
 
 /**
- * Success
+ * Variable updated successfully
  */
-export const zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse =
+  zWorkflowDraftVariable
 
 export const zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetPath = z.object({
-  pipeline_id: z.string(),
-  variable_id: z.string(),
+  pipeline_id: z.uuid(),
+  variable_id: z.uuid(),
 })
 
-/**
- * Success
- */
-export const zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse
-  = z.record(z.string(), z.unknown())
+export const zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse = z.union(
+  [zWorkflowDraftVariable, z.void()],
+)
 
 export const zGetRagPipelinesByPipelineIdWorkflowsPublishPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
@@ -1040,96 +1152,98 @@ export const zGetRagPipelinesByPipelineIdWorkflowsPublishPath = z.object({
 export const zGetRagPipelinesByPipelineIdWorkflowsPublishResponse = zWorkflowResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishResponse
-  = zRagPipelineWorkflowPublishResponse
+export const zPostRagPipelinesByPipelineIdWorkflowsPublishResponse =
+  zRagPipelineWorkflowPublishResponse
 
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody
-  = zParser
+export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody =
+  zParser
 
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewPath
-  = z.object({
+export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewPath =
+  z.object({
     node_id: z.string(),
-    pipeline_id: z.string(),
+    pipeline_id: z.uuid(),
   })
 
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse
-  = z.record(z.string(), z.unknown())
+export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse =
+  z.record(z.string(), z.unknown())
 
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunBody
-  = zDatasourceNodeRunPayload
+export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunBody =
+  zDatasourceNodeRunPayload
 
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunPath
-  = z.object({
+export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunPath =
+  z.object({
     node_id: z.string(),
-    pipeline_id: z.string(),
+    pipeline_id: z.uuid(),
   })
 
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse
-  = z.record(z.string(), z.unknown())
+export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse =
+  zRagPipelineOpaqueResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
+})
+
+export const zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersQuery = z.object({
+  node_id: z.string(),
 })
 
 /**
  * Success
  */
-export const zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse
-  = z.record(z.string(), z.unknown())
+export const zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse =
+  zRagPipelineStepParametersResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
+})
+
+export const zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersQuery = z.object({
+  node_id: z.string(),
 })
 
 /**
  * Success
  */
-export const zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse =
+  zRagPipelineStepParametersResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishedRunBody = zPublishedWorkflowRunPayload
 
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishedRunPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse = zRagPipelineOpaqueResponse
 
 export const zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
   workflow_id: z.string(),
 })
 
 /**
  * Workflow deleted successfully
  */
-export const zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse = z.record(
-  z.string(),
-  z.never(),
-)
+export const zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse = z.void()
+
+export const zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdBody = zWorkflowUpdatePayload
 
 export const zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
   workflow_id: z.string(),
 })
 
@@ -1139,12 +1253,12 @@ export const zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath = z.object(
 export const zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse = zWorkflowResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath = z.object({
-  pipeline_id: z.string(),
+  pipeline_id: z.uuid(),
   workflow_id: z.string(),
 })
 
 /**
  * Success
  */
-export const zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse
-  = zRagPipelineWorkflowSyncResponse
+export const zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse =
+  zRagPipelineWorkflowSyncResponse

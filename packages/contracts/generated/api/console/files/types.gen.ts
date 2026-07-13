@@ -9,11 +9,11 @@ export type AllowedExtensionsResponse = {
 }
 
 export type UploadConfig = {
-  attachment_image_file_size_limit?: number | null
+  attachment_image_file_size_limit: number
   audio_file_size_limit: number
   batch_count_limit: number
   file_size_limit: number
-  file_upload_limit?: number | null
+  file_upload_limit: number
   image_file_batch_limit: number
   image_file_size_limit: number
   single_chunk_attachment_limit: number
@@ -32,6 +32,7 @@ export type FileResponse = {
   name: string
   original_url?: string | null
   preview_url?: string | null
+  reference?: string | null
   size: number
   source_url?: string | null
   tenant_id?: string | null
@@ -53,8 +54,8 @@ export type GetFilesSupportTypeResponses = {
   200: AllowedExtensionsResponse
 }
 
-export type GetFilesSupportTypeResponse
-  = GetFilesSupportTypeResponses[keyof GetFilesSupportTypeResponses]
+export type GetFilesSupportTypeResponse =
+  GetFilesSupportTypeResponses[keyof GetFilesSupportTypeResponses]
 
 export type GetFilesUploadData = {
   body?: never
@@ -70,7 +71,10 @@ export type GetFilesUploadResponses = {
 export type GetFilesUploadResponse = GetFilesUploadResponses[keyof GetFilesUploadResponses]
 
 export type PostFilesUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+    source?: 'datasets'
+  }
   path?: never
   query?: never
   url: '/files/upload'
@@ -95,5 +99,5 @@ export type GetFilesByFileIdPreviewResponses = {
   200: TextContentResponse
 }
 
-export type GetFilesByFileIdPreviewResponse
-  = GetFilesByFileIdPreviewResponses[keyof GetFilesByFileIdPreviewResponses]
+export type GetFilesByFileIdPreviewResponse =
+  GetFilesByFileIdPreviewResponses[keyof GetFilesByFileIdPreviewResponses]

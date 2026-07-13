@@ -1,8 +1,8 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, field_validator
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
 
 DIFY_RUN_CONTEXT_KEY = "_dify"
+AGENT_RUNTIME_EXIT_INTENT_ARG = "_agent_runtime_exit_intent"
+type AgentRuntimeExitIntent = Literal["suspend", "delete"]
 
 
 class UserFrom(StrEnum):
@@ -47,6 +49,14 @@ class InvokeFrom(StrEnum):
         }
         return source_mapping.get(self, "dev")
 
+    def runs_as_account(self) -> bool:
+        """Whether a run from this entry point is attributed to a workspace
+        Account rather than an end user. Console contexts (debugger/explore)
+        run as the signed-in Account; webapp/service-api/trigger run as an
+        EndUser. Single source of truth for the created-by-role / user-type
+        split shared by the app runners and MCP identity forwarding."""
+        return self in (InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE)
+
 
 class DifyRunContext(BaseModel):
     tenant_id: str
@@ -54,6 +64,7 @@ class DifyRunContext(BaseModel):
     user_id: str
     user_from: UserFrom
     invoke_from: InvokeFrom
+    trace_session_id: str | None = None
 
 
 def build_dify_run_context(
@@ -63,6 +74,7 @@ def build_dify_run_context(
     user_id: str,
     user_from: UserFrom,
     invoke_from: InvokeFrom,
+    trace_session_id: str | None = None,
     extra_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
@@ -78,6 +90,7 @@ def build_dify_run_context(
         user_id=user_id,
         user_from=user_from,
         invoke_from=invoke_from,
+        trace_session_id=trace_session_id,
     )
     return run_context
 
@@ -209,10 +222,29 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
     accepted-entity union. The answer is produced by the dify-agent backend
     rather than an in-process LLM call; ``model_conf`` is synthesized from the
     bound Agent Soul model so the chat task pipeline can persist usage.
+
+    ``agent_config_version_kind`` selects which Agent config surface the
+    backend should read from: immutable snapshot, shared draft, or per-user
+    build draft.
+
+    ``agent_runtime_session_snapshot_id`` carries the runtime session scope
+    used to resume or suspend within the same editable config surface.
+
+    ``agent_runtime_exit_intent`` is API-internal lifecycle policy for the
+    Agent backend session after this turn finishes. Normal chat/resume turns
+    suspend on exit; build-chat finalization deletes the backend runtime.
+
+    ``prompt_file_mappings`` preserves the raw request ``files`` array for the
+    Agent backend prompt. These references are appended to the backend prompt
+    text while the stored chat message keeps the user's original query.
     """
 
     agent_id: str
     agent_config_snapshot_id: str
+    agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
+    agent_runtime_session_snapshot_id: str | None = None
+    agent_runtime_exit_intent: AgentRuntimeExitIntent = "suspend"
+    prompt_file_mappings: Sequence[JsonValue] = Field(default_factory=list)
 
 
 class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):

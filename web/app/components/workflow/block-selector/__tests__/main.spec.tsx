@@ -1,12 +1,13 @@
-import type { ButtonHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, ReactElement } from 'react'
 import type { NodeDefault } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import NodeSelector from '../main'
-import { BlockClassificationEnum } from '../types'
+import { BlockClassificationEnum, TabsEnum } from '../types'
 
 vi.mock('reactflow', () => ({
   useStoreApi: () => ({
@@ -21,6 +22,22 @@ vi.mock('@/service/use-plugins', () => ({
     plugins: [],
     isLoading: false,
   }),
+  useFeaturedTriggersRecommendations: () => ({
+    plugins: [],
+    isLoading: false,
+  }),
+}))
+
+vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
+  useMarketplacePlugins: () => ({
+    plugins: [],
+    queryPluginsWithDebounced: vi.fn(),
+  }),
+}))
+
+vi.mock('@/service/use-triggers', () => ({
+  useAllTriggerPlugins: () => ({ data: [] }),
+  useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
 vi.mock('@/service/use-tools', () => ({
@@ -44,23 +61,35 @@ const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
   checkValid: () => ({ isValid: true }),
 })
 
+type RenderNodeSelectorOptions = Parameters<typeof renderWorkflowComponent>[1]
+
+const renderNodeSelector = (ui: ReactElement, options?: RenderNodeSelectorOptions) => {
+  return renderWorkflowComponent(ui, {
+    ...options,
+    hooksStoreProps: {
+      ...options?.hooksStoreProps,
+      configsMap: {
+        flowId: 'app-1',
+        flowType: FlowType.appFlow,
+        fileSettings: {} as never,
+        ...options?.hooksStoreProps?.configsMap,
+      },
+    },
+  })
+}
+
 describe('NodeSelector', () => {
   it('opens with the real blocks tab, filters by search, selects a block, and clears search after close', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
 
-    renderWorkflowComponent(
+    renderNodeSelector(
       <NodeSelector
         onSelect={onSelect}
-        blocks={[
-          createBlock(BlockEnum.LLM, 'LLM'),
-          createBlock(BlockEnum.End, 'End'),
-        ]}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM'), createBlock(BlockEnum.End, 'End')]}
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.End]}
-        trigger={open => (
-          <button type="button">
-            {open ? 'selector-open' : 'selector-closed'}
-          </button>
+        trigger={(open) => (
+          <button type="button">{open ? 'selector-open' : 'selector-closed'}</button>
         )}
       />,
     )
@@ -87,26 +116,56 @@ describe('NodeSelector', () => {
 
     await user.click(screen.getByRole('button', { name: 'selector-closed' }))
 
-    const reopenedInput = screen.getByPlaceholderText('workflow.tabs.searchBlock') as HTMLInputElement
+    const reopenedInput = screen.getByPlaceholderText(
+      'workflow.tabs.searchBlock',
+    ) as HTMLInputElement
     expect(reopenedInput.value).toBe('')
     expect(screen.getByText('End')).toBeInTheDocument()
+  })
+
+  it('resets to the default tab after closing', async () => {
+    const user = userEvent.setup()
+
+    renderNodeSelector(
+      <NodeSelector
+        onSelect={vi.fn()}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
+        availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start]}
+        showStartTab
+        trigger={(open) => (
+          <button type="button">{open ? 'selector-open' : 'selector-closed'}</button>
+        )}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'selector-closed' }))
+    await user.click(screen.getByText('workflow.tabs.start'))
+
+    expect(screen.getByPlaceholderText('workflow.tabs.searchTrigger')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'selector-open' }))
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('workflow.tabs.searchTrigger')).not.toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'selector-closed' }))
+
+    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
   })
 
   it('does not open or emit open changes when disabled', async () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
 
-    renderWorkflowComponent(
+    renderNodeSelector(
       <NodeSelector
         disabled
         onOpenChange={onOpenChange}
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM]}
-        trigger={open => (
-          <button type="button">
-            {open ? 'selector-open' : 'selector-closed'}
-          </button>
+        trigger={(open) => (
+          <button type="button">{open ? 'selector-open' : 'selector-closed'}</button>
         )}
       />,
     )
@@ -121,7 +180,7 @@ describe('NodeSelector', () => {
     const user = userEvent.setup()
     const onTriggerClick = vi.fn()
 
-    renderWorkflowComponent(
+    renderNodeSelector(
       <NodeSelector
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
@@ -144,14 +203,10 @@ describe('NodeSelector', () => {
     const user = userEvent.setup()
 
     function TriggerShell() {
-      return (
-        <span>
-          open-from-shell
-        </span>
-      )
+      return <span>open-from-shell</span>
     }
 
-    renderWorkflowComponent(
+    renderNodeSelector(
       <NodeSelector
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
@@ -176,7 +231,7 @@ describe('NodeSelector', () => {
       )
     }
 
-    renderWorkflowComponent(
+    renderNodeSelector(
       <NodeSelector
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
@@ -196,17 +251,13 @@ describe('NodeSelector', () => {
   it('can render the shared Button trigger as the popover root', async () => {
     const user = userEvent.setup()
 
-    renderWorkflowComponent(
+    renderNodeSelector(
       <NodeSelector
         onSelect={vi.fn()}
         blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
         availableBlocksTypes={[BlockEnum.LLM]}
         renderTriggerAsButtonRoot
-        trigger={() => (
-          <Button variant="primary">
-            open-shared-button-trigger
-          </Button>
-        )}
+        trigger={() => <Button variant="primary">open-shared-button-trigger</Button>}
       />,
     )
 
@@ -215,5 +266,101 @@ describe('NodeSelector', () => {
 
     expect(trigger.closest('[aria-haspopup="dialog"]')).toBe(trigger)
     expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+  })
+
+  it('isolates popup keyboard events when opened from another keyboard-managed overlay', async () => {
+    const user = userEvent.setup()
+    const handleParentKeyDown = vi.fn()
+
+    renderNodeSelector(
+      <NodeSelector
+        open
+        isolateKeyboardEvents
+        onSelect={vi.fn()}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM'), createBlock(BlockEnum.End, 'End')]}
+        availableBlocksTypes={[BlockEnum.LLM, BlockEnum.End]}
+      />,
+    )
+
+    const searchInput = screen.getByPlaceholderText('workflow.tabs.searchBlock') as HTMLInputElement
+    document.body.addEventListener('keydown', handleParentKeyDown)
+
+    try {
+      await user.type(searchInput, 'LLM')
+    } finally {
+      document.body.removeEventListener('keydown', handleParentKeyDown)
+    }
+
+    expect(searchInput.value).toBe('LLM')
+    expect(handleParentKeyDown).not.toHaveBeenCalled()
+    expect(screen.getByText('LLM')).toBeInTheDocument()
+    expect(screen.queryByText('End')).not.toBeInTheDocument()
+  })
+
+  it('disables the start tab with a setup tooltip when an unconfigured start node is on the canvas', async () => {
+    const user = userEvent.setup()
+
+    renderNodeSelector(
+      <NodeSelector
+        open
+        onSelect={vi.fn()}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
+        availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start]}
+        showStartTab
+        defaultActiveTab={TabsEnum.Start}
+      />,
+      {
+        initialStoreState: {
+          nodes: [
+            {
+              id: 'start-placeholder',
+              data: {
+                type: BlockEnum.StartPlaceholder,
+              },
+            },
+          ] as never,
+        },
+      },
+    )
+
+    await user.hover(screen.getByText('workflow.tabs.start'))
+
+    expect(
+      await screen.findByText('workflow.tabs.unconfiguredStartDisabledTip'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'workflow.tabs.startDisabledTipLearnMore' }),
+    ).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/nodes/trigger/overview')
+    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+  })
+
+  it('keeps the start tab enabled when a configured user input start node is on the canvas', () => {
+    renderNodeSelector(
+      <NodeSelector
+        open
+        onSelect={vi.fn()}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
+        availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start, BlockEnum.TriggerPlugin]}
+        showStartTab
+        defaultActiveTab={TabsEnum.Start}
+      />,
+      {
+        initialStoreState: {
+          nodes: [
+            {
+              id: 'start',
+              data: {
+                type: BlockEnum.Start,
+              },
+            },
+          ] as never,
+        },
+      },
+    )
+
+    expect(screen.getByText('workflow.tabs.start')).toHaveAttribute('aria-disabled', 'false')
+    expect(
+      screen.getByText('workflow.nodes.startPlaceholder.userInputConflictTip'),
+    ).toBeInTheDocument()
   })
 })

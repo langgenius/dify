@@ -65,11 +65,10 @@ class RemoteFileInfoApi(WebApiResource):
             # failed back to get method
             resp = remote_fetcher.make_request("GET", decoded_url, timeout=3)
         resp.raise_for_status()
-        info = RemoteFileInfo(
+        return RemoteFileInfo(
             file_type=resp.headers.get("Content-Type", "application/octet-stream"),
             file_length=int(resp.headers.get("Content-Length", -1)),
-        )
-        return info.model_dump(mode="json")
+        ).model_dump(mode="json")
 
 
 @web_ns.route("/remote-files/upload")
@@ -86,6 +85,7 @@ class RemoteFileUploadApi(WebApiResource):
         }
     )
     @web_ns.response(201, "Remote file uploaded", web_ns.models[FileWithSignedUrl.__name__])
+    @web_ns.expect(web_ns.models[RemoteFileUploadPayload.__name__])
     def post(self, app_model: App, end_user: EndUser):
         """Upload a file from a remote URL.
 
@@ -140,7 +140,7 @@ class RemoteFileUploadApi(WebApiResource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError
 
-        payload1 = FileWithSignedUrl(
+        return FileWithSignedUrl(
             id=upload_file.id,
             name=upload_file.name,
             size=upload_file.size,
@@ -149,5 +149,4 @@ class RemoteFileUploadApi(WebApiResource):
             mime_type=upload_file.mime_type,
             created_by=upload_file.created_by,
             created_at=int(upload_file.created_at.timestamp()),
-        )
-        return payload1.model_dump(mode="json"), 201
+        ).model_dump(mode="json"), 201

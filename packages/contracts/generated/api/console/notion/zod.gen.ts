@@ -23,7 +23,7 @@ export const zDataSourceIntegrateIconResponse = z.object({
  */
 export const zNotionIntegratePageResponse = z.object({
   is_bound: z.boolean(),
-  page_icon: zDataSourceIntegrateIconResponse,
+  page_icon: zDataSourceIntegrateIconResponse.nullable(),
   page_id: z.string(),
   page_name: z.string(),
   parent_id: z.string().nullable(),
@@ -48,7 +48,7 @@ export const zNotionIntegrateInfoListResponse = z.object({
 })
 
 export const zGetNotionPagesByPageIdByPageTypePreviewPath = z.object({
-  page_id: z.string(),
+  page_id: z.uuid(),
   page_type: z.string(),
 })
 

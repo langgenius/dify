@@ -21,9 +21,26 @@ export const zBedrockRetrievalPayload = z.object({
   retrieval_setting: zBedrockRetrievalSetting,
 })
 
+/**
+ * BedrockRetrievalRecordResponse
+ */
+export const zBedrockRetrievalRecordResponse = z.object({
+  content: z.string().nullish(),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+  score: z.number(),
+  title: z.string().nullish(),
+})
+
+/**
+ * BedrockRetrievalResponse
+ */
+export const zBedrockRetrievalResponse = z.object({
+  records: z.array(zBedrockRetrievalRecordResponse),
+})
+
 export const zPostTestRetrievalBody = zBedrockRetrievalPayload
 
 /**
  * Bedrock retrieval test completed
  */
-export const zPostTestRetrievalResponse = z.record(z.string(), z.unknown())
+export const zPostTestRetrievalResponse = zBedrockRetrievalResponse

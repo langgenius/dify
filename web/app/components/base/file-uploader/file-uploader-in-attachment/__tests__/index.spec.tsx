@@ -21,14 +21,15 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
 
-const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload => ({
-  enabled: true,
-  allowed_file_types: ['image'],
-  allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-  allowed_file_extensions: [],
-  number_limits: 5,
-  ...overrides,
-} as unknown as FileUpload)
+const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload =>
+  ({
+    enabled: true,
+    allowed_file_types: ['image'],
+    allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+    allowed_file_extensions: [],
+    number_limits: 5,
+    ...overrides,
+  }) as unknown as FileUpload
 
 const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
   id: 'file-1',
@@ -47,24 +48,14 @@ describe('FileUploaderInAttachmentWrapper', () => {
   })
 
   it('should render without crashing', () => {
-    render(
-      <FileUploaderInAttachmentWrapper
-        onChange={vi.fn()}
-        fileConfig={createFileConfig()}
-      />,
-    )
+    render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
 
     // FileContextProvider wraps children with a Zustand context — verify children render
     expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
   })
 
   it('should render upload buttons when not disabled', () => {
-    render(
-      <FileUploaderInAttachmentWrapper
-        onChange={vi.fn()}
-        fileConfig={createFileConfig()}
-      />,
-    )
+    render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
 
     const buttons = screen.getAllByRole('button')
     expect(buttons.length).toBeGreaterThan(0)
@@ -83,10 +74,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
   })
 
   it('should render file items for each file', () => {
-    const files = [
-      createFile({ id: 'f1', name: 'a.txt' }),
-      createFile({ id: 'f2', name: 'b.txt' }),
-    ]
+    const files = [createFile({ id: 'f1', name: 'a.txt' }), createFile({ id: 'f2', name: 'b.txt' })]
 
     render(
       <FileUploaderInAttachmentWrapper
@@ -164,6 +152,24 @@ describe('FileUploaderInAttachmentWrapper', () => {
     expect(linkButton.closest('button')).toBeInTheDocument()
   })
 
+  it('should keep upload button layout stable when remote_url popup opens', () => {
+    render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
+
+    const localButton = screen.getByText(/fileUploader\.uploadFromComputer/).closest('button')
+    const linkButton = screen.getByText(/fileUploader\.pasteFileLink/).closest('button')
+    const uploadGroup = localButton?.parentElement?.parentElement
+
+    expect(uploadGroup?.children).toHaveLength(2)
+
+    fireEvent.click(linkButton!)
+
+    expect(uploadGroup?.children).toHaveLength(2)
+    expect(linkButton).toHaveAttribute('data-popup-open')
+    expect(localButton?.parentElement).toHaveClass('min-w-0', 'flex-1')
+    expect(linkButton?.parentElement).toHaveClass('min-w-0', 'flex-1')
+    expect(linkButton).toHaveClass('w-full', 'min-w-0')
+  })
+
   it('should disable upload buttons when file limit is reached', () => {
     const files = [
       createFile({ id: 'f1' }),
@@ -182,7 +188,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
     )
 
     const buttons = screen.getAllByRole('button')
-    const disabledButtons = buttons.filter(btn => btn.hasAttribute('disabled'))
+    const disabledButtons = buttons.filter((btn) => btn.hasAttribute('disabled'))
     expect(disabledButtons.length).toBeGreaterThan(0)
   })
 

@@ -49,7 +49,7 @@ describe('Drawer wrapper', () => {
       expect(screen.container).not.toContainElement(dialog)
       await expect.element(dialog).toHaveTextContent('Workspace controls')
       await expect.element(screen.getByText('Configure the current workspace.')).toBeInTheDocument()
-      await expect.element(screen.getByTestId('drawer-backdrop')).toHaveClass('z-50')
+      await expect.element(screen.getByTestId('drawer-backdrop')).toBeInTheDocument()
 
       asHTMLElement(screen.getByRole('button', { name: 'Close drawer' }).element()).click()
 

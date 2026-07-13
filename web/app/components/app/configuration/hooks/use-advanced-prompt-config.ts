@@ -1,9 +1,19 @@
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { ChatPromptConfig, CompletionPromptConfig, ConversationHistoriesRole, PromptItem } from '@/models/debug'
+import type {
+  ChatPromptConfig,
+  CompletionPromptConfig,
+  ConversationHistoriesRole,
+  PromptItem,
+} from '@/models/debug'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
 import { useState } from 'react'
-import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock, PRE_PROMPT_PLACEHOLDER_TEXT } from '@/app/components/base/prompt-editor/constants'
+import {
+  checkHasContextBlock,
+  checkHasHistoryBlock,
+  checkHasQueryBlock,
+  PRE_PROMPT_PLACEHOLDER_TEXT,
+} from '@/app/components/base/prompt-editor/constants'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { PromptMode } from '@/models/debug'
 import { fetchPromptTemplate } from '@/service/debug'
@@ -35,34 +45,36 @@ const useAdvancedPromptConfig = ({
   setStop,
 }: Param) => {
   const isAdvancedPrompt = promptMode === PromptMode.advanced
-  const [chatPromptConfig, setChatPromptConfig] = useState<ChatPromptConfig>(() => clone(DEFAULT_CHAT_PROMPT_CONFIG))
-  const [completionPromptConfig, setCompletionPromptConfig] = useState<CompletionPromptConfig>(() => clone(DEFAULT_COMPLETION_PROMPT_CONFIG))
+  const [chatPromptConfig, setChatPromptConfig] = useState<ChatPromptConfig>(() =>
+    clone(DEFAULT_CHAT_PROMPT_CONFIG),
+  )
+  const [completionPromptConfig, setCompletionPromptConfig] = useState<CompletionPromptConfig>(() =>
+    clone(DEFAULT_COMPLETION_PROMPT_CONFIG),
+  )
 
   const currentAdvancedPrompt = (() => {
-    if (!isAdvancedPrompt)
-      return []
+    if (!isAdvancedPrompt) return []
 
-    return (modelModeType === ModelModeType.chat) ? chatPromptConfig.prompt : completionPromptConfig.prompt
+    return modelModeType === ModelModeType.chat
+      ? chatPromptConfig.prompt
+      : completionPromptConfig.prompt
   })()
 
   const setCurrentAdvancedPrompt = (prompt: PromptItem | PromptItem[], isUserChanged?: boolean) => {
-    if (!isAdvancedPrompt)
-      return
+    if (!isAdvancedPrompt) return
 
     if (modelModeType === ModelModeType.chat) {
       setChatPromptConfig({
         ...chatPromptConfig,
         prompt: prompt as PromptItem[],
       })
-    }
-    else {
+    } else {
       setCompletionPromptConfig({
         ...completionPromptConfig,
         prompt: prompt as PromptItem,
       })
     }
-    if (isUserChanged)
-      onUserChangedPrompt()
+    if (isUserChanged) onUserChangedPrompt()
   }
 
   const setConversationHistoriesRole = (conversationHistoriesRole: ConversationHistoriesRole) => {
@@ -82,12 +94,11 @@ const useAdvancedPromptConfig = ({
     }
     if (modelModeType === ModelModeType.chat) {
       return {
-        context: !!chatPromptConfig.prompt.find(p => checkHasContextBlock(p.text)),
+        context: !!chatPromptConfig.prompt.find((p) => checkHasContextBlock(p.text)),
         history: false,
-        query: !!chatPromptConfig.prompt.find(p => checkHasQueryBlock(p.text)),
+        query: !!chatPromptConfig.prompt.find((p) => checkHasQueryBlock(p.text)),
       }
-    }
-    else {
+    } else {
       const prompt = completionPromptConfig.prompt?.text
       return {
         context: checkHasContextBlock(prompt),
@@ -98,14 +109,16 @@ const useAdvancedPromptConfig = ({
   })()
 
   /* prompt: simple to advanced process, or chat model to completion model
-  * 1. migrate prompt
-  * 2. change promptMode to advanced
-  */
-  const migrateToDefaultPrompt = async (isMigrateToCompetition?: boolean, toModelModeType?: ModelModeType) => {
+   * 1. migrate prompt
+   * 2. change promptMode to advanced
+   */
+  const migrateToDefaultPrompt = async (
+    isMigrateToCompetition?: boolean,
+    toModelModeType?: ModelModeType,
+  ) => {
     const mode = modelModeType
     const toReplacePrePrompt = prePrompt || ''
-    if (!appMode)
-      return
+    if (!appMode) return
 
     if (!isAdvancedPrompt) {
       const { chat_prompt_config, completion_prompt_config, stop } = await fetchPromptTemplate({
@@ -124,10 +137,12 @@ const useAdvancedPromptConfig = ({
           })
         })
         setChatPromptConfig(newPromptConfig)
-      }
-      else {
+      } else {
         const newPromptConfig = produce(completion_prompt_config, (draft) => {
-          draft.prompt.text = draft.prompt.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, toReplacePrePrompt)
+          draft.prompt.text = draft.prompt.text.replace(
+            PRE_PROMPT_PLACEHOLDER_TEXT,
+            toReplacePrePrompt,
+          )
         })
         setCompletionPromptConfig(newPromptConfig)
         setCompletionParams({
@@ -149,12 +164,23 @@ const useAdvancedPromptConfig = ({
       if (toModelModeType === ModelModeType.completion) {
         const newPromptConfig = produce(completion_prompt_config, (draft) => {
           if (!completionPromptConfig.prompt?.text)
-            draft.prompt.text = draft.prompt.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, toReplacePrePrompt)
-
+            draft.prompt.text = draft.prompt.text.replace(
+              PRE_PROMPT_PLACEHOLDER_TEXT,
+              toReplacePrePrompt,
+            )
           else
-            draft.prompt.text = completionPromptConfig.prompt?.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, toReplacePrePrompt)
+            draft.prompt.text = completionPromptConfig.prompt?.text.replace(
+              PRE_PROMPT_PLACEHOLDER_TEXT,
+              toReplacePrePrompt,
+            )
 
-          if ([AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.CHAT].includes(appMode) && completionPromptConfig.conversation_histories_role.assistant_prefix && completionPromptConfig.conversation_histories_role.user_prefix)
+          if (
+            [AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.CHAT].includes(
+              appMode,
+            ) &&
+            completionPromptConfig.conversation_histories_role.assistant_prefix &&
+            completionPromptConfig.conversation_histories_role.user_prefix
+          )
             draft.conversation_histories_role = completionPromptConfig.conversation_histories_role
         })
         setCompletionPromptConfig(newPromptConfig)
@@ -165,8 +191,7 @@ const useAdvancedPromptConfig = ({
           })
         }
         setStop(stop) // switch mode's params is async. It may override the stop value.
-      }
-      else {
+      } else {
         const newPromptConfig = produce(chat_prompt_config, (draft) => {
           draft.prompt = draft.prompt.map((p) => {
             return {

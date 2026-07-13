@@ -4,7 +4,7 @@ import { PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import PluginSection from '../plugin-section'
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
-  default: ({ src, size }: { src: string, size: string }) => (
+  default: ({ src, size }: { src: string; size: string }) => (
     <div data-testid="card-icon" data-src={src} data-size={size} />
   ),
 }))
@@ -61,9 +61,7 @@ describe('PluginSection', () => {
 
   describe('Props', () => {
     it('should return null when plugins array is empty', () => {
-      const { container } = render(
-        <PluginSection {...defaultProps} plugins={[]} />,
-      )
+      const { container } = render(<PluginSection {...defaultProps} plugins={[]} />)
 
       expect(container.innerHTML).toBe('')
     })
@@ -97,12 +95,7 @@ describe('PluginSection', () => {
     })
 
     it('should render headerAction when provided', () => {
-      render(
-        <PluginSection
-          {...defaultProps}
-          headerAction={<button>Clear all</button>}
-        />,
-      )
+      render(<PluginSection {...defaultProps} headerAction={<button>Clear all</button>} />)
 
       expect(screen.getByRole('button', { name: /clear all/i }))!.toBeInTheDocument()
     })
@@ -117,9 +110,7 @@ describe('PluginSection', () => {
       render(
         <PluginSection
           {...defaultProps}
-          renderItemAction={plugin => (
-            <button>{`Action ${plugin.labels.en_US}`}</button>
-          )}
+          renderItemAction={(plugin) => <button>{`Action ${plugin.labels.en_US}`}</button>}
         />,
       )
 
@@ -131,12 +122,7 @@ describe('PluginSection', () => {
   describe('User Interactions', () => {
     it('should call onClearSingle with taskId and plugin identifier', () => {
       const onClearSingle = vi.fn()
-      render(
-        <PluginSection
-          {...defaultProps}
-          onClearSingle={onClearSingle}
-        />,
-      )
+      render(<PluginSection {...defaultProps} onClearSingle={onClearSingle} />)
 
       // Clear buttons are rendered when onClearSingle is provided
       const clearButtons = screen.getAllByRole('button')
@@ -158,7 +144,7 @@ describe('PluginSection', () => {
       render(<PluginSection {...defaultProps} plugins={plugins} count={1} />)
 
       expect(screen.getByText('Solo'))!.toBeInTheDocument()
-      expect(screen.getByText(/solo/i).closest('.max-h-\\[300px\\]'))!.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: /installing plugins/i })).toBeInTheDocument()
     })
   })
 })

@@ -36,42 +36,31 @@ import { BlockEnum } from '../types'
 import Empty from './empty'
 import ValueContent from './value-content'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   currentNodeVar?: currentVarType
   handleOpenMenu: () => void
   isValueFetching?: boolean
-}
+}>
 
-const Right = ({
-  nodeId,
-  currentNodeVar,
-  handleOpenMenu,
-  isValueFetching,
-}: Props) => {
+const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Props) => {
   const { t } = useTranslation()
-  const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
-  const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
-  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
+  const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
+  const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
+  const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)
   const toolIcon = useToolIcon(currentNodeVar?.nodeData)
   const isTruncated = currentNodeVar?.var.is_truncated
   const fullContent = currentNodeVar?.var.full_content
 
-  const {
-    resetConversationVar,
-    resetToLastRunVar,
-    editInspectVarValue,
-  } = useCurrentVars()
+  const { resetConversationVar, resetToLastRunVar, editInspectVarValue } = useCurrentVars()
 
   const handleValueChange = (varId: string, value: any) => {
-    if (!currentNodeVar)
-      return
+    if (!currentNodeVar) return
     editInspectVarValue(currentNodeVar.nodeId, varId, value)
   }
 
   const resetValue = () => {
-    if (!currentNodeVar)
-      return
+    if (!currentNodeVar) return
     resetToLastRunVar(currentNodeVar.nodeId, currentNodeVar.var.id)
   }
 
@@ -81,23 +70,20 @@ const Right = ({
   }
 
   const handleClear = () => {
-    if (!currentNodeVar)
-      return
+    if (!currentNodeVar) return
     resetConversationVar(currentNodeVar.var.id)
   }
 
   const getCopyContent = () => {
     const value = currentNodeVar?.var.value
-    if (value === null || value === undefined)
-      return ''
+    if (value === null || value === undefined) return ''
 
-    if (typeof value === 'object')
-      return JSON.stringify(value)
+    if (typeof value === 'object') return JSON.stringify(value)
 
     return String(value)
   }
 
-  const configsMap = useHooksStore(s => s.configsMap)
+  const configsMap = useHooksStore((s) => s.configsMap)
   const { eventEmitter } = useEventEmitterContextContext()
   const { handleNodeSelect } = useNodesInteractions()
   const { node } = useNodeInfo(nodeId)
@@ -106,60 +92,52 @@ const Right = ({
   const isCodeBlock = blockType === BlockEnum.Code
   const canShowPromptGenerator = [BlockEnum.LLM, BlockEnum.Code].includes(blockType)
   const currentPrompt = useMemo(() => {
-    if (!canShowPromptGenerator)
-      return ''
+    if (!canShowPromptGenerator) return ''
     if (blockType === BlockEnum.LLM)
       return node?.data?.prompt_template?.text || node?.data?.prompt_template?.[0].text
 
-    // if (blockType === BlockEnum.Agent) {
-    //   return node?.data?.agent_parameters?.instruction?.value
-    // }
-    if (blockType === BlockEnum.Code)
-      return node?.data?.code
+    if (blockType === BlockEnum.Code) return node?.data?.code
   }, [canShowPromptGenerator])
 
-  const [isShowPromptGenerator, {
-    setTrue: doShowPromptGenerator,
-    setFalse: handleHidePromptGenerator,
-  }] = useBoolean(false)
+  const [
+    isShowPromptGenerator,
+    { setTrue: doShowPromptGenerator, setFalse: handleHidePromptGenerator },
+  ] = useBoolean(false)
   const handleShowPromptGenerator = useCallback(() => {
     handleNodeSelect(nodeId)
     doShowPromptGenerator()
   }, [doShowPromptGenerator, handleNodeSelect, nodeId])
 
-  const handleUpdatePrompt = useCallback((res: GenRes) => {
-    const newInputs = produce(node?.data, (draft: any) => {
-      switch (blockType) {
-        case BlockEnum.LLM:
-          if (draft?.prompt_template) {
-            if (Array.isArray(draft.prompt_template))
-              draft.prompt_template[0].text = res.modified
-            else
-              draft.prompt_template.text = res.modified
-          }
-          break
+  const handleUpdatePrompt = useCallback(
+    (res: GenRes) => {
+      const newInputs = produce(node?.data, (draft: any) => {
+        switch (blockType) {
+          case BlockEnum.LLM:
+            if (draft?.prompt_template) {
+              if (Array.isArray(draft.prompt_template)) draft.prompt_template[0].text = res.modified
+              else draft.prompt_template.text = res.modified
+            }
+            break
 
-        //  Agent is a plugin, may has many instructions, can not locate which one to update
-        // case BlockEnum.Agent:
-        //   if (draft?.agent_parameters?.instruction) {
-        //     draft.agent_parameters.instruction.value = res.modified
-        //   }
-        //   break
-        case BlockEnum.Code:
-          draft.code = res.modified
-          break
-      }
-    })
-    setInputs(newInputs)
-    eventEmitter?.emit({
-      type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
-      instanceId: `${nodeId}-chat-workflow-llm-prompt-editor`,
-      payload: res.modified,
-    } as any)
-    handleHidePromptGenerator()
-  }, [setInputs, blockType, nodeId, node?.data, handleHidePromptGenerator])
+          case BlockEnum.Code:
+            draft.code = res.modified
+            break
+        }
+      })
+      setInputs(newInputs)
+      eventEmitter?.emit({
+        type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
+        instanceId: `${nodeId}-chat-workflow-llm-prompt-editor`,
+        payload: res.modified,
+      } as any)
+      handleHidePromptGenerator()
+    },
+    [setInputs, blockType, nodeId, node?.data, handleHidePromptGenerator],
+  )
 
-  const displaySchemaType = currentNodeVar?.var.schemaType ? (`(${currentNodeVar.var.schemaType})`) : ''
+  const displaySchemaType = currentNodeVar?.var.schemaType
+    ? `(${currentNodeVar.var.schemaType})`
+    : ''
 
   return (
     <div className={cn('flex h-full flex-col')}>
@@ -173,18 +151,21 @@ const Right = ({
         <div className="flex w-0 grow items-center gap-1">
           {currentNodeVar?.var && (
             <>
-              {
-                ([VarInInspectType.environment, VarInInspectType.conversation, VarInInspectType.system] as VarInInspectType[]).includes(currentNodeVar.nodeType as VarInInspectType) && (
-                  <VariableIconWithColor
-                    variableCategory={currentNodeVar.nodeType as VarInInspectType}
-                    className="size-4"
-                  />
-                )
-              }
-              {currentNodeVar.nodeType !== VarInInspectType.environment
-                && currentNodeVar.nodeType !== VarInInspectType.conversation
-                && currentNodeVar.nodeType !== VarInInspectType.system
-                && (
+              {(
+                [
+                  VarInInspectType.environment,
+                  VarInInspectType.conversation,
+                  VarInInspectType.system,
+                ] as VarInInspectType[]
+              ).includes(currentNodeVar.nodeType as VarInInspectType) && (
+                <VariableIconWithColor
+                  variableCategory={currentNodeVar.nodeType as VarInInspectType}
+                  className="size-4"
+                />
+              )}
+              {currentNodeVar.nodeType !== VarInInspectType.environment &&
+                currentNodeVar.nodeType !== VarInInspectType.conversation &&
+                currentNodeVar.nodeType !== VarInInspectType.system && (
                   <>
                     <BlockIcon
                       className="shrink-0"
@@ -192,11 +173,18 @@ const Right = ({
                       size="xs"
                       toolIcon={toolIcon}
                     />
-                    <div className="shrink-0 system-sm-regular text-text-secondary">{currentNodeVar.title}</div>
+                    <div className="shrink-0 system-sm-regular text-text-secondary">
+                      {currentNodeVar.title}
+                    </div>
                     <div className="shrink-0 system-sm-regular text-text-quaternary">/</div>
                   </>
                 )}
-              <div title={currentNodeVar.var.name} className="truncate system-sm-semibold text-text-secondary">{currentNodeVar.var.name}</div>
+              <div
+                title={currentNodeVar.var.name}
+                className="truncate system-sm-semibold text-text-secondary"
+              >
+                {currentNodeVar.var.name}
+              </div>
               <div className="ml-1 shrink-0 space-x-2 system-xs-medium text-text-tertiary">
                 <span>{`${currentNodeVar.var.value_type}${displaySchemaType}`}</span>
                 {isTruncated && (
@@ -209,7 +197,6 @@ const Right = ({
                   </>
                 )}
               </div>
-
             </>
           )}
         </div>
@@ -219,24 +206,24 @@ const Right = ({
               {canShowPromptGenerator && (
                 <Tooltip>
                   <TooltipTrigger
-                    render={(
+                    render={
                       <div
                         className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
                         onClick={handleShowPromptGenerator}
                       >
                         <RiSparklingFill className="size-4 text-components-input-border-active-prompt-1" />
                       </div>
-                    )}
+                    }
                   />
                   <TooltipContent>
-                    {t('generate.optimizePromptTooltip', { ns: 'appDebug' })}
+                    {t(($) => $['generate.optimizePromptTooltip'], { ns: 'appDebug' })}
                   </TooltipContent>
                 </Tooltip>
               )}
               {isTruncated && (
                 <Tooltip>
                   <TooltipTrigger
-                    render={(
+                    render={
                       <ActionButton>
                         <a
                           href={fullContent?.download_url}
@@ -246,47 +233,55 @@ const Right = ({
                           <RiFileDownloadFill className="size-4" />
                         </a>
                       </ActionButton>
-                    )}
+                    }
                   />
                   <TooltipContent>
-                    {t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}
+                    {t(($) => $['debug.variableInspect.exportToolTip'], { ns: 'workflow' })}
                   </TooltipContent>
                 </Tooltip>
               )}
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
                   <span className="mr-[4.5px] ml-[2.5px] h-[3px] w-[3px] rounded-sm bg-text-accent-secondary"></span>
-                  <span className="system-2xs-semibold-uupercase">{t('debug.variableInspect.edited', { ns: 'workflow' })}</span>
+                  <span className="system-2xs-semibold-uupercase">
+                    {t(($) => $['debug.variableInspect.edited'], { ns: 'workflow' })}
+                  </span>
                 </Badge>
               )}
-              {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type !== VarInInspectType.conversation && (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={(
-                      <ActionButton onClick={resetValue}>
-                        <RiArrowGoBackLine className="size-4" />
-                      </ActionButton>
-                    )}
-                  />
-                  <TooltipContent>
-                    {t('debug.variableInspect.reset', { ns: 'workflow' })}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type === VarInInspectType.conversation && (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={(
-                      <ActionButton onClick={handleClear}>
-                        <RiArrowGoBackLine className="size-4" />
-                      </ActionButton>
-                    )}
-                  />
-                  <TooltipContent>
-                    {t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              {!isTruncated &&
+                currentNodeVar.var.edited &&
+                currentNodeVar.var.type !== VarInInspectType.conversation && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <ActionButton onClick={resetValue}>
+                          <RiArrowGoBackLine className="size-4" />
+                        </ActionButton>
+                      }
+                    />
+                    <TooltipContent>
+                      {t(($) => $['debug.variableInspect.reset'], { ns: 'workflow' })}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              {!isTruncated &&
+                currentNodeVar.var.edited &&
+                currentNodeVar.var.type === VarInInspectType.conversation && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <ActionButton onClick={handleClear}>
+                          <RiArrowGoBackLine className="size-4" />
+                        </ActionButton>
+                      }
+                    />
+                    <TooltipContent>
+                      {t(($) => $['debug.variableInspect.resetConversationVar'], {
+                        ns: 'workflow',
+                      })}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               {currentNodeVar.var.value_type !== 'secret' && (
                 <CopyFeedback content={getCopyContent()} />
               )}
@@ -314,32 +309,29 @@ const Right = ({
           />
         )}
       </div>
-      {isShowPromptGenerator && (
-        isCodeBlock
-          ? (
-              <GetCodeGeneratorResModal
-                isShow
-                mode={AppModeEnum.CHAT}
-                onClose={handleHidePromptGenerator}
-                flowId={configsMap?.flowId || ''}
-                nodeId={nodeId}
-                currentCode={currentPrompt}
-                codeLanguages={node?.data?.code_languages || CodeLanguage.python3}
-                onFinished={handleUpdatePrompt}
-              />
-            )
-          : (
-              <GetAutomaticResModal
-                mode={AppModeEnum.CHAT}
-                isShow
-                onClose={handleHidePromptGenerator}
-                onFinished={handleUpdatePrompt}
-                flowId={configsMap?.flowId || ''}
-                nodeId={nodeId}
-                currentPrompt={currentPrompt}
-              />
-            )
-      )}
+      {isShowPromptGenerator &&
+        (isCodeBlock ? (
+          <GetCodeGeneratorResModal
+            isShow
+            mode={AppModeEnum.CHAT}
+            onClose={handleHidePromptGenerator}
+            flowId={configsMap?.flowId || ''}
+            nodeId={nodeId}
+            currentCode={currentPrompt}
+            codeLanguages={node?.data?.code_languages || CodeLanguage.python3}
+            onFinished={handleUpdatePrompt}
+          />
+        ) : (
+          <GetAutomaticResModal
+            mode={AppModeEnum.CHAT}
+            isShow
+            onClose={handleHidePromptGenerator}
+            onFinished={handleUpdatePrompt}
+            flowId={configsMap?.flowId || ''}
+            nodeId={nodeId}
+            currentPrompt={currentPrompt}
+          />
+        ))}
     </div>
   )
 }

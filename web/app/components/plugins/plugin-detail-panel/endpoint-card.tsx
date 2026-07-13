@@ -19,7 +19,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import {
+  addDefaultValue,
+  toolCredentialToFormSchemas,
+} from '@/app/components/tools/utils/to-form-schema'
 import {
   useDeleteEndpoint,
   useDisableEndpoint,
@@ -31,32 +34,26 @@ import { NAME_FIELD } from './utils'
 
 type EndpointModalFormSchemas = ComponentProps<typeof EndpointModal>['formSchemas']
 
-type Props = {
+type Props = Readonly<{
   pluginDetail: PluginDetail
   data: EndpointListItem
   handleChange: () => void
-}
+}>
 
-const EndpointCard = ({
-  pluginDetail,
-  data,
-  handleChange,
-}: Props) => {
+const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
   const { t } = useTranslation()
   const [active, setActive] = useState(data.enabled)
   const endpointID = data.id
 
   // switch
-  const [isShowDisableConfirm, {
-    setTrue: showDisableConfirm,
-    setFalse: hideDisableConfirm,
-  }] = useBoolean(false)
+  const [isShowDisableConfirm, { setTrue: showDisableConfirm, setFalse: hideDisableConfirm }] =
+    useBoolean(false)
   const { mutate: enableEndpoint } = useEnableEndpoint({
     onSuccess: async () => {
       await handleChange()
     },
     onError: () => {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       setActive(false)
     },
   })
@@ -66,7 +63,7 @@ const EndpointCard = ({
       hideDisableConfirm()
     },
     onError: () => {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       setActive(false)
     },
   })
@@ -74,33 +71,30 @@ const EndpointCard = ({
     if (state) {
       setActive(true)
       enableEndpoint(endpointID)
-    }
-    else {
+    } else {
       setActive(false)
       showDisableConfirm()
     }
   }
 
   // delete
-  const [isShowDeleteConfirm, {
-    setTrue: showDeleteConfirm,
-    setFalse: hideDeleteConfirm,
-  }] = useBoolean(false)
+  const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
+    useBoolean(false)
   const { mutate: deleteEndpoint } = useDeleteEndpoint({
     onSuccess: async () => {
       await handleChange()
       hideDeleteConfirm()
     },
     onError: () => {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     },
   })
 
   // update
-  const [isShowEndpointModal, {
-    setTrue: showEndpointModalConfirm,
-    setFalse: hideEndpointModalConfirm,
-  }] = useBoolean(false)
+  const [
+    isShowEndpointModal,
+    { setTrue: showEndpointModalConfirm, setFalse: hideEndpointModalConfirm },
+  ] = useBoolean(false)
   const formSchemas = useMemo(() => {
     return toolCredentialToFormSchemas([NAME_FIELD, ...data.declaration.settings])
   }, [data.declaration.settings])
@@ -117,13 +111,14 @@ const EndpointCard = ({
       hideEndpointModalConfirm()
     },
     onError: () => {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     },
   })
-  const handleUpdate = (state: Record<string, unknown>) => updateEndpoint({
-    endpointID,
-    state,
-  })
+  const handleUpdate = (state: Record<string, unknown>) =>
+    updateEndpoint({
+      endpointID,
+      state,
+    })
 
   const [isCopied, setIsCopied] = useState(false)
   const handleCopy = (value: string) => {
@@ -132,8 +127,7 @@ const EndpointCard = ({
   }
 
   const handleDisableConfirmOpenChange = (open: boolean) => {
-    if (open)
-      return
+    if (open) return
 
     hideDisableConfirm()
     setActive(true)
@@ -150,7 +144,7 @@ const EndpointCard = ({
     }
   }, [isCopied])
 
-  const copyLabel = t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })
+  const copyLabel = t(($) => $[`operation.${isCopied ? 'copied' : 'copy'}`], { ns: 'common' })
 
   return (
     <div className="rounded-xl bg-background-section-burn p-0.5">
@@ -164,95 +158,99 @@ const EndpointCard = ({
             <ActionButton onClick={showEndpointModalConfirm}>
               <span aria-hidden className="i-ri-edit-line size-4" />
             </ActionButton>
-            <ActionButton onClick={showDeleteConfirm} className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive">
+            <ActionButton
+              onClick={showDeleteConfirm}
+              className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+            >
               <span aria-hidden className="i-ri-delete-bin-line size-4" />
             </ActionButton>
           </div>
         </div>
-        {data.declaration.endpoints.filter(endpoint => !endpoint.hidden).map((endpoint, index) => (
-          <div key={index} className="flex h-6 items-center">
-            <div className="w-12 shrink-0 system-xs-regular text-text-tertiary">{endpoint.method}</div>
-            <div className="group/item flex grow items-center truncate system-xs-regular text-text-secondary">
-              <div title={`${data.url}${endpoint.path}`} className="truncate">{`${data.url}${endpoint.path}`}</div>
-              <Tooltip>
-                <TooltipTrigger
-                  render={(
-                    <ActionButton
-                      aria-label={copyLabel}
-                      className="ml-2 hidden shrink-0 group-hover/item:flex"
-                      onClick={() => handleCopy(`${data.url}${endpoint.path}`)}
-                    >
-                      {isCopied
-                        ? <CopyCheck aria-hidden className="size-3.5 text-text-tertiary" />
-                        : <span aria-hidden className="i-ri-clipboard-line size-3.5 text-text-tertiary" />}
-                    </ActionButton>
-                  )}
-                />
-                <TooltipContent placement="top">
-                  {copyLabel}
-                </TooltipContent>
-              </Tooltip>
+        {(data.declaration.endpoints ?? [])
+          .filter((endpoint) => !endpoint.hidden)
+          .map((endpoint, index) => (
+            <div key={index} className="flex h-6 items-center">
+              <div className="w-12 shrink-0 system-xs-regular text-text-tertiary">
+                {endpoint.method}
+              </div>
+              <div className="group/item flex grow items-center truncate system-xs-regular text-text-secondary">
+                <div className="truncate">{`${data.url}${endpoint.path}`}</div>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <ActionButton
+                        aria-label={copyLabel}
+                        className="ml-2 hidden shrink-0 group-hover/item:flex"
+                        onClick={() => handleCopy(`${data.url}${endpoint.path}`)}
+                      >
+                        {isCopied ? (
+                          <CopyCheck aria-hidden className="size-3.5 text-text-tertiary" />
+                        ) : (
+                          <span
+                            aria-hidden
+                            className="i-ri-clipboard-line size-3.5 text-text-tertiary"
+                          />
+                        )}
+                      </ActionButton>
+                    }
+                  />
+                  <TooltipContent placement="top">{copyLabel}</TooltipContent>
+                </Tooltip>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
       </div>
       <div className="flex items-center justify-between p-2 pl-3">
         {active && (
           <div className="flex items-center gap-1 system-xs-semibold-uppercase text-util-colors-green-green-600">
             <StatusDot status="success" />
-            {t('detailPanel.serviceOk', { ns: 'plugin' })}
+            {t(($) => $['detailPanel.serviceOk'], { ns: 'plugin' })}
           </div>
         )}
         {!active && (
           <div className="flex items-center gap-1 system-xs-semibold-uppercase text-text-tertiary">
             <StatusDot status="disabled" />
-            {t('detailPanel.disabled', { ns: 'plugin' })}
+            {t(($) => $['detailPanel.disabled'], { ns: 'plugin' })}
           </div>
         )}
-        <Switch
-          className="ml-3"
-          checked={active}
-          onCheckedChange={handleSwitch}
-          size="sm"
-        />
+        <Switch className="ml-3" checked={active} onCheckedChange={handleSwitch} size="sm" />
       </div>
-      <AlertDialog
-        open={isShowDisableConfirm}
-        onOpenChange={handleDisableConfirmOpenChange}
-      >
-        <AlertDialogContent>
+      <AlertDialog open={isShowDisableConfirm} onOpenChange={handleDisableConfirmOpenChange}>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('detailPanel.endpointDisableTip', { ns: 'plugin' })}
+              {t(($) => $['detailPanel.endpointDisableTip'], { ns: 'plugin' })}
             </AlertDialogTitle>
             <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('detailPanel.endpointDisableContent', { ns: 'plugin', name: data.name })}
+              {t(($) => $['detailPanel.endpointDisableContent'], { ns: 'plugin', name: data.name })}
             </div>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={() => disableEndpoint(endpointID)}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
-        <AlertDialogContent>
+      <AlertDialog open={isShowDeleteConfirm} onOpenChange={(open) => !open && hideDeleteConfirm()}>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('detailPanel.endpointDeleteTip', { ns: 'plugin' })}
+              {t(($) => $['detailPanel.endpointDeleteTip'], { ns: 'plugin' })}
             </AlertDialogTitle>
             <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('detailPanel.endpointDeleteContent', { ns: 'plugin', name: data.name })}
+              {t(($) => $['detailPanel.endpointDeleteContent'], { ns: 'plugin', name: data.name })}
             </div>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={() => deleteEndpoint(endpointID)}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

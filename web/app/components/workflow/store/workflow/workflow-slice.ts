@@ -10,6 +10,11 @@ import type { FileUploadConfigResponse } from '@/models/common'
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
   resultText?: string
+  resultTextSelectorKey?: string
+  // separated-mode reasoning deltas per LLM node id (live preview only)
+  reasoningContent?: Record<string, string>
+  // true once the terminal reasoning marker arrived
+  reasoningFinished?: boolean
   // human input form schema or data cached when node is in 'Paused' status
   extraContentAndFormData?: Record<string, unknown>
 }
@@ -26,6 +31,8 @@ export type WorkflowSliceShape = {
   setWorkflowRunningData: (workflowData: PreviewRunningData) => void
   isListening: boolean
   setIsListening: (listening: boolean) => void
+  canvasReadOnly: boolean
+  setCanvasReadOnly: (readOnly: boolean) => void
   listeningTriggerType: TriggerNodeType | null
   setListeningTriggerType: (triggerType: TriggerNodeType | null) => void
   listeningTriggerNodeId: string | null
@@ -38,10 +45,10 @@ export type WorkflowSliceShape = {
   clipboardEdges: Edge[]
   setClipboardElements: (clipboardElements: Node[]) => void
   setClipboardEdges: (clipboardEdges: Edge[]) => void
-  setClipboardData: (clipboardData: { nodes: Node[], edges: Edge[] }) => void
-  selection: null | { x1: number, y1: number, x2: number, y2: number }
+  setClipboardData: (clipboardData: { nodes: Node[]; edges: Edge[] }) => void
+  selection: null | { x1: number; y1: number; x2: number; y2: number }
   setSelection: (selection: WorkflowSliceShape['selection']) => void
-  bundleNodeSize: { width: number, height: number } | null
+  bundleNodeSize: { width: number; height: number } | null
   setBundleNodeSize: (bundleNodeSize: WorkflowSliceShape['bundleNodeSize']) => void
   controlMode: 'pointer' | 'hand' | 'comment'
   setControlMode: (controlMode: WorkflowSliceShape['controlMode']) => void
@@ -53,9 +60,9 @@ export type WorkflowSliceShape = {
   setCommentQuickAdd: (isCommentQuickAdd: boolean) => void
   isCommentPreviewHovering: boolean
   setCommentPreviewHovering: (hovering: boolean) => void
-  mousePosition: { pageX: number, pageY: number, elementX: number, elementY: number }
+  mousePosition: { pageX: number; pageY: number; elementX: number; elementY: number }
   setMousePosition: (mousePosition: WorkflowSliceShape['mousePosition']) => void
-  showConfirm?: { title: string, desc?: string, onConfirm: () => void }
+  showConfirm?: { title: string; desc?: string; onConfirm: () => void }
   setShowConfirm: (showConfirm: WorkflowSliceShape['showConfirm']) => void
   controlPromptEditorRerenderKey: number
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
@@ -65,23 +72,25 @@ export type WorkflowSliceShape = {
   setFileUploadConfig: (fileUploadConfig: FileUploadConfigResponse) => void
 }
 
-export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
+export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = (set) => ({
   workflowRunningData: undefined,
-  setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
+  setWorkflowRunningData: (workflowRunningData) => set(() => ({ workflowRunningData })),
   isListening: false,
-  setIsListening: listening => set(() => ({ isListening: listening })),
+  setIsListening: (listening) => set(() => ({ isListening: listening })),
+  canvasReadOnly: false,
+  setCanvasReadOnly: (canvasReadOnly) => set(() => ({ canvasReadOnly })),
   listeningTriggerType: null,
-  setListeningTriggerType: triggerType => set(() => ({ listeningTriggerType: triggerType })),
+  setListeningTriggerType: (triggerType) => set(() => ({ listeningTriggerType: triggerType })),
   listeningTriggerNodeId: null,
-  setListeningTriggerNodeId: nodeId => set(() => ({ listeningTriggerNodeId: nodeId })),
+  setListeningTriggerNodeId: (nodeId) => set(() => ({ listeningTriggerNodeId: nodeId })),
   listeningTriggerNodeIds: [],
-  setListeningTriggerNodeIds: nodeIds => set(() => ({ listeningTriggerNodeIds: nodeIds })),
+  setListeningTriggerNodeIds: (nodeIds) => set(() => ({ listeningTriggerNodeIds: nodeIds })),
   listeningTriggerIsAll: false,
-  setListeningTriggerIsAll: isAll => set(() => ({ listeningTriggerIsAll: isAll })),
+  setListeningTriggerIsAll: (isAll) => set(() => ({ listeningTriggerIsAll: isAll })),
   clipboardElements: [],
   clipboardEdges: [],
-  setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
-  setClipboardEdges: clipboardEdges => set(() => ({ clipboardEdges })),
+  setClipboardElements: (clipboardElements) => set(() => ({ clipboardElements })),
+  setClipboardEdges: (clipboardEdges) => set(() => ({ clipboardEdges })),
   setClipboardData: ({ nodes, edges }) => {
     set(() => ({
       clipboardElements: nodes,
@@ -89,27 +98,28 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
     }))
   },
   selection: null,
-  setSelection: selection => set(() => ({ selection })),
+  setSelection: (selection) => set(() => ({ selection })),
   bundleNodeSize: null,
-  setBundleNodeSize: bundleNodeSize => set(() => ({ bundleNodeSize })),
+  setBundleNodeSize: (bundleNodeSize) => set(() => ({ bundleNodeSize })),
   controlMode: 'pointer',
-  setControlMode: controlMode => set(() => ({ controlMode })),
+  setControlMode: (controlMode) => set(() => ({ controlMode })),
   pendingComment: null,
-  setPendingComment: pendingComment => set(() => ({ pendingComment })),
+  setPendingComment: (pendingComment) => set(() => ({ pendingComment })),
   isCommentPlacing: false,
-  setCommentPlacing: isCommentPlacing => set(() => ({ isCommentPlacing })),
+  setCommentPlacing: (isCommentPlacing) => set(() => ({ isCommentPlacing })),
   isCommentQuickAdd: false,
-  setCommentQuickAdd: isCommentQuickAdd => set(() => ({ isCommentQuickAdd })),
+  setCommentQuickAdd: (isCommentQuickAdd) => set(() => ({ isCommentQuickAdd })),
   mousePosition: { pageX: 0, pageY: 0, elementX: 0, elementY: 0 },
-  setMousePosition: mousePosition => set(() => ({ mousePosition })),
+  setMousePosition: (mousePosition) => set(() => ({ mousePosition })),
   isCommentPreviewHovering: false,
-  setCommentPreviewHovering: hovering => set(() => ({ isCommentPreviewHovering: hovering })),
+  setCommentPreviewHovering: (hovering) => set(() => ({ isCommentPreviewHovering: hovering })),
   showConfirm: undefined,
-  setShowConfirm: showConfirm => set(() => ({ showConfirm })),
+  setShowConfirm: (showConfirm) => set(() => ({ showConfirm })),
   controlPromptEditorRerenderKey: 0,
-  setControlPromptEditorRerenderKey: controlPromptEditorRerenderKey => set(() => ({ controlPromptEditorRerenderKey })),
+  setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey) =>
+    set(() => ({ controlPromptEditorRerenderKey })),
   showImportDSLModal: false,
-  setShowImportDSLModal: showImportDSLModal => set(() => ({ showImportDSLModal })),
+  setShowImportDSLModal: (showImportDSLModal) => set(() => ({ showImportDSLModal })),
   fileUploadConfig: undefined,
-  setFileUploadConfig: fileUploadConfig => set(() => ({ fileUploadConfig })),
+  setFileUploadConfig: (fileUploadConfig) => set(() => ({ fileUploadConfig })),
 })

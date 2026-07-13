@@ -1,8 +1,18 @@
 'use client'
 import type { FC } from 'react'
 import type { TriggerPluginActionPreviewCardHandle } from './action-item'
-import type { TriggerDefaultValue, TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import type {
+  TriggerDefaultValue,
+  TriggerWithProvider,
+} from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  ScrollAreaContent,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useRef } from 'react'
@@ -14,23 +24,29 @@ import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
+import { BlockSelectorRow } from '../block-selector-row'
 import TriggerPluginActionItem from './action-item'
 
 const normalizeProviderIcon = (icon?: TriggerWithProvider['icon']) => {
-  if (!icon)
-    return icon
-  if (typeof icon === 'string' && basePath && icon.startsWith('/') && !icon.startsWith(`${basePath}/`))
+  if (!icon) return icon
+  if (
+    typeof icon === 'string' &&
+    basePath &&
+    icon.startsWith('/') &&
+    !icon.startsWith(`${basePath}/`)
+  )
     return `${basePath}${icon}`
   return icon
 }
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: TriggerWithProvider
   hasSearchText: boolean
   previewCardHandle: TriggerPluginActionPreviewCardHandle
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
-}
+  disabled?: boolean
+}>
 
 const TriggerPluginItem: FC<Props> = ({
   className,
@@ -38,6 +54,7 @@ const TriggerPluginItem: FC<Props> = ({
   hasSearchText,
   previewCardHandle,
   onSelect,
+  disabled = false,
 }) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -57,14 +74,13 @@ const TriggerPluginItem: FC<Props> = ({
   const FoldIcon = isFold ? RiArrowRightSLine : RiArrowDownSLine
 
   const groupName = useMemo(() => {
-    if (payload.type === CollectionType.builtIn)
-      return payload.author
+    if (payload.type === CollectionType.builtIn) return payload.author
 
     if (payload.type === CollectionType.custom)
-      return t('tabs.customTool', { ns: 'workflow' })
+      return t(($) => $['tabs.customTool'], { ns: 'workflow' })
 
     if (payload.type === CollectionType.workflow)
-      return t('tabs.workflowTool', { ns: 'workflow' })
+      return t(($) => $['tabs.workflowTool'], { ns: 'workflow' })
 
     return payload.author || ''
   }, [payload.author, payload.type, t])
@@ -72,30 +88,30 @@ const TriggerPluginItem: FC<Props> = ({
     return normalizeProviderIcon(payload.icon) ?? payload.icon
   }, [payload.icon])
   const normalizedIconDark = useMemo(() => {
-    if (!payload.icon_dark)
-      return undefined
+    if (!payload.icon_dark) return undefined
     return normalizeProviderIcon(payload.icon_dark) ?? payload.icon_dark
   }, [payload.icon_dark])
   const providerIcon = useMemo<TriggerWithProvider['icon']>(() => {
-    if (theme === Theme.dark && normalizedIconDark)
-      return normalizedIconDark
+    if (theme === Theme.dark && normalizedIconDark) return normalizedIconDark
     return normalizedIcon
   }, [normalizedIcon, normalizedIconDark, theme])
-  const providerWithResolvedIcon = useMemo(() => ({
-    ...payload,
-    icon: providerIcon,
-  }), [payload, providerIcon])
+  const providerWithResolvedIcon = useMemo(
+    () => ({
+      ...payload,
+      icon: providerIcon,
+    }),
+    [payload, providerIcon],
+  )
 
   return (
-    <div
-      key={payload.id}
-      className={cn('mb-1 last-of-type:mb-0')}
-      ref={ref}
-    >
+    <div key={payload.id} className={cn('mb-1 last-of-type:mb-0')} ref={ref}>
       <div className={cn(className)}>
-        <div
-          className="group/item flex w-full cursor-pointer items-center justify-between rounded-lg pr-1 pl-3 select-none hover:bg-state-base-hover"
+        <BlockSelectorRow
+          nativeDisabled={disabled}
+          disabled={disabled}
+          className="group/item justify-between select-none"
           onClick={() => {
+            if (disabled) return
             if (hasAction) {
               setIsFold(!isFold)
               return
@@ -125,37 +141,60 @@ const TriggerPluginItem: FC<Props> = ({
             })
           }}
         >
-          <div className="flex h-8 grow items-center">
+          <div className="flex min-w-0 grow items-center">
             <BlockIcon
-              className="shrink-0"
+              className="mr-2 shrink-0"
               type={BlockEnum.TriggerPlugin}
+              size="sm"
               toolIcon={providerIcon}
             />
-            <div className="ml-2 flex min-w-0 flex-1 items-center text-sm text-text-primary">
-              <span className="max-w-[200px] truncate">{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
-              <span className="ml-2 truncate system-xs-regular text-text-quaternary">{groupName}</span>
+            <div className="flex min-w-0 flex-1 items-center text-sm text-text-primary">
+              <span className="max-w-[200px] truncate">
+                {notShowProvider ? actions[0]?.label[language] : payload.label[language]}
+              </span>
+              <span className="ml-2 truncate system-xs-regular text-text-quaternary">
+                {groupName}
+              </span>
             </div>
           </div>
 
           <div className="ml-2 flex items-center">
             {hasAction && (
-              <FoldIcon className={cn('size-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary', isFold && 'text-text-quaternary')} />
+              <FoldIcon
+                className={cn(
+                  'size-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary',
+                  isFold && 'text-text-quaternary',
+                )}
+              />
             )}
           </div>
-        </div>
+        </BlockSelectorRow>
 
         {!notShowProvider && hasAction && !isFold && (
-          actions.map(action => (
-            <TriggerPluginActionItem
-              key={action.name}
-              provider={providerWithResolvedIcon}
-              payload={action}
-              previewCardHandle={previewCardHandle}
-              onSelect={onSelect}
-              disabled={false}
-              isAdded={false}
-            />
-          ))
+          <ScrollAreaRoot className="relative max-h-[240px] overflow-hidden overscroll-contain">
+            <ScrollAreaViewport
+              aria-label={t(($) => $['tabs.allTriggers'], { ns: 'workflow' })}
+              className="max-h-[240px] overscroll-contain"
+              role="region"
+            >
+              <ScrollAreaContent>
+                {actions.map((action) => (
+                  <TriggerPluginActionItem
+                    key={action.name}
+                    provider={providerWithResolvedIcon}
+                    payload={action}
+                    previewCardHandle={previewCardHandle}
+                    onSelect={onSelect}
+                    disabled={disabled}
+                    isAdded={false}
+                  />
+                ))}
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar>
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
+          </ScrollAreaRoot>
         )}
       </div>
     </div>

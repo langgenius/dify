@@ -1,31 +1,31 @@
 'use client'
 import type { FC } from 'react'
 import type { HoverPopup } from './var-reference-picker.trigger'
-import type { CredentialFormSchema, CredentialFormSchemaSelect, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  CredentialFormSchema,
+  CredentialFormSchemaSelect,
+  FormOption,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import type {
+  CommonNodeType,
+  Node,
+  NodeOutPutVar,
+  ToolWithProvider,
+  ValueSelector,
+  Var,
+} from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useNodes,
-  useReactFlow,
-  useStoreApi,
-} from 'reactflow'
+import { useNodes, useReactFlow, useStoreApi } from 'reactflow'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useIsChatMode,
-  useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
+import { useIsChatMode, useWorkflowVariables } from '@/app/components/workflow/hooks'
 // import type { BaseResource, BaseResourceProvider } from '@/app/components/workflow/nodes/_base/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
@@ -55,7 +55,7 @@ import VarReferencePopup from './var-reference-popup'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 
-type Props = {
+type Props = Readonly<{
   className?: string
   nodeId: string
   isShowNodeName?: boolean
@@ -85,7 +85,7 @@ type Props = {
   currentTool?: Tool
   currentProvider?: ToolWithProvider | TriggerWithProvider
   preferSchemaType?: boolean
-}
+}>
 
 const DEFAULT_VALUE_SELECTOR: Props['value'] = []
 
@@ -124,7 +124,7 @@ const VarReferencePicker: FC<Props> = ({
   const store = useStoreApi()
   const nodes = useNodes<CommonNodeType>()
   const isChatMode = useIsChatMode()
-  const isWorkflowDataLoaded = useWorkflowStore(s => s.isWorkflowDataLoaded)
+  const isWorkflowDataLoaded = useWorkflowStore((s) => s.isWorkflowDataLoaded)
   const { getCurrentVariableType } = useWorkflowVariables()
   const { availableVars, availableNodesWithParent: availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar,
@@ -138,18 +138,17 @@ const VarReferencePicker: FC<Props> = ({
     return node.data.type === BlockEnum.Start
   })
 
-  const node = nodes.find(n => n.id === nodeId)
+  const node = nodes.find((n) => n.id === nodeId)
   const isInIteration = !!node?.data.isInIteration
-  const iterationNode = isInIteration ? (nodes.find(n => n.id === node?.parentId) ?? null) : null
+  const iterationNode = isInIteration ? (nodes.find((n) => n.id === node?.parentId) ?? null) : null
 
   const isInLoop = !!node?.data.isInLoop
-  const loopNode = isInLoop ? (nodes.find(n => n.id === node?.parentId) ?? null) : null
+  const loopNode = isInLoop ? (nodes.find((n) => n.id === node?.parentId) ?? null) : null
 
   const triggerRef = useRef<HTMLDivElement>(null)
   const [triggerWidth, setTriggerWidth] = useState(TRIGGER_DEFAULT_WIDTH)
   useEffect(() => {
-    if (triggerRef.current)
-      setTriggerWidth(triggerRef.current.clientWidth)
+    if (triggerRef.current) setTriggerWidth(triggerRef.current.clientWidth)
   }, [])
 
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
@@ -177,87 +176,98 @@ const VarReferencePicker: FC<Props> = ({
   )
 
   const outputVarNodeId = getOutputVarNodeId(hasValue, value)
-  const outputVarNode = useMemo(() => getOutputVarNode({
-    availableNodes,
-    hasValue,
-    isConstant: !!isConstant,
-    isIterationVar,
-    isLoopVar,
-    iterationNode,
-    loopNode,
-    outputVarNodeId: outputVarNodeId!,
-    startNode,
-    value,
-  }), [availableNodes, hasValue, isConstant, isIterationVar, isLoopVar, iterationNode, loopNode, outputVarNodeId, startNode, value])
+  const outputVarNode = useMemo(
+    () =>
+      getOutputVarNode({
+        availableNodes,
+        hasValue,
+        isConstant: !!isConstant,
+        isIterationVar,
+        isLoopVar,
+        iterationNode,
+        loopNode,
+        outputVarNodeId: outputVarNodeId!,
+        startNode,
+        value,
+      }),
+    [
+      availableNodes,
+      hasValue,
+      isConstant,
+      isIterationVar,
+      isLoopVar,
+      iterationNode,
+      loopNode,
+      outputVarNodeId,
+      startNode,
+      value,
+    ],
+  )
 
   const isShowAPart = isShowAPartSelector(value)
 
-  const varName = useMemo(
-    () => getVarDisplayName(hasValue, value),
-    [hasValue, value],
-  )
+  const varName = useMemo(() => getVarDisplayName(hasValue, value), [hasValue, value])
 
   const varKindTypes = getVarKindOptions()
 
-  const handleVarKindTypeChange = useCallback((value: VarKindType) => {
-    setVarKindType(value)
-    if (value === VarKindType.constant)
-      onChange('', value)
-    else
-      onChange([], value)
-  }, [onChange])
+  const handleVarKindTypeChange = useCallback(
+    (value: VarKindType) => {
+      setVarKindType(value)
+      if (value === VarKindType.constant) onChange('', value)
+      else onChange([], value)
+    },
+    [onChange],
+  )
 
   const inputRef = useRef<HTMLInputElement>(null)
   const [controlFocus, setControlFocus] = useState(0)
   const isFocus = controlFocus > 0
   useEffect(() => {
-    if (controlFocus && inputRef.current)
-      inputRef.current.focus()
+    if (controlFocus && inputRef.current) inputRef.current.focus()
   }, [controlFocus])
 
-  const handleVarReferenceChange = useCallback((value: ValueSelector, varInfo: Var) => {
-    // sys var not passed to backend
-    const newValue = produce(value, (draft) => {
-      if (draft[1] && draft[1].startsWith('sys.')) {
-        draft.shift()
-        const paths = draft[0]!.split('.')
-        paths.forEach((p, i) => {
-          draft[i] = p
-        })
-      }
-    })
-    onChange(newValue, varKindType, varInfo)
-    setOpen(false)
-  }, [onChange, varKindType])
+  const handleVarReferenceChange = useCallback(
+    (value: ValueSelector, varInfo: Var) => {
+      // sys var not passed to backend
+      const newValue = produce(value, (draft) => {
+        if (draft[1] && draft[1].startsWith('sys.')) {
+          draft.shift()
+          const paths = draft[0]!.split('.')
+          paths.forEach((p, i) => {
+            draft[i] = p
+          })
+        }
+      })
+      onChange(newValue, varKindType, varInfo)
+      setOpen(false)
+    },
+    [onChange, varKindType],
+  )
 
   const handleClearVar = useCallback(() => {
-    if (varKindType === VarKindType.constant)
-      onChange('', varKindType)
-    else
-      onChange([], varKindType)
+    if (varKindType === VarKindType.constant) onChange('', varKindType)
+    else onChange([], varKindType)
   }, [onChange, varKindType])
 
-  const handleVariableJump = useCallback((nodeId: string) => {
-    const currentNodeIndex = availableNodes.findIndex(node => node.id === nodeId)
-    const currentNode = availableNodes[currentNodeIndex]
+  const handleVariableJump = useCallback(
+    (nodeId: string) => {
+      const currentNodeIndex = availableNodes.findIndex((node) => node.id === nodeId)
+      const currentNode = availableNodes[currentNodeIndex]
 
-    const workflowContainer = document.getElementById('workflow-container')
-    const {
-      clientWidth,
-      clientHeight,
-    } = workflowContainer!
-    const {
-      setViewport,
-    } = reactflow
-    const { transform } = store.getState()
-    const zoom = transform[2]
-    const position = currentNode!.position
-    setViewport({
-      x: (clientWidth - 400 - currentNode!.width! * zoom) / 2 - position.x * zoom,
-      y: (clientHeight - currentNode!.height! * zoom) / 2 - position.y * zoom,
-      zoom: transform[2],
-    })
-  }, [availableNodes, reactflow, store])
+      const workflowContainer = document.getElementById('workflow-container')
+      const { clientWidth, clientHeight } = workflowContainer!
+      const { setViewport } = reactflow
+      const { transform } = store.getState()
+      const zoom = transform[2]
+      const position = currentNode!.position
+      setViewport({
+        x: (clientWidth - 400 - currentNode!.width! * zoom) / 2 - position.x * zoom,
+        y: (clientHeight - currentNode!.height! * zoom) / 2 - position.y * zoom,
+        zoom: transform[2],
+      })
+    },
+    [availableNodes, reactflow, store],
+  )
 
   const type = getCurrentVariableType({
     parentNode: isInIteration ? iterationNode : loopNode,
@@ -281,11 +291,12 @@ const VarReferencePicker: FC<Props> = ({
   const visibleNodeTitle = shouldShowNodeName ? outputVarNode?.title || '' : ''
 
   // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 17 buff
-  const {
-    maxNodeNameWidth,
-    maxTypeWidth,
-    maxVarNameWidth,
-  } = getWidthAllocations(triggerWidth, visibleNodeTitle, varName || '', type || '')
+  const { maxNodeNameWidth, maxTypeWidth, maxVarNameWidth } = getWidthAllocations(
+    triggerWidth,
+    visibleNodeTitle,
+    varName || '',
+    type || '',
+  )
 
   const hoverPopup = useMemo<HoverPopup | null>(() => {
     const tooltipType = getTooltipContent(hasValue, isShowAPart, isValidVar)
@@ -303,7 +314,10 @@ const VarReferencePicker: FC<Props> = ({
       }
     }
     if (tooltipType === 'invalid-variable')
-      return { kind: 'invalid-variable', message: t('errorMsg.invalidVariable', { ns: 'workflow' }) }
+      return {
+        kind: 'invalid-variable',
+        message: t(($) => $['errorMsg.invalidVariable'], { ns: 'workflow' }),
+      }
 
     return null
   }, [isValidVar, isShowAPart, hasValue, t, outputVarNode?.title, outputVarNode?.type, value, type])
@@ -318,14 +332,12 @@ const VarReferencePicker: FC<Props> = ({
     'tool',
   )
   const handleFetchDynamicOptions = useCallback(async () => {
-    if (schema?.type !== FormTypeEnum.dynamicSelect || !currentTool || !currentProvider)
-      return
+    if (schema?.type !== FormTypeEnum.dynamicSelect || !currentTool || !currentProvider) return
     setIsLoading(true)
     try {
       const data = await fetchDynamicOptions()
       setDynamicOptions(data?.options || [])
-    }
-    finally {
+    } finally {
       setIsLoading(false)
     }
   }, [currentProvider, currentTool, fetchDynamicOptions, schema?.type])
@@ -343,21 +355,18 @@ const VarReferencePicker: FC<Props> = ({
     [isChatVar, isEnv, isGlobal, isLoopVar, isRagVar],
   )
 
-  const triggerPlaceholder = placeholder ?? t('common.setVarValuePlaceholder', { ns: 'workflow' })
+  const triggerPlaceholder =
+    placeholder ?? t(($) => $['common.setVarValuePlaceholder'], { ns: 'workflow' })
   const resolvedTrigger = React.isValidElement(trigger) ? trigger : <div>{trigger}</div>
 
   return (
     <div className={cn(className)}>
-      <Popover
-        open={open}
-        onOpenChange={setOpen}
-      >
+      <Popover open={open} onOpenChange={setOpen}>
         {!!trigger && (
           <PopoverTrigger
             render={resolvedTrigger}
             onClick={(e) => {
-              if (readonly)
-                e.preventDefault()
+              if (readonly) e.preventDefault()
             }}
           />
         )}
@@ -419,7 +428,7 @@ const VarReferencePicker: FC<Props> = ({
               vars={outputVars}
               popupFor={popupFor}
               onChange={handleVarReferenceChange}
-              itemWidth={isAddBtnTrigger ? 260 : (minWidth || triggerWidth)}
+              itemWidth={isAddBtnTrigger ? 260 : minWidth || triggerWidth}
               isSupportFileVar={isSupportFileVar}
               preferSchemaType={preferSchemaType}
             />

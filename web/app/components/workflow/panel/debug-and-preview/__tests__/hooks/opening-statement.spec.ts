@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
 import { renderHook } from '@testing-library/react'
 import { useChat } from '../../hooks'
@@ -98,10 +98,9 @@ describe('workflow debug useChat – opening statement stability', () => {
     }
     const formSettings = { inputs: { name: 'Alice' }, inputsForm: [] }
 
-    const { result, rerender } = renderHook(
-      ({ fs }) => useChat(config, fs),
-      { initialProps: { fs: formSettings } },
-    )
+    const { result, rerender } = renderHook(({ fs }) => useChat(config, fs), {
+      initialProps: { fs: formSettings },
+    })
 
     const openerBefore = result.current.chatList[0]
     expect(openerBefore!.content).toBe('Hello Alice')
@@ -118,10 +117,9 @@ describe('workflow debug useChat – opening statement stability', () => {
       suggested_questions: [],
     }
 
-    const { result, rerender } = renderHook(
-      ({ fs }) => useChat(config, fs),
-      { initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } } },
-    )
+    const { result, rerender } = renderHook(({ fs }) => useChat(config, fs), {
+      initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } },
+    })
 
     const openerBefore = result.current.chatList[0]
     expect(openerBefore!.content).toBe('Hello Alice')
@@ -138,13 +136,15 @@ describe('workflow debug useChat – opening statement stability', () => {
       opening_statement: 'Updated welcome',
       suggested_questions: ['S1'],
     }
-    const prevChatTree = [{
-      id: 'opening-statement',
-      content: 'old',
-      isAnswer: true,
-      isOpeningStatement: true,
-      suggestedQuestions: [],
-    }]
+    const prevChatTree = [
+      {
+        id: 'opening-statement',
+        content: 'old',
+        isAnswer: true,
+        isOpeningStatement: true,
+        suggestedQuestions: [],
+      },
+    ]
 
     const { result, rerender } = renderHook(
       ({ cfg }) => useChat(cfg, undefined, prevChatTree as ChatItemInTree[]),

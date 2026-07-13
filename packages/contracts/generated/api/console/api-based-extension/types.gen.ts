@@ -31,8 +31,8 @@ export type GetApiBasedExtensionResponses = {
   200: ApiBasedExtensionListResponse
 }
 
-export type GetApiBasedExtensionResponse
-  = GetApiBasedExtensionResponses[keyof GetApiBasedExtensionResponses]
+export type GetApiBasedExtensionResponse =
+  GetApiBasedExtensionResponses[keyof GetApiBasedExtensionResponses]
 
 export type PostApiBasedExtensionData = {
   body: ApiBasedExtensionPayload
@@ -45,8 +45,8 @@ export type PostApiBasedExtensionResponses = {
   201: ApiBasedExtensionResponse
 }
 
-export type PostApiBasedExtensionResponse
-  = PostApiBasedExtensionResponses[keyof PostApiBasedExtensionResponses]
+export type PostApiBasedExtensionResponse =
+  PostApiBasedExtensionResponses[keyof PostApiBasedExtensionResponses]
 
 export type DeleteApiBasedExtensionByIdData = {
   body?: never
@@ -58,13 +58,11 @@ export type DeleteApiBasedExtensionByIdData = {
 }
 
 export type DeleteApiBasedExtensionByIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
-export type DeleteApiBasedExtensionByIdResponse
-  = DeleteApiBasedExtensionByIdResponses[keyof DeleteApiBasedExtensionByIdResponses]
+export type DeleteApiBasedExtensionByIdResponse =
+  DeleteApiBasedExtensionByIdResponses[keyof DeleteApiBasedExtensionByIdResponses]
 
 export type GetApiBasedExtensionByIdData = {
   body?: never
@@ -79,8 +77,8 @@ export type GetApiBasedExtensionByIdResponses = {
   200: ApiBasedExtensionResponse
 }
 
-export type GetApiBasedExtensionByIdResponse
-  = GetApiBasedExtensionByIdResponses[keyof GetApiBasedExtensionByIdResponses]
+export type GetApiBasedExtensionByIdResponse =
+  GetApiBasedExtensionByIdResponses[keyof GetApiBasedExtensionByIdResponses]
 
 export type PostApiBasedExtensionByIdData = {
   body: ApiBasedExtensionPayload
@@ -95,5 +93,5 @@ export type PostApiBasedExtensionByIdResponses = {
   200: ApiBasedExtensionResponse
 }
 
-export type PostApiBasedExtensionByIdResponse
-  = PostApiBasedExtensionByIdResponses[keyof PostApiBasedExtensionByIdResponses]
+export type PostApiBasedExtensionByIdResponse =
+  PostApiBasedExtensionByIdResponses[keyof PostApiBasedExtensionByIdResponses]

@@ -82,7 +82,9 @@ describe('getFormattedPlugin', () => {
     } as unknown as Plugin
 
     const formatted = getFormattedPlugin(rawPlugin)
-    expect(formatted.icon).toBe('https://marketplace.dify.ai/api/v1/plugins/test-org/test-plugin/icon')
+    expect(formatted.icon).toBe(
+      'https://marketplace.dify.ai/api/v1/plugins/test-org/test-plugin/icon',
+    )
   })
 
   it('should format bundle with additional properties', async () => {
@@ -96,7 +98,9 @@ describe('getFormattedPlugin', () => {
     } as unknown as Plugin
 
     const formatted = getFormattedPlugin(rawBundle)
-    expect(formatted.icon).toBe('https://marketplace.dify.ai/api/v1/bundles/test-org/test-bundle/icon')
+    expect(formatted.icon).toBe(
+      'https://marketplace.dify.ai/api/v1/bundles/test-org/test-bundle/icon',
+    )
     expect(formatted.brief).toBe('Bundle description')
     expect(formatted.label).toEqual({ 'en-US': 'Test Bundle' })
   })
@@ -115,22 +119,6 @@ describe('getPluginLinkInMarketplace', () => {
     const bundle = createMockPlugin({ org: 'test-org', name: 'test-bundle', type: 'bundle' })
     const link = getPluginLinkInMarketplace(bundle)
     expect(link).toBe('https://marketplace.dify.ai/bundles/test-org/test-bundle')
-  })
-})
-
-describe('getPluginDetailLinkInMarketplace', () => {
-  it('should return correct detail link for regular plugin', async () => {
-    const { getPluginDetailLinkInMarketplace } = await import('../utils')
-    const plugin = createMockPlugin({ org: 'test-org', name: 'test-plugin', type: 'plugin' })
-    const link = getPluginDetailLinkInMarketplace(plugin)
-    expect(link).toBe('/plugins/test-org/test-plugin')
-  })
-
-  it('should return correct detail link for bundle', async () => {
-    const { getPluginDetailLinkInMarketplace } = await import('../utils')
-    const bundle = createMockPlugin({ org: 'test-org', name: 'test-bundle', type: 'bundle' })
-    const link = getPluginDetailLinkInMarketplace(bundle)
-    expect(link).toBe('/bundles/test-org/test-bundle')
   })
 })
 
@@ -242,14 +230,17 @@ describe('getMarketplacePluginsByCollectionId', () => {
     const { getMarketplacePluginsByCollectionId } = await import('../utils')
     await getMarketplacePluginsByCollectionId('test-collection')
 
-    expect(mockCollectionPlugins).toHaveBeenCalledWith({
-      params: {
-        collectionId: 'test-collection',
+    expect(mockCollectionPlugins).toHaveBeenCalledWith(
+      {
+        params: {
+          collectionId: 'test-collection',
+        },
+        body: {},
       },
-      body: {},
-    }, expect.objectContaining({
-      signal: undefined,
-    }))
+      expect.objectContaining({
+        signal: undefined,
+      }),
+    )
   })
 
   it('should pass abort signal when provided', async () => {
@@ -313,7 +304,9 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
 
     expect(mockCollections).toHaveBeenCalled()
     const call = mockCollections.mock.calls[0]
-    expect(call![0]).toMatchObject({ query: expect.objectContaining({ condition: 'category=tool', type: 'bundle' }) })
+    expect(call![0]).toMatchObject({
+      query: expect.objectContaining({ condition: 'category=tool', type: 'bundle' }),
+    })
   })
 })
 
@@ -361,15 +354,18 @@ describe('getMarketplacePlugins', () => {
     })
 
     const { getMarketplacePlugins } = await import('../utils')
-    const result = await getMarketplacePlugins({
-      query: 'test',
-      sort_by: 'install_count',
-      sort_order: 'DESC',
-      category: 'tool',
-      tags: ['search'],
-      type: 'plugin',
-      page_size: 20,
-    }, 1)
+    const result = await getMarketplacePlugins(
+      {
+        query: 'test',
+        sort_by: 'install_count',
+        sort_order: 'DESC',
+        category: 'tool',
+        tags: ['search'],
+        type: 'plugin',
+        page_size: 20,
+      },
+      1,
+    )
 
     expect(result.plugins).toHaveLength(1)
     expect(result.total).toBe(1)
@@ -380,16 +376,21 @@ describe('getMarketplacePlugins', () => {
   it('should use bundles endpoint when type is bundle', async () => {
     mockSearchAdvanced.mockResolvedValueOnce({
       data: {
-        bundles: [{ type: 'bundle', org: 'test', name: 'b1', tags: [], description: 'desc', labels: {} }],
+        bundles: [
+          { type: 'bundle', org: 'test', name: 'b1', tags: [], description: 'desc', labels: {} },
+        ],
         total: 1,
       },
     })
 
     const { getMarketplacePlugins } = await import('../utils')
-    const result = await getMarketplacePlugins({
-      query: 'bundle',
-      type: 'bundle',
-    }, 1)
+    const result = await getMarketplacePlugins(
+      {
+        query: 'bundle',
+        type: 'bundle',
+      },
+      1,
+    )
 
     expect(result.plugins).toHaveLength(1)
     const call = mockSearchAdvanced.mock.calls[0]
@@ -402,10 +403,13 @@ describe('getMarketplacePlugins', () => {
     })
 
     const { getMarketplacePlugins } = await import('../utils')
-    await getMarketplacePlugins({
-      query: 'test',
-      category: 'all',
-    }, 1)
+    await getMarketplacePlugins(
+      {
+        query: 'test',
+        category: 'all',
+      },
+      1,
+    )
 
     const call = mockSearchAdvanced.mock.calls[0]
     expect(call![0].body.category).toBe('')
@@ -415,9 +419,12 @@ describe('getMarketplacePlugins', () => {
     mockSearchAdvanced.mockRejectedValueOnce(new Error('API error'))
 
     const { getMarketplacePlugins } = await import('../utils')
-    const result = await getMarketplacePlugins({
-      query: 'fail',
-    }, 2)
+    const result = await getMarketplacePlugins(
+      {
+        query: 'fail',
+      },
+      2,
+    )
 
     expect(result).toEqual({
       plugins: [],

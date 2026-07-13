@@ -58,7 +58,7 @@ vi.mock('@/service/knowledge/use-document', () => ({
 // Mock downloadUrl utility
 const mockDownloadUrl = vi.fn()
 vi.mock('@/utils/download', () => ({
-  downloadUrl: (params: { url: string, fileName: string }) => mockDownloadUrl(params),
+  downloadUrl: (params: { url: string; fileName: string }) => mockDownloadUrl(params),
 }))
 
 afterEach(() => {
@@ -86,6 +86,10 @@ describe('Operations', () => {
     datasetId: 'dataset-1',
     detail: defaultDetail,
     onUpdate: mockOnUpdate,
+    canEdit: true,
+    canDownload: true,
+    canDelete: true,
+    canViewSettings: true,
   }
 
   beforeEach(() => {
@@ -124,6 +128,56 @@ describe('Operations', () => {
       const disabledSwitch = screen.getByRole('switch')
       expect(disabledSwitch)!.toHaveAttribute('aria-disabled', 'true')
     })
+
+    it('should not render an operations menu and should disable switch without any document operation permissions', async () => {
+      vi.useFakeTimers()
+      render(
+        <Operations
+          {...defaultProps}
+          canEdit={false}
+          canDownload={false}
+          canDelete={false}
+          canViewSettings={false}
+        />,
+      )
+
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.more' }),
+      ).not.toBeInTheDocument()
+
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement)!.toHaveAttribute('aria-disabled', 'true')
+      await act(async () => {
+        fireEvent.click(switchElement)
+        vi.advanceTimersByTime(600)
+      })
+      expect(mockEnable).not.toHaveBeenCalled()
+      expect(mockDisable).not.toHaveBeenCalled()
+      vi.useRealTimers()
+    })
+
+    it('should only render download action when download is the only granted document operation', async () => {
+      render(
+        <Operations
+          {...defaultProps}
+          canEdit={false}
+          canDownload
+          canDelete={false}
+          canViewSettings={false}
+        />,
+      )
+
+      const moreButton = screen.getByRole('button', { name: 'common.operation.more' })
+      await act(async () => {
+        fireEvent.click(moreButton)
+      })
+
+      expect(screen.getByText('datasetDocuments.list.action.download'))!.toBeInTheDocument()
+      expect(screen.queryByText('datasetDocuments.list.table.rename')).not.toBeInTheDocument()
+      expect(screen.queryByText('datasetDocuments.list.action.settings')).not.toBeInTheDocument()
+      expect(screen.queryByText('datasetDocuments.list.action.archive')).not.toBeInTheDocument()
+      expect(screen.queryByText('datasetDocuments.list.action.delete')).not.toBeInTheDocument()
+    })
   })
 
   describe('switch toggle', () => {
@@ -135,11 +189,7 @@ describe('Operations', () => {
 
     it('should render disabled switch when archived', () => {
       render(
-        <Operations
-          {...defaultProps}
-          scene="list"
-          detail={{ ...defaultDetail, archived: true }}
-        />,
+        <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, archived: true }} />,
       )
       const disabledSwitch = document.querySelector('[disabled]')
       expect(disabledSwitch).toBeDefined()
@@ -148,11 +198,7 @@ describe('Operations', () => {
     it('should call enable when switch is toggled on', async () => {
       vi.useFakeTimers()
       render(
-        <Operations
-          {...defaultProps}
-          scene="list"
-          detail={{ ...defaultDetail, enabled: false }}
-        />,
+        <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, enabled: false }} />,
       )
       const switchElement = document.querySelector('[role="switch"]')
       await act(async () => {
@@ -169,11 +215,7 @@ describe('Operations', () => {
     it('should call disable when switch is toggled off', async () => {
       vi.useFakeTimers()
       render(
-        <Operations
-          {...defaultProps}
-          scene="list"
-          detail={{ ...defaultDetail, enabled: true }}
-        />,
+        <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, enabled: true }} />,
       )
       const switchElement = document.querySelector('[role="switch"]')
       await act(async () => {
@@ -190,11 +232,7 @@ describe('Operations', () => {
     it('should not call enable if already enabled', async () => {
       vi.useFakeTimers()
       render(
-        <Operations
-          {...defaultProps}
-          scene="list"
-          detail={{ ...defaultDetail, enabled: true }}
-        />,
+        <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, enabled: true }} />,
       )
       // Simulate trying to enable when already enabled - this won't happen via switch click
       // because the switch would toggle to disable. But handleSwitch has early returns
@@ -203,15 +241,38 @@ describe('Operations', () => {
   })
 
   describe('settings navigation', () => {
-    it('should navigate to settings when settings button is clicked', async () => {
+    it('should not render a standalone settings button', () => {
       render(<Operations {...defaultProps} />)
-      // Get the first button which is the settings button
-      const buttons = screen.getAllByRole('button')
-      const settingsButton = buttons[0]
+
+      expect(
+        screen.queryByRole('button', { name: 'datasetDocuments.list.action.settings' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should navigate to settings when settings menu item is clicked', async () => {
+      render(<Operations {...defaultProps} />)
+      const moreButton = document.querySelector('[class*="commonIcon"]')?.parentElement
+      if (moreButton) {
+        await act(async () => {
+          fireEvent.click(moreButton)
+        })
+      }
+      const settingsButton = screen.getByText('datasetDocuments.list.action.settings')
       await act(async () => {
-        fireEvent.click(settingsButton!)
+        fireEvent.click(settingsButton)
       })
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents/doc-1/settings')
+    })
+
+    it('should hide document settings when settings permission is not granted', async () => {
+      render(<Operations {...defaultProps} canViewSettings={false} />)
+
+      const moreButton = screen.getByRole('button', { name: 'common.operation.more' })
+      await act(async () => {
+        fireEvent.click(moreButton)
+      })
+
+      expect(screen.queryByText('datasetDocuments.list.action.settings')).not.toBeInTheDocument()
     })
   })
 
@@ -274,12 +335,7 @@ describe('Operations', () => {
     })
 
     it('should call un_archive when unarchive action is clicked', async () => {
-      render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, archived: true }}
-        />,
-      )
+      render(<Operations {...defaultProps} detail={{ ...defaultDetail, archived: true }} />)
       await openPopover()
       const unarchiveButton = screen.getByText('datasetDocuments.list.action.unarchive')
       await act(async () => {
@@ -365,7 +421,8 @@ describe('Operations', () => {
       const user = userEvent.setup()
       render(<Operations {...defaultProps} />)
       await openPopover()
-      const renameAction = screen.getByText('datasetDocuments.list.table.rename').parentElement as HTMLElement
+      const renameAction = screen.getByText('datasetDocuments.list.table.rename')
+        .parentElement as HTMLElement
       await user.click(renameAction)
 
       const renameInput = await screen.findByRole('textbox')
@@ -402,16 +459,16 @@ describe('Operations', () => {
         fireEvent.click(syncButton)
       })
       await waitFor(() => {
-        expect(mockSyncWebsite).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+        expect(mockSyncWebsite).toHaveBeenCalledWith({
+          datasetId: 'dataset-1',
+          documentId: 'doc-1',
+        })
       })
     })
 
     it('should call pause when pause action is clicked', async () => {
       render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, display_status: 'indexing' }}
-        />,
+        <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'indexing' }} />,
       )
       await openPopover()
       const pauseButton = screen.getByText('datasetDocuments.list.action.pause')
@@ -425,10 +482,7 @@ describe('Operations', () => {
 
     it('should call resume when resume action is clicked', async () => {
       render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, display_status: 'paused' }}
-        />,
+        <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'paused' }} />,
       )
       await openPopover()
       const resumeButton = screen.getByText('datasetDocuments.list.action.resume')
@@ -449,8 +503,22 @@ describe('Operations', () => {
       })
       await waitFor(() => {
         expect(mockDownload).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
-        expect(mockDownloadUrl).toHaveBeenCalledWith({ url: 'https://example.com/download', fileName: 'Test Document' })
+        expect(mockDownloadUrl).toHaveBeenCalledWith({
+          url: 'https://example.com/download',
+          fileName: 'Test Document',
+        })
       })
+    })
+
+    it('should show settings above download in the operations menu', async () => {
+      render(<Operations {...defaultProps} />)
+      await openPopover()
+      const settingsButton = screen.getByText('datasetDocuments.list.action.settings').parentElement
+      const downloadButton = screen.getByText('datasetDocuments.list.action.download').parentElement
+
+      expect(settingsButton?.compareDocumentPosition(downloadButton!)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      )
     })
 
     it('should show download option for archived file data source', async () => {
@@ -462,6 +530,18 @@ describe('Operations', () => {
       )
       await openPopover()
       expect(screen.getByText('datasetDocuments.list.action.download'))!.toBeInTheDocument()
+    })
+
+    it('should show settings for archived non-file data source', async () => {
+      render(
+        <Operations
+          {...defaultProps}
+          detail={{ ...defaultDetail, archived: true, data_source_type: 'notion_import' }}
+        />,
+      )
+      await openPopover()
+      expect(screen.getByText('datasetDocuments.list.action.settings'))!.toBeInTheDocument()
+      expect(screen.queryByText('datasetDocuments.list.action.download')).not.toBeInTheDocument()
     })
 
     it('should download archived file when download is clicked', async () => {
@@ -541,30 +621,21 @@ describe('Operations', () => {
   describe('display status', () => {
     it('should render pause action when status is indexing', () => {
       render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, display_status: 'indexing' }}
-        />,
+        <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'indexing' }} />,
       )
       expect(document.querySelector('.flex.items-center'))!.toBeInTheDocument()
     })
 
     it('should render resume action when status is paused', () => {
       render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, display_status: 'paused' }}
-        />,
+        <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'paused' }} />,
       )
       expect(document.querySelector('.flex.items-center'))!.toBeInTheDocument()
     })
 
     it('should not show pause/resume for available status', async () => {
       render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, display_status: 'available' }}
-        />,
+        <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'available' }} />,
       )
       const moreButton = document.querySelector('[class*="commonIcon"]')?.parentElement
       if (moreButton) {
@@ -617,7 +688,9 @@ describe('Operations', () => {
 
   describe('memoization', () => {
     it('should be wrapped with React.memo', () => {
-      expect((Operations as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
+      expect((Operations as unknown as { $$typeof: symbol }).$$typeof).toBe(
+        Symbol.for('react.memo'),
+      )
     })
   })
 

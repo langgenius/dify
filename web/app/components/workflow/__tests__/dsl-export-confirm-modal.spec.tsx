@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { expectLoadingButton } from '@/test/button'
 import DSLExportConfirmModal from '../dsl-export-confirm-modal'
 
 const envList = [
@@ -29,13 +30,7 @@ describe('DSLExportConfirmModal', () => {
     const onConfirm = vi.fn()
     const onClose = vi.fn()
 
-    render(
-      <DSLExportConfirmModal
-        envList={envList}
-        onConfirm={onConfirm}
-        onClose={onClose}
-      />,
-    )
+    render(<DSLExportConfirmModal envList={envList} onConfirm={onConfirm} onClose={onClose} />)
 
     expect(screen.getByText('SECRET_TOKEN')).toBeInTheDocument()
     expect(screen.getByText('masked-value')).toBeInTheDocument()
@@ -51,13 +46,7 @@ describe('DSLExportConfirmModal', () => {
     const onConfirm = vi.fn()
     const onClose = vi.fn()
 
-    render(
-      <DSLExportConfirmModal
-        envList={envList}
-        onConfirm={onConfirm}
-        onClose={onClose}
-      />,
-    )
+    render(<DSLExportConfirmModal envList={envList} onConfirm={onConfirm} onClose={onClose} />)
 
     await user.click(screen.getByRole('button', { name: 'workflow.env.export.ignore' }))
 
@@ -70,13 +59,7 @@ describe('DSLExportConfirmModal', () => {
     const onConfirm = vi.fn()
     const onClose = vi.fn()
 
-    render(
-      <DSLExportConfirmModal
-        envList={envList}
-        onConfirm={onConfirm}
-        onClose={onClose}
-      />,
-    )
+    render(<DSLExportConfirmModal envList={envList} onConfirm={onConfirm} onClose={onClose} />)
 
     await user.click(screen.getByRole('checkbox'))
     await user.click(screen.getByRole('button', { name: 'workflow.env.export.export' }))
@@ -90,13 +73,7 @@ describe('DSLExportConfirmModal', () => {
     const onConfirm = vi.fn()
     const onClose = vi.fn()
 
-    render(
-      <DSLExportConfirmModal
-        envList={envList}
-        onConfirm={onConfirm}
-        onClose={onClose}
-      />,
-    )
+    render(<DSLExportConfirmModal envList={envList} onConfirm={onConfirm} onClose={onClose} />)
 
     await user.click(screen.getByText('workflow.env.export.checkbox'))
     await user.click(screen.getByRole('button', { name: 'workflow.env.export.export' }))
@@ -107,25 +84,22 @@ describe('DSLExportConfirmModal', () => {
 
   it('should show exporting state and prevent duplicate submits while exporting', async () => {
     let resolveConfirm: () => void
-    const onConfirm = vi.fn(() => new Promise<void>((resolve) => {
-      resolveConfirm = resolve
-    }))
+    const onConfirm = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveConfirm = resolve
+        }),
+    )
     const onClose = vi.fn()
     const user = userEvent.setup()
 
-    render(
-      <DSLExportConfirmModal
-        envList={envList}
-        onConfirm={onConfirm}
-        onClose={onClose}
-      />,
-    )
+    render(<DSLExportConfirmModal envList={envList} onConfirm={onConfirm} onClose={onClose} />)
 
     const confirmButton = screen.getByRole('button', { name: 'workflow.env.export.ignore' })
 
     const firstClick = user.click(confirmButton)
     await waitFor(() => {
-      expect(confirmButton).toBeDisabled()
+      expectLoadingButton(confirmButton)
       expect(confirmButton).toHaveTextContent('common.operation.exporting')
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
     })
@@ -142,13 +116,7 @@ describe('DSLExportConfirmModal', () => {
   })
 
   it('should render border separators for all rows except the last one', () => {
-    render(
-      <DSLExportConfirmModal
-        envList={multiEnvList}
-        onConfirm={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    )
+    render(<DSLExportConfirmModal envList={multiEnvList} onConfirm={vi.fn()} onClose={vi.fn()} />)
 
     const firstNameCell = screen.getByText('SECRET_TOKEN').closest('td')
     const lastNameCell = screen.getByText('SERVICE_KEY').closest('td')

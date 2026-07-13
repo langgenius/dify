@@ -10,27 +10,19 @@ import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows
 
 const I18N_PREFIX = 'stepOne.website'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   children: React.ReactNode
   controlFoldOptions?: number
-}
+}>
 
-const OptionsWrap: FC<Props> = ({
-  className = '',
-  children,
-  controlFoldOptions,
-}) => {
+const OptionsWrap: FC<Props> = ({ className = '', children, controlFoldOptions }) => {
   const { t } = useTranslation()
 
-  const [fold, {
-    toggle: foldToggle,
-    setTrue: foldHide,
-  }] = useBoolean(false)
+  const [fold, { toggle: foldToggle, setTrue: foldHide }] = useBoolean(false)
 
   useEffect(() => {
-    if (controlFoldOptions)
-      foldHide()
+    if (controlFoldOptions) foldHide()
   }, [controlFoldOptions])
   return (
     <div className={cn(className, !fold ? 'mb-0' : 'mb-3')}>
@@ -40,16 +32,13 @@ const OptionsWrap: FC<Props> = ({
       >
         <div className="flex grow items-center">
           <RiEqualizer2Line className="mr-1 size-4 text-text-secondary" />
-          <span className="text-[13px] leading-[16px] font-semibold text-text-secondary uppercase">{t(`${I18N_PREFIX}.options`, { ns: 'datasetCreation' })}</span>
+          <span className="text-[13px] leading-[16px] font-semibold text-text-secondary uppercase">
+            {t(($) => $[`${I18N_PREFIX}.options`], { ns: 'datasetCreation' })}
+          </span>
         </div>
         <ChevronRight className={cn(!fold && 'rotate-90', 'size-4 shrink-0 text-text-tertiary')} />
       </div>
-      {!fold && (
-        <div className="mb-4">
-          {children}
-        </div>
-      )}
-
+      {!fold && <div className="mb-4">{children}</div>}
     </div>
   )
 }

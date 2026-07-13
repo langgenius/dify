@@ -6,23 +6,18 @@ import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
 
-type Props = {
+type Props = Readonly<{
   iconColor?: string
-}
+}>
 
-const ViewFormDropdown = ({
-  iconColor,
-}: Props) => {
+const ViewFormDropdown = ({ iconColor }: Props) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={(
+        render={
           <ActionButton
             size="l"
             state={open ? ActionButtonState.Hover : ActionButtonState.Default}
@@ -30,7 +25,7 @@ const ViewFormDropdown = ({
           >
             <div className={cn('i-ri-chat-settings-line h-[18px] w-[18px] shrink-0', iconColor)} />
           </ActionButton>
-        )}
+        }
       />
       <PopoverContent
         placement="bottom-end"
@@ -44,7 +39,9 @@ const ViewFormDropdown = ({
         >
           <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-6 py-4">
             <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />
-            <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+            <div className="grow system-xl-semibold text-text-secondary">
+              {t(($) => $['chat.chatSettingsTitle'], { ns: 'share' })}
+            </div>
           </div>
           <div className="p-6">
             <InputsFormContent />

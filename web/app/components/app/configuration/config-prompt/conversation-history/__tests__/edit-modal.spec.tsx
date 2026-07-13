@@ -4,7 +4,7 @@ import * as React from 'react'
 import EditModal from '../edit-modal'
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) =>
+  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) =>
     open === false ? null : <>{children}</>,
   DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

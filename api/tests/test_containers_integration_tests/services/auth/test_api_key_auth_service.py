@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -51,7 +51,7 @@ class TestApiKeyAuthService:
         self._create_binding(db_session_with_containers, tenant_id=tenant_id, category=category, provider=provider)
         db_session_with_containers.expire_all()
 
-        result = ApiKeyAuthService.get_provider_auth_list(tenant_id)
+        result = ApiKeyAuthService.get_provider_auth_list(tenant_id, session=db_session_with_containers)
 
         assert len(result) >= 1
         tenant_results = [r for r in result if r.tenant_id == tenant_id]
@@ -61,7 +61,7 @@ class TestApiKeyAuthService:
     def test_get_provider_auth_list_empty(
         self, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id
     ):
-        result = ApiKeyAuthService.get_provider_auth_list(tenant_id)
+        result = ApiKeyAuthService.get_provider_auth_list(tenant_id, session=db_session_with_containers)
 
         tenant_results = [r for r in result if r.tenant_id == tenant_id]
         assert tenant_results == []
@@ -74,7 +74,7 @@ class TestApiKeyAuthService:
         )
         db_session_with_containers.expire_all()
 
-        result = ApiKeyAuthService.get_provider_auth_list(tenant_id)
+        result = ApiKeyAuthService.get_provider_auth_list(tenant_id, session=db_session_with_containers)
 
         tenant_results = [r for r in result if r.tenant_id == tenant_id]
         assert tenant_results == []
@@ -83,8 +83,8 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.encrypter")
     def test_create_provider_auth_success(
         self,
-        mock_encrypter,
-        mock_factory,
+        mock_encrypter: MagicMock,
+        mock_factory: MagicMock,
         flask_app_with_containers: Flask,
         db_session_with_containers: Session,
         tenant_id,
@@ -95,7 +95,7 @@ class TestApiKeyAuthService:
         mock_factory.return_value = mock_auth_instance
         mock_encrypter.encrypt_token.return_value = "encrypted_test_key_123"
 
-        ApiKeyAuthService.create_provider_auth(tenant_id, mock_args)
+        ApiKeyAuthService.create_provider_auth(tenant_id, mock_args, session=db_session_with_containers)
 
         mock_factory.assert_called_once()
         mock_auth_instance.validate_credentials.assert_called_once()
@@ -107,13 +107,18 @@ class TestApiKeyAuthService:
 
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     def test_create_provider_auth_validation_failed(
-        self, mock_factory, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id, mock_args
+        self,
+        mock_factory: MagicMock,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
+        tenant_id,
+        mock_args,
     ):
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = False
         mock_factory.return_value = mock_auth_instance
 
-        ApiKeyAuthService.create_provider_auth(tenant_id, mock_args)
+        ApiKeyAuthService.create_provider_auth(tenant_id, mock_args, session=db_session_with_containers)
 
         db_session_with_containers.expire_all()
         bindings = db_session_with_containers.query(DataSourceApiKeyAuthBinding).filter_by(tenant_id=tenant_id).all()
@@ -123,8 +128,8 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.encrypter")
     def test_create_provider_auth_encrypts_api_key(
         self,
-        mock_encrypter,
-        mock_factory,
+        mock_encrypter: MagicMock,
+        mock_factory: MagicMock,
         flask_app_with_containers: Flask,
         db_session_with_containers: Session,
         tenant_id,
@@ -137,7 +142,7 @@ class TestApiKeyAuthService:
 
         original_key = mock_args["credentials"]["config"]["api_key"]
 
-        ApiKeyAuthService.create_provider_auth(tenant_id, mock_args)
+        ApiKeyAuthService.create_provider_auth(tenant_id, mock_args, session=db_session_with_containers)
 
         assert mock_args["credentials"]["config"]["api_key"] == "encrypted_test_key_123"
         assert mock_args["credentials"]["config"]["api_key"] != original_key
@@ -161,14 +166,18 @@ class TestApiKeyAuthService:
         )
         db_session_with_containers.expire_all()
 
-        result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider)
+        result = ApiKeyAuthService.get_auth_credentials(
+            tenant_id, category, provider, session=db_session_with_containers
+        )
 
         assert result == mock_credentials
 
     def test_get_auth_credentials_not_found(
         self, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id, category, provider
     ):
-        result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider)
+        result = ApiKeyAuthService.get_auth_credentials(
+            tenant_id, category, provider, session=db_session_with_containers
+        )
 
         assert result is None
 
@@ -185,7 +194,9 @@ class TestApiKeyAuthService:
         )
         db_session_with_containers.expire_all()
 
-        result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider)
+        result = ApiKeyAuthService.get_auth_credentials(
+            tenant_id, category, provider, session=db_session_with_containers
+        )
 
         assert result == special_credentials
         assert result["config"]["api_key"] == "key_with_中文_and_special_chars_!@#$%"
@@ -199,7 +210,7 @@ class TestApiKeyAuthService:
         binding_id = binding.id
         db_session_with_containers.expire_all()
 
-        ApiKeyAuthService.delete_provider_auth(tenant_id, binding_id)
+        ApiKeyAuthService.delete_provider_auth(tenant_id, binding_id, session=db_session_with_containers)
 
         db_session_with_containers.expire_all()
         remaining = db_session_with_containers.query(DataSourceApiKeyAuthBinding).filter_by(id=binding_id).first()
@@ -209,7 +220,7 @@ class TestApiKeyAuthService:
         self, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id
     ):
         # Should not raise when binding not found
-        ApiKeyAuthService.delete_provider_auth(tenant_id, str(uuid4()))
+        ApiKeyAuthService.delete_provider_auth(tenant_id, str(uuid4()), session=db_session_with_containers)
 
     def test_validate_api_key_auth_args_success(self, mock_args):
         ApiKeyAuthService.validate_api_key_auth_args(mock_args)
@@ -283,16 +294,16 @@ class TestApiKeyAuthService:
         mock_factory.return_value = mock_auth_instance
         mock_encrypter.encrypt_token.return_value = "encrypted_key"
 
-        with patch("services.auth.api_key_auth_service.db.session") as mock_session:
-            mock_session.commit.side_effect = Exception("Database error")
-            with pytest.raises(Exception, match="Database error"):
-                ApiKeyAuthService.create_provider_auth(tenant_id, mock_args)
+        mock_session = MagicMock()
+        mock_session.commit.side_effect = Exception("Database error")
+        with pytest.raises(Exception, match="Database error"):
+            ApiKeyAuthService.create_provider_auth(tenant_id, mock_args, session=mock_session)
 
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
-    def test_create_provider_auth_factory_exception(self, mock_factory, tenant_id, mock_args):
+    def test_create_provider_auth_factory_exception(self, mock_factory: MagicMock, tenant_id, mock_args):
         mock_factory.side_effect = Exception("Factory error")
         with pytest.raises(Exception, match="Factory error"):
-            ApiKeyAuthService.create_provider_auth(tenant_id, mock_args)
+            ApiKeyAuthService.create_provider_auth(tenant_id, mock_args, session=MagicMock())
 
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
@@ -302,7 +313,7 @@ class TestApiKeyAuthService:
         mock_factory.return_value = mock_auth_instance
         mock_encrypter.encrypt_token.side_effect = Exception("Encryption error")
         with pytest.raises(Exception, match="Encryption error"):
-            ApiKeyAuthService.create_provider_auth(tenant_id, mock_args)
+            ApiKeyAuthService.create_provider_auth(tenant_id, mock_args, session=MagicMock())
 
     def test_validate_api_key_auth_args_none_input(self):
         with pytest.raises(TypeError):

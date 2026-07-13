@@ -6,9 +6,10 @@
 # / dist/ step needed.
 #
 # Prereqs:
-#   - All @napi-rs/keyring native variants present in node_modules. Use
-#     `NPM_CONFIG_USERCONFIG=cli/scripts/cross-arch.npmrc pnpm install --force`
-#     to populate them.
+#   - All @napi-rs/keyring native variants present in node_modules. Append
+#     cli/scripts/cross-arch.pnpm.yaml onto pnpm-workspace.yaml before the
+#     install that first populates node_modules so pnpm fetches every
+#     foreign-arch prebuild (the CLI Release workflow does this).
 #
 # Env (all optional; defaults derived from cli/package.json + git):
 #   CLI_VERSION        — package.json `version`
@@ -33,6 +34,7 @@ entry="${cli_root}/bin/run.ts"
 out_dir="${cli_root}/dist/bin"
 
 read_pkg() { node -p "require('${cli_root}/package.json').$1" 2>/dev/null; }
+naming() { node "${_dir}/release-naming.mjs" "$@"; }
 
 CLI_VERSION="${CLI_VERSION:-$(read_pkg version)}"
 DIFYCTL_CHANNEL="${DIFYCTL_CHANNEL:-$(read_pkg difyctl.channel)}"
@@ -59,25 +61,10 @@ defines=(
     "--define" "__DIFYCTL_BUILD_DATE__=\"${DIFYCTL_BUILD_DATE}\""
 )
 
-# Bun --target  ->  release asset suffix (asset name omits the bun- prefix
-# and uses Node-style platform names; .exe is appended for Windows).
-targets=(
-    "bun-linux-x64:linux-x64"
-    "bun-linux-arm64:linux-arm64"
-    "bun-darwin-x64:darwin-x64"
-    "bun-darwin-arm64:darwin-arm64"
-    "bun-windows-x64:windows-x64"
-)
-
-for spec in "${targets[@]}"; do
-    bun_target="${spec%%:*}"
-    asset_target="${spec##*:}"
-    suffix=""
-    case "$bun_target" in
-        bun-windows-*) suffix=".exe" ;;
-    esac
-
-    out="${out_dir}/difyctl-v${CLI_VERSION}-${asset_target}${suffix}"
+# Targets and asset names come from cli/package.json `difyctl.release` via
+# release-naming.mjs (single source of truth). Each line: bunTarget<TAB>id<TAB>exe.
+while IFS=$'\t' read -r bun_target asset_target _exe; do
+    out="${out_dir}/$(naming asset "$CLI_VERSION" "$asset_target")"
     log::info "compiling ${asset_target} -> $(basename "$out")..."
     bun build "$entry" \
         --target="$bun_target" \
@@ -85,7 +72,7 @@ for spec in "${targets[@]}"; do
         --minify \
         "${defines[@]}" \
         --outfile="$out" >/dev/null
-done
+done < <(naming targets)
 
 log::info "built $(find "$out_dir" -type f | wc -l | tr -d ' ') binaries:"
 ls -lh "$out_dir" >&2

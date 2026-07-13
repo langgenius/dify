@@ -12,11 +12,7 @@ type SelectProps = {
   onValueChange?: (value: unknown) => void
 }
 
-export const Select = ({
-  children,
-  value,
-  onValueChange,
-}: SelectProps) => (
+export const Select = ({ children, value, onValueChange }: SelectProps) => (
   <SelectContext.Provider value={{ value, onValueChange: onValueChange ?? (() => {}) }}>
     <div data-testid="select-root">{children}</div>
   </SelectContext.Provider>
@@ -26,15 +22,23 @@ export const SelectTrigger = ({
   children,
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children?: ReactNode }) => (
-  <button type="button" {...props}>
+  <button type="button" role="combobox" {...props}>
     {children}
   </button>
 )
 
 export const SelectValue = ({ placeholder }: { placeholder?: ReactNode }) => <>{placeholder}</>
 
-export const SelectContent = ({ children }: { children?: ReactNode }) => (
-  <div data-testid="select-content">{children}</div>
+export const SelectContent = ({
+  children,
+  popupClassName,
+}: {
+  children?: ReactNode
+  popupClassName?: string
+}) => (
+  <div data-side="bottom" data-testid="select-content" className={popupClassName}>
+    {children}
+  </div>
 )
 
 export const SelectItem = ({
@@ -42,7 +46,7 @@ export const SelectItem = ({
   value,
   onClick,
   ...props
-}: React.HTMLAttributes<HTMLDivElement> & { children?: ReactNode, value?: unknown }) => {
+}: React.HTMLAttributes<HTMLDivElement> & { children?: ReactNode; value?: unknown }) => {
   const select = React.useContext(SelectContext)
   return (
     <div
@@ -63,4 +67,6 @@ export const SelectItemIndicator = ({ children }: { children?: ReactNode }) => <
 export const SelectGroup = ({ children }: { children?: ReactNode }) => <>{children}</>
 export const SelectLabel = () => null
 export const SelectGroupLabel = ({ children }: { children?: ReactNode }) => <>{children}</>
-export const SelectSeparator = (props: React.HTMLAttributes<HTMLDivElement>) => <div role="separator" {...props} />
+export const SelectSeparator = (props: React.HTMLAttributes<HTMLDivElement>) => (
+  <div role="separator" {...props} />
+)

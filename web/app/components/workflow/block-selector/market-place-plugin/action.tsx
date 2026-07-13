@@ -16,33 +16,28 @@ import { marketplaceQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { getMarketplaceUrl } from '@/utils/var'
 
-type Props = {
+type Props = Readonly<{
   open: boolean
   onOpenChange: (v: boolean) => void
   author: string
   name: string
   version: string
-}
+}>
 
-const OperationDropdown: FC<Props> = ({
-  open,
-  onOpenChange,
-  author,
-  name,
-  version,
-}) => {
+const OperationDropdown: FC<Props> = ({ open, onOpenChange, author, name, version }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
 
-  const downloadMutation = useMutation(marketplaceQuery.downloadPlugin.mutationOptions({
-    onSuccess: (blob) => {
-      downloadBlob({ data: blob, fileName: `${author}-${name}_${version}.zip` })
-    },
-  }))
+  const downloadMutation = useMutation(
+    marketplaceQuery.downloadPlugin.mutationOptions({
+      onSuccess: (blob) => {
+        downloadBlob({ data: blob, fileName: `${author}-${name}_${version}.zip` })
+      },
+    }),
+  )
 
   const handleDownload = () => {
-    if (downloadMutation.isPending)
-      return
+    if (downloadMutation.isPending) return
 
     onOpenChange(false)
     downloadMutation.mutate({
@@ -55,27 +50,23 @@ const OperationDropdown: FC<Props> = ({
   }
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={onOpenChange}
-    >
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
-        render={(
+        render={
           <ActionButton
             className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
-            aria-label={t('operation.more', { ns: 'common' })}
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
           >
-            <span aria-hidden className="i-ri-more-fill size-4 text-components-button-secondary-accent-text" />
+            <span
+              aria-hidden
+              className="i-ri-more-fill size-4 text-components-button-secondary-accent-text"
+            />
           </ActionButton>
-        )}
+        }
       />
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        popupClassName="min-w-[176px]"
-      >
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[176px]">
         <DropdownMenuItem className="system-md-regular" onClick={handleDownload}>
-          {t('operation.download', { ns: 'common' })}
+          {t(($) => $['operation.download'], { ns: 'common' })}
         </DropdownMenuItem>
         <DropdownMenuLinkItem
           className="system-md-regular"
@@ -83,7 +74,7 @@ const OperationDropdown: FC<Props> = ({
           target="_blank"
           rel="noopener noreferrer"
         >
-          {t('operation.viewDetails', { ns: 'common' })}
+          {t(($) => $['operation.viewDetails'], { ns: 'common' })}
         </DropdownMenuLinkItem>
       </DropdownMenuContent>
     </DropdownMenu>

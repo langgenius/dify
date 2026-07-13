@@ -6,22 +6,36 @@ import { ApiKeyEditModal } from './apikey-edit-modal'
 import { ManualEditModal } from './manual-edit-modal'
 import { OAuthEditModal } from './oauth-edit-modal'
 
-type Props = {
+type Props = Readonly<{
   onClose: () => void
   subscription: TriggerSubscription
   pluginDetail?: PluginDetail
-}
+}>
 
 export const EditModal = ({ onClose, subscription, pluginDetail }: Props) => {
   const credentialType = subscription.credential_type
 
   switch (credentialType) {
     case TriggerCredentialTypeEnum.Unauthorized:
-      return <ManualEditModal onClose={onClose} subscription={subscription} pluginDetail={pluginDetail} />
+      return (
+        <ManualEditModal
+          onClose={onClose}
+          subscription={subscription}
+          pluginDetail={pluginDetail}
+        />
+      )
     case TriggerCredentialTypeEnum.Oauth2:
-      return <OAuthEditModal onClose={onClose} subscription={subscription} pluginDetail={pluginDetail} />
+      return (
+        <OAuthEditModal onClose={onClose} subscription={subscription} pluginDetail={pluginDetail} />
+      )
     case TriggerCredentialTypeEnum.ApiKey:
-      return <ApiKeyEditModal onClose={onClose} subscription={subscription} pluginDetail={pluginDetail} />
+      return (
+        <ApiKeyEditModal
+          onClose={onClose}
+          subscription={subscription}
+          pluginDetail={pluginDetail}
+        />
+      )
     default:
       return null
   }

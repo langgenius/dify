@@ -17,12 +17,12 @@ import { isSupportedHttpBodyVariable } from './supported-body-vars'
 
 const UNIQUE_ID_PREFIX = 'key-value-'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   nodeId: string
   payload: Body
   onChange: (payload: Body) => void
-}
+}>
 
 const allTypes = [
   BodyType.none,
@@ -41,20 +41,18 @@ const bodyTextMap = {
   [BodyType.binary]: 'binary',
 }
 
-const EditBody: FC<Props> = ({
-  readonly,
-  nodeId,
-  payload,
-  onChange,
-}) => {
+const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
   const { type, data } = payload
   const bodyPayload = useMemo(() => {
-    if (typeof data === 'string') { // old data
+    if (typeof data === 'string') {
+      // old data
       return []
     }
     return data
   }, [data])
-  const stringValue = [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(type) ? '' : (bodyPayload[0]?.value || '')
+  const stringValue = [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(type)
+    ? ''
+    : bodyPayload[0]?.value || ''
 
   const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
@@ -63,27 +61,30 @@ const EditBody: FC<Props> = ({
     },
   })
 
-  const handleTypeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newType = e.target.value as BodyType
-    const hasKeyValue = [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(newType)
-    onChange({
-      type: newType,
-      data: hasKeyValue
-        ? [
-            {
-              id: uniqueId(UNIQUE_ID_PREFIX),
-              type: BodyPayloadValueType.text,
-              key: '',
-              value: '',
-            },
-          ]
-        : [],
-    })
-  }, [onChange])
+  const handleTypeChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newType = e.target.value as BodyType
+      const hasKeyValue = [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(newType)
+      onChange({
+        type: newType,
+        data: hasKeyValue
+          ? [
+              {
+                id: uniqueId(UNIQUE_ID_PREFIX),
+                type: BodyPayloadValueType.text,
+                key: '',
+                value: '',
+              },
+            ]
+          : [],
+      })
+    },
+    [onChange],
+  )
 
   const handleAddBody = useCallback(() => {
     const newPayload = produce(payload, (draft) => {
-      (draft.data as BodyPayload).push({
+      ;(draft.data as BodyPayload).push({
         id: uniqueId(UNIQUE_ID_PREFIX),
         type: BodyPayloadValueType.text,
         key: '',
@@ -93,51 +94,64 @@ const EditBody: FC<Props> = ({
     onChange(newPayload)
   }, [onChange, payload])
 
-  const handleBodyPayloadChange = useCallback((newList: KeyValueType[]) => {
-    const newPayload = produce(payload, (draft) => {
-      draft.data = newList as BodyPayload
-    })
-    onChange(newPayload)
-  }, [onChange, payload])
+  const handleBodyPayloadChange = useCallback(
+    (newList: KeyValueType[]) => {
+      const newPayload = produce(payload, (draft) => {
+        draft.data = newList as BodyPayload
+      })
+      onChange(newPayload)
+    },
+    [onChange, payload],
+  )
 
   const filterOnlyFileVariable = (varPayload: Var) => {
     return [VarType.file, VarType.arrayFile].includes(varPayload.type)
   }
 
-  const handleBodyValueChange = useCallback((value: string) => {
-    const newBody = produce(payload, (draft: Body) => {
-      if ((draft.data as BodyPayload).length === 0) {
-        (draft.data as BodyPayload).push({
-          id: uniqueId(UNIQUE_ID_PREFIX),
-          type: BodyPayloadValueType.text,
-          key: '',
-          value: '',
-        })
-      }
-      (draft.data as BodyPayload)[0]!.value = value
-    })
-    onChange(newBody)
-  }, [onChange, payload])
+  const handleBodyValueChange = useCallback(
+    (value: string) => {
+      const newBody = produce(payload, (draft: Body) => {
+        if ((draft.data as BodyPayload).length === 0) {
+          ;(draft.data as BodyPayload).push({
+            id: uniqueId(UNIQUE_ID_PREFIX),
+            type: BodyPayloadValueType.text,
+            key: '',
+            value: '',
+          })
+        }
+        ;(draft.data as BodyPayload)[0]!.value = value
+      })
+      onChange(newBody)
+    },
+    [onChange, payload],
+  )
 
-  const handleFileChange = useCallback((value: ValueSelector | string) => {
-    const newBody = produce(payload, (draft: Body) => {
-      if ((draft.data as BodyPayload).length === 0) {
-        (draft.data as BodyPayload).push({
-          id: uniqueId(UNIQUE_ID_PREFIX),
-          type: BodyPayloadValueType.file,
-        })
-      }
-      (draft.data as BodyPayload)[0]!.file = value as ValueSelector
-    })
-    onChange(newBody)
-  }, [onChange, payload])
+  const handleFileChange = useCallback(
+    (value: ValueSelector | string) => {
+      const newBody = produce(payload, (draft: Body) => {
+        if ((draft.data as BodyPayload).length === 0) {
+          ;(draft.data as BodyPayload).push({
+            id: uniqueId(UNIQUE_ID_PREFIX),
+            type: BodyPayloadValueType.file,
+          })
+        }
+        ;(draft.data as BodyPayload)[0]!.file = value as ValueSelector
+      })
+      onChange(newBody)
+    },
+    [onChange, payload],
+  )
 
   return (
     <div>
       {/* body type */}
       <div className="flex flex-wrap">
-        {allTypes.map(t => (
-          <label key={t} htmlFor={`body-type-${t}`} className="mr-4 flex h-7 items-center space-x-2">
+        {allTypes.map((t) => (
+          <label
+            key={t}
+            htmlFor={`body-type-${t}`}
+            className="mr-4 flex h-7 items-center space-x-2"
+          >
             <input
               type="radio"
               id={`body-type-${t}`}
@@ -146,7 +160,9 @@ const EditBody: FC<Props> = ({
               onChange={handleTypeChange}
               disabled={readonly}
             />
-            <div className="text-[13px] leading-[18px] font-normal text-text-secondary">{bodyTextMap[t]}</div>
+            <div className="text-[13px] leading-[18px] font-normal text-text-secondary">
+              {bodyTextMap[t]}
+            </div>
           </label>
         ))}
       </div>

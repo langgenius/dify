@@ -35,10 +35,8 @@ describe('resolveBuildInfo', () => {
     const calls: string[] = []
     const git = (cmd: string) => {
       calls.push(cmd)
-      if (cmd.startsWith('git describe'))
-        return 'v1.0.0-5-gabc1234-dirty'
-      if (cmd.startsWith('git rev-parse'))
-        return '1234567890abcdef'
+      if (cmd.startsWith('git describe')) return 'v1.0.0-5-gabc1234-dirty'
+      if (cmd.startsWith('git rev-parse')) return '1234567890abcdef'
       return null
     }
     const info = resolveBuildInfo({ env: {}, git, now: fixedNow, pkg: noPkg })
@@ -50,10 +48,7 @@ describe('resolveBuildInfo', () => {
       minDify: '0.0.0',
       maxDify: '0.0.0',
     })
-    expect(calls).toStrictEqual([
-      'git describe --tags --dirty --always',
-      'git rev-parse HEAD',
-    ])
+    expect(calls).toStrictEqual(['git describe --tags --dirty --always', 'git rev-parse HEAD'])
   })
 
   it('uses string defaults when env unset, git unavailable, and package.json empty', () => {
@@ -76,7 +71,12 @@ describe('resolveBuildInfo', () => {
 
   it('throws on removed nightly channel', () => {
     expect(() =>
-      resolveBuildInfo({ env: { DIFYCTL_CHANNEL: 'nightly' }, git: noGit, now: fixedNow, pkg: noPkg }),
+      resolveBuildInfo({
+        env: { DIFYCTL_CHANNEL: 'nightly' },
+        git: noGit,
+        now: fixedNow,
+        pkg: noPkg,
+      }),
     ).toThrow(/invalid DIFYCTL_CHANNEL: nightly/)
   })
 
@@ -133,7 +133,9 @@ describe('resolveBuildInfo', () => {
   })
 
   it('falls back to package.json#difyctl.compat when env unset', () => {
-    const pkg = () => ({ difyctl: { compat: { minDify: '1.6.0', maxDify: '1.7.0' }, channel: 'rc' } })
+    const pkg = () => ({
+      difyctl: { compat: { minDify: '1.6.0', maxDify: '1.7.0' }, channel: 'rc' },
+    })
     const info = resolveBuildInfo({ env: {}, git: noGit, now: fixedNow, pkg })
     expect(info.minDify).toBe('1.6.0')
     expect(info.maxDify).toBe('1.7.0')
@@ -141,7 +143,9 @@ describe('resolveBuildInfo', () => {
   })
 
   it('env wins over package.json for compat range and channel', () => {
-    const pkg = () => ({ difyctl: { compat: { minDify: '1.6.0', maxDify: '1.7.0' }, channel: 'rc' } })
+    const pkg = () => ({
+      difyctl: { compat: { minDify: '1.6.0', maxDify: '1.7.0' }, channel: 'rc' },
+    })
     const info = resolveBuildInfo({
       env: {
         DIFYCTL_MIN_DIFY: '2.0.0',

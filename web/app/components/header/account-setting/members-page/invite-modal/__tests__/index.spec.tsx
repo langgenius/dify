@@ -1,10 +1,13 @@
 import type { InvitationResponse } from '@/models/common'
 import { toast } from '@langgenius/dify-ui/toast'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { inviteMember } from '@/service/common'
+import { commonQueryKeys } from '@/service/use-common'
 import InviteModal from '../index'
 
 const { mockToastError } = vi.hoisted(() => ({
@@ -18,24 +21,37 @@ vi.mock('@/context/provider-context', () => ({
   })),
 }))
 vi.mock('@/service/common')
+vi.mock('@/service/access-control/use-workspace-roles')
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },
 }))
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
+
 vi.mock('react-multi-email', () => ({
-  ReactMultiEmail: ({ emails, onChange, getLabel }: { emails: string[], onChange: (emails: string[]) => void, getLabel: (email: string, index: number, removeEmail: (index: number) => void) => React.ReactNode }) => (
+  ReactMultiEmail: ({
+    emails,
+    onChange,
+    getLabel,
+  }: {
+    emails: string[]
+    onChange: (emails: string[]) => void
+    getLabel: (
+      email: string,
+      index: number,
+      removeEmail: (index: number) => void,
+    ) => React.ReactNode
+  }) => (
     <div>
       <input
         data-testid="mock-email-input"
-        onChange={e => onChange(e.target.value ? e.target.value.split(',') : [])}
+        onChange={(e) => onChange(e.target.value ? e.target.value.split(',') : [])}
       />
       {emails.map((email: string, index: number) => (
         <div key={email}>
-          {getLabel(email, index, (idx: number) => onChange(emails.filter((_: string, i: number) => i !== idx)))}
+          {getLabel(email, index, (idx: number) =>
+            onChange(emails.filter((_: string, i: number) => i !== idx)),
+          )}
         </div>
       ))}
     </div>
@@ -47,20 +63,89 @@ describe('InviteModal', () => {
   const mockOnSend = vi.fn()
   const mockRefreshLicenseLimit = vi.fn()
 
+  const createQueryClient = () =>
+    new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          staleTime: Infinity,
+        },
+        mutations: {
+          retry: false,
+        },
+      },
+    })
+
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: 5, limit: 10 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+      data: {
+        pages: [
+          {
+            data: [
+              {
+                id: 'admin',
+                tenant_id: 'tenant-id',
+                type: 'workspace',
+                category: 'global_system_default',
+                name: 'Admin',
+                description: 'Can manage workspace settings',
+                is_builtin: true,
+                permission_keys: [],
+                role_tag: '',
+              },
+              {
+                id: 'normal',
+                tenant_id: 'tenant-id',
+                type: 'workspace',
+                category: 'global_system_default',
+                name: 'Normal',
+                description: 'Can use apps',
+                is_builtin: true,
+                permission_keys: [],
+                role_tag: '',
+              },
+            ],
+            pagination: {
+              total_count: 2,
+              per_page: 20,
+              current_page: 1,
+              total_pages: 1,
+            },
+          },
+        ],
+        pageParams: [1],
+      },
+      isLoading: false,
+      error: null,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: 5, limit: 10 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
   })
 
-  const renderModal = (isEmailSetup = true) => render(
-    <InviteModal isEmailSetup={isEmailSetup} onCancel={mockOnCancel} onSend={mockOnSend} />,
-  )
+  const renderModal = (isEmailSetup = true, queryClient = createQueryClient()) => ({
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <InviteModal isEmailSetup={isEmailSetup} onCancel={mockOnCancel} onSend={mockOnSend} />
+      </QueryClientProvider>,
+    ),
+  })
   const fillEmails = (value: string) => {
     fireEvent.change(screen.getByTestId('mock-email-input'), { target: { value } })
+  }
+  const selectAdminRole = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: /members\.selectRole/i }))
+    await user.click(screen.getByRole('menuitemradio', { name: /Admin/i }))
   }
 
   it('should render invite modal content', async () => {
@@ -76,9 +161,14 @@ describe('InviteModal', () => {
     expect(await screen.findByText(/members\.emailNotSetup$/i)).toBeInTheDocument()
   })
 
-  it('should enable send button after entering an email', async () => {
+  it('should enable send button after entering an email and selecting a role', async () => {
     renderModal()
     fillEmails('user@example.com')
+
+    expect(screen.getByRole('button', { name: /members\.sendInvite/i })).toBeDisabled()
+
+    const user = userEvent.setup()
+    await selectAdminRole(user)
 
     expect(screen.getByRole('button', { name: /members\.sendInvite/i })).toBeEnabled()
   })
@@ -90,6 +180,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     await waitFor(() => {
@@ -109,6 +200,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     await waitFor(() => {
@@ -119,11 +211,59 @@ describe('InviteModal', () => {
     })
   })
 
+  it('should submit the selected workspace role id', async () => {
+    const user = userEvent.setup()
+    vi.mocked(inviteMember).mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+    } as InvitationResponse)
+
+    renderModal()
+
+    fillEmails('user@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(inviteMember).toHaveBeenCalledWith({
+        url: '/workspaces/current/members/invite-email',
+        body: {
+          emails: ['user@example.com'],
+          role: 'admin',
+          language: 'en-US',
+        },
+      })
+    })
+  })
+
+  it('should invalidate members after successful submission', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    const membersQueryKey = [...commonQueryKeys.members, 'en-US']
+    queryClient.setQueryData(membersQueryKey, { accounts: [] })
+    vi.mocked(inviteMember).mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+    } as InvitationResponse)
+
+    renderModal(true, queryClient)
+
+    fillEmails('user@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(queryClient.getQueryState(membersQueryKey)?.isInvalidated).toBe(true)
+    })
+  })
+
   it('should keep send button disabled when license limit is exceeded', async () => {
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: 10, limit: 10 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: 10, limit: 10 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
 
     renderModal()
 
@@ -147,6 +287,7 @@ describe('InviteModal', () => {
 
     // Use an email that passes basic validation but fails our strict regex (needs 2+ char TLD)
     fillEmails('invalid@email.c')
+    await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     expect(toast.error).toHaveBeenCalledWith('common.members.emailInvalid')
@@ -168,10 +309,12 @@ describe('InviteModal', () => {
   })
 
   it('should show unlimited label when workspace member limit is zero', async () => {
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: 5, limit: 0 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: 5, limit: 0 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
 
     renderModal()
 
@@ -179,10 +322,12 @@ describe('InviteModal', () => {
   })
 
   it('should initialize usedSize to zero when workspace_members.size is null', async () => {
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: null, limit: 10 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: null, limit: 10 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
 
     renderModal()
 
@@ -200,6 +345,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     await waitFor(() => {
@@ -210,10 +356,12 @@ describe('InviteModal', () => {
   })
 
   it('should show destructive text color when used size exceeds limit', async () => {
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: 10, limit: 10 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: 10, limit: 10 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
 
     renderModal()
 
@@ -235,6 +383,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
 
     const sendBtn = screen.getByRole('button', { name: /members\.sendInvite/i })
 
@@ -257,10 +406,12 @@ describe('InviteModal', () => {
 
   it('should show destructive color and disable send button when limit is exactly met with one email', async () => {
     // size=10, limit=10 - adding 1 email makes usedSize=11 > limit=10
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: 10, limit: 10 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: 10, limit: 10 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
 
     renderModal()
 
@@ -283,6 +434,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
 
     const sendBtn = screen.getByRole('button', { name: /members\.sendInvite/i })
 
@@ -303,10 +455,12 @@ describe('InviteModal', () => {
 
   it('should not show error text color when isLimited is false even with many emails', async () => {
     // size=0, limit=0 → isLimited=false, usedSize=emails.length
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: 0, limit: 0 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: 0, limit: 0 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
 
     renderModal()
 

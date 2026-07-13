@@ -38,6 +38,7 @@ from services.app_dsl_service import (
 )
 from services.app_service import AppService, CreateAppParams
 from services.dsl_version import check_version_compatibility
+from services.errors.app import WorkflowNotFoundError
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 _DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -75,7 +76,7 @@ def _app_stub(**overrides: Any) -> App:
     defaults = {
         "id": str(uuid4()),
         "tenant_id": _DEFAULT_TENANT_ID,
-        "mode": AppMode.WORKFLOW.value,
+        "mode": AppMode.WORKFLOW,
         "name": "n",
         "description": "d",
         "icon_type": IconType.EMOJI,
@@ -144,8 +145,11 @@ class TestAppDslService:
                 name=fake.name(),
                 interface_language="en-US",
                 password=generate_valid_password(fake),
+                session=db_session_with_containers,
             )
-            TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+            TenantService.create_owner_tenant_if_not_exist(
+                account, name=fake.company(), session=db_session_with_containers
+            )
             tenant = account.current_tenant
             app_args = CreateAppParams(
                 name=fake.company(),
@@ -158,7 +162,7 @@ class TestAppDslService:
                 api_rpm=10,
             )
             app_service = AppService()
-            app = app_service.create_app(tenant.id, app_args, account)
+            app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
             return app, account
 
     def _create_simple_yaml_content(self, app_name: str = "Test App", app_mode: str = "chat") -> str:
@@ -528,7 +532,7 @@ class TestAppDslService:
 
         created_app = SimpleNamespace(
             id=str(uuid4()),
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             tenant_id=_DEFAULT_TENANT_ID,
         )
         monkeypatch.setattr(
@@ -707,7 +711,7 @@ class TestAppDslService:
         )
 
         app = _app_stub(
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             name="old",
             description="old-desc",
             icon_type=IconType.EMOJI,
@@ -721,7 +725,7 @@ class TestAppDslService:
             app=app,
             data={
                 "app": {
-                    "mode": AppMode.WORKFLOW.value,
+                    "mode": AppMode.WORKFLOW,
                     "name": "yaml-name",
                     "icon_type": IconType.IMAGE,
                     "icon": "X",
@@ -747,7 +751,7 @@ class TestAppDslService:
         with pytest.raises(ValueError, match="Current tenant is not set"):
             service._create_or_update_app(
                 app=None,
-                data={"app": {"mode": AppMode.WORKFLOW.value, "name": "n"}},
+                data={"app": {"mode": AppMode.WORKFLOW, "name": "n"}},
                 account=account,
             )
 
@@ -772,7 +776,7 @@ class TestAppDslService:
             )
         ]
         data = {
-            "app": {"mode": AppMode.WORKFLOW.value, "name": "n"},
+            "app": {"mode": AppMode.WORKFLOW, "name": "n"},
             "workflow": {
                 "graph": {"nodes": []},
                 "features": {},
@@ -792,8 +796,8 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Missing workflow data"):
             service._create_or_update_app(
-                app=_app_stub(mode=AppMode.WORKFLOW.value),
-                data={"app": {"mode": AppMode.WORKFLOW.value}},
+                app=_app_stub(mode=AppMode.WORKFLOW),
+                data={"app": {"mode": AppMode.WORKFLOW}},
                 account=_account_mock(),
             )
 
@@ -837,7 +841,7 @@ class TestAppDslService:
 
     # ── Export ─────────────────────────────────────────────────────────
 
-    def test_export_dsl_delegates_by_mode(self, monkeypatch: pytest.MonkeyPatch):
+    def test_export_dsl_delegates_by_mode(self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session):
         workflow_calls: list[bool] = []
         model_calls: list[bool] = []
         monkeypatch.setattr(
@@ -852,10 +856,10 @@ class TestAppDslService:
         )
 
         workflow_app = _app_stub(
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             icon_type="emoji",
         )
-        AppDslService.export_dsl(workflow_app)
+        AppDslService.export_dsl(workflow_app, session=db_session_with_containers)
         assert workflow_calls == [True]
 
         chat_app = _app_stub(
@@ -863,10 +867,12 @@ class TestAppDslService:
             icon_type="emoji",
             app_model_config=SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": []}}),
         )
-        AppDslService.export_dsl(chat_app)
+        AppDslService.export_dsl(chat_app, session=db_session_with_containers)
         assert model_calls == [True]
 
-    def test_export_dsl_preserves_icon_and_icon_type(self, monkeypatch: pytest.MonkeyPatch):
+    def test_export_dsl_preserves_icon_and_icon_type(
+        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+    ):
         monkeypatch.setattr(
             AppDslService,
             "_append_workflow_export_data",
@@ -874,7 +880,7 @@ class TestAppDslService:
         )
 
         emoji_app = _app_stub(
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             name="Emoji App",
             icon="🎨",
             icon_type=IconType.EMOJI,
@@ -882,14 +888,14 @@ class TestAppDslService:
             description="App with emoji icon",
             use_icon_as_answer_icon=True,
         )
-        yaml_output = AppDslService.export_dsl(emoji_app)
+        yaml_output = AppDslService.export_dsl(emoji_app, session=db_session_with_containers)
         data = yaml.safe_load(yaml_output)
         assert data["app"]["icon"] == "🎨"
         assert data["app"]["icon_type"] == "emoji"
         assert data["app"]["icon_background"] == "#FF5733"
 
         image_app = _app_stub(
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             name="Image App",
             icon="https://example.com/icon.png",
             icon_type=IconType.IMAGE,
@@ -897,7 +903,7 @@ class TestAppDslService:
             description="App with image icon",
             use_icon_as_answer_icon=False,
         )
-        yaml_output = AppDslService.export_dsl(image_app)
+        yaml_output = AppDslService.export_dsl(image_app, session=db_session_with_containers)
         data = yaml.safe_load(yaml_output)
         assert data["app"]["icon"] == "https://example.com/icon.png"
         assert data["app"]["icon_type"] == "image"
@@ -932,7 +938,7 @@ class TestAppDslService:
         db_session_with_containers.add(model_config)
         db_session_with_containers.commit()
 
-        exported_dsl = AppDslService.export_dsl(app, include_secret=False)
+        exported_dsl = AppDslService.export_dsl(app, include_secret=False, session=db_session_with_containers)
         exported_data = yaml.safe_load(exported_dsl)
 
         assert exported_data["kind"] == "app"
@@ -968,7 +974,7 @@ class TestAppDslService:
             "workflow_service"
         ].return_value.get_draft_workflow.return_value = mock_workflow
 
-        exported_dsl = AppDslService.export_dsl(app, include_secret=False)
+        exported_dsl = AppDslService.export_dsl(app, include_secret=False, session=db_session_with_containers)
         exported_data = yaml.safe_load(exported_dsl)
 
         assert exported_data["kind"] == "app"
@@ -1002,7 +1008,7 @@ class TestAppDslService:
 
         workflow_id = str(uuid4())
 
-        def mock_get_draft_workflow(app_model, wf_id=None):
+        def mock_get_draft_workflow(app_model, wf_id=None, **_kwargs):
             if wf_id == workflow_id:
                 return mock_workflow
             return None
@@ -1011,7 +1017,9 @@ class TestAppDslService:
             "workflow_service"
         ].return_value.get_draft_workflow.side_effect = mock_get_draft_workflow
 
-        exported_dsl = AppDslService.export_dsl(app, include_secret=False, workflow_id=workflow_id)
+        exported_dsl = AppDslService.export_dsl(
+            app, include_secret=False, workflow_id=workflow_id, session=db_session_with_containers
+        )
         exported_data = yaml.safe_load(exported_dsl)
 
         assert exported_data["kind"] == "app"
@@ -1027,14 +1035,18 @@ class TestAppDslService:
         mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.return_value = None
 
         with pytest.raises(
-            ValueError,
+            WorkflowNotFoundError,
             match="Missing draft workflow configuration, please check.",
         ):
-            AppDslService.export_dsl(app, include_secret=False, workflow_id=str(uuid4()))
+            AppDslService.export_dsl(
+                app, include_secret=False, workflow_id=str(uuid4()), session=db_session_with_containers
+            )
 
     # ── Workflow Export Data ───────────────────────────────────────────
 
-    def test_append_workflow_export_data_filters_and_overrides(self, monkeypatch: pytest.MonkeyPatch):
+    def test_append_workflow_export_data_filters_and_overrides(
+        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+    ):
         workflow_dict = {
             "graph": {
                 "nodes": [
@@ -1119,6 +1131,7 @@ class TestAppDslService:
             app_model=_app_stub(),
             include_secret=False,
             workflow_id=None,
+            session=db_session_with_containers,
         )
 
         nodes = export_data["workflow"]["graph"]["nodes"]
@@ -1134,17 +1147,20 @@ class TestAppDslService:
         assert nodes[5]["data"]["subscription_id"] == ""
         assert export_data["dependencies"] == [{"tenant": _DEFAULT_TENANT_ID, "dep": "dep-1"}]
 
-    def test_append_workflow_export_data_missing_workflow_raises(self, monkeypatch: pytest.MonkeyPatch):
+    def test_append_workflow_export_data_missing_workflow_raises(
+        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+    ):
         workflow_service = MagicMock()
         workflow_service.get_draft_workflow.return_value = None
         monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
 
-        with pytest.raises(ValueError, match="Missing draft workflow configuration"):
+        with pytest.raises(WorkflowNotFoundError, match="Missing draft workflow configuration"):
             AppDslService._append_workflow_export_data(
                 export_data={},
                 app_model=_app_stub(),
                 include_secret=False,
                 workflow_id=None,
+                session=db_session_with_containers,
             )
 
     # ── Model Config Export Data ──────────────────────────────────────

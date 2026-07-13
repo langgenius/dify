@@ -1,19 +1,22 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes } from 'react'
+import type * as React from 'react'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { textControlCompoundFocusClassName } from '../form-control-shared'
 
 export const NumberField = BaseNumberField.Root
-export type NumberFieldRootProps = BaseNumberField.Root.Props
+export type NumberFieldProps = BaseNumberField.Root.Props
 
 export const numberFieldGroupVariants = cva(
   [
     'group/number-field flex w-full min-w-0 items-stretch overflow-hidden border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
+    textControlCompoundFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
+    'data-invalid:border-components-input-border-destructive data-invalid:bg-components-input-bg-destructive',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
     'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
     'data-readonly:shadow-none data-readonly:hover:border-transparent data-readonly:hover:bg-components-input-bg-normal motion-reduce:transition-none',
@@ -32,13 +35,12 @@ export const numberFieldGroupVariants = cva(
 )
 export type NumberFieldSize = NonNullable<VariantProps<typeof numberFieldGroupVariants>['size']>
 
-export type NumberFieldGroupProps = BaseNumberField.Group.Props & VariantProps<typeof numberFieldGroupVariants>
+export type NumberFieldGroupProps = Omit<BaseNumberField.Group.Props, 'className'> &
+  VariantProps<typeof numberFieldGroupVariants> & {
+    className?: string
+  }
 
-export function NumberFieldGroup({
-  className,
-  size = 'medium',
-  ...props
-}: NumberFieldGroupProps) {
+export function NumberFieldGroup({ className, size = 'medium', ...props }: NumberFieldGroupProps) {
   return (
     <BaseNumberField.Group
       className={cn(numberFieldGroupVariants({ size }), className)}
@@ -67,13 +69,12 @@ export const numberFieldInputVariants = cva(
   },
 )
 
-export type NumberFieldInputProps = Omit<BaseNumberField.Input.Props, 'size'> & VariantProps<typeof numberFieldInputVariants>
+export type NumberFieldInputProps = Omit<BaseNumberField.Input.Props, 'className' | 'size'> &
+  VariantProps<typeof numberFieldInputVariants> & {
+    className?: string
+  }
 
-export function NumberFieldInput({
-  className,
-  size = 'medium',
-  ...props
-}: NumberFieldInputProps) {
+export function NumberFieldInput({ className, size = 'medium', ...props }: NumberFieldInputProps) {
   return (
     <BaseNumberField.Input
       className={cn(numberFieldInputVariants({ size }), className)}
@@ -87,8 +88,8 @@ export const numberFieldUnitVariants = cva(
   {
     variants: {
       size: {
-        medium: 'pr-2',
-        large: 'pr-2.5',
+        medium: 'pe-2',
+        large: 'pe-2.5',
       },
     },
     defaultVariants: {
@@ -97,44 +98,28 @@ export const numberFieldUnitVariants = cva(
   },
 )
 
-export type NumberFieldUnitProps = HTMLAttributes<HTMLSpanElement> & VariantProps<typeof numberFieldUnitVariants>
+export type NumberFieldUnitProps = React.ComponentProps<'span'> &
+  VariantProps<typeof numberFieldUnitVariants>
 
-export function NumberFieldUnit({
-  className,
-  size = 'medium',
-  ...props
-}: NumberFieldUnitProps) {
-  return (
-    <span
-      className={cn(numberFieldUnitVariants({ size }), className)}
-      {...props}
-    />
-  )
+export function NumberFieldUnit({ className, size = 'medium', ...props }: NumberFieldUnitProps) {
+  return <span className={cn(numberFieldUnitVariants({ size }), className)} {...props} />
 }
 
 const numberFieldControlsVariants = cva(
   'flex shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
 )
 
-export type NumberFieldControlsProps = HTMLAttributes<HTMLDivElement>
+export type NumberFieldControlsProps = React.ComponentProps<'div'>
 
-export function NumberFieldControls({
-  className,
-  ...props
-}: NumberFieldControlsProps) {
-  return (
-    <div
-      className={cn(numberFieldControlsVariants(), className)}
-      {...props}
-    />
-  )
+export function NumberFieldControls({ className, ...props }: NumberFieldControlsProps) {
+  return <div className={cn(numberFieldControlsVariants(), className)} {...props} />
 }
 
 const numberFieldControlButtonVariants = cva(
   [
     'flex touch-manipulation items-center justify-center px-1.5 text-text-tertiary outline-hidden transition-colors select-none',
     'hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover',
-    'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/number-field:cursor-not-allowed hover:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:ring-0',
     'group-data-readonly/number-field:cursor-default hover:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:ring-0',
@@ -185,7 +170,10 @@ type NumberFieldButtonVariantProps = Omit<
   'direction'
 >
 
-export type NumberFieldButtonProps = BaseNumberField.Increment.Props & NumberFieldButtonVariantProps
+export type NumberFieldButtonProps = Omit<BaseNumberField.Increment.Props, 'className'> &
+  NumberFieldButtonVariantProps & {
+    className?: string
+  }
 
 const incrementAriaLabel = 'Increment value'
 const decrementAriaLabel = 'Decrement value'
@@ -199,7 +187,9 @@ export function NumberFieldIncrement({
   return (
     <BaseNumberField.Increment
       {...props}
-      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : incrementAriaLabel)}
+      aria-label={
+        props['aria-label'] ?? (props['aria-labelledby'] ? undefined : incrementAriaLabel)
+      }
       className={cn(numberFieldControlButtonVariants({ size, direction: 'increment' }), className)}
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-up-s-line size-3" />}
@@ -216,7 +206,9 @@ export function NumberFieldDecrement({
   return (
     <BaseNumberField.Decrement
       {...props}
-      aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : decrementAriaLabel)}
+      aria-label={
+        props['aria-label'] ?? (props['aria-labelledby'] ? undefined : decrementAriaLabel)
+      }
       className={cn(numberFieldControlButtonVariants({ size, direction: 'decrement' }), className)}
     >
       {children ?? <span aria-hidden="true" className="i-ri-arrow-down-s-line size-3" />}

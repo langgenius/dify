@@ -10,7 +10,7 @@ type Item = {
   value: string
   label: string
 }
-type Props = {
+type Props = Readonly<{
   className?: string
   trigger?: React.JSX.Element
   DropDownIcon?: any
@@ -26,7 +26,7 @@ type Props = {
   itemClassName?: string
   readonly?: boolean
   showChecked?: boolean
-}
+}>
 
 const TypeSelector: FC<Props> = ({
   className,
@@ -46,46 +46,69 @@ const TypeSelector: FC<Props> = ({
   showChecked,
 }) => {
   const noValue = value === '' || value === undefined || value === null
-  const item = allOptions ? allOptions.find(item => item.value === value) : list.find(item => item.value === value)
+  const item = allOptions
+    ? allOptions.find((item) => item.value === value)
+    : list.find((item) => item.value === value)
   const [showOption, { setFalse: setHide, toggle: toggleShow }] = useBoolean(false)
   const ref = React.useRef(null)
   useClickAway(() => {
     setHide()
   }, ref)
   return (
-    <div className={cn(!trigger && !noLeft && 'left-[-8px]', 'relative select-none', className)} ref={ref}>
-      {trigger
-        ? (
-            <div
-              onClick={toggleShow}
-              className={cn(!readonly && 'cursor-pointer')}
-            >
-              {trigger}
-            </div>
-          )
-        : (
-            <div
-              onClick={toggleShow}
-              className={cn(showOption && 'bg-state-base-hover', 'flex h-5 cursor-pointer items-center rounded-md pr-0.5 pl-1 text-xs font-semibold text-text-secondary hover:bg-state-base-hover')}
-            >
-              <div className={cn('text-sm font-semibold', uppercase && 'uppercase', noValue && 'text-text-tertiary', triggerClassName)}>{!noValue ? item?.label : placeholder}</div>
-              {!readonly && <DropDownIcon className="size-3" />}
-            </div>
+    <div
+      className={cn(!trigger && !noLeft && 'left-[-8px]', 'relative select-none', className)}
+      ref={ref}
+    >
+      {trigger ? (
+        <div onClick={toggleShow} className={cn(!readonly && 'cursor-pointer')}>
+          {trigger}
+        </div>
+      ) : (
+        <div
+          onClick={toggleShow}
+          className={cn(
+            showOption && 'bg-state-base-hover',
+            'flex h-5 cursor-pointer items-center rounded-md pr-0.5 pl-1 text-xs font-semibold text-text-secondary hover:bg-state-base-hover',
           )}
+        >
+          <div
+            className={cn(
+              'text-sm font-semibold',
+              uppercase && 'uppercase',
+              noValue && 'text-text-tertiary',
+              triggerClassName,
+            )}
+          >
+            {!noValue ? item?.label : placeholder}
+          </div>
+          {!readonly && <DropDownIcon className="size-3" />}
+        </div>
+      )}
 
-      {(showOption && !readonly) && (
-        <div className={cn('absolute top-[24px] z-10 w-[120px] rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg select-none', popupClassName)}>
-          {list.map(item => (
+      {showOption && !readonly && (
+        <div
+          className={cn(
+            'absolute top-[24px] z-10 w-[120px] rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg select-none',
+            popupClassName,
+          )}
+        >
+          {list.map((item) => (
             <div
               key={item.value}
               onClick={() => {
                 setHide()
                 onChange(item.value)
               }}
-              className={cn(itemClassName, uppercase && 'uppercase', 'flex h-[30px] min-w-[44px] cursor-pointer items-center justify-between rounded-lg px-3 text-[13px] font-medium text-text-secondary hover:bg-state-base-hover')}
+              className={cn(
+                itemClassName,
+                uppercase && 'uppercase',
+                'flex h-[30px] min-w-[44px] cursor-pointer items-center justify-between rounded-lg px-3 text-[13px] font-medium text-text-secondary hover:bg-state-base-hover',
+              )}
             >
               <div>{item.label}</div>
-              {showChecked && item.value === value && <Check className="size-4 text-text-primary" />}
+              {showChecked && item.value === value && (
+                <Check className="size-4 text-text-primary" />
+              )}
             </div>
           ))}
         </div>

@@ -1,23 +1,23 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { MeterIndicator, MeterLabel, MeterRoot, MeterTrack, MeterValue } from '.'
+import { Meter, MeterIndicator, MeterLabel, MeterTrack, MeterValue } from '.'
 
 const meta = {
   title: 'Base/UI/Meter',
-  component: MeterRoot,
+  component: Meter,
   parameters: {
     layout: 'centered',
     docs: {
       description: {
         component:
-          'A graphical display of a numeric value within a known range. '
-          + 'Use the compound primitives (`MeterRoot / MeterTrack / MeterIndicator / '
-          + 'MeterValue / MeterLabel`) for quota, capacity, or score indicators; do '
-          + 'not use for task-completion progress.',
+          'A graphical display of a numeric value within a known range. ' +
+          'Use the compound primitives (`Meter / MeterTrack / MeterIndicator / ' +
+          'MeterValue / MeterLabel`) for quota, capacity, or score indicators; do ' +
+          'not use for task-completion progress.',
       },
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof MeterRoot>
+} satisfies Meta<typeof Meter>
 
 export default meta
 
@@ -25,60 +25,60 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
   args: {
-    'value': 42,
+    value: 42,
     'aria-label': 'Quota used',
   },
-  render: args => (
+  render: (args) => (
     <div className="w-[320px]">
-      <MeterRoot {...args}>
+      <Meter {...args}>
         <MeterTrack>
           <MeterIndicator />
         </MeterTrack>
-      </MeterRoot>
+      </Meter>
     </div>
   ),
 }
 
 export const Warning: Story = {
   args: {
-    'value': 85,
+    value: 85,
     'aria-label': 'Quota used',
   },
-  render: args => (
+  render: (args) => (
     <div className="w-[320px]">
-      <MeterRoot {...args}>
+      <Meter {...args}>
         <MeterTrack>
           <MeterIndicator tone="warning" />
         </MeterTrack>
-      </MeterRoot>
+      </Meter>
     </div>
   ),
 }
 
 export const Error: Story = {
   args: {
-    'value': 100,
+    value: 100,
     'aria-label': 'Quota used',
   },
-  render: args => (
+  render: (args) => (
     <div className="w-[320px]">
-      <MeterRoot {...args}>
+      <Meter {...args}>
         <MeterTrack>
           <MeterIndicator tone="error" />
         </MeterTrack>
-      </MeterRoot>
+      </Meter>
     </div>
   ),
 }
 
 export const ComposedWithLabelAndValue: Story = {
   args: {
-    'value': 62,
+    value: 62,
     'aria-label': 'Storage used',
   },
-  render: args => (
+  render: (args) => (
     <div className="w-[320px] space-y-2 rounded-xl bg-components-panel-bg p-4">
-      <MeterRoot {...args}>
+      <Meter {...args}>
         <div className="flex items-center justify-between">
           <MeterLabel>Storage</MeterLabel>
           <MeterValue />
@@ -86,22 +86,22 @@ export const ComposedWithLabelAndValue: Story = {
         <MeterTrack className="mt-2">
           <MeterIndicator tone="warning" />
         </MeterTrack>
-      </MeterRoot>
+      </Meter>
     </div>
   ),
 }
 
 export const PercentFormatted: Story = {
   args: {
-    'value': 0.73,
-    'min': 0,
-    'max': 1,
-    'format': { style: 'percent', maximumFractionDigits: 0 },
+    value: 0.73,
+    min: 0,
+    max: 1,
+    format: { style: 'percent', maximumFractionDigits: 0 },
     'aria-label': 'Retrieval score',
   },
-  render: args => (
+  render: (args) => (
     <div className="w-[320px] space-y-2">
-      <MeterRoot {...args}>
+      <Meter {...args}>
         <div className="flex items-center justify-between">
           <MeterLabel>Score</MeterLabel>
           <MeterValue />
@@ -109,7 +109,7 @@ export const PercentFormatted: Story = {
         <MeterTrack className="mt-2">
           <MeterIndicator />
         </MeterTrack>
-      </MeterRoot>
+      </Meter>
     </div>
   ),
 }

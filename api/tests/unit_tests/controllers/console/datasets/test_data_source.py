@@ -11,7 +11,7 @@ from flask import Flask
 
 from controllers.console.datasets import data_source as module
 from controllers.console.datasets.data_source import DataSourceApi, DataSourceNotionListApi
-from models import DataSourceOauthBinding
+from models import Account, DataSourceOauthBinding
 
 ControllerMethod = Callable[..., tuple[dict[str, object], int]]
 
@@ -28,13 +28,13 @@ def flask_app() -> Flask:
 
 
 @pytest.fixture
-def tenant_context() -> tuple[MagicMock, str]:
-    return MagicMock(id="user-1"), "tenant-1"
+def current_user() -> Account:
+    account = Account(name="Test User", email="user-1@example.com")
+    account.id = "user-1"
+    return account
 
 
-def test_get_data_source_integrates_serializes_orm_binding(
-    flask_app: Flask, tenant_context: tuple[MagicMock, str]
-) -> None:
+def test_get_data_source_integrates_serializes_orm_binding(flask_app: Flask) -> None:
     binding = DataSourceOauthBinding(
         tenant_id="tenant-1",
         access_token="token",
@@ -61,10 +61,9 @@ def test_get_data_source_integrates_serializes_orm_binding(
 
     with (
         flask_app.test_request_context("/"),
-        patch.object(module, "current_account_with_tenant", return_value=tenant_context),
         patch.object(module.db.session, "scalars", return_value=MagicMock(all=lambda: [binding])),
     ):
-        response, status = unwrap(DataSourceApi().get)(DataSourceApi())
+        response, status = unwrap(DataSourceApi().get)(DataSourceApi(), "tenant-1")
 
     assert status == 200
     assert response == {
@@ -96,23 +95,18 @@ def test_get_data_source_integrates_serializes_orm_binding(
     }
 
 
-def test_get_data_source_integrates_preserves_empty_list_when_no_binding(
-    flask_app: Flask, tenant_context: tuple[MagicMock, str]
-) -> None:
+def test_get_data_source_integrates_preserves_empty_list_when_no_binding(flask_app: Flask) -> None:
     with (
         flask_app.test_request_context("/"),
-        patch.object(module, "current_account_with_tenant", return_value=tenant_context),
         patch.object(module.db.session, "scalars", return_value=MagicMock(all=lambda: [])),
     ):
-        response, status = unwrap(DataSourceApi().get)(DataSourceApi())
+        response, status = unwrap(DataSourceApi().get)(DataSourceApi(), "tenant-1")
 
     assert status == 200
     assert response == {"data": []}
 
 
-def test_notion_pre_import_pages_serializes_frontend_list_shape(
-    flask_app: Flask, tenant_context: tuple[MagicMock, str]
-) -> None:
+def test_notion_pre_import_pages_serializes_frontend_list_shape(flask_app: Flask, current_user: Account) -> None:
     page = MagicMock(
         page_id="page-1",
         page_name="Page",
@@ -137,7 +131,6 @@ def test_notion_pre_import_pages_serializes_frontend_list_shape(
 
     with (
         flask_app.test_request_context("/?credential_id=credential-1"),
-        patch.object(module, "current_account_with_tenant", return_value=tenant_context),
         patch.object(
             module.DatasourceProviderService,
             "get_datasource_credentials",
@@ -147,7 +140,7 @@ def test_notion_pre_import_pages_serializes_frontend_list_shape(
         patch.object(module, "sessionmaker"),
         patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime),
     ):
-        response, status = unwrap(DataSourceNotionListApi().get)(DataSourceNotionListApi())
+        response, status = unwrap(DataSourceNotionListApi().get)(DataSourceNotionListApi(), "tenant-1", current_user)
 
     assert status == 200
     assert response == {

@@ -27,7 +27,9 @@ describe('markdown-with-directive', () => {
     })
 
     it('should return true when withiconcarditem props are valid', () => {
-      expect(validateDirectiveProps('withiconcarditem', { icon: 'https://example.com/icon.png' })).toBe(true)
+      expect(
+        validateDirectiveProps('withiconcarditem', { icon: 'https://example.com/icon.png' }),
+      ).toBe(true)
     })
 
     it('should return false and log when directive name is unknown', () => {
@@ -48,7 +50,9 @@ describe('markdown-with-directive', () => {
     it('should return false and log when withiconcarditem icon is not http/https', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-      const isValid = validateDirectiveProps('withiconcarditem', { icon: 'ftp://example.com/icon.png' })
+      const isValid = validateDirectiveProps('withiconcarditem', {
+        icon: 'ftp://example.com/icon.png',
+      })
 
       expect(isValid).toBe(false)
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -174,7 +178,8 @@ describe('markdown-with-directive', () => {
     })
 
     it('should call sanitizer and render based on sanitized markdown', () => {
-      const sanitizeSpy = vi.spyOn(DOMPurify, 'sanitize')
+      const sanitizeSpy = vi
+        .spyOn(DOMPurify, 'sanitize')
         .mockReturnValue(':withiconcarditem[Sanitized]{icon="https://example.com/safe.png"}')
 
       const { container } = render(<MarkdownWithDirective markdown="<script>alert(1)</script>" />)

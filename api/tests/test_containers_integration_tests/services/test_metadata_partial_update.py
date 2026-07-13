@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -8,6 +8,7 @@ from flask import Flask
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from models import Account, Tenant
 from models.dataset import Dataset, DatasetMetadataBinding, Document
 from models.enums import DataSourceType, DocumentCreatedFrom
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -33,7 +34,7 @@ def _create_dataset(db_session: Session, *, tenant_id: str, built_in_field_enabl
 
 
 def _create_document(
-    db_session: Session, *, dataset_id: str, tenant_id: str, doc_metadata: dict | None = None
+    db_session: Session, *, dataset_id: str, tenant_id: str, doc_metadata: dict[str, str] | None = None
 ) -> Document:
     document = Document(
         tenant_id=tenant_id,
@@ -63,18 +64,21 @@ class TestMetadataPartialUpdate:
         return str(uuid4())
 
     @pytest.fixture
-    def mock_current_account(self, user_id, tenant_id):
-        account = Mock(id=user_id, current_tenant_id=tenant_id)
-        with patch("services.metadata_service.current_account_with_tenant", return_value=(account, tenant_id)):
-            yield account
+    def current_account(self, user_id: str, tenant_id: str) -> Account:
+        account = Account(name="Test User", email=f"{user_id}@example.com")
+        account.id = user_id
+        tenant = Tenant(name="Test Tenant")
+        tenant.id = tenant_id
+        account._current_tenant = tenant
+        return account
 
     def test_partial_update_merges_metadata(
         self,
         flask_app_with_containers: Flask,
         db_session_with_containers: Session,
         tenant_id: str,
-        mock_current_account,
-    ):
+        current_account: Account,
+    ) -> None:
         dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
         document = _create_document(
             db_session_with_containers,
@@ -91,7 +95,9 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        MetadataService.update_documents_metadata(dataset, metadata_args)
+        MetadataService.update_documents_metadata(
+            dataset, metadata_args, current_account, session=db_session_with_containers
+        )
         db_session_with_containers.expire_all()
 
         updated_doc = db_session_with_containers.get(Document, document.id)
@@ -104,8 +110,8 @@ class TestMetadataPartialUpdate:
         flask_app_with_containers: Flask,
         db_session_with_containers: Session,
         tenant_id: str,
-        mock_current_account,
-    ):
+        current_account: Account,
+    ) -> None:
         dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
         document = _create_document(
             db_session_with_containers,
@@ -122,7 +128,9 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        MetadataService.update_documents_metadata(dataset, metadata_args)
+        MetadataService.update_documents_metadata(
+            dataset, metadata_args, current_account, session=db_session_with_containers
+        )
         db_session_with_containers.expire_all()
 
         updated_doc = db_session_with_containers.get(Document, document.id)
@@ -134,10 +142,10 @@ class TestMetadataPartialUpdate:
         self,
         flask_app_with_containers: Flask,
         db_session_with_containers: Session,
-        tenant_id,
-        user_id,
-        mock_current_account,
-    ):
+        tenant_id: str,
+        user_id: str,
+        current_account: Account,
+    ) -> None:
         dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
         document = _create_document(
             db_session_with_containers,
@@ -164,7 +172,9 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        MetadataService.update_documents_metadata(dataset, metadata_args)
+        MetadataService.update_documents_metadata(
+            dataset, metadata_args, current_account, session=db_session_with_containers
+        )
         db_session_with_containers.expire_all()
 
         bindings = db_session_with_containers.scalars(
@@ -180,8 +190,8 @@ class TestMetadataPartialUpdate:
         flask_app_with_containers: Flask,
         db_session_with_containers: Session,
         tenant_id: str,
-        mock_current_account,
-    ):
+        current_account: Account,
+    ) -> None:
         dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
         document = _create_document(
             db_session_with_containers,
@@ -198,6 +208,8 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        with patch("services.metadata_service.db.session.commit", side_effect=RuntimeError("database connection lost")):
+        with patch.object(db_session_with_containers, "commit", side_effect=RuntimeError("database connection lost")):
             with pytest.raises(RuntimeError, match="database connection lost"):
-                MetadataService.update_documents_metadata(dataset, metadata_args)
+                MetadataService.update_documents_metadata(
+                    dataset, metadata_args, current_account, session=db_session_with_containers
+                )

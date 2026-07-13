@@ -2,40 +2,27 @@
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Dialog,
-  DialogCloseButton,
-  DialogContent,
-  DialogTitle,
-} from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
-import {
-  ConfigurationStepContent,
-  MultiSteps,
-  VerifyStepContent,
-} from './components/modal-steps'
+import { ConfigurationStepContent, MultiSteps, VerifyStepContent } from './components/modal-steps'
 import {
   ApiKeyStep,
   MODAL_TITLE_KEY_MAP,
   useCommonModalState,
 } from './hooks/use-common-modal-state'
 
-type Props = {
+type Props = Readonly<{
   open?: boolean
   onClose: () => void
   createType: SupportedCreationMethods
   builder?: TriggerSubscriptionBuilder
-}
+}>
 
 export const CommonCreateModal = ({ open = true, onClose, createType, builder }: Props) => {
   return (
-    <Dialog
-      open={open}
-      onOpenChange={nextOpen => !nextOpen && onClose()}
-      disablePointerDismissal
-    >
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()} disablePointerDismissal>
       <DialogContent
         backdropProps={{ forceRender: true }}
         className={cn(
@@ -45,11 +32,7 @@ export const CommonCreateModal = ({ open = true, onClose, createType, builder }:
             : 'w-[480px] max-w-[calc(100vw-2rem)]',
         )}
       >
-        <CommonCreateModalContent
-          createType={createType}
-          builder={builder}
-          onClose={onClose}
-        />
+        <CommonCreateModalContent createType={createType} builder={builder} onClose={onClose} />
       </DialogContent>
     </Dialog>
   )
@@ -94,7 +77,7 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
     >
       <div className="relative shrink-0 p-6 pr-14 pb-3">
         <DialogTitle className="title-2xl-semi-bold text-text-primary" data-testid="modal-title">
-          {t(MODAL_TITLE_KEY_MAP[createType], { ns: 'pluginTrigger' })}
+          {t(($) => $[MODAL_TITLE_KEY_MAP[createType]], { ns: 'pluginTrigger' })}
         </DialogTitle>
         <DialogCloseButton
           className="top-5 right-5 size-8 rounded-lg [&>span]:size-5"
@@ -133,11 +116,8 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
 
       <div className="flex shrink-0 justify-end p-6 pt-5">
         <div className="flex items-center">
-          <Button
-            disabled={isDisabled}
-            onClick={onClose}
-          >
-            {t('operation.cancel', { ns: 'common' })}
+          <Button disabled={isDisabled} onClick={onClose}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button
             className="ml-2"

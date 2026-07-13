@@ -6,6 +6,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
@@ -23,11 +24,9 @@ import { getLLMModelIssue, LLMModelIssueCode } from './utils'
 
 const i18nPrefix = 'nodes.llm'
 
-const Panel: FC<NodePanelProps<LLMNodeType>> = ({
-  id,
-  data,
-}) => {
+const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
+  const flowType = useHooksStore((s) => s.configsMap?.flowType)
   const {
     readOnly,
     inputs,
@@ -66,50 +65,51 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   const model = inputs.model
   const isModelProviderInstalled = useProviderContextSelector((state) => {
     const modelIssue = getLLMModelIssue({ modelProvider: model?.provider })
-    if (modelIssue === LLMModelIssueCode.providerRequired)
-      return true
+    if (modelIssue === LLMModelIssueCode.providerRequired) return true
 
     const modelProviderPluginId = extractPluginId(model.provider)
-    return state.modelProviders.some(provider => extractPluginId(provider.provider) === modelProviderPluginId)
+    return state.modelProviders.some(
+      (provider) => extractPluginId(provider.provider) === modelProviderPluginId,
+    )
   })
-  const hasModelWarning = getLLMModelIssue({
-    modelProvider: model?.provider,
-    isModelProviderInstalled,
-  }) !== null
+  const hasModelWarning =
+    getLLMModelIssue({
+      modelProvider: model?.provider,
+      isModelProviderInstalled,
+    }) !== null
 
-  const handleModelChange = useCallback((model: {
-    provider: string
-    modelId: string
-    mode?: string
-  }) => {
-    (async () => {
-      try {
-        const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
-          model.provider,
-          model.modelId,
-          inputs.model.completion_params,
-          true,
-        )
-        const keys = Object.keys(removedDetails)
-        if (keys.length)
-          toast.warning(`${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`)
-        handleCompletionParamsChange(filtered)
-      }
-      catch {
-        toast.error(t('error', { ns: 'common' }))
-        handleCompletionParamsChange({})
-      }
-      finally {
-        handleModelChanged(model)
-      }
-    })()
-  }, [handleCompletionParamsChange, handleModelChanged, inputs.model.completion_params, t])
+  const handleModelChange = useCallback(
+    (model: { provider: string; modelId: string; mode?: string }) => {
+      ;(async () => {
+        try {
+          const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
+            model.provider,
+            model.modelId,
+            inputs.model.completion_params,
+            true,
+          )
+          const keys = Object.keys(removedDetails)
+          if (keys.length)
+            toast.warning(
+              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
+            )
+          handleCompletionParamsChange(filtered)
+        } catch {
+          toast.error(t(($) => $.error, { ns: 'common' }))
+          handleCompletionParamsChange({})
+        } finally {
+          handleModelChanged(model)
+        }
+      })()
+    },
+    [handleCompletionParamsChange, handleModelChanged, inputs.model.completion_params, t],
+  )
 
   return (
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t(`${i18nPrefix}.model`, { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflow' })}
           required
           warningDot={hasModelWarning}
         >
@@ -132,8 +132,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
 
         {/* knowledge */}
         <Field
-          title={t(`${i18nPrefix}.context`, { ns: 'workflow' })}
-          tooltip={t(`${i18nPrefix}.contextTooltip`, { ns: 'workflow' })!}
+          title={t(($) => $[`${i18nPrefix}.context`], { ns: 'workflow' })}
+          tooltip={t(($) => $[`${i18nPrefix}.contextTooltip`], { ns: 'workflow' })!}
         >
           <>
             <VarReferencePicker
@@ -145,7 +145,9 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               filterVar={filterVar}
             />
             {shouldShowContextTip && (
-              <div className="text-xs leading-[18px] font-normal text-[#DC6803]">{t(`${i18nPrefix}.notSetContextInPromptTip`, { ns: 'workflow' })}</div>
+              <div className="text-xs leading-[18px] font-normal text-[#DC6803]">
+                {t(($) => $[`${i18nPrefix}.notSetContextInPromptTip`], { ns: 'workflow' })}
+              </div>
             )}
           </>
         </Field>
@@ -170,20 +172,18 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
 
         {isShowVars && (
           <Field
-            title={t('nodes.templateTransform.inputVars', { ns: 'workflow' })}
+            title={t(($) => $['nodes.templateTransform.inputVars'], { ns: 'workflow' })}
             operations={
-              !readOnly
-                ? (
-                    <button
-                      type="button"
-                      aria-label={`${t('operation.add', { ns: 'common' })} ${t('nodes.templateTransform.inputVars', { ns: 'workflow' })}`}
-                      className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                      onClick={handleAddEmptyVariable}
-                    >
-                      <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
-                    </button>
-                  )
-                : undefined
+              !readOnly ? (
+                <button
+                  type="button"
+                  aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $['nodes.templateTransform.inputVars'], { ns: 'workflow' })}`}
+                  className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={handleAddEmptyVariable}
+                >
+                  <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+                </button>
+              ) : undefined
             }
           >
             <VarList
@@ -210,6 +210,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               hasSetBlockStatus={hasSetBlockStatus}
               availableVars={availableVars}
               availableNodesWithParent={availableNodesWithParent}
+              flowType={flowType}
               handleSyeQueryChange={handleSyeQueryChange}
               handleMemoryChange={handleMemoryChange}
             />

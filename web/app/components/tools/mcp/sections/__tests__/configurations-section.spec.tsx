@@ -9,24 +9,30 @@ describe('ConfigurationsSection', () => {
     sseReadTimeout: 300,
     onSseReadTimeoutChange: vi.fn(),
   }
+  const getVisibleNumberInputs = () => screen.getAllByRole('textbox')
+  const getVisibleNumberInput = (index: number) => {
+    const input = getVisibleNumberInputs()[index]
+    if (!input) throw new Error(`Expected number input at index ${index}`)
+    return input
+  }
+  const getTimeoutInput = () => getVisibleNumberInput(0)
+  const getSseReadTimeoutInput = () => getVisibleNumberInput(1)
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<ConfigurationsSection {...defaultProps} />)
-      expect(screen.getByDisplayValue('30')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('300')).toBeInTheDocument()
+      expect(getTimeoutInput()).toHaveValue('30')
+      expect(getSseReadTimeoutInput()).toHaveValue('300')
     })
 
     it('should render timeout input with correct value', () => {
       render(<ConfigurationsSection {...defaultProps} />)
-      const timeoutInput = screen.getByDisplayValue('30')
-      expect(timeoutInput).toHaveAttribute('type', 'number')
+      expect(getTimeoutInput()).toHaveValue('30')
     })
 
     it('should render SSE read timeout input with correct value', () => {
       render(<ConfigurationsSection {...defaultProps} />)
-      const sseInput = screen.getByDisplayValue('300')
-      expect(sseInput).toHaveAttribute('type', 'number')
+      expect(getSseReadTimeoutInput()).toHaveValue('300')
     })
 
     it('should render labels for both inputs', () => {
@@ -40,12 +46,12 @@ describe('ConfigurationsSection', () => {
   describe('Props', () => {
     it('should display custom timeout value', () => {
       render(<ConfigurationsSection {...defaultProps} timeout={60} />)
-      expect(screen.getByDisplayValue('60')).toBeInTheDocument()
+      expect(getTimeoutInput()).toHaveValue('60')
     })
 
     it('should display custom SSE read timeout value', () => {
       render(<ConfigurationsSection {...defaultProps} sseReadTimeout={600} />)
-      expect(screen.getByDisplayValue('600')).toBeInTheDocument()
+      expect(getSseReadTimeoutInput()).toHaveValue('600')
     })
   })
 
@@ -54,7 +60,7 @@ describe('ConfigurationsSection', () => {
       const onTimeoutChange = vi.fn()
       render(<ConfigurationsSection {...defaultProps} onTimeoutChange={onTimeoutChange} />)
 
-      const timeoutInput = screen.getByDisplayValue('30')
+      const timeoutInput = getTimeoutInput()
       fireEvent.change(timeoutInput, { target: { value: '45' } })
 
       expect(onTimeoutChange).toHaveBeenCalledWith(45)
@@ -62,9 +68,11 @@ describe('ConfigurationsSection', () => {
 
     it('should call onSseReadTimeoutChange when SSE timeout input changes', () => {
       const onSseReadTimeoutChange = vi.fn()
-      render(<ConfigurationsSection {...defaultProps} onSseReadTimeoutChange={onSseReadTimeoutChange} />)
+      render(
+        <ConfigurationsSection {...defaultProps} onSseReadTimeoutChange={onSseReadTimeoutChange} />,
+      )
 
-      const sseInput = screen.getByDisplayValue('300')
+      const sseInput = getSseReadTimeoutInput()
       fireEvent.change(sseInput, { target: { value: '500' } })
 
       expect(onSseReadTimeoutChange).toHaveBeenCalledWith(500)
@@ -74,7 +82,7 @@ describe('ConfigurationsSection', () => {
       const onTimeoutChange = vi.fn()
       render(<ConfigurationsSection {...defaultProps} onTimeoutChange={onTimeoutChange} />)
 
-      const timeoutInput = screen.getByDisplayValue('30')
+      const timeoutInput = getTimeoutInput()
       fireEvent.change(timeoutInput, { target: { value: '0' } })
 
       expect(onTimeoutChange).toHaveBeenCalledWith(0)
@@ -84,12 +92,12 @@ describe('ConfigurationsSection', () => {
   describe('Edge Cases', () => {
     it('should handle zero timeout value', () => {
       render(<ConfigurationsSection {...defaultProps} timeout={0} />)
-      expect(screen.getByDisplayValue('0')).toBeInTheDocument()
+      expect(getTimeoutInput()).toHaveValue('0')
     })
 
     it('should handle zero SSE read timeout value', () => {
       render(<ConfigurationsSection {...defaultProps} sseReadTimeout={0} />)
-      expect(screen.getByDisplayValue('0')).toBeInTheDocument()
+      expect(getSseReadTimeoutInput()).toHaveValue('0')
     })
 
     it('should handle large timeout values', () => {

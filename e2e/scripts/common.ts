@@ -1,3 +1,4 @@
+import type { Buffer } from 'node:buffer'
 import type { ChildProcess } from 'node:child_process'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -31,6 +32,7 @@ type ForegroundProcessOptions = {
 export const rootDir = fileURLToPath(new URL('../..', import.meta.url))
 export const e2eDir = path.join(rootDir, 'e2e')
 export const apiDir = path.join(rootDir, 'api')
+export const difyAgentDir = path.join(rootDir, 'dify-agent')
 export const dockerDir = path.join(rootDir, 'docker')
 export const webDir = path.join(rootDir, 'web')
 
@@ -42,6 +44,7 @@ export const webEnvExampleFile = path.join(webDir, '.env.example')
 export const apiEnvExampleFile = path.join(apiDir, 'tests', 'integration_tests', '.env.example')
 export const e2eWebEnvOverrides = {
   NEXT_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/console/api',
+  NEXT_PUBLIC_ENABLE_AGENT_V2: 'true',
   NEXT_PUBLIC_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/api',
 } satisfies Record<string, string>
 
@@ -49,8 +52,7 @@ const formatCommand = (command: string, args: string[]) => [command, ...args].jo
 
 export const isMainModule = (metaUrl: string) => {
   const entrypoint = process.argv[1]
-  if (!entrypoint)
-    return false
+  if (!entrypoint) return false
 
   return pathToFileURL(entrypoint).href === metaUrl
 }
@@ -107,10 +109,24 @@ export const runCommandOrThrow = async (options: RunCommandOptions) => {
   return result
 }
 
+export const getTcpPortListenerDescription = async (port: number) => {
+  if (process.platform === 'win32') return ''
+
+  const result = await runCommand({
+    command: 'lsof',
+    args: ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN'],
+    cwd: rootDir,
+    stdio: 'pipe',
+  })
+
+  if (result.exitCode !== 0) return ''
+
+  return result.stdout.trim()
+}
+
 const forwardSignalsToChild = (childProcess: ChildProcess) => {
   const handleSignal = (signal: NodeJS.Signals) => {
-    if (childProcess.exitCode === null)
-      childProcess.kill(signal)
+    if (childProcess.exitCode === null) childProcess.kill(signal)
   }
 
   const onSigint = () => handleSignal('SIGINT')
@@ -155,8 +171,7 @@ export const runForegroundProcess = async ({
 export const ensureFileExists = async (filePath: string, exampleFilePath: string) => {
   try {
     await access(filePath)
-  }
-  catch {
+  } catch {
     await copyFile(exampleFilePath, filePath)
   }
 }
@@ -166,10 +181,9 @@ export const ensureLineInFile = async (filePath: string, line: string) => {
   const lines = fileContent.split(/\r?\n/)
   const assignmentPrefix = line.includes('=') ? `${line.slice(0, line.indexOf('='))}=` : null
 
-  if (lines.includes(line))
-    return
+  if (lines.includes(line)) return
 
-  if (assignmentPrefix && lines.some(existingLine => existingLine.startsWith(assignmentPrefix)))
+  if (assignmentPrefix && lines.some((existingLine) => existingLine.startsWith(assignmentPrefix)))
     return
 
   const normalizedContent = fileContent.endsWith('\n') ? fileContent : `${fileContent}\n`
@@ -188,20 +202,20 @@ export const getWebEnvLocalHash = async () => {
     .digest('hex')
 }
 
-export const readSimpleDotenv = async (filePath: string) => {
+export const readSimpleDotenv = async (filePath: string): Promise<Record<string, string>> => {
   const fileContent = await readFile(filePath, 'utf8')
   const entries = fileContent
     .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(line => line && !line.startsWith('#'))
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'))
     .map<[string, string]>((line) => {
       const separatorIndex = line.indexOf('=')
       const key = separatorIndex === -1 ? line : line.slice(0, separatorIndex).trim()
       const rawValue = separatorIndex === -1 ? '' : line.slice(separatorIndex + 1).trim()
 
       if (
-        (rawValue.startsWith('"') && rawValue.endsWith('"'))
-        || (rawValue.startsWith('\'') && rawValue.endsWith('\''))
+        (rawValue.startsWith('"') && rawValue.endsWith('"')) ||
+        (rawValue.startsWith("'") && rawValue.endsWith("'"))
       ) {
         return [key, rawValue.slice(1, -1)]
       }
@@ -226,8 +240,7 @@ export const waitForCondition = async ({
   const deadline = Date.now() + timeoutMs
 
   while (Date.now() < deadline) {
-    if (await check())
-      return
+    if (await check()) return
 
     await sleep(intervalMs)
   }

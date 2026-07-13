@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, NonNegativeFloat
 from pydantic_settings import BaseSettings
 
 
@@ -20,4 +20,21 @@ class AgentBackendConfig(BaseSettings):
     AGENT_BACKEND_FAKE_SCENARIO: str = Field(
         description="Scenario used by the fake Agent backend client.",
         default="success",
+    )
+
+    AGENT_SHELL_ENABLED: bool = Field(
+        description=(
+            "Inject the dify.shell layer (sandboxed bash workspace) into Agent runs. "
+            "Requires the agent backend to be wired with a shellctl entrypoint before "
+            "shell-using Agent runs are executed."
+        ),
+        default=True,
+    )
+
+    AGENT_APP_TEXT_DELTA_DEBOUNCE_SECONDS: NonNegativeFloat = Field(
+        description=(
+            "Buffer Agent App assistant text deltas for up to this many seconds before "
+            "publishing SSE chunks. Set to 0 to publish each delta immediately."
+        ),
+        default=0.5,
     )

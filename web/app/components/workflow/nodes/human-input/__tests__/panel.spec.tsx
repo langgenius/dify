@@ -32,10 +32,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@/app/components/base/action-button', () => ({
   __esModule: true,
-  default: (props: {
-    children: ReactNode
-    onClick: () => void
-  }) => (
+  default: (props: { children: ReactNode; onClick: () => void }) => (
     <button type="button" aria-label="action-button" onClick={props.onClick}>
       {props.children}
     </button>
@@ -66,11 +63,15 @@ vi.mock('../components/delivery-method', () => ({
     return (
       <button
         type="button"
-        onClick={() => props.onChange([{
-          id: 'dm-email',
-          type: DeliveryMethodType.Email,
-          enabled: true,
-        }])}
+        onClick={() =>
+          props.onChange([
+            {
+              id: 'dm-email',
+              type: DeliveryMethodType.Email,
+              enabled: true,
+            },
+          ])
+        }
       >
         {props.readonly ? 'delivery-method:readonly' : 'delivery-method:editable'}
       </button>
@@ -91,21 +92,29 @@ vi.mock('../components/form-content', () => ({
     mockFormContent(props)
     return (
       <div>
-        <div>{props.readonly ? 'form-content:readonly' : `form-content:${props.isExpand ? 'expanded' : 'collapsed'}`}</div>
+        <div>
+          {props.readonly
+            ? 'form-content:readonly'
+            : `form-content:${props.isExpand ? 'expanded' : 'collapsed'}`}
+        </div>
         <button type="button" onClick={() => props.onChange('Updated content')}>
           change-form-content
         </button>
         <button
           type="button"
-          onClick={() => props.onFormInputsChange([{
-            type: InputVarType.textInput,
-            output_variable_name: 'email',
-            default: {
-              selector: [],
-              type: 'constant',
-              value: '',
-            },
-          }])}
+          onClick={() =>
+            props.onFormInputsChange([
+              {
+                type: InputVarType.paragraph,
+                output_variable_name: 'email',
+                default: {
+                  selector: [],
+                  type: 'constant',
+                  value: '',
+                },
+              },
+            ])
+          }
         >
           change-form-inputs
         </button>
@@ -122,9 +131,7 @@ vi.mock('../components/form-content', () => ({
 
 vi.mock('../components/form-content-preview', () => ({
   __esModule: true,
-  default: (props: {
-    onClose: () => void
-  }) => {
+  default: (props: { onClose: () => void }) => {
     mockFormContentPreview(props)
     return (
       <div>
@@ -141,14 +148,11 @@ vi.mock('../components/timeout', () => ({
   __esModule: true,
   default: (props: {
     readonly: boolean
-    onChange: (value: { timeout: number, unit: 'hour' | 'day' }) => void
+    onChange: (value: { timeout: number; unit: 'hour' | 'day' }) => void
   }) => {
     mockTimeoutInput(props)
     return (
-      <button
-        type="button"
-        onClick={() => props.onChange({ timeout: 8, unit: 'hour' })}
-      >
+      <button type="button" onClick={() => props.onChange({ timeout: 8, unit: 'hour' })}>
         {props.readonly ? 'timeout:readonly' : 'timeout:editable'}
       </button>
     )
@@ -169,10 +173,12 @@ vi.mock('../components/user-action', () => ({
         <div>{`${props.data.id}:${props.readonly ? 'readonly' : 'editable'}`}</div>
         <button
           type="button"
-          onClick={() => props.onChange({
-            ...props.data,
-            title: `${props.data.title} updated`,
-          })}
+          onClick={() =>
+            props.onChange({
+              ...props.data,
+              title: `${props.data.title} updated`,
+            })
+          }
         >
           {`change-action-${props.data.id}`}
         </button>
@@ -198,7 +204,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
       {props.children}
     </div>
   ),
-  VarItem: ({ name, type, description }: { name: string, type: string, description: string }) => (
+  VarItem: ({ name, type, description }: { name: string; type: string; description: string }) => (
     <div>{`${name}:${type}:${description}`}</div>
   ),
 }))
@@ -218,32 +224,40 @@ const createData = (overrides: Partial<HumanInputNodeType> = {}): HumanInputNode
   title: 'Human Input',
   desc: '',
   type: BlockEnum.HumanInput,
-  delivery_methods: [{
-    id: 'dm-webapp',
-    type: DeliveryMethodType.WebApp,
-    enabled: true,
-  }],
-  form_content: 'Please review this request',
-  inputs: [{
-    type: InputVarType.textInput,
-    output_variable_name: 'review_result',
-    default: {
-      selector: [],
-      type: 'constant',
-      value: '',
+  delivery_methods: [
+    {
+      id: 'dm-webapp',
+      type: DeliveryMethodType.WebApp,
+      enabled: true,
     },
-  }],
-  user_actions: [{
-    id: 'approve',
-    title: 'Approve',
-    button_style: UserActionButtonType.Primary,
-  }],
+  ],
+  form_content: 'Please review this request',
+  inputs: [
+    {
+      type: InputVarType.paragraph,
+      output_variable_name: 'review_result',
+      default: {
+        selector: [],
+        type: 'constant',
+        value: '',
+      },
+    },
+  ],
+  user_actions: [
+    {
+      id: 'approve',
+      title: 'Approve',
+      button_style: UserActionButtonType.Primary,
+    },
+  ],
   timeout: 3,
   timeout_unit: 'day',
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   handleDeliveryMethodChange: vi.fn(),
@@ -281,23 +295,36 @@ const renderPanel = (data: HumanInputNodeType = createData()) => {
 describe('human-input/panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseStore.mockImplementation(selector => selector({ nodePanelWidth: 480 }))
-    mockUseAvailableVarList.mockImplementation((_id, options?: { filterVar?: (payload: { type: VarType }) => boolean }) => ({
-      availableVars: [{
-        variable: ['start', 'email'],
-        type: VarType.string,
-      }, {
-        variable: ['start', 'files'],
-        type: VarType.file,
-      }].filter(variable => options?.filterVar ? options.filterVar({ type: variable.type } as never) : true),
-      availableNodesWithParent: [{
-        id: 'start-node',
-        data: {
-          title: 'Start',
-          type: BlockEnum.Start,
-        },
-      }],
-    }))
+    mockUseStore.mockImplementation((selector) => selector({ nodePanelWidth: 480 }))
+    mockUseAvailableVarList.mockImplementation(
+      (_id, options?: { filterVar?: (payload: { type: VarType }) => boolean }) => ({
+        availableVars: [
+          {
+            variable: ['start', 'email'],
+            type: VarType.string,
+          },
+          {
+            variable: ['code', 'result'],
+            type: VarType.arrayString,
+          },
+          {
+            variable: ['start', 'files'],
+            type: VarType.file,
+          },
+        ].filter((variable) =>
+          options?.filterVar ? options.filterVar({ type: variable.type } as never) : true,
+        ),
+        availableNodesWithParent: [
+          {
+            id: 'start-node',
+            data: {
+              title: 'Start',
+              type: BlockEnum.Start,
+            },
+          },
+        ],
+      }),
+    )
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
@@ -315,9 +342,19 @@ describe('human-input/panel', () => {
     expect(screen.getByText('__action_id:string:Action ID user triggered')).toBeInTheDocument()
     expect(screen.getByText('__action_value:string:Selected action value')).toBeInTheDocument()
     expect(screen.getByText('__rendered_content:string:Rendered content')).toBeInTheDocument()
+    expect(mockDeliveryMethod).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodesOutputVars: [
+          expect.objectContaining({ type: VarType.string }),
+          expect.objectContaining({ type: VarType.arrayString }),
+        ],
+      }),
+    )
 
     await user.click(screen.getByRole('button', { name: 'delivery-method:editable' }))
-    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.formContent\.preview/ }))
+    await user.click(
+      screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.formContent\.preview/ }),
+    )
     await user.click(screen.getByRole('button', { name: 'change-form-content' }))
     await user.click(screen.getByRole('button', { name: 'change-form-inputs' }))
     await user.click(screen.getByRole('button', { name: 'rename-form-input' }))
@@ -332,11 +369,13 @@ describe('human-input/panel', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
     await user.click(screen.getByRole('button', { name: 'share.chat.expand' }))
 
-    expect(config.handleDeliveryMethodChange).toHaveBeenCalledWith([{
-      id: 'dm-email',
-      type: DeliveryMethodType.Email,
-      enabled: true,
-    }])
+    expect(config.handleDeliveryMethodChange).toHaveBeenCalledWith([
+      {
+        id: 'dm-email',
+        type: DeliveryMethodType.Email,
+        enabled: true,
+      },
+    ])
     expect(config.handleFormContentChange).toHaveBeenCalledWith('Updated content')
     expect(config.handleFormInputsChange).toHaveBeenCalled()
     expect(config.handleFormInputItemRename).toHaveBeenCalledWith('name', 'email')
@@ -360,22 +399,57 @@ describe('human-input/panel', () => {
   })
 
   it('renders readonly and empty states without preview or add controls', () => {
-    mockUseConfig.mockReturnValue(createConfigResult({
-      readOnly: true,
-      inputs: createData({
-        user_actions: [],
+    mockUseConfig.mockReturnValue(
+      createConfigResult({
+        readOnly: true,
+        inputs: createData({
+          user_actions: [],
+        }),
+        structuredOutputCollapsed: false,
       }),
-      structuredOutputCollapsed: false,
-    }))
+    )
 
     renderPanel()
 
     expect(screen.getByRole('button', { name: 'delivery-method:readonly' })).toBeInTheDocument()
     expect(screen.getByText('form-content:readonly')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.humanInput.userActions.emptyTip')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /workflow\.nodes\.humanInput\.formContent\.preview/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /workflow\.nodes\.humanInput\.formContent\.preview/ }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'action-button' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'timeout:readonly' })).toBeInTheDocument()
     expect(screen.queryByText('form-preview')).not.toBeInTheDocument()
+  })
+
+  it('renders file outputs with file-aware types', () => {
+    mockUseConfig.mockReturnValue(
+      createConfigResult({
+        inputs: createData({
+          inputs: [
+            {
+              type: InputVarType.singleFile,
+              output_variable_name: 'attachment',
+              allowed_file_extensions: [],
+              allowed_file_types: [],
+              allowed_file_upload_methods: [],
+            },
+            {
+              type: InputVarType.multiFiles,
+              output_variable_name: 'attachments',
+              allowed_file_extensions: [],
+              allowed_file_types: [],
+              allowed_file_upload_methods: [],
+              number_limits: 3,
+            },
+          ],
+        }),
+      }),
+    )
+
+    renderPanel()
+
+    expect(screen.getByText('attachment:file:Form input value')).toBeInTheDocument()
+    expect(screen.getByText('attachments:array[file]:Form input value')).toBeInTheDocument()
   })
 })

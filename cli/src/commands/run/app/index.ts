@@ -1,12 +1,16 @@
+import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
 import { OutputFormat } from '@/framework/output'
 import { agentGuide } from './guide'
+import { CHAT_MODES } from './handlers'
 import { runApp } from './run'
 
 export default class RunApp extends DifyCommand {
   static override description = 'Run an app and print the response'
+
+  static override effect: CommandEffect = 'write'
 
   static override examples = [
     '<%= config.bin %> run app app-1 "hello"',
@@ -20,20 +24,52 @@ export default class RunApp extends DifyCommand {
 
   static override args = {
     id: Args.string({ description: 'app id', required: true }),
-    message: Args.string({ description: 'user message (chat/agent-chat/advanced-chat/completion)', required: false }),
+    message: Args.string({
+      description: 'user message (chat/agent-chat/advanced-chat/completion)',
+      required: false,
+    }),
   }
 
   static override flags = {
-    'inputs': Flags.string({ description: 'Input variables as a JSON object, e.g. --inputs \'{"key":"value"}\'. Mutually exclusive with --inputs-file.' }),
-    'inputs-file': Flags.string({ description: 'Path to a JSON file containing the inputs object. Mutually exclusive with --inputs.' }),
-    'file': Flags.stringArray({ description: 'Named file input (--file key=@path, repeatable)', default: [] }),
-    'conversation': Flags.string({ description: 'Resume a chat conversation by id' }),
+    inputs: Flags.string({
+      description:
+        'Input variables as a JSON object, e.g. --inputs \'{"key":"value"}\'. Mutually exclusive with --inputs-file.',
+    }),
+    'inputs-file': Flags.string({
+      description:
+        'Path to a JSON file containing the inputs object. Mutually exclusive with --inputs.',
+    }),
+    file: Flags.stringArray({
+      description:
+        'Named file input: --file key=@path for a local file or --file key=https://url for a remote URL. Repeatable.',
+      default: [],
+    }),
+    conversation: Flags.string({
+      description: `Resume a chat conversation by id (${[...CHAT_MODES].join('/')} only)`,
+    }),
     'workflow-id': Flags.string({ description: 'Pin to a specific published workflow version' }),
-    'workspace': Flags.string({ description: 'Workspace id (overrides DIFY_WORKSPACE_ID and stored default)' }),
-    'stream': Flags.boolean({ description: 'Print output live as tokens/events arrive (default: collect and print at end)', default: false }),
-    'think': Flags.boolean({ description: 'Show model thinking/reasoning when available. Strips <think>...</think> blocks silently by default; with --think, thinking is printed to stderr.', default: false }),
+    workspace: Flags.string({
+      description: 'Workspace id (overrides DIFY_WORKSPACE_ID and stored default)',
+    }),
+    stream: Flags.boolean({
+      description: 'Print output live as tokens/events arrive (default: collect and print at end)',
+      default: false,
+    }),
+    think: Flags.boolean({
+      description:
+        'Show model thinking/reasoning when available — both inline <think>...</think> blocks and separated reasoning streams. Hidden by default; with --think, thinking is printed to stderr.',
+      default: false,
+    }),
+    'retry-on-limit': Flags.boolean({
+      description:
+        'On a 429 rate limit, wait and retry this POST (bounded) instead of failing immediately. Off by default since running an app is not idempotent.',
+      default: false,
+    }),
     'http-retry': httpRetryFlag,
-    'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT], default: '' }),
+    output: Flags.outputFormat({
+      options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT],
+      default: '',
+    }),
   }
 
   async run(argv: string[]): Promise<void> {
@@ -53,6 +89,7 @@ export default class RunApp extends DifyCommand {
         format,
         stream: flags.stream,
         think: flags.think,
+        retryOnRateLimit: flags['retry-on-limit'],
       },
       { active: ctx.active, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
     )

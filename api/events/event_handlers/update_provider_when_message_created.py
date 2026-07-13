@@ -204,6 +204,7 @@ def _deduct_credit_pool_quota_capped(*, tenant_id: str, credits_required: int, p
         tenant_id=tenant_id,
         credits_required=credits_required,
         pool_type=pool_type,
+        session=db.session(),
     )
     if deducted_credits < credits_required:
         logger.warning(

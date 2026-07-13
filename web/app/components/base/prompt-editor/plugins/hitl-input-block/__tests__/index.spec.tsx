@@ -1,18 +1,15 @@
+import type { LexicalEditor } from 'lexical'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, render, waitFor } from '@testing-library/react'
-import {
-  COMMAND_PRIORITY_EDITOR,
-} from 'lexical'
-import { useEffect } from 'react'
-import {
-  BlockEnum,
-  InputVarType,
-} from '@/app/components/workflow/types'
+import { $nodesOfType, COMMAND_PRIORITY_EDITOR } from 'lexical'
+import { useEffect, useState } from 'react'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
+  readEditorStateValue,
   readRootTextContent,
   renderLexicalEditor,
   selectRootEnd,
@@ -76,6 +73,12 @@ const createInsertPayload = () => ({
   onFormInputItemRemove: vi.fn(),
 })
 
+const readHITLReadonlyValues = (editor: LexicalEditor): boolean[] => {
+  return readEditorStateValue(editor, () => {
+    return $nodesOfType(HITLInputNode).map((node) => node.getReadonly())
+  })
+}
+
 const renderHITLInputBlock = (props?: {
   onInsert?: () => void
   onDelete?: () => void
@@ -89,7 +92,9 @@ const renderHITLInputBlock = (props?: {
     nodes: [CustomTextNode, HITLInputNode],
     children: (
       <>
-        {props?.onWorkflowMapUpdate && <UpdateWorkflowNodesMapPlugin onUpdate={props.onWorkflowMapUpdate} />}
+        {props?.onWorkflowMapUpdate && (
+          <UpdateWorkflowNodesMapPlugin onUpdate={props.onWorkflowMapUpdate} />
+        )}
         <HITLInputBlock
           nodeId="node-1"
           formInputs={[createFormInput()]}
@@ -169,6 +174,65 @@ describe('HITLInputBlock', () => {
       expect(getNodeCount(editor, HITLInputNode)).toBe(1)
     })
 
+    it('should update existing and newly inserted nodes when readonly changes', async () => {
+      let setReadonlyValue: ((readonly: boolean) => void) | undefined
+      const ReadonlyHarness = () => {
+        const [readonly, setReadonly] = useState(false)
+
+        useEffect(() => {
+          setReadonlyValue = setReadonly
+          return () => {
+            setReadonlyValue = undefined
+          }
+        }, [])
+
+        return (
+          <HITLInputBlock
+            nodeId="node-1"
+            formInputs={[createFormInput()]}
+            onFormInputItemRename={vi.fn()}
+            onFormInputItemRemove={vi.fn()}
+            workflowNodesMap={createWorkflowNodesMap('First Node')}
+            readonly={readonly}
+          />
+        )
+      }
+
+      const { getEditor } = renderLexicalEditor({
+        namespace: 'hitl-input-block-readonly-update-test',
+        nodes: [CustomTextNode, HITLInputNode],
+        children: <ReadonlyHarness />,
+      })
+
+      const editor = await waitForEditorReady(getEditor)
+
+      selectRootEnd(editor)
+      act(() => {
+        editor.dispatchCommand(INSERT_HITL_INPUT_BLOCK_COMMAND, createInsertPayload())
+      })
+
+      await waitFor(() => {
+        expect(readHITLReadonlyValues(editor)).toEqual([false])
+      })
+
+      act(() => {
+        setReadonlyValue?.(true)
+      })
+
+      await waitFor(() => {
+        expect(readHITLReadonlyValues(editor)).toEqual([true])
+      })
+
+      selectRootEnd(editor)
+      act(() => {
+        editor.dispatchCommand(INSERT_HITL_INPUT_BLOCK_COMMAND, createInsertPayload())
+      })
+
+      await waitFor(() => {
+        expect(readHITLReadonlyValues(editor)).toEqual([true, true])
+      })
+    })
+
     it('should call onDelete when delete command is dispatched', async () => {
       const onDelete = vi.fn()
       const { getEditor } = renderHITLInputBlock({ onDelete })
@@ -209,7 +273,10 @@ describe('HITLInputBlock', () => {
       let insertHandled = true
       let deleteHandled = true
       act(() => {
-        insertHandled = editor.dispatchCommand(INSERT_HITL_INPUT_BLOCK_COMMAND, createInsertPayload())
+        insertHandled = editor.dispatchCommand(
+          INSERT_HITL_INPUT_BLOCK_COMMAND,
+          createInsertPayload(),
+        )
         deleteHandled = editor.dispatchCommand(DELETE_HITL_INPUT_BLOCK_COMMAND, undefined)
       })
 

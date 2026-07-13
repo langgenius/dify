@@ -428,7 +428,8 @@ describe('EditItem', () => {
 
     it('should handle delete action failure gracefully', async () => {
       // Arrange
-      const mockSave = vi.fn()
+      const mockSave = vi
+        .fn()
         .mockResolvedValueOnce(undefined) // First save succeeds
         .mockRejectedValueOnce(new Error('Delete failed')) // Delete fails
       const props = {

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from inspect import unwrap
 from typing import cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -20,8 +21,8 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline import (
     PipelineTemplateListApi,
     PublishCustomizedPipelineTemplateApi,
 )
+from models.account import Account
 from models.dataset import PipelineCustomizedTemplate
-from tests.test_containers_integration_tests.controllers.console.helpers import unwrap
 
 
 class TestPipelineTemplateListApi:
@@ -53,7 +54,7 @@ class TestPipelineTemplateListApi:
                 return_value=templates,
             ),
         ):
-            response, status = method(api)
+            response, status = method(api, MagicMock(), str(uuid4()))
 
         assert status == 200
         assert response == {
@@ -89,54 +90,50 @@ class TestPipelineTemplateDetailApi:
             "graph": {"nodes": nodes, "edges": edges, "viewport": viewport},
         }
 
-        service = MagicMock()
-        service.get_pipeline_template_detail.return_value = template
-
         with (
             app.test_request_context("/?type=built-in"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService",
-                return_value=service,
-            ),
+                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService.get_pipeline_template_detail",
+                return_value=template,
+            ) as get_detail_mock,
         ):
-            response, status = method(api, "tpl-1")
+            response, status = method(api, MagicMock(), "tpl-1")
 
         assert status == 200
         assert response == {**template, "created_by": None}
+        get_detail_mock.assert_called_once_with("tpl-1", type="built-in", session=ANY)
 
     def test_get_returns_404_when_template_not_found(self, app: Flask) -> None:
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
 
-        service = MagicMock()
-        service.get_pipeline_template_detail.return_value = None
-
         with (
             app.test_request_context("/?type=built-in"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService",
-                return_value=service,
-            ),
+                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService.get_pipeline_template_detail",
+                return_value=None,
+            ) as get_detail_mock,
         ):
             with pytest.raises(NotFound):
-                method(api, "non-existent-id")
+                method(api, MagicMock(), "non-existent-id")
+
+        get_detail_mock.assert_called_once_with("non-existent-id", type="built-in", session=ANY)
 
     def test_get_returns_404_for_customized_type_not_found(self, app: Flask) -> None:
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
 
-        service = MagicMock()
-        service.get_pipeline_template_detail.return_value = None
-
         with (
             app.test_request_context("/?type=customized"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService",
-                return_value=service,
-            ),
+                "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService.get_pipeline_template_detail",
+                return_value=None,
+            ) as get_detail_mock,
         ):
             with pytest.raises(NotFound):
-                method(api, "non-existent-id")
+                method(api, MagicMock(), "non-existent-id")
+
+        get_detail_mock.assert_called_once_with("non-existent-id", type="customized", session=ANY)
 
 
 class TestCustomizedPipelineTemplateApi:
@@ -147,6 +144,9 @@ class TestCustomizedPipelineTemplateApi:
     def test_patch_success(self, app: Flask) -> None:
         api = CustomizedPipelineTemplateApi()
         method = unwrap(api.patch)
+        account = Account(name="Test User", email="test@example.com")
+        account.id = str(uuid4())
+        tenant_id = str(uuid4())
 
         payload = {
             "name": "Template",
@@ -161,15 +161,18 @@ class TestCustomizedPipelineTemplateApi:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService.update_customized_pipeline_template"
             ) as update_mock,
         ):
-            response, status = method(api, "tpl-1")
+            response, status = method(api, tenant_id, account, "tpl-1")
 
         update_mock.assert_called_once()
+        assert update_mock.call_args.args[2] is account
+        assert update_mock.call_args.args[3] == tenant_id
         assert status == 204
         assert response == ""
 
     def test_delete_success(self, app: Flask) -> None:
         api = CustomizedPipelineTemplateApi()
         method = unwrap(api.delete)
+        tenant_id = str(uuid4())
 
         with (
             app.test_request_context("/"),
@@ -177,9 +180,9 @@ class TestCustomizedPipelineTemplateApi:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline.RagPipelineService.delete_customized_pipeline_template"
             ) as delete_mock,
         ):
-            response, status = method(api, "tpl-1")
+            response, status = method(api, tenant_id, "tpl-1")
 
-        delete_mock.assert_called_once_with("tpl-1")
+        delete_mock.assert_called_once_with("tpl-1", tenant_id, session=ANY)
         assert status == 204
         assert response == ""
 
@@ -227,6 +230,9 @@ class TestPublishCustomizedPipelineTemplateApi:
     def test_post_success(self, app: Flask) -> None:
         api = PublishCustomizedPipelineTemplateApi()
         method = unwrap(api.post)
+        account = Account(name="Test User", email="test@example.com")
+        account.id = str(uuid4())
+        tenant_id = str(uuid4())
 
         payload = {
             "name": "Template",
@@ -244,8 +250,10 @@ class TestPublishCustomizedPipelineTemplateApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, "pipeline-1")
+            response, status = method(api, tenant_id, account, "pipeline-1")
 
         service.publish_customized_pipeline_template.assert_called_once()
+        assert service.publish_customized_pipeline_template.call_args.args[2] is account
+        assert service.publish_customized_pipeline_template.call_args.args[3] == tenant_id
         assert status == 204
         assert response == ""

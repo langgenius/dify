@@ -21,15 +21,16 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
   const hasRunGroup = model.canRun || model.canChangeBlock
   const hasEditGroup = !model.nodesReadOnly && !model.isSingleton
   const hasDeleteGroup = !model.nodesReadOnly && !model.isUndeletable
+  const singleRunActionLabel = model.isSingleRunning
+    ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })
+    : t(($) => $['panel.runThisStep'], { ns: 'workflow' })
 
   return (
     <>
       {hasRunGroup && (
         <ContextMenuGroup>
           {model.canRun && (
-            <ContextMenuItem onClick={model.handleRun}>
-              {t('panel.runThisStep', { ns: 'workflow' })}
-            </ContextMenuItem>
+            <ContextMenuItem onClick={model.handleRun}>{singleRunActionLabel}</ContextMenuItem>
           )}
           {model.canChangeBlock && (
             <ChangeBlockMenuTrigger
@@ -40,7 +41,10 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
           )}
         </ContextMenuGroup>
       )}
-      {hasRunGroup && (hasEditGroup || hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && <ContextMenuSeparator />}
+      {hasRunGroup &&
+        (hasEditGroup || hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && (
+          <ContextMenuSeparator />
+        )}
       {hasEditGroup && (
         <ContextMenuGroup>
           <ContextMenuItem
@@ -48,7 +52,7 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
             onClick={model.handleCopy}
           >
             <NodeActionsMenuItemContent shortcut="workflow.copy">
-              {t('common.copy', { ns: 'workflow' })}
+              {t(($) => $['common.copy'], { ns: 'workflow' })}
             </NodeActionsMenuItemContent>
           </ContextMenuItem>
           <ContextMenuItem
@@ -56,12 +60,14 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
             onClick={model.handleDuplicate}
           >
             <NodeActionsMenuItemContent shortcut="workflow.duplicate">
-              {t('common.duplicate', { ns: 'workflow' })}
+              {t(($) => $['common.duplicate'], { ns: 'workflow' })}
             </NodeActionsMenuItemContent>
           </ContextMenuItem>
         </ContextMenuGroup>
       )}
-      {hasEditGroup && (hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && <ContextMenuSeparator />}
+      {hasEditGroup && (hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && (
+        <ContextMenuSeparator />
+      )}
       {hasDeleteGroup && (
         <ContextMenuGroup>
           <ContextMenuItem
@@ -69,7 +75,7 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
             onClick={model.handleDelete}
           >
             <NodeActionsMenuItemContent shortcut="workflow.delete">
-              {t('operation.delete', { ns: 'common' })}
+              {t(($) => $['operation.delete'], { ns: 'common' })}
             </NodeActionsMenuItemContent>
           </ContextMenuItem>
         </ContextMenuGroup>
@@ -77,8 +83,12 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
       {hasDeleteGroup && (model.workflowAppHref || model.helpLinkUri) && <ContextMenuSeparator />}
       {model.workflowAppHref && (
         <ContextMenuGroup>
-          <ContextMenuLinkItem href={model.workflowAppHref} target="_blank" rel="noopener noreferrer">
-            {t('panel.openWorkflow', { ns: 'workflow' })}
+          <ContextMenuLinkItem
+            href={model.workflowAppHref}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t(($) => $['panel.openWorkflow'], { ns: 'workflow' })}
           </ContextMenuLinkItem>
         </ContextMenuGroup>
       )}
@@ -86,15 +96,15 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
       {model.helpLinkUri && (
         <ContextMenuGroup>
           <ContextMenuLinkItem href={model.helpLinkUri} target="_blank" rel="noopener noreferrer">
-            {t('panel.helpLink', { ns: 'workflow' })}
+            {t(($) => $['panel.helpLink'], { ns: 'workflow' })}
           </ContextMenuLinkItem>
         </ContextMenuGroup>
       )}
       <ContextMenuSeparator />
       <NodeActionsMenuAbout
-        title={t('panel.about', { ns: 'workflow' })}
+        title={t(($) => $['panel.about'], { ns: 'workflow' })}
         description={model.about.description}
-        author={`${t('panel.createdBy', { ns: 'workflow' })} ${model.about.author}`}
+        author={`${t(($) => $['panel.createdBy'], { ns: 'workflow' })} ${model.about.author}`}
       />
     </>
   )

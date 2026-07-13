@@ -45,7 +45,18 @@ describe('createWorkflowStore', () => {
 
   describe('Workflow Slice Setters', () => {
     it.each<[StateKey, SetterKey, Shape[StateKey]]>([
-      ['workflowRunningData', 'setWorkflowRunningData', { result: { status: 'running', inputs_truncated: false, process_data_truncated: false, outputs_truncated: false } }],
+      [
+        'workflowRunningData',
+        'setWorkflowRunningData',
+        {
+          result: {
+            status: 'running',
+            inputs_truncated: false,
+            process_data_truncated: false,
+            outputs_truncated: false,
+          },
+        },
+      ],
       ['isListening', 'setIsListening', true],
       ['listeningTriggerType', 'setListeningTriggerType', BlockEnum.TriggerWebhook],
       ['listeningTriggerNodeId', 'setListeningTriggerNodeId', 'node-abc'],
@@ -59,7 +70,18 @@ describe('createWorkflowStore', () => {
       ['showConfirm', 'setShowConfirm', { title: 'Delete?', onConfirm: vi.fn() }],
       ['controlPromptEditorRerenderKey', 'setControlPromptEditorRerenderKey', 42],
       ['showImportDSLModal', 'setShowImportDSLModal', true],
-      ['fileUploadConfig', 'setFileUploadConfig', { batch_count_limit: 5, image_file_batch_limit: 10, single_chunk_attachment_limit: 10, attachment_image_file_size_limit: 2, file_size_limit: 15, file_upload_limit: 5 }],
+      [
+        'fileUploadConfig',
+        'setFileUploadConfig',
+        {
+          batch_count_limit: 5,
+          image_file_batch_limit: 10,
+          single_chunk_attachment_limit: 10,
+          attachment_image_file_size_limit: 2,
+          file_size_limit: 15,
+          file_upload_limit: 5,
+        },
+      ],
     ])('should update %s', (stateKey, setter, value) => {
       testSetter(setter, stateKey, value)
     })
@@ -89,7 +111,11 @@ describe('createWorkflowStore', () => {
       ['candidateNode', 'setCandidateNode', undefined],
       ['showAssignVariablePopup', 'setShowAssignVariablePopup', undefined],
       ['hoveringAssignVariableGroupId', 'setHoveringAssignVariableGroupId', 'group-1'],
-      ['connectingNodePayload', 'setConnectingNodePayload', { nodeId: 'n1', nodeType: 'llm', handleType: 'source', handleId: 'h1' }],
+      [
+        'connectingNodePayload',
+        'setConnectingNodePayload',
+        { nodeId: 'n1', nodeType: 'llm', handleType: 'source', handleId: 'h1' },
+      ],
       ['enteringNodePayload', 'setEnteringNodePayload', undefined],
       ['iterTimes', 'setIterTimes', 5],
       ['loopTimes', 'setLoopTimes', 10],
@@ -169,7 +195,6 @@ describe('createWorkflowStore', () => {
       ['bottomPanelWidth', 'setBottomPanelWidth', 600],
       ['bottomPanelHeight', 'setBottomPanelHeight', 500],
       ['variableInspectPanelHeight', 'setVariableInspectPanelHeight', 250],
-      ['maximizeCanvas', 'setMaximizeCanvas', true],
     ])('should update %s', (stateKey, setter, value) => {
       testSetter(setter, stateKey, value)
     })
@@ -215,26 +240,19 @@ describe('createWorkflowStore', () => {
       const store = createStore()
       expect(store.getState().variableInspectPanelHeight).toBe(320)
     })
-
-    it('should read maximizeCanvas from localStorage', () => {
-      localStorage.setItem('workflow-canvas-maximize', 'true')
-      const store = createStore()
-      expect(store.getState().maximizeCanvas).toBe(true)
-    })
   })
 
   describe('useStore hook', () => {
     it('should read state via selector when wrapped in WorkflowContext', () => {
-      const { result } = renderWorkflowHook(
-        () => useStore(s => s.showSingleRunPanel),
-        { initialStoreState: { showSingleRunPanel: true } },
-      )
+      const { result } = renderWorkflowHook(() => useStore((s) => s.showSingleRunPanel), {
+        initialStoreState: { showSingleRunPanel: true },
+      })
       expect(result.current).toBe(true)
     })
 
     it('should throw when used without WorkflowContext.Provider', () => {
       expect(() => {
-        renderHook(() => useStore(s => s.showSingleRunPanel))
+        renderHook(() => useStore((s) => s.showSingleRunPanel))
       }).toThrow('Missing WorkflowContext.Provider in the tree')
     })
   })

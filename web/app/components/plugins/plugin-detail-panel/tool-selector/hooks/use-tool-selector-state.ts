@@ -4,7 +4,13 @@ import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { useCallback, useMemo, useState } from 'react'
-import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { CollectionType } from '@/app/components/tools/types'
+import {
+  generateFormValue,
+  getPlainValue,
+  getStructureValue,
+  toolParametersToFormSchemas,
+} from '@/app/components/tools/utils/to-form-schema'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import {
   useAllBuiltInTools,
@@ -39,15 +45,16 @@ export const useToolSelectorState = ({
   const [currType, setCurrType] = useState<TabType>('settings')
 
   // Fetch all tools data
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const buildInToolsQuery = useAllBuiltInTools()
+  const customToolsQuery = useAllCustomTools()
+  const workflowToolsQuery = useAllWorkflowTools()
+  const mcpToolsQuery = useAllMCPTools()
+  const { data: buildInTools } = buildInToolsQuery
+  const { data: customTools } = customToolsQuery
+  const { data: workflowTools } = workflowToolsQuery
+  const { data: mcpTools } = mcpToolsQuery
   const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-
-  // Plugin info check
-  const { inMarketPlace, manifest, pluginID } = usePluginInstalledCheck(value?.provider_name)
 
   // Merge all tools and find current provider
   const currentProvider = useMemo(() => {
@@ -57,31 +64,68 @@ export const useToolSelectorState = ({
       ...(workflowTools || []),
       ...(mcpTools || []),
     ]
-    return mergedTools.find(toolWithProvider => toolWithProvider.id === value?.provider_name)
+    return mergedTools.find((toolWithProvider) => toolWithProvider.id === value?.provider_name)
   }, [value, buildInTools, customTools, workflowTools, mcpTools])
+  const areToolProvidersSettled = [
+    buildInToolsQuery,
+    customToolsQuery,
+    workflowToolsQuery,
+    mcpToolsQuery,
+  ].every((toolProvidersQuery) => toolProvidersQuery.isFetched)
 
   // Current tool from provider
   const currentTool = useMemo(() => {
-    return currentProvider?.tools.find(tool => tool.name === value?.tool_name)
+    return currentProvider?.tools.find((tool) => tool.name === value?.tool_name)
   }, [currentProvider?.tools, value?.tool_name])
+  const providerPluginId = useMemo(() => {
+    if (currentProvider) return currentProvider.plugin_id ?? value?.plugin_id ?? null
+
+    if (value?.plugin_id) return value.plugin_id
+
+    if (!areToolProvidersSettled || !value?.provider_name) return undefined
+
+    // Legacy tool values may only carry the built-in provider id, which remains
+    // enough to recover the underlying plugin id for marketplace-backed tools.
+    if (value.type && value.type !== CollectionType.builtIn) return null
+
+    const providerNameSegments = value.provider_name.split('/')
+    if (providerNameSegments.length !== 3) return null
+
+    return providerNameSegments.slice(0, 2).join('/')
+  }, [
+    areToolProvidersSettled,
+    currentProvider,
+    value?.plugin_id,
+    value?.provider_name,
+    value?.type,
+  ])
+
+  // Plugin info check
+  const { inMarketPlace, manifest, pluginID } = usePluginInstalledCheck({
+    providerPluginId,
+    enabled:
+      !!value?.provider_name &&
+      (!currentProvider || !currentTool) &&
+      (currentProvider !== undefined || areToolProvidersSettled || !!value?.plugin_id),
+  })
 
   // Tool settings and params
   const currentToolSettings = useMemo(() => {
-    if (!currentProvider)
-      return []
-    return currentProvider.tools
-      .find(tool => tool.name === value?.tool_name)
-      ?.parameters
-      .filter(param => param.form !== 'llm') || []
+    if (!currentProvider) return []
+    return (
+      currentProvider.tools
+        .find((tool) => tool.name === value?.tool_name)
+        ?.parameters.filter((param) => param.form !== 'llm') || []
+    )
   }, [currentProvider, value])
 
   const currentToolParams = useMemo(() => {
-    if (!currentProvider)
-      return []
-    return currentProvider.tools
-      .find(tool => tool.name === value?.tool_name)
-      ?.parameters
-      .filter(param => param.form === 'llm') || []
+    if (!currentProvider) return []
+    return (
+      currentProvider.tools
+        .find((tool) => tool.name === value?.tool_name)
+        ?.parameters.filter((param) => param.form === 'llm') || []
+    )
   }, [currentProvider, value])
 
   // Form schemas
@@ -101,8 +145,7 @@ export const useToolSelectorState = ({
 
   // Manifest icon URL
   const manifestIcon = useMemo(() => {
-    if (!manifest || !pluginID)
-      return ''
+    if (!manifest || !pluginID) return ''
     return getIconFromMarketPlace(pluginID)
   }, [manifest, pluginID])
 
@@ -110,16 +153,21 @@ export const useToolSelectorState = ({
   const getToolValue = useCallback((tool: ToolDefaultValue): ToolValue => {
     const settingValues = generateFormValue(
       tool.params,
-      toolParametersToFormSchemas((tool.paramSchemas as ToolParameter[]).filter(param => param.form !== 'llm')),
+      toolParametersToFormSchemas(
+        (tool.paramSchemas as ToolParameter[]).filter((param) => param.form !== 'llm'),
+      ),
     )
     const paramValues = generateFormValue(
       tool.params,
-      toolParametersToFormSchemas((tool.paramSchemas as ToolParameter[]).filter(param => param.form === 'llm')),
+      toolParametersToFormSchemas(
+        (tool.paramSchemas as ToolParameter[]).filter((param) => param.form === 'llm'),
+      ),
       true,
     )
     return {
       provider_name: tool.provider_id,
       provider_show_name: tool.provider_name,
+      plugin_id: tool.plugin_id,
       tool_name: tool.tool_name,
       tool_label: tool.tool_label,
       tool_description: tool.tool_description,
@@ -134,82 +182,98 @@ export const useToolSelectorState = ({
   }, [])
 
   // Event handlers
-  const handleSelectTool = useCallback((tool: ToolDefaultValue) => {
-    const toolValue = getToolValue(tool)
-    onSelect(toolValue)
-  }, [getToolValue, onSelect])
+  const handleSelectTool = useCallback(
+    (tool: ToolDefaultValue) => {
+      const toolValue = getToolValue(tool)
+      onSelect(toolValue)
+    },
+    [getToolValue, onSelect],
+  )
 
-  const handleSelectMultipleTool = useCallback((tools: ToolDefaultValue[]) => {
-    const toolValues = tools.map(item => getToolValue(item))
-    onSelectMultiple?.(toolValues)
-  }, [getToolValue, onSelectMultiple])
+  const handleSelectMultipleTool = useCallback(
+    (tools: ToolDefaultValue[]) => {
+      const toolValues = tools.map((item) => getToolValue(item))
+      onSelectMultiple?.(toolValues)
+    },
+    [getToolValue, onSelectMultiple],
+  )
 
-  const handleDescriptionChange = useCallback((description: string) => {
-    if (!value)
-      return
-    onSelect({
-      ...value,
-      extra: {
-        ...value.extra,
-        description: description || '',
-      },
-    })
-  }, [value, onSelect])
+  const handleDescriptionChange = useCallback(
+    (description: string) => {
+      if (!value) return
+      onSelect({
+        ...value,
+        extra: {
+          ...value.extra,
+          description: description || '',
+        },
+      })
+    },
+    [value, onSelect],
+  )
 
-  const handleSettingsFormChange = useCallback((v: ResourceVarInputs) => {
-    if (!value)
-      return
-    const newValue = getStructureValue(v)
-    onSelect({
-      ...value,
-      settings: newValue,
-    })
-  }, [value, onSelect])
+  const handleSettingsFormChange = useCallback(
+    (v: ResourceVarInputs) => {
+      if (!value) return
+      const newValue = getStructureValue(v)
+      onSelect({
+        ...value,
+        settings: newValue,
+      })
+    },
+    [value, onSelect],
+  )
 
-  const handleParamsFormChange = useCallback((v: ReasoningConfigValue) => {
-    if (!value)
-      return
-    onSelect({
-      ...value,
-      parameters: v,
-    })
-  }, [value, onSelect])
+  const handleParamsFormChange = useCallback(
+    (v: ReasoningConfigValue) => {
+      if (!value) return
+      onSelect({
+        ...value,
+        parameters: v,
+      })
+    },
+    [value, onSelect],
+  )
 
-  const handleEnabledChange = useCallback((state: boolean) => {
-    if (!value)
-      return
-    onSelect({
-      ...value,
-      enabled: state,
-    })
-  }, [value, onSelect])
+  const handleEnabledChange = useCallback(
+    (state: boolean) => {
+      if (!value) return
+      onSelect({
+        ...value,
+        enabled: state,
+      })
+    },
+    [value, onSelect],
+  )
 
-  const handleAuthorizationItemClick = useCallback((id: string) => {
-    if (!value)
-      return
-    onSelect({
-      ...value,
-      credential_id: id,
-    })
-  }, [value, onSelect])
+  const handleAuthorizationItemClick = useCallback(
+    (id: string) => {
+      if (!value) return
+      onSelect({
+        ...value,
+        credential_id: id,
+      })
+    },
+    [value, onSelect],
+  )
 
   const handleInstall = useCallback(async () => {
     try {
       await invalidateAllBuiltinTools()
-    }
-    catch (error) {
+    } catch (error) {
       console.error('Failed to invalidate built-in tools cache', error)
     }
     try {
       await invalidateInstalledPluginList()
-    }
-    catch (error) {
+    } catch (error) {
       console.error('Failed to invalidate installed plugin list cache', error)
     }
   }, [invalidateAllBuiltinTools, invalidateInstalledPluginList])
 
   const getSettingsValue = useCallback((): ResourceVarInputs => {
-    return getPlainValue((value?.settings || {}) as Record<string, { value: unknown }>) as ResourceVarInputs
+    return getPlainValue(
+      (value?.settings || {}) as Record<string, { value: unknown }>,
+    ) as ResourceVarInputs
   }, [value?.settings])
 
   return {

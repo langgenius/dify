@@ -1,18 +1,20 @@
-import type { Dispatch, FC, SetStateAction } from 'react'
-import type {
-  BlockEnum,
-  NodeDefault,
-  OnSelectBlock,
-  ToolWithProvider,
-} from '../types'
+import type { Dispatch, FC, ReactNode, SetStateAction } from 'react'
+import type { BlockEnum, NodeDefault, OnSelectBlock, ToolWithProvider } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
-import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+  useInvalidateAllBuiltInTools,
+} from '@/service/use-tools'
 import { basePath } from '@/utils/var'
 import { useWorkflowStore } from '../store'
 import AllStartBlocks from './all-start-blocks'
@@ -35,28 +37,30 @@ type TabsProps = {
     key: TabsEnum
     name: string
     disabled?: boolean
+    disabledTip?: ReactNode
+    disabledTipLinkKey?: 'startNodesDocs'
   }>
   filterElem: React.ReactNode
   noBlocks?: boolean
   noTools?: boolean
   forceShowStartContent?: boolean // Force show Start content even when noBlocks=true
   allowStartNodeSelection?: boolean // Allow user input option even when trigger node already exists (e.g. change-node flow or when no Start node yet).
+  hasUserInputNode?: boolean
+  hasTriggerNode?: boolean
+  snippetsElem?: React.ReactNode
 }
 
 const normalizeToolList = (list: ToolWithProvider[] | undefined, currentBasePath?: string) => {
-  if (!list || !currentBasePath)
-    return list
+  if (!list || !currentBasePath) return list
 
   let changed = false
   const normalized = list.map((provider) => {
-    if (typeof provider.icon !== 'string')
-      return provider
+    if (typeof provider.icon !== 'string') return provider
 
-    const shouldPrefix = provider.icon.startsWith('/')
-      && !provider.icon.startsWith(`${currentBasePath}/`)
+    const shouldPrefix =
+      provider.icon.startsWith('/') && !provider.icon.startsWith(`${currentBasePath}/`)
 
-    if (!shouldPrefix)
-      return provider
+    if (!shouldPrefix) return provider
 
     changed = true
     return {
@@ -94,8 +98,7 @@ const getStoreToolUpdates = ({
     updates.customTools = customTools
   if (workflowTools !== undefined && state.workflowTools !== workflowTools)
     updates.workflowTools = workflowTools
-  if (mcpTools !== undefined && state.mcpTools !== mcpTools)
-    updates.mcpTools = mcpTools
+  if (mcpTools !== undefined && state.mcpTools !== mcpTools) updates.mcpTools = mcpTools
 
   return updates
 }
@@ -105,25 +108,27 @@ const TabHeaderItem = ({
   activeTab,
   onActiveTabChange,
   disabledTip,
+  disabledTipLinkHref,
+  disabledTipLinkLabel,
 }: {
   tab: TabsProps['tabs'][number]
   activeTab: TabsEnum
   onActiveTabChange: (activeTab: TabsEnum) => void
-  disabledTip: string
+  disabledTip: ReactNode
+  disabledTipLinkHref?: string
+  disabledTipLinkLabel?: string
 }) => {
   const className = cn(
     'relative mr-0.5 flex h-8 items-center rounded-t-lg px-3 system-sm-medium',
     tab.disabled
       ? 'cursor-not-allowed text-text-disabled opacity-60'
       : activeTab === tab.key
-        // eslint-disable-next-line tailwindcss/no-unknown-classes
         ? 'sm-no-bottom cursor-default bg-components-panel-bg text-text-accent'
         : 'cursor-pointer text-text-tertiary',
   )
 
   const handleClick = () => {
-    if (tab.disabled || activeTab === tab.key)
-      return
+    if (tab.disabled || activeTab === tab.key) return
     onActiveTabChange(tab.key)
   }
 
@@ -131,7 +136,7 @@ const TabHeaderItem = ({
     return (
       <Tooltip key={tab.key}>
         <TooltipTrigger
-          render={(
+          render={
             <button
               type="button"
               className={className}
@@ -140,22 +145,30 @@ const TabHeaderItem = ({
             >
               {tab.name}
             </button>
-          )}
+          }
         />
-        <TooltipContent placement="top" className="max-w-[200px]">
-          {disabledTip}
+        <TooltipContent placement="top" className="max-w-[230px] rounded-xl px-4 py-3.5">
+          <div className="flex flex-col items-start gap-1 system-xs-regular text-text-secondary">
+            <p>{disabledTip}</p>
+            {disabledTipLinkHref && disabledTipLinkLabel && (
+              <a
+                className="text-text-accent hover:underline"
+                href={disabledTipLinkHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {disabledTipLinkLabel}
+              </a>
+            )}
+          </div>
         </TooltipContent>
       </Tooltip>
     )
   }
 
   return (
-    <div
-      key={tab.key}
-      className={className}
-      aria-disabled={tab.disabled}
-      onClick={handleClick}
-    >
+    <div key={tab.key} className={className} aria-disabled={tab.disabled} onClick={handleClick}>
       {tab.name}
     </div>
   )
@@ -177,8 +190,12 @@ const Tabs: FC<TabsProps> = ({
   noTools,
   forceShowStartContent = false,
   allowStartNodeSelection = false,
+  hasUserInputNode = false,
+  hasTriggerNode = false,
+  snippetsElem,
 }) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -186,19 +203,26 @@ const Tabs: FC<TabsProps> = ({
   const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
+    select: (s) => s.enable_marketplace,
   })
   const workflowStore = useWorkflowStore()
   const inRAGPipeline = dataSources.length > 0
-  const {
-    plugins: featuredPlugins = [],
-    isLoading: isFeaturedLoading,
-  } = useFeaturedToolsRecommendations(enable_marketplace && !inRAGPipeline)
-  const normalizedBuiltInTools = useMemo(() => normalizeToolList(buildInTools, basePath), [buildInTools])
-  const normalizedCustomTools = useMemo(() => normalizeToolList(customTools, basePath), [customTools])
-  const normalizedWorkflowTools = useMemo(() => normalizeToolList(workflowTools, basePath), [workflowTools])
+  const { plugins: featuredPlugins = [], isLoading: isFeaturedLoading } =
+    useFeaturedToolsRecommendations(enable_marketplace && !inRAGPipeline)
+  const normalizedBuiltInTools = useMemo(
+    () => normalizeToolList(buildInTools, basePath),
+    [buildInTools],
+  )
+  const normalizedCustomTools = useMemo(
+    () => normalizeToolList(customTools, basePath),
+    [customTools],
+  )
+  const normalizedWorkflowTools = useMemo(
+    () => normalizeToolList(workflowTools, basePath),
+    [workflowTools],
+  )
   const normalizedMcpTools = useMemo(() => normalizeToolList(mcpTools, basePath), [mcpTools])
-  const disabledTip = t('tabs.startDisabledTip', { ns: 'workflow' })
+  const disabledTip = t(($) => $['tabs.startDisabledTip'], { ns: 'workflow' })
 
   useEffect(() => {
     workflowStore.setState((state) => {
@@ -209,93 +233,97 @@ const Tabs: FC<TabsProps> = ({
         workflowTools: normalizedWorkflowTools,
         mcpTools: normalizedMcpTools,
       })
-      if (!Object.keys(updates).length)
-        return state
+      if (!Object.keys(updates).length) return state
       return {
         ...state,
         ...updates,
       }
     })
-  }, [normalizedBuiltInTools, normalizedCustomTools, normalizedMcpTools, normalizedWorkflowTools, workflowStore])
+  }, [
+    normalizedBuiltInTools,
+    normalizedCustomTools,
+    normalizedMcpTools,
+    normalizedWorkflowTools,
+    workflowStore,
+  ])
 
   return (
-    <div onClick={e => e.stopPropagation()}>
-      {
-        !noBlocks && (
-          <div className="relative flex bg-background-section-burn pt-1 pl-1">
-            {
-              tabs.map(tab => (
-                <TabHeaderItem
-                  key={tab.key}
-                  tab={tab}
-                  activeTab={activeTab}
-                  onActiveTabChange={onActiveTabChange}
-                  disabledTip={disabledTip}
-                />
-              ))
-            }
-          </div>
-        )
-      }
+    <div className="w-full min-w-0" onClick={(e) => e.stopPropagation()}>
+      {!noBlocks && (
+        <div className="relative flex w-full min-w-0 bg-background-section-burn pt-1 pl-1">
+          {tabs.map((tab) => (
+            <TabHeaderItem
+              key={tab.key}
+              tab={tab}
+              activeTab={activeTab}
+              onActiveTabChange={onActiveTabChange}
+              disabledTip={tab.disabledTip || disabledTip}
+              disabledTipLinkHref={
+                tab.disabledTipLinkKey === 'startNodesDocs'
+                  ? docLink('/use-dify/nodes/trigger/overview')
+                  : undefined
+              }
+              disabledTipLinkLabel={
+                tab.disabledTipLinkKey === 'startNodesDocs'
+                  ? t(($) => $['tabs.startDisabledTipLearnMore'], { ns: 'workflow' })
+                  : undefined
+              }
+            />
+          ))}
+        </div>
+      )}
       {filterElem}
-      {
-        activeTab === TabsEnum.Start && (!noBlocks || forceShowStartContent) && (
-          <div className="border-t border-divider-subtle">
-            <AllStartBlocks
-              allowUserInputSelection={allowStartNodeSelection}
-              searchText={searchText}
-              onSelect={onSelect}
-              availableBlocksTypes={availableBlocksTypes}
-              tags={tags}
-            />
-          </div>
-        )
-      }
-      {
-        activeTab === TabsEnum.Blocks && !noBlocks && (
-          <div className="border-t border-divider-subtle">
-            <Blocks
-              searchText={searchText}
-              onSelect={onSelect}
-              availableBlocksTypes={availableBlocksTypes}
-              blocks={blocks}
-            />
-          </div>
-        )
-      }
-      {
-        activeTab === TabsEnum.Sources && !!dataSources.length && (
-          <div className="border-t border-divider-subtle">
-            <DataSources
-              searchText={searchText}
-              onSelect={onSelect}
-              dataSources={dataSources}
-            />
-          </div>
-        )
-      }
-      {
-        activeTab === TabsEnum.Tools && !noTools && (
-          <AllTools
+      {activeTab === TabsEnum.Start && (!noBlocks || forceShowStartContent) && (
+        <div className="border-t border-divider-subtle">
+          <AllStartBlocks
+            allowUserInputSelection={allowStartNodeSelection}
+            hasUserInputNode={hasUserInputNode}
+            hasTriggerNode={hasTriggerNode}
             searchText={searchText}
             onSelect={onSelect}
+            availableBlocksTypes={availableBlocksTypes}
             tags={tags}
-            canNotSelectMultiple
-            buildInTools={normalizedBuiltInTools || []}
-            customTools={normalizedCustomTools || []}
-            workflowTools={normalizedWorkflowTools || []}
-            mcpTools={normalizedMcpTools || []}
-            onTagsChange={onTagsChange}
-            isInRAGPipeline={inRAGPipeline}
-            featuredPlugins={featuredPlugins}
-            featuredLoading={isFeaturedLoading}
-            showFeatured={enable_marketplace && !inRAGPipeline}
-            onFeaturedInstallSuccess={async () => {
-              invalidateBuiltInTools()
-            }}
           />
-        )
-      }
+        </div>
+      )}
+      {activeTab === TabsEnum.Blocks && !noBlocks && (
+        <div className="border-t border-divider-subtle">
+          <Blocks
+            searchText={searchText}
+            onSelect={onSelect}
+            availableBlocksTypes={availableBlocksTypes}
+            blocks={blocks}
+          />
+        </div>
+      )}
+      {activeTab === TabsEnum.Sources && !!dataSources.length && (
+        <div className="border-t border-divider-subtle">
+          <DataSources searchText={searchText} onSelect={onSelect} dataSources={dataSources} />
+        </div>
+      )}
+      {activeTab === TabsEnum.Tools && !noTools && (
+        <AllTools
+          searchText={searchText}
+          onSelect={onSelect}
+          tags={tags}
+          canNotSelectMultiple
+          buildInTools={normalizedBuiltInTools || []}
+          customTools={normalizedCustomTools || []}
+          workflowTools={normalizedWorkflowTools || []}
+          mcpTools={normalizedMcpTools || []}
+          onTagsChange={onTagsChange}
+          isInRAGPipeline={inRAGPipeline}
+          featuredPlugins={featuredPlugins}
+          featuredLoading={isFeaturedLoading}
+          showFeatured={enable_marketplace && !inRAGPipeline}
+          onFeaturedInstallSuccess={async () => {
+            invalidateBuiltInTools()
+          }}
+        />
+      )}
+      {activeTab === TabsEnum.Snippets && Boolean(snippetsElem) ? (
+        <div className="border-t border-divider-subtle">{snippetsElem}</div>
+      ) : null}
     </div>
   )
 }

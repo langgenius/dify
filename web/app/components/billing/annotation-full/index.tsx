@@ -12,12 +12,16 @@ const AnnotationFull: FC = () => {
   const { t } = useTranslation()
 
   return (
-    <GridMask wrapperClassName="rounded-lg" canvasClassName="rounded-lg" gradientClassName="rounded-lg">
+    <GridMask
+      wrapperClassName="rounded-lg"
+      canvasClassName="rounded-lg"
+      gradientClassName="rounded-lg"
+    >
       <div className="mt-6 flex cursor-pointer flex-col rounded-lg border-2 border-solid border-transparent px-3.5 py-4 shadow-md transition-all duration-200 ease-in-out">
         <div className="flex items-center justify-between">
           <div className={cn(s.textGradient, 'text-base leading-[24px] font-semibold')}>
-            <div>{t('annotatedResponse.fullTipLine1', { ns: 'billing' })}</div>
-            <div>{t('annotatedResponse.fullTipLine2', { ns: 'billing' })}</div>
+            <div>{t(($) => $['annotatedResponse.fullTipLine1'], { ns: 'billing' })}</div>
+            <div>{t(($) => $['annotatedResponse.fullTipLine2'], { ns: 'billing' })}</div>
           </div>
           <div className="flex">
             <UpgradeBtn loc="annotation-create" />

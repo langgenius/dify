@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { UserActionButtonType } from '../../types'
 import FormContentPreview from '../form-content-preview'
 
@@ -23,7 +24,7 @@ vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
 
 vi.mock('@/app/components/base/action-button', () => ({
   __esModule: true,
-  default: ({ children, onClick }: { children?: ReactNode, onClick?: () => void }) => (
+  default: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
     <button type="button" aria-label="close-preview" onClick={onClick}>
       {children}
     </button>
@@ -36,8 +37,10 @@ vi.mock('@/app/components/base/badge', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, variant }: { children?: ReactNode, variant?: string }) => (
-    <button type="button" data-testid={`action-${variant}`}>{children}</button>
+  Button: ({ children, variant }: { children?: ReactNode; variant?: string }) => (
+    <button type="button" data-testid={`action-${variant}`}>
+      {children}
+    </button>
   ),
 }))
 
@@ -46,7 +49,9 @@ vi.mock('@/app/components/base/chat/chat/answer/human-input-content/utils', () =
 }))
 
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ customComponents }: {
+  Markdown: ({
+    customComponents,
+  }: {
     customComponents: {
       variable: (props: { node: { properties: { dataPath: string } } }) => ReactNode
       section: (props: { node: { properties: { dataName: string } } }) => ReactNode
@@ -64,10 +69,23 @@ vi.mock('../variable-in-markdown', () => ({
   rehypeNotes: vi.fn(),
   rehypeVariable: vi.fn(),
   Variable: ({ path }: { path: string }) => <div data-testid="variable-path">{path}</div>,
-  Note: ({ defaultInput, nodeName }: {
-    defaultInput: { selector: string[] }
+  Note: ({
+    input,
+    nodeName,
+  }: {
+    input: {
+      type: string
+      default?: { selector: string[] }
+      option_source?: { selector: string[] }
+    }
     nodeName: (nodeId: string) => string
-  }) => <div data-testid="note">{nodeName(defaultInput.selector[0]!)}</div>,
+  }) => (
+    <div data-testid="note">
+      {input.default?.selector?.length
+        ? nodeName(input.default.selector[0]!)
+        : input.option_source?.selector?.join('.') || input.type}
+    </div>
+  ),
 }))
 
 describe('FormContentPreview', () => {
@@ -76,13 +94,17 @@ describe('FormContentPreview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
-    mockUseStore.mockImplementation((selector: (state: { panelWidth: number }) => unknown) => selector({ panelWidth: 320 }))
-    mockUseNodes.mockReturnValue([{
-      id: 'node-1',
-      data: { title: 'Classifier' },
-    }])
+    mockUseStore.mockImplementation((selector: (state: { panelWidth: number }) => unknown) =>
+      selector({ panelWidth: 320 }),
+    )
+    mockUseNodes.mockReturnValue([
+      {
+        id: 'node-1',
+        data: { title: 'Classifier' },
+      },
+    ])
     mockGetButtonStyle.mockImplementation((style: UserActionButtonType) => style.toLowerCase())
   })
 
@@ -90,20 +112,24 @@ describe('FormContentPreview', () => {
     const { container } = render(
       <FormContentPreview
         content="content"
-        formInputs={[{
-          type: 'text-input' as never,
-          output_variable_name: 'field_1',
-          default: {
-            type: 'variable',
-            selector: ['node-1', 'answer'],
-            value: '',
+        formInputs={[
+          {
+            type: 'text-input' as never,
+            output_variable_name: 'field_1',
+            default: {
+              type: 'variable',
+              selector: ['node-1', 'answer'],
+              value: '',
+            },
           },
-        }]}
-        userActions={[{
-          id: 'approve',
-          title: 'Approve',
-          button_style: UserActionButtonType.Primary,
-        }]}
+        ]}
+        userActions={[
+          {
+            id: 'approve',
+            title: 'Approve',
+            button_style: UserActionButtonType.Primary,
+          },
+        ]}
         onClose={onClose}
       />,
     )
@@ -119,16 +145,34 @@ describe('FormContentPreview', () => {
 
   it('should close the preview when the close action is clicked', () => {
     render(
-      <FormContentPreview
-        content="content"
-        formInputs={[]}
-        userActions={[]}
-        onClose={onClose}
-      />,
+      <FormContentPreview content="content" formInputs={[]} userActions={[]} onClose={onClose} />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'close-preview' }))
 
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('should pass non-paragraph inputs through the preview note renderer', () => {
+    render(
+      <FormContentPreview
+        content="content"
+        formInputs={[
+          {
+            type: 'select' as never,
+            output_variable_name: 'field_1',
+            option_source: {
+              type: 'variable',
+              selector: ['node-1', 'items'],
+              value: [],
+            },
+          },
+        ]}
+        userActions={[]}
+        onClose={onClose}
+      />,
+    )
+
+    expect(screen.getByTestId('note')).toHaveTextContent('node-1.items')
   })
 })

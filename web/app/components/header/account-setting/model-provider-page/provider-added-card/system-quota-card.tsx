@@ -22,16 +22,14 @@ type SystemQuotaCardProps = {
   children: ReactNode
 }
 
-const SystemQuotaCard = ({
-  variant = 'default',
-  children,
-}: SystemQuotaCardProps) => {
+const SystemQuotaCard = ({ variant = 'default', children }: SystemQuotaCardProps) => {
   return (
     <VariantContext.Provider value={variant}>
-      <div className={cn(
-        'relative isolate ml-1 flex w-[128px] shrink-0 flex-col justify-between rounded-lg border-[0.5px] p-1 shadow-xs',
-        containerVariants[variant],
-      )}
+      <div
+        className={cn(
+          'relative isolate ml-1 flex w-[128px] shrink-0 flex-col justify-between rounded-lg border-[0.5px] p-1 shadow-xs',
+          containerVariants[variant],
+        )}
       >
         <div className={cn('pointer-events-none absolute inset-0 rounded-[7px]', styles.gridBg)} />
         {children}
@@ -40,13 +38,14 @@ const SystemQuotaCard = ({
   )
 }
 
-const Label = ({ children, className }: { children: ReactNode, className?: string }) => {
+const Label = ({ children, className }: { children: ReactNode; className?: string }) => {
   const variant = use(VariantContext)
   return (
-    <div className={cn(
-      'relative z-1 flex items-center gap-1 truncate px-1.5 pt-1 system-xs-medium',
-      className ?? labelVariants[variant],
-    )}
+    <div
+      className={cn(
+        'relative z-1 flex min-w-0 items-center gap-1 overflow-hidden px-1.5 pt-1 system-xs-medium',
+        className ?? labelVariants[variant],
+      )}
     >
       {children}
     </div>
@@ -54,11 +53,7 @@ const Label = ({ children, className }: { children: ReactNode, className?: strin
 }
 
 const Actions = ({ children }: { children: ReactNode }) => {
-  return (
-    <div className="relative z-1 flex items-center gap-0.5">
-      {children}
-    </div>
-  )
+  return <div className="relative z-1 flex w-full min-w-0 items-center gap-0.5">{children}</div>
 }
 
 SystemQuotaCard.Label = Label

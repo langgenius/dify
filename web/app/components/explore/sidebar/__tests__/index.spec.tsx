@@ -1,6 +1,6 @@
 import type { InstalledApp } from '@/models/explore'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MediaType } from '@/hooks/use-breakpoints'
+import { expectLoadingButton } from '@/test/button'
 import { AppModeEnum } from '@/types/app'
 import SideBar from '../index'
 
@@ -15,22 +15,13 @@ const mockUpdatePinStatus = vi.fn()
 let mockIsPending = false
 let mockIsUninstallPending = false
 let mockInstalledApps: InstalledApp[] = []
-let mockMediaType: string = MediaType.pc
 
 vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/',
   useSelectedLayoutSegments: () => mockSegments,
   useRouter: () => ({
     push: mockPush,
   }),
-}))
-
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: () => mockMediaType,
-  MediaType: {
-    mobile: 'mobile',
-    tablet: 'tablet',
-    pc: 'pc',
-  },
 }))
 
 vi.mock('@/service/use-explore', () => ({
@@ -85,7 +76,6 @@ describe('SideBar', () => {
     mockIsPending = false
     mockIsUninstallPending = false
     mockInstalledApps = []
-    mockMediaType = MediaType.pc
   })
 
   describe('Rendering', () => {
@@ -93,13 +83,6 @@ describe('SideBar', () => {
       renderSideBar()
 
       expect(screen.getByText('explore.sidebar.title')).toBeInTheDocument()
-    })
-
-    it('should expose an accessible name for the discovery link when the text is hidden', () => {
-      mockMediaType = MediaType.mobile
-      renderSideBar()
-
-      expect(screen.getByRole('link', { name: 'explore.sidebar.title' })).toBeInTheDocument()
     })
 
     it('should render workspace items when installed apps exist', () => {
@@ -137,8 +120,16 @@ describe('SideBar', () => {
 
     it('should render divider between pinned and unpinned apps', () => {
       mockInstalledApps = [
-        createInstalledApp({ id: 'app-1', is_pinned: true, app: { ...createInstalledApp().app, name: 'Pinned' } }),
-        createInstalledApp({ id: 'app-2', is_pinned: false, app: { ...createInstalledApp().app, name: 'Unpinned' } }),
+        createInstalledApp({
+          id: 'app-1',
+          is_pinned: true,
+          app: { ...createInstalledApp().app, name: 'Pinned' },
+        }),
+        createInstalledApp({
+          id: 'app-2',
+          is_pinned: false,
+          app: { ...createInstalledApp().app, name: 'Unpinned' },
+        }),
       ]
       const { container } = renderSideBar()
 
@@ -152,7 +143,22 @@ describe('SideBar', () => {
       const toggleButton = screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' })
       fireEvent.click(toggleButton)
 
-      expect(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }),
+      ).toBeInTheDocument()
+    })
+
+    it('should render icon-only content when folded', () => {
+      mockInstalledApps = [createInstalledApp()]
+      renderSideBar()
+
+      fireEvent.click(screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }))
+
+      expect(screen.getByRole('link', { name: 'explore.sidebar.title' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'My App' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }),
+      ).toBeInTheDocument()
     })
   })
 
@@ -224,17 +230,7 @@ describe('SideBar', () => {
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
 
       expect(screen.getByText('common.operation.cancel')).toBeDisabled()
-      expect(screen.getByText('common.operation.confirm')).toBeDisabled()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should hide NoApps and app names on mobile', () => {
-      mockMediaType = MediaType.mobile
-      renderSideBar()
-
-      expect(screen.queryByText('explore.sidebar.noApps.title')).not.toBeInTheDocument()
-      expect(screen.queryByText('explore.sidebar.webApps')).not.toBeInTheDocument()
+      expectLoadingButton(screen.getByText('common.operation.confirm').closest('button'))
     })
   })
 })

@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 import yaml
+from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
@@ -55,7 +56,7 @@ def test_get_leaked_dependencies_returns_empty_list_for_empty_input() -> None:
     assert result == []
 
 
-def test_get_leaked_dependencies_delegates_to_analysis_service(mocker) -> None:
+def test_get_leaked_dependencies_delegates_to_analysis_service(mocker: MockerFixture) -> None:
     expected = [Mock()]
     get_leaked_mock = mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.get_leaked_dependencies",
@@ -72,7 +73,7 @@ def test_get_leaked_dependencies_delegates_to_analysis_service(mocker) -> None:
 # --- check_dependencies ---
 
 
-def test_check_dependencies_returns_empty_when_no_redis_data(mocker) -> None:
+def test_check_dependencies_returns_empty_when_no_redis_data(mocker: MockerFixture) -> None:
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.redis_client.get",
         return_value=None,
@@ -85,12 +86,12 @@ def test_check_dependencies_returns_empty_when_no_redis_data(mocker) -> None:
     assert result.leaked_dependencies == []
 
 
-def test_check_dependencies_returns_leaked_deps_from_redis(mocker) -> None:
-    from core.plugin.entities.plugin import PluginDependency
+def test_check_dependencies_returns_leaked_deps_from_redis(mocker: MockerFixture) -> None:
+    from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
     from services.rag_pipeline.rag_pipeline_dsl_service import CheckDependenciesPendingData
 
     dep = PluginDependency(
-        type=PluginDependency.Type.Marketplace,
+        type=PluginDependencyType.Marketplace,
         value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier="test/plugin:0.1.0"),
     )
     pending_data = CheckDependenciesPendingData(
@@ -117,7 +118,7 @@ def test_check_dependencies_returns_leaked_deps_from_redis(mocker) -> None:
 # --- _extract_dependencies_from_model_config ---
 
 
-def test_extract_dependencies_from_model_config_extracts_model(mocker) -> None:
+def test_extract_dependencies_from_model_config_extracts_model(mocker: MockerFixture) -> None:
     analyze_mock = mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
         return_value="langgenius/openai",
@@ -130,7 +131,7 @@ def test_extract_dependencies_from_model_config_extracts_model(mocker) -> None:
     analyze_mock.assert_called_with("openai")
 
 
-def test_extract_dependencies_from_model_config_extracts_tools(mocker) -> None:
+def test_extract_dependencies_from_model_config_extracts_tools(mocker: MockerFixture) -> None:
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
         return_value="x",
@@ -159,7 +160,7 @@ def test_extract_dependencies_from_model_config_empty_config() -> None:
 # --- _extract_dependencies_from_workflow_graph ---
 
 
-def test_extract_dependencies_from_workflow_graph_ignores_unknown_types(mocker) -> None:
+def test_extract_dependencies_from_workflow_graph_ignores_unknown_types(mocker: MockerFixture) -> None:
     service = RagPipelineDslService(session=Mock())
     graph = {"nodes": [{"data": {"type": "some-unknown-type"}}]}
 
@@ -176,7 +177,7 @@ def test_extract_dependencies_from_workflow_graph_handles_empty_graph() -> None:
     assert result == []
 
 
-def test_extract_dependencies_from_workflow_graph_handles_malformed_node(mocker) -> None:
+def test_extract_dependencies_from_workflow_graph_handles_malformed_node(mocker: MockerFixture) -> None:
     service = RagPipelineDslService(session=Mock())
     # Node with TOOL type but invalid data should be caught by exception handler
     from graphon.enums import BuiltinNodeTypes
@@ -205,7 +206,7 @@ def test_export_rag_pipeline_dsl_raises_when_dataset_missing() -> None:
 # --- import_rag_pipeline ---
 
 
-def test_import_rag_pipeline_url_fetch_error(mocker) -> None:
+def test_import_rag_pipeline_url_fetch_error(mocker: MockerFixture) -> None:
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.remote_fetcher.make_request",
         side_effect=Exception("fetch failed"),
@@ -221,7 +222,7 @@ def test_import_rag_pipeline_url_fetch_error(mocker) -> None:
     assert "fetch failed" in result.error
 
 
-def test_import_rag_pipeline_yaml_content_success(mocker) -> None:
+def test_import_rag_pipeline_yaml_content_success(mocker: MockerFixture) -> None:
     yaml_content = """
 version: 0.1.0
 kind: rag_pipeline
@@ -269,7 +270,7 @@ workflow:
     session.flush.assert_called()
 
 
-def test_import_rag_pipeline_flushes_new_collection_binding_without_commit(mocker) -> None:
+def test_import_rag_pipeline_flushes_new_collection_binding_without_commit(mocker: MockerFixture) -> None:
     yaml_content = """
 version: 0.1.0
 kind: rag_pipeline
@@ -321,7 +322,7 @@ workflow:
     assert session.flush.call_count >= 2
 
 
-def test_import_rag_pipeline_pending_version(mocker) -> None:
+def test_import_rag_pipeline_pending_version(mocker: MockerFixture) -> None:
     yaml_content = "version: 1.0.0\nkind: rag_pipeline\nrag_pipeline: {name: x}"
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.redis_client.setex")
     service = RagPipelineDslService(session=Mock())
@@ -336,7 +337,7 @@ def test_import_rag_pipeline_pending_version(mocker) -> None:
 # --- confirm_import ---
 
 
-def test_confirm_import_success(mocker) -> None:
+def test_confirm_import_success(mocker: MockerFixture) -> None:
     from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelinePendingData
 
     yaml_content = """
@@ -398,7 +399,7 @@ workflow:
     assert result.dataset_id == "d1"
 
 
-def test_confirm_import_flushes_new_collection_binding_without_commit(mocker) -> None:
+def test_confirm_import_flushes_new_collection_binding_without_commit(mocker: MockerFixture) -> None:
     from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelinePendingData
 
     yaml_content = """
@@ -518,7 +519,7 @@ def test_extract_dependencies_from_workflow_graph_types(mocker, node_type) -> No
 # --- _create_or_update_pipeline ---
 
 
-def test_create_or_update_pipeline_create_new(mocker) -> None:
+def test_create_or_update_pipeline_create_new(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     account = Mock(current_tenant_id="t1", id="u1")
@@ -549,7 +550,7 @@ def test_create_or_update_pipeline_create_new(mocker) -> None:
 # --- export_rag_pipeline_dsl comprehensive ---
 
 
-def test_export_rag_pipeline_dsl_with_workflow(mocker) -> None:
+def test_export_rag_pipeline_dsl_with_workflow(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     pipeline = Mock()
@@ -591,7 +592,7 @@ def test_export_rag_pipeline_dsl_with_workflow(mocker) -> None:
 # --- _extract_dependencies_from_workflow_graph more types ---
 
 
-def test_extract_dependencies_from_workflow_graph_datasource(mocker) -> None:
+def test_extract_dependencies_from_workflow_graph_datasource(mocker: MockerFixture) -> None:
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DatasourceNodeData.model_validate",
         return_value=Mock(provider_type="online", plugin_id="ds1"),
@@ -632,6 +633,19 @@ def test_import_rag_pipeline_yaml_content_requires_content() -> None:
     assert "yaml_content is required" in result.error
 
 
+def test_import_rag_pipeline_rejects_oversized_yaml_content_before_parsing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("services.rag_pipeline.rag_pipeline_dsl_service.DSL_MAX_SIZE", 3)
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1")
+
+    result = service.import_rag_pipeline(account=account, import_mode="yaml-content", yaml_content="你你")
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "File size exceeds the limit of 10MB"
+
+
 def test_import_rag_pipeline_yaml_content_requires_mapping() -> None:
     service = RagPipelineDslService(session=Mock())
     account = Mock(current_tenant_id="t1")
@@ -642,7 +656,20 @@ def test_import_rag_pipeline_yaml_content_requires_mapping() -> None:
     assert "content must be a mapping" in result.error
 
 
-def test_confirm_import_returns_failed_when_pending_data_is_invalid_type(mocker) -> None:
+def test_import_rag_pipeline_rejects_oversized_yaml_content_by_bytes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("services.rag_pipeline.rag_pipeline_dsl_service.DSL_MAX_SIZE", 1)
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1")
+
+    result = service.import_rag_pipeline(account=account, import_mode="yaml-content", yaml_content="é")
+
+    assert result.status == ImportStatus.FAILED
+    assert "10MB" in result.error
+
+
+def test_confirm_import_returns_failed_when_pending_data_is_invalid_type(mocker: MockerFixture) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.redis_client.get", return_value=object())
     service = RagPipelineDslService(session=Mock())
     account = Mock(current_tenant_id="t1")
@@ -653,7 +680,7 @@ def test_confirm_import_returns_failed_when_pending_data_is_invalid_type(mocker)
     assert "Invalid import information" in result.error
 
 
-def test_append_workflow_export_data_filters_credentials(mocker) -> None:
+def test_append_workflow_export_data_filters_credentials(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     workflow = Mock()
@@ -691,7 +718,7 @@ def test_append_workflow_export_data_filters_credentials(mocker) -> None:
     assert "credential_id" not in nodes[1]["data"]["agent_parameters"]["tools"]["value"][0]
 
 
-def test_create_rag_pipeline_dataset_raises_when_name_conflicts(mocker) -> None:
+def test_create_rag_pipeline_dataset_raises_when_name_conflicts(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     session.scalar.return_value = Mock()
@@ -707,7 +734,7 @@ def test_create_rag_pipeline_dataset_raises_when_name_conflicts(mocker) -> None:
         service.create_rag_pipeline_dataset("tenant-1", create_entity)
 
 
-def test_create_rag_pipeline_dataset_generates_name_when_missing(mocker) -> None:
+def test_create_rag_pipeline_dataset_generates_name_when_missing(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     session.scalar.return_value = None
@@ -741,7 +768,7 @@ def test_create_rag_pipeline_dataset_generates_name_when_missing(mocker) -> None
     assert result["status"] == ImportStatus.COMPLETED
 
 
-def test_append_workflow_export_data_encrypts_knowledge_retrieval_dataset_ids(mocker) -> None:
+def test_append_workflow_export_data_encrypts_knowledge_retrieval_dataset_ids(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     workflow = Mock()
@@ -773,7 +800,7 @@ def test_append_workflow_export_data_encrypts_knowledge_retrieval_dataset_ids(mo
     assert ids == ["enc-d1", "enc-d2"]
 
 
-def test_confirm_import_updates_existing_dataset(mocker) -> None:
+def test_confirm_import_updates_existing_dataset(mocker: MockerFixture) -> None:
     from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelinePendingData
 
     yaml_content = (
@@ -812,7 +839,7 @@ def test_confirm_import_updates_existing_dataset(mocker) -> None:
     assert dataset.indexing_technique == "economy"
 
 
-def test_import_rag_pipeline_yaml_url_handles_empty_content_after_github_rewrite(mocker) -> None:
+def test_import_rag_pipeline_yaml_url_handles_empty_content_after_github_rewrite(mocker: MockerFixture) -> None:
     response = Mock()
     response.raise_for_status.return_value = None
     response.content = b""
@@ -835,7 +862,7 @@ def test_import_rag_pipeline_yaml_url_handles_empty_content_after_github_rewrite
     assert "raw.githubusercontent.com" in called_url
 
 
-def test_create_or_update_pipeline_decrypts_knowledge_retrieval_dataset_ids(mocker) -> None:
+def test_create_or_update_pipeline_decrypts_knowledge_retrieval_dataset_ids(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     account = Mock(id="u1", current_tenant_id="t1")
@@ -866,7 +893,7 @@ def test_create_or_update_pipeline_decrypts_knowledge_retrieval_dataset_ids(mock
     assert draft_workflow.graph is not None
 
 
-def test_create_or_update_pipeline_creates_draft_when_missing(mocker) -> None:
+def test_create_or_update_pipeline_creates_draft_when_missing(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     account = Mock(id="u1", current_tenant_id="t1")
@@ -882,7 +909,7 @@ def test_create_or_update_pipeline_creates_draft_when_missing(mocker) -> None:
     assert pipeline.workflow_id == "wf-new"
 
 
-def test_import_rag_pipeline_url_size_exceeds_limit(mocker) -> None:
+def test_import_rag_pipeline_url_size_exceeds_limit(mocker: MockerFixture) -> None:
     response = Mock()
     response.raise_for_status.return_value = None
     response.content = b"x" * (10 * 1024 * 1024 + 1)
@@ -898,6 +925,46 @@ def test_import_rag_pipeline_url_size_exceeds_limit(mocker) -> None:
 
     assert result.status == ImportStatus.FAILED
     assert "10MB" in result.error
+
+
+def test_import_rag_pipeline_rejects_oversized_yaml_url_bytes_before_decode(
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("services.rag_pipeline.rag_pipeline_dsl_service.DSL_MAX_SIZE", 1)
+    response = Mock()
+    response.raise_for_status.return_value = None
+    response.content = b"\xff\xff"
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.remote_fetcher.make_request", return_value=response)
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1")
+
+    result = service.import_rag_pipeline(
+        account=account,
+        import_mode="yaml-url",
+        yaml_url="https://example.com/pipeline.yaml",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "10MB" in result.error
+
+
+def test_import_rag_pipeline_returns_decode_error_for_invalid_yaml_url_bytes(mocker: MockerFixture) -> None:
+    response = Mock()
+    response.raise_for_status.return_value = None
+    response.content = b"\xff"
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.remote_fetcher.make_request", return_value=response)
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1")
+
+    result = service.import_rag_pipeline(
+        account=account,
+        import_mode="yaml-url",
+        yaml_url="https://example.com/pipeline.yaml",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "utf-8" in result.error
 
 
 def test_import_rag_pipeline_fails_when_rag_pipeline_data_missing() -> None:
@@ -953,7 +1020,7 @@ def test_append_workflow_export_data_raises_when_draft_workflow_missing() -> Non
         service._append_workflow_export_data(export_data={}, pipeline=Mock(tenant_id="t1"), include_secret=False)
 
 
-def test_append_workflow_export_data_keeps_secret_fields_when_include_secret_true(mocker) -> None:
+def test_append_workflow_export_data_keeps_secret_fields_when_include_secret_true(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     workflow = Mock()
@@ -992,7 +1059,7 @@ def test_append_workflow_export_data_keeps_secret_fields_when_include_secret_tru
     assert tool_values[0]["credential_id"] == "agent-secret"
 
 
-def test_extract_dependencies_from_workflow_graph_skips_local_file_datasource(mocker) -> None:
+def test_extract_dependencies_from_workflow_graph_skips_local_file_datasource(mocker: MockerFixture) -> None:
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DatasourceNodeData.model_validate",
         return_value=Mock(provider_type="local_file", plugin_id="plugin-x"),
@@ -1006,7 +1073,7 @@ def test_extract_dependencies_from_workflow_graph_skips_local_file_datasource(mo
     assert result == []
 
 
-def test_extract_dependencies_from_workflow_graph_knowledge_index_reranking(mocker) -> None:
+def test_extract_dependencies_from_workflow_graph_knowledge_index_reranking(mocker: MockerFixture) -> None:
     analyze = mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
         side_effect=lambda provider: f"dep:{provider}",
@@ -1031,7 +1098,7 @@ def test_extract_dependencies_from_workflow_graph_knowledge_index_reranking(mock
     assert analyze.call_count == 2
 
 
-def test_extract_dependencies_from_workflow_graph_multiple_retrieval_weighted_score(mocker) -> None:
+def test_extract_dependencies_from_workflow_graph_multiple_retrieval_weighted_score(mocker: MockerFixture) -> None:
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
         return_value="dep:weighted",
@@ -1053,7 +1120,7 @@ def test_extract_dependencies_from_workflow_graph_multiple_retrieval_weighted_sc
     assert result == ["dep:weighted"]
 
 
-def test_extract_dependencies_from_workflow_graph_multiple_retrieval_reranking_model(mocker) -> None:
+def test_extract_dependencies_from_workflow_graph_multiple_retrieval_reranking_model(mocker: MockerFixture) -> None:
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
         return_value="dep:rerank",
@@ -1075,7 +1142,7 @@ def test_extract_dependencies_from_workflow_graph_multiple_retrieval_reranking_m
     assert result == ["dep:rerank"]
 
 
-def test_extract_dependencies_from_model_config_includes_dataset_reranking_and_tools(mocker) -> None:
+def test_extract_dependencies_from_model_config_includes_dataset_reranking_and_tools(mocker: MockerFixture) -> None:
     model_analyze = mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
         side_effect=["dep:model", "dep:rerank"],
@@ -1107,7 +1174,7 @@ def test_extract_dependencies_from_model_config_includes_dataset_reranking_and_t
     tool_analyze.assert_called_once_with("google")
 
 
-def test_check_version_compatibility_hits_major_older_branch(mocker) -> None:
+def test_check_version_compatibility_hits_major_older_branch(mocker: MockerFixture) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.CURRENT_DSL_VERSION", "1.0.0")
 
     status = check_version_compatibility("0.9.0", rag_pipeline_dsl_service.CURRENT_DSL_VERSION)
@@ -1115,7 +1182,7 @@ def test_check_version_compatibility_hits_major_older_branch(mocker) -> None:
     assert status == ImportStatus.PENDING
 
 
-def test_import_rag_pipeline_sets_default_version_and_kind(mocker) -> None:
+def test_import_rag_pipeline_sets_default_version_and_kind(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     account = Mock(current_tenant_id="t1")
@@ -1147,7 +1214,7 @@ def test_import_rag_pipeline_sets_default_version_and_kind(mocker) -> None:
     assert result.imported_dsl_version == "0.1.0"
 
 
-def test_import_rag_pipeline_creates_pending_for_dependencies(mocker) -> None:
+def test_import_rag_pipeline_creates_pending_for_dependencies(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     account = Mock(current_tenant_id="t1")
@@ -1169,7 +1236,7 @@ workflow: {graph: {nodes: []}}
     setex.assert_called_once()
 
 
-def test_confirm_import_returns_failed_when_pending_pipeline_missing(mocker) -> None:
+def test_confirm_import_returns_failed_when_pending_pipeline_missing(mocker: MockerFixture) -> None:
     from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelinePendingData
 
     pending = RagPipelinePendingData(import_mode="yaml-content", yaml_content="version: 0.1.0", pipeline_id="p1")
@@ -1186,7 +1253,7 @@ def test_confirm_import_returns_failed_when_pending_pipeline_missing(mocker) -> 
     assert result.status == ImportStatus.FAILED
 
 
-def test_append_workflow_export_data_skips_empty_node_data(mocker) -> None:
+def test_append_workflow_export_data_skips_empty_node_data(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     workflow = Mock()
@@ -1204,7 +1271,7 @@ def test_append_workflow_export_data_skips_empty_node_data(mocker) -> None:
     assert "workflow" in export_data
 
 
-def test_extract_dependencies_from_workflow_graph_multiple_config_none(mocker) -> None:
+def test_extract_dependencies_from_workflow_graph_multiple_config_none(mocker: MockerFixture) -> None:
     retrieval = Mock()
     retrieval.retrieval_mode = "multiple"
     retrieval.multiple_retrieval_config = None
@@ -1221,7 +1288,7 @@ def test_extract_dependencies_from_workflow_graph_multiple_config_none(mocker) -
     assert result == []
 
 
-def test_extract_dependencies_from_workflow_graph_single_config_none(mocker) -> None:
+def test_extract_dependencies_from_workflow_graph_single_config_none(mocker: MockerFixture) -> None:
     retrieval = Mock()
     retrieval.retrieval_mode = "single"
     retrieval.single_retrieval_config = None
@@ -1246,7 +1313,7 @@ def test_create_or_update_pipeline_raises_when_workflow_missing() -> None:
         service._create_or_update_pipeline(pipeline=None, data={"rag_pipeline": {"name": "x"}}, account=account)
 
 
-def test_import_rag_pipeline_with_pipeline_id_uses_existing_dataset(mocker) -> None:
+def test_import_rag_pipeline_with_pipeline_id_uses_existing_dataset(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     existing_dataset = Mock(id="d1", chunk_structure="text_model")
@@ -1282,7 +1349,7 @@ def test_import_rag_pipeline_with_pipeline_id_uses_existing_dataset(mocker) -> N
     assert result.dataset_id == "d1"
 
 
-def test_import_rag_pipeline_raises_for_chunk_structure_mismatch_on_published(mocker) -> None:
+def test_import_rag_pipeline_raises_for_chunk_structure_mismatch_on_published(mocker: MockerFixture) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
     existing_dataset = Mock(id="d1", chunk_structure="hierarchical_model")
@@ -1318,7 +1385,7 @@ def test_import_rag_pipeline_raises_for_chunk_structure_mismatch_on_published(mo
     assert "Chunk structure is not compatible" in result.error
 
 
-def test_import_rag_pipeline_fails_when_no_knowledge_index_node(mocker) -> None:
+def test_import_rag_pipeline_fails_when_no_knowledge_index_node(mocker: MockerFixture) -> None:
     service = RagPipelineDslService(session=Mock())
     pipeline = Mock(id="p1", name="P", description="D", is_published=False)
     mocker.patch.object(service, "_create_or_update_pipeline", return_value=pipeline)
@@ -1340,7 +1407,7 @@ def test_import_rag_pipeline_fails_when_no_knowledge_index_node(mocker) -> None:
     assert "Knowledge Index node" in result.error
 
 
-def test_confirm_import_fails_when_no_knowledge_index_node(mocker) -> None:
+def test_confirm_import_fails_when_no_knowledge_index_node(mocker: MockerFixture) -> None:
     from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelinePendingData
 
     yaml_content = (
@@ -1369,8 +1436,8 @@ def test_confirm_import_fails_when_no_knowledge_index_node(mocker) -> None:
     assert "Knowledge Index node" in result.error
 
 
-def test_create_or_update_pipeline_saves_dependencies_to_redis(mocker) -> None:
-    from core.plugin.entities.plugin import PluginDependency
+def test_create_or_update_pipeline_saves_dependencies_to_redis(mocker: MockerFixture) -> None:
+    from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
@@ -1385,7 +1452,7 @@ def test_create_or_update_pipeline_saves_dependencies_to_redis(mocker) -> None:
     session.scalar.return_value = None
     setex = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.redis_client.setex")
     dependency = PluginDependency(
-        type=PluginDependency.Type.Marketplace,
+        type=PluginDependencyType.Marketplace,
         value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier="langgenius/example:0.1.0"),
     )
 
@@ -1399,7 +1466,9 @@ def test_create_or_update_pipeline_saves_dependencies_to_redis(mocker) -> None:
     setex.assert_called_once()
 
 
-def test_extract_dependencies_from_workflow_graph_knowledge_index_without_embedding_provider(mocker) -> None:
+def test_extract_dependencies_from_workflow_graph_knowledge_index_without_embedding_provider(
+    mocker: MockerFixture,
+) -> None:
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
         return_value="dep",
@@ -1421,7 +1490,7 @@ def test_extract_dependencies_from_workflow_graph_knowledge_index_without_embedd
     assert result == []
 
 
-def test_extract_dependencies_from_workflow_graph_multiple_reranking_without_model(mocker) -> None:
+def test_extract_dependencies_from_workflow_graph_multiple_reranking_without_model(mocker: MockerFixture) -> None:
     retrieval = Mock()
     retrieval.retrieval_mode = "multiple"
     retrieval.multiple_retrieval_config.reranking_mode = "reranking_model"
@@ -1439,7 +1508,7 @@ def test_extract_dependencies_from_workflow_graph_multiple_reranking_without_mod
     assert result == []
 
 
-def test_extract_dependencies_from_workflow_graph_multiple_weighted_without_weights(mocker) -> None:
+def test_extract_dependencies_from_workflow_graph_multiple_weighted_without_weights(mocker: MockerFixture) -> None:
     retrieval = Mock()
     retrieval.retrieval_mode = "multiple"
     retrieval.multiple_retrieval_config.reranking_mode = "weighted_score"

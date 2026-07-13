@@ -9,20 +9,73 @@ This test module covers all aspects of the billing service including:
 - Cache management for billing data
 - Partner integration features
 
-All tests use mocking to avoid external dependencies and ensure fast, reliable execution.
+Network, billing-provider, and cache boundaries are mocked; database authorization
+paths use isolated in-memory SQLite sessions with persisted membership rows.
 Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
 import json
+import logging
 from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 from enums.cloud_plan import CloudPlan
-from models import Account, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.billing_service import BillingService
+
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
+OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
+ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
+
+
+def _account(*, account_id: str = ACCOUNT_ID, email: str = "user@example.com", tenant_id: str = TENANT_ID) -> Account:
+    tenant = Tenant(name="Test Tenant")
+    tenant.id = tenant_id
+    account = Account(name="Test User", email=email)
+    account.id = account_id
+    account._current_tenant = tenant
+    return account
+
+
+def _persist_membership(
+    sqlite_session: Session,
+    *,
+    role: TenantAccountRole | None,
+    add_other_tenant_membership: bool = False,
+) -> Account:
+    account = _account()
+    tenant = account.current_tenant
+    assert tenant is not None
+    sqlite_session.add_all([tenant, account])
+    if role is not None:
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=TENANT_ID,
+                account_id=ACCOUNT_ID,
+                current=True,
+                role=role,
+            )
+        )
+    if add_other_tenant_membership:
+        other_tenant = Tenant(name="Other Tenant")
+        other_tenant.id = OTHER_TENANT_ID
+        sqlite_session.add_all(
+            [
+                other_tenant,
+                TenantAccountJoin(
+                    tenant_id=OTHER_TENANT_ID,
+                    account_id=ACCOUNT_ID,
+                    current=False,
+                    role=TenantAccountRole.OWNER,
+                ),
+            ]
+        )
+    sqlite_session.commit()
+    return account
 
 
 class TestBillingServiceSendRequest:
@@ -71,6 +124,23 @@ class TestBillingServiceSendRequest:
         assert call_args[1]["params"] == {"key": "value"}
         assert call_args[1]["headers"]["Billing-Api-Secret-Key"] == "test-secret-key"
         assert call_args[1]["headers"]["Content-Type"] == "application/json"
+
+    def test_send_request_with_base_url_override(self, mock_httpx_request, mock_billing_config):
+        """Quota APIs can use the new billing service without changing legacy billing calls."""
+        # Arrange
+        expected_response = {"result": "success"}
+        mock_response = MagicMock()
+        mock_response.status_code = httpx.codes.OK
+        mock_response.json.return_value = expected_response
+        mock_httpx_request.return_value = mock_response
+
+        # Act
+        result = BillingService._send_request("GET", "/quota/balance", base_url="https://quota.example.com")
+
+        # Assert
+        assert result == expected_response
+        call_args = mock_httpx_request.call_args
+        assert call_args[0][1] == "https://quota.example.com/quota/balance"
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.NOT_FOUND, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.BAD_REQUEST]
@@ -170,7 +240,9 @@ class TestBillingServiceSendRequest:
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
-    def test_delete_request_non_200_with_valid_json(self, mock_httpx_request, mock_billing_config, status_code):
+    def test_delete_request_non_200_with_valid_json(
+        self, mock_httpx_request, mock_billing_config, status_code, caplog: pytest.LogCaptureFixture
+    ):
         """Test DELETE request with non-200 status code raises ValueError.
 
         DELETE now checks status code and raises ValueError for non-200 responses.
@@ -184,13 +256,11 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with patch("services.billing_service.logger") as mock_logger:
+        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
             with pytest.raises(ValueError) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
-            # Verify error logging
-            mock_logger.error.assert_called_once()
-            assert "DELETE response" in str(mock_logger.error.call_args)
+            assert "DELETE response" in caplog.text
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
@@ -213,7 +283,9 @@ class TestBillingServiceSendRequest:
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
-    def test_delete_request_non_200_with_invalid_json(self, mock_httpx_request, mock_billing_config, status_code):
+    def test_delete_request_non_200_with_invalid_json(
+        self, mock_httpx_request, mock_billing_config, status_code, caplog: pytest.LogCaptureFixture
+    ):
         """Test DELETE request with non-200 status code raises ValueError before JSON parsing.
 
         DELETE now checks status code before calling response.json(), so ValueError is raised
@@ -227,13 +299,11 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with patch("services.billing_service.logger") as mock_logger:
+        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
             with pytest.raises(ValueError) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
-            # Verify error logging
-            mock_logger.error.assert_called_once()
-            assert "DELETE response" in str(mock_logger.error.call_args)
+            assert "DELETE response" in caplog.text
 
     def test_retry_on_request_error(self, mock_httpx_request, mock_billing_config):
         """Test that _send_request retries on httpx.RequestError."""
@@ -392,6 +462,20 @@ class TestBillingServiceSubscriptionInfo:
             params={"tenant_id": tenant_id},
         )
 
+    def test_quota_get_balance_uses_quota_request(self):
+        tenant_id = "tenant-123"
+        with patch.object(BillingService, "_send_quota_request") as mock_send_quota_request:
+            mock_send_quota_request.return_value = {"quota": "200", "usage": "6", "available": "194", "reserved": "0"}
+
+            result = BillingService.quota_get_balance(tenant_id, "credit_pool", bucket="trial")
+
+        assert result == {"quota": 200, "usage": 6, "available": 194, "reserved": 0}
+        mock_send_quota_request.assert_called_once_with(
+            "GET",
+            "/quota/balance",
+            params={"tenant_id": tenant_id, "feature_key": "credit_pool", "bucket": "trial"},
+        )
+
     def test_get_knowledge_rate_limit_with_defaults(self, mock_send_request):
         """Test knowledge rate limit retrieval with default values."""
         # Arrange
@@ -517,19 +601,20 @@ class TestBillingServiceUsageCalculation:
         assert result == expected_response
         mock_send_request.assert_called_once_with("GET", "/tenant-feature-usage/info", params={"tenant_id": tenant_id})
 
-    def test_get_quota_info(self, mock_send_request):
+    def test_get_quota_info(self):
         """Test retrieval of quota info from new endpoint."""
         # Arrange
         tenant_id = "tenant-123"
         expected_response = {"trigger_event": {"limit": 100, "usage": 30}, "api_rate_limit": {"limit": -1, "usage": 0}}
-        mock_send_request.return_value = expected_response
+        with patch.object(BillingService, "_send_quota_request") as mock_send_quota_request:
+            mock_send_quota_request.return_value = expected_response
 
-        # Act
-        result = BillingService.get_quota_info(tenant_id)
+            # Act
+            result = BillingService.get_quota_info(tenant_id)
 
         # Assert
         assert result == expected_response
-        mock_send_request.assert_called_once_with("GET", "/quota/info", params={"tenant_id": tenant_id})
+        mock_send_quota_request.assert_called_once_with("GET", "/quota/info", params={"tenant_id": tenant_id})
 
     def test_update_tenant_feature_plan_usage_positive_delta(self, mock_send_request):
         """Test updating tenant feature usage with positive delta (adding credits)."""
@@ -613,7 +698,7 @@ class TestBillingServiceQuotaOperations:
 
     @pytest.fixture
     def mock_send_request(self):
-        with patch.object(BillingService, "_send_request") as mock:
+        with patch.object(BillingService, "_send_quota_request") as mock:
             yield mock
 
     def test_quota_reserve_success(self, mock_send_request):
@@ -650,6 +735,16 @@ class TestBillingServiceQuotaOperations:
 
         call_json = mock_send_request.call_args[1]["json"]
         assert call_json["meta"] == {"source": "webhook"}
+
+    def test_quota_reserve_with_bucket(self, mock_send_request):
+        mock_send_request.return_value = {"reservation_id": "rid-2", "available": 98, "reserved": 1}
+
+        BillingService.quota_reserve(
+            tenant_id="t1", feature_key="credit_pool", request_id="req-2", amount=1, bucket="trial"
+        )
+
+        call_json = mock_send_request.call_args[1]["json"]
+        assert call_json["bucket"] == "trial"
 
     def test_quota_commit_success(self, mock_send_request):
         expected = {"available": 98, "reserved": 0, "refunded": 0}
@@ -695,6 +790,20 @@ class TestBillingServiceQuotaOperations:
         call_json = mock_send_request.call_args[1]["json"]
         assert call_json["meta"] == {"reason": "partial"}
 
+    def test_quota_commit_with_bucket(self, mock_send_request):
+        mock_send_request.return_value = {"available": 97, "reserved": 0, "refunded": 0}
+
+        BillingService.quota_commit(
+            tenant_id="t1",
+            feature_key="credit_pool",
+            reservation_id="rid-1",
+            actual_amount=1,
+            bucket="paid",
+        )
+
+        call_json = mock_send_request.call_args[1]["json"]
+        assert call_json["bucket"] == "paid"
+
     def test_quota_release_success(self, mock_send_request):
         expected = {"available": 100, "reserved": 0, "released": 1}
         mock_send_request.return_value = expected
@@ -718,6 +827,64 @@ class TestBillingServiceQuotaOperations:
         assert isinstance(result["available"], int)
         assert result["released"] == 1
         assert isinstance(result["released"], int)
+
+    def test_quota_release_with_bucket(self, mock_send_request):
+        mock_send_request.return_value = {"available": 100, "reserved": 0, "released": 1}
+
+        BillingService.quota_release(tenant_id="t1", feature_key="credit_pool", reservation_id="rid-1", bucket="trial")
+
+        call_json = mock_send_request.call_args[1]["json"]
+        assert call_json["bucket"] == "trial"
+
+    def test_quota_consume_capped_success(self, mock_send_request):
+        mock_send_request.return_value = {
+            "deducted": "2",
+            "available": "8",
+            "reserved": "0",
+            "quota": "10",
+            "usage": "2",
+        }
+
+        result = BillingService.quota_consume_capped(
+            tenant_id="t1",
+            feature_key="credit_pool",
+            request_id="req-1",
+            amount=5,
+            bucket="paid",
+            meta={"source": "test"},
+        )
+
+        assert result == {"deducted": 2, "available": 8, "reserved": 0, "quota": 10, "usage": 2}
+        mock_send_request.assert_called_once_with(
+            "POST",
+            "/quota/consume-capped",
+            json={
+                "tenant_id": "t1",
+                "feature_key": "credit_pool",
+                "request_id": "req-1",
+                "amount": 5,
+                "bucket": "paid",
+                "meta": {"source": "test"},
+            },
+        )
+
+    def test_send_quota_request_uses_quota_base_url(self):
+        with (
+            patch.object(BillingService, "quota_base_url", "https://quota.example.com/v1"),
+            patch.object(BillingService, "_send_request") as mock_send_request,
+        ):
+            mock_send_request.return_value = {"ok": True}
+
+            result = BillingService._send_quota_request("GET", "/quota/info", params={"tenant_id": "t1"})
+
+        assert result == {"ok": True}
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "/quota/info",
+            json=None,
+            params={"tenant_id": "t1"},
+            base_url="https://quota.example.com/v1",
+        )
 
     def test_get_quota_info_coerces_string_to_int(self, mock_send_request):
         """Test that TypeAdapter coerces string values to int for get_quota_info."""
@@ -881,10 +1048,7 @@ class TestBillingServiceRateLimitEnforcement:
     def test_education_activate_rate_limit_not_exceeded(self, mock_send_request):
         """Test education activation when rate limit is not exceeded."""
         # Arrange
-        account = MagicMock(spec=Account)
-        account.id = "account-123"
-        account.email = "student@university.edu"
-        account.current_tenant_id = "tenant-456"
+        account = _account(email="student@university.edu")
         token = "verification-token"
         institution = "MIT"
         role = "student"
@@ -918,10 +1082,7 @@ class TestBillingServiceRateLimitEnforcement:
     def test_education_activate_rate_limit_exceeded(self, mock_send_request):
         """Test education activation when rate limit is exceeded."""
         # Arrange
-        account = MagicMock(spec=Account)
-        account.id = "account-123"
-        account.email = "student@university.edu"
-        account.current_tenant_id = "tenant-456"
+        account = _account(email="student@university.edu")
         token = "verification-token"
         institution = "MIT"
         role = "student"
@@ -1027,12 +1188,6 @@ class TestBillingServiceAccountManagement:
         with patch.object(BillingService, "_send_request") as mock:
             yield mock
 
-    @pytest.fixture
-    def mock_db_session(self):
-        """Mock database session."""
-        with patch("services.billing_service.db.session") as mock_session:
-            yield mock_session
-
     def test_delete_account(self, mock_send_request):
         """Test account deletion."""
         # Arrange
@@ -1102,65 +1257,48 @@ class TestBillingServiceAccountManagement:
             "POST", "/account/delete-feedback", json={"email": email, "feedback": feedback}
         )
 
-    def test_is_tenant_owner_or_admin_owner(self, mock_db_session):
+    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
+    def test_is_tenant_owner_or_admin_owner(self, sqlite_session: Session):
         """Test tenant owner/admin check for owner role."""
         # Arrange
-        current_user = MagicMock(spec=Account)
-        current_user.id = "account-123"
-        current_user.current_tenant_id = "tenant-456"
-
-        mock_join = MagicMock(spec=TenantAccountJoin)
-        mock_join.role = TenantAccountRole.OWNER
-
-        mock_db_session.scalar.return_value = mock_join
+        current_user = _persist_membership(sqlite_session, role=TenantAccountRole.OWNER)
 
         # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user)
+        BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
 
-    def test_is_tenant_owner_or_admin_admin(self, mock_db_session):
+    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
+    def test_is_tenant_owner_or_admin_admin(self, sqlite_session: Session):
         """Test tenant owner/admin check for admin role."""
         # Arrange
-        current_user = MagicMock(spec=Account)
-        current_user.id = "account-123"
-        current_user.current_tenant_id = "tenant-456"
-
-        mock_join = MagicMock(spec=TenantAccountJoin)
-        mock_join.role = TenantAccountRole.ADMIN
-
-        mock_db_session.scalar.return_value = mock_join
+        current_user = _persist_membership(sqlite_session, role=TenantAccountRole.ADMIN)
 
         # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user)
+        BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
 
-    def test_is_tenant_owner_or_admin_normal_user_raises_error(self, mock_db_session):
+    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
+    def test_is_tenant_owner_or_admin_normal_user_raises_error(self, sqlite_session: Session):
         """Test tenant owner/admin check raises error for normal user."""
         # Arrange
-        current_user = MagicMock(spec=Account)
-        current_user.id = "account-123"
-        current_user.current_tenant_id = "tenant-456"
-
-        mock_join = MagicMock(spec=TenantAccountJoin)
-        mock_join.role = TenantAccountRole.NORMAL
-
-        mock_db_session.scalar.return_value = mock_join
+        current_user = _persist_membership(sqlite_session, role=TenantAccountRole.NORMAL)
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user)
+            BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
         assert "Only team owner or team admin can perform this action" in str(exc_info.value)
 
-    def test_is_tenant_owner_or_admin_no_join_raises_error(self, mock_db_session):
+    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
+    def test_is_tenant_owner_or_admin_no_join_raises_error(self, sqlite_session: Session):
         """Test tenant owner/admin check raises error when join not found."""
         # Arrange
-        current_user = MagicMock(spec=Account)
-        current_user.id = "account-123"
-        current_user.current_tenant_id = "tenant-456"
-
-        mock_db_session.scalar.return_value = None
+        current_user = _persist_membership(
+            sqlite_session,
+            role=None,
+            add_other_tenant_membership=True,
+        )
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user)
+            BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
         assert "Tenant account join not found" in str(exc_info.value)
 
 
@@ -1511,7 +1649,7 @@ class TestBillingServiceSubscriptionOperations:
         assert isinstance(result["tenant-1"]["expiration_date"], int)
         assert result["tenant-1"]["expiration_date"] == 1735689600
 
-    def test_get_plan_bulk_with_invalid_tenant_plan_skipped(self, mock_send_request):
+    def test_get_plan_bulk_with_invalid_tenant_plan_skipped(self, mock_send_request, caplog: pytest.LogCaptureFixture):
         """Test bulk plan retrieval when one tenant has invalid plan data (should skip that tenant)."""
         # Arrange
         tenant_ids = ["tenant-valid-1", "tenant-invalid", "tenant-valid-2"]
@@ -1526,7 +1664,7 @@ class TestBillingServiceSubscriptionOperations:
         }
 
         # Act
-        with patch("services.billing_service.logger") as mock_logger:
+        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
             result = BillingService.get_plan_bulk(tenant_ids)
 
         # Assert - should only contain valid tenants
@@ -1542,10 +1680,11 @@ class TestBillingServiceSubscriptionOperations:
         assert result["tenant-valid-2"]["expiration_date"] == 1767225600
 
         # Verify exception was logged for the invalid tenant
-        mock_logger.exception.assert_called_once()
-        log_call_args = mock_logger.exception.call_args[0]
-        assert "get_plan_bulk: failed to validate subscription plan for tenant" in log_call_args[0]
-        assert "tenant-invalid" in log_call_args[1]
+        exception_records = [r for r in caplog.records if r.levelname == "ERROR"]
+        assert len(exception_records) == 1
+        formatted = exception_records[0].getMessage()
+        assert "get_plan_bulk: failed to validate subscription plan for tenant" in formatted
+        assert "tenant-invalid" in formatted
 
     def test_get_expired_subscription_cleanup_whitelist_success(self, mock_send_request):
         """Test successful retrieval of expired subscription cleanup whitelist."""
@@ -1710,10 +1849,7 @@ class TestBillingServiceIntegrationScenarios:
     def test_education_verification_and_activation_flow(self, mock_send_request):
         """Test complete education verification and activation flow."""
         # Arrange
-        account = MagicMock(spec=Account)
-        account.id = "account-edu"
-        account.email = "student@mit.edu"
-        account.current_tenant_id = "tenant-edu"
+        account = _account(email="student@mit.edu")
 
         # Step 1: Search for institution
         with (

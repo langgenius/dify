@@ -1,10 +1,13 @@
-import type { Key, StorageMode, Store } from './store'
+import type { StorageMode, Store } from './store'
+import type { TokenStore } from './token-store'
 import { join } from 'node:path'
 import { resolveCacheDir, resolveConfigDir } from './dir'
-import { KeyringBasedStore, YamlStore } from './store'
+import { YamlStore } from './store'
+import { FileTokenStore, KeychainTokenStore } from './token-store'
 
 export const CACHE_APP_INFO = 'app-info'
 export const CACHE_NUDGE = 'nudge'
+export const CACHE_COMPAT = 'compat'
 const HOSTS_FILE = 'hosts.yml'
 const TOKENS_FILE = 'tokens.yml'
 export const CONFIG_FILE_NAME = 'config.yml'
@@ -31,47 +34,54 @@ export function getHostStore(): YamlStore {
   return getStore(join(resolveConfigDir(), HOSTS_FILE))
 }
 
-const PROBE_KEY: Key<string> = { key: '__difyctl_probe__', default: '' }
+const PROBE_HOST = '__difyctl_probe__'
+const PROBE_EMAIL = '__difyctl_probe__'
 const PROBE_VALUE = 'probe-v1'
 
 export type GetTokenStoreOptions = {
   readonly factory?: {
-    readonly keyring?: () => Store
-    readonly file?: () => Store
+    readonly keyring?: () => TokenStore
+    readonly file?: () => TokenStore
   }
 }
 
+const TOKEN_STORE_OPENERS: Record<StorageMode, (opts: GetTokenStoreOptions) => TokenStore> = {
+  file: (opts) =>
+    opts.factory?.file?.() ?? new FileTokenStore(join(resolveConfigDir(), TOKENS_FILE)),
+  keychain: (opts) => opts.factory?.keyring?.() ?? new KeychainTokenStore(KEYRING_SERVICE),
+}
+
 /**
- * Single entry point for the credential store. Probes the OS keyring; if it
- * round-trips a value, returns the keychain-backed store. Otherwise falls
- * back to the YAML file at `<configDir>/tokens.yml`. Both implementations
- * satisfy the `Store` interface, so callers interact uniformly.
- *
- * Business logic should always obtain the token store through this factory
- * rather than constructing one directly.
+ * Decide which credential backend to use by probing the OS keyring with a
+ * write/read/remove round-trip. The probe MUTATES the keyring, so call this
+ * only where a credential is about to be written anyway (login).
  */
-export function getTokenStore(opts: GetTokenStoreOptions = {}): { store: Store, mode: StorageMode } {
-  const fileFactory = opts.factory?.file ?? (() => getStore(join(resolveConfigDir(), TOKENS_FILE)))
-  const keyringFactory = opts.factory?.keyring ?? (() => new KeyringBasedStore(KEYRING_SERVICE))
+export async function detectTokenStore(
+  opts: GetTokenStoreOptions = {},
+): Promise<{ store: TokenStore; mode: StorageMode }> {
+  // DIFY_E2E_NO_KEYRING=1 forces file-based storage in E2E tests to avoid
+  // macOS keychain UI prompts blocking child processes spawned by vitest.
+  if (process.env.DIFY_E2E_NO_KEYRING === '1')
+    return { store: TOKEN_STORE_OPENERS.file(opts), mode: 'file' }
   try {
-    const k = keyringFactory()
-    k.set(PROBE_KEY, PROBE_VALUE)
-    const got = k.get(PROBE_KEY)
-    k.unset(PROBE_KEY)
-    if (got !== PROBE_VALUE)
-      throw new Error('keyring round-trip mismatch')
-    return { store: k, mode: 'keychain' }
+    const k = TOKEN_STORE_OPENERS.keychain(opts)
+    await k.write(PROBE_HOST, PROBE_EMAIL, PROBE_VALUE)
+    let got = ''
+    try {
+      got = await k.read(PROBE_HOST, PROBE_EMAIL)
+    } finally {
+      await k.remove(PROBE_HOST, PROBE_EMAIL)
+    }
+    if (got === PROBE_VALUE) return { store: k, mode: 'keychain' }
+  } catch {
+    /* keyring unavailable → fall through to file */
   }
-  catch {
-    return { store: fileFactory(), mode: 'file' }
-  }
+  return { store: TOKEN_STORE_OPENERS.file(opts), mode: 'file' }
 }
 
 /**
- * Maps an auth identity (host + accountId) to a `Store` key. All token store
- * reads/writes in business logic go through this helper so the on-disk /
- * keyring layout stays consistent.
+ * Construct the credential backend the registry already recorded at login.
  */
-export function tokenKey(host: string, accountId: string): Key<string> {
-  return { key: `tokens.${host}.${accountId}`, default: '' }
+export function getTokenStore(mode: StorageMode, opts: GetTokenStoreOptions = {}): TokenStore {
+  return TOKEN_STORE_OPENERS[mode](opts)
 }

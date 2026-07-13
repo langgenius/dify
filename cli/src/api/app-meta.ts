@@ -1,17 +1,17 @@
-import type { AppsClient } from './apps'
+import type { AppReader } from './app-reader'
 import type { AppInfoCache } from '@/cache/app-info'
 import type { AppMeta, AppMetaFieldKey } from '@/types/app-meta'
 import { covers, fromDescribe, mergeMeta } from '@/types/app-meta'
 
 export type AppMetaClientOptions = {
-  readonly apps: AppsClient
+  readonly apps: AppReader
   readonly host: string
   readonly cache?: AppInfoCache
   readonly now?: () => Date
 }
 
 export class AppMetaClient {
-  private readonly apps: AppsClient
+  private readonly apps: AppReader
   private readonly host: string
   private readonly cache: AppInfoCache | undefined
   private readonly now: () => Date
@@ -23,23 +23,26 @@ export class AppMetaClient {
     this.now = opts.now ?? (() => new Date())
   }
 
-  async get(appId: string, workspaceId: string, fields: readonly AppMetaFieldKey[] = []): Promise<AppMeta> {
+  async get(appId: string, fields: readonly AppMetaFieldKey[] = []): Promise<AppMeta> {
     const cached = this.cache?.get(this.host, appId)
-    if (cached !== undefined && this.cache?.isFresh(cached, this.now()) === true && covers(cached.meta, fields))
+    if (
+      cached !== undefined &&
+      this.cache?.isFresh(cached, this.now()) === true &&
+      covers(cached.meta, fields)
+    )
       return cached.meta
 
-    const resp = await this.apps.describe(appId, workspaceId, fields.length === 0 ? undefined : fields)
+    const resp = await this.apps.describe(appId, fields.length === 0 ? undefined : fields)
     const fresh = fromDescribe(resp, fields)
-    const merged = cached !== undefined && this.cache?.isFresh(cached, this.now()) === true
-      ? mergeMeta(cached.meta, fresh)
-      : fresh
-    if (this.cache !== undefined)
-      await this.cache.set(this.host, appId, merged)
+    const merged =
+      cached !== undefined && this.cache?.isFresh(cached, this.now()) === true
+        ? mergeMeta(cached.meta, fresh)
+        : fresh
+    if (this.cache !== undefined) await this.cache.set(this.host, appId, merged)
     return merged
   }
 
   async invalidate(appId: string): Promise<void> {
-    if (this.cache !== undefined)
-      await this.cache.delete(this.host, appId)
+    if (this.cache !== undefined) await this.cache.delete(this.host, appId)
   }
 }

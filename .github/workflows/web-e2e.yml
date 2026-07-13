@@ -2,6 +2,11 @@ name: Web Full-Stack E2E
 
 on:
   workflow_call:
+    inputs:
+      run-external-runtime:
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -20,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -28,14 +33,20 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           enable-cache: true
           python-version: "3.12"
-          cache-dependency-glob: api/uv.lock
+          cache-dependency-glob: |
+            api/uv.lock
+            dify-agent/uv.lock
 
       - name: Install API dependencies
         run: uv sync --project api --dev
+
+      - name: Run E2E support unit tests
+        working-directory: ./e2e
+        run: vp run test:unit
 
       - name: Install Playwright browser
         working-directory: ./e2e
@@ -51,12 +62,54 @@ jobs:
           E2E_INIT_PASSWORD: E2eInit12345
         run: vp run e2e:full
 
+      - name: Run external runtime E2E tests
+        if: ${{ inputs.run-external-runtime }}
+        working-directory: ./e2e
+        env:
+          E2E_ADMIN_EMAIL: e2e-admin@example.com
+          E2E_ADMIN_NAME: E2E Admin
+          E2E_ADMIN_PASSWORD: E2eAdmin12345
+          E2E_AGENT_DECISION_MODEL_NAME: ${{ vars.E2E_AGENT_DECISION_MODEL_NAME || 'gpt-5.5' }}
+          E2E_AGENT_DECISION_MODEL_PROVIDER: ${{ vars.E2E_AGENT_DECISION_MODEL_PROVIDER || 'openai' }}
+          E2E_AGENT_DECISION_MODEL_TYPE: ${{ vars.E2E_AGENT_DECISION_MODEL_TYPE || 'llm' }}
+          E2E_EXTERNAL_RUNTIME_SEED_SPECS: ${{ vars.E2E_EXTERNAL_RUNTIME_SEED_SPECS }}
+          E2E_EXTERNAL_RUNTIME_TAGS: ${{ vars.E2E_EXTERNAL_RUNTIME_TAGS }}
+          E2E_FORCE_WEB_BUILD: "1"
+          E2E_INIT_PASSWORD: E2eInit12345
+          E2E_MARKETPLACE_API_URL: ${{ vars.E2E_MARKETPLACE_API_URL }}
+          E2E_MARKETPLACE_PLUGIN_IDS: ${{ vars.E2E_MARKETPLACE_PLUGIN_IDS }}
+          E2E_MARKETPLACE_PLUGIN_UNIQUE_IDENTIFIERS: ${{ vars.E2E_MARKETPLACE_PLUGIN_UNIQUE_IDENTIFIERS }}
+          E2E_MODEL_PROVIDER_CREDENTIALS_JSON: ${{ secrets.E2E_MODEL_PROVIDER_CREDENTIALS_JSON }}
+          E2E_SPEECH_TO_TEXT_MODEL_NAME: ${{ vars.E2E_SPEECH_TO_TEXT_MODEL_NAME || 'gpt-4o-mini-transcribe' }}
+          E2E_SPEECH_TO_TEXT_MODEL_PROVIDER: ${{ vars.E2E_SPEECH_TO_TEXT_MODEL_PROVIDER || 'openai' }}
+          E2E_START_AGENT_BACKEND: ${{ vars.E2E_START_AGENT_BACKEND || '1' }}
+          E2E_STABLE_MODEL_NAME: ${{ vars.E2E_STABLE_MODEL_NAME || 'gpt-5-nano' }}
+          E2E_STABLE_MODEL_PROVIDER: ${{ vars.E2E_STABLE_MODEL_PROVIDER || 'openai' }}
+          E2E_STABLE_MODEL_TYPE: ${{ vars.E2E_STABLE_MODEL_TYPE || 'llm' }}
+        run: |
+          if [[ -z "${E2E_MODEL_PROVIDER_CREDENTIALS_JSON}" ]]; then
+            echo "E2E_MODEL_PROVIDER_CREDENTIALS_JSON is required for external runtime E2E." >&2
+            exit 1
+          fi
+
+          if [[ -d cucumber-report ]]; then
+            rm -rf cucumber-report-non-external
+            mv cucumber-report cucumber-report-non-external
+          fi
+
+          trap 'vp run e2e:middleware:down' EXIT
+          vp run e2e:middleware:up
+          vp run e2e:external:prepare
+          vp run e2e:external
+
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cucumber-report
-          path: e2e/cucumber-report
+          path: |
+            e2e/cucumber-report
+            e2e/cucumber-report-non-external
           retention-days: 7
 
       - name: Upload E2E logs

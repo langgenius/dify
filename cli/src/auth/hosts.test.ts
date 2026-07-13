@@ -1,10 +1,7 @@
 import type { AccountContext } from './hosts'
-import type { Key, Store } from '@/store/store'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ENV_CONFIG_DIR } from '@/store/dir'
+import { useTempConfigDir } from '@test/fixtures/config-dir'
+import { MemStore } from '@test/fixtures/mem-store'
+import { describe, expect, it } from 'vitest'
 import { AccountContextSchema, notLoggedInError, Registry, RegistrySchema } from './hosts'
 
 describe('RegistrySchema', () => {
@@ -53,6 +50,20 @@ describe('RegistrySchema', () => {
     })
     expect(ctx.external_subject?.issuer).toBe('https://issuer')
   })
+
+  it('strips a stale available_workspaces field from legacy contexts', () => {
+    const raw = {
+      account: { id: 'acct-1', email: 'bob@corp.com', name: 'Bob' },
+      workspace: { id: 'ws-1', name: 'Space', role: 'owner' },
+      available_workspaces: [
+        { id: 'ws-1', name: 'Space', role: 'owner' },
+        { id: '00000000-0000-0000-0000-000000000002', name: 'Other', role: 'normal' },
+      ],
+    } as unknown as Record<string, unknown>
+    const ctx = AccountContextSchema.parse(raw)
+    expect((ctx as Record<string, unknown>).available_workspaces).toBeUndefined()
+    expect(ctx.workspace?.id).toBe('ws-1')
+  })
 })
 
 describe('notLoggedInError', () => {
@@ -60,13 +71,15 @@ describe('notLoggedInError', () => {
     expect(notLoggedInError().toString()).toMatch(/auth login/)
   })
   it('accepts a custom hint', () => {
-    expect(notLoggedInError('run \'difyctl use host\'').toString()).toMatch(/use host/)
+    expect(notLoggedInError("run 'difyctl use host'").toString()).toMatch(/use host/)
   })
 })
 
 describe('Registry (pure)', () => {
   const baseReg = (): Registry => Registry.empty('file')
-  const ctx = (email: string): AccountContext => ({ account: { id: `id-${email}`, email, name: email } })
+  const ctx = (email: string): AccountContext => ({
+    account: { id: `id-${email}`, email, name: email },
+  })
 
   it('upsert creates host + account; remove drops them', () => {
     const reg = baseReg()
@@ -102,6 +115,21 @@ describe('Registry (pure)', () => {
     expect(active?.ctx.account.email).toBe('a@x')
   })
 
+  it('resolveActive returns the active context with insecureTls', () => {
+    const reg = baseReg()
+    reg.upsert('h1', 'a@x', ctx('a@x'))
+    reg.setInsecureTls('h1', true)
+    reg.setHost('h1')
+    reg.setAccount('a@x')
+    expect(reg.resolveActive()?.insecureTls).toBe(true)
+  })
+
+  it('setInsecureTls is a no-op for an unknown host', () => {
+    const reg = baseReg()
+    reg.setInsecureTls('missing', true)
+    expect(reg.hosts.missing).toBeUndefined()
+  })
+
   it('resolveActive returns undefined for each missing pointer', () => {
     const reg = baseReg()
     expect(reg.resolveActive()).toBeUndefined()
@@ -126,75 +154,44 @@ describe('Registry (pure)', () => {
 })
 
 describe('Registry.load / Registry.save', () => {
-  let dir: string
-  let prev: string | undefined
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'difyctl-reg-'))
-    prev = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = dir
-  })
-  afterEach(async () => {
-    if (prev === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else process.env[ENV_CONFIG_DIR] = prev
-    await rm(dir, { recursive: true, force: true })
-  })
+  useTempConfigDir('difyctl-reg-')
 
-  it('returns an empty registry when nothing saved', () => {
-    const reg = Registry.load()
+  it('returns an empty registry when nothing saved', async () => {
+    const reg = await Registry.load()
     expect(reg.current_host).toBeUndefined()
     expect(Object.keys(reg.hosts)).toHaveLength(0)
   })
 
-  it('round-trips a populated registry', () => {
+  it('round-trips a populated registry', async () => {
     const reg = Registry.empty('keychain')
     reg.upsert('cloud.dify.ai', 'a@x', { account: { id: '1', email: 'a@x', name: 'A' } })
     reg.setHost('cloud.dify.ai')
     reg.setAccount('a@x')
-    reg.save()
-    const loaded = Registry.load()
+    await reg.save()
+    const loaded = await Registry.load()
     expect(loaded?.current_host).toBe('cloud.dify.ai')
     expect(loaded?.hosts['cloud.dify.ai']?.accounts['a@x']?.account.email).toBe('a@x')
   })
 })
 
-class MemStore implements Store {
-  readonly entries = new Map<string, unknown>()
-  get<T>(key: Key<T>): T { return (this.entries.get(key.key) as T | undefined) ?? key.default }
-  set<T>(key: Key<T>, value: T): void { this.entries.set(key.key, value) }
-  unset<T>(key: Key<T>): void { this.entries.delete(key.key) }
-}
-
 describe('Registry.forget', () => {
-  let dir: string
-  let prev: string | undefined
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'difyctl-forget-'))
-    prev = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = dir
-  })
-  afterEach(async () => {
-    if (prev === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else process.env[ENV_CONFIG_DIR] = prev
-    await rm(dir, { recursive: true, force: true })
-  })
+  useTempConfigDir('difyctl-forget-')
 
-  it('drops token + active context, keeps siblings, unsets pointers', () => {
+  it('drops token + active context, keeps siblings, unsets pointers', async () => {
     const store = new MemStore()
     const reg = Registry.empty('file')
     reg.upsert('h1', 'a@x', { account: { id: '1', email: 'a@x', name: 'A' } })
     reg.upsert('h1', 'b@x', { account: { id: '2', email: 'b@x', name: 'B' } })
     reg.setHost('h1')
     reg.setAccount('a@x')
-    reg.save()
-    store.set({ key: 'tokens.h1.a@x', default: '' }, 'dfoa_a')
+    await reg.save()
+    await store.write('h1', 'a@x', 'dfoa_a')
 
     const active = reg.resolveActive()!
-    reg.forget(active, store)
+    await reg.forget(active, store)
 
-    expect(store.get({ key: 'tokens.h1.a@x', default: '' })).toBe('')
-    const after = Registry.load()
+    expect(await store.read('h1', 'a@x')).toBe('')
+    const after = await Registry.load()
     expect(after?.hosts.h1?.accounts['a@x']).toBeUndefined()
     expect(after?.hosts.h1?.accounts['b@x']).toBeDefined()
     expect(after?.current_host).toBeUndefined()

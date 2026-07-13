@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComponentPropsWithoutRef, ReactNode } from 'react'
+import type * as React from 'react'
 import type { ButtonProps } from '../button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import { Button } from '../button'
@@ -12,7 +12,7 @@ export const AlertDialogTitle = BaseAlertDialog.Title
 export const AlertDialogDescription = BaseAlertDialog.Description
 
 type AlertDialogContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   className?: string
   backdropClassName?: string
   backdropProps?: Omit<BaseAlertDialog.Backdrop.Props, 'className'>
@@ -29,7 +29,7 @@ export function AlertDialogContent({
       <BaseAlertDialog.Backdrop
         {...backdropProps}
         className={cn(
-          'fixed inset-0 z-50 bg-background-overlay',
+          'absolute inset-0 z-50 bg-background-overlay',
           'transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
           backdropClassName,
         )}
@@ -47,7 +47,7 @@ export function AlertDialogContent({
   )
 }
 
-type AlertDialogActionsProps = ComponentPropsWithoutRef<'div'>
+type AlertDialogActionsProps = React.ComponentProps<'div'>
 
 export function AlertDialogActions({ className, ...props }: AlertDialogActionsProps) {
   return (
@@ -59,7 +59,7 @@ export function AlertDialogActions({ className, ...props }: AlertDialogActionsPr
 }
 
 type AlertDialogCancelButtonProps = Omit<ButtonProps, 'children'> & {
-  children: ReactNode
+  children: React.ReactNode
   closeProps?: Omit<BaseAlertDialog.Close.Props, 'children' | 'render'>
 }
 
@@ -69,10 +69,7 @@ export function AlertDialogCancelButton({
   ...buttonProps
 }: AlertDialogCancelButtonProps) {
   return (
-    <BaseAlertDialog.Close
-      {...closeProps}
-      render={<Button {...buttonProps} />}
-    >
+    <BaseAlertDialog.Close {...closeProps} render={<Button {...buttonProps} />}>
       {children}
     </BaseAlertDialog.Close>
   )
@@ -85,11 +82,5 @@ export function AlertDialogConfirmButton({
   tone = 'destructive',
   ...props
 }: AlertDialogConfirmButtonProps) {
-  return (
-    <Button
-      variant={variant}
-      tone={tone}
-      {...props}
-    />
-  )
+  return <Button variant={variant} tone={tone} {...props} />
 }

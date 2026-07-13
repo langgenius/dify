@@ -1,16 +1,12 @@
-import type { Category, Tag } from '../constant'
 import type { FilterState } from '../index'
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createContext, useContext } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 // ==================== Imports (after mocks) ====================
-
 import CategoriesFilter from '../category-filter'
 // Import real components
 import FilterManagement from '../index'
 import SearchBox from '../search-box'
-import { useStore } from '../store'
 import TagFilter from '../tag-filter'
 
 // ==================== Mock Setup ====================
@@ -35,7 +31,7 @@ const mockCategories = [
   { name: 'agent', label: 'Agents' },
 ]
 
-const mockCategoriesMap: Record<string, { name: string, label: string }> = {
+const mockCategoriesMap: Record<string, { name: string; label: string }> = {
   model: { name: 'model', label: 'Models' },
   tool: { name: 'tool', label: 'Tools' },
   extension: { name: 'extension', label: 'Extensions' },
@@ -50,7 +46,7 @@ const mockTags = [
   { name: 'image', label: 'Image' },
 ]
 
-const mockTagsMap: Record<string, { name: string, label: string }> = {
+const mockTagsMap: Record<string, { name: string; label: string }> = {
   agent: { name: 'agent', label: 'Agent' },
   rag: { name: 'rag', label: 'RAG' },
   search: { name: 'search', label: 'Search' },
@@ -79,39 +75,50 @@ const MockPopoverContext = createContext<MockPopoverContextValue>({
 })
 
 vi.mock('@langgenius/dify-ui/popover', () => ({
-  Popover: ({ children, open, onOpenChange }: {
+  Popover: ({
+    children,
+    open,
+    onOpenChange,
+  }: {
     children: React.ReactNode
     open: boolean
     onOpenChange?: (open: boolean) => void
   }) => (
     <MockPopoverContext.Provider value={{ open, onOpenChange }}>
-      <div data-testid="portal-container" data-open={open}>{children}</div>
+      <div data-testid="portal-container" data-open={open}>
+        {children}
+      </div>
     </MockPopoverContext.Provider>
   ),
-  PopoverTrigger: ({ children, render, className }: {
+  PopoverTrigger: ({
+    children,
+    render,
+    className,
+  }: {
     children?: React.ReactNode
     render?: React.ReactNode
     className?: string
   }) => {
     const { open, onOpenChange } = useContext(MockPopoverContext)
     return (
-      <div
+      <button
+        type="button"
         data-testid="portal-trigger"
         onClick={() => onOpenChange?.(!open)}
         className={className}
       >
         {render ?? children}
-      </div>
+      </button>
     )
   },
-  PopoverContent: ({ children, className }: {
-    children: React.ReactNode
-    className?: string
-  }) => {
+  PopoverContent: ({ children, className }: { children: React.ReactNode; className?: string }) => {
     const { open } = useContext(MockPopoverContext)
-    if (!open)
-      return null
-    return <div data-testid="portal-content" className={className}>{children}</div>
+    if (!open) return null
+    return (
+      <div data-testid="portal-content" className={className}>
+        {children}
+      </div>
+    )
   },
 }))
 
@@ -124,236 +131,13 @@ const createFilterState = (overrides: Partial<FilterState> = {}): FilterState =>
   ...overrides,
 })
 
-const renderFilterManagement = (onFilterChange = vi.fn()) => {
-  const result = render(<FilterManagement onFilterChange={onFilterChange} />)
+const renderFilterManagement = (
+  onFilterChange = vi.fn(),
+  props?: Partial<React.ComponentProps<typeof FilterManagement>>,
+) => {
+  const result = render(<FilterManagement onFilterChange={onFilterChange} {...props} />)
   return { ...result, onFilterChange }
 }
-
-// ==================== constant.ts Tests ====================
-describe('constant.ts - Type Definitions', () => {
-  it('should define Tag type correctly', () => {
-    // Arrange
-    const tag: Tag = {
-      id: 'test-id',
-      name: 'test-tag',
-      type: 'custom',
-      binding_count: 5,
-    }
-
-    // Assert
-    expect(tag.id).toBe('test-id')
-    expect(tag.name).toBe('test-tag')
-    expect(tag.type).toBe('custom')
-    expect(tag.binding_count).toBe(5)
-  })
-
-  it('should define Category type correctly', () => {
-    // Arrange
-    const category: Category = {
-      name: 'model',
-      binding_count: 10,
-    }
-
-    // Assert
-    expect(category.name).toBe('model')
-    expect(category.binding_count).toBe(10)
-  })
-
-  it('should enforce Category name as specific union type', () => {
-    // Arrange - Valid category names
-    const validNames: Array<Category['name']> = ['model', 'tool', 'extension', 'bundle']
-
-    // Assert
-    validNames.forEach((name) => {
-      const category: Category = { name, binding_count: 0 }
-      expect(['model', 'tool', 'extension', 'bundle']).toContain(category.name)
-    })
-  })
-})
-
-// ==================== store.ts Tests ====================
-describe('store.ts - Zustand Store', () => {
-  describe('Initial State', () => {
-    it('should have empty tagList initially', () => {
-      const { result } = renderHook(() => useStore(state => state.tagList))
-      expect(result.current).toEqual([])
-    })
-
-    it('should have empty categoryList initially', () => {
-      const { result } = renderHook(() => useStore(state => state.categoryList))
-      expect(result.current).toEqual([])
-    })
-
-    it('should have showTagManagementModal false initially', () => {
-      const { result } = renderHook(() => useStore(state => state.showTagManagementModal))
-      expect(result.current).toBe(false)
-    })
-
-    it('should have showCategoryManagementModal false initially', () => {
-      const { result } = renderHook(() => useStore(state => state.showCategoryManagementModal))
-      expect(result.current).toBe(false)
-    })
-  })
-
-  describe('setTagList', () => {
-    it('should update tagList', () => {
-      // Arrange
-      const mockTagList: Tag[] = [
-        { id: '1', name: 'tag1', type: 'custom', binding_count: 1 },
-        { id: '2', name: 'tag2', type: 'custom', binding_count: 2 },
-      ]
-
-      // Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setTagList(mockTagList)
-      })
-
-      // Assert
-      expect(result.current.tagList).toEqual(mockTagList)
-    })
-
-    it('should handle undefined tagList', () => {
-      // Arrange & Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setTagList(undefined)
-      })
-
-      // Assert
-      expect(result.current.tagList).toBeUndefined()
-    })
-
-    it('should handle empty tagList', () => {
-      // Arrange
-      const { result } = renderHook(() => useStore())
-
-      // First set some tags
-      act(() => {
-        result.current.setTagList([{ id: '1', name: 'tag1', type: 'custom', binding_count: 1 }])
-      })
-
-      // Act - Clear the list
-      act(() => {
-        result.current.setTagList([])
-      })
-
-      // Assert
-      expect(result.current.tagList).toEqual([])
-    })
-  })
-
-  describe('setCategoryList', () => {
-    it('should update categoryList', () => {
-      // Arrange
-      const mockCategoryList: Category[] = [
-        { name: 'model', binding_count: 5 },
-        { name: 'tool', binding_count: 10 },
-      ]
-
-      // Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setCategoryList(mockCategoryList)
-      })
-
-      // Assert
-      expect(result.current.categoryList).toEqual(mockCategoryList)
-    })
-
-    it('should handle undefined categoryList', () => {
-      // Arrange & Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setCategoryList(undefined)
-      })
-
-      // Assert
-      expect(result.current.categoryList).toBeUndefined()
-    })
-  })
-
-  describe('setShowTagManagementModal', () => {
-    it('should set showTagManagementModal to true', () => {
-      // Arrange & Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setShowTagManagementModal(true)
-      })
-
-      // Assert
-      expect(result.current.showTagManagementModal).toBe(true)
-    })
-
-    it('should set showTagManagementModal to false', () => {
-      // Arrange
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setShowTagManagementModal(true)
-      })
-
-      // Act
-      act(() => {
-        result.current.setShowTagManagementModal(false)
-      })
-
-      // Assert
-      expect(result.current.showTagManagementModal).toBe(false)
-    })
-  })
-
-  describe('setShowCategoryManagementModal', () => {
-    it('should set showCategoryManagementModal to true', () => {
-      // Arrange & Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setShowCategoryManagementModal(true)
-      })
-
-      // Assert
-      expect(result.current.showCategoryManagementModal).toBe(true)
-    })
-
-    it('should set showCategoryManagementModal to false', () => {
-      // Arrange
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setShowCategoryManagementModal(true)
-      })
-
-      // Act
-      act(() => {
-        result.current.setShowCategoryManagementModal(false)
-      })
-
-      // Assert
-      expect(result.current.showCategoryManagementModal).toBe(false)
-    })
-  })
-
-  describe('Store Isolation', () => {
-    it('should maintain separate state for each property', () => {
-      // Arrange
-      const mockTagList: Tag[] = [{ id: '1', name: 'tag1', type: 'custom', binding_count: 1 }]
-      const mockCategoryList: Category[] = [{ name: 'model', binding_count: 5 }]
-
-      // Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setTagList(mockTagList)
-        result.current.setCategoryList(mockCategoryList)
-        result.current.setShowTagManagementModal(true)
-        result.current.setShowCategoryManagementModal(false)
-      })
-
-      // Assert - All states are independent
-      expect(result.current.tagList).toEqual(mockTagList)
-      expect(result.current.categoryList).toEqual(mockCategoryList)
-      expect(result.current.showTagManagementModal).toBe(true)
-      expect(result.current.showCategoryManagementModal).toBe(false)
-    })
-  })
-})
 
 // ==================== search-box.tsx Tests ====================
 describe('SearchBox Component', () => {
@@ -636,7 +420,9 @@ describe('CategoriesFilter Component', () => {
     it('should clear all selections when clear button is clicked', () => {
       // Arrange
       const handleChange = vi.fn()
-      const { container } = render(<CategoriesFilter value={['model', 'tool']} onChange={handleChange} />)
+      const { container } = render(
+        <CategoriesFilter value={['model', 'tool']} onChange={handleChange} />,
+      )
 
       // Act - Find and click the close icon
       const closeIcon = container.querySelector('.text-text-quaternary')
@@ -696,7 +482,10 @@ describe('CategoriesFilter Component', () => {
       fireEvent.click(screen.getByTestId('portal-trigger'))
 
       await waitFor(() => {
-        expect(screen.getByRole('checkbox', { name: 'Models' })).toHaveAttribute('aria-checked', 'true')
+        expect(screen.getByRole('checkbox', { name: 'Models' })).toHaveAttribute(
+          'aria-checked',
+          'true',
+        )
       })
     })
 
@@ -708,7 +497,10 @@ describe('CategoriesFilter Component', () => {
       fireEvent.click(screen.getByTestId('portal-trigger'))
 
       await waitFor(() => {
-        expect(screen.getByRole('checkbox', { name: 'Models' })).toHaveAttribute('aria-checked', 'false')
+        expect(screen.getByRole('checkbox', { name: 'Models' })).toHaveAttribute(
+          'aria-checked',
+          'false',
+        )
       })
     })
   })
@@ -721,13 +513,13 @@ describe('TagFilter Component', () => {
   })
 
   describe('Rendering', () => {
-    it('should render with "All Tags" text when no selection', () => {
+    it('should render with "Tags" text when no selection', () => {
       // Arrange & Act
       render(<TagFilter value={[]} onChange={vi.fn()} />)
 
       // Assert
       // Assert
-      expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
+      expect(screen.getByText('common.tag.tags'))!.toBeInTheDocument()
     })
 
     it('should render selected tag labels', () => {
@@ -890,7 +682,27 @@ describe('FilterManagement Component', () => {
       // Assert - All three filters should be present
       // Assert - All three filters should be present
       expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
-      expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
+      expect(screen.getByText('common.tag.tags'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
+    })
+
+    it('should hide category filter when scoped to a fixed category', () => {
+      // Arrange & Act
+      renderFilterManagement(vi.fn(), { hideCategoryFilter: true })
+
+      // Assert
+      expect(screen.queryByText('plugin.allCategories'))!.not.toBeInTheDocument()
+      expect(screen.getByText('common.tag.tags'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
+    })
+
+    it('should hide tag filter when scoped category does not support tags', () => {
+      // Arrange & Act
+      renderFilterManagement(vi.fn(), { hideTagFilter: true })
+
+      // Assert
+      expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
+      expect(screen.queryByText('common.tag.tags'))!.not.toBeInTheDocument()
       expect(screen.getByPlaceholderText('plugin.search'))!.toBeInTheDocument()
     })
 
@@ -915,7 +727,7 @@ describe('FilterManagement Component', () => {
       // Assert
       // Assert
       expect(screen.getByText('plugin.allCategories'))!.toBeInTheDocument()
-      expect(screen.getByText('pluginTags.allTags'))!.toBeInTheDocument()
+      expect(screen.getByText('common.tag.tags'))!.toBeInTheDocument()
       expect(screen.getByPlaceholderText('plugin.search'))!.toHaveValue('')
     })
 

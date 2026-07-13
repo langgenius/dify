@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import StrEnum, auto
 from functools import cached_property
+from typing import override
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -73,6 +74,7 @@ class Provider(TypeBase):
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
 
+    @override
     def __repr__(self):
         return (
             f"<Provider(id={self.id}, tenant_id={self.tenant_id}, provider_name='{self.provider_name}',"

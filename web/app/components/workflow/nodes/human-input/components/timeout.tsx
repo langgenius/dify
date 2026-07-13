@@ -6,27 +6,20 @@ import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type Props = Readonly<{
   timeout: number
   unit: 'day' | 'hour'
-  onChange: (state: { timeout: number, unit: 'day' | 'hour' }) => void
+  onChange: (state: { timeout: number; unit: 'day' | 'hour' }) => void
   readonly?: boolean
-}
+}>
 
-const TimeoutInput: FC<Props> = ({
-  timeout,
-  unit,
-  onChange,
-  readonly,
-}) => {
+const TimeoutInput: FC<Props> = ({ timeout, unit, onChange, readonly }) => {
   const { t } = useTranslation()
 
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    if (/^\d*$/.test(value))
-      onChange({ timeout: Number(value) || 1, unit })
-    else
-      onChange({ timeout: 1, unit })
+    if (/^\d*$/.test(value)) onChange({ timeout: Number(value) || 1, unit })
+    else onChange({ timeout: 1, unit })
   }
   return (
     <div className="flex items-center gap-1">
@@ -43,23 +36,33 @@ const TimeoutInput: FC<Props> = ({
           className={cn(
             'rounded-lg px-2 py-1 text-text-tertiary',
             !readonly && 'cursor-pointer hover:bg-state-base-hover hover:text-text-secondary',
-            unit === 'day' && 'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-sm',
-            !readonly && unit === 'day' && 'hover:bg-components-segmented-control-item-active-bg hover:text-text-accent-light-mode-only',
+            unit === 'day' &&
+              'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-sm',
+            !readonly &&
+              unit === 'day' &&
+              'hover:bg-components-segmented-control-item-active-bg hover:text-text-accent-light-mode-only',
           )}
           onClick={() => !readonly && onChange({ timeout, unit: 'day' })}
         >
-          <div className="p-0.5 system-sm-medium">{t(`${i18nPrefix}.timeout.days`, { ns: 'workflow' })}</div>
+          <div className="p-0.5 system-sm-medium">
+            {t(($) => $[`${i18nPrefix}.timeout.days`], { ns: 'workflow' })}
+          </div>
         </div>
         <div
           className={cn(
             'rounded-lg px-2 py-1 text-text-tertiary',
             !readonly && 'cursor-pointer hover:bg-state-base-hover hover:text-text-secondary',
-            unit === 'hour' && 'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-sm',
-            !readonly && unit === 'hour' && 'hover:bg-components-segmented-control-item-active-bg hover:text-text-accent-light-mode-only',
+            unit === 'hour' &&
+              'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-sm',
+            !readonly &&
+              unit === 'hour' &&
+              'hover:bg-components-segmented-control-item-active-bg hover:text-text-accent-light-mode-only',
           )}
           onClick={() => !readonly && onChange({ timeout, unit: 'hour' })}
         >
-          <div className="p-0.5 system-sm-medium">{t(`${i18nPrefix}.timeout.hours`, { ns: 'workflow' })}</div>
+          <div className="p-0.5 system-sm-medium">
+            {t(($) => $[`${i18nPrefix}.timeout.hours`], { ns: 'workflow' })}
+          </div>
         </div>
       </div>
     </div>

@@ -1,7 +1,5 @@
 import type { ChecklistItem } from '../../hooks/use-checklist'
-import type {
-  CommonEdgeType,
-} from '../../types'
+import type { CommonEdgeType } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -11,20 +9,12 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import {
-  memo,
-  useMemo,
-  useState,
-} from 'react'
+import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useEdges,
-} from 'reactflow'
+import { useEdges } from 'reactflow'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import {
-  useChecklist,
-  useNodesInteractions,
-} from '../../hooks'
+import { useChecklist, useNodesInteractions } from '../../hooks'
+import { useHooksStore } from '../../hooks-store/store'
 import { ChecklistNodeGroup } from './node-group'
 import { ChecklistPluginGroup } from './plugin-group'
 
@@ -34,43 +24,36 @@ type WorkflowChecklistProps = {
   onItemClick?: (item: ChecklistItem) => void
 }
 
-const WorkflowChecklist = ({
-  disabled,
-  showGoTo = true,
-  onItemClick,
-}: WorkflowChecklistProps) => {
+const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowChecklistProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const edges = useEdges<CommonEdgeType>()
   const nodes = useNodes()
-  const needWarningNodes = useChecklist(nodes, edges)
+  const flowType = useHooksStore((s) => s.configsMap?.flowType)
+  const needWarningNodes = useChecklist(nodes, edges, { flowType })
   const { handleNodeSelect } = useNodesInteractions()
-  const checklistLabel = t('panel.checklist', { ns: 'workflow' })
+  const checklistLabel = t(($) => $['panel.checklist'], { ns: 'workflow' })
 
   const { pluginItems, nodeItems } = useMemo(() => {
     const plugins: ChecklistItem[] = []
     const regular: ChecklistItem[] = []
     for (const item of needWarningNodes) {
-      if (item.isPluginMissing)
-        plugins.push(item)
-      else
-        regular.push(item)
+      if (item.isPluginMissing) plugins.push(item)
+      else regular.push(item)
     }
     return { pluginItems: plugins, nodeItems: regular }
   }, [needWarningNodes])
 
   const handleItemClick = (item: ChecklistItem) => {
-    if (onItemClick)
-      onItemClick(item)
-    else
-      handleNodeSelect(item.id)
+    if (onItemClick) onItemClick(item)
+    else handleNodeSelect(item.id)
     setOpen(false)
   }
 
   return (
-    <Popover open={open} onOpenChange={newOpen => !disabled && setOpen(newOpen)}>
+    <Popover open={open} onOpenChange={(newOpen) => !disabled && setOpen(newOpen)}>
       <PopoverTrigger
-        render={(
+        render={
           <button
             type="button"
             className={cn(
@@ -80,9 +63,7 @@ const WorkflowChecklist = ({
             disabled={disabled || undefined}
             aria-label={checklistLabel}
           >
-            <span
-              className="flex size-full items-center justify-center rounded-md group-data-popup-open:bg-state-accent-hover hover:bg-state-accent-hover"
-            >
+            <span className="flex size-full items-center justify-center rounded-md group-data-popup-open:bg-state-accent-hover hover:bg-state-accent-hover">
               <span
                 className="i-ri-list-check-3 size-4 text-components-button-ghost-text group-hover:text-components-button-secondary-accent-text group-data-popup-open:text-components-button-secondary-accent-text"
                 aria-hidden="true"
@@ -94,7 +75,7 @@ const WorkflowChecklist = ({
               </span>
             )}
           </button>
-        )}
+        }
       />
       <PopoverContent
         placement="bottom-start"
@@ -102,10 +83,7 @@ const WorkflowChecklist = ({
         alignOffset={-30}
         popupClassName="w-[420px] rounded-2xl bg-background-default-subtle"
       >
-        <div
-          className="overflow-y-auto"
-          style={{ maxHeight: 'calc(2 / 3 * 100vh)' }}
-        >
+        <div className="overflow-y-auto" style={{ maxHeight: 'calc(2 / 3 * 100vh)' }}>
           <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
             <div className="flex items-start px-1">
               <div className="min-w-0 grow pr-8">
@@ -116,40 +94,36 @@ const WorkflowChecklist = ({
               </div>
               <PopoverClose
                 className="-mt-0.5 -mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg"
-                aria-label={t('operation.close', { ns: 'common' })}
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               >
                 <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
               </PopoverClose>
             </div>
             {needWarningNodes.length > 0 && (
               <PopoverDescription className="px-1 text-xs/4 text-text-tertiary">
-                {t('panel.checklistDescription', { ns: 'workflow' })}
+                {t(($) => $['panel.checklistDescription'], { ns: 'workflow' })}
               </PopoverDescription>
             )}
           </div>
 
-          {needWarningNodes.length > 0
-            ? (
-                <div className="flex flex-col gap-1 px-4 pt-1 pb-4">
-                  {pluginItems.length > 0 && (
-                    <ChecklistPluginGroup items={pluginItems} />
-                  )}
-                  {nodeItems.map(item => (
-                    <ChecklistNodeGroup
-                      key={item.id}
-                      item={item}
-                      showGoTo={showGoTo}
-                      onItemClick={handleItemClick}
-                    />
-                  ))}
-                </div>
-              )
-            : (
-                <div className="mx-4 mb-3 rounded-lg py-4 text-center text-xs text-text-tertiary">
-                  <span className="mx-auto mb-[5px] i-custom-vender-line-general-checklist-square block h-8 w-8 text-text-quaternary" />
-                  {t('panel.checklistResolved', { ns: 'workflow' })}
-                </div>
-              )}
+          {needWarningNodes.length > 0 ? (
+            <div className="flex flex-col gap-1 px-4 pt-1 pb-4">
+              {pluginItems.length > 0 && <ChecklistPluginGroup items={pluginItems} />}
+              {nodeItems.map((item) => (
+                <ChecklistNodeGroup
+                  key={item.id}
+                  item={item}
+                  showGoTo={showGoTo}
+                  onItemClick={handleItemClick}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="mx-4 mb-3 rounded-lg py-4 text-center text-xs text-text-tertiary">
+              <span className="mx-auto mb-[5px] i-custom-vender-line-general-checklist-square block h-8 w-8 text-text-quaternary" />
+              {t(($) => $['panel.checklistResolved'], { ns: 'workflow' })}
+            </div>
+          )}
         </div>
       </PopoverContent>
     </Popover>

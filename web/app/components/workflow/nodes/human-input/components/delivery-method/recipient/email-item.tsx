@@ -6,21 +6,15 @@ import { RiCloseCircleFill, RiErrorWarningFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   email: string
   data: Member
   disabled?: boolean
   onDelete: (recipient: RecipientItem) => void
   isError: boolean
-}
+}>
 
-const EmailItem = ({
-  email,
-  data,
-  onDelete,
-  disabled = false,
-  isError,
-}: Props) => {
+const EmailItem = ({ email, data, onDelete, disabled = false, isError }: Props) => {
   const { t } = useTranslation()
 
   return (
@@ -29,15 +23,20 @@ const EmailItem = ({
         'flex h-6 items-center gap-1 rounded-full border border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 shadow-xs',
         isError && 'border-state-destructive-hover-alt bg-state-destructive-hover',
       )}
-      onClick={e => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
-      {isError && (
-        <RiErrorWarningFill className="size-4 text-text-destructive" />
-      )}
+      {isError && <RiErrorWarningFill className="size-4 text-text-destructive" />}
       {!isError && <Avatar avatar={data.avatar_url} size="xxs" name={data.name || data.email} />}
-      <div title={data.email} className="max-w-[500px] truncate system-xs-regular text-text-primary">
+      <div
+        title={data.email}
+        className="max-w-[500px] truncate system-xs-regular text-text-primary"
+      >
         {email === data.email ? data.name : data.email}
-        {email === data.email && <span className="system-xs-regular text-text-tertiary">{t('members.you', { ns: 'common' })}</span>}
+        {email === data.email && (
+          <span className="system-xs-regular text-text-tertiary">
+            {t(($) => $['members.you'], { ns: 'common' })}
+          </span>
+        )}
       </div>
       {!disabled && (
         <RiCloseCircleFill

@@ -45,19 +45,15 @@ export type PostForgotPasswordData = {
 }
 
 export type PostForgotPasswordErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
-
-export type PostForgotPasswordError = PostForgotPasswordErrors[keyof PostForgotPasswordErrors]
 
 export type PostForgotPasswordResponses = {
   200: ForgotPasswordEmailResponse
 }
 
-export type PostForgotPasswordResponse
-  = PostForgotPasswordResponses[keyof PostForgotPasswordResponses]
+export type PostForgotPasswordResponse =
+  PostForgotPasswordResponses[keyof PostForgotPasswordResponses]
 
 export type PostForgotPasswordResetsData = {
   body: ForgotPasswordResetPayload
@@ -67,20 +63,15 @@ export type PostForgotPasswordResetsData = {
 }
 
 export type PostForgotPasswordResetsErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
-
-export type PostForgotPasswordResetsError
-  = PostForgotPasswordResetsErrors[keyof PostForgotPasswordResetsErrors]
 
 export type PostForgotPasswordResetsResponses = {
   200: ForgotPasswordResetResponse
 }
 
-export type PostForgotPasswordResetsResponse
-  = PostForgotPasswordResetsResponses[keyof PostForgotPasswordResetsResponses]
+export type PostForgotPasswordResetsResponse =
+  PostForgotPasswordResetsResponses[keyof PostForgotPasswordResetsResponses]
 
 export type PostForgotPasswordValidityData = {
   body: ForgotPasswordCheckPayload
@@ -90,17 +81,12 @@ export type PostForgotPasswordValidityData = {
 }
 
 export type PostForgotPasswordValidityErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
-
-export type PostForgotPasswordValidityError
-  = PostForgotPasswordValidityErrors[keyof PostForgotPasswordValidityErrors]
 
 export type PostForgotPasswordValidityResponses = {
   200: ForgotPasswordCheckResponse
 }
 
-export type PostForgotPasswordValidityResponse
-  = PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]
+export type PostForgotPasswordValidityResponse =
+  PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]

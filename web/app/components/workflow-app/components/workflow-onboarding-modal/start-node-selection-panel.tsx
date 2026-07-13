@@ -1,9 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { BlockDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Home, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import NodeSelector from '@/app/components/workflow/block-selector'
 import { TabsEnum } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -11,7 +10,7 @@ import StartNodeOption from './start-node-option'
 
 type StartNodeSelectionPanelProps = {
   onSelectUserInput: () => void
-  onSelectTrigger: (nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => void
+  onSelectTrigger: (nodeType: BlockEnum, toolConfig?: BlockDefaultValue) => void
 }
 
 const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
@@ -21,21 +20,24 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
   const { t } = useTranslation()
   const [showTriggerSelector, setShowTriggerSelector] = useState(false)
 
-  const handleTriggerSelect = useCallback((nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => {
-    setShowTriggerSelector(false)
-    onSelectTrigger(nodeType, toolConfig)
-  }, [onSelectTrigger])
+  const handleTriggerSelect = useCallback(
+    (nodeType: BlockEnum, toolConfig?: BlockDefaultValue) => {
+      setShowTriggerSelector(false)
+      onSelectTrigger(nodeType, toolConfig)
+    },
+    [onSelectTrigger],
+  )
 
   return (
     <div className="grid grid-cols-2 gap-4">
       <StartNodeOption
-        icon={(
+        icon={
           <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
-            <Home className="size-5 text-white" />
+            <span className="i-custom-vender-workflow-home size-5 text-white" />
           </div>
-        )}
-        title={t('onboarding.userInputFull', { ns: 'workflow' })}
-        description={t('onboarding.userInputDescription', { ns: 'workflow' })}
+        }
+        title={t(($) => $['onboarding.userInputFull'], { ns: 'workflow' })}
+        description={t(($) => $['onboarding.userInputDescription'], { ns: 'workflow' })}
         onClick={onSelectUserInput}
       />
 
@@ -56,13 +58,13 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
         ]}
         trigger={() => (
           <StartNodeOption
-            icon={(
+            icon={
               <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
-                <TriggerAll className="size-5 text-white" />
+                <span className="i-custom-vender-workflow-trigger-all size-5 text-white" />
               </div>
-            )}
-            title={t('onboarding.trigger', { ns: 'workflow' })}
-            description={t('onboarding.triggerDescription', { ns: 'workflow' })}
+            }
+            title={t(($) => $['onboarding.trigger'], { ns: 'workflow' })}
+            description={t(($) => $['onboarding.triggerDescription'], { ns: 'workflow' })}
             onClick={() => setShowTriggerSelector(true)}
           />
         )}

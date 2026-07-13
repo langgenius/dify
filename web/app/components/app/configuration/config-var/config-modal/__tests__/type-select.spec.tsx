@@ -1,5 +1,6 @@
-/* eslint-disable ts/no-explicit-any */
-import { fireEvent, render, screen } from '@testing-library/react'
+/* oxlint-disable typescript/no-explicit-any */
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import TypeSelector from '../type-select'
 
 vi.mock('@langgenius/dify-ui/select', () => import('@/__mocks__/base-ui-select'))
@@ -9,8 +10,9 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-var-type-icon', 
 }))
 
 describe('TypeSelector', () => {
-  it('should toggle open state and select a new variable type', () => {
+  it('should select a new variable type when an option is clicked', async () => {
     const onSelect = vi.fn()
+    const user = userEvent.setup()
 
     render(
       <TypeSelector
@@ -23,9 +25,32 @@ describe('TypeSelector', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByText('Number'))
+    await user.click(screen.getByRole('combobox'))
+    const [, numberOption] = await screen.findAllByRole('option')
+    await user.click(numberOption!)
 
     expect(onSelect).toHaveBeenCalledWith({ value: 'number', name: 'Number' })
+  })
+
+  it('should size popup content to match the trigger width', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <TypeSelector
+        value="text-input"
+        onSelect={vi.fn()}
+        items={[
+          { value: 'text-input' as any, name: 'Text' },
+          { value: 'number' as any, name: 'Number' },
+        ]}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox'))
+
+    const [, numberOption] = await screen.findAllByRole('option')
+    const popup = numberOption!.closest('[data-side]')
+
+    expect(popup).toHaveClass('w-(--anchor-width)')
   })
 })

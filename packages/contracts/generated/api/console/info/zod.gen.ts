@@ -15,7 +15,7 @@ export const zWorkspaceCustomConfigResponse = z.object({
  */
 export const zTenantInfoResponse = z.object({
   created_at: z.int().nullish(),
-  custom_config: zWorkspaceCustomConfigResponse.optional(),
+  custom_config: zWorkspaceCustomConfigResponse.nullish(),
   id: z.string(),
   in_trial: z.boolean().nullish(),
   name: z.string().nullish(),

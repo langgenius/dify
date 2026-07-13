@@ -5,7 +5,7 @@ from typing import Any
 
 from pytest_mock import MockerFixture
 
-import graphon.nodes.human_input.entities  # noqa: F401
+import core.workflow.nodes.human_input.entities  # noqa: F401
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -288,7 +288,7 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture):
     assert resumed_state.outputs == baseline_outputs
 
 
-def test_resume_emits_resumption_start_reason(mocker) -> None:
+def test_resume_emits_resumption_start_reason(mocker: MockerFixture) -> None:
     _patch_tool_node(mocker)
 
     paused_state = _build_runtime_state("resume-reason")

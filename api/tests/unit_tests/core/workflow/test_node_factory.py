@@ -1,18 +1,26 @@
 from collections.abc import Mapping
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch, sentinel
+from unittest.mock import MagicMock, Mock, patch, sentinel
 
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
+from core.plugin.impl.model import PluginModelClient
+from core.plugin.impl.model_runtime import PluginModelRuntime
+from core.plugin.plugin_service import PluginService
 from core.workflow import node_factory
 from core.workflow import template_rendering as workflow_template_rendering
+from core.workflow.node_runtime import DifyPreparedLLM
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.nodes.code.entities import CodeLanguage
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
+from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.variables.segments import ArrayObjectSegment, StringSegment
 
@@ -33,6 +41,41 @@ def _node_constructor(*, return_value):
     constructor = MagicMock(return_value=return_value)
     constructor.validate_node_data.side_effect = lambda node_data: node_data
     return constructor
+
+
+def _build_llm_model_schema(*, features: list[ModelFeature] | None = None) -> AIModelEntity:
+    return AIModelEntity(
+        model="model",
+        label=I18nObject(en_US="Model"),
+        model_type=ModelType.LLM,
+        fetch_from=FetchFrom.PREDEFINED_MODEL,
+        model_properties={},
+        features=features,
+    )
+
+
+class _ModelTypeInstanceStub(LargeLanguageModel):
+    def __init__(self, *, model_runtime: object) -> None:
+        self.model_runtime = model_runtime
+
+
+class _ModelInstanceStub:
+    def __init__(
+        self,
+        *,
+        model_runtime: object,
+        model_schema: AIModelEntity,
+    ) -> None:
+        self.provider = "langgenius/openai/openai"
+        self.model_name = "model"
+        self.credentials = {"api_key": "secret"}
+        self.parameters = {}
+        self.stop = ()
+        self.model_type_instance = _ModelTypeInstanceStub(model_runtime=model_runtime)
+        self._model_schema = model_schema
+
+    def get_model_schema(self) -> AIModelEntity:
+        return self._model_schema
 
 
 class TestResolveWorkflowNodeClass:
@@ -559,9 +602,7 @@ class TestDifyNodeFactoryCreateNode:
         )
 
         if constructor_name == "HumanInputNode":
-            form_repository = sentinel.form_repository
-            factory._human_input_runtime = MagicMock()
-            factory._human_input_runtime.build_form_repository.return_value = form_repository
+            factory._build_human_input_callback = MagicMock(return_value=sentinel.hitl_callback)
 
         node_config = {"id": "node-id", "data": {"type": node_type}}
         result = factory.create_node(node_config)
@@ -587,10 +628,8 @@ class TestDifyNodeFactoryCreateNode:
             assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
             factory._bound_tool_file_manager_factory.assert_not_called()
         elif constructor_name == "HumanInputNode":
-            assert kwargs["form_repository"] is form_repository
-            assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
-            assert kwargs["runtime"] is factory._human_input_runtime
-            factory._human_input_runtime.build_form_repository.assert_called_once_with()
+            assert kwargs["hitl_callback"] is sentinel.hitl_callback
+            factory._build_human_input_callback.assert_called_once()
         elif constructor_name == "ToolNode":
             assert kwargs["tool_file_manager"] is sentinel.tool_file_manager
             assert kwargs["runtime"] is sentinel.tool_runtime
@@ -598,6 +637,46 @@ class TestDifyNodeFactoryCreateNode:
         elif constructor_name == "DocumentExtractorNode":
             assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
             assert kwargs["http_client"] is sentinel.remote_file_http_client
+
+    def test_human_input_node_receives_built_hitl_callback(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory,
+    ) -> None:
+        created_node = object()
+        constructor = _node_constructor(return_value=created_node)
+        factory._build_human_input_callback = MagicMock(return_value=sentinel.hitl_callback)
+        monkeypatch.setattr(
+            factory,
+            "_resolve_node_class",
+            MagicMock(return_value=constructor),
+        )
+
+        result = factory.create_node({"id": "human-node", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT}})
+
+        assert result is created_node
+        kwargs = constructor.call_args.kwargs
+        assert kwargs["hitl_callback"] is sentinel.hitl_callback
+        factory._build_human_input_callback.assert_called_once()
+
+    def test_tool_node_receives_tool_file_manager(self, monkeypatch: pytest.MonkeyPatch, factory) -> None:
+        created_node = object()
+        constructor = _node_constructor(return_value=created_node)
+        factory._bound_tool_file_manager_factory = MagicMock(return_value=sentinel.tool_file_manager)
+        monkeypatch.setattr(
+            factory,
+            "_resolve_node_class",
+            MagicMock(return_value=constructor),
+        )
+
+        result = factory.create_node({"id": "tool-node", "data": {"type": BuiltinNodeTypes.TOOL}})
+
+        assert result is created_node
+        kwargs = constructor.call_args.kwargs
+        assert kwargs["tool_file_manager"] is sentinel.tool_file_manager
+        assert kwargs["runtime"] is sentinel.tool_runtime
+        assert "tool_file_manager_factory" not in kwargs
+        factory._bound_tool_file_manager_factory.assert_called_once_with()
 
     def test_build_llm_compatible_node_init_kwargs_preserves_structured_output_switch(self, factory):
         node_data = LLMNodeData.model_validate(
@@ -622,7 +701,7 @@ class TestDifyNodeFactoryCreateNode:
         memory = sentinel.memory
         factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
         factory._build_memory_for_llm_node = MagicMock(return_value=memory)
-        with patch.object(node_factory, "DifyPreparedLLM", return_value=wrapped_model_instance) as prepared_llm:
+        with patch.object(factory, "_wrap_model_instance_for_node", return_value=wrapped_model_instance) as wrap_model:
             kwargs = factory._build_llm_compatible_node_init_kwargs(
                 node_class=sentinel.node_class,
                 node_data=node_data,
@@ -641,8 +720,70 @@ class TestDifyNodeFactoryCreateNode:
             node_data=node_data,
             model_instance=sentinel.model_instance,
         )
-        prepared_llm.assert_called_once_with(sentinel.model_instance)
+        wrap_model.assert_called_once_with(
+            node_data=node_data,
+            model_instance=sentinel.model_instance,
+            request_metadata={"app_id": "app-id"},
+        )
         assert kwargs["model_instance"] is wrapped_model_instance
+
+    def test_build_llm_compatible_node_init_kwargs_uses_polling_wrapper_for_polling_llm_node(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        plugin_runtime = PluginModelRuntime(
+            tenant_id="tenant-id",
+            user_id="user-id",
+            client=Mock(spec=PluginModelClient),
+            plugin_service=PluginService,
+        )
+        model_instance = _ModelInstanceStub(
+            model_runtime=plugin_runtime,
+            model_schema=_build_llm_model_schema(features=[ModelFeature.POLLING]),
+        )
+        factory._build_model_instance_for_llm_node = MagicMock(return_value=model_instance)
+        factory._build_memory_for_llm_node = MagicMock(return_value=sentinel.memory)
+
+        kwargs = factory._build_llm_compatible_node_init_kwargs(
+            node_class=sentinel.node_class,
+            node_data=node_data,
+            wrap_model_instance=True,
+            include_http_client=False,
+            include_llm_file_saver=False,
+            include_prompt_message_serializer=False,
+            include_retriever_attachment_loader=False,
+            include_jinja2_template_renderer=False,
+        )
+
+        assert isinstance(kwargs["model_instance"], LLMPollingCapableProtocol)
+
+    @pytest.mark.parametrize("node_type", [BuiltinNodeTypes.QUESTION_CLASSIFIER, BuiltinNodeTypes.PARAMETER_EXTRACTOR])
+    def test_wrap_model_instance_keeps_non_llm_graph_nodes_on_plain_wrapper(self, node_type):
+        plugin_runtime = PluginModelRuntime(
+            tenant_id="tenant-id",
+            user_id="user-id",
+            client=Mock(spec=PluginModelClient),
+            plugin_service=PluginService,
+        )
+        model_instance = _ModelInstanceStub(
+            model_runtime=plugin_runtime,
+            model_schema=_build_llm_model_schema(features=[ModelFeature.POLLING]),
+        )
+
+        wrapped = node_factory.DifyNodeFactory._wrap_model_instance_for_node(
+            node_data=SimpleNamespace(type=node_type),
+            model_instance=model_instance,
+        )
+
+        assert type(wrapped) is DifyPreparedLLM
+        assert not isinstance(wrapped, LLMPollingCapableProtocol)
 
     def test_create_node_passes_alias_preserving_llm_data_to_constructor(self, monkeypatch, factory):
         created_node = object()

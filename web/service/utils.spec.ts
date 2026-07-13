@@ -8,6 +8,7 @@ import { FlowType } from '@/types/common'
  * Key concepts:
  * - FlowType.appFlow: Standard application workflows (prefix: 'apps')
  * - FlowType.ragPipeline: RAG (Retrieval-Augmented Generation) pipelines (prefix: 'rag/pipelines')
+ * - FlowType.snippet: Reusable workflow snippets (prefix: 'snippets')
  *
  * The getFlowPrefix function maps flow types to their corresponding API path prefixes,
  * with a fallback to 'apps' for undefined or unknown flow types.
@@ -23,15 +24,16 @@ describe('Service Utils', () => {
     it('should have correct flow type to prefix mappings', () => {
       expect(flowPrefixMap[FlowType.appFlow]).toBe('apps')
       expect(flowPrefixMap[FlowType.ragPipeline]).toBe('rag/pipelines')
+      expect(flowPrefixMap[FlowType.snippet]).toBe('snippets')
     })
 
     /**
      * Test that the map only contains the expected flow types
      * This helps catch unintended additions to the mapping
      */
-    it('should contain exactly two flow type mappings', () => {
+    it('should contain exactly three flow type mappings', () => {
       const keys = Object.keys(flowPrefixMap)
-      expect(keys).toHaveLength(2)
+      expect(keys).toHaveLength(3)
     })
   })
 
@@ -52,6 +54,15 @@ describe('Service Utils', () => {
     it('should return "rag/pipelines" for ragPipeline type', () => {
       const result = getFlowPrefix(FlowType.ragPipeline)
       expect(result).toBe('rag/pipelines')
+    })
+
+    /**
+     * Test that snippet type returns the correct prefix
+     * Snippets use a dedicated API path separate from apps and RAG pipelines
+     */
+    it('should return "snippets" for snippet type', () => {
+      const result = getFlowPrefix(FlowType.snippet)
+      expect(result).toBe('snippets')
     })
 
     /**
@@ -90,6 +101,7 @@ describe('Service Utils', () => {
     it('should return values consistent with flowPrefixMap', () => {
       expect(getFlowPrefix(FlowType.appFlow)).toBe(flowPrefixMap[FlowType.appFlow])
       expect(getFlowPrefix(FlowType.ragPipeline)).toBe(flowPrefixMap[FlowType.ragPipeline])
+      expect(getFlowPrefix(FlowType.snippet)).toBe(flowPrefixMap[FlowType.snippet])
     })
   })
 
@@ -108,6 +120,10 @@ describe('Service Utils', () => {
       // RAG pipeline path construction
       const ragPipelinePath = `/${getFlowPrefix(FlowType.ragPipeline)}/${appId}`
       expect(ragPipelinePath).toBe('/rag/pipelines/123')
+
+      // Snippet path construction
+      const snippetPath = `/${getFlowPrefix(FlowType.snippet)}/${appId}`
+      expect(snippetPath).toBe('/snippets/123')
     })
 
     /**
@@ -121,7 +137,10 @@ describe('Service Utils', () => {
       }
 
       expect(determineEndpoint(FlowType.appFlow, 'app-1')).toBe('/apps/app-1')
-      expect(determineEndpoint(FlowType.ragPipeline, 'pipeline-1')).toBe('/rag/pipelines/pipeline-1')
+      expect(determineEndpoint(FlowType.ragPipeline, 'pipeline-1')).toBe(
+        '/rag/pipelines/pipeline-1',
+      )
+      expect(determineEndpoint(FlowType.snippet, 'snippet-1')).toBe('/snippets/snippet-1')
       expect(determineEndpoint(undefined, 'fallback')).toBe('/apps/fallback')
     })
 
@@ -160,11 +179,14 @@ describe('Service Utils', () => {
     it('should return valid path segments without leading/trailing slashes', () => {
       const appFlowPrefix = getFlowPrefix(FlowType.appFlow)
       const ragPipelinePrefix = getFlowPrefix(FlowType.ragPipeline)
+      const snippetPrefix = getFlowPrefix(FlowType.snippet)
 
       expect(appFlowPrefix).not.toMatch(/^\//)
       expect(appFlowPrefix).not.toMatch(/\/$/)
       expect(ragPipelinePrefix).not.toMatch(/^\//)
       expect(ragPipelinePrefix).not.toMatch(/\/$/)
+      expect(snippetPrefix).not.toMatch(/^\//)
+      expect(snippetPrefix).not.toMatch(/\/$/)
     })
   })
 })

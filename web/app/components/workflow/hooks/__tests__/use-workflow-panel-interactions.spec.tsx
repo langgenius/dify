@@ -1,10 +1,7 @@
 import { act } from '@testing-library/react'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
-import { ControlMode } from '../../types'
-import {
-  useWorkflowInteractions,
-  useWorkflowMoveMode,
-} from '../use-workflow-panel-interactions'
+import { ControlMode, WorkflowRunningStatus } from '../../types'
+import { useWorkflowInteractions, useWorkflowMoveMode } from '../use-workflow-panel-interactions'
 
 const mockHandleSelectionCancel = vi.hoisted(() => vi.fn())
 const mockHandleNodeCancelRunningStatus = vi.hoisted(() => vi.fn())
@@ -29,13 +26,15 @@ vi.mock('../use-selection-interactions', () => ({
 
 vi.mock('../use-nodes-interactions-without-sync', () => ({
   useNodesInteractionsWithoutSync: () => ({
-    handleNodeCancelRunningStatus: (...args: unknown[]) => mockHandleNodeCancelRunningStatus(...args),
+    handleNodeCancelRunningStatus: (...args: unknown[]) =>
+      mockHandleNodeCancelRunningStatus(...args),
   }),
 }))
 
 vi.mock('../use-edges-interactions-without-sync', () => ({
   useEdgesInteractionsWithoutSync: () => ({
-    handleEdgeCancelRunningStatus: (...args: unknown[]) => mockHandleEdgeCancelRunningStatus(...args),
+    handleEdgeCancelRunningStatus: (...args: unknown[]) =>
+      mockHandleEdgeCancelRunningStatus(...args),
   }),
 }))
 
@@ -102,6 +101,66 @@ describe('useWorkflowMoveMode', () => {
     act(() => {
       result.current.handleModeHand()
       result.current.handleModePointer()
+    })
+
+    expect(store.getState().controlMode).toBe(ControlMode.Pointer)
+    expect(mockHandleSelectionCancel).not.toHaveBeenCalled()
+  })
+
+  it('switches to comment mode when nodes are read-only', () => {
+    runtimeState.nodesReadOnly = true
+    const { result, store } = renderWorkflowHook(() => useWorkflowMoveMode(), {
+      initialStoreState: {
+        controlMode: ControlMode.Pointer,
+      },
+    })
+
+    act(() => {
+      result.current.handleModeComment()
+    })
+
+    expect(store.getState().controlMode).toBe(ControlMode.Comment)
+    expect(mockHandleSelectionCancel).toHaveBeenCalledTimes(1)
+    expect(result.current.canUseCommentMode).toBe(true)
+  })
+
+  it('does not switch to comment mode while workflow operation is blocked', () => {
+    const { result, store } = renderWorkflowHook(() => useWorkflowMoveMode(), {
+      initialStoreState: {
+        controlMode: ControlMode.Pointer,
+        workflowRunningData: {
+          result: { status: WorkflowRunningStatus.Running },
+        } as never,
+      },
+    })
+
+    act(() => {
+      result.current.handleModeComment()
+    })
+
+    expect(result.current.canUseCommentMode).toBe(false)
+    expect(store.getState().controlMode).toBe(ControlMode.Pointer)
+    expect(mockHandleSelectionCancel).not.toHaveBeenCalled()
+  })
+
+  it('does not switch to comment mode when commenting is denied', () => {
+    const { result, store } = renderWorkflowHook(() => useWorkflowMoveMode(), {
+      initialStoreState: {
+        controlMode: ControlMode.Pointer,
+      },
+      hooksStoreProps: {
+        accessControl: {
+          canEdit: true,
+          canComment: false,
+          canRun: true,
+          canImportExportDSL: true,
+          canReleaseAndVersion: true,
+        },
+      },
+    })
+
+    act(() => {
+      result.current.handleModeComment()
     })
 
     expect(store.getState().controlMode).toBe(ControlMode.Pointer)

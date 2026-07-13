@@ -34,11 +34,13 @@ describe('useInspectVarsCrud', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseConversationVarValues.mockReturnValue({
-      data: [createInspectVar({
-        id: 'conversation-var',
-        name: 'history',
-        selector: ['conversation', 'history'],
-      })],
+      data: [
+        createInspectVar({
+          id: 'conversation-var',
+          name: 'history',
+          selector: ['conversation', 'history'],
+        }),
+      ],
     })
     mockUseSysVarValues.mockReturnValue({
       data: [
@@ -61,27 +63,46 @@ describe('useInspectVarsCrud', () => {
     })
   })
 
-  it('appends query/files system vars to start-node inspect vars and filters them from the system list', () => {
+  it('should pass the flow id to shared variable queries for app flows', () => {
+    renderWorkflowHook(() => useInspectVarsCrud(), {
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'app-1',
+          flowType: FlowType.appFlow,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    expect(mockUseConversationVarValues).toHaveBeenCalledWith(FlowType.appFlow, 'app-1')
+    expect(mockUseSysVarValues).toHaveBeenCalledWith(FlowType.appFlow, 'app-1')
+  })
+
+  it('should append query and files vars to the start node and keep other system vars separate', () => {
     const hasNodeInspectVars = vi.fn(() => true)
     const deleteAllInspectorVars = vi.fn()
     const fetchInspectVarValue = vi.fn()
 
     const { result } = renderWorkflowHook(() => useInspectVarsCrud(), {
       initialStoreState: {
-        nodesWithInspectVars: [{
-          nodeId: 'start-node',
-          nodePayload: {
-            type: BlockEnum.Start,
+        nodesWithInspectVars: [
+          {
+            nodeId: 'start-node',
+            nodePayload: {
+              type: BlockEnum.Start,
+              title: 'Start',
+              desc: '',
+            } as never,
+            nodeType: BlockEnum.Start,
             title: 'Start',
-            desc: '',
-          } as never,
-          nodeType: BlockEnum.Start,
-          title: 'Start',
-          vars: [createInspectVar({
-            id: 'start-answer',
-            selector: ['start-node', 'answer'],
-          })],
-        }],
+            vars: [
+              createInspectVar({
+                id: 'start-answer',
+                selector: ['start-node', 'answer'],
+              }),
+            ],
+          },
+        ],
       },
       hooksStoreProps: {
         configsMap: {
@@ -107,8 +128,8 @@ describe('useInspectVarsCrud', () => {
     })
 
     expect(result.current.conversationVars).toHaveLength(1)
-    expect(result.current.systemVars.map(item => item.name)).toEqual(['time'])
-    expect(result.current.nodesWithInspectVars[0]?.vars.map(item => item.name)).toEqual([
+    expect(result.current.systemVars.map((item) => item.name)).toEqual(['time'])
+    expect(result.current.nodesWithInspectVars[0]?.vars.map((item) => item.name)).toEqual([
       'answer',
       'query',
       'files',
@@ -118,11 +139,11 @@ describe('useInspectVarsCrud', () => {
     expect(result.current.deleteAllInspectorVars).toBe(deleteAllInspectorVars)
   })
 
-  it('uses an empty flow id for rag pipeline conversation and system value queries', () => {
+  it('should use an empty flow id for shared variable queries in rag pipelines', () => {
     renderWorkflowHook(() => useInspectVarsCrud(), {
       hooksStoreProps: {
         configsMap: {
-          flowId: 'rag-flow',
+          flowId: 'pipeline-1',
           flowType: FlowType.ragPipeline,
           fileSettings: {} as never,
         },
@@ -131,5 +152,20 @@ describe('useInspectVarsCrud', () => {
 
     expect(mockUseConversationVarValues).toHaveBeenCalledWith(FlowType.ragPipeline, '')
     expect(mockUseSysVarValues).toHaveBeenCalledWith(FlowType.ragPipeline, '')
+  })
+
+  it('should use an empty flow id for shared variable queries in snippets', () => {
+    renderWorkflowHook(() => useInspectVarsCrud(), {
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'snippet-1',
+          flowType: FlowType.snippet,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    expect(mockUseConversationVarValues).toHaveBeenCalledWith(FlowType.snippet, '')
+    expect(mockUseSysVarValues).toHaveBeenCalledWith(FlowType.snippet, '')
   })
 })

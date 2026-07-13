@@ -23,11 +23,7 @@ const renderComponent = (props?: {
   withNode?: boolean
   onParentClick?: () => void
 }) => {
-  const {
-    isSelected = false,
-    withNode = true,
-    onParentClick,
-  } = props ?? {}
+  const { isSelected = false, withNode = true, onParentClick } = props ?? {}
 
   mockUseSelectOrDelete.mockReturnValue(createHookReturn(isSelected))
 

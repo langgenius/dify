@@ -8,7 +8,7 @@ import { useMemo } from 'react'
 import { ViewType } from '../../view-type-select'
 import Tool from '../tool'
 
-type Props = {
+type Props = Readonly<{
   payload: ToolWithProvider[]
   previewCardHandle: ToolActionPreviewCardHandle
   isShowLetterIndex: boolean
@@ -20,7 +20,7 @@ type Props = {
   letters: string[]
   toolRefs: RefObject<Record<string, HTMLDivElement | null>>
   selectedTools?: ToolValue[]
-}
+}>
 
 const ToolViewFlatView: FC<Props> = ({
   letters,
@@ -38,22 +38,20 @@ const ToolViewFlatView: FC<Props> = ({
   const firstLetterToolIds = useMemo(() => {
     const res: Record<string, string> = {}
     letters.forEach((letter) => {
-      const firstToolId = payload.find(tool => tool.letter === letter)?.id
-      if (firstToolId)
-        res[firstToolId] = letter
+      const firstToolId = payload.find((tool) => tool.letter === letter)?.id
+      if (firstToolId) res[firstToolId] = letter
     })
     return res
   }, [payload, letters])
   return (
     <div className="flex w-full">
       <div className="mr-1 grow">
-        {payload.map(tool => (
+        {payload.map((tool) => (
           <div
             key={tool.id}
             ref={(el) => {
               const letter = firstLetterToolIds[tool.id]
-              if (letter)
-                toolRefs.current[letter] = el
+              if (letter) toolRefs.current[letter] = el
             }}
           >
             <Tool

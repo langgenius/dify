@@ -1,10 +1,6 @@
 import type { EditorConfig, Klass, LexicalEditor, LexicalNode, SerializedTextNode } from 'lexical'
 import { createEditor } from 'lexical'
-import {
-  $createVariableValueBlockNode,
-  $isVariableValueNodeBlock,
-  VariableValueBlockNode,
-} from '../node'
+import { $createVariableValueBlockNode, VariableValueBlockNode } from '../node'
 
 describe('VariableValueBlockNode', () => {
   let editor: LexicalEditor
@@ -77,16 +73,12 @@ describe('VariableValueBlockNode', () => {
     })
   })
 
-  it('should create node with helper and support type guard checks', () => {
+  it('should create node with helper', () => {
     runInEditor(() => {
       const node = $createVariableValueBlockNode('{{org_id}}')
 
       expect(node).toBeInstanceOf(VariableValueBlockNode)
       expect(node.getTextContent()).toBe('{{org_id}}')
-      expect($isVariableValueNodeBlock(node)).toBe(true)
-      expect($isVariableValueNodeBlock(null)).toBe(false)
-      expect($isVariableValueNodeBlock(undefined)).toBe(false)
-      expect($isVariableValueNodeBlock({} as LexicalNode)).toBe(false)
     })
   })
 })

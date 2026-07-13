@@ -8,6 +8,7 @@ from typing import Any, Literal, overload
 from flask import Flask, copy_current_request_context, current_app
 from pydantic import ValidationError
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
@@ -20,6 +21,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
+from core.helper.trace_id_helper import extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
@@ -35,6 +37,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -45,6 +48,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -55,6 +59,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -64,6 +69,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -148,7 +154,9 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 user_id=user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
-                extras={},
+                extras={
+                    **extract_trace_session_id_from_args(args),
+                },
                 trace_manager=trace_manager,
             )
 
@@ -172,6 +180,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             def worker_with_context():
                 return context.run(
                     self._generate_worker,
+                    session=session,
                     flask_app=current_app._get_current_object(),  # type: ignore
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
@@ -197,6 +206,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
     def _generate_worker(
         self,
         flask_app: Flask,
+        session: Session,
         application_generate_entity: CompletionAppGenerateEntity,
         queue_manager: AppQueueManager,
         message_id: str,
@@ -217,6 +227,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 # chatbot app
                 runner = CompletionAppRunner()
                 runner.run(
+                    session=session,
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     message=message,
@@ -242,6 +253,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
     def generate_more_like_this(
         self,
+        session: Session,
         app_model: App,
         message_id: str,
         user: Account | EndUser,
@@ -340,6 +352,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             def worker_with_context():
                 return context.run(
                     self._generate_worker,
+                    session=session,
                     flask_app=current_app._get_current_object(),  # type: ignore
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,

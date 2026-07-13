@@ -11,12 +11,13 @@ import {
   RiLoginCircleLine,
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { API_PREFIX } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useTheme from '@/hooks/use-theme'
@@ -25,29 +26,30 @@ import { getMarketplaceUrl } from '@/utils/var'
 import Badge from '../../base/badge'
 import { Github } from '../../base/icons/src/public/common'
 import Verified from '../base/badges/verified'
-import CornerMark from '../card/base/corner-mark'
 import Description from '../card/base/description'
 import OrgInfo from '../card/base/org-info'
 import Title from '../card/base/title'
-import { useCategories } from '../hooks'
 import { usePluginPageContext } from '../plugin-page/context'
-import { PluginCategoryEnum, PluginSource } from '../types'
+import { PluginSource } from '../types'
 import Action from './action'
 
-type Props = {
+type Props = Readonly<{
+  canDeletePlugin?: boolean
+  canUpdatePlugin?: boolean
   className?: string
   plugin: PluginDetail
-}
+}>
 
 const PluginItem: FC<Props> = ({
+  canDeletePlugin = true,
+  canUpdatePlugin = true,
   className,
   plugin,
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const { categoriesMap } = useCategories(true)
-  const currentPluginID = usePluginPageContext(v => v.currentPluginID)
-  const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
+  const currentPluginID = usePluginPageContext((v) => v.currentPluginID)
+  const setCurrentPluginID = usePluginPageContext((v) => v.setCurrentPluginID)
   const { refreshPluginList } = useRefreshPluginList()
 
   const {
@@ -55,24 +57,38 @@ const PluginItem: FC<Props> = ({
     tenant_id,
     installation_id,
     plugin_unique_identifier,
-    endpoints_active,
     meta,
     plugin_id,
     status,
     deprecated_reason,
   } = plugin
-  const { category, author, name, label, description, icon, icon_dark, verified, meta: declarationMeta } = plugin.declaration
+  const {
+    category,
+    author,
+    name,
+    label,
+    description,
+    icon,
+    icon_dark,
+    verified,
+    meta: declarationMeta,
+  } = plugin.declaration
+  const endpointCount =
+    plugin.declaration.endpoint?.endpoints?.filter((endpoint) => !endpoint.hidden).length ?? 0
+  const hasEndpointDeclaration = !!plugin.declaration.endpoint
 
   const orgName = useMemo(() => {
     return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
   }, [source, author])
 
-  const { langGeniusVersionInfo } = useAppContext()
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
 
   const isDifyVersionCompatible = useMemo(() => {
-    if (!langGeniusVersionInfo.current_version)
-      return true
-    return isEqualOrLaterThanVersion(langGeniusVersionInfo.current_version, declarationMeta.minimum_dify_version ?? '0.0.0')
+    if (!langGeniusVersionInfo.current_version) return true
+    return isEqualOrLaterThanVersion(
+      langGeniusVersionInfo.current_version,
+      declarationMeta.minimum_dify_version ?? '0.0.0',
+    )
   }, [declarationMeta.minimum_dify_version, langGeniusVersionInfo.current_version])
 
   const isDeprecated = useMemo(() => {
@@ -88,17 +104,19 @@ const PluginItem: FC<Props> = ({
   const descriptionText = getValueFromI18nObject(description)
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
+    select: (s) => s.enable_marketplace,
   })
   const iconFileName = theme === 'dark' && icon_dark ? icon_dark : icon
   const iconSrc = iconFileName
-    ? (iconFileName.startsWith('http') ? iconFileName : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${iconFileName}`)
+    ? iconFileName.startsWith('http')
+      ? iconFileName
+      : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${iconFileName}`
     : ''
 
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-xl border-[1.5px] border-background-section-burn p-1',
+        'group/plugin-item relative overflow-hidden rounded-xl border-[1.5px] border-background-section-burn p-1',
         currentPluginID === plugin_id && 'border-components-option-card-option-selected-border',
         source === PluginSource.debugging
           ? 'bg-[repeating-linear-gradient(-45deg,rgba(16,24,40,0.04),rgba(16,24,40,0.04)_5px,rgba(0,0,0,0.02)_5px,rgba(0,0,0,0.02)_10px)]'
@@ -108,8 +126,12 @@ const PluginItem: FC<Props> = ({
         setCurrentPluginID(plugin.plugin_id)
       }}
     >
-      <div className={cn('hover-bg-components-panel-on-panel-item-bg relative z-10 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs', className)}>
-        <CornerMark text={categoriesMap[category]!.label} />
+      <div
+        className={cn(
+          'relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs',
+          className,
+        )}
+      >
         {/* Header */}
         <div className="flex">
           <div className="flex size-10 items-center justify-center overflow-hidden rounded-xl border border-components-panel-border-subtle">
@@ -122,39 +144,57 @@ const PluginItem: FC<Props> = ({
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={title} />
-              {verified && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+              {verified && (
+                <Verified
+                  className="ml-0.5 size-4"
+                  text={t(($) => $['marketplace.verifiedTip'], { ns: 'plugin' })}
+                />
+              )}
               {!isDifyVersionCompatible && (
                 <Popover>
                   <PopoverTrigger
                     openOnHover
-                    aria-label={t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
+                    aria-label={t(($) => $.difyVersionNotCompatible, {
+                      ns: 'plugin',
+                      minimalDifyVersion: declarationMeta.minimum_dify_version,
+                    })}
                     className="ml-0.5 inline-flex size-4 shrink-0 border-0 bg-transparent p-0"
                   >
                     <RiErrorWarningLine color="red" className="size-4 text-text-accent" />
                   </PopoverTrigger>
                   <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
-                    {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
+                    {t(($) => $.difyVersionNotCompatible, {
+                      ns: 'plugin',
+                      minimalDifyVersion: declarationMeta.minimum_dify_version,
+                    })}
                   </PopoverContent>
                 </Popover>
               )}
               <Badge
                 className="ml-1 shrink-0"
                 text={source === PluginSource.github ? plugin.meta!.version : plugin.version}
-                hasRedCornerMark={(source === PluginSource.marketplace) && !!plugin.latest_version && plugin.latest_version !== plugin.version}
+                hasRedCornerMark={
+                  source === PluginSource.marketplace &&
+                  !!plugin.latest_version &&
+                  plugin.latest_version !== plugin.version
+                }
               />
             </div>
             <div className="flex items-center justify-between">
               <Description text={descriptionText} descriptionLineRows={1}></Description>
-              <div onClick={e => e.stopPropagation()}>
+              <div
+                className="opacity-0 transition-opacity group-hover/plugin-item:opacity-100 focus-within:opacity-100"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <Action
                   pluginUniqueIdentifier={plugin_unique_identifier}
                   installationId={installation_id}
                   author={author}
                   pluginName={name}
                   usedInApps={5}
-                  isShowFetchNewVersion={source === PluginSource.github}
+                  isShowFetchNewVersion={canUpdatePlugin && source === PluginSource.github}
                   isShowInfo={source === PluginSource.github}
-                  isShowDelete
+                  isShowDelete={canDeletePlugin}
                   meta={meta}
                   onDelete={handleDelete}
                   category={category}
@@ -172,16 +212,16 @@ const PluginItem: FC<Props> = ({
             packageName={name}
             packageNameClassName="w-auto max-w-[150px]"
           />
-          {category === PluginCategoryEnum.extension && (
+          {hasEndpointDeclaration && (
             <>
               <div className="mx-2 system-xs-regular text-text-quaternary">·</div>
               <div className="flex items-center gap-x-1 overflow-hidden system-xs-regular text-text-tertiary">
                 <RiLoginCircleLine className="size-3 shrink-0" />
                 <span
                   className="truncate"
-                  title={t('endpointsEnabled', { ns: 'plugin', num: endpoints_active })}
+                  title={t(($) => $.endpointsEnabled, { ns: 'plugin', num: endpointCount })}
                 >
-                  {t('endpointsEnabled', { ns: 'plugin', num: endpoints_active })}
+                  {t(($) => $.endpointsEnabled, { ns: 'plugin', num: endpointCount })}
                 </span>
               </div>
             </>
@@ -189,58 +229,63 @@ const PluginItem: FC<Props> = ({
         </div>
         {/* Source */}
         <div className="flex shrink-0 items-center">
-          {source === PluginSource.github
-            && (
-              <>
-                <a href={`https://github.com/${meta!.repo}`} target="_blank" className="flex items-center gap-1">
-                  <div className="system-2xs-medium-uppercase text-text-tertiary">{t('from', { ns: 'plugin' })}</div>
-                  <div className="flex items-center space-x-0.5 text-text-secondary">
-                    <Github className="size-3" />
-                    <div className="system-2xs-semibold-uppercase">GitHub</div>
-                    <RiArrowRightUpLine className="size-3" />
-                  </div>
-                </a>
-              </>
-            )}
-          {source === PluginSource.marketplace && enable_marketplace
-            && (
-              <>
-                <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target="_blank" className="flex items-center gap-0.5">
-                  <div className="system-2xs-medium-uppercase text-text-tertiary">
-                    {t('from', { ns: 'plugin' })}
-                    {' '}
-                    <span className="text-text-secondary">marketplace</span>
-                  </div>
-                  <RiArrowRightUpLine className="size-3 text-text-secondary" />
-                </a>
-              </>
-            )}
-          {source === PluginSource.local
-            && (
-              <>
-                <div className="flex items-center gap-1">
-                  <RiHardDrive3Line className="size-3 text-text-tertiary" />
-                  <div className="system-2xs-medium-uppercase text-text-tertiary">Local Plugin</div>
+          {source === PluginSource.github && (
+            <>
+              <a
+                href={`https://github.com/${meta!.repo}`}
+                target="_blank"
+                className="flex items-center gap-1"
+              >
+                <div className="system-2xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $.from, { ns: 'plugin' })}
                 </div>
-              </>
-            )}
-          {source === PluginSource.debugging
-            && (
-              <>
-                <div className="flex items-center gap-1">
-                  <RiBugLine className="size-3 text-text-warning" />
-                  <div className="system-2xs-medium-uppercase text-text-warning">Debugging Plugin</div>
+                <div className="flex items-center space-x-0.5 text-text-secondary">
+                  <Github className="size-3" />
+                  <div className="system-2xs-semibold-uppercase">GitHub</div>
+                  <RiArrowRightUpLine className="size-3" />
                 </div>
-              </>
-            )}
+              </a>
+            </>
+          )}
+          {source === PluginSource.marketplace && enable_marketplace && (
+            <>
+              <a
+                href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })}
+                target="_blank"
+                className="flex items-center gap-0.5"
+              >
+                <div className="system-2xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $.from, { ns: 'plugin' })}{' '}
+                  <span className="text-text-secondary">marketplace</span>
+                </div>
+                <RiArrowRightUpLine className="size-3 text-text-secondary" />
+              </a>
+            </>
+          )}
+          {source === PluginSource.local && (
+            <>
+              <div className="flex items-center gap-1">
+                <RiHardDrive3Line className="size-3 text-text-tertiary" />
+                <div className="system-2xs-medium-uppercase text-text-tertiary">Local Plugin</div>
+              </div>
+            </>
+          )}
+          {source === PluginSource.debugging && (
+            <>
+              <div className="flex items-center gap-1">
+                <RiBugLine className="size-3 text-text-warning" />
+                <div className="system-2xs-medium-uppercase text-text-warning">
+                  Debugging Plugin
+                </div>
+              </div>
+            </>
+          )}
         </div>
         {/* Deprecated */}
         {source === PluginSource.marketplace && enable_marketplace && isDeprecated && (
           <div className="flex shrink-0 items-center gap-x-2 system-2xs-medium-uppercase">
             <span className="text-text-tertiary">·</span>
-            <span className="text-text-warning">
-              {t('deprecated', { ns: 'plugin' })}
-            </span>
+            <span className="text-text-warning">{t(($) => $.deprecated, { ns: 'plugin' })}</span>
           </div>
         )}
       </div>

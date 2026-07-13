@@ -9,10 +9,12 @@ from collections.abc import Mapping
 
 import pytest
 
+from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2.output_type_checker import (
     OutputTypeCheckStatus,
     PerOutputTypeChecker,
 )
+from graphon.file import FileTransferMethod
 from models.agent_config_entities import (
     DeclaredArrayItem,
     DeclaredOutputConfig,
@@ -21,13 +23,30 @@ from models.agent_config_entities import (
 
 
 class StubFileValidator:
-    """Trivially records the set of file_ids that pass tenant scope."""
+    """Trivially records the set of file mappings that pass tenant scope."""
 
-    def __init__(self, *, allowed: Mapping[str, set[str]] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        allowed: Mapping[str, set[str]] | None = None,
+        allowed_by_method: Mapping[tuple[str, str], set[str]] | None = None,
+    ) -> None:
         # Mapping: tenant_id -> {file_id, ...}
         self._allowed = {tenant: set(ids) for tenant, ids in (allowed or {}).items()}
+        self._allowed_by_method = {
+            (tenant, transfer_method): set(ids) for (tenant, transfer_method), ids in (allowed_by_method or {}).items()
+        }
 
-    def is_owned_by_tenant(self, *, file_id: str, tenant_id: str) -> bool:
+    def is_accessible_file_mapping(
+        self,
+        *,
+        file_id: str,
+        tenant_id: str,
+        transfer_method: FileTransferMethod,
+    ) -> bool:
+        scoped_ids = self._allowed_by_method.get((tenant_id, transfer_method.value))
+        if self._allowed_by_method:
+            return file_id in (scoped_ids or set())
         return file_id in self._allowed.get(tenant_id, set())
 
 
@@ -35,8 +54,12 @@ def _str_output(name: str = "summary", required: bool = True) -> DeclaredOutputC
     return DeclaredOutputConfig(name=name, type=DeclaredOutputType.STRING, required=required)
 
 
-def _make_checker(*, allowed: Mapping[str, set[str]] | None = None) -> PerOutputTypeChecker:
-    return PerOutputTypeChecker(file_validator=StubFileValidator(allowed=allowed))
+def _make_checker(
+    *,
+    allowed: Mapping[str, set[str]] | None = None,
+    allowed_by_method: Mapping[tuple[str, str], set[str]] | None = None,
+) -> PerOutputTypeChecker:
+    return PerOutputTypeChecker(file_validator=StubFileValidator(allowed=allowed, allowed_by_method=allowed_by_method))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -127,15 +150,17 @@ def test_array_of_files_validates_per_item_file_ref():
         type=DeclaredOutputType.ARRAY,
         array_item=DeclaredArrayItem(type=DeclaredOutputType.FILE),
     )
+    allowed_reference = build_file_reference(record_id="file-A")
+    denied_reference = build_file_reference(record_id="other-tenant-file")
 
     ok = checker.check(
         declared_outputs=[declared],
-        raw_output={"docs": [{"file_id": "file-A", "filename": "a.pdf"}]},
+        raw_output={"docs": [{"transfer_method": "tool_file", "reference": allowed_reference}]},
         tenant_id="t-1",
     )
     cross_tenant = checker.check(
         declared_outputs=[declared],
-        raw_output={"docs": [{"file_id": "other-tenant-file", "filename": "x.pdf"}]},
+        raw_output={"docs": [{"transfer_method": "tool_file", "reference": denied_reference}]},
         tenant_id="t-1",
     )
 
@@ -152,46 +177,189 @@ def test_array_of_files_validates_per_item_file_ref():
 def test_file_ref_must_be_tenant_owned():
     checker = _make_checker(allowed={"t-1": {"my-file"}})
     declared = DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)
+    allowed_reference = build_file_reference(record_id="my-file")
+    denied_reference = build_file_reference(record_id="other")
 
     outcome = checker.check(
         declared_outputs=[declared],
-        raw_output={"report": {"file_id": "my-file", "filename": "r.pdf"}},
+        raw_output={"report": {"transfer_method": "local_file", "reference": allowed_reference}},
         tenant_id="t-1",
     )
     assert not outcome.has_failures
 
     outcome = checker.check(
         declared_outputs=[declared],
-        raw_output={"report": {"file_id": "other", "filename": "r.pdf"}},
+        raw_output={"report": {"transfer_method": "local_file", "reference": denied_reference}},
         tenant_id="t-1",
     )
     assert outcome.has_failures
 
 
-def test_file_ref_missing_id_field_fails():
+def test_file_ref_must_match_transfer_method_family():
+    tool_reference = build_file_reference(record_id="tool-file-1")
+    checker = _make_checker(
+        allowed={"t-1": {"tool-file-1"}},
+        allowed_by_method={
+            ("t-1", FileTransferMethod.TOOL_FILE.value): {"tool-file-1"},
+        },
+    )
+    declared = DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)
+
+    outcome = checker.check(
+        declared_outputs=[declared],
+        raw_output={"report": {"transfer_method": "local_file", "reference": tool_reference}},
+        tenant_id="t-1",
+    )
+
+    assert outcome.has_failures
+    assert "not accessible" in (outcome.failures[0].reason or "")
+
+
+def test_datasource_file_ref_is_accepted_for_matching_transfer_method_family():
+    datasource_reference = build_file_reference(record_id="datasource-file-1")
+    checker = _make_checker(
+        allowed={"t-1": {"datasource-file-1"}},
+        allowed_by_method={
+            ("t-1", FileTransferMethod.DATASOURCE_FILE.value): {"datasource-file-1"},
+        },
+    )
+    declared = DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)
+
+    outcome = checker.check(
+        declared_outputs=[declared],
+        raw_output={"report": {"transfer_method": "datasource_file", "reference": datasource_reference}},
+        tenant_id="t-1",
+    )
+
+    assert not outcome.has_failures
+
+
+def test_datasource_file_ref_rejects_transfer_method_family_mismatch():
+    tool_reference = build_file_reference(record_id="tool-file-1")
+    checker = _make_checker(
+        allowed={"t-1": {"tool-file-1"}},
+        allowed_by_method={
+            ("t-1", FileTransferMethod.TOOL_FILE.value): {"tool-file-1"},
+        },
+    )
+    declared = DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)
+
+    outcome = checker.check(
+        declared_outputs=[declared],
+        raw_output={"report": {"transfer_method": "datasource_file", "reference": tool_reference}},
+        tenant_id="t-1",
+    )
+
+    assert outcome.has_failures
+    assert "not accessible" in (outcome.failures[0].reason or "")
+
+
+def test_file_ref_missing_reference_or_url_fails():
     checker = _make_checker()
     declared = DeclaredOutputConfig(name="r", type=DeclaredOutputType.FILE)
 
     outcome = checker.check(
         declared_outputs=[declared],
-        raw_output={"r": {"filename": "x.pdf"}},  # no file_id / upload_file_id / tool_file_id
+        raw_output={"r": {"transfer_method": "tool_file"}},
         tenant_id="t-1",
     )
 
-    assert outcome.failures[0].reason == "file ref missing a recognized file_id field"
+    assert outcome.failures[0].reason == (
+        "tool_file file mapping must contain exactly ['reference', 'transfer_method'] (missing reference)"
+    )
 
 
-def test_file_ref_accepts_upload_file_id_alias():
-    checker = _make_checker(allowed={"t-1": {"alt-file"}})
+def test_file_ref_accepts_remote_url_mapping_without_tenant_lookup():
+    checker = _make_checker()
     declared = DeclaredOutputConfig(name="r", type=DeclaredOutputType.FILE)
 
     outcome = checker.check(
         declared_outputs=[declared],
-        raw_output={"r": {"upload_file_id": "alt-file"}},
+        raw_output={"r": {"transfer_method": "remote_url", "url": "https://example.com/report.pdf"}},
         tenant_id="t-1",
     )
 
     assert not outcome.has_failures
+
+
+def test_file_ref_rejects_legacy_id_only_shape():
+    checker = _make_checker(allowed={"t-1": {"tool-file-1"}})
+    declared = DeclaredOutputConfig(name="r", type=DeclaredOutputType.FILE)
+
+    outcome = checker.check(
+        declared_outputs=[declared],
+        raw_output={"r": {"id": "tool-file-1"}},
+        tenant_id="t-1",
+    )
+
+    assert outcome.has_failures
+    assert outcome.failures[0].reason == "file mapping missing transfer_method"
+
+
+@pytest.mark.parametrize(
+    ("raw_value", "expected_reason"),
+    [
+        ("not-a-list", "expected array, got str"),
+        (123, "expected canonical file mapping object, got int"),
+        ({"transfer_method": "unsupported", "reference": "x"}, "unsupported file transfer_method 'unsupported'"),
+        ({"transfer_method": "remote_url", "url": ""}, "remote_url file mapping missing url"),
+    ],
+)
+def test_rejects_additional_invalid_array_and_file_shapes(raw_value: object, expected_reason: str) -> None:
+    checker = _make_checker()
+    declared = (
+        DeclaredOutputConfig(
+            name="r",
+            type=DeclaredOutputType.ARRAY,
+            array_item=DeclaredArrayItem(type=DeclaredOutputType.STRING),
+        )
+        if raw_value == "not-a-list"
+        else DeclaredOutputConfig(name="r", type=DeclaredOutputType.FILE)
+    )
+
+    outcome = checker.check(
+        declared_outputs=[declared],
+        raw_output={"r": raw_value},
+        tenant_id="t-1",
+    )
+
+    assert outcome.has_failures
+    assert outcome.failures[0].reason == expected_reason
+
+
+def test_file_ref_rejects_extra_rich_descriptor_fields() -> None:
+    checker = _make_checker(allowed={"t-1": {"tool-file-1"}})
+    declared = DeclaredOutputConfig(name="r", type=DeclaredOutputType.FILE)
+    reference = build_file_reference(record_id="tool-file-1")
+
+    outcome = checker.check(
+        declared_outputs=[declared],
+        raw_output={
+            "r": {
+                "transfer_method": "tool_file",
+                "reference": reference,
+                "filename": "report.pdf",
+            }
+        },
+        tenant_id="t-1",
+    )
+
+    assert outcome.has_failures
+    assert "unexpected filename" in (outcome.failures[0].reason or "")
+
+
+def test_file_ref_rejects_non_canonical_reference() -> None:
+    checker = _make_checker(allowed={"t-1": {"tool-file-1"}})
+    declared = DeclaredOutputConfig(name="r", type=DeclaredOutputType.FILE)
+
+    outcome = checker.check(
+        declared_outputs=[declared],
+        raw_output={"r": {"transfer_method": "tool_file", "reference": "raw-tool-file-uuid"}},
+        tenant_id="t-1",
+    )
+
+    assert outcome.has_failures
+    assert outcome.failures[0].reason == "tool_file file mapping has invalid canonical reference"
 
 
 # ──────────────────────────────────────────────────────────────────────────────

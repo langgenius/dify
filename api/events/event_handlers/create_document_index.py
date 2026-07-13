@@ -1,4 +1,3 @@
-import contextlib
 import logging
 import time
 
@@ -42,11 +41,12 @@ def handle(sender, **kwargs):
             session.add(document)
         session.commit()
 
-    with contextlib.suppress(Exception):
-        try:
-            indexing_runner = IndexingRunner()
-            indexing_runner.run(documents)
-            end_at = time.perf_counter()
-            logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
-        except DocumentIsPausedError as ex:
-            logger.info(click.style(str(ex), fg="yellow"))
+    try:
+        indexing_runner = IndexingRunner()
+        indexing_runner.run(documents)
+        end_at = time.perf_counter()
+        logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
+    except DocumentIsPausedError as ex:
+        logger.info(click.style(str(ex), fg="yellow"))
+    except Exception:
+        logger.exception("Document index event handler failed, dataset_id: %s", dataset_id)

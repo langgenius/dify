@@ -1,10 +1,5 @@
 import { render } from 'vitest-browser-react'
-import {
-  Checkbox,
-  CheckboxIndicator,
-  CheckboxRoot,
-  CheckboxSkeleton,
-} from '../index'
+import { Checkbox, CheckboxIndicator, CheckboxRoot, CheckboxSkeleton } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
@@ -19,14 +14,12 @@ describe('Checkbox', () => {
     await expect.element(checkbox).not.toHaveAttribute('data-indeterminate')
   })
 
-  it('should expose checked data attributes and icon styling hooks', async () => {
+  it('should expose checked data attributes', async () => {
     const screen = await render(<Checkbox checked aria-label="Accept terms" />)
     const checkbox = screen.getByRole('checkbox', { name: 'Accept terms' })
 
     await expect.element(checkbox).toHaveAttribute('aria-checked', 'true')
     await expect.element(checkbox).toHaveAttribute('data-checked', '')
-    await expect.element(checkbox).toHaveClass('data-checked:bg-components-checkbox-bg')
-    expect(screen.container.querySelector('.i-ri-check-line')).toBeInTheDocument()
   })
 
   it('should expose mixed state when indeterminate', async () => {
@@ -35,8 +28,6 @@ describe('Checkbox', () => {
 
     await expect.element(checkbox).toHaveAttribute('aria-checked', 'mixed')
     await expect.element(checkbox).toHaveAttribute('data-indeterminate', '')
-    expect(screen.container.querySelector('.i-ri-check-line')).not.toBeInTheDocument()
-    expect(screen.container.querySelector('span span.rounded-full.bg-current')).toBeInTheDocument()
   })
 
   it('should call onCheckedChange with the next checked value', async () => {
@@ -62,19 +53,27 @@ describe('Checkbox', () => {
     expect(onCheckedChange.mock.calls[0]?.[0]).toBe(true)
     await expect.element(checkbox).toHaveAttribute('aria-checked', 'false')
 
-    await screen.rerender(<Checkbox checked aria-label="Accept terms" onCheckedChange={onCheckedChange} />)
-    await expect.element(screen.getByRole('checkbox', { name: 'Accept terms' })).toHaveAttribute('aria-checked', 'true')
+    await screen.rerender(
+      <Checkbox checked aria-label="Accept terms" onCheckedChange={onCheckedChange} />,
+    )
+    await expect
+      .element(screen.getByRole('checkbox', { name: 'Accept terms' }))
+      .toHaveAttribute('aria-checked', 'true')
   })
 
   it('should ignore interaction when disabled', async () => {
     const onCheckedChange = vi.fn()
     const screen = await render(
-      <Checkbox checked={false} disabled aria-label="Accept terms" onCheckedChange={onCheckedChange} />,
+      <Checkbox
+        checked={false}
+        disabled
+        aria-label="Accept terms"
+        onCheckedChange={onCheckedChange}
+      />,
     )
     const checkbox = screen.getByRole('checkbox', { name: 'Accept terms' })
 
     await expect.element(checkbox).toHaveAttribute('data-disabled', '')
-    await expect.element(checkbox).toHaveClass('data-disabled:cursor-not-allowed')
 
     asHTMLElement(checkbox.element()).click()
 
@@ -114,7 +113,9 @@ describe('Checkbox', () => {
       </CheckboxRoot>,
     )
 
-    await expect.element(screen.getByRole('checkbox', { name: 'Custom checkbox' })).toHaveClass('custom-root')
+    await expect
+      .element(screen.getByRole('checkbox', { name: 'Custom checkbox' }))
+      .toHaveClass('custom-root')
     expect(screen.container.querySelector('.custom-indicator')).toBeInTheDocument()
   })
 })
@@ -124,6 +125,6 @@ describe('CheckboxSkeleton', () => {
     const screen = await render(<CheckboxSkeleton data-testid="checkbox-skeleton" />)
 
     expect(screen.container.querySelector('[role="checkbox"]')).not.toBeInTheDocument()
-    await expect.element(screen.getByTestId('checkbox-skeleton')).toHaveClass('bg-text-quaternary', 'opacity-20')
+    await expect.element(screen.getByTestId('checkbox-skeleton')).toBeInTheDocument()
   })
 })

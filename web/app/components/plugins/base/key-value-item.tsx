@@ -9,13 +9,13 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { CopyCheck } from '../../base/icons/src/vender/line/files'
 
-type Props = {
+type Props = Readonly<{
   label: string
   labelWidthClassName?: string
   value: string
   maskedValue?: string
   valueMaxWidthClassName?: string
-}
+}>
 
 const KeyValueItem: FC<Props> = ({
   label,
@@ -42,28 +42,40 @@ const KeyValueItem: FC<Props> = ({
     }
   }, [isCopied])
 
-  const copyLabel = t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })
+  const copyLabel = t(($) => $[`operation.${isCopied ? 'copied' : 'copy'}`], { ns: 'common' })
 
   return (
     <div className="flex items-center gap-1">
-      <span className={cn('flex flex-col items-start justify-center system-xs-medium text-text-tertiary', labelWidthClassName)}>{label}</span>
+      <span
+        className={cn(
+          'flex flex-col items-start justify-center system-xs-medium text-text-tertiary',
+          labelWidthClassName,
+        )}
+      >
+        {label}
+      </span>
       <div className="flex items-center justify-center gap-0.5">
-        <span className={cn(valueMaxWidthClassName, 'truncate system-xs-medium text-text-secondary')}>
+        <span
+          className={cn(valueMaxWidthClassName, 'truncate system-xs-medium text-text-secondary')}
+        >
           {maskedValue || value}
         </span>
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <ActionButton aria-label={copyLabel} onClick={handleCopy}>
-                {isCopied
-                  ? <CopyCheck aria-hidden className="size-3.5 shrink-0 text-text-tertiary" />
-                  : <span aria-hidden className="i-ri-clipboard-line size-3.5 shrink-0 text-text-tertiary" />}
+                {isCopied ? (
+                  <CopyCheck aria-hidden className="size-3.5 shrink-0 text-text-tertiary" />
+                ) : (
+                  <span
+                    aria-hidden
+                    className="i-ri-clipboard-line size-3.5 shrink-0 text-text-tertiary"
+                  />
+                )}
               </ActionButton>
-            )}
+            }
           />
-          <TooltipContent placement="top">
-            {copyLabel}
-          </TooltipContent>
+          <TooltipContent placement="top">{copyLabel}</TooltipContent>
         </Tooltip>
       </div>
     </div>

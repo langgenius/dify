@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any, cast
-from unittest.mock import PropertyMock, patch
+from inspect import unwrap
+from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -16,14 +15,9 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline import (
     PipelineTemplateListApi,
     PublishCustomizedPipelineTemplateApi,
 )
+from models.account import Account
 from models.dataset import PipelineCustomizedTemplate
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
-
-
-def _unwrap(func: object) -> Callable[..., Any]:
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return cast(Callable[..., Any], func)
 
 
 def _template_item() -> dict[str, object]:
@@ -57,24 +51,32 @@ def _payload() -> dict[str, object]:
     }
 
 
+def _account() -> Account:
+    account = Account(name="Test User", email="test@example.com")
+    account.id = "account-1"
+    return account
+
+
 class TestPipelineTemplateListApi:
     def test_get_uses_query_defaults_and_serializes_nullable_fields(self, app: Flask) -> None:
         api = PipelineTemplateListApi()
-        method = _unwrap(api.get)
-        service_calls: list[tuple[str, str]] = []
+        method = unwrap(api.get)
+        tenant_id = "tenant-1"
+        service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(template_type: str, language: str) -> dict[str, object]:
-            service_calls.append((template_type, language))
+        def get_pipeline_templates(*, type: str, language: str, current_tenant_id: str, session) -> dict[str, object]:
+            del session
+            service_calls.append((type, language, current_tenant_id))
             return {"pipeline_templates": [_template_item()]}
 
         with (
             app.test_request_context("/rag/pipeline/templates"),
             patch.object(module.RagPipelineService, "get_pipeline_templates", side_effect=get_pipeline_templates),
         ):
-            response, status = method(api)
+            response, status = method(api, Mock(), tenant_id)
 
         assert status == 200
-        assert service_calls == [("built-in", "en-US")]
+        assert service_calls == [("built-in", "en-US", tenant_id)]
         assert response == {
             "pipeline_templates": [
                 {
@@ -87,40 +89,46 @@ class TestPipelineTemplateListApi:
 
     def test_get_passes_explicit_query_to_service(self, app: Flask) -> None:
         api = PipelineTemplateListApi()
-        method = _unwrap(api.get)
-        service_calls: list[tuple[str, str]] = []
+        method = unwrap(api.get)
+        tenant_id = "tenant-1"
+        service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(template_type: str, language: str) -> dict[str, object]:
-            service_calls.append((template_type, language))
+        def get_pipeline_templates(*, type: str, language: str, current_tenant_id: str, session) -> dict[str, object]:
+            del session
+            service_calls.append((type, language, current_tenant_id))
             return {"pipeline_templates": []}
 
         with (
             app.test_request_context("/rag/pipeline/templates?type=customized&language=ja-JP"),
             patch.object(module.RagPipelineService, "get_pipeline_templates", side_effect=get_pipeline_templates),
         ):
-            response, status = method(api)
+            response, status = method(api, Mock(), tenant_id)
 
         assert status == 200
         assert response == {"pipeline_templates": []}
-        assert service_calls == [("customized", "ja-JP")]
+        assert service_calls == [("customized", "ja-JP", tenant_id)]
 
 
 class TestPipelineTemplateDetailApi:
     def test_get_serializes_template_detail(self, app: Flask) -> None:
         api = PipelineTemplateDetailApi()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
         service_calls: list[tuple[str, str]] = []
 
-        class Service:
-            def get_pipeline_template_detail(self, template_id: str, template_type: str) -> dict[str, object]:
-                service_calls.append((template_id, template_type))
-                return _template_detail()
+        def get_pipeline_template_detail(template_id: str, type: str, *, session) -> dict[str, object]:
+            del session
+            service_calls.append((template_id, type))
+            return _template_detail()
 
         with (
             app.test_request_context("/rag/pipeline/templates/template-1?type=customized"),
-            patch.object(module, "RagPipelineService", Service),
+            patch.object(
+                module.RagPipelineService,
+                "get_pipeline_template_detail",
+                side_effect=get_pipeline_template_detail,
+            ),
         ):
-            response, status = method(api, "template-1")
+            response, status = method(api, Mock(), "template-1")
 
         assert status == 200
         assert response == {**_template_detail(), "created_by": None}
@@ -128,41 +136,56 @@ class TestPipelineTemplateDetailApi:
 
     def test_get_raises_not_found_without_custom_response_body(self, app: Flask) -> None:
         api = PipelineTemplateDetailApi()
-        method = _unwrap(api.get)
+        method = unwrap(api.get)
 
-        class Service:
-            def get_pipeline_template_detail(self, template_id: str, template_type: str) -> None:
-                return None
+        def get_pipeline_template_detail(template_id: str, type: str, *, session) -> None:
+            del template_id, type, session
 
         with (
             app.test_request_context("/rag/pipeline/templates/missing"),
-            patch.object(module, "RagPipelineService", Service),
+            patch.object(
+                module.RagPipelineService,
+                "get_pipeline_template_detail",
+                side_effect=get_pipeline_template_detail,
+            ),
         ):
             with pytest.raises(NotFound):
-                method(api, "missing")
+                method(api, Mock(), "missing")
 
 
 class TestCustomizedPipelineTemplateApi:
     def test_patch_validates_payload_and_returns_empty_204(self, app: Flask) -> None:
         api = CustomizedPipelineTemplateApi()
-        method = _unwrap(api.patch)
+        method = unwrap(api.patch)
         payload = _payload()
-        service_calls: list[tuple[str, PipelineTemplateInfoEntity]] = []
+        account = _account()
+        tenant_id = "tenant-1"
+        service_calls: list[tuple[str, PipelineTemplateInfoEntity, Account, str]] = []
 
-        def update_template(template_id: str, template_info: PipelineTemplateInfoEntity) -> None:
-            service_calls.append((template_id, template_info))
+        def update_template(
+            template_id: str,
+            template_info: PipelineTemplateInfoEntity,
+            current_user: Account,
+            current_tenant_id: str,
+            *,
+            session,
+        ) -> None:
+            del session
+            service_calls.append((template_id, template_info, current_user, current_tenant_id))
 
         with (
             app.test_request_context("/rag/pipeline/customized/templates/template-1", method="PATCH", json=payload),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch.object(module.RagPipelineService, "update_customized_pipeline_template", side_effect=update_template),
         ):
-            response, status = method(api, "template-1")
+            response, status = method(api, tenant_id, account, "template-1")
 
         assert (response, status) == ("", 204)
         assert len(service_calls) == 1
-        template_id, template_info = service_calls[0]
+        template_id, template_info, current_user, current_tenant_id = service_calls[0]
         assert template_id == "template-1"
+        assert current_user is account
+        assert current_tenant_id == tenant_id
         assert template_info.name == "Updated template"
         assert template_info.description == "Updated description"
         assert template_info.icon_info.model_dump() == {
@@ -174,27 +197,39 @@ class TestCustomizedPipelineTemplateApi:
 
     def test_patch_defaults_missing_icon_info_before_service_call(self, app: Flask) -> None:
         api = CustomizedPipelineTemplateApi()
-        method = _unwrap(api.patch)
+        method = unwrap(api.patch)
         payload: dict[str, object] = {
             "name": "Updated template",
             "description": "Updated description",
         }
-        service_calls: list[tuple[str, PipelineTemplateInfoEntity]] = []
+        account = _account()
+        tenant_id = "tenant-1"
+        service_calls: list[tuple[str, PipelineTemplateInfoEntity, Account, str]] = []
 
-        def update_template(template_id: str, template_info: PipelineTemplateInfoEntity) -> None:
-            service_calls.append((template_id, template_info))
+        def update_template(
+            template_id: str,
+            template_info: PipelineTemplateInfoEntity,
+            current_user: Account,
+            current_tenant_id: str,
+            *,
+            session,
+        ) -> None:
+            del session
+            service_calls.append((template_id, template_info, current_user, current_tenant_id))
 
         with (
             app.test_request_context("/rag/pipeline/customized/templates/template-1", method="PATCH", json=payload),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch.object(module.RagPipelineService, "update_customized_pipeline_template", side_effect=update_template),
         ):
-            response, status = method(api, "template-1")
+            response, status = method(api, tenant_id, account, "template-1")
 
         assert (response, status) == ("", 204)
         assert len(service_calls) == 1
-        template_id, template_info = service_calls[0]
+        template_id, template_info, current_user, current_tenant_id = service_calls[0]
         assert template_id == "template-1"
+        assert current_user is account
+        assert current_tenant_id == tenant_id
         assert template_info.icon_info.model_dump() == {
             "icon": "",
             "icon_background": None,
@@ -204,24 +239,26 @@ class TestCustomizedPipelineTemplateApi:
 
     def test_delete_returns_empty_204(self, app: Flask) -> None:
         api = CustomizedPipelineTemplateApi()
-        method = _unwrap(api.delete)
-        deleted_template_ids: list[str] = []
+        method = unwrap(api.delete)
+        tenant_id = "tenant-1"
+        deleted_templates: list[tuple[str, str]] = []
 
-        def delete_template(template_id: str) -> None:
-            deleted_template_ids.append(template_id)
+        def delete_template(template_id: str, current_tenant_id: str, *, session) -> None:
+            del session
+            deleted_templates.append((template_id, current_tenant_id))
 
         with (
             app.test_request_context("/rag/pipeline/customized/templates/template-1", method="DELETE"),
             patch.object(module.RagPipelineService, "delete_customized_pipeline_template", side_effect=delete_template),
         ):
-            response, status = method(api, "template-1")
+            response, status = method(api, tenant_id, "template-1")
 
         assert (response, status) == ("", 204)
-        assert deleted_template_ids == ["template-1"]
+        assert deleted_templates == [("template-1", tenant_id)]
 
     def test_post_exports_yaml_from_orm_template(self, app: Flask) -> None:
         api = CustomizedPipelineTemplateApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
         template = PipelineCustomizedTemplate(
             tenant_id="00000000-0000-0000-0000-000000000001",
             name="Template",
@@ -265,7 +302,7 @@ class TestCustomizedPipelineTemplateApi:
 
     def test_post_raises_when_template_is_missing(self, app: Flask) -> None:
         api = CustomizedPipelineTemplateApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         class Session:
             def scalar(self, stmt: object) -> None:
@@ -297,43 +334,71 @@ class TestCustomizedPipelineTemplateApi:
 class TestPublishCustomizedPipelineTemplateApi:
     def test_post_validates_payload_and_returns_empty_204(self, app: Flask) -> None:
         api = PublishCustomizedPipelineTemplateApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
         payload = _payload()
-        service_calls: list[tuple[str, dict[str, object]]] = []
+        account = _account()
+        tenant_id = "tenant-1"
+        service_calls: list[tuple[str, dict[str, object], Account, str]] = []
 
         class Service:
-            def publish_customized_pipeline_template(self, pipeline_id: str, data: dict[str, object]) -> None:
-                service_calls.append((pipeline_id, data))
+            def __init__(self, *args, **kwargs) -> None:
+                pass
+
+            def publish_customized_pipeline_template(
+                self,
+                pipeline_id: str,
+                data: dict[str, object],
+                current_user: Account,
+                current_tenant_id: str,
+                *,
+                session,
+            ) -> None:
+                del session
+                service_calls.append((pipeline_id, data, current_user, current_tenant_id))
 
         with (
             app.test_request_context("/rag/pipelines/pipeline-1/customized/publish", method="POST", json=payload),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch.object(module, "RagPipelineService", Service),
         ):
-            response, status = method(api, "pipeline-1")
+            response, status = method(api, tenant_id, account, "pipeline-1")
 
         assert (response, status) == ("", 204)
-        assert service_calls == [("pipeline-1", payload)]
+        assert service_calls == [("pipeline-1", payload, account, tenant_id)]
 
     def test_post_allows_missing_icon_info_for_publish_service_fallback(self, app: Flask) -> None:
         api = PublishCustomizedPipelineTemplateApi()
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
         payload: dict[str, object] = {
             "name": "Published template",
             "description": "Description",
         }
-        service_calls: list[tuple[str, dict[str, object]]] = []
+        account = _account()
+        tenant_id = "tenant-1"
+        service_calls: list[tuple[str, dict[str, object], Account, str]] = []
 
         class Service:
-            def publish_customized_pipeline_template(self, pipeline_id: str, data: dict[str, object]) -> None:
-                service_calls.append((pipeline_id, data))
+            def __init__(self, *args, **kwargs) -> None:
+                pass
+
+            def publish_customized_pipeline_template(
+                self,
+                pipeline_id: str,
+                data: dict[str, object],
+                current_user: Account,
+                current_tenant_id: str,
+                *,
+                session,
+            ) -> None:
+                del session
+                service_calls.append((pipeline_id, data, current_user, current_tenant_id))
 
         with (
             app.test_request_context("/rag/pipelines/pipeline-1/customized/publish", method="POST", json=payload),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch.object(module, "RagPipelineService", Service),
         ):
-            response, status = method(api, "pipeline-1")
+            response, status = method(api, tenant_id, account, "pipeline-1")
 
         assert (response, status) == ("", 204)
         assert service_calls == [
@@ -348,5 +413,7 @@ class TestPublishCustomizedPipelineTemplateApi:
                         "icon_url": None,
                     },
                 },
+                account,
+                tenant_id,
             )
         ]

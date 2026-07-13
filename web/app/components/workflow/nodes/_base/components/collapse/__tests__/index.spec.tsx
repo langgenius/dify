@@ -1,6 +1,41 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Collapse from '../index'
+import {
+  Collapse,
+  CollapseActions,
+  CollapseContent,
+  CollapseHeader,
+  CollapseIndicator,
+  CollapseTitle,
+  CollapseTrigger,
+} from '../index'
+
+function TestCollapse({
+  children,
+  title,
+  actions,
+  ...props
+}: {
+  title: string
+  children: React.ReactNode
+  actions?: React.ReactNode
+  disabled?: boolean
+  collapsed?: boolean
+  onCollapse?: (collapsed: boolean) => void
+}) {
+  return (
+    <Collapse {...props}>
+      <CollapseHeader>
+        <CollapseTrigger>
+          <CollapseTitle>{title}</CollapseTitle>
+          <CollapseIndicator />
+        </CollapseTrigger>
+        {actions != null && <CollapseActions>{actions}</CollapseActions>}
+      </CollapseHeader>
+      <CollapseContent>{children}</CollapseContent>
+    </Collapse>
+  )
+}
 
 describe('Collapse', () => {
   beforeEach(() => {
@@ -14,12 +49,9 @@ describe('Collapse', () => {
       const onCollapse = vi.fn()
 
       render(
-        <Collapse
-          trigger={<div>Advanced</div>}
-          onCollapse={onCollapse}
-        >
+        <TestCollapse title="Advanced" onCollapse={onCollapse}>
           <div>Collapse content</div>
-        </Collapse>,
+        </TestCollapse>,
       )
 
       expect(screen.queryByText('Collapse content')).not.toBeInTheDocument()
@@ -35,13 +67,9 @@ describe('Collapse', () => {
       const onCollapse = vi.fn()
 
       render(
-        <Collapse
-          disabled
-          trigger={<div>Disabled section</div>}
-          onCollapse={onCollapse}
-        >
+        <TestCollapse disabled title="Disabled section" onCollapse={onCollapse}>
           <div>Hidden content</div>
-        </Collapse>,
+        </TestCollapse>,
       )
 
       await user.click(screen.getByText('Disabled section'))
@@ -50,25 +78,19 @@ describe('Collapse', () => {
       expect(onCollapse).not.toHaveBeenCalled()
     })
 
-    it('should respect controlled collapse state and render function triggers', async () => {
+    it('should respect controlled collapse state and render actions separately', async () => {
       const user = userEvent.setup()
       const onCollapse = vi.fn()
 
       render(
-        <Collapse
+        <TestCollapse
           collapsed={false}
-          hideCollapseIcon
-          operations={<button type="button">Operation</button>}
-          trigger={collapseIcon => (
-            <div>
-              <span>Controlled section</span>
-              {collapseIcon}
-            </div>
-          )}
+          actions={<button type="button">Operation</button>}
+          title="Controlled section"
           onCollapse={onCollapse}
         >
           <div>Visible content</div>
-        </Collapse>,
+        </TestCollapse>,
       )
 
       expect(screen.getByText('Visible content')).toBeInTheDocument()

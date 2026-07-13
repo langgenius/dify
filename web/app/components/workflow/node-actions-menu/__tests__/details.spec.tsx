@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,22 +10,28 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import {
   useAvailableBlocks,
   useIsChatMode,
-  useNodeDataUpdate,
   useNodeMetaData,
   useNodesInteractions,
   useNodesReadOnly,
-  useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { useAllWorkflowTools } from '@/service/use-tools'
 import { FlowType } from '@/types/common'
 import { ChangeBlockMenuTrigger } from '../change-block-menu-trigger'
 import { NodeActionsDropdownContent } from '../dropdown-content'
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({ trigger, onSelect, availableBlocksTypes, showStartTab, ignoreNodeIds, forceEnableStartTab, allowUserInputSelection }: any) => (
+  default: ({
+    trigger,
+    onSelect,
+    availableBlocksTypes,
+    showStartTab,
+    ignoreNodeIds,
+    forceEnableStartTab,
+    allowUserInputSelection,
+  }: any) => (
     <div>
       <div>{trigger()}</div>
       <div>{`available:${(availableBlocksTypes || []).join(',')}`}</div>
@@ -33,7 +39,9 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
       <div>{`ignore:${(ignoreNodeIds || []).join(',')}`}</div>
       <div>{`force-start:${String(forceEnableStartTab)}`}</div>
       <div>{`allow-start:${String(allowUserInputSelection)}`}</div>
-      <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>select-http</button>
+      <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>
+        select-http
+      </button>
     </div>
   ),
 }))
@@ -44,11 +52,9 @@ vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
     ...actual,
     useAvailableBlocks: vi.fn(),
     useIsChatMode: vi.fn(),
-    useNodeDataUpdate: vi.fn(),
     useNodeMetaData: vi.fn(),
     useNodesInteractions: vi.fn(),
     useNodesReadOnly: vi.fn(),
-    useNodesSyncDraft: vi.fn(),
   }
 })
 
@@ -66,11 +72,9 @@ vi.mock('@/service/use-tools', () => ({
 
 const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
 const mockUseIsChatMode = vi.mocked(useIsChatMode)
-const mockUseNodeDataUpdate = vi.mocked(useNodeDataUpdate)
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseNodesSyncDraft = vi.mocked(useNodesSyncDraft)
 const mockUseHooksStore = vi.mocked(useHooksStore)
 const mockUseNodes = vi.mocked(useNodes)
 const mockUseAllWorkflowTools = vi.mocked(useAllWorkflowTools)
@@ -78,9 +82,11 @@ const mockUseAllWorkflowTools = vi.mocked(useAllWorkflowTools)
 function renderDropdownContent({
   showHelpLink = true,
   onClose = vi.fn(),
+  data = {},
 }: {
   showHelpLink?: boolean
   onClose?: () => void
+  data?: Record<string, unknown>
 } = {}) {
   return renderWorkflowFlowComponent(
     <DropdownMenu open>
@@ -88,7 +94,7 @@ function renderDropdownContent({
       <DropdownMenuContent>
         <NodeActionsDropdownContent
           id="node-1"
-          data={{ type: BlockEnum.Code, title: 'Code Node', desc: '' } as any}
+          data={{ type: BlockEnum.Code, title: 'Code Node', desc: '', ...data } as any}
           onClose={onClose}
           showHelpLink={showHelpLink}
         />
@@ -107,8 +113,6 @@ describe('node actions menu details', () => {
   const handleNodesDuplicate = vi.fn()
   const handleNodeSelect = vi.fn()
   const handleNodesCopy = vi.fn()
-  const handleNodeDataUpdate = vi.fn()
-  const handleSyncWorkflowDraft = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -121,10 +125,6 @@ describe('node actions menu details', () => {
       availableNextBlocks: [BlockEnum.HttpRequest],
     } as ReturnType<typeof useAvailableBlocks>)
     mockUseIsChatMode.mockReturnValue(false)
-    mockUseNodeDataUpdate.mockReturnValue({
-      handleNodeDataUpdate,
-      handleNodeDataUpdateWithSyncDraft: vi.fn(),
-    })
     mockUseNodeMetaData.mockReturnValue({
       isTypeFixed: false,
       isSingleton: false,
@@ -140,14 +140,18 @@ describe('node actions menu details', () => {
       handleNodeSelect,
       handleNodesCopy,
     } as unknown as ReturnType<typeof useNodesInteractions>)
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false } as ReturnType<typeof useNodesReadOnly>)
-    mockUseNodesSyncDraft.mockReturnValue({
-      doSyncWorkflowDraft: vi.fn(),
-      handleSyncWorkflowDraft,
-      syncWorkflowDraftWhenPageClose: vi.fn(),
-    } as ReturnType<typeof useNodesSyncDraft>)
-    mockUseHooksStore.mockImplementation((selector: any) => selector({ configsMap: { flowType: FlowType.appFlow } }))
-    mockUseNodes.mockReturnValue([{ id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any }] as any)
+    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false } as ReturnType<
+      typeof useNodesReadOnly
+    >)
+    mockUseHooksStore.mockImplementation((selector: any) =>
+      selector({
+        configsMap: { flowType: FlowType.appFlow },
+        accessControl: { canRun: true },
+      }),
+    )
+    mockUseNodes.mockReturnValue([
+      { id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any },
+    ] as any)
     mockUseAllWorkflowTools.mockReturnValue({ data: [] } as any)
   })
 
@@ -168,7 +172,12 @@ describe('node actions menu details', () => {
     expect(screen.getByText('ignore:')).toBeInTheDocument()
     expect(screen.getByText('force-start:false')).toBeInTheDocument()
     expect(screen.getByText('allow-start:false')).toBeInTheDocument()
-    expect(handleNodeChange).toHaveBeenCalledWith('node-1', BlockEnum.HttpRequest, 'source', undefined)
+    expect(handleNodeChange).toHaveBeenCalledWith(
+      'node-1',
+      BlockEnum.HttpRequest,
+      'source',
+      undefined,
+    )
   })
 
   it('should expose trigger and start-node specific block selector options', () => {
@@ -181,7 +190,9 @@ describe('node actions menu details', () => {
       availableNextBlocks: [BlockEnum.HttpRequest],
     } as ReturnType<typeof useAvailableBlocks>)
     mockUseIsChatMode.mockReturnValueOnce(true)
-    mockUseHooksStore.mockImplementationOnce((selector: any) => selector({ configsMap: { flowType: FlowType.appFlow } }))
+    mockUseHooksStore.mockImplementationOnce((selector: any) =>
+      selector({ configsMap: { flowType: FlowType.appFlow } }),
+    )
     mockUseNodes.mockReturnValueOnce([] as any)
 
     const { rerender } = render(
@@ -205,8 +216,12 @@ describe('node actions menu details', () => {
       availablePrevBlocks: [BlockEnum.Code],
       availableNextBlocks: [],
     } as ReturnType<typeof useAvailableBlocks>)
-    mockUseHooksStore.mockImplementationOnce((selector: any) => selector({ configsMap: { flowType: FlowType.ragPipeline } }))
-    mockUseNodes.mockReturnValueOnce([{ id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any }] as any)
+    mockUseHooksStore.mockImplementationOnce((selector: any) =>
+      selector({ configsMap: { flowType: FlowType.ragPipeline } }),
+    )
+    mockUseNodes.mockReturnValueOnce([
+      { id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any },
+    ] as any)
 
     rerender(
       <ChangeBlockMenuTrigger
@@ -224,7 +239,7 @@ describe('node actions menu details', () => {
 
   it('should run, copy, duplicate, delete, and expose the help link', async () => {
     const user = userEvent.setup()
-    renderDropdownContent()
+    const { store } = renderDropdownContent()
 
     const deleteMenuItem = screen.getByText('common.operation.delete').closest('[role="menuitem"]')
     expect(deleteMenuItem).toHaveAttribute('data-variant', 'default')
@@ -237,12 +252,30 @@ describe('node actions menu details', () => {
     await user.click(screen.getByText('common.operation.delete'))
 
     expect(handleNodeSelect).toHaveBeenCalledWith('node-1')
-    expect(handleNodeDataUpdate).toHaveBeenCalledWith({ id: 'node-1', data: { _isSingleRun: true } })
-    expect(handleSyncWorkflowDraft).toHaveBeenCalledWith(true)
+    expect(store.getState().initShowLastRunTab).toBe(true)
+    expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'run' })
     expect(handleNodesCopy).toHaveBeenCalledWith('node-1')
     expect(handleNodesDuplicate).toHaveBeenCalledWith('node-1')
     expect(handleNodeDelete).toHaveBeenCalledWith('node-1')
-    expect(screen.getByRole('menuitem', { name: 'workflow.panel.helpLink' })).toHaveAttribute('href', 'https://docs.example.com/node')
+    expect(screen.getByRole('menuitem', { name: 'workflow.panel.helpLink' })).toHaveAttribute(
+      'href',
+      'https://docs.example.com/node',
+    )
+  })
+
+  it('should stop the current single run from the run action when the node is running', async () => {
+    const user = userEvent.setup()
+    const { store } = renderDropdownContent({
+      data: {
+        _singleRunningStatus: NodeRunningStatus.Running,
+      },
+    })
+
+    await user.click(screen.getByText('workflow.debug.variableInspect.trigger.stop'))
+
+    expect(handleNodeSelect).toHaveBeenCalledWith('node-1')
+    expect(store.getState().initShowLastRunTab).toBe(true)
+    expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'stop' })
   })
 
   it('should hide change action when node is undeletable', () => {
@@ -272,7 +305,15 @@ describe('node actions menu details', () => {
         <DropdownMenuContent>
           <NodeActionsDropdownContent
             id="node-2"
-            data={{ type: BlockEnum.Tool, title: 'Workflow Tool', desc: '', provider_type: 'workflow', provider_id: 'workflow-tool' } as any}
+            data={
+              {
+                type: BlockEnum.Tool,
+                title: 'Workflow Tool',
+                desc: '',
+                provider_type: 'workflow',
+                provider_id: 'workflow-tool',
+              } as any
+            }
             onClose={vi.fn()}
             showHelpLink={false}
           />
@@ -284,9 +325,14 @@ describe('node actions menu details', () => {
       },
     )
 
-    expect(screen.getByRole('menuitem', { name: 'workflow.panel.openWorkflow' })).toHaveAttribute('href', '/app/app-123/workflow')
+    expect(screen.getByRole('menuitem', { name: 'workflow.panel.openWorkflow' })).toHaveAttribute(
+      'href',
+      '/app/app-123/workflow',
+    )
 
-    mockUseNodesReadOnly.mockReturnValueOnce({ nodesReadOnly: true } as ReturnType<typeof useNodesReadOnly>)
+    mockUseNodesReadOnly.mockReturnValueOnce({ nodesReadOnly: true } as ReturnType<
+      typeof useNodesReadOnly
+    >)
     mockUseNodeMetaData.mockReturnValueOnce({
       isTypeFixed: true,
       isSingleton: true,

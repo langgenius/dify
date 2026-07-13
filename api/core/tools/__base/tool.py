@@ -5,6 +5,8 @@ from collections.abc import Generator
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
+from sqlalchemy.orm import Session
+
 if TYPE_CHECKING:  # pragma: no cover
     from models.model import File
 
@@ -46,6 +48,7 @@ class Tool(ABC):
 
     def invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -59,6 +62,7 @@ class Tool(ABC):
         tool_parameters = self._transform_tool_parameters_type(tool_parameters)
 
         result = self._invoke(
+            session=session,
             user_id=user_id,
             tool_parameters=tool_parameters,
             conversation_id=conversation_id,
@@ -66,20 +70,21 @@ class Tool(ABC):
             message_id=message_id,
         )
 
-        if isinstance(result, ToolInvokeMessage):
+        match result:
+            case ToolInvokeMessage():
 
-            def single_generator() -> Generator[ToolInvokeMessage, None, None]:
-                yield result
+                def single_generator() -> Generator[ToolInvokeMessage, None, None]:
+                    yield result
 
-            return single_generator()
-        elif isinstance(result, list):
+                return single_generator()
+            case list():
 
-            def generator() -> Generator[ToolInvokeMessage, None, None]:
-                yield from result
+                def generator() -> Generator[ToolInvokeMessage, None, None]:
+                    yield from result
 
-            return generator()
-        else:
-            return result
+                return generator()
+            case _:
+                return result
 
     def _transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
         """
@@ -96,6 +101,7 @@ class Tool(ABC):
     @abstractmethod
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

@@ -1,10 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ComponentProps } from 'react'
-import { useState } from 'react'
-import {
-  Checkbox,
-  CheckboxSkeleton,
-} from '.'
+import * as React from 'react'
+import { Checkbox, CheckboxSkeleton } from '.'
 
 const meta = {
   title: 'Base/Form/Checkbox',
@@ -13,7 +9,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Checkbox primitive built on Base UI. It preserves Base UI checked, indeterminate, disabled, and hidden input semantics while applying the Dify 16px checkbox design from Figma. Import from `@langgenius/dify-ui/checkbox`.',
+        component:
+          'Checkbox primitive built on Base UI. It preserves Base UI checked, indeterminate, disabled, and hidden input semantics while applying the Dify 16px checkbox design from Figma. Import from `@langgenius/dify-ui/checkbox`.',
       },
     },
   },
@@ -42,23 +39,19 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-function CheckboxDemo(args: Partial<ComponentProps<typeof Checkbox>>) {
-  const [checked, setChecked] = useState(args.checked ?? false)
+function CheckboxDemo(args: Partial<React.ComponentProps<typeof Checkbox>>) {
+  const [checked, setChecked] = React.useState(args.checked ?? false)
 
   return (
     <label className="flex items-center gap-2 system-sm-medium text-text-secondary">
-      <Checkbox
-        {...args}
-        checked={checked}
-        onCheckedChange={setChecked}
-      />
+      <Checkbox {...args} checked={checked} onCheckedChange={setChecked} />
       Enable feature
     </label>
   )
 }
 
 export const Default: Story = {
-  render: args => <CheckboxDemo {...args} />,
+  render: (args) => <CheckboxDemo {...args} />,
   args: {
     checked: false,
     indeterminate: false,
@@ -67,7 +60,7 @@ export const Default: Story = {
 }
 
 export const Checked: Story = {
-  render: args => <CheckboxDemo {...args} />,
+  render: (args) => <CheckboxDemo {...args} />,
   args: {
     checked: true,
     indeterminate: false,
@@ -77,9 +70,9 @@ export const Checked: Story = {
 
 export const Indeterminate: Story = {
   args: {
-    'checked': false,
-    'indeterminate': true,
-    'disabled': false,
+    checked: false,
+    indeterminate: true,
+    disabled: false,
     'aria-label': 'Partial selection',
   },
 }
@@ -115,8 +108,11 @@ function StateMatrixDemo() {
 
   return (
     <div className="flex flex-col gap-3">
-      {states.map(state => (
-        <label key={state.label} className="flex items-center gap-2 system-sm-medium text-text-secondary">
+      {states.map((state) => (
+        <label
+          key={state.label}
+          className="flex items-center gap-2 system-sm-medium text-text-secondary"
+        >
           <Checkbox
             checked={state.checked}
             indeterminate={state.indeterminate}
@@ -138,7 +134,8 @@ export const StateMatrix: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'The full visual matrix for Dify checkbox states. State styling comes from Base UI data attributes such as data-checked, data-indeterminate, and data-disabled.',
+        story:
+          'The full visual matrix for Dify checkbox states. State styling comes from Base UI data attributes such as data-checked, data-indeterminate, and data-disabled.',
       },
     },
   },

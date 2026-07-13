@@ -3,15 +3,16 @@ import type { AppDetailResponse } from '@/models/app'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { AppModeEnum } from '@/types/app'
-import { AppCardAccessControlSection, AppCardDialogs, AppCardOperations, AppCardUrlSection, createAppCardOperations, WorkflowLaunchDialog } from '../app-card-sections'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-  Trans: ({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>,
-}))
+import {
+  AppCardAccessControlSection,
+  AppCardDialogs,
+  AppCardOperations,
+  AppCardUrlSection,
+  createAppCardOperations,
+  WorkflowLaunchDialog,
+} from '../app-card-sections'
 
 vi.mock('../settings', () => ({
   default: () => <div data-testid="settings-modal" />,
@@ -25,17 +26,32 @@ vi.mock('../customize', () => ({
   default: () => <div data-testid="customize-modal" />,
 }))
 
-vi.mock('../../app-access-control', () => ({
-  default: ({ onClose, onConfirm }: { onClose: () => void, onConfirm: () => void }) => (
+vi.mock('../../app-access-control', () => {
+  const MockAccessControl = ({
+    onClose,
+    onConfirm,
+  }: {
+    onClose: () => void
+    onConfirm: () => void
+  }) => (
     <div data-testid="access-control">
-      <button type="button" onClick={onClose}>close-access</button>
-      <button type="button" onClick={onConfirm}>confirm-access</button>
+      <button type="button" onClick={onClose}>
+        close-access
+      </button>
+      <button type="button" onClick={onConfirm}>
+        confirm-access
+      </button>
     </div>
-  ),
-}))
+  )
+
+  return {
+    default: MockAccessControl,
+    AccessControl: MockAccessControl,
+  }
+})
 
 describe('app-card-sections', () => {
-  const t = (key: string) => key
+  const t = withSelectorKey((key: string) => key)
 
   it('should build operations with the expected disabled state', () => {
     const onLaunch = vi.fn()
@@ -74,9 +90,11 @@ describe('app-card-sections', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('publishApp.notSet'))
+    fireEvent.click(screen.getByText(/(?:^|\.)publishApp\.notSet(?=$|:)/))
 
-    expect(screen.getByText('accessControlDialog.accessItems.specific')).toBeInTheDocument()
+    expect(
+      screen.getByText(/(?:^|\.)accessControlDialog\.accessItems\.specific(?=$|:)/),
+    ).toBeInTheDocument()
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
@@ -112,7 +130,44 @@ describe('app-card-sections', () => {
 
     expect(onLaunch).toHaveBeenCalledTimes(1)
     expect(onLaunchConfig).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('button', { name: /overview\.appInfo\.embedded\.entry/i })).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)overview\.appInfo\.launch(?=$|:)/)).not.toHaveAttribute(
+      'title',
+    )
+    expect(
+      screen.getByRole('button', { name: /overview\.appInfo\.embedded\.entry/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('should expose native titles only for truncated operation labels', () => {
+    const operations = createAppCardOperations({
+      operationKeys: ['launch', 'embedded', 'customize', 'settings', 'develop'],
+      t: t as never,
+      runningStatus: true,
+      triggerModeDisabled: false,
+      onLaunch: vi.fn(),
+      onEmbedded: vi.fn(),
+      onCustomize: vi.fn(),
+      onSettings: vi.fn(),
+      onDevelop: vi.fn(),
+    })
+
+    render(<AppCardOperations t={t as never} operations={operations} />)
+
+    const untruncatedLabels = [
+      'overview.appInfo.launch',
+      'overview.appInfo.embedded.entry',
+      'overview.apiInfo.doc',
+    ]
+    untruncatedLabels.forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument()
+      expect(screen.getByText(label)).not.toHaveAttribute('title')
+    })
+
+    const truncatedLabels = ['overview.appInfo.customize.entry', 'overview.appInfo.settings.entry']
+    truncatedLabels.forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: label })).toHaveAttribute('title', label)
+    })
   })
 
   it('should keep customize available for web app cards that are not completion or workflow apps', () => {
@@ -128,14 +183,11 @@ describe('app-card-sections', () => {
       onDevelop: vi.fn(),
     })
 
-    render(
-      <AppCardOperations
-        t={t as never}
-        operations={operations}
-      />,
-    )
+    render(<AppCardOperations t={t as never} operations={operations} />)
 
-    expect(screen.getByText('overview.appInfo.customize.entry')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /(?:^|\.)overview\.appInfo\.customize\.entry(?=$|:)/ }),
+    ).toHaveAttribute('title', 'overview.appInfo.customize.entry')
     expect(AppModeEnum.CHAT).toBe('chat')
   })
 
@@ -149,7 +201,7 @@ describe('app-card-sections', () => {
         isApp
         accessibleUrl="https://example.com/apps/demo"
         showConfirmDelete
-        isCurrentWorkspaceManager
+        canRegenerateUrl
         genLoading={false}
         onRegenerate={onRegenerate}
         onShowRegenerateConfirm={vi.fn()}
@@ -194,13 +246,15 @@ describe('app-card-sections', () => {
       <WorkflowLaunchDialog
         t={t as never}
         open
-        hiddenVariables={[{
-          variable: 'secret',
-          label: 'Secret',
-          type: InputVarType.textInput,
-          hide: true,
-          required: true,
-        }]}
+        hiddenVariables={[
+          {
+            variable: 'secret',
+            label: 'Secret',
+            type: InputVarType.textInput,
+            hide: true,
+            required: true,
+          },
+        ]}
         unsupportedVariables={[]}
         values={{ secret: 'hello' }}
         onOpenChange={onOpenChange}
@@ -209,8 +263,12 @@ describe('app-card-sections', () => {
       />,
     )
 
-    expect(screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title')).toBeInTheDocument()
-    fireEvent.submit(screen.getByRole('button', { name: /overview\.appInfo\.launch/i }).closest('form')!)
+    expect(
+      screen.getByText(/(?:^|\.)overview\.appInfo\.workflowLaunchHiddenInputs\.title(?=$|:)/),
+    ).toBeInTheDocument()
+    fireEvent.submit(
+      screen.getByRole('button', { name: /overview\.appInfo\.launch/i }).closest('form')!,
+    )
     expect(onSubmit).toHaveBeenCalled()
   })
 

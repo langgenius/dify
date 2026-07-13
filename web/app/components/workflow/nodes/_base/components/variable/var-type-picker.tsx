@@ -12,28 +12,31 @@ import {
 import * as React from 'react'
 import { VarType } from '@/app/components/workflow/types'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   readonly: boolean
   value: string
   onChange: (value: string) => void
-}
+}>
 
-const TYPES = [VarType.string, VarType.number, VarType.boolean, VarType.arrayNumber, VarType.arrayString, VarType.arrayBoolean, VarType.arrayObject, VarType.object]
-const VarReferencePicker: FC<Props> = ({
-  readonly,
-  className,
-  value,
-  onChange,
-}) => {
+const TYPES = [
+  VarType.string,
+  VarType.number,
+  VarType.boolean,
+  VarType.arrayNumber,
+  VarType.arrayString,
+  VarType.arrayBoolean,
+  VarType.arrayObject,
+  VarType.object,
+]
+const VarReferencePicker: FC<Props> = ({ readonly, className, value, onChange }) => {
   return (
     <div className={cn(className, !readonly && 'cursor-pointer select-none')}>
       <Select
         value={value}
         readOnly={readonly}
         onValueChange={(type) => {
-          if (type)
-            onChange(type)
+          if (type) onChange(type)
         }}
       >
         <SelectTrigger
@@ -47,7 +50,7 @@ const VarReferencePicker: FC<Props> = ({
           popupClassName="w-[120px] rounded-lg border-0 p-1 shadow-sm"
           listClassName="p-0"
         >
-          {TYPES.map(type => (
+          {TYPES.map((type) => (
             <SelectItem
               key={type}
               value={type}

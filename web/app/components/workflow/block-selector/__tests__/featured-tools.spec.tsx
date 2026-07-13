@@ -20,9 +20,9 @@ vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
   }),
 }))
 
-vi.mock('@/utils/var', async importOriginal => ({
+vi.mock('@/utils/var', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/utils/var')>()),
-  getMarketplaceUrl: () => 'https://marketplace.test/tools',
+  getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
 }))
 
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
@@ -43,7 +43,8 @@ describe('FeaturedTools', () => {
         plugin_id: `plugin-${index + 1}`,
         latest_package_identifier: `plugin-${index + 1}@1.0.0`,
         label: { en_US: `Plugin ${index + 1}`, zh_Hans: `Plugin ${index + 1}` },
-      }))
+      }),
+    )
     const providers = plugins.map((plugin, index) =>
       createToolProvider({
         id: `provider-${index + 1}`,
@@ -51,15 +52,9 @@ describe('FeaturedTools', () => {
         label: { en_US: `Provider ${index + 1}`, zh_Hans: `Provider ${index + 1}` },
       }),
     )
-    const providerMap = new Map(providers.map(provider => [provider.plugin_id!, provider]))
+    const providerMap = new Map(providers.map((provider) => [provider.plugin_id!, provider]))
 
-    render(
-      <FeaturedTools
-        plugins={plugins}
-        providerMap={providerMap}
-        onSelect={vi.fn()}
-      />,
-    )
+    render(<FeaturedTools plugins={plugins} providerMap={providerMap} onSelect={vi.fn()} />)
 
     expect(screen.getByText('Provider 1')).toBeInTheDocument()
     expect(screen.queryByText('Provider 6')).not.toBeInTheDocument()
@@ -75,10 +70,7 @@ describe('FeaturedTools', () => {
     render(
       <FeaturedTools
         plugins={[createPlugin()]}
-        providerMap={new Map([[
-          'plugin-1',
-          createToolProvider(),
-        ]])}
+        providerMap={new Map([['plugin-1', createToolProvider()]])}
         onSelect={vi.fn()}
       />,
     )
@@ -88,13 +80,7 @@ describe('FeaturedTools', () => {
   })
 
   it('shows the marketplace empty state when no featured tools are available', () => {
-    render(
-      <FeaturedTools
-        plugins={[]}
-        providerMap={new Map()}
-        onSelect={vi.fn()}
-      />,
-    )
+    render(<FeaturedTools plugins={[]} providerMap={new Map()} onSelect={vi.fn()} />)
 
     expect(screen.getByText('workflow.tabs.noFeaturedPlugins')).toBeInTheDocument()
   })

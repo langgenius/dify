@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -146,7 +147,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.db",
-            SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None)),
+            SimpleNamespace(engine=object(), session=lambda: SimpleNamespace(close=lambda: None)),
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.sessionmaker", lambda **kwargs: SimpleNamespace()
@@ -290,7 +291,7 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow=workflow,
             node_id="node-1",
             user=SimpleNamespace(id="user-id"),
-            args={"inputs": {"foo": "bar"}},
+            args={"inputs": {"foo": "bar"}, "trace_session_id": "session-1"},
             streaming=False,
         )
 
@@ -298,6 +299,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert prefill_calls == [(workflow, "user-id")]
         assert captured["variable_loader"] is var_loader
         assert captured["application_generate_entity"].single_iteration_run.node_id == "node-1"
+        assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
 
     def test_single_loop_generate_builds_debug_task(self, monkeypatch: pytest.MonkeyPatch):
         generator = AdvancedChatAppGenerator()
@@ -348,7 +350,7 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow=workflow,
             node_id="node-2",
             user=SimpleNamespace(id="user-id"),
-            args=SimpleNamespace(inputs={"foo": "bar"}),
+            args=SimpleNamespace(inputs={"foo": "bar"}, trace_session_id="session-1"),
             streaming=False,
         )
 
@@ -356,6 +358,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert prefill_calls == [(workflow, "user-id")]
         assert captured["variable_loader"] is var_loader
         assert captured["application_generate_entity"].single_loop_run.node_id == "node-2"
+        assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
 
     def test_generate_internal_flow_initial_conversation_with_pause_layer(self, monkeypatch: pytest.MonkeyPatch):
         generator = AdvancedChatAppGenerator()
@@ -959,7 +962,9 @@ class TestAdvancedChatAppGeneratorInternals:
                 stream=False,
             )
 
-    def test_handle_response_re_raises_value_error(self, monkeypatch: pytest.MonkeyPatch):
+    def test_handle_response_re_raises_value_error(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         generator = AdvancedChatAppGenerator()
         generator._dialogue_count = 1
         app_config = self._build_app_config()
@@ -984,29 +989,28 @@ class TestAdvancedChatAppGeneratorInternals:
             def process(self):
                 raise ValueError("other error")
 
-        logger_exception = MagicMock()
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.logger.exception", logger_exception)
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.AdvancedChatAppGenerateTaskPipeline", _Pipeline)
 
-        with pytest.raises(ValueError, match="other error"):
-            generator._handle_advanced_chat_response(
-                application_generate_entity=application_generate_entity,
-                workflow=WorkflowSnapshot(id="wf", tenant_id="tenant", features_dict={}),
-                queue_manager=SimpleNamespace(),
-                conversation=ConversationSnapshot(id="conv", mode=AppMode.ADVANCED_CHAT),
-                message=MessageSnapshot(
-                    id="msg",
-                    query="hello",
-                    created_at=naive_utc_now(),
-                    status=MessageStatus.NORMAL,
-                    answer="",
-                ),
-                user=SimpleNamespace(),
-                draft_var_saver_factory=lambda **kwargs: None,
-                stream=False,
-            )
+        with caplog.at_level(logging.ERROR, logger="core.app.apps.advanced_chat.app_generator"):
+            with pytest.raises(ValueError, match="other error"):
+                generator._handle_advanced_chat_response(
+                    application_generate_entity=application_generate_entity,
+                    workflow=WorkflowSnapshot(id="wf", tenant_id="tenant", features_dict={}),
+                    queue_manager=SimpleNamespace(),
+                    conversation=ConversationSnapshot(id="conv", mode=AppMode.ADVANCED_CHAT),
+                    message=MessageSnapshot(
+                        id="msg",
+                        query="hello",
+                        created_at=naive_utc_now(),
+                        status=MessageStatus.NORMAL,
+                        answer="",
+                    ),
+                    user=SimpleNamespace(),
+                    draft_var_saver_factory=lambda **kwargs: None,
+                    stream=False,
+                )
 
-        logger_exception.assert_called_once()
+        assert "Failed to process generate task pipeline, conversation_id: conv" in caplog.messages
 
     def test_generate_worker_handles_invoke_auth_error(self, monkeypatch: pytest.MonkeyPatch):
         generator = AdvancedChatAppGenerator()

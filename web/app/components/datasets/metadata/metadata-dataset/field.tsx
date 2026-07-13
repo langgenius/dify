@@ -2,17 +2,13 @@
 import type { FC } from 'react'
 import * as React from 'react'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   label: string
   children: React.ReactNode
-}
+}>
 
-const Field: FC<Props> = ({
-  className,
-  label,
-  children,
-}) => {
+const Field: FC<Props> = ({ className, label, children }) => {
   return (
     <div className={className}>
       <div className="py-1 system-sm-semibold text-text-secondary">{label}</div>

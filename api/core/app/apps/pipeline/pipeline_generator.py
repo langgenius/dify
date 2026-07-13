@@ -138,9 +138,13 @@ class PipelineGenerator(BaseAppGenerator):
         documents: list[Document] = []
         if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry and not args.get("original_document_id"):
             from services.dataset_service import DocumentService
+            from services.feature_service import FeatureService
+
+            features = FeatureService.get_features(pipeline.tenant_id)
+            DocumentService.check_document_creation_limits(len(datasource_info_list), features)
 
             for datasource_info in datasource_info_list:
-                position = DocumentService.get_documents_position(dataset.id)
+                position = DocumentService.get_documents_position(dataset.id, session)
                 document = self._build_document(
                     tenant_id=pipeline.tenant_id,
                     dataset_id=dataset.id,

@@ -1,15 +1,15 @@
+import type React from 'react'
 import type { CommonNodeType } from '../../../../types'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWorkflowComponent } from '../../../../__tests__/workflow-test-env'
+import { fullWorkflowAccessControl } from '../../../../hooks-store'
 import { BlockEnum, NodeRunningStatus } from '../../../../types'
 import NodeControl from '../node-control'
 
-const {
-  mockHandleNodeSelect,
-  mockCanRunBySingle,
-} = vi.hoisted(() => ({
+const { mockHandleNodeSelect, mockCanRunBySingle, mockUseNodesReadOnly } = vi.hoisted(() => ({
   mockHandleNodeSelect: vi.fn(),
   mockCanRunBySingle: vi.fn(() => true),
+  mockUseNodesReadOnly: vi.fn(() => false),
 }))
 
 let mockPluginInstallLocked = false
@@ -21,6 +21,7 @@ vi.mock('../../../../hooks', async () => {
     useNodesInteractions: () => ({
       handleNodeSelect: mockHandleNodeSelect,
     }),
+    useNodesReadOnly: mockUseNodesReadOnly,
   }
 })
 
@@ -35,20 +36,33 @@ vi.mock('../../../../utils', async () => {
 vi.mock('@/app/components/workflow/node-actions-menu', () => ({
   NodeActionsDropdown: ({ onOpenChange }: { onOpenChange: (open: boolean) => void }) => (
     <>
-      <button type="button" onClick={() => onOpenChange(true)}>open panel</button>
-      <button type="button" onClick={() => onOpenChange(false)}>close panel</button>
+      <button type="button" onClick={() => onOpenChange(true)}>
+        open panel
+      </button>
+      <button type="button" onClick={() => onOpenChange(false)}>
+        close panel
+      </button>
     </>
   ),
 }))
 
-function NodeControlHarness({ id, data }: { id: string, data: CommonNodeType, selected?: boolean }) {
-  return (
-    <NodeControl
-      id={id}
-      data={data}
-      pluginInstallLocked={mockPluginInstallLocked}
-    />
-  )
+function NodeControlHarness({
+  id,
+  data,
+}: {
+  id: string
+  data: CommonNodeType
+  selected?: boolean
+}) {
+  return <NodeControl id={id} data={data} pluginInstallLocked={mockPluginInstallLocked} />
+}
+
+function renderNodeControl(ui: React.ReactElement, accessControl = fullWorkflowAccessControl) {
+  return renderWorkflowComponent(ui, {
+    hooksStoreProps: {
+      accessControl,
+    },
+  })
 }
 
 const makeData = (overrides: Partial<CommonNodeType> = {}): CommonNodeType => ({
@@ -67,14 +81,13 @@ describe('NodeControl', () => {
     vi.clearAllMocks()
     mockPluginInstallLocked = false
     mockCanRunBySingle.mockReturnValue(true)
+    mockUseNodesReadOnly.mockReturnValue(false)
   })
 
   // Run/stop behavior should be driven by the workflow store, not CSS classes.
   describe('Single Run Actions', () => {
     it('should trigger a single run through the workflow store', () => {
-      const { store } = renderWorkflowComponent(
-        <NodeControlHarness id="node-1" data={makeData()} />,
-      )
+      const { store } = renderNodeControl(<NodeControlHarness id="node-1" data={makeData()} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'workflow.panel.runThisStep' }))
 
@@ -84,7 +97,7 @@ describe('NodeControl', () => {
     })
 
     it('should trigger stop when the node is already single-running', () => {
-      const { store } = renderWorkflowComponent(
+      const { store } = renderNodeControl(
         <NodeControlHarness
           id="node-2"
           data={makeData({
@@ -94,7 +107,9 @@ describe('NodeControl', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+      )
 
       expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-2', action: 'stop' })
       expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-2')
@@ -106,7 +121,7 @@ describe('NodeControl', () => {
     it('should keep the panel operator available when the plugin is install-locked', () => {
       mockPluginInstallLocked = true
 
-      renderWorkflowComponent(
+      renderNodeControl(
         <NodeControlHarness
           id="node-3"
           data={makeData({
@@ -121,14 +136,37 @@ describe('NodeControl', () => {
     it('should hide the run control when single-node execution is not supported', () => {
       mockCanRunBySingle.mockReturnValue(false)
 
-      renderWorkflowComponent(
-        <NodeControlHarness
-          id="node-4"
-          data={makeData()}
-        />,
-      )
+      renderNodeControl(<NodeControlHarness id="node-4" data={makeData()} />)
 
-      expect(screen.queryByRole('button', { name: 'workflow.panel.runThisStep' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'open panel' })).toBeInTheDocument()
+    })
+
+    it('should hide the run control when workflow run permission is missing', () => {
+      renderNodeControl(<NodeControlHarness id="node-5" data={makeData()} />, {
+        canEdit: false,
+        canComment: true,
+        canRun: false,
+        canImportExportDSL: false,
+        canReleaseAndVersion: false,
+      })
+
+      expect(
+        screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'open panel' })).toBeInTheDocument()
+    })
+
+    it('should hide the run control when nodes are read-only', () => {
+      mockUseNodesReadOnly.mockReturnValue(true)
+
+      renderNodeControl(<NodeControlHarness id="node-6" data={makeData()} />)
+
+      expect(
+        screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'open panel' })).toBeInTheDocument()
     })
   })

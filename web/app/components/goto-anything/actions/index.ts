@@ -165,8 +165,8 @@
 
 import type { ActionItem, SearchResult } from './types'
 import { appAction } from './app'
-import { slashAction } from './commands'
 import { slashCommandRegistry } from './commands/registry'
+import { slashAction } from './commands/slash'
 import { knowledgeAction } from './knowledge'
 import { pluginAction } from './plugin'
 import { ragPipelineNodesAction } from './rag-pipeline-nodes'
@@ -187,8 +187,7 @@ export const createActions = (isWorkflowPage: boolean, isRagPipelinePage: boolea
       ...baseActions,
       node: ragPipelineNodesAction,
     }
-  }
-  else if (isWorkflowPage) {
+  } else if (isWorkflowPage) {
     return {
       ...baseActions,
       node: workflowNodesAction,
@@ -218,31 +217,30 @@ export const searchAnything = async (
 
   if (actionItem) {
     const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const prefixPattern = new RegExp(`^(${escapeRegExp(actionItem.key)}|${escapeRegExp(actionItem.shortcut)})\\s*`)
+    const prefixPattern = new RegExp(
+      `^(${escapeRegExp(actionItem.key)}|${escapeRegExp(actionItem.shortcut)})\\s*`,
+    )
     const searchTerm = trimmedQuery.replace(prefixPattern, '').trim()
     try {
       return await actionItem.search(query, searchTerm, locale)
-    }
-    catch (error) {
+    } catch (error) {
       console.warn(`Search failed for ${actionItem.key}:`, error)
       return []
     }
   }
 
-  if (trimmedQuery.startsWith('@') || trimmedQuery.startsWith('/'))
-    return []
+  if (trimmedQuery.startsWith('@') || trimmedQuery.startsWith('/')) return []
 
   const globalSearchActions = Object.values(dynamicActions || Actions)
     // Exclude slash commands from general search results
-    .filter(action => action.key !== '/')
+    .filter((action) => action.key !== '/')
 
   // Use Promise.allSettled to handle partial failures gracefully
   const searchPromises = globalSearchActions.map(async (action) => {
     try {
       const results = await action.search(query, query, locale)
       return { success: true, data: results, actionType: action.key }
-    }
-    catch (error) {
+    } catch (error) {
       console.warn(`Search failed for ${action.key}:`, error)
       return { success: false, data: [], actionType: action.key, error }
     }
@@ -256,8 +254,7 @@ export const searchAnything = async (
   settledResults.forEach((result, index) => {
     if (result.status === 'fulfilled' && result.value.success) {
       allResults.push(...result.value.data)
-    }
-    else {
+    } else {
       const actionKey = globalSearchActions[index]?.key || 'unknown'
       failedActions.push(actionKey)
     }
@@ -281,8 +278,7 @@ export const matchAction = (query: string, actions: Record<string, ActionItem>) 
         const cmdPattern = `/${cmd.name}`
 
         // For direct mode commands, don't match (keep in command selector)
-        if (cmd.mode === 'direct')
-          return false
+        if (cmd.mode === 'direct') return false
 
         // For submenu mode commands, match when complete command is entered
         return query === cmdPattern || query.startsWith(`${cmdPattern} `)
@@ -293,6 +289,3 @@ export const matchAction = (query: string, actions: Record<string, ActionItem>) 
     return reg.test(query)
   })
 }
-
-export * from './commands'
-export * from './types'

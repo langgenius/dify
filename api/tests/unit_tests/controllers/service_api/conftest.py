@@ -204,11 +204,3 @@ def mock_child_chunk():
     child_chunk.tenant_id = str(uuid.uuid4())
     child_chunk.content = "Test child chunk content"
     return child_chunk
-
-
-def _unwrap(method):
-    """Walk ``__wrapped__`` chain to get the original function."""
-    fn = method
-    while hasattr(fn, "__wrapped__"):
-        fn = fn.__wrapped__
-    return fn

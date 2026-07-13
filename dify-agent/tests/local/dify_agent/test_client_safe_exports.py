@@ -54,7 +54,11 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
             requirement_name(requirement)
             for requirement in pyproject["project"].get("optional-dependencies", {}).get("server", [])
         }
-        server_only_dependency_names = server_dependency_names - default_dependency_names
+        grpc_dependency_names = {
+            requirement_name(requirement)
+            for requirement in pyproject["project"].get("optional-dependencies", {}).get("grpc", [])
+        }
+        server_only_dependency_names = (server_dependency_names | grpc_dependency_names) - default_dependency_names
 
         agenton_layers = importlib.import_module("agenton.layers")
         agenton_compositor = importlib.import_module("agenton.compositor")
@@ -64,9 +68,15 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         dify_agent = importlib.import_module("dify_agent")
         client_module = importlib.import_module("dify_agent.client")
         protocol_module = importlib.import_module("dify_agent.protocol")
+        agent_stub_client_module = importlib.import_module("dify_agent.agent_stub.client")
+        agent_stub_protocol_module = importlib.import_module("dify_agent.agent_stub.protocol")
+        agent_stub_cli_main_module = importlib.import_module("dify_agent.agent_stub.cli.main")
+        agent_stub_shell_env_module = importlib.import_module("dify_agent.agent_stub.shell_env")
         shell_module = importlib.import_module("dify_agent.layers.shell")
+        drive_module = importlib.import_module("dify_agent.layers.drive")
         execution_context_module = importlib.import_module("dify_agent.layers.execution_context")
         plugin_module = importlib.import_module("dify_agent.layers.dify_plugin")
+        ask_human_module = importlib.import_module("dify_agent.layers.ask_human")
         output_module = importlib.import_module("dify_agent.layers.output")
 
         assert agenton_layers.ExitIntent is not None
@@ -79,10 +89,30 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         assert protocol_module.CreateRunRequest is not None
         assert protocol_module.RunComposition is not None
         assert protocol_module.RunLayerSpec is not None
+        assert agent_stub_client_module.connect_agent_stub_sync is not None
+        assert agent_stub_client_module.request_agent_stub_config_manifest_sync is not None
+        assert agent_stub_client_module.request_agent_stub_drive_manifest_sync is not None
+        assert agent_stub_protocol_module.AgentStubConnectRequest is not None
+        assert agent_stub_cli_main_module.main is not None
+        assert agent_stub_shell_env_module.build_shell_agent_stub_env is not None
         assert shell_module.DifyShellLayerConfig is not None
+        assert drive_module.DifyDriveLayerConfig is not None
         assert execution_context_module.DifyExecutionContextLayerConfig is not None
         assert plugin_module.DifyPluginLLMLayerConfig is not None
+        assert ask_human_module.DifyAskHumanLayerConfig is not None
         assert output_module.DifyOutputLayerConfig is not None
+
+        grpc_error = importlib.import_module("dify_agent.agent_stub.client._errors").AgentStubMissingGRPCDependencyError
+        try:
+            agent_stub_client_module.connect_agent_stub_sync(
+                url="grpc://agent.example.com:9091",
+                auth_jwe="test-jwe",
+                argv=["connect"],
+            )
+        except grpc_error:
+            pass
+        else:
+            raise AssertionError("grpc:// dispatch should fail with AgentStubMissingGRPCDependencyError without grpc extras")
 
         unexpectedly_installed = []
         for dependency_name in sorted(server_only_dependency_names):

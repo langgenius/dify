@@ -4,14 +4,14 @@ import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import UsageInfo from '@/app/components/billing/usage-info'
 
-type Props = {
+type Props = Readonly<{
   show: boolean
   onClose: () => void
   onUpgrade: () => void
   usage: number
   total: number
   resetInDays?: number
-}
+}>
 
 export default function TriggerEventsLimitModal({
   show,
@@ -29,19 +29,19 @@ export default function TriggerEventsLimitModal({
       onClose={onClose}
       onUpgrade={onUpgrade}
       Icon={TriggerAll}
-      title={t('triggerLimitModal.title', { ns: 'billing' })}
-      description={t('triggerLimitModal.description', { ns: 'billing' })}
-      extraInfo={(
+      title={t(($) => $['triggerLimitModal.title'], { ns: 'billing' })}
+      description={t(($) => $['triggerLimitModal.description'], { ns: 'billing' })}
+      extraInfo={
         <UsageInfo
           className="mt-4 w-full rounded-xl bg-components-panel-on-panel-item-bg"
           Icon={TriggerAll}
-          name={t('triggerLimitModal.usageTitle', { ns: 'billing' })}
+          name={t(($) => $['triggerLimitModal.usageTitle'], { ns: 'billing' })}
           usage={usage}
           total={total}
           resetInDays={resetInDays}
           hideIcon
         />
-      )}
+      }
     />
   )
 }

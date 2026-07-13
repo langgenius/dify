@@ -1,25 +1,40 @@
 import type { CommandOutput } from './output'
-import type { ArgDefinition, FlagDefinition, ICommand, InferArgs, InferFlags, OptionalArgValueType } from './types'
+import type {
+  ArgDefinition,
+  FlagDefinition,
+  ICommand,
+  InferArgs,
+  InferFlags,
+  OptionalArgValueType,
+} from './types'
 import { setVerbose } from './context'
 import { hasBooleanFlag, parseArgv, VERBOSE_CHAR, VERBOSE_FLAG } from './flags'
 
+// What invoking a command does to remote/persistent state. Drives the skill's
+// safety section and the `effect` bit in machine-readable help. Defaults to
+// `read`; write/destructive commands must opt in explicitly.
+export type CommandEffect = 'read' | 'write' | 'destructive'
+
 export type CommandConstructor = {
-  new(): Command
+  new (): Command
   description?: string
   flags?: Record<string, FlagDefinition<OptionalArgValueType>>
   args?: Record<string, ArgDefinition<string | undefined>>
   examples?: string[]
   hidden?: boolean
   deprecated?: string
+  effect?: CommandEffect
 }
 
-type InferCommandArgs<C extends CommandConstructor> = C['args'] extends Record<string, ArgDefinition<string | undefined>>
-  ? InferArgs<C['args']>
-  : Record<string, string | undefined>
+type InferCommandArgs<C extends CommandConstructor> =
+  C['args'] extends Record<string, ArgDefinition<string | undefined>>
+    ? InferArgs<C['args']>
+    : Record<string, string | undefined>
 
-type InferCommandFlags<C extends CommandConstructor> = C['flags'] extends Record<string, FlagDefinition<OptionalArgValueType>>
-  ? InferFlags<C['flags']>
-  : Record<string, OptionalArgValueType>
+type InferCommandFlags<C extends CommandConstructor> =
+  C['flags'] extends Record<string, FlagDefinition<OptionalArgValueType>>
+    ? InferFlags<C['flags']>
+    : Record<string, OptionalArgValueType>
 
 type ParseResult<C extends CommandConstructor> = {
   args: InferCommandArgs<C>
@@ -32,6 +47,7 @@ export abstract class Command implements ICommand {
 
   static args: Record<string, ArgDefinition<string | undefined>> = {}
   static examples: string[] = []
+  static effect: CommandEffect = 'read'
 
   abstract run(argv: string[]): Promise<CommandOutput | void>
 

@@ -1,10 +1,10 @@
 import { cleanup, screen } from '@testing-library/react'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import {
   assertions,
   clearAllMocks,
   defaultModalContext,
   interactions,
+  mockRouterPush,
   mockUseModalContext,
   scenarios,
   textKeys,
@@ -65,7 +65,9 @@ describe('APIKeyInfoPanel - Cloud Edition', () => {
 
     it('should not render external link for cloud version', () => {
       const { container } = scenarios.withAPIKeyNotSet()
-      expect(container.querySelector('a[href="https://cloud.dify.ai/apps"]')).not.toBeInTheDocument()
+      expect(
+        container.querySelector('a[href="https://cloud.dify.ai/apps"]'),
+      ).not.toBeInTheDocument()
     })
 
     it('should display set API button text', () => {
@@ -75,14 +77,13 @@ describe('APIKeyInfoPanel - Cloud Edition', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call setShowAccountSettingModal when set API button is clicked', () => {
+    it('should navigate to the model provider page when set API button is clicked', () => {
       scenarios.withMockModal(mockSetShowAccountSettingModal)
 
       interactions.clickMainButton()
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: ACCOUNT_SETTING_TAB.PROVIDER,
-      })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should hide panel when close button is clicked', () => {

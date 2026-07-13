@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Concatenate
+from typing import Any, Concatenate
 
 from flask import jsonify, request
 from flask.typing import ResponseReturnValue
@@ -8,7 +8,9 @@ from flask_restx import Resource
 from pydantic import BaseModel
 from werkzeug.exceptions import BadRequest, NotFound
 
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
+from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import login_required
 from models import Account
@@ -34,6 +36,41 @@ class OAuthTokenRequest(BaseModel):
     client_secret: str | None = None
     redirect_uri: str | None = None
     refresh_token: str | None = None
+
+
+class OAuthProviderAppResponse(BaseModel):
+    app_icon: str
+    app_label: dict[str, Any]
+    scope: str
+
+
+class OAuthProviderAuthorizeResponse(BaseModel):
+    code: str
+
+
+class OAuthProviderTokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: int
+    refresh_token: str
+
+
+class OAuthProviderAccountResponse(BaseModel):
+    name: str
+    email: str
+    avatar: str | None = None
+    interface_language: str
+    timezone: str
+
+
+register_schema_models(console_ns, OAuthClientPayload, OAuthProviderRequest, OAuthTokenRequest)
+register_response_schema_models(
+    console_ns,
+    OAuthProviderAccountResponse,
+    OAuthProviderAppResponse,
+    OAuthProviderAuthorizeResponse,
+    OAuthProviderTokenResponse,
+)
 
 
 def oauth_server_client_id_required[T, **P, R](
@@ -95,7 +132,9 @@ def oauth_server_access_token_required[T, **P, R](
             response.headers["WWW-Authenticate"] = "Bearer"
             return response
 
-        account = OAuthServerService.validate_oauth_access_token(oauth_provider_app.client_id, access_token)
+        account = OAuthServerService.validate_oauth_access_token(
+            oauth_provider_app.client_id, access_token, db.session()
+        )
         if not account:
             response = jsonify({"error": "access_token or client_id is invalid"})
             response.status_code = 401
@@ -110,6 +149,8 @@ def oauth_server_access_token_required[T, **P, R](
 @console_ns.route("/oauth/provider")
 class OAuthServerAppApi(Resource):
     @setup_required
+    @console_ns.expect(console_ns.models[OAuthProviderRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[OAuthProviderAppResponse.__name__])
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
         payload = OAuthProviderRequest.model_validate(request.get_json())
@@ -134,6 +175,8 @@ class OAuthServerUserAuthorizeApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
+    @console_ns.expect(console_ns.models[OAuthClientPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[OAuthProviderAuthorizeResponse.__name__])
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp, current_user: Account):
         user_account_id = current_user.id
@@ -148,6 +191,8 @@ class OAuthServerUserAuthorizeApi(Resource):
 @console_ns.route("/oauth/provider/token")
 class OAuthServerUserTokenApi(Resource):
     @setup_required
+    @console_ns.expect(console_ns.models[OAuthTokenRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[OAuthProviderTokenResponse.__name__])
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
         payload = OAuthTokenRequest.model_validate(request.get_json())
@@ -198,6 +243,8 @@ class OAuthServerUserTokenApi(Resource):
 @console_ns.route("/oauth/provider/account")
 class OAuthServerUserAccountApi(Resource):
     @setup_required
+    @console_ns.expect(console_ns.models[OAuthClientPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[OAuthProviderAccountResponse.__name__])
     @oauth_server_client_id_required
     @oauth_server_access_token_required
     def post(self, oauth_provider_app: OAuthProviderApp, account: Account):

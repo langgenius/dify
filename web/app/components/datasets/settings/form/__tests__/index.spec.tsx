@@ -2,7 +2,9 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { expectLoadingButton } from '@/test/button'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../create/step-two'
 import Form from '../index'
 
@@ -21,16 +23,95 @@ const mockUserProfile = {
   avatar_url: '',
   role: 'owner',
 }
+let mockWorkspacePermissionKeys = ['dataset.create_and_management']
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: unknown) => unknown) => {
-    const state = {
-      isCurrentWorkspaceDatasetOperator: false,
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useSuspenseQuery: () => ({
+      data: {
+        rbac_enabled: false,
+      },
+    }),
+  }
+})
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => ({
       userProfile: mockUserProfile,
-    }
-    return selector(state)
-  },
-}))
+      workspacePermissionKeys: mockWorkspacePermissionKeys,
+    }),
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => ({
+      userProfile: mockUserProfile,
+      workspacePermissionKeys: mockWorkspacePermissionKeys,
+    }),
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => ({
+      userProfile: mockUserProfile,
+      workspacePermissionKeys: mockWorkspacePermissionKeys,
+    }),
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => ({
+      userProfile: mockUserProfile,
+      workspacePermissionKeys: mockWorkspacePermissionKeys,
+    }),
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(
+    importOriginal,
+    () => ({
+      userProfile: mockUserProfile,
+      workspacePermissionKeys: mockWorkspacePermissionKeys,
+    }),
+    () => ({
+      isRbacEnabled: false,
+    }),
+  )
+})
 
 const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -98,13 +179,16 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   runtime_mode: 'general',
   enable_api: true,
   is_multimodal: false,
+  permission_keys: [DatasetACLPermission.Edit],
   ...overrides,
 })
 
 let mockDataset: DataSet = createMockDataset()
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: DataSet | null, mutateDatasetRes: () => void }) => unknown) => {
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset: DataSet | null; mutateDatasetRes: () => void }) => unknown,
+  ) => {
     const state = {
       dataset: mockDataset,
       mutateDatasetRes: mockMutateDatasets,
@@ -112,6 +196,13 @@ vi.mock('@/context/dataset-detail', () => ({
     return selector(state)
   },
 }))
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createDatasetAccessJotaiMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessJotaiMock(importOriginal)
+})
 
 // Mock services
 vi.mock('@/service/datasets', () => ({
@@ -126,8 +217,28 @@ vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
     data: {
       accounts: [
-        { id: 'user-1', name: 'User 1', email: 'user1@example.com', role: 'owner', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
-        { id: 'user-2', name: 'User 2', email: 'user2@example.com', role: 'admin', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
+        {
+          id: 'user-1',
+          name: 'User 1',
+          email: 'user1@example.com',
+          role: 'owner',
+          avatar: '',
+          avatar_url: '',
+          last_login_at: '',
+          created_at: '',
+          status: 'active',
+        },
+        {
+          id: 'user-2',
+          name: 'User 2',
+          email: 'user2@example.com',
+          role: 'admin',
+          avatar: '',
+          avatar_url: '',
+          last_login_at: '',
+          created_at: '',
+          status: 'active',
+        },
       ],
     },
   }),
@@ -176,7 +287,6 @@ vi.mock('@/context/provider-context', () => ({
     plan: { type: 'free' },
     enableBilling: false,
     onPlanInfoChanged: vi.fn(),
-    isCurrentWorkspaceDatasetOperator: false,
     supportRetrievalMethods: ['semantic_search', 'full_text_search', 'hybrid_search'],
   }),
 }))
@@ -190,10 +300,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     error: mockToastError,
     success: vi.fn(),
   },
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
 vi.mock('../components/indexing-section', () => ({
@@ -213,12 +319,12 @@ vi.mock('../components/indexing-section', () => ({
           </a>
         </>
       )}
-      {!!(currentDataset
-        && currentDataset.doc_form !== ChunkingMode.parentChild
-        && currentDataset.indexing_technique
-        && indexMethod) && (
-        <div>form.indexMethod</div>
-      )}
+      {!!(
+        currentDataset &&
+        currentDataset.doc_form !== ChunkingMode.parentChild &&
+        currentDataset.indexing_technique &&
+        indexMethod
+      ) && <div>form.indexMethod</div>}
       {indexMethod === IndexingType.QUALIFIED && <div>form.embeddingModel</div>}
       {currentDataset?.provider !== 'external' && indexMethod && (
         <>
@@ -236,6 +342,7 @@ describe('Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createMockDataset()
+    mockWorkspacePermissionKeys = ['dataset.create_and_management']
   })
 
   describe('Rendering', () => {
@@ -373,7 +480,7 @@ describe('Form', () => {
     it('should show loading state on save button while saving', async () => {
       const { updateDatasetSetting } = await import('@/service/datasets')
       vi.mocked(updateDatasetSetting).mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 100)),
+        () => new Promise((resolve) => setTimeout(resolve, 100)),
       )
 
       render(<Form />)
@@ -381,9 +488,8 @@ describe('Form', () => {
       const saveButton = screen.getByRole('button', { name: /form\.save/i })
       fireEvent.click(saveButton)
 
-      // Button should be disabled during loading
       await waitFor(() => {
-        expect(saveButton).toBeDisabled()
+        expectLoadingButton(saveButton)
       })
     })
 
@@ -459,6 +565,15 @@ describe('Form', () => {
 
       const descriptionTextarea = screen.getByDisplayValue('Test description')
       expect(descriptionTextarea).toBeDisabled()
+    })
+
+    it('should disable save when dataset only has readonly ACL permission', () => {
+      mockWorkspacePermissionKeys = []
+      mockDataset = createMockDataset({ permission_keys: [DatasetACLPermission.Readonly] })
+      render(<Form />)
+
+      const saveButton = screen.getByRole('button', { name: /form\.save/i })
+      expect(saveButton).toBeDisabled()
     })
   })
 

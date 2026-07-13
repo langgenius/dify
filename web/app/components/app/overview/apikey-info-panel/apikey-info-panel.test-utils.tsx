@@ -4,10 +4,16 @@ import type { ModalContextState } from '@/context/modal-context'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
 import { defaultPlan } from '@/app/components/billing/config'
-import { useModalContext as actualUseModalContext } from '@/context/modal-context'
-
+import {
+  useModalContext as actualUseModalContext,
+  useModalContextSelector as actualUseModalContextSelector,
+} from '@/context/modal-context'
 import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
 import APIKeyInfoPanel from './index'
+
+const { mockRouterPush } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+}))
 
 // Mock the modules before importing the functions
 vi.mock('@/context/provider-context', () => ({
@@ -16,16 +22,29 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
+  useModalContextSelector: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
 }))
 
 // Type casting for mocks
-const mockUseProviderContext = actualUseProviderContext as MockedFunction<typeof actualUseProviderContext>
+const mockUseProviderContext = actualUseProviderContext as MockedFunction<
+  typeof actualUseProviderContext
+>
 const mockUseModalContext = actualUseModalContext as MockedFunction<typeof actualUseModalContext>
+const mockUseModalContextSelector = actualUseModalContextSelector as MockedFunction<
+  typeof actualUseModalContextSelector
+>
 
 // Default mock data
 const defaultProviderContext = {
   modelProviders: [],
   refreshModelProviders: noop,
+  isLoadingModelProviders: false,
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: false,
@@ -94,6 +113,13 @@ function setupMocks(overrides: MockOverrides = {}) {
     ...defaultModalContext,
     ...overrides.modalContext,
   })
+
+  mockUseModalContextSelector.mockImplementation((selector) =>
+    selector({
+      ...defaultModalContext,
+      ...overrides.modalContext,
+    }),
+  )
 }
 
 // Custom render function
@@ -184,8 +210,7 @@ export const interactions = {
   // Click the close button
   clickCloseButton: (container: HTMLElement) => {
     const closeButton = container.querySelector('.absolute.right-4.top-4')
-    if (closeButton)
-      fireEvent.click(closeButton)
+    if (closeButton) fireEvent.click(closeButton)
     return closeButton
   },
 }
@@ -212,4 +237,4 @@ export function clearAllMocks() {
 }
 
 // Export mock functions for external access
-export { defaultModalContext, mockUseModalContext }
+export { defaultModalContext, mockRouterPush, mockUseModalContext }

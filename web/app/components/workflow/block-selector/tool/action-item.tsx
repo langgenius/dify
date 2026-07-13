@@ -17,21 +17,25 @@ import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
 
 const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
-  if (!icon)
-    return icon
-  if (typeof icon === 'string' && basePath && icon.startsWith('/') && !icon.startsWith(`${basePath}/`))
+  if (!icon) return icon
+  if (
+    typeof icon === 'string' &&
+    basePath &&
+    icon.startsWith('/') &&
+    !icon.startsWith(`${basePath}/`)
+  )
     return `${basePath}${icon}`
   return icon
 }
 
-type Props = {
+type Props = Readonly<{
   provider: ToolWithProvider
   payload: Tool
   previewCardHandle: PreviewCardHandle
   disabled?: boolean
   isAdded?: boolean
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
-}
+}>
 
 export type ToolActionPreviewPayload = {
   providerIcon: ToolWithProvider['icon']
@@ -58,23 +62,22 @@ const ToolItem: FC<Props> = ({
     return normalizeProviderIcon(provider.icon) ?? provider.icon
   }, [provider.icon])
   const normalizedIconDark = useMemo(() => {
-    if (!provider.icon_dark)
-      return undefined
+    if (!provider.icon_dark) return undefined
     return normalizeProviderIcon(provider.icon_dark) ?? provider.icon_dark
   }, [provider.icon_dark])
   const providerIcon = useMemo(() => {
-    if (theme === Theme.dark && normalizedIconDark)
-      return normalizedIconDark
+    if (theme === Theme.dark && normalizedIconDark) return normalizedIconDark
     return normalizedIcon
   }, [theme, normalizedIcon, normalizedIconDark])
 
   const row = (
-    <div
+    <button
       key={payload.name}
-      className="flex cursor-pointer items-center justify-between rounded-lg pr-1 pl-[21px] hover:bg-state-base-hover"
+      type="button"
+      disabled={disabled}
+      className="flex w-full cursor-pointer items-center justify-between rounded-lg border-none bg-transparent pr-1 pl-[21px] text-left hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-default"
       onClick={() => {
-        if (disabled)
-          return
+        if (disabled) return
         const params: Record<string, string> = {}
         if (payload.parameters) {
           payload.parameters.forEach((item) => {
@@ -85,6 +88,7 @@ const ToolItem: FC<Props> = ({
           provider_id: provider.id,
           provider_type: provider.type,
           provider_name: provider.name,
+          provider_show_name: provider.label[language],
           plugin_id: provider.plugin_id,
           plugin_unique_identifier: provider.plugin_unique_identifier,
           provider_icon: normalizedIcon,
@@ -104,13 +108,19 @@ const ToolItem: FC<Props> = ({
         })
       }}
     >
-      <div className={cn('truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary')}>
+      <div
+        className={cn(
+          'truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary',
+        )}
+      >
         <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
       </div>
       {isAdded && (
-        <div className="mr-4 system-xs-regular text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
+        <div className="mr-4 system-xs-regular text-text-tertiary">
+          {t(($) => $['addToolModal.added'], { ns: 'tools' })}
+        </div>
       )}
-    </div>
+    </button>
   )
 
   return (
@@ -137,11 +147,8 @@ type ToolActionPreviewCardProps = {
   payload?: ToolActionPreviewPayload
 }
 
-export function ToolActionPreviewCard({
-  payload,
-}: ToolActionPreviewCardProps) {
-  if (!payload)
-    return null
+export function ToolActionPreviewCard({ payload }: ToolActionPreviewCardProps) {
+  if (!payload) return null
 
   return (
     <PreviewCardContent placement="right" popupClassName="w-[200px] px-3 py-2.5">
@@ -152,8 +159,12 @@ export function ToolActionPreviewCard({
           type={BlockEnum.Tool}
           toolIcon={payload.providerIcon}
         />
-        <div className="mb-1 text-sm/5 text-text-primary">{payload.payload.label[payload.language]}</div>
-        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">{payload.payload.description[payload.language]}</div>
+        <div className="mb-1 text-sm/5 text-text-primary">
+          {payload.payload.label[payload.language]}
+        </div>
+        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
+          {payload.payload.description[payload.language]}
+        </div>
       </div>
     </PreviewCardContent>
   )

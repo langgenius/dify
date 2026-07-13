@@ -11,7 +11,7 @@ export const zCodeBasedExtensionResponse = z.object({
 })
 
 export const zGetCodeBasedExtensionQuery = z.object({
-  module: z.string().optional(),
+  module: z.string(),
 })
 
 /**

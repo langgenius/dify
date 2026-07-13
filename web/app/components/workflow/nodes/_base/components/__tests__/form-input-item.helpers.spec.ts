@@ -1,4 +1,7 @@
-import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  CredentialFormSchema,
+  FormOption,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Var } from '@/app/components/workflow/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarType } from '@/app/components/workflow/types'
@@ -13,35 +16,34 @@ import {
   getSelectedLabels,
   getTargetVarType,
   getVarKindType,
-  hasOptionIcon,
   mapSelectItems,
   normalizeVariableSelectorValue,
 } from '../form-input-item.helpers'
 
 const createSchema = (
-  overrides: Partial<CredentialFormSchema & {
+  overrides: Partial<
+    CredentialFormSchema & {
+      _type?: FormTypeEnum
+      multiple?: boolean
+      options?: FormOption[]
+    }
+  > = {},
+) =>
+  ({
+    label: { en_US: 'Field', zh_Hans: '字段' },
+    name: 'field',
+    required: false,
+    show_on: [],
+    type: FormTypeEnum.textInput,
+    variable: 'field',
+    ...overrides,
+  }) as CredentialFormSchema & {
     _type?: FormTypeEnum
     multiple?: boolean
     options?: FormOption[]
-  }> = {},
-) => ({
-  label: { en_US: 'Field', zh_Hans: '字段' },
-  name: 'field',
-  required: false,
-  show_on: [],
-  type: FormTypeEnum.textInput,
-  variable: 'field',
-  ...overrides,
-}) as CredentialFormSchema & {
-  _type?: FormTypeEnum
-  multiple?: boolean
-  options?: FormOption[]
-}
+  }
 
-const createOption = (
-  value: string,
-  overrides: Partial<FormOption> = {},
-): FormOption => ({
+const createOption = (value: string, overrides: Partial<FormOption> = {}): FormOption => ({
   label: { en_US: value, zh_Hans: value },
   show_on: [],
   value,
@@ -50,14 +52,14 @@ const createOption = (
 
 describe('form-input-item helpers', () => {
   it('should derive field state and target var type', () => {
-    const numberState = getFormInputState(
-      createSchema({ type: FormTypeEnum.textNumber }),
-      { type: VarKindType.constant, value: 1 },
-    )
-    const filesState = getFormInputState(
-      createSchema({ type: FormTypeEnum.files }),
-      { type: VarKindType.variable, value: ['node', 'files'] },
-    )
+    const numberState = getFormInputState(createSchema({ type: FormTypeEnum.textNumber }), {
+      type: VarKindType.constant,
+      value: 1,
+    })
+    const filesState = getFormInputState(createSchema({ type: FormTypeEnum.files }), {
+      type: VarKindType.variable,
+      value: ['node', 'files'],
+    })
 
     expect(numberState.isNumber).toBe(true)
     expect(numberState.showTypeSwitch).toBe(true)
@@ -68,7 +70,9 @@ describe('form-input-item helpers', () => {
   })
 
   it('should return filter functions and var kind types by schema mode', () => {
-    const stringFilter = getFilterVar(getFormInputState(createSchema(), { type: VarKindType.mixed, value: '' }))
+    const stringFilter = getFilterVar(
+      getFormInputState(createSchema(), { type: VarKindType.mixed, value: '' }),
+    )
     const booleanState = getFormInputState(
       createSchema({ _type: FormTypeEnum.boolean, type: FormTypeEnum.textInput }),
       { type: VarKindType.constant, value: true },
@@ -79,29 +83,33 @@ describe('form-input-item helpers', () => {
     expect(getVarKindType(booleanState)).toBe(VarKindType.constant)
     expect(getFilterVar(booleanState)?.({ type: VarType.boolean } as Var)).toBe(false)
 
-    const fileState = getFormInputState(
-      createSchema({ type: FormTypeEnum.file }),
-      { type: VarKindType.variable, value: ['node', 'file'] },
-    )
-    const objectState = getFormInputState(
-      createSchema({ type: FormTypeEnum.object }),
-      { type: VarKindType.constant, value: '{}' },
-    )
-    const arrayState = getFormInputState(
-      createSchema({ type: FormTypeEnum.array }),
-      { type: VarKindType.constant, value: '[]' },
-    )
-    const dynamicState = getFormInputState(
-      createSchema({ type: FormTypeEnum.dynamicSelect }),
-      { type: VarKindType.constant, value: 'selected' },
-    )
+    const fileState = getFormInputState(createSchema({ type: FormTypeEnum.file }), {
+      type: VarKindType.variable,
+      value: ['node', 'file'],
+    })
+    const objectState = getFormInputState(createSchema({ type: FormTypeEnum.object }), {
+      type: VarKindType.constant,
+      value: '{}',
+    })
+    const arrayState = getFormInputState(createSchema({ type: FormTypeEnum.array }), {
+      type: VarKindType.constant,
+      value: '[]',
+    })
+    const dynamicState = getFormInputState(createSchema({ type: FormTypeEnum.dynamicSelect }), {
+      type: VarKindType.constant,
+      value: 'selected',
+    })
 
     expect(getFilterVar(fileState)?.({ type: VarType.file } as Var)).toBe(true)
     expect(getFilterVar(objectState)?.({ type: VarType.object } as Var)).toBe(true)
     expect(getFilterVar(arrayState)?.({ type: VarType.arrayString } as Var)).toBe(true)
     expect(getVarKindType(fileState)).toBe(VarKindType.variable)
     expect(getVarKindType(dynamicState)).toBe(VarKindType.constant)
-    expect(getVarKindType(getFormInputState(createSchema({ type: FormTypeEnum.appSelector }), undefined))).toBeUndefined()
+    expect(
+      getVarKindType(
+        getFormInputState(createSchema({ type: FormTypeEnum.appSelector }), undefined),
+      ),
+    ).toBeUndefined()
   })
 
   it('should filter and map visible options using show_on rules', () => {
@@ -124,15 +132,10 @@ describe('form-input-item helpers', () => {
       { name: 'always', value: 'always' },
       { name: 'premium', value: 'premium' },
     ])
-    expect(hasOptionIcon(visibleOptions)).toBe(false)
   })
 
   it('should compute selected labels and checkbox state from visible options', () => {
-    const options = [
-      createOption('alpha'),
-      createOption('beta'),
-      createOption('gamma'),
-    ]
+    const options = [createOption('alpha'), createOption('beta'), createOption('gamma')]
 
     expect(getSelectedLabels(['alpha', 'beta'], options, 'en_US')).toBe('alpha, beta')
     expect(getSelectedLabels(['alpha', 'beta', 'gamma'], options, 'en_US')).toBe('3 selected')

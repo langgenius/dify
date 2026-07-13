@@ -7,6 +7,9 @@ const mockInvalidateInstalledPluginList = vi.fn()
 const mockRefetchLLMModelList = vi.fn()
 const mockRefetchEmbeddingModelList = vi.fn()
 const mockRefetchRerankModelList = vi.fn()
+const mockRefetchSpeech2textModelList = vi.fn()
+const mockRefetchTTSModelList = vi.fn()
+const mockInvalidateDefaultModel = vi.fn()
 const mockRefreshModelProviders = vi.fn()
 const mockInvalidateAllToolProviders = vi.fn()
 const mockInvalidateAllBuiltInTools = vi.fn()
@@ -21,18 +24,27 @@ vi.mock('@/service/use-plugins', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
-  ModelTypeEnum: { textGeneration: 'text-generation', textEmbedding: 'text-embedding', rerank: 'rerank' },
+  ModelTypeEnum: {
+    textGeneration: 'llm',
+    textEmbedding: 'text-embedding',
+    rerank: 'rerank',
+    speech2text: 'speech2text',
+    tts: 'tts',
+  },
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelList: (type: string) => {
     const map: Record<string, { mutate: ReturnType<typeof vi.fn> }> = {
-      'text-generation': { mutate: mockRefetchLLMModelList },
+      llm: { mutate: mockRefetchLLMModelList },
       'text-embedding': { mutate: mockRefetchEmbeddingModelList },
-      'rerank': { mutate: mockRefetchRerankModelList },
+      rerank: { mutate: mockRefetchRerankModelList },
+      speech2text: { mutate: mockRefetchSpeech2textModelList },
+      tts: { mutate: mockRefetchTTSModelList },
     }
     return map[type] ?? { mutate: vi.fn() }
   },
+  useInvalidateDefaultModel: () => mockInvalidateDefaultModel,
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -95,6 +107,14 @@ describe('useRefreshPluginList', () => {
     expect(mockRefetchLLMModelList).toHaveBeenCalledTimes(1)
     expect(mockRefetchEmbeddingModelList).toHaveBeenCalledTimes(1)
     expect(mockRefetchRerankModelList).toHaveBeenCalledTimes(1)
+    expect(mockRefetchSpeech2textModelList).toHaveBeenCalledTimes(1)
+    expect(mockRefetchTTSModelList).toHaveBeenCalledTimes(1)
+    expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
+    expect(mockInvalidateDefaultModel).toHaveBeenCalledWith('llm')
+    expect(mockInvalidateDefaultModel).toHaveBeenCalledWith('text-embedding')
+    expect(mockInvalidateDefaultModel).toHaveBeenCalledWith('rerank')
+    expect(mockInvalidateDefaultModel).toHaveBeenCalledWith('speech2text')
+    expect(mockInvalidateDefaultModel).toHaveBeenCalledWith('tts')
   })
 
   it('should refresh datasource lists for datasource category manifest', () => {
@@ -138,6 +158,9 @@ describe('useRefreshPluginList', () => {
     expect(mockRefetchLLMModelList).toHaveBeenCalledTimes(1)
     expect(mockRefetchEmbeddingModelList).toHaveBeenCalledTimes(1)
     expect(mockRefetchRerankModelList).toHaveBeenCalledTimes(1)
+    expect(mockRefetchSpeech2textModelList).toHaveBeenCalledTimes(1)
+    expect(mockRefetchTTSModelList).toHaveBeenCalledTimes(1)
+    expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
     expect(mockInvalidateStrategyProviders).toHaveBeenCalledTimes(1)
   })
 

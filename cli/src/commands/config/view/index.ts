@@ -18,6 +18,6 @@ export default class ConfigView extends DifyCommand {
 
   async run(argv: string[]) {
     const { flags } = this.parse(ConfigView, argv)
-    return raw(runConfigView({ store: getConfigurationStore(), json: flags.json }))
+    return raw(await runConfigView({ store: getConfigurationStore(), json: flags.json }))
   }
 }

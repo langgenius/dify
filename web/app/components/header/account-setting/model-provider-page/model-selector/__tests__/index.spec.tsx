@@ -2,11 +2,7 @@ import type { ReactNode } from 'react'
 import type { DefaultModel, Model, ModelItem } from '../../declarations'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
-import {
-  ConfigurationMethodEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '../../declarations'
+import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
 import ModelSelector from '../index'
 
 vi.mock('../model-selector-trigger', () => ({
@@ -14,29 +10,42 @@ vi.mock('../model-selector-trigger', () => ({
     currentProvider,
     currentModel,
     defaultModel,
-  }: { currentProvider?: Model, currentModel?: ModelItem, defaultModel?: DefaultModel }) => {
-    if (currentProvider && currentModel)
-      return <div>model-trigger</div>
+  }: {
+    currentProvider?: Model
+    currentModel?: ModelItem
+    defaultModel?: DefaultModel
+  }) => {
+    if (currentProvider && currentModel) return <div>model-trigger</div>
 
-    if (defaultModel)
-      return <div>{`deprecated:${defaultModel.model}`}</div>
+    if (defaultModel) return <div>{`deprecated:${defaultModel.model}`}</div>
 
     return <div>empty-trigger</div>
   },
 }))
 
 vi.mock('../popup', async () => {
-  const { ComboboxItem } = await vi.importActual<typeof import('@langgenius/dify-ui/combobox')>('@langgenius/dify-ui/combobox')
+  const { ComboboxItem } = await vi.importActual<typeof import('@langgenius/dify-ui/combobox')>(
+    '@langgenius/dify-ui/combobox',
+  )
 
   return {
-    default: ({ onHide }: { onHide: () => void }) => (
+    default: ({
+      onConfigureEmptyState,
+      onHide,
+    }: {
+      onConfigureEmptyState?: () => void
+      onHide: () => void
+    }) => (
       <>
-        <ComboboxItem value={{ provider: 'openai', model: 'gpt-4' }}>
-          select
-        </ComboboxItem>
+        <ComboboxItem value={{ provider: 'openai', model: 'gpt-4' }}>select</ComboboxItem>
         <button type="button" onClick={onHide}>
           hide
         </button>
+        {onConfigureEmptyState && (
+          <button type="button" onClick={onConfigureEmptyState}>
+            configure-empty-state
+          </button>
+        )}
       </>
     ),
   }
@@ -62,20 +71,17 @@ const makeModel = (overrides: Partial<Model> = {}): Model => ({
   ...overrides,
 })
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false },
-    mutations: { retry: false },
-  },
-})
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
 
 const renderWithQueryClient = (node: ReactNode) => {
   const queryClient = createTestQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {node}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{node}</QueryClientProvider>)
 }
 
 describe('ModelSelector', () => {
@@ -103,7 +109,11 @@ describe('ModelSelector', () => {
     fireEvent.click(screen.getByRole('combobox'))
     fireEvent.click(screen.getByText('select'))
 
-    expect(onSelect).toHaveBeenCalledWith({ provider: 'openai', model: 'gpt-4' })
+    expect(onSelect).toHaveBeenCalledWith({
+      provider: 'openai',
+      model: 'gpt-4',
+      plugin_id: 'langgenius/openai',
+    })
   })
 
   it('should close popup when popup requests hide', () => {
@@ -118,6 +128,22 @@ describe('ModelSelector', () => {
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('should close popup before running the empty-state configure action', () => {
+    const onConfigureEmptyState = vi.fn()
+    renderWithQueryClient(
+      <ModelSelector modelList={[makeModel()]} onConfigureEmptyState={onConfigureEmptyState} />,
+    )
+
+    const triggerButton = screen.getByRole('combobox')
+    fireEvent.click(triggerButton)
+    expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.click(screen.getByText('configure-empty-state'))
+
+    expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
+    expect(onConfigureEmptyState).toHaveBeenCalledTimes(1)
+  })
+
   it('should use the default model settings popup width when the trigger is narrow', () => {
     renderWithQueryClient(
       <div className="w-[355px]">
@@ -128,9 +154,9 @@ describe('ModelSelector', () => {
     fireEvent.click(screen.getByRole('combobox'))
 
     expect(
-      Array.from(document.body.querySelectorAll('[class]')).some(element =>
-        element.className.includes('w-[432px]')
-        && element.className.includes('max-w-[432px]'),
+      Array.from(document.body.querySelectorAll('[class]')).some(
+        (element) =>
+          element.className.includes('w-[432px]') && element.className.includes('max-w-[432px]'),
       ),
     ).toBe(true)
   })
@@ -154,10 +180,7 @@ describe('ModelSelector', () => {
 
     unmount()
     renderWithQueryClient(
-      <ModelSelector
-        defaultModel={{ provider: '', model: '' }}
-        modelList={[makeModel()]}
-      />,
+      <ModelSelector defaultModel={{ provider: '', model: '' }} modelList={[makeModel()]} />,
     )
     expect(screen.getByText('deprecated:')).toBeInTheDocument()
   })

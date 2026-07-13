@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { AppACLPermission } from '@/utils/permission'
 import WorkflowMain from '../workflow-main'
 
 const mockSetFeatures = vi.fn()
@@ -52,8 +55,8 @@ const hookFns = {
 const collaborationRuntime = vi.hoisted(() => ({
   startCursorTracking: vi.fn(),
   stopCursorTracking: vi.fn(),
-  onlineUsers: [] as Array<{ user_id: string, username: string, avatar: string, sid: string }>,
-  cursors: {} as Record<string, { x: number, y: number, userId: string, timestamp: number }>,
+  onlineUsers: [] as Array<{ user_id: string; username: string; avatar: string; sid: string }>,
+  cursors: {} as Record<string, { x: number; y: number; userId: string; timestamp: number }>,
   isConnected: false,
   isEnabled: false,
 }))
@@ -66,7 +69,10 @@ const collaborationListeners = vi.hoisted(() => ({
 
 let capturedContextProps: Record<string, unknown> | null = null
 
-type MockWorkflowWithInnerContextProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport' | 'onWorkflowDataUpdate' | 'cursors' | 'myUserId' | 'onlineUsers'> & {
+type MockWorkflowWithInnerContextProps = Pick<
+  WorkflowProps,
+  'nodes' | 'edges' | 'viewport' | 'onWorkflowDataUpdate' | 'cursors' | 'myUserId' | 'onlineUsers'
+> & {
   hooksStore?: Record<string, unknown>
   children?: ReactNode
 }
@@ -80,9 +86,10 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(selector: (state: { appId: string }) => T) => selector({
-    appId: 'app-1',
-  }),
+  useStore: <T,>(selector: (state: { appId: string }) => T) =>
+    selector({
+      appId: 'app-1',
+    }),
   useWorkflowStore: () => ({
     getState: () => ({
       setConversationVariables: mockSetConversationVariables,
@@ -119,14 +126,18 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-interactions', () => ({
 
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
-    onVarsAndFeaturesUpdate: mockOnVarsAndFeaturesUpdate.mockImplementation((handler: (update: unknown) => void | Promise<void>) => {
-      collaborationListeners.varsAndFeaturesUpdate = handler
-      return vi.fn()
-    }),
-    onWorkflowUpdate: mockOnWorkflowUpdate.mockImplementation((handler: () => void | Promise<void>) => {
-      collaborationListeners.workflowUpdate = handler
-      return vi.fn()
-    }),
+    onVarsAndFeaturesUpdate: mockOnVarsAndFeaturesUpdate.mockImplementation(
+      (handler: (update: unknown) => void | Promise<void>) => {
+        collaborationListeners.varsAndFeaturesUpdate = handler
+        return vi.fn()
+      },
+    ),
+    onWorkflowUpdate: mockOnWorkflowUpdate.mockImplementation(
+      (handler: () => void | Promise<void>) => {
+        collaborationListeners.workflowUpdate = handler
+        return vi.fn()
+      },
+    ),
     onSyncRequest: mockOnSyncRequest.mockImplementation((handler: () => void) => {
       collaborationListeners.syncRequest = handler
       return vi.fn()
@@ -163,48 +174,55 @@ vi.mock('@/app/components/workflow', () => ({
       <div data-testid="workflow-inner-context">
         <button
           type="button"
-          onClick={() => onWorkflowDataUpdate?.({
-            nodes: [],
-            edges: [],
-            features: { file_upload: { enabled: true } },
-            conversation_variables: [{
-              id: 'conversation-1',
-              name: 'conversation-1',
-              value_type: ChatVarType.String,
-              value: '',
-              description: '',
-            }],
-            environment_variables: [{
-              id: 'env-1',
-              name: 'env-1',
-              value: '',
-              value_type: 'string',
-              description: '',
-            }],
-          })}
+          onClick={() =>
+            onWorkflowDataUpdate?.({
+              nodes: [],
+              edges: [],
+              features: { file_upload: { enabled: true } },
+              conversation_variables: [
+                {
+                  id: 'conversation-1',
+                  name: 'conversation-1',
+                  value_type: ChatVarType.String,
+                  value: '',
+                  description: '',
+                },
+              ],
+              environment_variables: [
+                {
+                  id: 'env-1',
+                  name: 'env-1',
+                  value: '',
+                  value_type: 'string',
+                  description: '',
+                },
+              ],
+            })
+          }
         >
           update-workflow-data
         </button>
         <button
           type="button"
-          onClick={() => onWorkflowDataUpdate?.({
-            nodes: [],
-            edges: [],
-            conversation_variables: [{
-              id: 'conversation-only',
-              name: 'conversation-only',
-              value_type: ChatVarType.String,
-              value: '',
-              description: '',
-            }],
-          })}
+          onClick={() =>
+            onWorkflowDataUpdate?.({
+              nodes: [],
+              edges: [],
+              conversation_variables: [
+                {
+                  id: 'conversation-only',
+                  name: 'conversation-only',
+                  value_type: ChatVarType.String,
+                  value: '',
+                  description: '',
+                },
+              ],
+            })
+          }
         >
           update-conversation-only
         </button>
-        <button
-          type="button"
-          onClick={() => onWorkflowDataUpdate?.({ nodes: [], edges: [] })}
-        >
+        <button type="button" onClick={() => onWorkflowDataUpdate?.({ nodes: [], edges: [] })}>
           update-empty-payload
         </button>
         {children}
@@ -214,9 +232,16 @@ vi.mock('@/app/components/workflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow-app/hooks', () => ({
-  useAvailableNodesMetaData: () => ({ nodes: [{ id: 'start' }], nodesMap: { start: { id: 'start' } } }),
+  useAvailableNodesMetaData: () => ({
+    nodes: [{ id: 'start' }],
+    nodesMap: { start: { id: 'start' } },
+  }),
   useConfigsMap: () => ({ flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } }),
   useDSL: () => ({ exportCheck: hookFns.exportCheck, handleExportDSL: hookFns.handleExportDSL }),
+  useDSLByCanEdit: () => ({
+    exportCheck: hookFns.exportCheck,
+    handleExportDSL: hookFns.handleExportDSL,
+  }),
   useGetRunAndTraceUrl: () => ({ getWorkflowRunAndTraceUrl: hookFns.getWorkflowRunAndTraceUrl }),
   useInspectVarsCrud: () => ({
     hasNodeInspectVars: hookFns.hasNodeInspectVars,
@@ -238,11 +263,24 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
     doSyncWorkflowDraft: hookFns.doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
   }),
+  useNodesSyncDraftByCanEdit: () => ({
+    doSyncWorkflowDraft: hookFns.doSyncWorkflowDraft,
+    syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
+  }),
   useSetWorkflowVarsWithValue: () => ({
     fetchInspectVars: hookFns.fetchInspectVars,
   }),
-  useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: hookFns.handleRefreshWorkflowDraft }),
+  useWorkflowRefreshDraft: () => ({
+    handleRefreshWorkflowDraft: hookFns.handleRefreshWorkflowDraft,
+  }),
   useWorkflowRun: () => ({
+    handleBackupDraft: hookFns.handleBackupDraft,
+    handleLoadBackupDraft: hookFns.handleLoadBackupDraft,
+    handleRestoreFromPublishedWorkflow: hookFns.handleRestoreFromPublishedWorkflow,
+    handleRun: hookFns.handleRun,
+    handleStopRun: hookFns.handleStopRun,
+  }),
+  useWorkflowRunByCanEdit: () => ({
     handleBackupDraft: hookFns.handleBackupDraft,
     handleLoadBackupDraft: hookFns.handleLoadBackupDraft,
     handleRestoreFromPublishedWorkflow: hookFns.handleRestoreFromPublishedWorkflow,
@@ -257,6 +295,47 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
     handleWorkflowTriggerWebhookRunInWorkflow: hookFns.handleWorkflowTriggerWebhookRunInWorkflow,
     handleWorkflowTriggerPluginRunInWorkflow: hookFns.handleWorkflowTriggerPluginRunInWorkflow,
     handleWorkflowRunAllTriggersInWorkflow: hookFns.handleWorkflowRunAllTriggersInWorkflow,
+  }),
+  useWorkflowStartRunByCanEdit: () => ({
+    handleStartWorkflowRun: hookFns.handleStartWorkflowRun,
+    handleWorkflowStartRunInChatflow: hookFns.handleWorkflowStartRunInChatflow,
+    handleWorkflowStartRunInWorkflow: hookFns.handleWorkflowStartRunInWorkflow,
+    handleWorkflowTriggerScheduleRunInWorkflow: hookFns.handleWorkflowTriggerScheduleRunInWorkflow,
+    handleWorkflowTriggerWebhookRunInWorkflow: hookFns.handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow: hookFns.handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow: hookFns.handleWorkflowRunAllTriggersInWorkflow,
+  }),
+}))
+
+vi.mock('@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas', () => ({
+  useWorkflowDraftGraphForCanvas: () => ({
+    getWorkflowDraftGraphForCanvas: (graph?: {
+      nodes?: unknown[]
+      edges?: unknown[]
+      viewport?: unknown
+    }) => ({
+      nodes: graph?.nodes?.length
+        ? graph.nodes
+        : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
+      edges: graph?.edges || [],
+      viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
+    }),
+  }),
+}))
+
+vi.mock('@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas', () => ({
+  useWorkflowDraftGraphForCanvas: () => ({
+    getWorkflowDraftGraphForCanvas: (graph?: {
+      nodes?: unknown[]
+      edges?: unknown[]
+      viewport?: unknown
+    }) => ({
+      nodes: graph?.nodes?.length
+        ? graph.nodes
+        : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
+      edges: graph?.edges || [],
+      viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
+    }),
   }),
 }))
 
@@ -278,6 +357,7 @@ describe('WorkflowMain', () => {
     collaborationListeners.workflowUpdate = null
     collaborationListeners.syncRequest = null
     mockFetchWorkflowDraft.mockReset()
+    useAppStore.setState({ appDetail: undefined })
   })
 
   it('should render the inner workflow context with children and forwarded graph props', () => {
@@ -285,13 +365,7 @@ describe('WorkflowMain', () => {
     const edges = [{ id: 'edge-1' }]
     const viewport = { x: 1, y: 2, zoom: 1.5 }
 
-    render(
-      <WorkflowMain
-        nodes={nodes as never}
-        edges={edges as never}
-        viewport={viewport}
-      />,
-    )
+    render(<WorkflowMain nodes={nodes as never} edges={edges as never} viewport={viewport} />)
 
     expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-children')).toBeInTheDocument()
@@ -303,47 +377,37 @@ describe('WorkflowMain', () => {
   })
 
   it('should update features and workflow variables when workflow data changes', () => {
-    render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
-    )
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
     fireEvent.click(screen.getByRole('button', { name: /update-workflow-data/i }))
 
-    expect(mockSetFeatures).toHaveBeenCalledWith(expect.objectContaining({
-      file: expect.objectContaining({ enabled: true }),
-    }))
-    expect(mockSetConversationVariables).toHaveBeenCalledWith([expect.objectContaining({ id: 'conversation-1' })])
-    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([expect.objectContaining({ id: 'env-1' })])
+    expect(mockSetFeatures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: expect.objectContaining({ enabled: true }),
+      }),
+    )
+    expect(mockSetConversationVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'conversation-1' }),
+    ])
+    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'env-1' }),
+    ])
   })
 
   it('should only update the workflow store slices present in the payload', () => {
-    render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
-    )
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
     fireEvent.click(screen.getByRole('button', { name: /update-conversation-only/i }))
 
-    expect(mockSetConversationVariables).toHaveBeenCalledWith([expect.objectContaining({ id: 'conversation-only' })])
+    expect(mockSetConversationVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'conversation-only' }),
+    ])
     expect(mockSetFeatures).not.toHaveBeenCalled()
     expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
   })
 
   it('should ignore empty workflow data updates', () => {
-    render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
-    )
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
     fireEvent.click(screen.getByRole('button', { name: /update-empty-payload/i }))
 
@@ -353,13 +417,7 @@ describe('WorkflowMain', () => {
   })
 
   it('should expose the composed workflow action hooks through hooksStore', () => {
-    render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
-    )
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
     expect(capturedContextProps?.hooksStore).toMatchObject({
       syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
@@ -373,7 +431,8 @@ describe('WorkflowMain', () => {
       handleStartWorkflowRun: hookFns.handleStartWorkflowRun,
       handleWorkflowStartRunInChatflow: hookFns.handleWorkflowStartRunInChatflow,
       handleWorkflowStartRunInWorkflow: hookFns.handleWorkflowStartRunInWorkflow,
-      handleWorkflowTriggerScheduleRunInWorkflow: hookFns.handleWorkflowTriggerScheduleRunInWorkflow,
+      handleWorkflowTriggerScheduleRunInWorkflow:
+        hookFns.handleWorkflowTriggerScheduleRunInWorkflow,
       handleWorkflowTriggerWebhookRunInWorkflow: hookFns.handleWorkflowTriggerWebhookRunInWorkflow,
       handleWorkflowTriggerPluginRunInWorkflow: hookFns.handleWorkflowTriggerPluginRunInWorkflow,
       handleWorkflowRunAllTriggersInWorkflow: hookFns.handleWorkflowRunAllTriggersInWorkflow,
@@ -386,21 +445,37 @@ describe('WorkflowMain', () => {
     })
   })
 
+  it('should pass view-layout ACL permission as comment-only workflow access', () => {
+    useAppStore.setState({
+      appDetail: {
+        permission_keys: [AppACLPermission.ViewLayout],
+      } as never,
+    })
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    expect(capturedContextProps?.hooksStore).toMatchObject({
+      accessControl: {
+        canEdit: false,
+        canComment: true,
+        canRun: false,
+      },
+    })
+  })
+
   it('passes collaboration props and tracks cursors when collaboration is enabled', () => {
     collaborationRuntime.isEnabled = true
     collaborationRuntime.isConnected = true
-    collaborationRuntime.onlineUsers = [{ user_id: 'u-1', username: 'Alice', avatar: '', sid: 'sid-1' }]
+    collaborationRuntime.onlineUsers = [
+      { user_id: 'u-1', username: 'Alice', avatar: '', sid: 'sid-1' },
+    ]
     collaborationRuntime.cursors = {
       'current-user': { x: 1, y: 2, userId: 'current-user', timestamp: 1 },
       'user-other': { x: 20, y: 30, userId: 'user-other', timestamp: 2 },
     }
 
     const { unmount } = render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
+      <WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />,
     )
 
     expect(collaborationRuntime.startCursorTracking).toHaveBeenCalled()
@@ -432,13 +507,7 @@ describe('WorkflowMain', () => {
       },
     })
 
-    render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
-    )
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
     expect(mockOnVarsAndFeaturesUpdate).toHaveBeenCalled()
     expect(mockOnWorkflowUpdate).toHaveBeenCalled()
@@ -457,6 +526,32 @@ describe('WorkflowMain', () => {
         nodes: [{ id: 'n-1' }],
         edges: [{ id: 'e-1' }],
         viewport: { x: 3, y: 4, zoom: 1.2 },
+      })
+    })
+  })
+
+  it('restores a local start placeholder for empty collaboration workflow updates', async () => {
+    collaborationRuntime.isEnabled = true
+    mockFetchWorkflowDraft.mockResolvedValue({
+      features: {},
+      conversation_variables: [],
+      environment_variables: [],
+      graph: {
+        nodes: [],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+    })
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    await collaborationListeners.workflowUpdate?.()
+
+    await waitFor(() => {
+      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
+        nodes: [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
       })
     })
   })

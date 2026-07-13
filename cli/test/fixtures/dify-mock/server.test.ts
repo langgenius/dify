@@ -55,11 +55,17 @@ describe('dify-mock fixture server', () => {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)
-    const body = await r.json() as {
-      workspaces: Array<{ id: string, name: string, role: string, status: string, current: boolean }>
+    const body = (await r.json()) as {
+      workspaces: Array<{
+        id: string
+        name: string
+        role: string
+        status: string
+        current: boolean
+      }>
     }
     expect(body.workspaces).toHaveLength(2)
-    expect(body.workspaces[0]?.id).toBe('ws-1')
+    expect(body.workspaces[0]?.id).toBe('550e8400-e29b-41d4-a716-446655440000')
     expect(body.workspaces[0]?.status).toBe('normal')
     expect(body.workspaces[0]?.current).toBe(true)
     expect(body.workspaces[1]?.current).toBe(false)
@@ -71,7 +77,7 @@ describe('dify-mock fixture server', () => {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)
-    const body = await r.json() as { workspaces: unknown[] }
+    const body = (await r.json()) as { workspaces: unknown[] }
     expect(body.workspaces).toHaveLength(0)
   })
 
@@ -80,7 +86,7 @@ describe('dify-mock fixture server', () => {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)
-    const body = await r.json() as {
+    const body = (await r.json()) as {
       subject_type: string
       account: { email: string } | null
       workspaces: Array<{ id: string }>
@@ -89,49 +95,61 @@ describe('dify-mock fixture server', () => {
     expect(body.subject_type).toBe('account')
     expect(body.account?.email).toBe('tester@dify.ai')
     expect(body.workspaces).toHaveLength(2)
-    expect(body.default_workspace_id).toBe('ws-1')
+    expect(body.default_workspace_id).toBe('550e8400-e29b-41d4-a716-446655440000')
   })
 
   it('GET /openapi/v1/apps respects ?mode filter', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps?workspace_id=ws-1&mode=workflow`, {
-      headers: { Authorization: 'Bearer dfoa_test' },
-    })
-    const body = await r.json() as { data: Array<{ mode: string }>, total: number }
+    const r = await fetch(
+      `${mock.url}/openapi/v1/apps?workspace_id=550e8400-e29b-41d4-a716-446655440000&mode=workflow`,
+      {
+        headers: { Authorization: 'Bearer dfoa_test' },
+      },
+    )
+    const body = (await r.json()) as { data: Array<{ mode: string }>; total: number }
     expect(body.data).toHaveLength(1)
     expect(body.data[0]?.mode).toBe('workflow')
     expect(body.total).toBe(1)
   })
 
   it('GET /openapi/v1/apps scopes by workspace_id', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps?workspace_id=ws-2`, {
-      headers: { Authorization: 'Bearer dfoa_test' },
-    })
-    const body = await r.json() as { data: Array<{ id: string }> }
+    const r = await fetch(
+      `${mock.url}/openapi/v1/apps?workspace_id=550e8400-e29b-41d4-a716-446655440001`,
+      {
+        headers: { Authorization: 'Bearer dfoa_test' },
+      },
+    )
+    const body = (await r.json()) as { data: Array<{ id: string }> }
     expect(body.data).toHaveLength(2)
-    expect(body.data.map(r => r.id).sort()).toEqual(['app-3', 'app-4'])
+    expect(body.data.map((r) => r.id).sort()).toEqual(['app-3', 'app-4'])
   })
 
-  it('GET /openapi/v1/apps/:id/describe returns 404 for unknown id', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/nope/describe?workspace_id=ws-1`, {
-      headers: { Authorization: 'Bearer dfoa_test' },
-    })
+  it('GET /openapi/v1/apps/:id returns 404 for unknown id', async () => {
+    const r = await fetch(
+      `${mock.url}/openapi/v1/apps/nope?workspace_id=550e8400-e29b-41d4-a716-446655440000`,
+      {
+        headers: { Authorization: 'Bearer dfoa_test' },
+      },
+    )
     expect(r.status).toBe(404)
   })
 
-  it('GET /openapi/v1/apps/:id/describe returns the app for known id', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/describe?workspace_id=ws-1`, {
-      headers: { Authorization: 'Bearer dfoa_test' },
-    })
+  it('GET /openapi/v1/apps/:id returns the app for known id', async () => {
+    const r = await fetch(
+      `${mock.url}/openapi/v1/apps/app-1?workspace_id=550e8400-e29b-41d4-a716-446655440000`,
+      {
+        headers: { Authorization: 'Bearer dfoa_test' },
+      },
+    )
     expect(r.status).toBe(200)
-    const body = await r.json() as { info: { id: string } }
+    const body = (await r.json()) as { info: { id: string } }
     expect(body.info.id).toBe('app-1')
   })
 
-  it('POST /openapi/v1/apps/:id/run returns SSE stream for chat app', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/run`, {
+  it('POST /openapi/v1/apps/:id:run returns SSE stream for chat app', async () => {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1:run`, {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer dfoa_test',
+        Authorization: 'Bearer dfoa_test',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ query: 'hi', inputs: {} }),
@@ -142,11 +160,11 @@ describe('dify-mock fixture server', () => {
     expect(text).toContain('"answer":"echo: "')
   })
 
-  it('POST /openapi/v1/apps/:id/run returns SSE stream for workflow app', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-2/run`, {
+  it('POST /openapi/v1/apps/:id:run returns SSE stream for workflow app', async () => {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-2:run`, {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer dfoa_test',
+        Authorization: 'Bearer dfoa_test',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ inputs: { x: 1 } }),
@@ -157,23 +175,33 @@ describe('dify-mock fixture server', () => {
     expect(text).toContain('"workflow_finished"')
   })
 
-  it('GET /openapi/v1/apps/:id/describe?fields=info returns slim payload', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/describe?workspace_id=ws-1&fields=info`, {
-      headers: { Authorization: 'Bearer dfoa_test' },
-    })
+  it('GET /openapi/v1/apps/:id?fields=info returns slim payload', async () => {
+    const r = await fetch(
+      `${mock.url}/openapi/v1/apps/app-1?workspace_id=550e8400-e29b-41d4-a716-446655440000&fields=info`,
+      {
+        headers: { Authorization: 'Bearer dfoa_test' },
+      },
+    )
     expect(r.status).toBe(200)
-    const body = await r.json() as { info: { id: string }, parameters: unknown, input_schema: unknown }
+    const body = (await r.json()) as {
+      info: { id: string }
+      parameters: unknown
+      input_schema: unknown
+    }
     expect(body.info.id).toBe('app-1')
     expect(body.parameters).toBeNull()
     expect(body.input_schema).toBeNull()
   })
 
-  it('GET /openapi/v1/apps/:id/describe full returns parameters when present', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/describe?workspace_id=ws-1`, {
-      headers: { Authorization: 'Bearer dfoa_test' },
-    })
+  it('GET /openapi/v1/apps/:id full returns parameters when present', async () => {
+    const r = await fetch(
+      `${mock.url}/openapi/v1/apps/app-1?workspace_id=550e8400-e29b-41d4-a716-446655440000`,
+      {
+        headers: { Authorization: 'Bearer dfoa_test' },
+      },
+    )
     expect(r.status).toBe(200)
-    const body = await r.json() as { parameters: { opening_statement: string } | null }
+    const body = (await r.json()) as { parameters: { opening_statement: string } | null }
     expect(body.parameters?.opening_statement).toBe('Hi, I am Greeter.')
   })
 
@@ -184,7 +212,7 @@ describe('dify-mock fixture server', () => {
       body: JSON.stringify({ client_id: 'difyctl', device_label: 'difyctl on host' }),
     })
     expect(r.status).toBe(200)
-    const body = await r.json() as Record<string, unknown>
+    const body = (await r.json()) as Record<string, unknown>
     expect(body.device_code).toBeDefined()
     expect(body.user_code).toBeDefined()
     expect(body.interval).toBeDefined()
@@ -197,7 +225,11 @@ describe('dify-mock fixture server', () => {
       body: JSON.stringify({ client_id: 'difyctl', device_code: 'devcode-1' }),
     })
     expect(r.status).toBe(200)
-    const body = await r.json() as { token: string, subject_type: string, account?: { email: string } }
+    const body = (await r.json()) as {
+      token: string
+      subject_type: string
+      account?: { email: string }
+    }
     expect(body.token).toMatch(/^dfoa_/)
     expect(body.subject_type).toBe('account')
     expect(body.account?.email).toBe('tester@dify.ai')
@@ -211,7 +243,7 @@ describe('dify-mock fixture server', () => {
       body: JSON.stringify({ device_code: 'devcode-1' }),
     })
     expect(r.status).toBe(200)
-    const body = await r.json() as { token: string, subject_type: string, subject_email: string }
+    const body = (await r.json()) as { token: string; subject_type: string; subject_email: string }
     expect(body.token).toMatch(/^dfoe_/)
     expect(body.subject_type).toBe('external_sso')
     expect(body.subject_email).toBe('sso@dify.ai')
@@ -225,7 +257,7 @@ describe('dify-mock fixture server', () => {
       body: JSON.stringify({ device_code: 'devcode-1' }),
     })
     expect(r.status).toBe(400)
-    const body = await r.json() as { error: string }
+    const body = (await r.json()) as { error: string }
     expect(body.error).toBe('access_denied')
   })
 
@@ -237,7 +269,7 @@ describe('dify-mock fixture server', () => {
       body: JSON.stringify({ device_code: 'devcode-1' }),
     })
     expect(r.status).toBe(400)
-    const body = await r.json() as { error: string }
+    const body = (await r.json()) as { error: string }
     expect(body.error).toBe('expired_token')
   })
 
@@ -249,7 +281,7 @@ describe('dify-mock fixture server', () => {
       body: JSON.stringify({ device_code: 'devcode-1' }),
     })
     expect(r.status).toBe(400)
-    const body = await r.json() as { error: string }
+    const body = (await r.json()) as { error: string }
     expect(body.error).toBe('slow_down')
   })
 

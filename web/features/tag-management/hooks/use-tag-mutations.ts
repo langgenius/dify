@@ -1,4 +1,4 @@
-import type { TagType } from '@/contract/console/tags'
+import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
 
@@ -15,35 +15,39 @@ export const useApplyTagBindingsMutation = () => {
   return useMutation({
     mutationKey: ['tag-bindings', 'apply'],
     mutationFn: async ({ currentTagIds, nextTagIds, targetId, type }: ApplyTagBindingsInput) => {
-      const addTagIds = nextTagIds.filter(tagId => !currentTagIds.includes(tagId))
-      const removeTagIds = currentTagIds.filter(tagId => !nextTagIds.includes(tagId))
+      const addTagIds = nextTagIds.filter((tagId) => !currentTagIds.includes(tagId))
+      const removeTagIds = currentTagIds.filter((tagId) => !nextTagIds.includes(tagId))
       const operations: Promise<unknown>[] = []
 
       if (addTagIds.length) {
-        operations.push(consoleClient.tags.bind({
-          body: {
-            tag_ids: addTagIds,
-            target_id: targetId,
-            type,
-          },
-        }))
+        operations.push(
+          consoleClient.tagBindings.post({
+            body: {
+              tag_ids: addTagIds,
+              target_id: targetId,
+              type,
+            },
+          }),
+        )
       }
 
       if (removeTagIds.length) {
-        operations.push(consoleClient.tags.unbind({
-          body: {
-            tag_ids: removeTagIds,
-            target_id: targetId,
-            type,
-          },
-        }))
+        operations.push(
+          consoleClient.tagBindings.remove.post({
+            body: {
+              tag_ids: removeTagIds,
+              target_id: targetId,
+              type,
+            },
+          }),
+        )
       }
 
       return Promise.all(operations)
     },
     onSettled: (_data, _error, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: consoleQuery.tags.list.key({
+        queryKey: consoleQuery.tags.get.key({
           type: 'query',
           input: {
             query: {

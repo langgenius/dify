@@ -1,7 +1,8 @@
-/* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
+/* oxlint-disable eslint-react/set-state-in-effect */
 import type { UseEmblaCarouselType } from 'embla-carousel-react'
 import { cn } from '@langgenius/dify-ui/cn'
 import Autoplay from 'embla-carousel-autoplay'
+import Fade from 'embla-carousel-fade'
 import useEmblaCarousel from 'embla-carousel-react'
 import * as React from 'react'
 
@@ -10,11 +11,11 @@ type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
 type CarouselOptions = UseCarouselParameters[0]
 type CarouselPlugin = UseCarouselParameters[1]
 
-type CarouselProps = {
+type CarouselProps = Readonly<{
   opts?: CarouselOptions
   plugins?: CarouselPlugin
   orientation?: 'horizontal' | 'vertical'
-}
+}>
 
 type CarouselContextValue = {
   carouselRef: ReturnType<typeof useEmblaCarousel>[0]
@@ -31,8 +32,7 @@ const CarouselContext = React.createContext<CarouselContextValue | null>(null)
 function useCarousel() {
   const context = React.useContext(CarouselContext)
 
-  if (!context)
-    throw new Error('useCarousel must be used within a <Carousel />')
+  if (!context) throw new Error('useCarousel must be used within a <Carousel />')
 
   return context
 }
@@ -67,12 +67,10 @@ const Carousel: TCarousel = React.forwardRef(
     }, [api])
 
     React.useEffect(() => {
-      if (!api)
-        return
+      if (!api) return
 
       const onSelect = (api: CarouselApi) => {
-        if (!api)
-          return
+        if (!api) return
 
         setSelectedIndex(api.selectedScrollSnap())
         setCanScrollPrev(api.canScrollPrev())
@@ -160,9 +158,10 @@ const CarouselItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLD
 )
 CarouselItem.displayName = 'CarouselItem'
 
-type CarouselActionProps = {
+type CarouselActionProps = Readonly<{
   children?: React.ReactNode
-} & Omit<React.HTMLAttributes<HTMLButtonElement>, 'disabled' | 'onClick'>
+}> &
+  Omit<React.HTMLAttributes<HTMLButtonElement>, 'disabled' | 'onClick'>
 
 const CarouselPrevious = React.forwardRef<HTMLButtonElement, CarouselActionProps>(
   ({ children, ...props }, ref) => {
@@ -215,6 +214,7 @@ CarouselDot.displayName = 'CarouselDot'
 
 const CarouselPlugins = {
   Autoplay,
+  Fade,
 }
 
 Carousel.Content = CarouselContent

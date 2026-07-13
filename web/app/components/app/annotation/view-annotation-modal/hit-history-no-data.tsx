@@ -11,7 +11,9 @@ const HitHistoryNoData: FC = () => {
       <div className="inline-block rounded-lg border border-divider-subtle p-3">
         <ClockFastForward className="size-5 text-text-tertiary" />
       </div>
-      <div className="system-sm-regular text-text-tertiary">{t('viewModal.noHitHistory', { ns: 'appAnnotation' })}</div>
+      <div className="system-sm-regular text-text-tertiary">
+        {t(($) => $['viewModal.noHitHistory'], { ns: 'appAnnotation' })}
+      </div>
     </div>
   )
 }

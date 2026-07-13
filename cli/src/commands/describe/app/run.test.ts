@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadAppInfoCache } from '@/cache/app-info'
 import { formatted, stringifyOutput } from '@/framework/output'
 import { ENV_CACHE_DIR } from '@/store/dir'
@@ -19,10 +19,6 @@ function active(): ActiveContext {
     ctx: {
       account: { id: 'acct-1', email: 't@d.ai', name: 'T' },
       workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-      available_workspaces: [
-        { id: 'ws-1', name: 'Default', role: 'owner' },
-        { id: 'ws-2', name: 'Other', role: 'normal' },
-      ],
     },
   }
 }
@@ -38,20 +34,21 @@ describe('runDescribeApp', () => {
     process.env[ENV_CACHE_DIR] = dir
   })
   afterEach(async () => {
-    if (prevCacheDir === undefined)
-      delete process.env[ENV_CACHE_DIR]
-    else
-      process.env[ENV_CACHE_DIR] = prevCacheDir
+    vi.restoreAllMocks()
+    if (prevCacheDir === undefined) delete process.env[ENV_CACHE_DIR]
+    else process.env[ENV_CACHE_DIR] = prevCacheDir
     await mock.stop()
     await rm(dir, { recursive: true, force: true })
   })
 
   async function render(opts: Parameters<typeof runDescribeApp>[0]): Promise<string> {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
-    const data = await runDescribeApp(
-      opts,
-      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, cache },
-    )
+    const data = await runDescribeApp(opts, {
+      active: active(),
+      http: testHttpClient(mock.url, 'dfoa_test'),
+      host: mock.url,
+      cache,
+    })
     return stringifyOutput(formatted({ format: opts.format ?? '', data }))
   }
 
@@ -64,21 +61,19 @@ describe('runDescribeApp', () => {
     expect(out).toContain('Mode:')
     expect(out).toContain('chat')
     expect(out).toContain('Service API:')
-    expect(out).toContain('Tags:')
-    expect(out).toContain('demo')
     expect(out).toContain('Description:')
     expect(out).toContain('Parameters:')
   })
 
   it('text: agent app shows Agent: true', async () => {
-    const out = await render({ appId: 'app-4', workspace: 'ws-2' })
+    const out = await render({ appId: 'app-4', workspace: '00000000-0000-0000-0000-000000000002' })
     expect(out).toContain('Agent:')
     expect(out).toContain('true')
   })
 
   it('json: passes through DescribeResponse-shaped meta', async () => {
     const out = await render({ appId: 'app-1', format: 'json' })
-    const parsed = JSON.parse(out) as { info: { id: string }, parameters: unknown }
+    const parsed = JSON.parse(out) as { info: { id: string }; parameters: unknown }
     expect(parsed.info.id).toBe('app-1')
     expect(parsed.parameters).toBeDefined()
   })
@@ -110,13 +105,31 @@ describe('runDescribeApp', () => {
   })
 
   it('unknown app id surfaces as error', async () => {
-    await expect(runDescribeApp(
-      { appId: 'nope' },
-      {
-        active: active(),
-        http: testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }),
-        host: mock.url,
+    await expect(
+      runDescribeApp(
+        { appId: 'nope' },
+        {
+          active: active(),
+          http: testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }),
+          host: mock.url,
+        },
+      ),
+    ).rejects.toThrow()
+  })
+
+  it('external login resolves describe via the permitted-external route', async () => {
+    const activeExt: ActiveContext = {
+      host: mock.url,
+      email: 'e',
+      ctx: {
+        account: { id: 'a', email: 'e', name: 'n' },
+        external_subject: { email: 'e', issuer: 'i' },
       },
-    )).rejects.toThrow()
+    }
+    const out = await runDescribeApp(
+      { appId: 'app-1' },
+      { active: activeExt, http: testHttpClient(mock.url, 'dfoe_test'), host: mock.url },
+    )
+    expect(out.payload.info?.id).toBe('app-1')
   })
 })

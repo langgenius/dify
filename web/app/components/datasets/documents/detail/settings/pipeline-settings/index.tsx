@@ -20,19 +20,22 @@ type PipelineSettingsProps = {
   documentId: string
 }
 
-const PipelineSettings = ({
-  datasetId,
-  documentId,
-}: PipelineSettingsProps) => {
+const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(undefined)
-  const pipelineId = useDatasetDetailContextWithSelector(state => state.dataset?.pipeline_id)
+  const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(
+    undefined,
+  )
+  const pipelineId = useDatasetDetailContextWithSelector((state) => state.dataset?.pipeline_id)
 
   const isPreview = useRef(false)
   const formRef = useRef<any>(null)
 
-  const { data: lastRunData, isFetching: isFetchingLastRunData, isError } = usePipelineExecutionLog({
+  const {
+    data: lastRunData,
+    isFetching: isFetchingLastRunData,
+    isError,
+  } = usePipelineExecutionLog({
     dataset_id: datasetId,
     document_id: documentId,
   })
@@ -92,50 +95,69 @@ const PipelineSettings = ({
 
   const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
 
-  const handlePreviewChunks = useCallback(async (data: Record<string, any>) => {
-    if (!lastRunData)
-      return
-    const datasourceInfoList: Record<string, any>[] = []
-    const documentInfo = lastRunData.datasource_info
-    datasourceInfoList.push(documentInfo)
-    await runPublishedPipeline({
-      pipeline_id: pipelineId!,
-      inputs: data,
-      start_node_id: lastRunData.datasource_node_id,
-      datasource_type: lastRunData.datasource_type,
-      datasource_info_list: datasourceInfoList,
-      is_preview: true,
-    }, {
-      onSuccess: (res) => {
-        setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
-      },
-    })
-  }, [lastRunData, pipelineId, runPublishedPipeline])
+  const handlePreviewChunks = useCallback(
+    async (data: Record<string, any>) => {
+      if (!lastRunData) return
+      const datasourceInfoList: Record<string, any>[] = []
+      const documentInfo = lastRunData.datasource_info
+      datasourceInfoList.push(documentInfo)
+      await runPublishedPipeline(
+        {
+          pipeline_id: pipelineId!,
+          inputs: data,
+          start_node_id: lastRunData.datasource_node_id,
+          datasource_type: lastRunData.datasource_type,
+          datasource_info_list: datasourceInfoList,
+          is_preview: true,
+        },
+        {
+          onSuccess: (res) => {
+            setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
+          },
+        },
+      )
+    },
+    [lastRunData, pipelineId, runPublishedPipeline],
+  )
 
   const invalidDocumentList = useInvalidDocumentList(datasetId)
   const invalidDocumentDetail = useInvalidDocumentDetail()
-  const handleProcess = useCallback(async (data: Record<string, any>) => {
-    if (!lastRunData)
-      return
-    const datasourceInfoList: Record<string, any>[] = []
-    const documentInfo = lastRunData.datasource_info
-    datasourceInfoList.push(documentInfo)
-    await runPublishedPipeline({
-      pipeline_id: pipelineId!,
-      inputs: data,
-      start_node_id: lastRunData.datasource_node_id,
-      datasource_type: lastRunData.datasource_type,
-      datasource_info_list: datasourceInfoList,
-      original_document_id: documentId,
-      is_preview: false,
-    }, {
-      onSuccess: () => {
-        invalidDocumentList()
-        invalidDocumentDetail()
-        push(`/datasets/${datasetId}/documents`)
-      },
-    })
-  }, [datasetId, documentId, invalidDocumentDetail, invalidDocumentList, lastRunData, pipelineId, push, runPublishedPipeline])
+  const handleProcess = useCallback(
+    async (data: Record<string, any>) => {
+      if (!lastRunData) return
+      const datasourceInfoList: Record<string, any>[] = []
+      const documentInfo = lastRunData.datasource_info
+      datasourceInfoList.push(documentInfo)
+      await runPublishedPipeline(
+        {
+          pipeline_id: pipelineId!,
+          inputs: data,
+          start_node_id: lastRunData.datasource_node_id,
+          datasource_type: lastRunData.datasource_type,
+          datasource_info_list: datasourceInfoList,
+          original_document_id: documentId,
+          is_preview: false,
+        },
+        {
+          onSuccess: () => {
+            invalidDocumentList()
+            invalidDocumentDetail()
+            push(`/datasets/${datasetId}/documents`)
+          },
+        },
+      )
+    },
+    [
+      datasetId,
+      documentId,
+      invalidDocumentDetail,
+      invalidDocumentList,
+      lastRunData,
+      pipelineId,
+      push,
+      runPublishedPipeline,
+    ],
+  )
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false
@@ -147,29 +169,31 @@ const PipelineSettings = ({
     formRef.current?.submit()
   }, [])
 
-  const handleSubmit = useCallback((data: Record<string, any>) => {
-    if (isPreview.current)
-      handlePreviewChunks(data)
-    else
-      handleProcess(data)
-  }, [handlePreviewChunks, handleProcess])
+  const handleSubmit = useCallback(
+    (data: Record<string, any>) => {
+      if (isPreview.current) handlePreviewChunks(data)
+      else handleProcess(data)
+    },
+    [handlePreviewChunks, handleProcess],
+  )
 
   if (isFetchingLastRunData) {
-    return (
-      <Loading type="app" />
-    )
+    return <Loading type="app" />
   }
 
   if (isError)
-    return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
+    return (
+      <AppUnavailable
+        code={500}
+        unknownReason={t(($) => $['error.unavailable'], { ns: 'datasetCreation' }) as string}
+      />
+    )
 
   return (
-    <div
-      className="relative flex h-[calc(100vh-56px)] min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle"
-    >
+    <div className="relative flex h-[calc(100vh-56px)] min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
       <div className="h-full min-w-0 flex-1">
         <div className="flex h-full flex-col px-14">
-          <LeftHeader title={t('documentSettings.title', { ns: 'datasetPipeline' })} />
+          <LeftHeader title={t(($) => $['documentSettings.title'], { ns: 'datasetPipeline' })} />
           <div className="grow overflow-y-auto">
             <ProcessDocuments
               ref={formRef}

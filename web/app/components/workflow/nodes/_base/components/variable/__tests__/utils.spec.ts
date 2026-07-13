@@ -1,12 +1,19 @@
+import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vitest'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
-import { BlockEnum, EditionType, PromptRole } from '@/app/components/workflow/types'
+import {
+  BlockEnum,
+  EditionType,
+  InputVarType,
+  PromptRole,
+  VarType,
+} from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
-import { getNodeUsedVars, updateNodeVars } from '../utils'
+import { getNodeUsedVars, toNodeAvailableVars, updateNodeVars } from '../utils'
 
 const createNode = <T>(data: Node<T>['data']): Node<T> => ({
   id: 'node-1',
@@ -42,6 +49,89 @@ const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
 })
 
 describe('variable utils', () => {
+  describe('toNodeAvailableVars', () => {
+    it('uses Agent v2 default declared outputs for agent nodes', () => {
+      const node = createNode<AgentV2NodeType>({
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        agent_node_kind: 'dify_agent',
+        version: '2',
+      })
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [node],
+        isChatMode: false,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            nodeId: 'node-1',
+            vars: [
+              { variable: 'text', type: VarType.string },
+              { variable: 'files', type: VarType.arrayFile },
+              { variable: 'json', type: VarType.object },
+            ],
+          }),
+        ]),
+      )
+      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).not.toContainEqual({
+        variable: 'usage',
+        type: VarType.object,
+      })
+    })
+
+    it('uses Agent v2 declared outputs from graph data', () => {
+      const node = createNode<AgentV2NodeType>({
+        type: BlockEnum.AgentV2,
+        title: 'Agent',
+        desc: '',
+        agent_node_kind: 'dify_agent',
+        agent_declared_outputs: [
+          {
+            name: 'summary',
+            type: 'string',
+            description: 'Short summary',
+          },
+          {
+            name: 'attachments',
+            type: 'array',
+            array_item: {
+              type: 'file',
+            },
+          },
+        ],
+        version: '2',
+      })
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [node],
+        isChatMode: false,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            nodeId: 'node-1',
+            vars: [
+              { variable: 'summary', type: VarType.string },
+              { variable: 'attachments', type: VarType.arrayFile },
+            ],
+          }),
+        ]),
+      )
+      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).not.toContainEqual({
+        variable: 'text',
+        type: VarType.string,
+      })
+    })
+  })
+
   describe('getNodeUsedVars', () => {
     it('should read variables from llm jinja prompt text', () => {
       const node = createNode<LLMNodeType>(
@@ -62,7 +152,26 @@ describe('variable utils', () => {
         title: 'Human Input',
         desc: '',
         form_content: '',
-        inputs: [],
+        inputs: [
+          {
+            type: InputVarType.paragraph,
+            output_variable_name: 'summary',
+            default: {
+              type: 'variable',
+              selector: ['conversation', 'memory'],
+              value: '',
+            },
+          },
+          {
+            type: InputVarType.select,
+            output_variable_name: 'decision',
+            option_source: {
+              type: 'variable',
+              selector: ['env', 'OPTIONS'],
+              value: [],
+            },
+          },
+        ],
         user_actions: [],
         timeout: 1,
         timeout_unit: 'day',
@@ -84,8 +193,23 @@ describe('variable utils', () => {
       expect(getNodeUsedVars(node)).toEqual(
         expect.arrayContaining([
           ['env', 'API_KEY'],
+          ['conversation', 'memory'],
+          ['env', 'OPTIONS'],
         ]),
       )
+    })
+
+    it('should read variables from agent task', () => {
+      const node = createNode<AgentV2NodeType>({
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        agent_node_kind: 'dify_agent',
+        agent_task: 'Clarify {{#start.tender#}}',
+        version: '2',
+      })
+
+      expect(getNodeUsedVars(node)).toContainEqual(['start', 'tender'])
     })
   })
 
@@ -123,13 +247,47 @@ describe('variable utils', () => {
       })
     })
 
+    it('should replace agent task references', () => {
+      const node = createNode<AgentV2NodeType>({
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        agent_node_kind: 'dify_agent',
+        agent_task: 'Clarify {{#start.tender#}}',
+        version: '2',
+      })
+
+      const updatedNode = updateNodeVars(node, ['start', 'tender'], ['start', 'question'])
+
+      expect((updatedNode.data as AgentV2NodeType).agent_task).toBe('Clarify {{#start.question#}}')
+    })
+
     it('should replace human input email template references', () => {
       const node = createNode<HumanInputNodeType>({
         type: BlockEnum.HumanInput,
         title: 'Human Input',
         desc: '',
         form_content: '',
-        inputs: [],
+        inputs: [
+          {
+            type: InputVarType.paragraph,
+            output_variable_name: 'summary',
+            default: {
+              type: 'variable',
+              selector: ['env', 'API_KEY'],
+              value: '',
+            },
+          },
+          {
+            type: InputVarType.select,
+            output_variable_name: 'decision',
+            option_source: {
+              type: 'variable',
+              selector: ['env', 'API_KEY'],
+              value: [],
+            },
+          },
+        ],
         user_actions: [],
         timeout: 1,
         timeout_unit: 'day',
@@ -153,6 +311,16 @@ describe('variable utils', () => {
       expect((updatedNode.data as HumanInputNodeType).delivery_methods[0]?.config).toMatchObject({
         subject: 'Subject {{#conversation.memory#}}',
         body: 'Body {{#env.RENAMED_KEY#}}',
+      })
+      expect((updatedNode.data as HumanInputNodeType).inputs[0]).toMatchObject({
+        default: {
+          selector: ['env', 'RENAMED_KEY'],
+        },
+      })
+      expect((updatedNode.data as HumanInputNodeType).inputs[1]).toMatchObject({
+        option_source: {
+          selector: ['env', 'RENAMED_KEY'],
+        },
       })
     })
   })

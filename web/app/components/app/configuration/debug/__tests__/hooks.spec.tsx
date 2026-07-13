@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { act, renderHook } from '@testing-library/react'
 import { AgentStrategy } from '@/types/app'
 import {
@@ -65,6 +65,33 @@ describe('configuration debug hooks', () => {
     ])
   })
 
+  it('should replace malformed stored settings with a valid update', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    localStorage.setItem('app-debug-with-single-or-multiple-models', '{invalid')
+
+    try {
+      const { result } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
+
+      expect(result.current.debugWithMultipleModel).toBe(false)
+      expect(result.current.multipleModelConfigs).toEqual([])
+
+      act(() => {
+        result.current.handleMultipleModelConfigsChange(true, [])
+      })
+
+      expect(
+        JSON.parse(localStorage.getItem('app-debug-with-single-or-multiple-models') || '{}'),
+      ).toEqual({
+        'app-1': {
+          multiple: true,
+          configs: [],
+        },
+      })
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
   it('should persist multiple-model debug settings in local storage', () => {
     const { result } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
 
@@ -81,7 +108,9 @@ describe('configuration debug hooks', () => {
 
     expect(result.current.debugWithMultipleModel).toBe(true)
     expect(result.current.multipleModelConfigs).toHaveLength(1)
-    expect(JSON.parse(localStorage.getItem('app-debug-with-single-or-multiple-models') || '{}')).toEqual({
+    expect(
+      JSON.parse(localStorage.getItem('app-debug-with-single-or-multiple-models') || '{}'),
+    ).toEqual({
       'app-1': {
         multiple: true,
         configs: [
@@ -92,6 +121,33 @@ describe('configuration debug hooks', () => {
             parameters: { temperature: 0.7 },
           },
         ],
+      },
+    })
+  })
+
+  it('should preserve settings for other apps when persisting an update', () => {
+    localStorage.setItem('app-debug-with-single-or-multiple-models', JSON.stringify({
+      'app-2': {
+        multiple: false,
+        configs: [],
+      },
+    }))
+    const { result } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
+
+    act(() => {
+      result.current.handleMultipleModelConfigsChange(true, [])
+    })
+
+    expect(
+      JSON.parse(localStorage.getItem('app-debug-with-single-or-multiple-models') || '{}'),
+    ).toEqual({
+      'app-2': {
+        multiple: false,
+        configs: [],
+      },
+      'app-1': {
+        multiple: true,
+        configs: [],
       },
     })
   })
@@ -139,13 +195,15 @@ describe('configuration debug hooks', () => {
 
     const { result } = renderHook(() => useConfigFromDebugContext())
 
-    expect(result.current).toEqual(expect.objectContaining({
-      appId: 'app-1',
-      dataset_query_variable: '',
-      opening_statement: 'hello',
-      pre_prompt: 'hello {{name}}',
-      suggested_questions: ['how are you?'],
-    }))
+    expect(result.current).toEqual(
+      expect.objectContaining({
+        appId: 'app-1',
+        dataset_query_variable: '',
+        opening_statement: 'hello',
+        pre_prompt: 'hello {{name}}',
+        suggested_questions: ['how are you?'],
+      }),
+    )
     expect(result.current.agent_mode?.strategy).toBe(AgentStrategy.functionCall)
     expect(result.current.dataset_configs?.datasets?.datasets).toEqual([
       { dataset: { enabled: true, id: 'dataset-1' } },
