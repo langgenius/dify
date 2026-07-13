@@ -8,6 +8,7 @@ import { useWorkflowGeneratorStore } from '../store'
 const mockGenerateWorkflow = vi.fn()
 const mockGenerateWorkflowStream = vi.fn()
 const mockFetchSuggestions = vi.fn().mockResolvedValue({ suggestions: [] })
+const mockFetchWorkflowDraft = vi.fn()
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
@@ -52,7 +53,7 @@ vi.mock('@/service/workflow-generator', () => ({
 }))
 
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: vi.fn(),
+  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
 }))
 
 describe('WorkflowGeneratorModal', () => {
@@ -178,6 +179,54 @@ describe('WorkflowGeneratorModal', () => {
   })
 
   describe('Generation result', () => {
+    it('should include the current draft graph when refining a workflow', async () => {
+      const user = userEvent.setup()
+      const currentGraph = {
+        nodes: [
+          {
+            id: 'start',
+            type: 'custom',
+            position: { x: 0, y: 0 },
+            data: { type: 'start', title: 'Start' },
+          },
+        ],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      }
+      mockFetchWorkflowDraft.mockResolvedValue({ graph: currentGraph })
+      mockGenerateWorkflowStream.mockImplementation(
+        (_body: unknown, callbacks: GenerateWorkflowStreamCallbacks) => {
+          callbacks.onResult?.({
+            errors: [{ code: 'MODEL_ERROR', detail: 'Stop after capturing the request' }],
+            graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+          })
+        },
+      )
+      useWorkflowGeneratorStore.setState({
+        intent: 'refine',
+        currentAppId: 'app-1',
+        currentAppMode: 'workflow',
+      })
+      render(<WorkflowGeneratorModal />)
+
+      await user.type(
+        screen.getByRole('textbox', { name: /workflowGenerator\.instruction/i }),
+        'Improve this workflow',
+      )
+      const generateButton = screen.getByRole('button', {
+        name: /workflowGenerator\.generate/i,
+      })
+      await waitFor(() => expect(generateButton).toBeEnabled())
+      await user.click(generateButton)
+
+      await waitFor(() => {
+        expect(mockGenerateWorkflowStream).toHaveBeenCalledWith(
+          expect.objectContaining({ current_graph: currentGraph }),
+          expect.any(Object),
+        )
+      })
+    })
+
     it('should show the generated app identity', async () => {
       const user = userEvent.setup()
       mockGenerateWorkflowStream.mockImplementation(
