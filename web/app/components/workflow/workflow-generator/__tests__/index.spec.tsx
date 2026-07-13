@@ -95,6 +95,32 @@ describe('WorkflowGeneratorModal', () => {
   })
 
   describe('Generation errors', () => {
+    it('should surface an invalid schema error when generation returns an empty graph', async () => {
+      const user = userEvent.setup()
+      mockGenerateWorkflowStream.mockImplementation(
+        (_body: unknown, callbacks: GenerateWorkflowStreamCallbacks) => {
+          callbacks.onResult?.({
+            graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+          })
+        },
+      )
+      render(<WorkflowGeneratorModal />)
+
+      const instruction = screen.getByRole('textbox', {
+        name: /workflowGenerator\.instruction/i,
+      })
+      await user.type(instruction, 'Build a researched answer')
+      const generateButton = screen.getByRole('button', {
+        name: /workflowGenerator\.generate/i,
+      })
+      await waitFor(() => expect(generateButton).toBeEnabled())
+      await user.click(generateButton)
+
+      expect(
+        await screen.findByText(/workflowGenerator\.errors\.INVALID_SCHEMA/i),
+      ).toBeInTheDocument()
+    })
+
     it('should localize every structured generation error', async () => {
       const user = userEvent.setup()
       const errorCodes: WorkflowGenerateErrorResponse['code'][] = [
