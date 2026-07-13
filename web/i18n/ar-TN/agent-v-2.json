@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "قم بتحميل ملف .zip أو .skill.",
   "agentDetail.configure.skills.upload.success": "تم تحميل المهارة.",
   "agentDetail.configure.skills.upload.title": "تحميل مهارة",
+  "agentDetail.configure.skills.upload.warning.files": "إذا كنت تحتاج فقط إلى استخدام ملفات Markdown، فحمّلها إلى قسم الملفات وأشر إليها في الموجّه الخاص بك.",
+  "agentDetail.configure.skills.upload.warning.specification": "يجب أن تتوافق المهارات التي يتم تحميلها مع <specificationLink>مواصفات Agent Skills</specificationLink>.",
   "agentDetail.configure.title": "تكوين",
   "agentDetail.configure.tools.add": "إضافة أداة",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "للمطورين",
