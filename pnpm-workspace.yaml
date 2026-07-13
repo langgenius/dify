@@ -166,7 +166,6 @@ catalog:
   eslint-plugin-hyoban: 0.14.1
   eslint-plugin-jsdoc: 63.0.13
   eslint-plugin-jsonc: 3.3.0
-  eslint-plugin-jsx-a11y: 6.10.2
   eslint-plugin-markdown-preferences: 0.41.1
   eslint-plugin-n: 18.2.2
   eslint-plugin-no-barrel-files: 1.3.1

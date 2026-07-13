@@ -32,7 +32,6 @@
     "eslint-plugin-hyoban": "catalog:",
     "eslint-plugin-jsdoc": "catalog:",
     "eslint-plugin-jsonc": "catalog:",
-    "eslint-plugin-jsx-a11y": "catalog:",
     "eslint-plugin-markdown-preferences": "catalog:",
     "eslint-plugin-n": "catalog:",
     "eslint-plugin-no-barrel-files": "catalog:",
