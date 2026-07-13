@@ -611,7 +611,7 @@ def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch
     archive_storage.delete_object.assert_called_once_with("tenant-1/app_id=snippet-1/run.json")
 
 
-def test_workflow_run_queries_delegate_to_repositories() -> None:
+def test_workflow_run_queries_delegate_to_repositories(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetService.__new__(SnippetService)
     workflow_run_repo = SimpleNamespace(
         get_paginated_workflow_runs=Mock(return_value=SimpleNamespace(data=[])),
@@ -624,12 +624,13 @@ def test_workflow_run_queries_delegate_to_repositories() -> None:
     service._workflow_run_repo = workflow_run_repo
     service._node_execution_service_repo = node_execution_repo
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    expected_traces = [SimpleNamespace(id="node-execution-1:retry:1"), SimpleNamespace(id="node-execution-1")]
+    mock_assemble = Mock(return_value=expected_traces)
+    monkeypatch.setattr("services.snippet_service.assemble_workflow_node_execution_traces", mock_assemble)
 
     assert service.get_snippet_workflow_runs(snippet=snippet, args={"limit": "5", "last_id": "run-0"}).data == []
     assert service.get_snippet_workflow_run(snippet=snippet, run_id="run-1").id == "run-1"
-    assert service.get_snippet_workflow_run_node_executions(snippet=snippet, run_id="run-1")[0].id == (
-        "node-execution-1"
-    )
+    assert service.get_snippet_workflow_run_node_executions(snippet=snippet, run_id="run-1") == expected_traces
     assert (
         service.get_snippet_node_last_run(
             snippet=snippet,
@@ -648,6 +649,9 @@ def test_workflow_run_queries_delegate_to_repositories() -> None:
         tenant_id="tenant-1",
         app_id="snippet-1",
         workflow_run_id="run-1",
+    )
+    mock_assemble.assert_called_once_with(
+        node_execution_repo.get_executions_by_workflow_run.return_value, node_execution_repo
     )
     node_execution_repo.get_node_last_execution.assert_called_once_with(
         tenant_id="tenant-1",
