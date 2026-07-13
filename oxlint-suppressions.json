@@ -4249,7 +4249,7 @@
   },
   "web/app/components/tools/edit-custom-collection-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
-      "count": 4
+      "count": 1
     },
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
