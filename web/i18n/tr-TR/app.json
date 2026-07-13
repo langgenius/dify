@@ -147,6 +147,7 @@
   "maxActiveRequestsTip": "Her uygulama için maksimum eşzamanlı aktif istek sayısı (sınırsız için 0)",
   "mermaid.classic": "Klasik",
   "mermaid.handDrawn": "Elle çizilmiş",
+  "mermaid.waitForCompletion": "Diyagram kodunun tamamlanması bekleniyor...",
   "newApp.Cancel": "İptal",
   "newApp.Confirm": "Onayla",
   "newApp.Create": "Oluştur",

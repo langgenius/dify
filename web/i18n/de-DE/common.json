@@ -288,7 +288,6 @@
   "menus.explore": "Erkunden",
   "menus.exploreMarketplace": "Marketplace erkunden",
   "menus.plugins": "Integrationen",
-  "menus.roster": "Agent",
   "menus.status": "Beta",
   "menus.tools": "Werkzeuge",
   "model.capabilities": "Multimodale Fähigkeiten",
@@ -597,6 +596,8 @@
   "voiceInput.notAllow": "Mikrofon nicht autorisiert",
   "voiceInput.speaking": "Sprechen Sie jetzt...",
   "voiceInput.start": "Spracheingabe",
+  "voiceInput.starting": "Mikrofon wird gestartet...",
+  "voiceInput.stop": "Aufnahme stoppen",
   "workflowAsToolPage.description": "Wandle jeden veröffentlichten Workflow in ein wiederverwendbares Tool um. Nutze es in mehreren Apps, um modular zu bleiben und Wiederholungen zu vermeiden.",
   "you": "Du"
 }

@@ -5,30 +5,42 @@ import StepTwoContent from '../step-two-content'
 
 // Mock ProcessDocuments component as it has complex hook dependencies
 vi.mock('../../process-documents', () => ({
-  default: vi.fn().mockImplementation(({
-    dataSourceNodeId,
-    isRunning,
-    onProcess,
-    onPreview,
-    onSubmit,
-    onBack,
-  }: {
-    dataSourceNodeId: string
-    isRunning: boolean
-    onProcess: () => void
-    onPreview: () => void
-    onSubmit: (data: Record<string, unknown>) => void
-    onBack: () => void
-  }) => (
-    <div data-testid="process-documents">
-      <span data-testid="data-source-node-id">{dataSourceNodeId}</span>
-      <span data-testid="is-running">{String(isRunning)}</span>
-      <button data-testid="process-btn" onClick={onProcess}>Process</button>
-      <button data-testid="preview-btn" onClick={onPreview}>Preview</button>
-      <button data-testid="submit-btn" onClick={() => onSubmit({ key: 'value' })}>Submit</button>
-      <button data-testid="back-btn" onClick={onBack}>Back</button>
-    </div>
-  )),
+  default: vi
+    .fn()
+    .mockImplementation(
+      ({
+        dataSourceNodeId,
+        isRunning,
+        onProcess,
+        onPreview,
+        onSubmit,
+        onBack,
+      }: {
+        dataSourceNodeId: string
+        isRunning: boolean
+        onProcess: () => void
+        onPreview: () => void
+        onSubmit: (data: Record<string, unknown>) => void
+        onBack: () => void
+      }) => (
+        <div data-testid="process-documents">
+          <span data-testid="data-source-node-id">{dataSourceNodeId}</span>
+          <span data-testid="is-running">{String(isRunning)}</span>
+          <button data-testid="process-btn" onClick={onProcess}>
+            Process
+          </button>
+          <button data-testid="preview-btn" onClick={onPreview}>
+            Preview
+          </button>
+          <button data-testid="submit-btn" onClick={() => onSubmit({ key: 'value' })}>
+            Submit
+          </button>
+          <button data-testid="back-btn" onClick={onBack}>
+            Back
+          </button>
+        </div>
+      ),
+    ),
 }))
 
 describe('StepTwoContent', () => {

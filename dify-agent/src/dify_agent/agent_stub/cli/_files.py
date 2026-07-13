@@ -143,6 +143,7 @@ def download_file_from_environment(
         url=environment.url,
         auth_jwe=environment.auth_jwe,
         file=file_mapping,
+        for_external=False,
     )
     if not hasattr(download_request, "filename") or not isinstance(download_request.filename, str):
         raise AgentStubTransferError("signed file download response is missing filename")
@@ -207,8 +208,10 @@ def _request_uploaded_tool_file_download_url(*, url: str, auth_jwe: str, referen
             file=AgentStubFileMapping(transfer_method="tool_file", reference=reference),
         ),
     )
+    if not hasattr(download_request, "download_url") or not isinstance(download_request.download_url, str):
+        raise AgentStubTransferError("signed file download response is missing download_url")
     download_url = download_request.download_url
-    if not isinstance(download_url, str) or not download_url:
+    if not download_url:
         raise AgentStubTransferError("signed file download response is missing download_url")
     return download_url
 

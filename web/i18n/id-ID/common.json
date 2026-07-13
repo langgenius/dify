@@ -288,7 +288,6 @@
   "menus.explore": "Menjelajahi",
   "menus.exploreMarketplace": "Jelajahi Marketplace",
   "menus.plugins": "Integrasi",
-  "menus.roster": "Agent",
   "menus.status": "beta",
   "menus.tools": "Perkakas",
   "model.capabilities": "Kemampuan MultiModal",
@@ -597,6 +596,8 @@
   "voiceInput.notAllow": "mikrofon tidak diizinkan",
   "voiceInput.speaking": "Bicaralah sekarang...",
   "voiceInput.start": "Input suara",
+  "voiceInput.starting": "Memulai mikrofon...",
+  "voiceInput.stop": "Hentikan rekaman",
   "workflowAsToolPage.description": "Ubah workflow yang telah dipublikasikan menjadi alat yang dapat digunakan kembali. Gunakan di beberapa aplikasi agar build tetap modular dan tidak berulang.",
   "you": "Kamu"
 }

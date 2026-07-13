@@ -288,7 +288,6 @@
   "menus.explore": "Eksploruj",
   "menus.exploreMarketplace": "Zapoznaj się z Marketplace",
   "menus.plugins": "Integracjay",
-  "menus.roster": "Agent",
   "menus.status": "beta",
   "menus.tools": "Narzędzia",
   "model.capabilities": "Możliwości multimodalne",
@@ -597,6 +596,8 @@
   "voiceInput.notAllow": "mikrofon nieautoryzowany",
   "voiceInput.speaking": "Mów teraz...",
   "voiceInput.start": "Wprowadzanie głosowe",
+  "voiceInput.starting": "Uruchamianie mikrofonu...",
+  "voiceInput.stop": "Zatrzymaj nagrywanie",
   "workflowAsToolPage.description": "Zamień dowolny opublikowany workflow w narzędzie wielokrotnego użytku. Używaj go w wielu aplikacjach, aby zachować modułowość i unikać powtórzeń.",
   "you": "Ty"
 }

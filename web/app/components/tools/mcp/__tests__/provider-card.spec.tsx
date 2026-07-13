@@ -34,11 +34,13 @@ type MCPModalProps = {
 
 vi.mock('../modal', () => ({
   default: ({ show, onConfirm, onHide }: MCPModalProps) => {
-    if (!show)
-      return null
+    if (!show) return null
     return (
       <div data-testid="mcp-modal">
-        <button data-testid="modal-confirm-btn" onClick={() => onConfirm({ name: 'Updated MCP', server_url: 'https://updated.com' })}>
+        <button
+          data-testid="modal-confirm-btn"
+          onClick={() => onConfirm({ name: 'Updated MCP', server_url: 'https://updated.com' })}
+        >
           Confirm
         </button>
         <button data-testid="modal-close-btn" onClick={onHide}>
@@ -86,7 +88,19 @@ const mockAppContextState = vi.hoisted(() => ({
   workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
 }))
 
-vi.mock('@/context/app-context-state', () => ({
+vi.mock('@/context/account-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/workspace-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/permission-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/version-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/system-features-state', () => ({
   workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
 }))
 
@@ -136,19 +150,20 @@ describe('MCPCard', () => {
       React.createElement(QueryClientProvider, { client: queryClient }, children)
   }
 
-  const createMockData = (overrides = {}): ToolWithProvider => ({
-    id: 'mcp-1',
-    name: 'Test MCP Server',
-    server_identifier: 'test-server',
-    icon: { content: '🔧', background: '#FF0000' },
-    tools: [
-      { name: 'tool1', description: 'Tool 1' },
-      { name: 'tool2', description: 'Tool 2' },
-    ],
-    is_team_authorization: true,
-    updated_at: Date.now() / 1000,
-    ...overrides,
-  } as unknown as ToolWithProvider)
+  const createMockData = (overrides = {}): ToolWithProvider =>
+    ({
+      id: 'mcp-1',
+      name: 'Test MCP Server',
+      server_identifier: 'test-server',
+      icon: { content: '🔧', background: '#FF0000' },
+      tools: [
+        { name: 'tool1', description: 'Tool 1' },
+        { name: 'tool2', description: 'Tool 2' },
+      ],
+      is_team_authorization: true,
+      updated_at: Date.now() / 1000,
+      ...overrides,
+    }) as unknown as ToolWithProvider
 
   const defaultProps = {
     data: createMockData(),
@@ -157,8 +172,10 @@ describe('MCPCard', () => {
     onDeleted: vi.fn(),
   }
 
-  const getDeleteConfirmButton = () => screen.getByRole('button', { name: 'common.operation.confirm' })
-  const getDeleteCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
+  const getDeleteConfirmButton = () =>
+    screen.getByRole('button', { name: 'common.operation.confirm' })
+  const getDeleteCancelButton = () =>
+    screen.getByRole('button', { name: 'common.operation.cancel' })
 
   beforeEach(() => {
     mockUpdateMCP.mockClear()
@@ -222,49 +239,42 @@ describe('MCPCard', () => {
   describe('No Tools State', () => {
     it('should show no tools message when tools array is empty', () => {
       const dataWithNoTools = createMockData({ tools: [] })
-      render(
-        <MCPCard {...defaultProps} data={dataWithNoTools} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPCard {...defaultProps} data={dataWithNoTools} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.noTools')).toBeInTheDocument()
     })
 
     it('should show not configured badge when not authorized', () => {
       const dataNotAuthorized = createMockData({ is_team_authorization: false })
-      render(
-        <MCPCard {...defaultProps} data={dataNotAuthorized} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPCard {...defaultProps} data={dataNotAuthorized} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.noConfigured')).toBeInTheDocument()
     })
 
     it('should show not configured badge when no tools', () => {
       const dataWithNoTools = createMockData({ tools: [], is_team_authorization: true })
-      render(
-        <MCPCard {...defaultProps} data={dataWithNoTools} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPCard {...defaultProps} data={dataWithNoTools} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.noConfigured')).toBeInTheDocument()
     })
   })
 
   describe('Selected State', () => {
     it('should apply selected styles when current provider matches', () => {
-      render(
-        <MCPCard {...defaultProps} currentProvider={defaultProps.data} />,
-        { wrapper: createWrapper() },
+      render(<MCPCard {...defaultProps} currentProvider={defaultProps.data} />, {
+        wrapper: createWrapper(),
+      })
+      const card = document.querySelector(
+        '[class*="border-components-option-card-option-selected-border"]',
       )
-      const card = document.querySelector('[class*="border-components-option-card-option-selected-border"]')
       expect(card).toBeInTheDocument()
     })
 
     it('should not apply selected styles when different provider', () => {
       const differentProvider = createMockData({ id: 'different-id' })
-      render(
-        <MCPCard {...defaultProps} currentProvider={differentProvider} />,
-        { wrapper: createWrapper() },
+      render(<MCPCard {...defaultProps} currentProvider={differentProvider} />, {
+        wrapper: createWrapper(),
+      })
+      const card = document.querySelector(
+        '[class*="border-components-option-card-option-selected-border"]',
       )
-      const card = document.querySelector('[class*="border-components-option-card-option-selected-border"]')
       expect(card).not.toBeInTheDocument()
     })
   })
@@ -272,10 +282,9 @@ describe('MCPCard', () => {
   describe('User Interactions', () => {
     it('should call handleSelect when card is clicked', () => {
       const handleSelect = vi.fn()
-      render(
-        <MCPCard {...defaultProps} handleSelect={handleSelect} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPCard {...defaultProps} handleSelect={handleSelect} />, {
+        wrapper: createWrapper(),
+      })
 
       const card = screen.getByText('Test MCP Server').closest('[class*="cursor-pointer"]')
       if (card) {
@@ -297,20 +306,16 @@ describe('MCPCard', () => {
   describe('Status Indicator', () => {
     it('should show green indicator when authorized and has tools', () => {
       const data = createMockData({ is_team_authorization: true, tools: [{ name: 'tool1' }] })
-      render(
-        <MCPCard {...defaultProps} data={data} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPCard {...defaultProps} data={data} />, { wrapper: createWrapper() })
       // Should have green indicator (not showing red badge)
       expect(screen.queryByText('tools.mcp.noConfigured')).not.toBeInTheDocument()
     })
 
     it('should show red indicator when not configured', () => {
       const data = createMockData({ is_team_authorization: false })
-      const { container } = render(
-        <MCPCard {...defaultProps} data={data} />,
-        { wrapper: createWrapper() },
-      )
+      const { container } = render(<MCPCard {...defaultProps} data={data} />, {
+        wrapper: createWrapper(),
+      })
       expect(screen.getByText('tools.mcp.noConfigured')).toBeInTheDocument()
       expect(container.querySelector('.size-1\\.5')).toBeInTheDocument()
     })
@@ -320,27 +325,20 @@ describe('MCPCard', () => {
     it('should handle long MCP name', () => {
       const longName = 'A'.repeat(100)
       const data = createMockData({ name: longName })
-      render(
-        <MCPCard {...defaultProps} data={data} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPCard {...defaultProps} data={data} />, { wrapper: createWrapper() })
       expect(screen.getByText(longName)).toBeInTheDocument()
     })
 
     it('should handle special characters in name', () => {
       const data = createMockData({ name: 'Test <Script> & "Quotes"' })
-      render(
-        <MCPCard {...defaultProps} data={data} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPCard {...defaultProps} data={data} />, { wrapper: createWrapper() })
       expect(screen.getByText('Test <Script> & "Quotes"')).toBeInTheDocument()
     })
 
     it('should handle undefined currentProvider', () => {
-      render(
-        <MCPCard {...defaultProps} currentProvider={undefined} />,
-        { wrapper: createWrapper() },
-      )
+      render(<MCPCard {...defaultProps} currentProvider={undefined} />, {
+        wrapper: createWrapper(),
+      })
       expect(screen.getByText('Test MCP Server')).toBeInTheDocument()
     })
   })
@@ -362,7 +360,9 @@ describe('MCPCard', () => {
 
     it('should stop propagation when clicking on dropdown container', () => {
       const handleSelect = vi.fn()
-      render(<MCPCard {...defaultProps} handleSelect={handleSelect} />, { wrapper: createWrapper() })
+      render(<MCPCard {...defaultProps} handleSelect={handleSelect} />, {
+        wrapper: createWrapper(),
+      })
 
       // Click on the dropdown area (which should stop propagation)
       const dropdown = screen.getByTestId('operation-dropdown')

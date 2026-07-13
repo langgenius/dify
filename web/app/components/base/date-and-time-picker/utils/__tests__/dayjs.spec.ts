@@ -36,8 +36,8 @@ describe('getDaysInMonth', () => {
     const date = dayjs('2024-01-01')
     const days = getDaysInMonth(date)
     expect(days.length).toBeGreaterThanOrEqual(28)
-    expect(days.some(d => d.isCurrentMonth)).toBe(true)
-    expect(days.some(d => !d.isCurrentMonth)).toBe(true)
+    expect(days.some((d) => d.isCurrentMonth)).toBe(true)
+    expect(days.some((d) => !d.isCurrentMonth)).toBe(true)
   })
 
   it('returns cached result on second call', () => {

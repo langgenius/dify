@@ -3,7 +3,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { useCreateSnippetMutation } from '@/service/use-snippets'
@@ -19,8 +19,7 @@ export const useCreateSnippet = () => {
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
 
   const handleOpenCreateSnippetDialog = () => {
-    if (!canCreateAndModifySnippet)
-      return
+    if (!canCreateAndModifySnippet) return
 
     setIsCreateSnippetDialogOpen(true)
   }
@@ -35,8 +34,7 @@ export const useCreateSnippet = () => {
     graph,
     input_fields,
   }: CreateSnippetDialogPayload) => {
-    if (!canCreateAndModifySnippet)
-      return
+    if (!canCreateAndModifySnippet) return
 
     setIsCreatingSnippet(true)
 
@@ -58,14 +56,12 @@ export const useCreateSnippet = () => {
         },
       })
 
-      toast.success(t('snippet.createSuccess', { ns: 'workflow' }))
+      toast.success(t(($) => $['snippet.createSuccess'], { ns: 'workflow' }))
       handleCloseCreateSnippetDialog()
       push(`/snippets/${snippet.id}/orchestrate`)
-    }
-    catch {
+    } catch {
       // The API client surfaces the response message. Avoid showing a second generic create-failed toast here.
-    }
-    finally {
+    } finally {
       setIsCreatingSnippet(false)
     }
   }

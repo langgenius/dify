@@ -36,7 +36,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-v
       aria-label="variable-input"
       className={className}
       value={value}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
       onFocus={() => onFocusChange?.(true)}
       onBlur={() => onFocusChange?.(false)}
       readOnly={readOnly}
@@ -46,19 +46,13 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-v
 }))
 
 vi.mock('../../../../panel/chat-variable-panel/components/bool-value', () => ({
-  default: ({ value, onChange }: { value: boolean, onChange: (value: boolean) => void }) => (
+  default: ({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) => (
     <button onClick={() => onChange(!value)}>{value ? 'true' : 'false'}</button>
   ),
 }))
 
 vi.mock('../../../if-else/components/condition-list/condition-operator', () => ({
-  default: ({
-    value,
-    onSelect,
-  }: {
-    value: string
-    onSelect: (value: string) => void
-  }) => (
+  default: ({ value, onSelect }: { value: string; onSelect: (value: string) => void }) => (
     <button onClick={() => onSelect(ComparisonOperator.notEqual)}>
       operator:
       {value}
@@ -67,13 +61,7 @@ vi.mock('../../../if-else/components/condition-list/condition-operator', () => (
 }))
 
 vi.mock('../sub-variable-picker', () => ({
-  default: ({
-    value,
-    onChange,
-  }: {
-    value: string
-    onChange: (value: string) => void
-  }) => (
+  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
     <button onClick={() => onChange('size')}>
       sub-variable:
       {value}

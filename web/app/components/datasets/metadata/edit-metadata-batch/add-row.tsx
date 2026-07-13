@@ -14,12 +14,7 @@ type Props = Readonly<{
   onRemove: () => void
 }>
 
-const AddRow: FC<Props> = ({
-  className,
-  payload,
-  onChange,
-  onRemove,
-}) => {
+const AddRow: FC<Props> = ({ className, payload, onChange, onRemove }) => {
   return (
     <div className={cn('flex h-6 items-center space-x-0.5', className)}>
       <Label text={payload.name} />
@@ -27,14 +22,12 @@ const AddRow: FC<Props> = ({
         label={payload.name}
         type={payload.type}
         value={payload.value}
-        onChange={value => onChange({ ...payload, value })}
+        onChange={(value) => onChange({ ...payload, value })}
       />
       <div
-        className={
-          cn(
-            'cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive',
-          )
-        }
+        className={cn(
+          'cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive',
+        )}
         onClick={onRemove}
       >
         <RiIndeterminateCircleLine className="size-4" />

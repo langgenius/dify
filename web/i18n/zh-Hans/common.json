@@ -288,7 +288,6 @@
   "menus.explore": "探索",
   "menus.exploreMarketplace": "探索 Marketplace",
   "menus.plugins": "集成",
-  "menus.roster": "Agent",
   "menus.status": "beta",
   "menus.tools": "工具",
   "model.capabilities": "多模态能力",
@@ -597,6 +596,8 @@
   "voiceInput.notAllow": "麦克风未授权",
   "voiceInput.speaking": "现在讲...",
   "voiceInput.start": "语音输入",
+  "voiceInput.starting": "正在启动麦克风...",
+  "voiceInput.stop": "停止录音",
   "workflowAsToolPage.description": "将任意已发布的工作流转化为可复用的工具，在多个应用中调用，让你的构建保持模块化、避免重复劳动。",
   "you": "你"
 }

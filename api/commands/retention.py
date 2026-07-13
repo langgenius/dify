@@ -1,10 +1,12 @@
 import datetime
 import logging
 import time
+from collections.abc import Callable
 from typing import TypedDict
 
 import click
 import sqlalchemy as sa
+from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -12,6 +14,7 @@ from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpi
 from services.retention.conversation.messages_clean_policy import create_message_clean_policy
 from services.retention.conversation.messages_clean_service import MessagesCleanService
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
+from services.retention.workflow_run.db_retry import run_with_db_retry
 from services.retention.workflow_run.tenant_prefix import tenant_prefix_condition
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
@@ -33,6 +36,12 @@ class WorkflowRunArchiveTenantPlan(TypedDict):
     archive_tenant_ids: list[str] | None
     paid_tenant_ids: list[str]
     unpaid_tenant_ids: list[str]
+
+
+class WorkflowRunArchivePrefixStats(TypedDict):
+    tenant_ids: list[str]
+    workflow_runs: int
+    workflow_node_executions: int
 
 
 def _normalize_utc_datetime(value: datetime.datetime) -> datetime.datetime:
@@ -66,6 +75,7 @@ def _parse_comma_separated_ids(raw_ids: str | None, *, param_name: str) -> list[
 
 
 def _get_archive_candidate_tenant_ids_by_prefix(
+    session: Session,
     prefix: str,
     *,
     start_from: datetime.datetime | None,
@@ -84,7 +94,7 @@ def _get_archive_candidate_tenant_ids_by_prefix(
     if start_from is not None:
         conditions.append(WorkflowRun.created_at >= start_from)
 
-    tenant_ids = db.session.scalars(
+    tenant_ids = session.scalars(
         sa.select(WorkflowRun.tenant_id).where(*conditions).distinct().order_by(WorkflowRun.tenant_id)
     ).all()
     return list(tenant_ids)
@@ -111,8 +121,80 @@ def _filter_paid_workflow_archive_tenant_ids(tenant_ids: list[str]) -> tuple[lis
     return paid_tenant_ids, unpaid_tenant_ids
 
 
+def _run_archive_command_db_retry[T](operation_name: str, operation: Callable[[], T]) -> T:
+    return run_with_db_retry(operation_name, operation, logger=logger)
+
+
+def _get_archive_candidate_tenant_ids_with_retry(
+    session_maker: sessionmaker[Session],
+    prefix: str,
+    *,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime,
+) -> list[str]:
+    def fetch_tenant_ids() -> list[str]:
+        with session_maker() as session:
+            return _get_archive_candidate_tenant_ids_by_prefix(
+                session,
+                prefix,
+                start_from=start_from,
+                end_before=end_before,
+            )
+
+    return _run_archive_command_db_retry(f"workflow archive tenant resolve for prefix {prefix}", fetch_tenant_ids)
+
+
+def _get_archive_plan_prefix_stats(
+    session_maker: sessionmaker[Session],
+    prefix: str,
+    *,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime,
+) -> WorkflowRunArchivePrefixStats:
+    from graphon.enums import WorkflowExecutionStatus
+    from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
+    from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
+
+    def fetch_prefix_stats() -> WorkflowRunArchivePrefixStats:
+        with session_maker() as session:
+            tenant_ids = _get_archive_candidate_tenant_ids_by_prefix(
+                session,
+                prefix,
+                start_from=start_from,
+                end_before=end_before,
+            )
+            run_conditions = [
+                WorkflowRun.created_at < end_before,
+                WorkflowRun.status.in_(WorkflowExecutionStatus.ended_values()),
+                WorkflowRun.type.in_(WorkflowRunArchiver.ARCHIVED_TYPE),
+                tenant_prefix_condition(WorkflowRun.tenant_id, prefix),
+            ]
+            if start_from is not None:
+                run_conditions.append(WorkflowRun.created_at >= start_from)
+            workflow_runs = (
+                session.scalar(sa.select(sa.func.count()).select_from(WorkflowRun).where(*run_conditions)) or 0
+            )
+            candidate_runs = sa.select(WorkflowRun.id).where(*run_conditions).subquery()
+            workflow_node_executions = (
+                session.scalar(
+                    sa.select(sa.func.count())
+                    .select_from(WorkflowNodeExecutionModel)
+                    .join(candidate_runs, WorkflowNodeExecutionModel.workflow_run_id == candidate_runs.c.id)
+                )
+                or 0
+            )
+            return WorkflowRunArchivePrefixStats(
+                tenant_ids=tenant_ids,
+                workflow_runs=workflow_runs,
+                workflow_node_executions=workflow_node_executions,
+            )
+
+    return _run_archive_command_db_retry(f"workflow archive plan for prefix {prefix}", fetch_prefix_stats)
+
+
 def _resolve_archive_tenant_ids_from_plan(
     *,
+    session_maker: sessionmaker[Session],
     tenant_ids: str | None,
     tenant_prefixes: list[str],
     start_from: datetime.datetime | None,
@@ -131,7 +213,8 @@ def _resolve_archive_tenant_ids_from_plan(
         requested_tenant_ids = []
         for prefix in tenant_prefixes:
             requested_tenant_ids.extend(
-                _get_archive_candidate_tenant_ids_by_prefix(
+                _get_archive_candidate_tenant_ids_with_retry(
+                    session_maker,
                     prefix,
                     start_from=start_from,
                     end_before=end_before,
@@ -150,6 +233,21 @@ def _resolve_archive_tenant_ids_from_plan(
         paid_tenant_ids=paid_tenant_ids,
         unpaid_tenant_ids=unpaid_tenant_ids,
     )
+
+
+def _safe_remove_scoped_session(context: str) -> None:
+    try:
+        db.session.remove()
+    except Exception:
+        logger.warning("Ignoring DB scoped-session cleanup error after %s", context, exc_info=True)
+        try:
+            db.session.registry.clear()
+        except Exception:
+            logger.warning("Ignoring DB scoped-session registry cleanup error after %s", context, exc_info=True)
+        try:
+            db.engine.dispose()
+        except Exception:
+            logger.warning("Ignoring DB engine dispose error after %s", context, exc_info=True)
 
 
 def _resolve_archive_time_range(
@@ -358,10 +456,6 @@ def archive_workflow_runs_plan(
     supported workflow types, and the requested created_at window. V2 bundle archive
     does not maintain per-run archive logs, so this plan reports source-table volume.
     """
-    from graphon.enums import WorkflowExecutionStatus
-    from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
-    from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
-
     before_days, start_from, end_before = _resolve_archive_time_range(
         before_days=before_days,
         from_days_ago=from_days_ago,
@@ -373,36 +467,24 @@ def archive_workflow_runs_plan(
     if include_archived:
         click.echo(click.style("--include-archived is a no-op for V2 bundle archive plans.", fg="yellow"))
 
+    session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     rows: list[WorkflowRunArchivePlanRow] = []
     for prefix in _HEX_PREFIXES:
-        tenant_ids = _get_archive_candidate_tenant_ids_by_prefix(
-            prefix,
-            start_from=start_from,
-            end_before=plan_end_before,
-        )
+        try:
+            prefix_stats = _get_archive_plan_prefix_stats(
+                session_maker,
+                prefix,
+                start_from=start_from,
+                end_before=plan_end_before,
+            )
+        except Exception as exc:
+            logger.exception("Failed to build workflow archive plan for prefix %s", prefix)
+            raise click.ClickException(f"Failed to build workflow archive plan for prefix {prefix}.") from exc
+        tenant_ids = prefix_stats["tenant_ids"]
+        workflow_runs = prefix_stats["workflow_runs"]
+        workflow_node_executions = prefix_stats["workflow_node_executions"]
         total_tenants = len(tenant_ids)
         paid_tenant_ids, unpaid_tenant_ids = _filter_paid_workflow_archive_tenant_ids(tenant_ids)
-
-        run_conditions = [
-            WorkflowRun.created_at < plan_end_before,
-            WorkflowRun.status.in_(WorkflowExecutionStatus.ended_values()),
-            WorkflowRun.type.in_(WorkflowRunArchiver.ARCHIVED_TYPE),
-            tenant_prefix_condition(WorkflowRun.tenant_id, prefix),
-        ]
-        if start_from is not None:
-            run_conditions.append(WorkflowRun.created_at >= start_from)
-        workflow_runs = (
-            db.session.scalar(sa.select(sa.func.count()).select_from(WorkflowRun).where(*run_conditions)) or 0
-        )
-        candidate_runs = sa.select(WorkflowRun.id).where(*run_conditions).subquery()
-        workflow_node_executions = (
-            db.session.scalar(
-                sa.select(sa.func.count())
-                .select_from(WorkflowNodeExecutionModel)
-                .join(candidate_runs, WorkflowNodeExecutionModel.workflow_run_id == candidate_runs.c.id)
-            )
-            or 0
-        )
 
         rows.append(
             WorkflowRunArchivePlanRow(
@@ -583,17 +665,18 @@ def archive_workflow_runs(
             )
         )
 
+    session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     try:
         tenant_plan = _resolve_archive_tenant_ids_from_plan(
+            session_maker=session_maker,
             tenant_ids=tenant_ids,
             tenant_prefixes=parsed_tenant_prefixes,
             start_from=start_from,
             end_before=plan_end_before,
         )
-    except Exception:
+    except Exception as exc:
         logger.exception("Failed to resolve workflow archive tenant plan")
-        click.echo(click.style("Failed to resolve workflow archive tenant plan.", fg="red"))
-        return
+        raise click.ClickException("Failed to resolve workflow archive tenant plan.") from exc
 
     planned_tenant_ids = tenant_plan["archive_tenant_ids"]
     planned_paid_tenant_ids = tenant_plan["paid_tenant_ids"] if planned_tenant_ids is not None else None
@@ -625,7 +708,10 @@ def archive_workflow_runs(
         dry_run=dry_run,
         delete_after_archive=delete_after_archive,
     )
-    summary = archiver.run()
+    try:
+        summary = archiver.run()
+    finally:
+        _safe_remove_scoped_session("archive workflow run command")
     click.echo(
         click.style(
             f"Summary: processed={summary.total_runs_processed}, archived={summary.runs_archived}, "

@@ -27,7 +27,43 @@ const mockCurrentWorkspace = vi.fn().mockReturnValue({
 const mockIsCurrentWorkspaceManager = vi.fn().mockReturnValue(true)
 const mockIsCurrentWorkspaceEditor = vi.fn().mockReturnValue(true)
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    currentWorkspace: mockCurrentWorkspace(),
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    currentWorkspace: mockCurrentWorkspace(),
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    currentWorkspace: mockCurrentWorkspace(),
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    currentWorkspace: mockCurrentWorkspace(),
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateAtomMock(importOriginal, () => ({
@@ -38,7 +74,8 @@ vi.mock('@/context/app-context-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateJotaiMock(importOriginal)
 })
@@ -167,7 +204,12 @@ describe('SecretKeyModal', () => {
 
   describe('API keys list for app', () => {
     const apiKeys = [
-      { id: 'key-1', token: 'sk-abc123def456ghi789', created_at: 1700000000, last_used_at: 1700100000 },
+      {
+        id: 'key-1',
+        token: 'sk-abc123def456ghi789',
+        created_at: 1700000000,
+        last_used_at: 1700100000,
+      },
       { id: 'key-2', token: 'sk-xyz987wvu654tsr321', created_at: 1700050000, last_used_at: null },
     ]
 
@@ -227,7 +269,12 @@ describe('SecretKeyModal', () => {
 
   describe('API keys list for dataset', () => {
     const datasetKeys = [
-      { id: 'dk-1', token: 'dk-abc123def456ghi789', created_at: 1700000000, last_used_at: 1700100000 },
+      {
+        id: 'dk-1',
+        token: 'dk-abc123def456ghi789',
+        created_at: 1700000000,
+        last_used_at: 1700100000,
+      },
     ]
 
     beforeEach(() => {
@@ -310,7 +357,12 @@ describe('SecretKeyModal', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       mockAppApiKeysData.mockReturnValue({
         data: [
-          { id: 'key-1', token: 'sk-abc123def456ghi789', created_at: 1700000000, last_used_at: null },
+          {
+            id: 'key-1',
+            token: 'sk-abc123def456ghi789',
+            created_at: 1700000000,
+            last_used_at: null,
+          },
         ],
       })
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
@@ -324,16 +376,26 @@ describe('SecretKeyModal', () => {
         expect(screen.getByText('appApi.apiKeyModal.generateTips')).toBeInTheDocument()
       })
 
-      const parentDialog = screen.getByText('appApi.apiKeyModal.apiSecretKeyTips').closest('[role="dialog"]')
-      const generatedKeyDialog = screen.getByText('appApi.apiKeyModal.generateTips').closest('[role="dialog"]')
+      const parentDialog = screen
+        .getByText('appApi.apiKeyModal.apiSecretKeyTips')
+        .closest('[role="dialog"]')
+      const generatedKeyDialog = screen
+        .getByText('appApi.apiKeyModal.generateTips')
+        .closest('[role="dialog"]')
       const backdrops = document.body.querySelectorAll('.bg-background-overlay')
       const generatedKeyBackdrop = backdrops[1]
 
       expect(parentDialog).toBeInTheDocument()
       expect(generatedKeyDialog).toBeInTheDocument()
       expect(backdrops).toHaveLength(2)
-      expect(parentDialog!.compareDocumentPosition(generatedKeyBackdrop!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(generatedKeyBackdrop!.compareDocumentPosition(generatedKeyDialog!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(
+        parentDialog!.compareDocumentPosition(generatedKeyBackdrop!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        generatedKeyBackdrop!.compareDocumentPosition(generatedKeyDialog!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
     })
 
     it('should invalidate app API keys after creating', async () => {
@@ -368,7 +430,9 @@ describe('SecretKeyModal', () => {
       mockCurrentWorkspace.mockReturnValue({ id: '', name: '' })
       await renderModal(<SecretKeyModal {...defaultProps} />)
 
-      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey').closest('button')
+      const createButton = screen
+        .getByText('appApi.apiKeyModal.createNewSecretKey')
+        .closest('button')
       expect(createButton).toBeDisabled()
     })
 
@@ -376,7 +440,9 @@ describe('SecretKeyModal', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
       await renderModal(<SecretKeyModal {...defaultProps} />)
 
-      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey').closest('button')
+      const createButton = screen
+        .getByText('appApi.apiKeyModal.createNewSecretKey')
+        .closest('button')
       expect(createButton).not.toBeDisabled()
     })
 
@@ -384,14 +450,21 @@ describe('SecretKeyModal', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(true)
       await renderModal(<SecretKeyModal {...defaultProps} canManage={false} />)
 
-      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey').closest('button')
+      const createButton = screen
+        .getByText('appApi.apiKeyModal.createNewSecretKey')
+        .closest('button')
       expect(createButton).toBeDisabled()
     })
   })
 
   describe('delete key', () => {
     const apiKeys = [
-      { id: 'key-1', token: 'sk-abc123def456ghi789', created_at: 1700000000, last_used_at: 1700100000 },
+      {
+        id: 'key-1',
+        token: 'sk-abc123def456ghi789',
+        created_at: 1700000000,
+        last_used_at: 1700100000,
+      },
     ]
 
     beforeEach(() => {
@@ -561,7 +634,12 @@ describe('SecretKeyModal', () => {
 
   describe('delete key for dataset', () => {
     const datasetKeys = [
-      { id: 'dk-1', token: 'dk-abc123def456ghi789', created_at: 1700000000, last_used_at: 1700100000 },
+      {
+        id: 'dk-1',
+        token: 'dk-abc123def456ghi789',
+        created_at: 1700000000,
+        last_used_at: 1700100000,
+      },
     ]
 
     beforeEach(() => {
@@ -629,7 +707,12 @@ describe('SecretKeyModal', () => {
   describe('token truncation', () => {
     it('should truncate token correctly', async () => {
       const apiKeys = [
-        { id: 'key-1', token: 'sk-abcdefghijklmnopqrstuvwxyz1234567890', created_at: 1700000000, last_used_at: null },
+        {
+          id: 'key-1',
+          token: 'sk-abcdefghijklmnopqrstuvwxyz1234567890',
+          created_at: 1700000000,
+          last_used_at: null,
+        },
       ]
       mockAppApiKeysData.mockReturnValue({ data: apiKeys })
 

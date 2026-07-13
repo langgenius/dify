@@ -1,21 +1,18 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { fireEvent, render, screen } from '@testing-library/react'
 import { APP_PAGE_LIMIT } from '@/config'
 import { AppModeEnum } from '@/types/app'
 import Logs from '../index'
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
 
 const mockReplace = vi.fn()
 const mockUseChatConversations = vi.fn()
 const mockUseCompletionConversations = vi.fn()
 
 let mockSearchParams = new URLSearchParams()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('ahooks', async () => {
   return {
     useDebounce: <T,>(value: T) => value,
@@ -33,24 +30,6 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
-  }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
-
 vi.mock('@/service/use-log', () => ({
   useChatConversations: (...args: unknown[]) => mockUseChatConversations(...args),
   useCompletionConversations: (...args: unknown[]) => mockUseCompletionConversations(...args),
@@ -63,7 +42,16 @@ vi.mock('../filter', () => ({
     9: { value: -1 },
   },
   default: ({ setQueryParams }: { setQueryParams: (next: Record<string, string>) => void }) => (
-    <button onClick={() => setQueryParams({ period: '9', annotation_status: 'all', sort_by: '-created_at', keyword: 'hello' })}>
+    <button
+      onClick={() =>
+        setQueryParams({
+          period: '9',
+          annotation_status: 'all',
+          sort_by: '-created_at',
+          keyword: 'hello',
+        })
+      }
+    >
       filter-controls
     </button>
   ),
@@ -111,19 +99,25 @@ describe('Logs', () => {
   it('should request chat conversations and show a loading state before data arrives', () => {
     render(
       <Logs
-        appDetail={{
-          id: 'app-1',
-          mode: AppModeEnum.CHAT,
-        } as any}
+        appDetail={
+          {
+            id: 'app-1',
+            mode: AppModeEnum.CHAT,
+          } as any
+        }
       />,
     )
 
-    expect(mockUseChatConversations).toHaveBeenCalledWith(expect.objectContaining({
-      appId: 'app-1',
-    }))
-    expect(screen.getByRole('heading', { name: 'title' })).toBeInTheDocument()
-    expect(screen.getByText('description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'operation.learnMore' })).toHaveAttribute('href', 'https://docs.example.com/use-dify/monitor/logs')
+    expect(mockUseChatConversations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: 'app-1',
+      }),
+    )
+    expect(screen.getByRole('heading', { name: /(?:^|\.)title(?=$|:)/ })).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)description(?=$|:)/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /(?:^|\.)operation\.learnMore(?=$|:)/ }),
+    ).toHaveAttribute('href', 'https://docs.example.com/use-dify/monitor/logs')
     expect(screen.getByText('loading-logs')).toBeInTheDocument()
   })
 
@@ -135,16 +129,20 @@ describe('Logs', () => {
 
     render(
       <Logs
-        appDetail={{
-          id: 'app-2',
-          mode: AppModeEnum.COMPLETION,
-        } as any}
+        appDetail={
+          {
+            id: 'app-2',
+            mode: AppModeEnum.COMPLETION,
+          } as any
+        }
       />,
     )
 
-    expect(mockUseCompletionConversations).toHaveBeenCalledWith(expect.objectContaining({
-      appId: 'app-2',
-    }))
+    expect(mockUseCompletionConversations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: 'app-2',
+      }),
+    )
     expect(screen.getByText('empty-logs')).toBeInTheDocument()
   })
 
@@ -156,10 +154,12 @@ describe('Logs', () => {
 
     render(
       <Logs
-        appDetail={{
-          id: 'app-3',
-          mode: AppModeEnum.CHAT,
-        } as any}
+        appDetail={
+          {
+            id: 'app-3',
+            mode: AppModeEnum.CHAT,
+          } as any
+        }
       />,
     )
 

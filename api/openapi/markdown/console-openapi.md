@@ -465,6 +465,30 @@ Check if activation token is valid
 | ---- | ----------- |
 | 204 | Agent service API key deleted |
 
+### [POST] /agent/{agent_id}/audio-to-text
+Transcribe audio using the current Agent debug configuration
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"draft_type"**: string, <br>**Available values:** "debug_build", "draft", <br>**Default:** draft, **"file"**: binary }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Audio transcription successful | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
+| 400 | Bad request - Speech to text disabled or unsupported audio |  |
+| 404 | Agent or build draft not found |  |
+| 413 | Audio file too large |  |
+
 ### [POST] /agent/{agent_id}/build-chat/finalize
 Run a build-draft Agent App turn that asks the agent to push config updates
 
@@ -2637,6 +2661,12 @@ Transcript audio to text for chat messages
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | App ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -13151,6 +13181,12 @@ default (the config form sends the full desired feature state on save).
 | role | string | Agent role | No |
 | use_icon_as_answer_icon | boolean | Use icon as answer icon | No |
 
+#### AgentAudioTranscriptFormPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| draft_type | [AgentConfigDraftType](#agentconfigdrafttype) |  | No |
+
 #### AgentAverageResponseTimeStatisticResponse
 
 | Name | Type | Description | Required |
@@ -17669,19 +17705,25 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | ---- | ---- | ----------- | -------- |
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
+| answer_tokens | integer |  | No |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
+| currency | string |  | No |
 | error | string |  | No |
 | extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
 | feedback | [SimpleFeedback](#simplefeedback) |  | No |
 | id | string |  | Yes |
 | inputs | object |  | Yes |
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| message_tokens | integer |  | No |
 | metadata | [JSONValueType](#jsonvaluetype) |  | No |
 | parent_message_id | string |  | No |
+| provider_response_latency | number |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
 | status | string |  | Yes |
+| total_price | string |  | No |
+| total_tokens | integer |  | Yes |
 
 #### ExternalApiTemplateListQuery
 
@@ -20771,6 +20813,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_policy_ids | [ string ] |  | No |
+| account_ids | [ string ] |  | No |
 
 #### ReplaceUserAccessPoliciesResponse
 

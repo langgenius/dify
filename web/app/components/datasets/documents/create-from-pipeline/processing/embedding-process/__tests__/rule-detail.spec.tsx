@@ -8,7 +8,15 @@ import RuleDetail from '../rule-detail'
 
 // Mock FieldInfo component
 vi.mock('@/app/components/datasets/documents/detail/metadata', () => ({
-  FieldInfo: ({ label, displayedValue, valueIcon }: { label: string, displayedValue: string, valueIcon?: React.ReactNode }) => (
+  FieldInfo: ({
+    label,
+    displayedValue,
+    valueIcon,
+  }: {
+    label: string
+    displayedValue: string
+    valueIcon?: React.ReactNode
+  }) => (
     <div data-testid="field-info" data-label={label}>
       <span data-testid="field-label">{label}</span>
       <span data-testid="field-value">{displayedValue}</span>
@@ -35,7 +43,9 @@ vi.mock('@/app/components/datasets/create/icons', () => ({
 /**
  * Creates a mock ProcessRuleResponse for testing
  */
-const createMockProcessRule = (overrides: Partial<ProcessRuleResponse> = {}): ProcessRuleResponse => ({
+const createMockProcessRule = (
+  overrides: Partial<ProcessRuleResponse> = {},
+): ProcessRuleResponse => ({
   mode: ProcessMode.general,
   rules: {
     pre_processing_rules: [],
@@ -135,7 +145,9 @@ describe('RuleDetail', () => {
       render(<RuleDetail sourceData={sourceData} />)
 
       const fieldValues = screen.getAllByTestId('field-value')
-      expect(fieldValues[0]).toHaveTextContent('datasetDocuments.embedding.hierarchical · dataset.parentMode.paragraph')
+      expect(fieldValues[0]).toHaveTextContent(
+        'datasetDocuments.embedding.hierarchical · dataset.parentMode.paragraph',
+      )
     })
 
     it('should show hierarchical mode with full-doc parent mode', () => {
@@ -152,7 +164,9 @@ describe('RuleDetail', () => {
       render(<RuleDetail sourceData={sourceData} />)
 
       const fieldValues = screen.getAllByTestId('field-value')
-      expect(fieldValues[0]).toHaveTextContent('datasetDocuments.embedding.hierarchical · dataset.parentMode.fullDoc')
+      expect(fieldValues[0]).toHaveTextContent(
+        'datasetDocuments.embedding.hierarchical · dataset.parentMode.fullDoc',
+      )
     })
   })
 
@@ -196,7 +210,10 @@ describe('RuleDetail', () => {
       render(<RuleDetail retrievalMethod={RETRIEVE_METHOD.semantic} />)
 
       const fieldInfos = screen.getAllByTestId('field-info')
-      expect(fieldInfos[2]).toHaveAttribute('data-label', 'datasetSettings.form.retrievalSetting.title')
+      expect(fieldInfos[2]).toHaveAttribute(
+        'data-label',
+        'datasetSettings.form.retrievalSetting.title',
+      )
     })
 
     it('should show semantic search title for qualified indexing with semantic method', () => {

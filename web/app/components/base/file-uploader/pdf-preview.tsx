@@ -15,10 +15,7 @@ type PdfPreviewProps = {
   onCancel: () => void
 }
 
-const PdfPreview: FC<PdfPreviewProps> = ({
-  url,
-  onCancel,
-}) => {
+const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
   const [scale, setScale] = useState(1)
@@ -26,17 +23,15 @@ const PdfPreview: FC<PdfPreviewProps> = ({
   const isMobile = media === MediaType.mobile
 
   const zoomIn = () => {
-    setScale(prevScale => Math.min(prevScale * 1.2, 15))
+    setScale((prevScale) => Math.min(prevScale * 1.2, 15))
     setPosition({ x: position.x - 50, y: position.y - 50 })
   }
 
   const zoomOut = () => {
     setScale((prevScale) => {
       const newScale = Math.max(prevScale / 1.2, 0.5)
-      if (newScale === 1)
-        setPosition({ x: 0, y: 0 })
-      else
-        setPosition({ x: position.x + 50, y: position.y + 50 })
+      if (newScale === 1) setPosition({ x: 0, y: 0 })
+      else setPosition({ x: position.x + 50, y: position.y + 50 })
 
       return newScale
     })
@@ -45,16 +40,15 @@ const PdfPreview: FC<PdfPreviewProps> = ({
   useHotkey('ArrowUp', zoomIn)
   useHotkey('ArrowDown', zoomOut)
 
-  const zoomOutLabel = t('operation.zoomOut', { ns: 'common' })
-  const zoomInLabel = t('operation.zoomIn', { ns: 'common' })
-  const cancelLabel = t('operation.cancel', { ns: 'common' })
+  const zoomOutLabel = t(($) => $['operation.zoomOut'], { ns: 'common' })
+  const zoomInLabel = t(($) => $['operation.zoomIn'], { ns: 'common' })
+  const cancelLabel = t(($) => $['operation.cancel'], { ns: 'common' })
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onCancel()
+        if (!open) onCancel()
       }}
       disablePointerDismissal
     >
@@ -65,24 +59,35 @@ const PdfPreview: FC<PdfPreviewProps> = ({
         <div
           aria-label={url}
           tabIndex={-1}
-          onClick={e => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
           className="h-[95vh] max-h-full w-screen max-w-full overflow-hidden"
-          style={{ transform: `scale(${scale})`, transformOrigin: 'center', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: 'center',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
         >
           <PdfLoader
             workerSrc="/pdf.worker.min.mjs"
             url={url}
-            beforeLoad={<div className="flex h-64 items-center justify-center"><Loading type="app" /></div>}
+            beforeLoad={
+              <div className="flex h-64 items-center justify-center">
+                <Loading type="app" />
+              </div>
+            }
           >
             {(pdfDocument) => {
               return (
                 <PdfHighlighter
                   pdfDocument={pdfDocument}
-                  enableAreaSelection={event => event.altKey}
+                  enableAreaSelection={(event) => event.altKey}
                   scrollRef={noop}
                   onScrollChange={noop}
                   onSelectionFinished={() => null}
-                  highlightTransform={() => { return <div /> }}
+                  highlightTransform={() => {
+                    return <div />
+                  }}
                   highlights={[]}
                 />
               )
@@ -91,7 +96,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({
         </div>
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <button
                 type="button"
                 aria-label={zoomOutLabel}
@@ -100,15 +105,13 @@ const PdfPreview: FC<PdfPreviewProps> = ({
               >
                 <RiZoomOutLine className="size-4 text-gray-500" />
               </button>
-            )}
+            }
           />
-          <TooltipContent>
-            {zoomOutLabel}
-          </TooltipContent>
+          <TooltipContent>{zoomOutLabel}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <button
                 type="button"
                 aria-label={zoomInLabel}
@@ -117,15 +120,13 @@ const PdfPreview: FC<PdfPreviewProps> = ({
               >
                 <RiZoomInLine className="size-4 text-gray-500" />
               </button>
-            )}
+            }
           />
-          <TooltipContent>
-            {zoomInLabel}
-          </TooltipContent>
+          <TooltipContent>{zoomInLabel}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <button
                 type="button"
                 aria-label={cancelLabel}
@@ -134,11 +135,9 @@ const PdfPreview: FC<PdfPreviewProps> = ({
               >
                 <RiCloseLine className="size-4 text-gray-500" />
               </button>
-            )}
+            }
           />
-          <TooltipContent>
-            {cancelLabel}
-          </TooltipContent>
+          <TooltipContent>{cancelLabel}</TooltipContent>
         </Tooltip>
       </DialogContent>
     </Dialog>

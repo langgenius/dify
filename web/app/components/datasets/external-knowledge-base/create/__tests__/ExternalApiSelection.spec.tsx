@@ -7,7 +7,11 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   setShowExternalKnowledgeAPIModal: vi.fn(),
   mutateExternalKnowledgeApis: vi.fn(),
-  externalKnowledgeApiList: [] as Array<{ id: string, name: string, settings: { endpoint: string } }>,
+  externalKnowledgeApiList: [] as Array<{
+    id: string
+    name: string
+    settings: { endpoint: string }
+  }>,
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -28,14 +32,27 @@ vi.mock('@/context/external-knowledge-api-context', () => ({
 }))
 
 // Mock ExternalApiSelect as simple stub
-type MockSelectItem = { value: string, name: string }
+type MockSelectItem = { value: string; name: string }
 vi.mock('../ExternalApiSelect', () => ({
-  default: ({ items, value, onSelect }: { items: MockSelectItem[], value?: string, onSelect: (item: MockSelectItem) => void }) => (
+  default: ({
+    items,
+    value,
+    onSelect,
+  }: {
+    items: MockSelectItem[]
+    value?: string
+    onSelect: (item: MockSelectItem) => void
+  }) => (
     <div data-testid="external-api-select">
       <span data-testid="select-value">{value}</span>
       <span data-testid="select-items-count">{items.length}</span>
       {items.map((item: MockSelectItem) => (
-        <button type="button" key={item.value} data-testid={`select-${item.value}`} onClick={() => onSelect(item)}>
+        <button
+          type="button"
+          key={item.value}
+          data-testid={`select-${item.value}`}
+          onClick={() => onSelect(item)}
+        >
           {item.name}
         </button>
       ))}

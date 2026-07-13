@@ -205,6 +205,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 target=self._generate_worker,
                 kwargs={
                     "flask_app": current_app._get_current_object(),  # type: ignore
+                    "session": db.session(),
                     "context": context,
                     "application_generate_entity": application_generate_entity,
                     "queue_manager": queue_manager,

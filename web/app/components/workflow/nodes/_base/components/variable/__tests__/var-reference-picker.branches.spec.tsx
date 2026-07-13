@@ -2,15 +2,17 @@ import type { ComponentProps } from 'react'
 import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { createNode, createStartNode, resetFixtureCounters } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  createNode,
+  createStartNode,
+  resetFixtureCounters,
+} from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '../../../../tool/types'
 import VarReferencePicker from '../var-reference-picker'
 
-const {
-  mockFetchDynamicOptions,
-} = vi.hoisted(() => ({
+const { mockFetchDynamicOptions } = vi.hoisted(() => ({
   mockFetchDynamicOptions: vi.fn(),
 }))
 
@@ -37,11 +39,21 @@ vi.mock('../var-reference-popup', () => ({
   default: ({
     onChange,
   }: {
-    onChange: (value: string[], item: { variable: string, type: VarType }) => void
+    onChange: (value: string[], item: { variable: string; type: VarType }) => void
   }) => (
     <div>
-      <button onClick={() => onChange(['node-a', 'answer'], { variable: 'answer', type: VarType.string })}>select-normal</button>
-      <button onClick={() => onChange(['node-a', 'sys.query'], { variable: 'sys.query', type: VarType.string })}>select-system</button>
+      <button
+        onClick={() => onChange(['node-a', 'answer'], { variable: 'answer', type: VarType.string })}
+      >
+        select-normal
+      </button>
+      <button
+        onClick={() =>
+          onChange(['node-a', 'sys.query'], { variable: 'sys.query', type: VarType.string })
+        }
+      >
+        select-system
+      </button>
     </div>
   ),
 }))
@@ -51,12 +63,14 @@ describe('VarReferencePicker branches', () => {
     id: 'start-node',
     data: {
       title: 'Start',
-      variables: [{
-        variable: 'query',
-        label: 'Query',
-        type: InputVarType.textInput,
-        required: false,
-      }],
+      variables: [
+        {
+          variable: 'query',
+          label: 'Query',
+          type: InputVarType.textInput,
+          required: false,
+        },
+      ],
     },
   })
   const sourceNode = createNode({
@@ -77,13 +91,13 @@ describe('VarReferencePicker branches', () => {
     data: { type: BlockEnum.Code, title: 'Current Node' },
   })
 
-  const availableVars: NodeOutPutVar[] = [{
-    nodeId: 'node-a',
-    title: 'Source Node',
-    vars: [
-      { variable: 'answer', type: VarType.string },
-    ],
-  }]
+  const availableVars: NodeOutPutVar[] = [
+    {
+      nodeId: 'node-a',
+      title: 'Source Node',
+      vars: [{ variable: 'answer', type: VarType.string }],
+    },
+  ]
 
   const renderPicker = (props: Partial<ComponentProps<typeof VarReferencePicker>> = {}) => {
     const onChange = vi.fn()
@@ -174,11 +188,13 @@ describe('VarReferencePicker branches', () => {
 
   it('should fetch dynamic options for supported constant fields', async () => {
     mockFetchDynamicOptions.mockResolvedValueOnce({
-      options: [{
-        value: 'dyn-1',
-        label: { en_US: 'Dynamic 1', zh_Hans: '动态 1' },
-        show_on: [],
-      }],
+      options: [
+        {
+          value: 'dyn-1',
+          label: { en_US: 'Dynamic 1', zh_Hans: '动态 1' },
+          show_on: [],
+        },
+      ],
     })
 
     renderPicker({
@@ -215,15 +231,19 @@ describe('VarReferencePicker branches', () => {
   })
 
   it('should render tooltip branches for partial paths and invalid variables without changing behavior', () => {
-    const objectVars: NodeOutPutVar[] = [{
-      nodeId: 'node-a',
-      title: 'Source Node',
-      vars: [{
-        variable: 'payload',
-        type: VarType.object,
-        children: [{ variable: 'child', type: VarType.string }],
-      }],
-    }]
+    const objectVars: NodeOutPutVar[] = [
+      {
+        nodeId: 'node-a',
+        title: 'Source Node',
+        vars: [
+          {
+            variable: 'payload',
+            type: VarType.object,
+            children: [{ variable: 'child', type: VarType.string }],
+          },
+        ],
+      },
+    ]
 
     const { unmount } = renderPicker({
       availableVars: objectVars,

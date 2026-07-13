@@ -1,126 +1,148 @@
-from unittest.mock import Mock, patch
+from uuid import uuid4
 
+import pytest
+from sqlalchemy.orm import Session
+
+import models.comment as comment_module
+from models.account import Account
 from models.comment import WorkflowComment, WorkflowCommentMention, WorkflowCommentReply
 
 
-def test_workflow_comment_account_properties_and_cache() -> None:
-    comment = WorkflowComment(
-        created_by="user-1",
-        resolved_by="user-2",
+class _DatabaseBinding:
+    """Expose a real SQLite session to model properties that use ``db.session``."""
+
+    session: Session
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+
+def _account(name: str) -> Account:
+    account = Account(name=name, email=f"{name.lower()}@example.com")
+    account.id = str(uuid4())
+    return account
+
+
+def _comment(created_by: str, resolved_by: str | None = None) -> WorkflowComment:
+    return WorkflowComment(
+        created_by=created_by,
+        resolved_by=resolved_by,
         content="hello",
         position_x=1,
         position_y=2,
-        tenant_id="xxx",
-        app_id="yyy",
+        tenant_id=str(uuid4()),
+        app_id=str(uuid4()),
     )
-    created_account = Mock(id="user-1")
-    resolved_account = Mock(id="user-2")
 
-    with patch("models.comment.db.session.get", side_effect=[created_account, resolved_account]) as get_mock:
-        assert comment.created_by_account is created_account
-        assert comment.resolved_by_account is resolved_account
-        assert get_mock.call_count == 2
+
+COMMENT_MODELS = (Account, WorkflowComment, WorkflowCommentReply, WorkflowCommentMention)
+
+
+@pytest.mark.parametrize("sqlite_session", [COMMENT_MODELS], indirect=True)
+def test_workflow_comment_account_properties_and_cache(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    created_account = _account("Creator")
+    resolved_account = _account("Resolver")
+    comment = _comment(created_account.id, resolved_account.id)
+    sqlite_session.add_all([created_account, resolved_account, comment])
+    sqlite_session.commit()
+    monkeypatch.setattr(comment_module, "db", _DatabaseBinding(sqlite_session))
+
+    assert comment.created_by_account is created_account
+    assert comment.resolved_by_account is resolved_account
 
     comment.cache_created_by_account(created_account)
     comment.cache_resolved_by_account(resolved_account)
-    with patch("models.comment.db.session.get") as get_mock:
-        assert comment.created_by_account is created_account
-        assert comment.resolved_by_account is resolved_account
-        get_mock.assert_not_called()
+    sqlite_session.delete(created_account)
+    sqlite_session.delete(resolved_account)
+    sqlite_session.commit()
 
-    comment_without_resolver = WorkflowComment(
-        tenant_id="xxx",
-        app_id="yyy",
-        created_by="user-1",
-        resolved_by=None,
-        content="hello",
-        position_x=1,
-        position_y=2,
-    )
-    with patch("models.comment.db.session.get") as get_mock:
-        assert comment_without_resolver.resolved_by_account is None
-        get_mock.assert_not_called()
+    assert comment.created_by_account is created_account
+    assert comment.resolved_by_account is resolved_account
+
+    comment_without_resolver = _comment(str(uuid4()))
+    sqlite_session.add(comment_without_resolver)
+    sqlite_session.commit()
+    assert comment_without_resolver.resolved_by_account is None
 
 
-def test_workflow_comment_counts_and_participants() -> None:
-    reply_1 = WorkflowCommentReply(comment_id="comment-1", content="reply-1", created_by="user-2")
-    reply_2 = WorkflowCommentReply(comment_id="comment-1", content="reply-2", created_by="user-2")
-    mention_1 = WorkflowCommentMention(comment_id="comment-1", mentioned_user_id="user-3")
-    mention_2 = WorkflowCommentMention(comment_id="comment-1", mentioned_user_id="user-4")
-    comment = WorkflowComment(
-        created_by="user-1",
-        resolved_by=None,
-        content="hello",
-        position_x=1,
-        position_y=2,
-        tenant_id="xxx",
-        app_id="yyy",
-    )
-    comment.replies = [reply_1, reply_2]
-    comment.mentions = [mention_1, mention_2]
+@pytest.mark.parametrize("sqlite_session", [COMMENT_MODELS], indirect=True)
+def test_workflow_comment_counts_and_participants(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    account_1 = _account("Creator")
+    account_2 = _account("Replier")
+    account_3 = _account("Mentioned")
+    missing_account_id = str(uuid4())
+    comment = _comment(account_1.id)
+    comment.replies = [
+        WorkflowCommentReply(comment_id=comment.id, content="reply-1", created_by=account_2.id),
+        WorkflowCommentReply(comment_id=comment.id, content="reply-2", created_by=account_2.id),
+    ]
+    comment.mentions = [
+        WorkflowCommentMention(comment_id=comment.id, mentioned_user_id=account_3.id),
+        WorkflowCommentMention(comment_id=comment.id, mentioned_user_id=missing_account_id),
+    ]
+    sqlite_session.add_all([account_1, account_2, account_3, comment])
+    sqlite_session.commit()
+    monkeypatch.setattr(comment_module, "db", _DatabaseBinding(sqlite_session))
 
-    account_1 = Mock(id="user-1")
-    account_2 = Mock(id="user-2")
-    account_3 = Mock(id="user-3")
-    account_map = {
-        "user-1": account_1,
-        "user-2": account_2,
-        "user-3": account_3,
-        "user-4": None,
-    }
-
-    with patch("models.comment.db.session.get", side_effect=lambda _model, user_id: account_map[user_id]) as get_mock:
-        participants = comment.participants
+    participants = comment.participants
 
     assert comment.reply_count == 2
     assert comment.mention_count == 2
-    assert set(participants) == {account_1, account_2, account_3}
-    assert get_mock.call_count == 4
+    assert {account.id for account in participants} == {account_1.id, account_2.id, account_3.id}
 
 
-def test_workflow_comment_participants_use_cached_accounts() -> None:
-    reply = WorkflowCommentReply(comment_id="comment-1", content="reply-1", created_by="user-2")
-    mention = WorkflowCommentMention(comment_id="comment-1", mentioned_user_id="user-3")
-    comment = WorkflowComment(
-        created_by="user-1",
-        resolved_by=None,
-        content="hello",
-        position_x=1,
-        position_y=2,
-        tenant_id="xxx",
-        app_id="yyy",
-    )
+@pytest.mark.parametrize("sqlite_session", [COMMENT_MODELS], indirect=True)
+def test_workflow_comment_participants_use_cached_accounts(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    account_1 = _account("Creator")
+    account_2 = _account("Replier")
+    account_3 = _account("Mentioned")
+    comment = _comment(account_1.id)
+    reply = WorkflowCommentReply(comment_id=comment.id, content="reply-1", created_by=account_2.id)
+    mention = WorkflowCommentMention(comment_id=comment.id, mentioned_user_id=account_3.id)
     comment.replies = [reply]
     comment.mentions = [mention]
+    sqlite_session.add_all([account_1, account_2, account_3, comment])
+    sqlite_session.commit()
+    monkeypatch.setattr(comment_module, "db", _DatabaseBinding(sqlite_session))
 
-    account_1 = Mock(id="user-1")
-    account_2 = Mock(id="user-2")
-    account_3 = Mock(id="user-3")
     comment.cache_created_by_account(account_1)
     reply.cache_created_by_account(account_2)
     mention.cache_mentioned_user_account(account_3)
+    sqlite_session.delete(account_1)
+    sqlite_session.delete(account_2)
+    sqlite_session.delete(account_3)
+    sqlite_session.commit()
 
-    with patch("models.comment.db.session.get") as get_mock:
-        participants = comment.participants
-
-    assert set(participants) == {account_1, account_2, account_3}
-    get_mock.assert_not_called()
+    assert {account.id for account in comment.participants} == {account_1.id, account_2.id, account_3.id}
 
 
-def test_reply_and_mention_account_properties_and_cache() -> None:
-    reply = WorkflowCommentReply(comment_id="comment-1", content="reply", created_by="user-1")
-    mention = WorkflowCommentMention(comment_id="comment-1", mentioned_user_id="user-2")
-    reply_account = Mock(id="user-1")
-    mention_account = Mock(id="user-2")
+@pytest.mark.parametrize("sqlite_session", [COMMENT_MODELS], indirect=True)
+def test_reply_and_mention_account_properties_and_cache(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    reply_account = _account("Replier")
+    mention_account = _account("Mentioned")
+    comment = _comment(reply_account.id)
+    reply = WorkflowCommentReply(comment_id=comment.id, content="reply", created_by=reply_account.id)
+    mention = WorkflowCommentMention(comment_id=comment.id, mentioned_user_id=mention_account.id)
+    comment.replies = [reply]
+    comment.mentions = [mention]
+    sqlite_session.add_all([reply_account, mention_account, comment])
+    sqlite_session.commit()
+    monkeypatch.setattr(comment_module, "db", _DatabaseBinding(sqlite_session))
 
-    with patch("models.comment.db.session.get", side_effect=[reply_account, mention_account]) as get_mock:
-        assert reply.created_by_account is reply_account
-        assert mention.mentioned_user_account is mention_account
-        assert get_mock.call_count == 2
+    assert reply.created_by_account is reply_account
+    assert mention.mentioned_user_account is mention_account
 
     reply.cache_created_by_account(reply_account)
     mention.cache_mentioned_user_account(mention_account)
-    with patch("models.comment.db.session.get") as get_mock:
-        assert reply.created_by_account is reply_account
-        assert mention.mentioned_user_account is mention_account
-        get_mock.assert_not_called()
+    sqlite_session.delete(reply_account)
+    sqlite_session.delete(mention_account)
+    sqlite_session.commit()
+
+    assert reply.created_by_account is reply_account
+    assert mention.mentioned_user_account is mention_account

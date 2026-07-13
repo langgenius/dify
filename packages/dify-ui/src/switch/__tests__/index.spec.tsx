@@ -64,7 +64,9 @@ describe('Switch', () => {
 
   it('should not call onCheckedChange when disabled', async () => {
     const onCheckedChange = vi.fn()
-    const screen = await render(<Switch checked={false} disabled onCheckedChange={onCheckedChange} />)
+    const screen = await render(
+      <Switch checked={false} disabled onCheckedChange={onCheckedChange} />,
+    )
 
     const switchElement = screen.getByRole('switch')
     await expect.element(switchElement).toHaveAttribute('data-disabled', '')
@@ -104,7 +106,9 @@ describe('Switch', () => {
   describe('loading state', () => {
     it('should render as disabled when loading', async () => {
       const onCheckedChange = vi.fn()
-      const screen = await render(<Switch checked={false} loading onCheckedChange={onCheckedChange} />)
+      const screen = await render(
+        <Switch checked={false} loading onCheckedChange={onCheckedChange} />,
+      )
 
       const switchElement = screen.getByRole('switch')
       await expect.element(switchElement).toHaveAttribute('aria-busy', 'true')

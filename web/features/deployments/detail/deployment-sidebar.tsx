@@ -79,9 +79,7 @@ const DEPLOYMENT_TABS: TabDef[] = [
 
 const SEARCH_SHORTCUT = ['Mod', 'K']
 
-function DeploymentIcon({ expand }: {
-  expand: boolean
-}) {
+function DeploymentIcon({ expand }: { expand: boolean }) {
   return (
     <div
       className={cn(
@@ -94,7 +92,10 @@ function DeploymentIcon({ expand }: {
   )
 }
 
-function DeploymentDetailInstanceInfo({ appInstanceId, expand }: {
+function DeploymentDetailInstanceInfo({
+  appInstanceId,
+  expand,
+}: {
   appInstanceId: string
   expand: boolean
 }) {
@@ -115,72 +116,70 @@ function DeploymentDetailInstanceInfo({ appInstanceId, expand }: {
       )}
       aria-label={!expand ? instanceName : undefined}
     >
-      {isLoading
-        ? (
-            <>
-              <SkeletonRectangle className={cn('my-0 animate-pulse rounded-lg', expand ? 'size-10' : 'size-8')} />
-              {expand && (
-                <SkeletonContainer className="min-w-0 flex-1 gap-1">
-                  <SkeletonRectangle className="my-0 h-5 w-32 animate-pulse" />
-                  <SkeletonRectangle className="my-0 h-3 w-20 animate-pulse" />
-                </SkeletonContainer>
-              )}
-            </>
-          )
-        : isUnavailable
-          ? (
-              <>
-                <div className="flex size-8 items-center justify-center rounded-lg bg-components-icon-bg-orange-solid text-text-primary-on-surface">
-                  <span className="i-ri-rocket-line size-4" />
+      {isLoading ? (
+        <>
+          <SkeletonRectangle
+            className={cn('my-0 animate-pulse rounded-lg', expand ? 'size-10' : 'size-8')}
+          />
+          {expand && (
+            <SkeletonContainer className="min-w-0 flex-1 gap-1">
+              <SkeletonRectangle className="my-0 h-5 w-32 animate-pulse" />
+              <SkeletonRectangle className="my-0 h-3 w-20 animate-pulse" />
+            </SkeletonContainer>
+          )}
+        </>
+      ) : isUnavailable ? (
+        <>
+          <div className="flex size-8 items-center justify-center rounded-lg bg-components-icon-bg-orange-solid text-text-primary-on-surface">
+            <span className="i-ri-rocket-line size-4" />
+          </div>
+          {expand && (
+            <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 self-stretch">
+              <div className="w-full min-w-0 pr-1">
+                <div className="truncate system-md-semibold whitespace-nowrap text-text-secondary">
+                  {t(($) => $['detail.notFound'])}
                 </div>
-                {expand && (
-                  <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 self-stretch">
-                    <div className="w-full min-w-0 pr-1">
-                      <div className="truncate system-md-semibold whitespace-nowrap text-text-secondary">
-                        {t('detail.notFound')}
-                      </div>
+              </div>
+              <TitleTooltip content={appInstanceId}>
+                <div className="max-w-full truncate font-mono system-2xs-regular text-text-tertiary">
+                  {appInstanceId}
+                </div>
+              </TitleTooltip>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <DeploymentIcon expand={expand} />
+          {expand && (
+            <>
+              <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 self-stretch">
+                <div className="w-full min-w-0 pr-1">
+                  <TitleTooltip content={instanceName}>
+                    <div className="truncate system-md-semibold whitespace-nowrap text-text-secondary">
+                      {instanceName}
                     </div>
-                    <TitleTooltip content={appInstanceId}>
-                      <div className="max-w-full truncate font-mono system-2xs-regular text-text-tertiary">
-                        {appInstanceId}
-                      </div>
-                    </TitleTooltip>
-                  </div>
-                )}
-              </>
-            )
-          : (
-              <>
-                <DeploymentIcon expand={expand} />
-                {expand && (
-                  <>
-                    <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-0.5 self-stretch">
-                      <div className="w-full min-w-0 pr-1">
-                        <TitleTooltip content={instanceName}>
-                          <div className="truncate system-md-semibold whitespace-nowrap text-text-secondary">
-                            {instanceName}
-                          </div>
-                        </TitleTooltip>
-                      </div>
-                      {app.description && (
-                        <TitleTooltip content={app.description}>
-                          <div className="line-clamp-2 system-xs-regular text-text-tertiary">
-                            {app.description}
-                          </div>
-                        </TitleTooltip>
-                      )}
+                  </TitleTooltip>
+                </div>
+                {app.description && (
+                  <TitleTooltip content={app.description}>
+                    <div className="line-clamp-2 system-xs-regular text-text-tertiary">
+                      {app.description}
                     </div>
-                    <DeploymentActionsMenu
-                      appInstance={app}
-                      placement="bottom-end"
-                      sideOffset={4}
-                      className="shrink-0"
-                      triggerClassName="size-5 rounded-md bg-transparent p-0.5 shadow-none"
-                    />
-                  </>
+                  </TitleTooltip>
                 )}
-              </>
-            )}
+              </div>
+              <DeploymentActionsMenu
+                appInstance={app}
+                placement="bottom-end"
+                sideOffset={4}
+                className="shrink-0"
+                triggerClassName="size-5 rounded-md bg-transparent p-0.5 shadow-none"
+              />
+            </>
+          )}
+        </>
+      )}
     </div>
   )
 }
@@ -215,39 +214,40 @@ export function DeploymentDetailTop({
       <div className="flex min-w-0 flex-1 items-center gap-px">
         <Link
           href="/"
-          aria-label={t('mainNav.home', { ns: 'common' })}
+          aria-label={t(($) => $['mainNav.home'], { ns: 'common' })}
           className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 text-text-tertiary transition-colors hover:bg-background-default-hover hover:text-text-secondary"
         >
           <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
           <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
         </Link>
-        <span className="shrink-0 system-md-regular text-text-quaternary">
-          /
-        </span>
+        <span className="shrink-0 system-md-regular text-text-quaternary">/</span>
         <Link
           href="/deployments"
           className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary"
         >
-          {t('menus.deployments', { ns: 'common' })}
+          {t(($) => $['menus.deployments'], { ns: 'common' })}
         </Link>
       </div>
       <Tooltip>
         <TooltipTrigger
-          render={(
+          render={
             <button
               type="button"
-              aria-label={t('gotoAnything.searchTitle', { ns: 'app' })}
+              aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
               className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
               onClick={() => setGotoAnythingOpen(true)}
             >
               <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
             </button>
-          )}
+          }
         />
-        <TooltipContent placement="bottom" className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]">
-          <span className="px-0.5">{t('gotoAnything.quickAction', { ns: 'app' })}</span>
+        <TooltipContent
+          placement="bottom"
+          className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
+        >
+          <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
           <KbdGroup>
-            {SEARCH_SHORTCUT.map(key => (
+            {SEARCH_SHORTCUT.map((key) => (
               <Kbd key={key}>{formatForDisplay(key)}</Kbd>
             ))}
           </KbdGroup>
@@ -265,17 +265,12 @@ export function DeploymentDetailTop({
   )
 }
 
-export function DeploymentDetailSection({
-  expand = true,
-}: {
-  expand?: boolean
-}) {
+export function DeploymentDetailSection({ expand = true }: { expand?: boolean }) {
   const { t } = useTranslation('deployments')
   const pathname = usePathname()
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
 
-  if (!appInstanceId)
-    return null
+  if (!appInstanceId) return null
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
@@ -293,12 +288,12 @@ export function DeploymentDetailSection({
       </div>
 
       <nav className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}>
-        {DEPLOYMENT_TABS.filter(tab => !tab.hidden).map(tab => (
+        {DEPLOYMENT_TABS.filter((tab) => !tab.hidden).map((tab) => (
           <NavLink
             key={tab.key}
             mode={expand ? 'expand' : 'collapse'}
             iconMap={{ selected: tab.selectedIcon, normal: tab.icon }}
-            name={t(`tabs.${tab.key}.name`)}
+            name={t(($) => $[`tabs.${tab.key}.name`])}
             href={`/deployments/${appInstanceId}/${tab.key}`}
             pathname={pathname}
           />

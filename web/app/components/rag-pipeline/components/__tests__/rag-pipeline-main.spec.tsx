@@ -102,30 +102,42 @@ vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () =>
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { permission_keys: string[] } }) => unknown) =>
-    selector({ dataset: { permission_keys: mockPermissionState.permissionKeys } }),
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset: { permission_keys: string[] } }) => unknown,
+  ) => selector({ dataset: { permission_keys: mockPermissionState.permissionKeys } }),
 }))
 
 vi.mock('@/app/components/workflow', () => ({
-  WorkflowWithInnerContext: ({ children, onWorkflowDataUpdate, hooksStore }: PropsWithChildren<{ onWorkflowDataUpdate?: (payload: unknown) => void, hooksStore?: { accessControl?: { canComment?: boolean, canEdit?: boolean } } }>) => (
+  WorkflowWithInnerContext: ({
+    children,
+    onWorkflowDataUpdate,
+    hooksStore,
+  }: PropsWithChildren<{
+    onWorkflowDataUpdate?: (payload: unknown) => void
+    hooksStore?: { accessControl?: { canComment?: boolean; canEdit?: boolean } }
+  }>) => (
     <div data-testid="workflow-inner-context">
       <div data-testid="can-comment">{String(hooksStore?.accessControl?.canComment)}</div>
       <div data-testid="can-edit">{String(hooksStore?.accessControl?.canEdit)}</div>
       {children}
       <button
         data-testid="trigger-update"
-        onClick={() => onWorkflowDataUpdate?.({
-          rag_pipeline_variables: [{ id: '1', name: 'var1' }],
-          environment_variables: [{ id: '2', name: 'env1' }],
-        })}
+        onClick={() =>
+          onWorkflowDataUpdate?.({
+            rag_pipeline_variables: [{ id: '1', name: 'var1' }],
+            environment_variables: [{ id: '2', name: 'env1' }],
+          })
+        }
       >
         Trigger Update
       </button>
       <button
         data-testid="trigger-update-partial"
-        onClick={() => onWorkflowDataUpdate?.({
-          rag_pipeline_variables: [{ id: '3', name: 'var2' }],
-        })}
+        onClick={() =>
+          onWorkflowDataUpdate?.({
+            rag_pipeline_variables: [{ id: '3', name: 'var2' }],
+          })
+        }
       >
         Trigger Partial Update
       </button>

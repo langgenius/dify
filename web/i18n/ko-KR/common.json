@@ -288,7 +288,6 @@
   "menus.explore": "탐색",
   "menus.exploreMarketplace": "Marketplace 둘러보기",
   "menus.plugins": "통합",
-  "menus.roster": "Agent",
   "menus.status": "베타 버전",
   "menus.tools": "도구",
   "model.capabilities": "멀티모달 기능",
@@ -597,6 +596,8 @@
   "voiceInput.notAllow": "마이크가 허용되지 않았습니다",
   "voiceInput.speaking": "지금 말하고 있습니다...",
   "voiceInput.start": "음성 입력",
+  "voiceInput.starting": "마이크를 시작하는 중...",
+  "voiceInput.stop": "녹음 중지",
   "workflowAsToolPage.description": "게시된 workflow를 재사용 가능한 도구로 전환하세요. 여러 앱에서 사용해 빌드를 모듈화하고 반복을 줄일 수 있습니다.",
   "you": "나"
 }

@@ -70,8 +70,7 @@ export class SlashCommandRegistry {
 
     // First check if any alias starts with this
     const aliasMatch = this.findHandlerByAliasPrefix(lowerPartial)
-    if (aliasMatch && this.isCommandAvailable(aliasMatch))
-      return aliasMatch
+    if (aliasMatch && this.isCommandAvailable(aliasMatch)) return aliasMatch
 
     // Then check if command name starts with this
     const nameMatch = this.findHandlerByNamePrefix(lowerPartial)
@@ -83,8 +82,7 @@ export class SlashCommandRegistry {
    */
   private findHandlerByAliasPrefix(prefix: string): SlashCommandHandler | undefined {
     for (const handler of this.getAllCommands()) {
-      if (handler.aliases?.some(alias => alias.toLowerCase().startsWith(prefix)))
-        return handler
+      if (handler.aliases?.some((alias) => alias.toLowerCase().startsWith(prefix))) return handler
     }
     return undefined
   }
@@ -93,9 +91,7 @@ export class SlashCommandRegistry {
    * Find handler by name prefix
    */
   private findHandlerByNamePrefix(prefix: string): SlashCommandHandler | undefined {
-    return this.getAllCommands().find(handler =>
-      handler.name.toLowerCase().startsWith(prefix),
-    )
+    return this.getAllCommands().find((handler) => handler.name.toLowerCase().startsWith(prefix))
   }
 
   /**
@@ -114,7 +110,7 @@ export class SlashCommandRegistry {
    * Commands without isAvailable method are considered always available
    */
   getAvailableCommands(): SlashCommandHandler[] {
-    return this.getAllCommands().filter(handler => this.isCommandAvailable(handler))
+    return this.getAllCommands().filter((handler) => this.isCommandAvailable(handler))
   }
 
   /**
@@ -126,8 +122,7 @@ export class SlashCommandRegistry {
     const trimmed = query.trim()
 
     // Handle root level search "/"
-    if (trimmed === '/' || !trimmed.replace('/', '').trim())
-      return await this.getRootCommands()
+    if (trimmed === '/' || !trimmed.replace('/', '').trim()) return await this.getRootCommands()
 
     // Parse command and arguments
     const afterSlash = trimmed.substring(1).trim()
@@ -140,8 +135,7 @@ export class SlashCommandRegistry {
     if (handler && this.isCommandAvailable(handler)) {
       try {
         return await handler.search(args, locale)
-      }
-      catch (error) {
+      } catch (error) {
         console.warn(`Command search failed for ${commandName}:`, error)
         return []
       }
@@ -152,8 +146,7 @@ export class SlashCommandRegistry {
     if (handler && this.isCommandAvailable(handler)) {
       try {
         return await handler.search(args, locale)
-      }
-      catch (error) {
+      } catch (error) {
         console.warn(`Command search failed for ${handler.name}:`, error)
         return []
       }
@@ -168,7 +161,7 @@ export class SlashCommandRegistry {
    * Only shows commands that are available in current context
    */
   private async getRootCommands(): Promise<CommandSearchResult[]> {
-    return this.getAvailableCommands().map(handler => ({
+    return this.getAvailableCommands().map((handler) => ({
       id: `root-${handler.name}`,
       title: `/${handler.name}`,
       description: handler.description,

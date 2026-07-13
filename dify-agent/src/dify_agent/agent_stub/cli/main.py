@@ -133,6 +133,26 @@ def config_skills_push(
 
     Pass a directory such as ./skills/researcher that contains SKILL.md. Other files in that directory are
     archived with the skill. Pushing a skill with an existing name replaces that config skill.
+
+    Skill directory requirements:
+
+    - Each PATH must be one skill directory; the directory basename is the config skill name.
+
+    - The directory must contain a top-level SKILL.md.
+
+    - SKILL.md must be non-empty UTF-8 Markdown.
+
+    - SKILL.md must start with YAML frontmatter matching this schema:
+
+    \b
+      ---
+      name: <non-empty string>
+      description: <string>
+      ---
+
+    - Symlinked files are rejected.
+
+    - Dependency/cache folders such as .git, __pycache__, .venv and node_modules should be manually cleared before push.
     """
     _run_config_skills_push(paths=paths)
 

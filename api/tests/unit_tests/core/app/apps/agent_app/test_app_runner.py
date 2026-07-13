@@ -37,6 +37,8 @@ from pydantic_ai.messages import (
 from clients.agent_backend import (
     AgentBackendError,
     AgentBackendRunEventAdapter,
+    AgentBackendRunFailedError,
+    AgentBackendRunFailedInternalEvent,
     AgentBackendStreamInternalEvent,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
@@ -54,6 +56,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
 )
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
+from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import AgentSoulConfig
 from models.model import MessageAgentThought
 
@@ -1039,6 +1042,130 @@ def test_tool_result_without_call_id_matches_unique_open_tool_name(monkeypatch):
     assert rows[0].observation == "Knowledge base search results: browser skill"
 
 
+def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "shell_run",
+                    "args": {"script": "lookup find"},
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "shell_run",
+                    "content": "find output",
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "shell_run",
+                    "args": {"script": "lookup out"},
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "shell_run",
+                    "content": "out output",
+                },
+            },
+        )
+    )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 2
+    assert rows[0].tool == "shell_run"
+    assert rows[0].tool_input == '{"script": "lookup find"}'
+    assert rows[0].observation == "find output"
+    assert rows[1].tool == "shell_run"
+    assert rows[1].tool_input == '{"script": "lookup out"}'
+    assert rows[1].observation == "out output"
+
+
+def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_distinct_rows(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    for script, output in (("lookup find", "find output"), ("lookup out", "out output")):
+        recorder.handle_stream_event(
+            AgentBackendStreamInternalEvent(
+                run_id="run-1",
+                data={
+                    "event_kind": "function_tool_call",
+                    "index": 0,
+                    "part": {
+                        "part_kind": "tool-call",
+                        "tool_name": "shell_run",
+                        "tool_call_id": "None",
+                        "args": {"script": script},
+                    },
+                },
+            )
+        )
+        recorder.handle_stream_event(
+            AgentBackendStreamInternalEvent(
+                run_id="run-1",
+                data={
+                    "event_kind": "function_tool_result",
+                    "part": {
+                        "part_kind": "tool-return",
+                        "tool_name": "shell_run",
+                        "tool_call_id": "None",
+                        "content": output,
+                    },
+                },
+            )
+        )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 2
+    assert rows[0].tool == "shell_run"
+    assert rows[0].tool_input == '{"script": "lookup find"}'
+    assert rows[0].observation == "find output"
+    assert rows[1].tool == "shell_run"
+    assert rows[1].tool_input == '{"script": "lookup out"}'
+    assert rows[1].observation == "out output"
+
+
 def test_prior_session_snapshot_is_threaded_into_request():
     prior = CompositorSessionSnapshot(layers=[])
     client = FakeAgentBackendRunClient()
@@ -1081,11 +1208,46 @@ def test_failed_run_raises_agent_backend_error():
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
-    with pytest.raises(AgentBackendError):
+    with pytest.raises(AgentBackendRunFailedError, match="fake failure .*agent_run_id=fake-run-1"):
         _run(_runner(client, store), qm)
     # No message-end on failure; no snapshot saved.
     assert not [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
     assert store.saved == []
+
+
+def test_agent_backend_failure_to_exception_maps_rate_limit_reason():
+    err = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            error="quota exceeded",
+            reason="InvokeRateLimitError",
+        )
+    )
+
+    assert isinstance(err, InvokeRateLimitError)
+    assert str(err) == "quota exceeded"
+
+
+def test_agent_backend_failure_to_exception_preserves_unknown_reason_context():
+    err = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            source_event_id="event-1",
+            error="Knowledge retrieval failed",
+            reason="knowledge_retrieve_failed",
+        )
+    )
+
+    assert isinstance(err, AgentBackendRunFailedError)
+    assert err.run_id == "run-1"
+    assert err.reason == "knowledge_retrieve_failed"
+    assert err.source_event_id == "event-1"
+    assert err.detail == {
+        "error": "Knowledge retrieval failed",
+        "reason": "knowledge_retrieve_failed",
+        "source_event_id": "event-1",
+    }
+    assert str(err) == "Knowledge retrieval failed (agent_run_id=run-1)"
 
 
 def test_stopped_task_cancels_agent_backend_run_and_skips_session_save():

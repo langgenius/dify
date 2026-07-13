@@ -30,47 +30,48 @@ type AccessStatusItem = {
 }
 
 const ACCESS_STATUS_SKELETON_KEYS = ['webapp', 'cli']
-const OVERVIEW_CARD_CLASS_NAME = 'rounded-xl border border-components-panel-border bg-components-panel-bg p-4'
+const OVERVIEW_CARD_CLASS_NAME =
+  'rounded-xl border border-components-panel-border bg-components-panel-bg p-4'
 const OVERVIEW_INTERACTIVE_CARD_CLASS_NAME = cn(
   OVERVIEW_CARD_CLASS_NAME,
   'transition-colors hover:border-components-panel-border-subtle hover:bg-components-panel-on-panel-item-bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg',
 )
-const OVERVIEW_ICON_CLASS_NAME = 'flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-section-burn text-text-tertiary'
+const OVERVIEW_ICON_CLASS_NAME =
+  'flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-section-burn text-text-tertiary'
 
 export function AccessStatusSection({ accessChannels }: AccessStatusSectionProps) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
 
-  if (!appInstanceId)
-    return null
+  if (!appInstanceId) return null
 
   const items: AccessStatusItem[] = [
     {
       key: 'webapp',
       href: `/deployments/${appInstanceId}/access`,
       icon: 'i-ri-global-line',
-      label: t('card.access.webApp'),
+      label: t(($) => $['card.access.webApp']),
       enabled: Boolean(accessChannels?.webAppEnabled),
-      meta: t('overview.accessMeta.webApp'),
+      meta: t(($) => $['overview.accessMeta.webApp']),
     },
     {
       key: 'cli',
       href: `/deployments/${appInstanceId}/access`,
       icon: 'i-ri-terminal-box-line',
-      label: t('card.access.cli'),
+      label: t(($) => $['card.access.cli']),
       enabled: Boolean(accessChannels?.webAppEnabled),
-      meta: t('overview.accessMeta.cli'),
+      meta: t(($) => $['overview.accessMeta.cli']),
     },
   ]
 
   return (
     <section className="flex min-w-0 flex-col gap-3">
       <h3 className="system-sm-semibold text-text-primary">
-        {t('overview.accessStatus')}
+        {t(($) => $['overview.accessStatus'])}
       </h3>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-3">
-        {items.map(item => (
+        {items.map((item) => (
           <Link
             key={item.key}
             href={item.href}
@@ -79,17 +80,12 @@ export function AccessStatusSection({ accessChannels }: AccessStatusSectionProps
               'group flex min-h-18 min-w-0 items-start gap-3',
             )}
           >
-            <span
-              aria-hidden
-              className={OVERVIEW_ICON_CLASS_NAME}
-            >
+            <span aria-hidden className={OVERVIEW_ICON_CLASS_NAME}>
               <span className={cn('size-4', item.icon)} />
             </span>
             <span className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="flex min-w-0 items-center justify-between gap-3">
-                <span className="truncate system-sm-medium text-text-primary">
-                  {item.label}
-                </span>
+                <span className="truncate system-sm-medium text-text-primary">{item.label}</span>
                 <span className="flex shrink-0 items-center gap-2">
                   <StatusBadge enabled={item.enabled} />
                   <span
@@ -98,9 +94,7 @@ export function AccessStatusSection({ accessChannels }: AccessStatusSectionProps
                   />
                 </span>
               </span>
-              <span className="truncate text-xs text-text-tertiary">
-                {item.meta}
-              </span>
+              <span className="truncate text-xs text-text-tertiary">{item.meta}</span>
             </span>
           </Link>
         ))}
@@ -119,14 +113,11 @@ export function ApiTokenSummarySection({
   const apiEnabled = Boolean(accessChannels?.developerApiEnabled)
   const apiKeyCount = apiKeySummary?.apiKeyCount ?? 0
 
-  if (!appInstanceId)
-    return null
+  if (!appInstanceId) return null
 
   return (
     <section className="flex min-w-0 flex-col gap-3">
-      <h3 className="system-sm-semibold text-text-primary">
-        {t('overview.api')}
-      </h3>
+      <h3 className="system-sm-semibold text-text-primary">{t(($) => $['overview.api'])}</h3>
 
       <Link
         href={`/deployments/${appInstanceId}/api-tokens`}
@@ -141,7 +132,7 @@ export function ApiTokenSummarySection({
         <span className="flex min-w-0 flex-1 flex-col gap-2">
           <span className="flex min-w-0 items-center justify-between gap-3">
             <span className="truncate system-sm-medium text-text-primary">
-              {t('card.access.api')}
+              {t(($) => $['card.access.api'])}
             </span>
             <span className="flex shrink-0 items-center gap-2">
               <StatusBadge enabled={apiEnabled} />
@@ -151,38 +142,40 @@ export function ApiTokenSummarySection({
               />
             </span>
           </span>
-          {apiEnabled
-            ? (
-                <span className="flex min-w-0 flex-wrap gap-2">
-                  <span className="inline-flex h-6 min-w-0 items-center rounded-md bg-background-section-burn px-2 system-xs-medium text-text-secondary">
-                    {t('overview.apiKeysCount', { count: apiKeyCount })}
-                  </span>
-                  {/* "deployed environments" = envs with a runtime deployment, not envs-with-keys */}
-                  <span className="inline-flex h-6 min-w-0 items-center rounded-md bg-background-section-burn px-2 system-xs-medium text-text-secondary">
-                    {t('overview.apiTokenSummary.environments', { count: deployedEnvironmentCount })}
-                  </span>
-                </span>
-              )
-            : (
-                <span className="truncate text-xs text-text-tertiary">
-                  {t('overview.accessMeta.apiTokens')}
-                </span>
-              )}
+          {apiEnabled ? (
+            <span className="flex min-w-0 flex-wrap gap-2">
+              <span className="inline-flex h-6 min-w-0 items-center rounded-md bg-background-section-burn px-2 system-xs-medium text-text-secondary">
+                {t(($) => $['overview.apiKeysCount'], { count: apiKeyCount })}
+              </span>
+              {/* "deployed environments" = envs with a runtime deployment, not envs-with-keys */}
+              <span className="inline-flex h-6 min-w-0 items-center rounded-md bg-background-section-burn px-2 system-xs-medium text-text-secondary">
+                {t(($) => $['overview.apiTokenSummary.environments'], {
+                  count: deployedEnvironmentCount,
+                })}
+              </span>
+            </span>
+          ) : (
+            <span className="truncate text-xs text-text-tertiary">
+              {t(($) => $['overview.accessMeta.apiTokens'])}
+            </span>
+          )}
         </span>
       </Link>
     </section>
   )
 }
 
-function StatusBadge({ enabled }: {
-  enabled: boolean
-}) {
+function StatusBadge({ enabled }: { enabled: boolean }) {
   const { t } = useTranslation('deployments')
 
   return (
     <DeploymentStatusBadge
-      status={enabled ? RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY : RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED}
-      label={enabled ? t('overview.enabled') : t('overview.disabled')}
+      status={
+        enabled
+          ? RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY
+          : RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED
+      }
+      label={enabled ? t(($) => $['overview.enabled']) : t(($) => $['overview.disabled'])}
     />
   )
 }
@@ -192,9 +185,7 @@ export function ApiTokenSummarySectionSkeleton() {
 
   return (
     <section className="flex min-w-0 flex-col gap-3">
-      <h3 className="system-sm-semibold text-text-primary">
-        {t('overview.api')}
-      </h3>
+      <h3 className="system-sm-semibold text-text-primary">{t(($) => $['overview.api'])}</h3>
       <ApiTokenSummaryCardSkeleton />
     </section>
   )
@@ -227,11 +218,11 @@ export function AccessStatusSectionSkeleton() {
   return (
     <section className="flex min-w-0 flex-col gap-3">
       <h3 className="system-sm-semibold text-text-primary">
-        {t('overview.accessStatus')}
+        {t(($) => $['overview.accessStatus'])}
       </h3>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-3">
-        {ACCESS_STATUS_SKELETON_KEYS.map(key => (
+        {ACCESS_STATUS_SKELETON_KEYS.map((key) => (
           <div
             key={key}
             data-slot="deployment-overview-access-card-skeleton"

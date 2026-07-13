@@ -6,8 +6,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { Plan } from '@/app/components/billing/type'
-import { currentWorkspaceAtom, refreshCurrentWorkspaceAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { currentWorkspaceAtom, refreshCurrentWorkspaceAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { updateCurrentWorkspace } from '@/service/common'
 import { hasPermission } from '@/utils/permission'
@@ -31,7 +32,9 @@ const useWebAppBrand = () => {
   const webappBrandRemoved = currentWorkspace.custom_config?.remove_webapp_brand
   const canManageCustomBrand = hasPermission(workspacePermissionKeys, 'customization.manage')
   const uploadDisabled = isSandbox || webappBrandRemoved || !canManageCustomBrand
-  const workspaceLogo = systemFeatures.branding.enabled ? systemFeatures.branding.workspace_logo : ''
+  const workspaceLogo = systemFeatures.branding.enabled
+    ? systemFeatures.branding.workspace_logo
+    : ''
   const persistWorkspaceBrand = async (body: Record<string, unknown>) => {
     await updateCurrentWorkspace({
       url: CUSTOM_CONFIG_URL,
@@ -41,25 +44,32 @@ const useWebAppBrand = () => {
   }
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file)
-      return
+    if (!file) return
     if (file.size > MAX_LOGO_FILE_SIZE) {
-      toast.error(t('imageUploader.uploadFromComputerLimit', { ns: 'common', size: 5 }))
+      toast.error(t(($) => $['imageUploader.uploadFromComputerLimit'], { ns: 'common', size: 5 }))
       return
     }
-    imageUpload({
-      file,
-      onProgressCallback: setUploadProgress,
-      onSuccessCallback: (res) => {
-        setUploadProgress(100)
-        setFileId(res.id)
+    imageUpload(
+      {
+        file,
+        onProgressCallback: setUploadProgress,
+        onSuccessCallback: (res) => {
+          setUploadProgress(100)
+          setFileId(res.id)
+        },
+        onErrorCallback: (error) => {
+          const errorMessage = getImageUploadErrorMessage(
+            error,
+            t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
+            t,
+          )
+          toast.error(errorMessage)
+          setUploadProgress(-1)
+        },
       },
-      onErrorCallback: (error) => {
-        const errorMessage = getImageUploadErrorMessage(error, t('imageUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
-        toast.error(errorMessage)
-        setUploadProgress(-1)
-      },
-    }, false, WEB_APP_LOGO_UPLOAD_URL)
+      false,
+      WEB_APP_LOGO_UPLOAD_URL,
+    )
   }
   const handleApply = async () => {
     await persistWorkspaceBrand({

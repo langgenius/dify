@@ -18,13 +18,7 @@ export class WorkspaceRow {
   readonly status: string
   readonly current: boolean
 
-  constructor(
-    id: string,
-    displayName: string,
-    role: string,
-    status: string,
-    current: boolean,
-  ) {
+  constructor(id: string, displayName: string, role: string, status: string, current: boolean) {
     this.id = id
     this.displayName = displayName
     this.role = role
@@ -33,13 +27,7 @@ export class WorkspaceRow {
   }
 
   tableRow(): readonly TableCell[] {
-    return [
-      this.id,
-      this.displayName,
-      this.role,
-      this.status,
-      this.current ? CURRENT_MARKER : '',
-    ]
+    return [this.id, this.displayName, this.role, this.status, this.current ? CURRENT_MARKER : '']
   }
 
   name(): string {
@@ -75,11 +63,11 @@ export class WorkspaceListOutput {
   }
 
   tableRows(): readonly (readonly TableCell[])[] {
-    return this.rows.map(row => row.tableRow())
+    return this.rows.map((row) => row.tableRow())
   }
 
   name(): string {
-    return this.rows.map(row => row.name()).join('\n')
+    return this.rows.map((row) => row.name()).join('\n')
   }
 
   json(): WorkspaceListResponse {

@@ -18,24 +18,35 @@ const CustomPage = () => {
       {showBillingTip && (
         <div className="mb-1 flex justify-between rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs">
           <div className="space-y-1 text-text-primary-on-surface">
-            <div className="title-xl-semi-bold">{t('upgradeTip.title', { ns: 'custom' })}</div>
-            <div className="system-sm-regular">{t('upgradeTip.des', { ns: 'custom' })}</div>
+            <div className="title-xl-semi-bold">
+              {t(($) => $['upgradeTip.title'], { ns: 'custom' })}
+            </div>
+            <div className="system-sm-regular">
+              {t(($) => $['upgradeTip.des'], { ns: 'custom' })}
+            </div>
           </div>
           <button
             type="button"
             className="flex h-10 w-[120px] cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
             onClick={() => setShowPricingModal()}
           >
-            {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+            {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
           </button>
         </div>
       )}
       <CustomWebAppBrand />
       {showContact && (
         <div className="absolute bottom-0 h-[50px] text-xs leading-[50px] text-text-quaternary">
-          {t('customize.prefix', { ns: 'custom' })}
-          <a className="text-text-accent" href={contactSalesUrl} target="_blank" rel="noopener noreferrer">{t('customize.contactUs', { ns: 'custom' })}</a>
-          {t('customize.suffix', { ns: 'custom' })}
+          {t(($) => $['customize.prefix'], { ns: 'custom' })}
+          <a
+            className="text-text-accent"
+            href={contactSalesUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t(($) => $['customize.contactUs'], { ns: 'custom' })}
+          </a>
+          {t(($) => $['customize.suffix'], { ns: 'custom' })}
         </div>
       )}
     </div>

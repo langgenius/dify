@@ -27,6 +27,8 @@ from clients.agent_backend import (
     AgentBackendInternalEventType,
     AgentBackendRunClient,
     AgentBackendRunEventAdapter,
+    AgentBackendRunFailedError,
+    AgentBackendRunFailedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
     extract_runtime_layer_specs,
@@ -57,6 +59,14 @@ from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_re
 from extensions.ext_database import db
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
+from graphon.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CreatorUserRole
 from models.model import MessageAgentThought
@@ -70,6 +80,33 @@ class _DefaultSessionScopeSnapshotId:
 
 
 _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID = _DefaultSessionScopeSnapshotId()
+
+_AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
+    "InvokeAuthorizationError": InvokeAuthorizationError,
+    "InvokeBadRequestError": InvokeBadRequestError,
+    "CredentialsValidateFailedError": InvokeBadRequestError,
+    "InvokeConnectionError": InvokeConnectionError,
+    "InvokeRateLimitError": InvokeRateLimitError,
+    "InvokeServerUnavailableError": InvokeServerUnavailableError,
+}
+
+
+def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEvent) -> Exception:
+    err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
+    if err_cls is not None:
+        return err_cls(event.error)
+    message = event.error or "Agent backend run did not complete successfully."
+    return AgentBackendRunFailedError(
+        event.run_id,
+        {
+            "error": event.error,
+            "reason": event.reason,
+            "source_event_id": event.source_event_id,
+        },
+        message=message,
+        reason=event.reason,
+        source_event_id=event.source_event_id,
+    )
 
 
 def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:
@@ -412,12 +449,15 @@ class _AgentProcessRecorder:
     def _lookup_tool_thought(self, *, index: int, tool_call_id: str | None) -> str | None:
         if tool_call_id and tool_call_id in self._tool_by_call_id:
             return self._tool_by_call_id[tool_call_id]
+        if index < 0:
+            return None
         return self._tool_by_index.get(index)
 
     def _remember_tool_thought(
         self, *, index: int, tool_call_id: str | None, tool_name: str | None, thought_id: str
     ) -> None:
-        self._tool_by_index[index] = thought_id
+        if index >= 0:
+            self._tool_by_index[index] = thought_id
         if tool_call_id:
             self._tool_by_call_id[tool_call_id] = thought_id
         if tool_name:
@@ -433,6 +473,10 @@ class _AgentProcessRecorder:
         return None
 
     def _mark_tool_observed(self, thought_id: str) -> None:
+        self._tool_by_index = {index: value for index, value in self._tool_by_index.items() if value != thought_id}
+        self._tool_by_call_id = {
+            tool_call_id: value for tool_call_id, value in self._tool_by_call_id.items() if value != thought_id
+        }
         for open_thought_ids in self._open_tool_by_name.values():
             open_thought_ids.discard(thought_id)
 
@@ -530,7 +574,12 @@ def _event_index(data: dict[str, Any]) -> int:
 
 
 def _string_or_none(value: Any) -> str | None:
-    return value if isinstance(value, str) and value else None
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    if not normalized or normalized.lower() in {"none", "null"}:
+        return None
+    return normalized
 
 
 def _json_or_text(value: Any) -> str | None:
@@ -652,8 +701,12 @@ class AgentAppRunner:
             return
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
-            error = getattr(terminal, "error", None) or "Agent backend run did not complete successfully."
-            raise AgentBackendError(str(error))
+            if isinstance(terminal, AgentBackendRunFailedInternalEvent):
+                reason = terminal.reason
+                if reason == "sandbox_expired":
+                    raise AgentBackendError("The agent session sandbox has expired. Please start a new conversation.")
+                raise _agent_backend_failure_to_exception(terminal)
+            raise AgentBackendError("Agent backend run did not complete successfully.")
 
         answer = self._terminal_output_to_answer(terminal.output)
         try:

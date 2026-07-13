@@ -29,12 +29,12 @@ import hashlib
 import json
 import logging
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from enum import Enum
 from threading import Lock
-from typing import Any, NotRequired, TypedDict, cast
+from typing import Any, NotRequired, TypedDict, TypeVar, cast
 
 import click
 import pyarrow as pa
@@ -76,8 +76,10 @@ from services.retention.workflow_run.constants import (
     ARCHIVE_BUNDLE_MANIFEST_NAME,
     ARCHIVE_BUNDLE_SCHEMA_VERSION,
 )
+from services.retention.workflow_run.db_retry import is_retryable_db_disconnect, run_with_db_retry
 
 logger = logging.getLogger(__name__)
+T = TypeVar("T")
 
 
 class TableStatsManifestEntry(TypedDict):
@@ -214,6 +216,8 @@ class WorkflowRunArchiver:
         "workflow_pause_reasons",
         "workflow_trigger_logs",
     ]
+    DB_RETRY_ATTEMPTS = 3
+    DB_RETRY_DELAYS_SECONDS = (1.0, 2.0)
 
     start_from: datetime.datetime | None
     end_before: datetime.datetime
@@ -461,16 +465,40 @@ class WorkflowRunArchiver:
         """Fetch a batch of workflow runs to archive."""
         repo = self._get_workflow_run_repo()
         tenant_ids = list(tenant_scope) if tenant_scope is not None else self.tenant_ids or None
-        return repo.get_runs_batch_by_time_range(
-            start_from=self.start_from,
-            end_before=self.end_before,
-            last_seen=last_seen,
-            batch_size=self.batch_size,
-            run_types=self.ARCHIVED_TYPE,
-            tenant_ids=tenant_ids,
-            tenant_prefixes=None if tenant_ids else self.tenant_prefixes or None,
-            run_shard_index=self.run_shard_index,
-            run_shard_total=self.run_shard_total,
+
+        return self._run_with_db_retry(
+            "workflow run batch fetch",
+            lambda: repo.get_runs_batch_by_time_range(
+                start_from=self.start_from,
+                end_before=self.end_before,
+                last_seen=last_seen,
+                batch_size=self.batch_size,
+                run_types=self.ARCHIVED_TYPE,
+                tenant_ids=tenant_ids,
+                tenant_prefixes=None if tenant_ids else self.tenant_prefixes or None,
+                run_shard_index=self.run_shard_index,
+                run_shard_total=self.run_shard_total,
+            ),
+        )
+
+    @staticmethod
+    def _is_retryable_db_disconnect(exc: BaseException) -> bool:
+        return is_retryable_db_disconnect(exc)
+
+    @staticmethod
+    def _safe_rollback(session: Session, bundle_id: str) -> None:
+        try:
+            session.rollback()
+        except Exception:
+            logger.warning("Failed to rollback archive session for bundle %s", bundle_id, exc_info=True)
+
+    def _run_with_db_retry(self, operation_name: str, operation: Callable[[], T]) -> T:
+        return run_with_db_retry(
+            operation_name,
+            operation,
+            logger=logger,
+            attempts=self.DB_RETRY_ATTEMPTS,
+            delays_seconds=self.DB_RETRY_DELAYS_SECONDS,
         )
 
     def _tenant_scan_scopes(self) -> list[list[str] | None]:
@@ -538,22 +566,53 @@ class WorkflowRunArchiver:
         if self.workers == 1 or len(bundle_groups) == 1:
             results: list[ArchiveResult] = []
             for bundle_runs in bundle_groups:
-                with session_maker() as session:
-                    results.append(self._archive_bundle(session, storage, bundle_runs))
+                results.append(self._archive_bundle_with_retry(session_maker, storage, bundle_runs))
             return results
 
         results = []
         max_workers = min(self.workers, len(bundle_groups))
 
         def archive_in_worker(bundle_runs: Sequence[WorkflowRun]) -> ArchiveResult:
-            with session_maker() as session:
-                return self._archive_bundle(session, storage, bundle_runs)
+            return self._archive_bundle_with_retry(session_maker, storage, bundle_runs)
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(archive_in_worker, bundle_runs) for bundle_runs in bundle_groups]
             for future in as_completed(futures):
                 results.append(future.result())
         return results
+
+    def _archive_bundle_with_retry(
+        self,
+        session_maker: sessionmaker[Session],
+        storage: ArchiveStorage | None,
+        runs: Sequence[WorkflowRun],
+    ) -> ArchiveResult:
+        identity = self._build_bundle_identity(runs)
+
+        try:
+            return self._run_with_db_retry(
+                f"archive workflow run bundle {identity.bundle_id}",
+                lambda: self._archive_bundle_once(session_maker, storage, runs),
+            )
+        except Exception as exc:
+            logger.exception("Failed to archive workflow run bundle %s after retries", identity.bundle_id)
+            return ArchiveResult(
+                bundle_id=identity.bundle_id,
+                tenant_id=identity.tenant_id,
+                object_prefix=identity.object_prefix,
+                run_count=len(runs),
+                success=False,
+                error=str(exc),
+            )
+
+    def _archive_bundle_once(
+        self,
+        session_maker: sessionmaker[Session],
+        storage: ArchiveStorage | None,
+        runs: Sequence[WorkflowRun],
+    ) -> ArchiveResult:
+        with session_maker() as session:
+            return self._archive_bundle(session, storage, runs)
 
     def _archive_bundle(
         self,
@@ -655,9 +714,12 @@ class WorkflowRunArchiver:
                 result.success = True
 
         except Exception as e:
+            if self._is_retryable_db_disconnect(e):
+                self._safe_rollback(session, identity.bundle_id)
+                raise
             logger.exception("Failed to archive workflow run bundle %s", identity.bundle_id)
             result.error = str(e)
-            session.rollback()
+            self._safe_rollback(session, identity.bundle_id)
 
         result.elapsed_time = time.time() - start_time
         return result
@@ -821,8 +883,8 @@ class WorkflowRunArchiver:
         end_before = self.end_before
         if end_before is None:
             raise ValueError("archive window end must be set")
-        archive_window_end = self._format_window_datetime(end_before)
-        if archive_window_end is None:
+        formatted_end_before = self._format_window_datetime(end_before)
+        if formatted_end_before is None:
             raise ValueError("archive window end must be set")
         return ArchiveManifestDict(
             schema_version=ARCHIVE_BUNDLE_SCHEMA_VERSION,
@@ -843,7 +905,7 @@ class WorkflowRunArchiver:
             archived_at=datetime.datetime.now(datetime.UTC).isoformat(),
             campaign_id=self.campaign_id,
             archive_window_start=self._format_window_datetime(self.start_from),
-            archive_window_end=archive_window_end,
+            archive_window_end=formatted_end_before,
             run_shard=identity.shard,
             tables=tables,
             run_ids=[run.id for run in sorted_runs],

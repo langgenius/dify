@@ -28,9 +28,7 @@ export function ConsoleContextProviders({ children }: { children: ReactNode }) {
   return (
     <EventEmitterContextProvider>
       <ProviderContextProvider>
-        <ModalContextProvider>
-          {children}
-        </ModalContextProvider>
+        <ModalContextProvider>{children}</ModalContextProvider>
       </ProviderContextProvider>
     </EventEmitterContextProvider>
   )

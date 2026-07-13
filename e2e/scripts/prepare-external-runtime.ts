@@ -6,12 +6,14 @@ const defaultExternalRuntimeSeedSpecs = 'agent-v2:external-runtime'
 const parseSeedSpecs = (value: string) =>
   value
     .split(',')
-    .map(entry => entry.trim())
+    .map((entry) => entry.trim())
     .filter(Boolean)
     .map((entry) => {
-      const [pack, profile = 'full'] = entry.split(':').map(part => part.trim())
+      const [pack, profile = 'full'] = entry.split(':').map((part) => part.trim())
       if (!pack)
-        throw new Error(`Invalid external runtime seed spec "${entry}". Expected "pack" or "pack:profile".`)
+        throw new Error(
+          `Invalid external runtime seed spec "${entry}". Expected "pack" or "pack:profile".`,
+        )
 
       return { pack, profile }
     })

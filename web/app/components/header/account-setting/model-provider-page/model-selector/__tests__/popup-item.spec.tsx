@@ -68,7 +68,11 @@ vi.mock('../../provider-added-card/use-change-provider-priority', () => ({
 }))
 
 vi.mock('../../provider-added-card/model-auth-dropdown/dropdown-content', () => ({
-  default: ({ onClose }: { onClose: () => void }) => <button type="button" onClick={onClose}>close dropdown</button>,
+  default: ({ onClose }: { onClose: () => void }) => (
+    <button type="button" onClick={onClose}>
+      close dropdown
+    </button>
+  ),
 }))
 
 const mockSetShowModelModal = vi.hoisted(() => vi.fn())
@@ -88,7 +92,31 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['credential.use', 'credential.create', 'credential.manage'],
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
@@ -96,7 +124,8 @@ vi.mock('@/context/app-context-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -136,22 +165,14 @@ const previewCardProps = () => ({
   onPreviewCardClose: vi.fn(),
 })
 
-const createComboboxNode = (
-  node: ReactElement,
-  onValueChange = vi.fn(),
-) => (
+const createComboboxNode = (node: ReactElement, onValueChange = vi.fn()) => (
   <Combobox filter={null} open onValueChange={onValueChange}>
     {node}
   </Combobox>
 )
 
-const renderWithCombobox = (
-  node: ReactElement,
-  onValueChange = vi.fn(),
-) => {
-  return render(
-    createComboboxNode(node, onValueChange),
-  )
+const renderWithCombobox = (node: ReactElement, onValueChange = vi.fn()) => {
+  return render(createComboboxNode(node, onValueChange))
 }
 
 describe('PopupItem', () => {
@@ -191,7 +212,10 @@ describe('PopupItem', () => {
 
   it('should select the combobox value when clicking an active model', () => {
     const onValueChange = vi.fn()
-    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />, onValueChange)
+    renderWithCombobox(
+      <PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />,
+      onValueChange,
+    )
 
     fireEvent.click(screen.getByText('GPT-4'))
 
@@ -288,13 +312,19 @@ describe('PopupItem', () => {
 
     await userEvent.hover(suggestionIcon)
 
-    expect(await screen.findByText('common.modelProvider.selector.suggestionTip')).toBeInTheDocument()
+    expect(
+      await screen.findByText('common.modelProvider.selector.suggestionTip'),
+    ).toBeInTheDocument()
   })
 
   it('should open model modal when clicking add on unconfigured model', () => {
     const onValueChange = vi.fn()
     const { rerender } = renderWithCombobox(
-      <PopupItem {...previewCardProps()} model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.noConfigure })] })} onHide={vi.fn()} />,
+      <PopupItem
+        {...previewCardProps()}
+        model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.noConfigure })] })}
+        onHide={vi.fn()}
+      />,
       onValueChange,
     )
 
@@ -310,18 +340,27 @@ describe('PopupItem', () => {
     expect(mockUpdateModelProviders).toHaveBeenCalled()
     expect(mockUpdateModelList).toHaveBeenCalledWith(ModelTypeEnum.textGeneration)
 
-    rerender(createComboboxNode(
-      <PopupItem
-        {...previewCardProps()}
-        model={makeModel({
-          models: [makeModelItem({ status: ModelStatusEnum.noConfigure, model_type: undefined as unknown as ModelTypeEnum })],
-        })}
-        onHide={vi.fn()}
-      />,
-    ))
+    rerender(
+      createComboboxNode(
+        <PopupItem
+          {...previewCardProps()}
+          model={makeModel({
+            models: [
+              makeModelItem({
+                status: ModelStatusEnum.noConfigure,
+                model_type: undefined as unknown as ModelTypeEnum,
+              }),
+            ],
+          })}
+          onHide={vi.fn()}
+        />,
+      ),
+    )
 
     fireEvent.click(screen.getByText('COMMON.OPERATION.ADD'))
-    const call2 = mockSetShowModelModal.mock.calls.at(-1)?.[0] as { onSaveCallback?: () => void } | undefined
+    const call2 = mockSetShowModelModal.mock.calls.at(-1)?.[0] as
+      | { onSaveCallback?: () => void }
+      | undefined
     call2?.onSaveCallback?.()
 
     expect(mockUpdateModelProviders).toHaveBeenCalled()
@@ -400,12 +439,14 @@ describe('PopupItem', () => {
 
   it('should show configure required when no credential name', () => {
     mockUseProviderContext.mockReturnValue({
-      modelProviders: [makeProvider({
-        custom_configuration: {
-          status: CustomConfigurationStatusEnum.noConfigure,
-          current_credential_name: '',
-        },
-      })],
+      modelProviders: [
+        makeProvider({
+          custom_configuration: {
+            status: CustomConfigurationStatusEnum.noConfigure,
+            current_credential_name: '',
+          },
+        }),
+      ],
     })
     mockCredentialPanelState.mockReturnValue({
       variant: 'api-required-configure',
@@ -425,9 +466,11 @@ describe('PopupItem', () => {
 
   it('should show credits info when using system provider with remaining credits', () => {
     mockUseProviderContext.mockReturnValue({
-      modelProviders: [makeProvider({
-        preferred_provider_type: PreferredProviderTypeEnum.system,
-      })],
+      modelProviders: [
+        makeProvider({
+          preferred_provider_type: PreferredProviderTypeEnum.system,
+        }),
+      ],
     })
     mockCredentialPanelState.mockReturnValue({
       variant: 'credits-active',
@@ -447,9 +490,11 @@ describe('PopupItem', () => {
 
   it('should show credits exhausted when system provider has no credits', () => {
     mockUseProviderContext.mockReturnValue({
-      modelProviders: [makeProvider({
-        preferred_provider_type: PreferredProviderTypeEnum.system,
-      })],
+      modelProviders: [
+        makeProvider({
+          preferred_provider_type: PreferredProviderTypeEnum.system,
+        }),
+      ],
     })
     mockUseAppContext.mockReturnValue({
       currentWorkspace: { trial_credits: 100, trial_credits_used: 100 },

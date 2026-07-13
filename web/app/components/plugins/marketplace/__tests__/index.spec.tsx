@@ -30,13 +30,17 @@ vi.mock('../description', () => ({
 
 vi.mock('../list/list-wrapper', () => ({
   default: ({ showInstallButton }: { showInstallButton: boolean }) => (
-    <div data-testid="list-wrapper" data-show-install={showInstallButton}>ListWrapper</div>
+    <div data-testid="list-wrapper" data-show-install={showInstallButton}>
+      ListWrapper
+    </div>
   ),
 }))
 
 vi.mock('../sticky-search-and-switch-wrapper', () => ({
   default: ({ pluginTypeSwitchClassName }: { pluginTypeSwitchClassName?: string }) => (
-    <div data-testid="sticky-wrapper" data-classname={pluginTypeSwitchClassName}>StickyWrapper</div>
+    <div data-testid="sticky-wrapper" data-classname={pluginTypeSwitchClassName}>
+      StickyWrapper
+    </div>
   ),
 }))
 

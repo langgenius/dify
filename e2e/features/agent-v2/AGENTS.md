@@ -8,7 +8,7 @@ Do not add deeper `AGENTS.md` files unless an Agent v2 submodule becomes indepen
 
 Agent v2 scenarios live under `features/agent-v2/` and use the `@agent-v2` capability tag.
 
-The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=true` in `scripts/common.ts`, because `/roster` routes are guarded by that feature flag.
+The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=true` in `scripts/common.ts`, because `/agents` routes are guarded by that feature flag.
 
 Preview/Test Run scenarios are not part of the current build-mode slice unless explicitly requested. Current Agent v2 coverage should prioritize Configure, Build draft, saved configuration display, publish state, Access Point, preflight, files, advanced settings, and other build-mode behavior. Published Web app runtime is not Builder Preview; keep it as a separate `@web-app-runtime` slice because it exercises the public app surface and real model-backed responses after publish.
 
@@ -36,6 +36,8 @@ Use tags in three layers:
 - `@publish` — publish and publish-bar state.
 - `@access-point` — Web app, Backend service API, and Workflow access surfaces.
 - `@stable-model` — active model fixture dependency. Apply this to every scenario that includes `the Agent Builder stable chat model is available` or otherwise requires an active model configured in the workspace.
+- `@speech-to-text-model` — active workspace default Speech-to-Text model dependency. Apply this to scenarios that include `the workspace default speech-to-text model is active`.
+- `@microphone` — deterministic Chromium fake microphone dependency. The scenario hook launches a fake-audio browser and grants microphone permission only to tagged scenarios.
 - `@agent-decision-model` — stronger active model fixture dependency for scenarios that specifically validate Agent autonomous planning or resource-selection behavior, such as generated-query Knowledge Retrieval. Do not use it for scenarios that only need a model to exist or answer a deterministic prompt.
 - `@tool-fixture` — preseeded Tool dependency such as `JSON Process / JSON Replace` or `Tavily / Tavily Search`.
 - `@skill-fixture` — checked-in or preseeded Skill dependency such as `e2e-summary-skill`.
@@ -75,6 +77,7 @@ Keep Agent v2 step definitions grouped by user capability, not by DOM component 
 - `access-point-service-api.steps.ts` — Backend service API entrypoints, keys, API reference, and service requests.
 - `access-point-workflow.steps.ts` — Workflow access references.
 - `preflight.steps.ts` — explicit `Given` entrypoints for Agent Builder preflight resources.
+- `speech-to-text.steps.ts` — Agent Build voice input, multipart request, and transcribed input behavior.
 
 Cucumber step definitions are globally registered. Do not duplicate the same step text across files, even if one is written as `Given` and another as `Then`.
 
@@ -87,6 +90,7 @@ Agent v2 business state belongs under `world.agentBuilder`; do not keep adding A
 Use the existing namespace shape:
 
 - `world.agentBuilder.preflight.stableModel`
+- `world.agentBuilder.preflight.speechToTextModel`
 - `world.agentBuilder.preflight.brokenModel`
 - `world.agentBuilder.preflight.preseededResources`
 - `world.agentBuilder.accessPoint.serviceApiBaseURL`
@@ -98,6 +102,7 @@ Use the existing namespace shape:
 - `world.agentBuilder.accessPoint.workflowReferencePage`
 - `world.agentBuilder.accessPoint.composerDraftSnapshot`
 - `world.agentBuilder.configure.concurrentPage`
+- `world.agentBuilder.speechToText.request`
 - `world.agentBuilder.workflow.agentConsolePage`
 - `world.agentBuilder.workflow.outputVariables`
 
@@ -162,6 +167,8 @@ Treat preseeded Agent Builder resources as environment contracts. Preflight can 
 Use `the Agent v2 runtime backend is available` before scenarios tagged `@agent-backend-runtime`. The step checks the standalone `dify-agent` run server through `E2E_AGENT_BACKEND_URL`, `AGENT_BACKEND_BASE_URL`, or the default `http://127.0.0.1:5050` when `E2E_START_AGENT_BACKEND=1`. The E2E runner starts this service with `uv run --project dify-agent --extra server uvicorn dify_agent.server.app:app --host 127.0.0.1 --port 5050` only when `E2E_START_AGENT_BACKEND=1` is explicit. Because Agent App runtime always carries the `dify.config` layer and that layer depends on `dify.shell`, the same runner path also starts the `dify-agent/docker/local-sandbox` shellctl container on `E2E_SHELLCTL_PORT` (default `5004`) and injects `DIFY_AGENT_SHELLCTL_ENTRYPOINT` into the Agent backend. Missing or unreachable runtime backend or shellctl sandbox should be reported as a blocked precondition, not discovered later as a `/build-chat/finalize` 400 or Web app response timeout.
 
 Use `the Agent Builder stable chat model is available` before scenarios that need a real Agent Soul model configuration. This includes true runtime scenarios, model-backed build-mode assertions, and Workflow Agent v2 node setup because the backend rejects Agent nodes without model config. Do not add the model preflight to pure navigation or identity checks unless the setup API itself requires model config. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` are selectors for a model already configured in the workspace; they are not provider credentials. The step defaults to `openai` / `gpt-5-nano` / `llm`, verifies the selected model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`.
+
+Use `the workspace default speech-to-text model is active` before real speech-to-text scenarios. The preflight reads `/console/api/workspaces/current/default-model?model_type=speech2text`, verifies that same provider/model is active in the Speech-to-Text model list, and stores it on `DifyWorld.agentBuilder.preflight.speechToTextModel`. It must not configure a model or provider credential. External runtime preparation selects `E2E_SPEECH_TO_TEXT_MODEL_PROVIDER` / `E2E_SPEECH_TO_TEXT_MODEL_NAME`, defaulting to `openai` / `gpt-4o-mini-transcribe`, reuses `E2E_MODEL_PROVIDER_CREDENTIALS_JSON` when provider setup is required, and selects the active model as the workspace default.
 
 Use `the Agent Builder agent-decision chat model is available` before scenarios that need a stronger model to exercise Agent autonomous planning, generated query selection, or tool/resource choice. `E2E_AGENT_DECISION_MODEL_PROVIDER`, `E2E_AGENT_DECISION_MODEL_NAME`, and optional `E2E_AGENT_DECISION_MODEL_TYPE` are selectors for a second active model fixture, defaulting to `openai` / `gpt-5.5` / `llm`. The step stores the model on `DifyWorld.agentBuilder.preflight.agentDecisionModel`. Do not use this fixture as a broad replacement for `@stable-model`; it is intentionally narrower and costlier.
 

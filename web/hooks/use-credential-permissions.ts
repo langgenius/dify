@@ -1,5 +1,5 @@
 import { useAtomValue } from 'jotai'
-import { workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
 
 export const useCredentialPermissions = () => {

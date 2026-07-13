@@ -13,7 +13,12 @@ let mockDeleteCredentialId: string | null = null
 let mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
 
 vi.mock('../../use-trial-credits', () => ({
-  useTrialCredits: () => ({ credits: 0, totalCredits: 10_000, isExhausted: true, isLoading: false }),
+  useTrialCredits: () => ({
+    credits: 0,
+    totalCredits: 10_000,
+    isExhausted: true,
+    isLoading: false,
+  }),
 }))
 
 vi.mock('../use-activate-credential', () => ({
@@ -35,7 +40,31 @@ vi.mock('../../../model-auth/hooks', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
@@ -43,13 +72,22 @@ vi.mock('@/context/app-context-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('../../../model-auth/authorized/credential-item', () => ({
-  default: ({ credential, disabled, disableEdit, disableDelete, onItemClick, onEdit, onDelete }: {
-    credential: { credential_id: string, credential_name: string }
+  default: ({
+    credential,
+    disabled,
+    disableEdit,
+    disableDelete,
+    onItemClick,
+    onEdit,
+    onDelete,
+  }: {
+    credential: { credential_id: string; credential_name: string }
     disabled?: boolean
     disableEdit?: boolean
     disableDelete?: boolean
@@ -59,30 +97,49 @@ vi.mock('../../../model-auth/authorized/credential-item', () => ({
   }) => (
     <div data-testid={`credential-${credential.credential_id}`}>
       <span>{credential.credential_name}</span>
-      <button data-testid={`click-${credential.credential_id}`} disabled={disabled} onClick={() => onItemClick?.(credential)}>select</button>
-      <button data-testid={`edit-${credential.credential_id}`} disabled={disabled || disableEdit} onClick={() => onEdit?.(credential)}>edit</button>
-      <button data-testid={`delete-${credential.credential_id}`} disabled={disabled || disableDelete} onClick={() => onDelete?.(credential)}>delete</button>
+      <button
+        data-testid={`click-${credential.credential_id}`}
+        disabled={disabled}
+        onClick={() => onItemClick?.(credential)}
+      >
+        select
+      </button>
+      <button
+        data-testid={`edit-${credential.credential_id}`}
+        disabled={disabled || disableEdit}
+        onClick={() => onEdit?.(credential)}
+      >
+        edit
+      </button>
+      <button
+        data-testid={`delete-${credential.credential_id}`}
+        disabled={disabled || disableDelete}
+        onClick={() => onDelete?.(credential)}
+      >
+        delete
+      </button>
     </div>
   ),
 }))
 
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'test',
-  custom_configuration: {
-    status: CustomConfigurationStatusEnum.active,
-    current_credential_id: 'cred-1',
-    current_credential_name: 'My Key',
-    available_credentials: [
-      { credential_id: 'cred-1', credential_name: 'My Key' },
-      { credential_id: 'cred-2', credential_name: 'Other Key' },
-    ],
-  },
-  system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
-  preferred_provider_type: PreferredProviderTypeEnum.system,
-  configurate_methods: ['predefined-model'],
-  supported_model_types: ['llm'],
-  ...overrides,
-} as unknown as ModelProvider)
+const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
+  ({
+    provider: 'test',
+    custom_configuration: {
+      status: CustomConfigurationStatusEnum.active,
+      current_credential_id: 'cred-1',
+      current_credential_name: 'My Key',
+      available_credentials: [
+        { credential_id: 'cred-1', credential_name: 'My Key' },
+        { credential_id: 'cred-2', credential_name: 'Other Key' },
+      ],
+    },
+    system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
+    preferred_provider_type: PreferredProviderTypeEnum.system,
+    configurate_methods: ['predefined-model'],
+    supported_model_types: ['llm'],
+    ...overrides,
+  }) as unknown as ModelProvider
 
 const createState = (overrides: Partial<CredentialPanelState> = {}): CredentialPanelState => ({
   variant: 'api-active',

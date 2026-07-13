@@ -42,16 +42,58 @@ let mockDatasetPermissionKeys = ['dataset.acl.use']
 const mockRouterReplace = vi.fn()
 
 vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (selector: (state: { plan: typeof mockPlan, enableBilling: boolean }) => unknown) =>
-    selector({ plan: mockPlan, enableBilling: true }),
+  useProviderContextSelector: (
+    selector: (state: { plan: typeof mockPlan; enableBilling: boolean }) => unknown,
+  ) => selector({ plan: mockPlan, enableBilling: true }),
 }))
 
 let mockCurrentUserId = 'user-1'
 let mockWorkspacePermissionKeys = ['dataset.create_and_management']
 let mockIsLoadingWorkspacePermissionKeys = false
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: mockCurrentUserId },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: mockCurrentUserId },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: mockCurrentUserId },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: mockCurrentUserId },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
   return createDatasetAccessAtomMock(importOriginal, () => ({
     userProfile: { id: mockCurrentUserId },
@@ -71,14 +113,25 @@ vi.mock('@/service/use-billing', () => ({
 }))
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+  const { createDatasetAccessJotaiMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
   return createDatasetAccessJotaiMock(importOriginal)
 })
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { id: string, pipeline_id: string, permission_keys: string[] } }) => unknown) =>
-    selector({ dataset: { id: 'test-dataset-id', pipeline_id: 'test-pipeline-id', permission_keys: mockDatasetPermissionKeys } }),
+  useDatasetDetailContextWithSelector: (
+    selector: (state: {
+      dataset: { id: string; pipeline_id: string; permission_keys: string[] }
+    }) => unknown,
+  ) =>
+    selector({
+      dataset: {
+        id: 'test-dataset-id',
+        pipeline_id: 'test-pipeline-id',
+        permission_keys: mockDatasetPermissionKeys,
+      },
+    }),
 }))
 
 // Mock API services
@@ -136,7 +189,7 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock next/link
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => (
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
     <a href={href}>{children}</a>
   ),
 }))
@@ -151,14 +204,14 @@ vi.mock('@/app/components/datasets/create/step-one/upgrade-card', () => ({
 }))
 
 // Mock zustand store
-// eslint-disable-next-line ts/no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 type MockDataSourceStore = any
 
 const mockStoreState = {
   localFileList: [] as FileItem[],
   currentLocalFile: undefined as CustomFile | undefined,
   setCurrentLocalFile: vi.fn(),
-  documentsData: [] as { workspace_id: string, pages: { page_id: string }[] }[],
+  documentsData: [] as { workspace_id: string; pages: { page_id: string }[] }[],
   onlineDocuments: [] as (NotionPage & { workspace_id: string })[],
   currentDocument: undefined as (NotionPage & { workspace_id: string }) | undefined,
   setDocumentsData: vi.fn(),
@@ -194,7 +247,8 @@ vi.mock('../data-source/store', () => ({
   useDataSourceStore: () => ({
     getState: () => mockStoreState,
   }),
-  useDataSourceStoreWithSelector: (selector: (state: typeof mockStoreState) => unknown) => selector(mockStoreState),
+  useDataSourceStoreWithSelector: (selector: (state: typeof mockStoreState) => unknown) =>
+    selector(mockStoreState),
 }))
 
 vi.mock('../data-source/store/provider', () => ({
@@ -217,45 +271,52 @@ const createMockDatasource = (overrides?: Partial<Datasource>): Datasource => ({
   ...overrides,
 })
 
-const createMockFile = (overrides?: Partial<CustomFile>): CustomFile => ({
-  id: 'file-1',
-  name: 'test.txt',
-  type: 'text/plain',
-  size: 1024,
-  extension: '.txt',
-  mime_type: 'text/plain',
-  ...overrides,
-} as CustomFile)
+const createMockFile = (overrides?: Partial<CustomFile>): CustomFile =>
+  ({
+    id: 'file-1',
+    name: 'test.txt',
+    type: 'text/plain',
+    size: 1024,
+    extension: '.txt',
+    mime_type: 'text/plain',
+    ...overrides,
+  }) as CustomFile
 
-const createMockFileItem = (overrides?: Partial<FileItem>): FileItem => ({
-  file: createMockFile(),
-  progress: 100,
-  ...overrides,
-} as FileItem)
+const createMockFileItem = (overrides?: Partial<FileItem>): FileItem =>
+  ({
+    file: createMockFile(),
+    progress: 100,
+    ...overrides,
+  }) as FileItem
 
-const createMockNotionPage = (overrides?: Partial<NotionPage & { workspace_id: string }>): NotionPage & { workspace_id: string } => ({
-  page_id: 'page-1',
-  page_name: 'Test Page',
-  page_icon: null,
-  type: 'page',
-  workspace_id: 'workspace-1',
-  ...overrides,
-} as NotionPage & { workspace_id: string })
+const createMockNotionPage = (
+  overrides?: Partial<NotionPage & { workspace_id: string }>,
+): NotionPage & { workspace_id: string } =>
+  ({
+    page_id: 'page-1',
+    page_name: 'Test Page',
+    page_icon: null,
+    type: 'page',
+    workspace_id: 'workspace-1',
+    ...overrides,
+  }) as NotionPage & { workspace_id: string }
 
-const createMockCrawlResult = (overrides?: Partial<CrawlResultItem>): CrawlResultItem => ({
-  source_url: 'https://example.com',
-  title: 'Test Page',
-  markdown: '# Test',
-  description: 'A test page',
-  ...overrides,
-} as CrawlResultItem)
+const createMockCrawlResult = (overrides?: Partial<CrawlResultItem>): CrawlResultItem =>
+  ({
+    source_url: 'https://example.com',
+    title: 'Test Page',
+    markdown: '# Test',
+    description: 'A test page',
+    ...overrides,
+  }) as CrawlResultItem
 
-const createMockOnlineDriveFile = (overrides?: Partial<OnlineDriveFile>): OnlineDriveFile => ({
-  id: 'drive-file-1',
-  name: 'test-file.pdf',
-  type: 'file',
-  ...overrides,
-} as OnlineDriveFile)
+const createMockOnlineDriveFile = (overrides?: Partial<OnlineDriveFile>): OnlineDriveFile =>
+  ({
+    id: 'drive-file-1',
+    name: 'test-file.pdf',
+    type: 'file',
+    ...overrides,
+  }) as OnlineDriveFile
 
 beforeEach(() => {
   mockDatasetPermissionKeys = ['dataset.acl.use']
@@ -348,159 +409,187 @@ describe('useDatasourceUIState', () => {
     })
 
     it('should return true for localFile when no files are loaded', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        ...defaultParams,
-        datasource: createMockDatasource(),
-        allFileLoaded: false,
-        localFileListLength: 0,
-      }))
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          ...defaultParams,
+          datasource: createMockDatasource(),
+          allFileLoaded: false,
+          localFileListLength: 0,
+        }),
+      )
       expect(result.current.nextBtnDisabled).toBe(true)
     })
 
     it('should return false for localFile when files are loaded', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        ...defaultParams,
-        datasource: createMockDatasource(),
-        allFileLoaded: true,
-        localFileListLength: 1,
-      }))
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          ...defaultParams,
+          datasource: createMockDatasource(),
+          allFileLoaded: true,
+          localFileListLength: 1,
+        }),
+      )
       expect(result.current.nextBtnDisabled).toBe(false)
     })
 
     it('should return true for onlineDocument when no documents are selected', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        ...defaultParams,
-        datasource: createMockDatasource({
-          nodeData: {
-            ...createMockDatasource().nodeData,
-            provider_type: DatasourceType.onlineDocument,
-          },
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          ...defaultParams,
+          datasource: createMockDatasource({
+            nodeData: {
+              ...createMockDatasource().nodeData,
+              provider_type: DatasourceType.onlineDocument,
+            },
+          }),
+          onlineDocumentsLength: 0,
         }),
-        onlineDocumentsLength: 0,
-      }))
+      )
       expect(result.current.nextBtnDisabled).toBe(true)
     })
 
     it('should return false for onlineDocument when documents are selected', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        ...defaultParams,
-        datasource: createMockDatasource({
-          nodeData: {
-            ...createMockDatasource().nodeData,
-            provider_type: DatasourceType.onlineDocument,
-          },
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          ...defaultParams,
+          datasource: createMockDatasource({
+            nodeData: {
+              ...createMockDatasource().nodeData,
+              provider_type: DatasourceType.onlineDocument,
+            },
+          }),
+          onlineDocumentsLength: 1,
         }),
-        onlineDocumentsLength: 1,
-      }))
+      )
       expect(result.current.nextBtnDisabled).toBe(false)
     })
   })
 
   describe('isShowVectorSpaceFull', () => {
     it('should return false when vector space is not full', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        ...defaultParams,
-        datasource: createMockDatasource(),
-        allFileLoaded: true,
-        isVectorSpaceFull: false,
-      }))
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          ...defaultParams,
+          datasource: createMockDatasource(),
+          allFileLoaded: true,
+          isVectorSpaceFull: false,
+        }),
+      )
       expect(result.current.isShowVectorSpaceFull).toBe(false)
     })
 
     it('should return true when vector space is full and billing is enabled', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        ...defaultParams,
-        datasource: createMockDatasource(),
-        allFileLoaded: true,
-        isVectorSpaceFull: true,
-        enableBilling: true,
-      }))
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          ...defaultParams,
+          datasource: createMockDatasource(),
+          allFileLoaded: true,
+          isVectorSpaceFull: true,
+          enableBilling: true,
+        }),
+      )
       expect(result.current.isShowVectorSpaceFull).toBe(true)
     })
 
     it('should return false when vector space is full but billing is disabled', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        ...defaultParams,
-        datasource: createMockDatasource(),
-        allFileLoaded: true,
-        isVectorSpaceFull: true,
-        enableBilling: false,
-      }))
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          ...defaultParams,
+          datasource: createMockDatasource(),
+          allFileLoaded: true,
+          isVectorSpaceFull: true,
+          enableBilling: false,
+        }),
+      )
       expect(result.current.isShowVectorSpaceFull).toBe(false)
     })
   })
 
   describe('showSelect', () => {
     it('should return false for localFile datasource', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        ...defaultParams,
-        datasource: createMockDatasource(),
-      }))
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          ...defaultParams,
+          datasource: createMockDatasource(),
+        }),
+      )
       expect(result.current.showSelect).toBe(false)
     })
 
     it('should return true for onlineDocument when pages exist', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        ...defaultParams,
-        datasource: createMockDatasource({
-          nodeData: {
-            ...createMockDatasource().nodeData,
-            provider_type: DatasourceType.onlineDocument,
-          },
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          ...defaultParams,
+          datasource: createMockDatasource({
+            nodeData: {
+              ...createMockDatasource().nodeData,
+              provider_type: DatasourceType.onlineDocument,
+            },
+          }),
+          currentWorkspacePagesLength: 5,
         }),
-        currentWorkspacePagesLength: 5,
-      }))
+      )
       expect(result.current.showSelect).toBe(true)
     })
 
     it('should return true for onlineDrive when non-bucket files exist', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        ...defaultParams,
-        datasource: createMockDatasource({
-          nodeData: {
-            ...createMockDatasource().nodeData,
-            provider_type: DatasourceType.onlineDrive,
-          },
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          ...defaultParams,
+          datasource: createMockDatasource({
+            nodeData: {
+              ...createMockDatasource().nodeData,
+              provider_type: DatasourceType.onlineDrive,
+            },
+          }),
+          onlineDriveFileList: [createMockOnlineDriveFile()],
         }),
-        onlineDriveFileList: [createMockOnlineDriveFile()],
-      }))
+      )
       expect(result.current.showSelect).toBe(true)
     })
 
     it('should return false for onlineDrive when only buckets exist', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        ...defaultParams,
-        datasource: createMockDatasource({
-          nodeData: {
-            ...createMockDatasource().nodeData,
-            provider_type: DatasourceType.onlineDrive,
-          },
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          ...defaultParams,
+          datasource: createMockDatasource({
+            nodeData: {
+              ...createMockDatasource().nodeData,
+              provider_type: DatasourceType.onlineDrive,
+            },
+          }),
+          onlineDriveFileList: [
+            createMockOnlineDriveFile({ type: 'bucket' as OnlineDriveFile['type'] }),
+          ],
         }),
-        onlineDriveFileList: [createMockOnlineDriveFile({ type: 'bucket' as OnlineDriveFile['type'] })],
-      }))
+      )
       expect(result.current.showSelect).toBe(false)
     })
   })
 
   describe('tip', () => {
     it('should return empty string for localFile', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        ...defaultParams,
-        datasource: createMockDatasource(),
-      }))
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          ...defaultParams,
+          datasource: createMockDatasource(),
+        }),
+      )
       expect(result.current.tip).toBe('')
     })
 
     it('should return translation key for onlineDocument', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        ...defaultParams,
-        datasource: createMockDatasource({
-          nodeData: {
-            ...createMockDatasource().nodeData,
-            provider_type: DatasourceType.onlineDocument,
-          },
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          ...defaultParams,
+          datasource: createMockDatasource({
+            nodeData: {
+              ...createMockDatasource().nodeData,
+              provider_type: DatasourceType.onlineDocument,
+            },
+          }),
         }),
-      }))
+      )
       expect(result.current.tip).toContain('datasetPipeline.addDocuments.selectOnlineDocumentTip')
     })
   })
@@ -667,27 +756,45 @@ describe('StepOneContent', () => {
 describe('StepTwoContent', () => {
   // Mock ProcessDocuments since it has complex dependencies
   vi.mock('../process-documents', () => ({
-    default: React.forwardRef(({ dataSourceNodeId, isRunning, onProcess, onPreview, onSubmit, onBack }: {
-      dataSourceNodeId: string
-      isRunning: boolean
-      onProcess: () => void
-      onPreview: () => void
-      onSubmit: (data: Record<string, unknown>) => void
-      onBack: () => void
-    }, ref: React.Ref<{ submit: () => void }>) => {
-      React.useImperativeHandle(ref, () => ({
-        submit: () => onSubmit({ test: 'data' }),
-      }))
-      return (
-        <div data-testid="process-documents">
-          <span data-testid="datasource-node-id">{dataSourceNodeId}</span>
-          <span data-testid="is-running">{isRunning.toString()}</span>
-          <button data-testid="process-btn" onClick={onProcess}>Process</button>
-          <button data-testid="preview-btn" onClick={onPreview}>Preview</button>
-          <button data-testid="back-btn" onClick={onBack}>Back</button>
-        </div>
-      )
-    }),
+    default: React.forwardRef(
+      (
+        {
+          dataSourceNodeId,
+          isRunning,
+          onProcess,
+          onPreview,
+          onSubmit,
+          onBack,
+        }: {
+          dataSourceNodeId: string
+          isRunning: boolean
+          onProcess: () => void
+          onPreview: () => void
+          onSubmit: (data: Record<string, unknown>) => void
+          onBack: () => void
+        },
+        ref: React.Ref<{ submit: () => void }>,
+      ) => {
+        React.useImperativeHandle(ref, () => ({
+          submit: () => onSubmit({ test: 'data' }),
+        }))
+        return (
+          <div data-testid="process-documents">
+            <span data-testid="datasource-node-id">{dataSourceNodeId}</span>
+            <span data-testid="is-running">{isRunning.toString()}</span>
+            <button data-testid="process-btn" onClick={onProcess}>
+              Process
+            </button>
+            <button data-testid="preview-btn" onClick={onPreview}>
+              Preview
+            </button>
+            <button data-testid="back-btn" onClick={onBack}>
+              Back
+            </button>
+          </div>
+        )
+      },
+    ),
   }))
 
   const defaultProps = {
@@ -741,7 +848,7 @@ describe('StepTwoContent', () => {
 describe('StepThreeContent', () => {
   // Mock Processing since it has complex dependencies
   vi.mock('../processing', () => ({
-    default: ({ batchId, documents }: { batchId: string, documents: unknown[] }) => (
+    default: ({ batchId, documents }: { batchId: string; documents: unknown[] }) => (
       <div data-testid="processing">
         <span data-testid="batch-id">{batchId}</span>
         <span data-testid="documents-count">{documents.length}</span>
@@ -761,7 +868,9 @@ describe('StepThreeContent', () => {
 
   it('should pass documents count to Processing', () => {
     const documents = [{ id: '1' }, { id: '2' }]
-    render(<StepThreeContent batchId="batch-123" documents={documents as InitialDocumentDetail[]} />)
+    render(
+      <StepThreeContent batchId="batch-123" documents={documents as InitialDocumentDetail[]} />,
+    )
     expect(screen.getByTestId('documents-count'))!.toHaveTextContent('2')
   })
 })
@@ -770,16 +879,22 @@ describe('StepThreeContent', () => {
 describe('StepOnePreview', () => {
   // Mock preview components
   vi.mock('../preview/file-preview', () => ({
-    default: ({ file, hidePreview }: { file: CustomFile, hidePreview: () => void }) => (
+    default: ({ file, hidePreview }: { file: CustomFile; hidePreview: () => void }) => (
       <div data-testid="file-preview">
         <span data-testid="file-name">{file.name}</span>
-        <button data-testid="hide-preview" onClick={hidePreview}>Hide</button>
+        <button data-testid="hide-preview" onClick={hidePreview}>
+          Hide
+        </button>
       </div>
     ),
   }))
 
   vi.mock('../preview/online-document-preview', () => ({
-    default: ({ datasourceNodeId, currentPage, hidePreview }: {
+    default: ({
+      datasourceNodeId,
+      currentPage,
+      hidePreview,
+    }: {
       datasourceNodeId: string
       currentPage: NotionPage & { workspace_id: string }
       hidePreview: () => void
@@ -787,16 +902,26 @@ describe('StepOnePreview', () => {
       <div data-testid="online-document-preview">
         <span data-testid="node-id">{datasourceNodeId}</span>
         <span data-testid="page-id">{currentPage.page_id}</span>
-        <button data-testid="hide-preview" onClick={hidePreview}>Hide</button>
+        <button data-testid="hide-preview" onClick={hidePreview}>
+          Hide
+        </button>
       </div>
     ),
   }))
 
   vi.mock('../preview/web-preview', () => ({
-    default: ({ currentWebsite, hidePreview }: { currentWebsite: CrawlResultItem, hidePreview: () => void }) => (
+    default: ({
+      currentWebsite,
+      hidePreview,
+    }: {
+      currentWebsite: CrawlResultItem
+      hidePreview: () => void
+    }) => (
       <div data-testid="web-preview">
         <span data-testid="url">{currentWebsite.source_url}</span>
-        <button data-testid="hide-preview" onClick={hidePreview}>Hide</button>
+        <button data-testid="hide-preview" onClick={hidePreview}>
+          Hide
+        </button>
       </div>
     ),
   }))
@@ -818,17 +943,14 @@ describe('StepOnePreview', () => {
   it('should not render any preview when no file is selected', () => {
     const { container } = render(<StepOnePreview {...defaultProps} />)
     expect(container.querySelector('[data-testid="file-preview"]')).not.toBeInTheDocument()
-    expect(container.querySelector('[data-testid="online-document-preview"]')).not.toBeInTheDocument()
+    expect(
+      container.querySelector('[data-testid="online-document-preview"]'),
+    ).not.toBeInTheDocument()
     expect(container.querySelector('[data-testid="web-preview"]')).not.toBeInTheDocument()
   })
 
   it('should render FilePreview when currentLocalFile is set', () => {
-    render(
-      <StepOnePreview
-        {...defaultProps}
-        currentLocalFile={createMockFile()}
-      />,
-    )
+    render(<StepOnePreview {...defaultProps} currentLocalFile={createMockFile()} />)
     expect(screen.getByTestId('file-preview'))!.toBeInTheDocument()
     expect(screen.getByTestId('file-name'))!.toHaveTextContent('test.txt')
   })
@@ -845,12 +967,7 @@ describe('StepOnePreview', () => {
   })
 
   it('should render WebsitePreview when currentWebsite is set', () => {
-    render(
-      <StepOnePreview
-        {...defaultProps}
-        currentWebsite={createMockCrawlResult()}
-      />,
-    )
+    render(<StepOnePreview {...defaultProps} currentWebsite={createMockCrawlResult()} />)
     expect(screen.getByTestId('web-preview'))!.toBeInTheDocument()
   })
 
@@ -873,7 +990,12 @@ describe('StepOnePreview', () => {
 describe('StepTwoPreview', () => {
   // Mock ChunkPreview
   vi.mock('../preview/chunk-preview', () => ({
-    default: ({ dataSourceType, isIdle, isPending, onPreview }: {
+    default: ({
+      dataSourceType,
+      isIdle,
+      isPending,
+      onPreview,
+    }: {
       dataSourceType: string
       isIdle: boolean
       isPending: boolean
@@ -883,7 +1005,9 @@ describe('StepTwoPreview', () => {
         <span data-testid="datasource-type">{dataSourceType}</span>
         <span data-testid="is-idle">{isIdle.toString()}</span>
         <span data-testid="is-pending">{isPending.toString()}</span>
-        <button data-testid="preview-btn" onClick={onPreview}>Preview</button>
+        <button data-testid="preview-btn" onClick={onPreview}>
+          Preview
+        </button>
       </div>
     ),
   }))
@@ -941,19 +1065,21 @@ describe('StepTwoPreview', () => {
 describe('Edge Cases', () => {
   describe('Empty States', () => {
     it('should handle undefined datasource in useDatasourceUIState', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        datasource: undefined,
-        allFileLoaded: false,
-        localFileListLength: 0,
-        onlineDocumentsLength: 0,
-        websitePagesLength: 0,
-        selectedFileIdsLength: 0,
-        onlineDriveFileList: [],
-        isVectorSpaceFull: false,
-        enableBilling: true,
-        currentWorkspacePagesLength: 0,
-        fileUploadConfig: { file_size_limit: 15, batch_count_limit: 5 },
-      }))
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          datasource: undefined,
+          allFileLoaded: false,
+          localFileListLength: 0,
+          onlineDocumentsLength: 0,
+          websitePagesLength: 0,
+          selectedFileIdsLength: 0,
+          onlineDriveFileList: [],
+          isVectorSpaceFull: false,
+          enableBilling: true,
+          currentWorkspacePagesLength: 0,
+          fileUploadConfig: { file_size_limit: 15, batch_count_limit: 5 },
+        }),
+      )
 
       expect(result.current.datasourceType).toBeUndefined()
       expect(result.current.nextBtnDisabled).toBe(true)
@@ -962,42 +1088,46 @@ describe('Edge Cases', () => {
 
   describe('Boundary Conditions', () => {
     it('should handle zero file size limit', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        datasource: createMockDatasource({
-          nodeData: {
-            ...createMockDatasource().nodeData,
-            provider_type: DatasourceType.onlineDrive,
-          },
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          datasource: createMockDatasource({
+            nodeData: {
+              ...createMockDatasource().nodeData,
+              provider_type: DatasourceType.onlineDrive,
+            },
+          }),
+          allFileLoaded: false,
+          localFileListLength: 0,
+          onlineDocumentsLength: 0,
+          websitePagesLength: 0,
+          selectedFileIdsLength: 0,
+          onlineDriveFileList: [],
+          isVectorSpaceFull: false,
+          enableBilling: true,
+          currentWorkspacePagesLength: 0,
+          fileUploadConfig: { file_size_limit: 0, batch_count_limit: 0 },
         }),
-        allFileLoaded: false,
-        localFileListLength: 0,
-        onlineDocumentsLength: 0,
-        websitePagesLength: 0,
-        selectedFileIdsLength: 0,
-        onlineDriveFileList: [],
-        isVectorSpaceFull: false,
-        enableBilling: true,
-        currentWorkspacePagesLength: 0,
-        fileUploadConfig: { file_size_limit: 0, batch_count_limit: 0 },
-      }))
+      )
 
       expect(result.current.tip).toContain('datasetPipeline.addDocuments.selectOnlineDriveTip')
     })
 
     it('should handle very large file counts', () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        datasource: createMockDatasource(),
-        allFileLoaded: true,
-        localFileListLength: 10000,
-        onlineDocumentsLength: 0,
-        websitePagesLength: 0,
-        selectedFileIdsLength: 0,
-        onlineDriveFileList: [],
-        isVectorSpaceFull: false,
-        enableBilling: true,
-        currentWorkspacePagesLength: 0,
-        fileUploadConfig: { file_size_limit: 15, batch_count_limit: 5 },
-      }))
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          datasource: createMockDatasource(),
+          allFileLoaded: true,
+          localFileListLength: 10000,
+          onlineDocumentsLength: 0,
+          websitePagesLength: 0,
+          selectedFileIdsLength: 0,
+          onlineDriveFileList: [],
+          isVectorSpaceFull: false,
+          enableBilling: true,
+          currentWorkspacePagesLength: 0,
+          fileUploadConfig: { file_size_limit: 15, batch_count_limit: 5 },
+        }),
+      )
 
       expect(result.current.nextBtnDisabled).toBe(false)
     })
@@ -1102,10 +1232,12 @@ describe('Store Hooks', () => {
     })
 
     it('should compute PagesMapAndSelectedPagesId correctly', () => {
-      mockStoreState.documentsData = [{
-        workspace_id: 'ws-1',
-        pages: [{ page_id: 'page-1' }],
-      }]
+      mockStoreState.documentsData = [
+        {
+          workspace_id: 'ws-1',
+          pages: [{ page_id: 'page-1' }],
+        },
+      ]
       const { result } = renderHook(() => useOnlineDocument())
       expect(result.current.PagesMapAndSelectedPagesId['page-1']).toBeDefined()
     })
@@ -1150,24 +1282,27 @@ describe('All Datasource Types', () => {
 
   describe.each(datasourceTypes)('$name datasource type', ({ type }) => {
     it(`should handle ${type} in useDatasourceUIState`, () => {
-      const { result } = renderHook(() => useDatasourceUIState({
-        datasource: createMockDatasource({
-          nodeData: {
-            ...createMockDatasource().nodeData,
-            provider_type: type,
-          },
+      const { result } = renderHook(() =>
+        useDatasourceUIState({
+          datasource: createMockDatasource({
+            nodeData: {
+              ...createMockDatasource().nodeData,
+              provider_type: type,
+            },
+          }),
+          allFileLoaded: type === DatasourceType.localFile,
+          localFileListLength: type === DatasourceType.localFile ? 1 : 0,
+          onlineDocumentsLength: type === DatasourceType.onlineDocument ? 1 : 0,
+          websitePagesLength: type === DatasourceType.websiteCrawl ? 1 : 0,
+          selectedFileIdsLength: type === DatasourceType.onlineDrive ? 1 : 0,
+          onlineDriveFileList:
+            type === DatasourceType.onlineDrive ? [createMockOnlineDriveFile()] : [],
+          isVectorSpaceFull: false,
+          enableBilling: true,
+          currentWorkspacePagesLength: type === DatasourceType.onlineDocument ? 1 : 0,
+          fileUploadConfig: { file_size_limit: 15, batch_count_limit: 5 },
         }),
-        allFileLoaded: type === DatasourceType.localFile,
-        localFileListLength: type === DatasourceType.localFile ? 1 : 0,
-        onlineDocumentsLength: type === DatasourceType.onlineDocument ? 1 : 0,
-        websitePagesLength: type === DatasourceType.websiteCrawl ? 1 : 0,
-        selectedFileIdsLength: type === DatasourceType.onlineDrive ? 1 : 0,
-        onlineDriveFileList: type === DatasourceType.onlineDrive ? [createMockOnlineDriveFile()] : [],
-        isVectorSpaceFull: false,
-        enableBilling: true,
-        currentWorkspacePagesLength: type === DatasourceType.onlineDocument ? 1 : 0,
-        fileUploadConfig: { file_size_limit: 15, batch_count_limit: 5 },
-      }))
+      )
 
       expect(result.current.datasourceType).toBe(type)
       expect(result.current.nextBtnDisabled).toBe(false)
@@ -1746,10 +1881,21 @@ describe('useDatasourceActions - Async Functions', () => {
 
   const createMockDataSourceStoreForAsync = (datasourceType: string) => ({
     getState: () => ({
-      previewLocalFileRef: { current: datasourceType === DatasourceType.localFile ? createMockFile() : undefined },
-      previewOnlineDocumentRef: { current: datasourceType === DatasourceType.onlineDocument ? createMockNotionPage() : undefined },
-      previewWebsitePageRef: { current: datasourceType === DatasourceType.websiteCrawl ? createMockCrawlResult() : undefined },
-      previewOnlineDriveFileRef: { current: datasourceType === DatasourceType.onlineDrive ? createMockOnlineDriveFile() : undefined },
+      previewLocalFileRef: {
+        current: datasourceType === DatasourceType.localFile ? createMockFile() : undefined,
+      },
+      previewOnlineDocumentRef: {
+        current:
+          datasourceType === DatasourceType.onlineDocument ? createMockNotionPage() : undefined,
+      },
+      previewWebsitePageRef: {
+        current:
+          datasourceType === DatasourceType.websiteCrawl ? createMockCrawlResult() : undefined,
+      },
+      previewOnlineDriveFileRef: {
+        current:
+          datasourceType === DatasourceType.onlineDrive ? createMockOnlineDriveFile() : undefined,
+      },
       currentCredentialId: 'cred-1',
       bucket: 'test-bucket',
       localFileList: [createMockFileItem()],
@@ -1771,7 +1917,9 @@ describe('useDatasourceActions - Async Functions', () => {
       datasource: createMockDatasource(),
       datasourceType: DatasourceType.localFile,
       pipelineId: 'pipeline-1',
-      dataSourceStore: createMockDataSourceStoreForAsync(DatasourceType.localFile) as MockDataSourceStore,
+      dataSourceStore: createMockDataSourceStoreForAsync(
+        DatasourceType.localFile,
+      ) as MockDataSourceStore,
       setEstimateData,
       setBatchId: vi.fn(),
       setDocuments: vi.fn(),
@@ -1803,7 +1951,9 @@ describe('useDatasourceActions - Async Functions', () => {
       datasource: createMockDatasource(),
       datasourceType: DatasourceType.localFile,
       pipelineId: 'pipeline-1',
-      dataSourceStore: createMockDataSourceStoreForAsync(DatasourceType.localFile) as MockDataSourceStore,
+      dataSourceStore: createMockDataSourceStoreForAsync(
+        DatasourceType.localFile,
+      ) as MockDataSourceStore,
       setEstimateData: vi.fn(),
       setBatchId,
       setDocuments,
@@ -1832,7 +1982,9 @@ describe('useDatasourceActions - Async Functions', () => {
       datasource: undefined,
       datasourceType: DatasourceType.localFile,
       pipelineId: 'pipeline-1',
-      dataSourceStore: createMockDataSourceStoreForAsync(DatasourceType.localFile) as MockDataSourceStore,
+      dataSourceStore: createMockDataSourceStoreForAsync(
+        DatasourceType.localFile,
+      ) as MockDataSourceStore,
       setEstimateData: vi.fn(),
       setBatchId: vi.fn(),
       setDocuments: vi.fn(),
@@ -1859,7 +2011,9 @@ describe('useDatasourceActions - Async Functions', () => {
       datasource: createMockDatasource(),
       datasourceType: DatasourceType.localFile,
       pipelineId: undefined,
-      dataSourceStore: createMockDataSourceStoreForAsync(DatasourceType.localFile) as MockDataSourceStore,
+      dataSourceStore: createMockDataSourceStoreForAsync(
+        DatasourceType.localFile,
+      ) as MockDataSourceStore,
       setEstimateData: vi.fn(),
       setBatchId: vi.fn(),
       setDocuments: vi.fn(),
@@ -1891,7 +2045,9 @@ describe('useDatasourceActions - Async Functions', () => {
       }),
       datasourceType: DatasourceType.onlineDocument,
       pipelineId: 'pipeline-1',
-      dataSourceStore: createMockDataSourceStoreForAsync(DatasourceType.onlineDocument) as MockDataSourceStore,
+      dataSourceStore: createMockDataSourceStoreForAsync(
+        DatasourceType.onlineDocument,
+      ) as MockDataSourceStore,
       setEstimateData: vi.fn(),
       setBatchId: vi.fn(),
       setDocuments: vi.fn(),
@@ -1924,7 +2080,9 @@ describe('useDatasourceActions - Async Functions', () => {
       }),
       datasourceType: DatasourceType.websiteCrawl,
       pipelineId: 'pipeline-1',
-      dataSourceStore: createMockDataSourceStoreForAsync(DatasourceType.websiteCrawl) as MockDataSourceStore,
+      dataSourceStore: createMockDataSourceStoreForAsync(
+        DatasourceType.websiteCrawl,
+      ) as MockDataSourceStore,
       setEstimateData: vi.fn(),
       setBatchId: vi.fn(),
       setDocuments: vi.fn(),
@@ -1957,7 +2115,9 @@ describe('useDatasourceActions - Async Functions', () => {
       }),
       datasourceType: DatasourceType.onlineDrive,
       pipelineId: 'pipeline-1',
-      dataSourceStore: createMockDataSourceStoreForAsync(DatasourceType.onlineDrive) as MockDataSourceStore,
+      dataSourceStore: createMockDataSourceStoreForAsync(
+        DatasourceType.onlineDrive,
+      ) as MockDataSourceStore,
       setEstimateData: vi.fn(),
       setBatchId: vi.fn(),
       setDocuments: vi.fn(),

@@ -5,7 +5,6 @@ import type { Mock } from 'vitest'
  * This test specifically validates that the backToPrev function in the document detail
  * component correctly preserves pagination and filter states.
  */
-
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useRouter } from '@/next/navigation'
 import { useDocumentDetail, useDocumentMetadata } from '@/service/knowledge/use-document'
@@ -40,7 +39,13 @@ vi.mock('@/service/knowledge/use-segment', () => ({
 }))
 
 // Create a minimal version of the DocumentDetail component that includes our fix
-const DocumentDetailWithFix = ({ datasetId, documentId }: { datasetId: string, documentId: string }) => {
+const DocumentDetailWithFix = ({
+  datasetId,
+  documentId,
+}: {
+  datasetId: string
+  documentId: string
+}) => {
   const router = useRouter()
 
   // This is the FIXED implementation from detail/index.tsx
@@ -59,12 +64,7 @@ const DocumentDetailWithFix = ({ datasetId, documentId }: { datasetId: string, d
         Back to Documents
       </button>
       <div data-testid="document-info">
-        Dataset:
-        {' '}
-        {datasetId}
-        , Document:
-        {' '}
-        {documentId}
+        Dataset: {datasetId}, Document: {documentId}
       </div>
     </div>
   )
@@ -127,7 +127,9 @@ describe('Document Detail Navigation Fix Verification', () => {
       fireEvent.click(screen.getByTestId('back-button-fixed'))
 
       // Should preserve all query parameters
-      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-123/documents?page=2&limit=10&keyword=API+documentation&status=active')
+      expect(mockPush).toHaveBeenCalledWith(
+        '/datasets/dataset-123/documents?page=2&limit=10&keyword=API+documentation&status=active',
+      )
 
       console.log('✅ Search and filters preserved')
     })
@@ -136,7 +138,8 @@ describe('Document Detail Navigation Fix Verification', () => {
       // Test with complex query string including encoded characters
       Object.defineProperty(window, 'location', {
         value: {
-          search: '?page=1&limit=50&keyword=test%20%26%20debug&sort=name&order=desc&filter=%7B%22type%22%3A%22pdf%22%7D',
+          search:
+            '?page=1&limit=50&keyword=test%20%26%20debug&sort=name&order=desc&filter=%7B%22type%22%3A%22pdf%22%7D',
         },
         writable: true,
       })
@@ -213,7 +216,9 @@ describe('Document Detail Navigation Fix Verification', () => {
       fireEvent.click(screen.getByTestId('back-button-fixed'))
 
       // Should return to page 3 of API search results
-      expect(mockPush).toHaveBeenCalledWith('/datasets/main-dataset/documents?keyword=API&page=3&limit=10')
+      expect(mockPush).toHaveBeenCalledWith(
+        '/datasets/main-dataset/documents?keyword=API&page=3&limit=10',
+      )
 
       console.log('✅ Real user scenario: search + pagination preserved')
     })
@@ -232,7 +237,9 @@ describe('Document Detail Navigation Fix Verification', () => {
       fireEvent.click(screen.getByTestId('back-button-fixed'))
 
       // All filters should be preserved
-      expect(mockPush).toHaveBeenCalledWith('/datasets/filtered-dataset/documents?page=2&limit=25&status=active&type=pdf&sort=created_at&order=desc')
+      expect(mockPush).toHaveBeenCalledWith(
+        '/datasets/filtered-dataset/documents?page=2&limit=25&status=active&type=pdf&sort=created_at&order=desc',
+      )
 
       console.log('✅ Complex filtering scenario preserved')
     })

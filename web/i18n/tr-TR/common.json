@@ -288,7 +288,6 @@
   "menus.explore": "Keşfet",
   "menus.exploreMarketplace": "Pazar Yeri'ni Keşfedin",
   "menus.plugins": "Entegrasyonlar",
-  "menus.roster": "Agent",
   "menus.status": "beta",
   "menus.tools": "Araçlar",
   "model.capabilities": "MultiModal Yetenekler",
@@ -597,6 +596,8 @@
   "voiceInput.notAllow": "mikrofon yetkilendirilmedi",
   "voiceInput.speaking": "Şimdi konuş...",
   "voiceInput.start": "Sesli giriş",
+  "voiceInput.starting": "Mikrofon başlatılıyor...",
+  "voiceInput.stop": "Kaydı durdur",
   "workflowAsToolPage.description": "Yayınlanmış herhangi bir workflowu yeniden kullanılabilir bir araca dönüştürün. Modüler kalmak ve tekrarı önlemek için birden çok uygulamada kullanın.",
   "you": "Sen"
 }

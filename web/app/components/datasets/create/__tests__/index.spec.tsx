@@ -25,7 +25,7 @@ const IndexingTypeValues = {
 
 // Mock next/link
 vi.mock('@/next/link', () => {
-  return function MockLink({ children, href }: { children: React.ReactNode, href: string }) {
+  return function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
     return <a href={href}>{children}</a>
   }
 })
@@ -41,8 +41,49 @@ let mockCurrentUserId = 'user-1'
 let mockWorkspacePermissionKeys = ['dataset.create_and_management']
 let mockIsLoadingWorkspacePermissionKeys = false
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: mockCurrentUserId },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: mockCurrentUserId },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: mockCurrentUserId },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+
+  return createDatasetAccessAtomMock(importOriginal, () => ({
+    userProfile: { id: mockCurrentUserId },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
   return createDatasetAccessAtomMock(importOriginal, () => ({
     userProfile: { id: mockCurrentUserId },
@@ -57,7 +98,11 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
   }),
-  useModalContextSelector: (selector: (state: { setShowAccountSettingModal: typeof mockSetShowAccountSettingModal }) => unknown) => {
+  useModalContextSelector: (
+    selector: (state: {
+      setShowAccountSettingModal: typeof mockSetShowAccountSettingModal
+    }) => unknown,
+  ) => {
     const state = {
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
     }
@@ -66,7 +111,8 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+  const { createDatasetAccessJotaiMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
   return createDatasetAccessJotaiMock(importOriginal)
 })
@@ -74,7 +120,9 @@ vi.mock('jotai', async (importOriginal) => {
 // Mock dataset detail context
 let mockDatasetDetail: DataSet | undefined
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: DataSet | undefined }) => unknown) => {
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset: DataSet | undefined }) => unknown,
+  ) => {
     const state = {
       dataset: mockDatasetDetail,
     }
@@ -83,7 +131,7 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 // Mock useDefaultModel hook
-let mockEmbeddingsDefaultModel: { model: string, provider: string } | undefined
+let mockEmbeddingsDefaultModel: { model: string; provider: string } | undefined
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: () => ({
     data: mockEmbeddingsDefaultModel,
@@ -120,8 +168,12 @@ vi.mock('../step-one', () => ({
         <span data-testid="step-one-files-count">{props.files?.length || 0}</span>
         <span data-testid="step-one-notion-pages-count">{props.notionPages?.length || 0}</span>
         <span data-testid="step-one-website-pages-count">{props.websitePages?.length || 0}</span>
-        <button data-testid="step-one-next" onClick={props.onStepChange}>Next Step</button>
-        <button data-testid="step-one-setting" onClick={props.onSetting}>Open Settings</button>
+        <button data-testid="step-one-next" onClick={props.onStepChange}>
+          Next Step
+        </button>
+        <button data-testid="step-one-setting" onClick={props.onSetting}>
+          Open Settings
+        </button>
         <button
           data-testid="step-one-change-type"
           onClick={() => props.changeType(DataSourceType.NOTION)}
@@ -130,14 +182,22 @@ vi.mock('../step-one', () => ({
         </button>
         <button
           data-testid="step-one-update-files"
-          onClick={() => props.updateFileList([{ fileID: 'test-1', file: { name: 'test.txt' }, progress: 0 }] as unknown as FileItem[])}
+          onClick={() =>
+            props.updateFileList([
+              { fileID: 'test-1', file: { name: 'test.txt' }, progress: 0 },
+            ] as unknown as FileItem[])
+          }
         >
           Add File
         </button>
         <button
           data-testid="step-one-update-file-progress"
           onClick={() => {
-            const mockFile = { fileID: 'test-1', file: { name: 'test.txt' }, progress: 0 } as unknown as FileItem
+            const mockFile = {
+              fileID: 'test-1',
+              file: { name: 'test.txt' },
+              progress: 0,
+            } as unknown as FileItem
             props.updateFile(mockFile, 50, [mockFile])
           }}
         >
@@ -145,7 +205,11 @@ vi.mock('../step-one', () => ({
         </button>
         <button
           data-testid="step-one-update-notion-pages"
-          onClick={() => props.updateNotionPages([{ page_id: 'page-1', type: 'page' }] as unknown as NotionPage[])}
+          onClick={() =>
+            props.updateNotionPages([
+              { page_id: 'page-1', type: 'page' },
+            ] as unknown as NotionPage[])
+          }
         >
           Add Notion Page
         </button>
@@ -157,7 +221,11 @@ vi.mock('../step-one', () => ({
         </button>
         <button
           data-testid="step-one-update-website-pages"
-          onClick={() => props.updateWebsitePages([{ title: 'Test', markdown: '', description: '', source_url: 'https://test.com' }])}
+          onClick={() =>
+            props.updateWebsitePages([
+              { title: 'Test', markdown: '', description: '', source_url: 'https://test.com' },
+            ])
+          }
         >
           Add Website Page
         </button>
@@ -193,9 +261,15 @@ vi.mock('../step-two', () => ({
         <span data-testid="step-two-data-source-type">{props.dataSourceType}</span>
         <span data-testid="step-two-files-count">{props.files?.length || 0}</span>
         <span data-testid="step-two-can-create-document">{String(props.canCreateDocument)}</span>
-        <button data-testid="step-two-prev" onClick={() => props.onStepChange!(-1)}>Prev Step</button>
-        <button data-testid="step-two-next" onClick={() => props.onStepChange!(1)}>Next Step</button>
-        <button data-testid="step-two-setting" onClick={props.onSetting}>Open Settings</button>
+        <button data-testid="step-two-prev" onClick={() => props.onStepChange!(-1)}>
+          Prev Step
+        </button>
+        <button data-testid="step-two-next" onClick={() => props.onStepChange!(1)}>
+          Next Step
+        </button>
+        <button data-testid="step-two-setting" onClick={props.onSetting}>
+          Open Settings
+        </button>
         <button
           data-testid="step-two-update-indexing-cache"
           onClick={() => props.updateIndexingTypeCache!('high_quality')}
@@ -306,12 +380,13 @@ const createMockDataset = (overrides?: Partial<DataSet>): DataSet => ({
   ...overrides,
 })
 
-const createMockDataSourceAuth = (overrides?: Partial<DataSourceAuth>): DataSourceAuth => ({
-  credential_id: 'cred-1',
-  provider: 'notion',
-  plugin_id: 'plugin-1',
-  ...overrides,
-} as DataSourceAuth)
+const createMockDataSourceAuth = (overrides?: Partial<DataSourceAuth>): DataSourceAuth =>
+  ({
+    credential_id: 'cred-1',
+    provider: 'notion',
+    plugin_id: 'plugin-1',
+    ...overrides,
+  }) as DataSourceAuth
 
 describe('DatasetUpdateForm', () => {
   beforeEach(() => {
@@ -434,7 +509,9 @@ describe('DatasetUpdateForm', () => {
       it('should initialize with FILE data source type', () => {
         render(<DatasetUpdateForm />)
 
-        expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(DataSourceType.FILE)
+        expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(
+          DataSourceType.FILE,
+        )
       })
 
       it('should update dataSourceType when changeType is called', () => {
@@ -442,7 +519,9 @@ describe('DatasetUpdateForm', () => {
 
         fireEvent.click(screen.getByTestId('step-one-change-type'))
 
-        expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(DataSourceType.NOTION)
+        expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(
+          DataSourceType.NOTION,
+        )
       })
     })
 
@@ -683,7 +762,9 @@ describe('DatasetUpdateForm', () => {
 
       fireEvent.click(screen.getByTestId('step-one-next'))
 
-      expect(screen.getByTestId('step-two-data-source-type'))!.toHaveTextContent(DataSourceType.NOTION)
+      expect(screen.getByTestId('step-two-data-source-type'))!.toHaveTextContent(
+        DataSourceType.NOTION,
+      )
     })
 
     it('should pass files mapped to file property to StepTwo', () => {
@@ -714,7 +795,9 @@ describe('DatasetUpdateForm', () => {
 
       // Assert - Go to step 3 and verify
       fireEvent.click(screen.getByTestId('step-two-next'))
-      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent('semantic_search')
+      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent(
+        'semantic_search',
+      )
     })
 
     it('should update result cache from StepTwo', () => {
@@ -876,7 +959,9 @@ describe('DatasetUpdateForm', () => {
       fireEvent.click(screen.getByTestId('step-one-next'))
       fireEvent.click(screen.getByTestId('step-two-next'))
 
-      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent('full_text_search')
+      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent(
+        'full_text_search',
+      )
     })
   })
 
@@ -952,7 +1037,9 @@ describe('DatasetUpdateForm', () => {
 
       // Assert - Should use cached value
       // Assert - Should use cached value
-      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent('semantic_search')
+      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent(
+        'semantic_search',
+      )
     })
 
     it('should handle step state correctly after multiple navigations', () => {
@@ -1007,7 +1094,9 @@ describe('DatasetUpdateForm', () => {
 
       // Assert - All state should be preserved
       // Assert - All state should be preserved
-      expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(DataSourceType.NOTION)
+      expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(
+        DataSourceType.NOTION,
+      )
       expect(screen.getByTestId('step-one-files-count'))!.toHaveTextContent('1')
       expect(screen.getByTestId('step-one-notion-pages-count'))!.toHaveTextContent('1')
     })
@@ -1031,7 +1120,9 @@ describe('DatasetUpdateForm', () => {
       // Assert - All data flows through to Step 3
       // Assert - All data flows through to Step 3
       expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_quality')
-      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent('semantic_search')
+      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent(
+        'semantic_search',
+      )
       expect(stepThreeProps.creationCache?.batch).toBe('batch-1')
     })
 

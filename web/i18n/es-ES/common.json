@@ -288,7 +288,6 @@
   "menus.explore": "Explorar",
   "menus.exploreMarketplace": "Explora el mercado",
   "menus.plugins": "Integraciones",
-  "menus.roster": "Agent",
   "menus.status": "beta",
   "menus.tools": "Herramientas",
   "model.capabilities": "Capacidades multimodales",
@@ -597,6 +596,8 @@
   "voiceInput.notAllow": "micrófono no autorizado",
   "voiceInput.speaking": "Habla ahora...",
   "voiceInput.start": "Entrada de voz",
+  "voiceInput.starting": "Iniciando micrófono...",
+  "voiceInput.stop": "Detener grabación",
   "workflowAsToolPage.description": "Convierte cualquier workflow publicado en una herramienta reutilizable. Úsala en varias apps para mantener tus desarrollos modulares y evitar repeticiones.",
   "you": "Tú"
 }
