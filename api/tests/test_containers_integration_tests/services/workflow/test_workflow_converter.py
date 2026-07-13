@@ -217,6 +217,7 @@ class TestWorkflowConverter:
             icon_type="emoji",
             icon="🚀",
             icon_background="#4CAF50",
+            session=db_session_with_containers,
         )
 
         # Assert: Verify the expected outcomes
@@ -291,6 +292,7 @@ class TestWorkflowConverter:
                 icon_type="emoji",
                 icon="🚀",
                 icon_background="#4CAF50",
+                session=db_session_with_containers,
             )
 
         # Verify database state remains unchanged
@@ -325,6 +327,7 @@ class TestWorkflowConverter:
             app_model=app,
             app_model_config=app.app_model_config,
             account_id=account.id,
+            session=db_session_with_containers,
         )
 
         # Assert: Verify the expected outcomes
@@ -467,6 +470,7 @@ class TestWorkflowConverter:
             app_model=app,
             variables=variables,
             external_data_variables=external_data_variables,
+            session=db_session_with_containers,
         )
 
         # Assert: Verify the expected outcomes
@@ -569,7 +573,7 @@ class TestConvertToHttpRequestNodeVariants:
     """Tests for chatbot vs workflow differences in HTTP request node conversion."""
 
     @staticmethod
-    def _setup(app_mode, default_variables):
+    def _setup(app_mode, default_variables, db_session_with_containers: Session):
         app_model = App(
             tenant_id="tenant_id",
             mode=app_mode,
@@ -598,19 +602,20 @@ class TestConvertToHttpRequestNodeVariants:
             app_model=app_model,
             variables=default_variables,
             external_data_variables=ext_vars,
+            session=db_session_with_containers,
         )
         return nodes
 
-    def test_chatbot_query_uses_sys_query(self, default_variables):
-        nodes = self._setup(AppMode.CHAT, default_variables)
+    def test_chatbot_query_uses_sys_query(self, default_variables, db_session_with_containers: Session):
+        nodes = self._setup(AppMode.CHAT, default_variables, db_session_with_containers)
 
         body = json.loads(nodes[0]["data"]["body"]["data"])
         assert body["params"]["query"] == "{{#sys.query#}}"
         assert body["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY
         assert nodes[1]["data"]["type"] == "code"
 
-    def test_workflow_query_is_empty(self, default_variables):
-        nodes = self._setup(AppMode.WORKFLOW, default_variables)
+    def test_workflow_query_is_empty(self, default_variables, db_session_with_containers: Session):
+        nodes = self._setup(AppMode.WORKFLOW, default_variables, db_session_with_containers)
 
         body = json.loads(nodes[0]["data"]["body"]["data"])
         assert body["params"]["query"] == ""

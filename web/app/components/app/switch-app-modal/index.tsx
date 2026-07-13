@@ -41,15 +41,21 @@ type SwitchAppModalProps = {
   inAppDetail?: boolean
 }
 
-const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClose }: SwitchAppModalProps) => {
+const SwitchAppModal = ({
+  show,
+  appDetail,
+  inAppDetail = false,
+  onSuccess,
+  onClose,
+}: SwitchAppModalProps) => {
   const { push, replace } = useRouter()
   const { t } = useTranslation()
-  const setAppDetail = useAppStore(s => s.setAppDetail)
+  const setAppDetail = useAppStore((s) => s.setAppDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
 
   const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
+  const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState(
@@ -73,39 +79,35 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
         icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       })
-      if (onSuccess)
-        onSuccess()
-      if (onClose)
-        onClose()
-      toast.success(t('newApp.appCreated', { ns: 'app' }))
-      if (inAppDetail)
-        setAppDetail()
-      if (removeOriginal)
-        await deleteApp(appDetail.id)
+      if (onSuccess) onSuccess()
+      if (onClose) onClose()
+      toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
+      if (inAppDetail) setAppDetail()
+      if (removeOriginal) await deleteApp(appDetail.id)
       setNeedRefresh('1')
       getRedirection(
         {
           id: newAppID,
-          mode: appDetail.mode === AppModeEnum.COMPLETION ? AppModeEnum.WORKFLOW : AppModeEnum.ADVANCED_CHAT,
+          mode:
+            appDetail.mode === AppModeEnum.COMPLETION
+              ? AppModeEnum.WORKFLOW
+              : AppModeEnum.ADVANCED_CHAT,
           permission_keys,
         },
         removeOriginal ? replace : push,
         { isRbacEnabled },
       )
-    }
-    catch {
-      toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+    } catch {
+      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
 
   useEffect(() => {
-    if (removeOriginal)
-      setShowConfirmDelete(true)
+    if (removeOriginal) setShowConfirmDelete(true)
   }, [removeOriginal])
 
   const handleConfirmDeleteOpenChange = (open: boolean) => {
-    if (open)
-      return
+    if (open) return
 
     setShowConfirmDelete(false)
     setRemoveOriginal(false)
@@ -114,12 +116,16 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   return (
     <>
       <Dialog open={show}>
-        <DialogContent className={cn('w-full overflow-hidden! border-none text-left align-middle', cn('w-[600px] max-w-[600px] p-8'))}>
-
+        <DialogContent
+          className={cn(
+            'w-full overflow-hidden! border-none text-left align-middle',
+            cn('w-[600px] max-w-[600px] p-8'),
+          )}
+        >
           <button
             type="button"
             className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={onClose}
           >
             <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
@@ -127,18 +133,26 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl">
             <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
           </div>
-          <div className="relative mt-3 text-xl leading-[30px] font-semibold text-text-primary">{t('switch', { ns: 'app' })}</div>
+          <div className="relative mt-3 text-xl leading-[30px] font-semibold text-text-primary">
+            {t(($) => $.switch, { ns: 'app' })}
+          </div>
           <div className="my-1 text-sm/5 text-text-tertiary">
-            <span>{t('switchTipStart', { ns: 'app' })}</span>
-            <span className="font-medium text-text-secondary">{t('switchTip', { ns: 'app' })}</span>
-            <span>{t('switchTipEnd', { ns: 'app' })}</span>
+            <span>{t(($) => $.switchTipStart, { ns: 'app' })}</span>
+            <span className="font-medium text-text-secondary">
+              {t(($) => $.switchTip, { ns: 'app' })}
+            </span>
+            <span>{t(($) => $.switchTipEnd, { ns: 'app' })}</span>
           </div>
           <div className="pb-4">
-            <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('switchLabel', { ns: 'app' })}</div>
+            <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">
+              {t(($) => $.switchLabel, { ns: 'app' })}
+            </div>
             <div className="flex items-center justify-between space-x-2">
               <AppIcon
                 size="large"
-                onClick={() => { setShowAppIconPicker(true) }}
+                onClick={() => {
+                  setShowAppIconPicker(true)
+                }}
                 className="cursor-pointer"
                 iconType={appIcon.type}
                 icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
@@ -147,17 +161,19 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
               />
               <Input
                 value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
                 className="h-10 grow"
               />
             </div>
             {showAppIconPicker && (
               <AppIconPicker
                 open={showAppIconPicker}
-                initialEmoji={appIcon.type === 'emoji'
-                  ? { icon: appIcon.icon, background: appIcon.background }
-                  : undefined}
+                initialEmoji={
+                  appIcon.type === 'emoji'
+                    ? { icon: appIcon.icon, background: appIcon.background }
+                    : undefined
+                }
                 onOpenChange={setShowAppIconPicker}
                 onSelect={(payload) => {
                   setAppIcon(payload)
@@ -169,38 +185,49 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           <div className="flex items-center justify-between pt-6">
             <div className="flex items-center">
               <label className="flex cursor-pointer items-center">
-                <Checkbox className="shrink-0" checked={removeOriginal} onCheckedChange={setRemoveOriginal} />
+                <Checkbox
+                  className="shrink-0"
+                  checked={removeOriginal}
+                  onCheckedChange={setRemoveOriginal}
+                />
                 <span className="ml-2 text-left text-sm/5 text-text-secondary">
-                  {t('removeOriginal', { ns: 'app' })}
+                  {t(($) => $.removeOriginal, { ns: 'app' })}
                 </span>
               </label>
             </div>
             <div className="flex items-center">
-              <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-              <Button className="border-red-700" disabled={isAppsFull || !name} variant="primary" tone="destructive" onClick={goStart}>{t('switchStart', { ns: 'app' })}</Button>
+              <Button className="mr-2" onClick={onClose}>
+                {t(($) => $['newApp.Cancel'], { ns: 'app' })}
+              </Button>
+              <Button
+                className="border-red-700"
+                disabled={isAppsFull || !name}
+                variant="primary"
+                tone="destructive"
+                onClick={goStart}
+              >
+                {t(($) => $.switchStart, { ns: 'app' })}
+              </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-      <AlertDialog
-        open={showConfirmDelete}
-        onOpenChange={handleConfirmDeleteOpenChange}
-      >
+      <AlertDialog open={showConfirmDelete} onOpenChange={handleConfirmDeleteOpenChange}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('deleteAppConfirmTitle', { ns: 'app' })}
+              {t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('deleteAppConfirmContent', { ns: 'app' })}
+              {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={() => setShowConfirmDelete(false)}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

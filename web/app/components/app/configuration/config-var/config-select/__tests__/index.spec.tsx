@@ -8,8 +8,8 @@ vi.mock('react-sortablejs', () => ({
     setList,
   }: {
     children: React.ReactNode
-    list: Array<{ id: number, name: string }>
-    setList: (list: Array<{ id: number, name: string }>) => void
+    list: Array<{ id: number; name: string }>
+    setList: (list: Array<{ id: number; name: string }>) => void
   }) => (
     <div>
       <button onClick={() => setList([...list].reverse())}>reorder-options</button>
@@ -83,8 +83,7 @@ describe('ConfigSelect Component', () => {
     const optionContainer = screen.getByDisplayValue('Option 1').closest('div')
     const deleteButton = screen.getAllByRole('button', { name: 'common.operation.delete' })[0]
 
-    if (!deleteButton)
-      return
+    if (!deleteButton) return
     fireEvent.mouseEnter(deleteButton)
     expect(optionContainer).toHaveClass('border-components-input-border-destructive')
     fireEvent.mouseLeave(deleteButton)

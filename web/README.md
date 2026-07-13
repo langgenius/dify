@@ -140,16 +140,6 @@ If you are not familiar with writing tests, refer to:
 
 - [index.spec.tsx] - Component test example
 
-### Analyze Component Complexity
-
-Before writing tests, use the script to analyze component complexity:
-
-```bash
-pnpm analyze-component app/components/your-component/index.tsx
-```
-
-This will help you determine the testing strategy. See [web/docs/test.md] for details.
-
 ## Documentation
 
 Visit <https://docs.dify.ai> to view the full documentation.

@@ -3,25 +3,26 @@ import type { Mock } from 'vitest'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useAppContext } from '@/context/app-context'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { usePathname } from '@/next/navigation'
 import MainNavLayout from '../layout'
+
+const mockAppContextState = vi.hoisted(() => ({
+  current: {
+    isCurrentWorkspaceDatasetOperator: false,
+    isCurrentWorkspaceEditor: true,
+  },
+}))
 
 vi.mock('@/app/components/header', () => ({
   default: () => <div data-testid="desktop-header">Header</div>,
 }))
 
 vi.mock('@/app/components/header/header-wrapper', () => ({
-  default: ({ children }: { children: ReactNode }) => <div data-testid="header-wrapper">{children}</div>,
+  default: ({ children }: { children: ReactNode }) => (
+    <div data-testid="header-wrapper">{children}</div>
+  ),
 }))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
@@ -30,9 +31,32 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: vi.fn(),
@@ -47,7 +71,11 @@ vi.mock('@/next/navigation', async (importOriginal) => {
 })
 
 vi.mock('../index', () => ({
-  MainNav: ({ className }: { className?: string }) => <aside className={className} data-testid="main-nav">MainNav</aside>,
+  MainNav: ({ className }: { className?: string }) => (
+    <aside className={className} data-testid="main-nav">
+      MainNav
+    </aside>
+  ),
 }))
 
 describe('MainNavLayout', () => {
@@ -56,10 +84,10 @@ describe('MainNavLayout', () => {
     localStorage.clear()
     useAppStore.getState().setAppDetail()
     ;(usePathname as Mock).mockReturnValue('/apps')
-    ;(useAppContext as Mock).mockReturnValue({
+    mockAppContextState.current = {
       isCurrentWorkspaceDatasetOperator: false,
       isCurrentWorkspaceEditor: true,
-    })
+    }
     ;(useSuspenseQuery as Mock).mockReturnValue({
       data: {
         enable_app_deploy: true,
@@ -69,7 +97,11 @@ describe('MainNavLayout', () => {
   })
 
   it('renders desktop main nav instead of the desktop header', () => {
-    render(<MainNavLayout><div>content</div></MainNavLayout>)
+    render(
+      <MainNavLayout>
+        <div>content</div>
+      </MainNavLayout>,
+    )
 
     expect(screen.getByTestId('main-nav')).toBeInTheDocument()
     expect(screen.queryByTestId('desktop-header')).not.toBeInTheDocument()
@@ -77,7 +109,11 @@ describe('MainNavLayout', () => {
   })
 
   it('uses the main nav without the desktop header wrapper', () => {
-    render(<MainNavLayout><div>content</div></MainNavLayout>)
+    render(
+      <MainNavLayout>
+        <div>content</div>
+      </MainNavLayout>,
+    )
 
     expect(screen.getByTestId('main-nav')).toBeInTheDocument()
     expect(screen.queryByTestId('header-wrapper')).not.toBeInTheDocument()
@@ -85,31 +121,55 @@ describe('MainNavLayout', () => {
   })
 
   it('renders one main landmark as the skip navigation target', () => {
-    render(<MainNavLayout><div>content</div></MainNavLayout>)
+    render(
+      <MainNavLayout>
+        <div>content</div>
+      </MainNavLayout>,
+    )
 
     const main = screen.getByRole('main')
 
     expect(screen.getAllByRole('main')).toHaveLength(1)
     expect(main).toHaveAttribute('id', 'main-content')
     expect(main).toHaveAttribute('tabIndex', '-1')
-    expect(main).toHaveClass('outline-hidden', 'focus:outline-hidden', 'focus-visible:outline-hidden')
+    expect(main).toHaveClass(
+      'outline-hidden',
+      'focus:outline-hidden',
+      'focus-visible:outline-hidden',
+    )
     expect(main).toHaveTextContent('content')
   })
 
   it('renders skip navigation before the repeated main navigation', () => {
-    const { container } = render(<MainNavLayout><div>content</div></MainNavLayout>)
+    const { container } = render(
+      <MainNavLayout>
+        <div>content</div>
+      </MainNavLayout>,
+    )
 
-    const skipLink = screen.getByRole('link', { name: 'navigation.skipToMain' })
+    const skipLink = screen.getByRole('link', { name: /(?:^|\.)navigation\.skipToMain(?=$|:)/ })
 
     expect(skipLink).toHaveAttribute('href', '#main-content')
-    expect(skipLink).toHaveClass('outline-hidden', 'focus-visible:ring-2', 'focus-visible:ring-state-accent-solid')
-    expect(container.querySelector('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])')).toBe(skipLink)
+    expect(skipLink).toHaveClass(
+      'outline-hidden',
+      'focus-visible:ring-2',
+      'focus-visible:ring-state-accent-solid',
+    )
+    expect(
+      container.querySelector(
+        'a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      ),
+    ).toBe(skipLink)
   })
 
   it('moves focus to the main content when skip navigation is activated', () => {
-    render(<MainNavLayout><div>content</div></MainNavLayout>)
+    render(
+      <MainNavLayout>
+        <div>content</div>
+      </MainNavLayout>,
+    )
 
-    const skipLink = screen.getByRole('link', { name: 'navigation.skipToMain' })
+    const skipLink = screen.getByRole('link', { name: /(?:^|\.)navigation\.skipToMain(?=$|:)/ })
     const main = screen.getByRole('main')
 
     fireEvent.click(skipLink)
@@ -117,49 +177,50 @@ describe('MainNavLayout', () => {
     expect(main).toHaveFocus()
   })
 
-  it.each([
-    '/datasets/dataset-1/documents',
-    '/datasets/dataset-1/documents/document-1/settings',
-  ])('renders the detail sidebar slot outside the single skip navigation target on route %s', (pathname) => {
-    ;(usePathname as Mock).mockReturnValue(pathname)
+  it.each(['/datasets/dataset-1/documents', '/datasets/dataset-1/documents/document-1/settings'])(
+    'renders the detail sidebar slot outside the single skip navigation target on route %s',
+    (pathname) => {
+      ;(usePathname as Mock).mockReturnValue(pathname)
 
-    render(
-      <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
-        <div>dataset detail</div>
-      </MainNavLayout>,
-    )
+      render(
+        <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
+          <div>dataset detail</div>
+        </MainNavLayout>,
+      )
 
-    const main = screen.getByRole('main')
-    const detailSidebar = screen.getByRole('complementary', { name: 'Detail sidebar' })
+      const main = screen.getByRole('main')
+      const detailSidebar = screen.getByRole('complementary', { name: 'Detail sidebar' })
 
-    expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
-    expect(screen.getAllByRole('main')).toHaveLength(1)
-    expect(main).toHaveAttribute('id', 'main-content')
-    expect(main).toHaveTextContent('dataset detail')
-    expect(main).not.toContainElement(detailSidebar)
-  })
+      expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+      expect(screen.getAllByRole('main')).toHaveLength(1)
+      expect(main).toHaveAttribute('id', 'main-content')
+      expect(main).toHaveTextContent('dataset detail')
+      expect(main).not.toContainElement(detailSidebar)
+    },
+  )
 
-  it.each([
-    '/datasets/create',
-    '/datasets/dataset-1/documents/create',
-    '/deployments/create',
-  ])('keeps the global main nav on collection and creation route %s', (pathname) => {
-    ;(usePathname as Mock).mockReturnValue(pathname)
+  it.each(['/datasets/create', '/datasets/dataset-1/documents/create', '/deployments/create'])(
+    'keeps the global main nav on collection and creation route %s',
+    (pathname) => {
+      ;(usePathname as Mock).mockReturnValue(pathname)
 
-    render(
-      <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
-        <div>content</div>
-      </MainNavLayout>,
-    )
+      render(
+        <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
+          <div>content</div>
+        </MainNavLayout>,
+      )
 
-    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
-    expect(screen.queryByRole('complementary', { name: 'Detail sidebar' })).not.toBeInTheDocument()
-  })
+      expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('complementary', { name: 'Detail sidebar' }),
+      ).not.toBeInTheDocument()
+    },
+  )
 
   it.each([
     {
       label: 'agent detail route for dataset operators',
-      pathname: '/roster/agent/agent-1/configure',
+      pathname: '/agents/agent-1/configure',
       appContext: {
         isCurrentWorkspaceDatasetOperator: true,
         isCurrentWorkspaceEditor: true,
@@ -192,7 +253,7 @@ describe('MainNavLayout', () => {
     },
   ])('keeps the global main nav on $label', ({ pathname, appContext, systemFeatures }) => {
     ;(usePathname as Mock).mockReturnValue(pathname)
-    ;(useAppContext as Mock).mockReturnValue(appContext)
+    mockAppContextState.current = appContext
     ;(useSuspenseQuery as Mock).mockReturnValue({
       data: systemFeatures,
     })
@@ -210,10 +271,16 @@ describe('MainNavLayout', () => {
   })
 
   it('clears app detail state after leaving app routes', () => {
-    useAppStore.getState().setAppDetail({ id: 'app-1' } as ReturnType<typeof useAppStore.getState>['appDetail'])
+    useAppStore
+      .getState()
+      .setAppDetail({ id: 'app-1' } as ReturnType<typeof useAppStore.getState>['appDetail'])
     ;(usePathname as Mock).mockReturnValue('/datasets')
 
-    render(<MainNavLayout><div>content</div></MainNavLayout>)
+    render(
+      <MainNavLayout>
+        <div>content</div>
+      </MainNavLayout>,
+    )
 
     expect(useAppStore.getState().appDetail).toBeUndefined()
   })

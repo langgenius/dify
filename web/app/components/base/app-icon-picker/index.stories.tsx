@@ -10,7 +10,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Modal workflow for choosing an application avatar. Users can switch between emoji selections and image uploads (when enabled).',
+        component:
+          'Modal workflow for choosing an application avatar. Users can switch between emoji selections and image uploads (when enabled).',
       },
     },
     nextjs: {
@@ -48,11 +49,7 @@ const AppIconPickerDemo = () => {
         </pre>
       </div>
 
-      <AppIconPicker
-        open={open}
-        onOpenChange={setOpen}
-        onSelect={setSelection}
-      />
+      <AppIconPicker open={open} onOpenChange={setOpen} onSelect={setSelection} />
     </div>
   )
 }

@@ -15,11 +15,13 @@ type HistoryEventPayload = {
 
 type HistorySubscriptionHandler = (payload: HistoryEventPayload) => void
 
-const { mockUseSelectOrDelete, mockUseTrigger, mockUseEventEmitterContextContext } = vi.hoisted(() => ({
-  mockUseSelectOrDelete: vi.fn(),
-  mockUseTrigger: vi.fn(),
-  mockUseEventEmitterContextContext: vi.fn(),
-}))
+const { mockUseSelectOrDelete, mockUseTrigger, mockUseEventEmitterContextContext } = vi.hoisted(
+  () => ({
+    mockUseSelectOrDelete: vi.fn(),
+    mockUseTrigger: vi.fn(),
+    mockUseEventEmitterContextContext: vi.fn(),
+  }),
+)
 
 vi.mock('../../../hooks', () => ({
   useSelectOrDelete: (...args: unknown[]) => mockUseSelectOrDelete(...args),
@@ -36,13 +38,17 @@ const createRoleName = (overrides?: Partial<RoleName>): RoleName => ({
   ...overrides,
 })
 
-const createSelectHookReturn = (isSelected: boolean): [RefObject<HTMLDivElement | null>, boolean] => {
+const createSelectHookReturn = (
+  isSelected: boolean,
+): [RefObject<HTMLDivElement | null>, boolean] => {
   return [{ current: null }, isSelected]
 }
 
 const createTriggerHookReturn = (
   open: boolean,
-  setOpen: Dispatch<SetStateAction<boolean>> = vi.fn() as unknown as Dispatch<SetStateAction<boolean>>,
+  setOpen: Dispatch<SetStateAction<boolean>> = vi.fn() as unknown as Dispatch<
+    SetStateAction<boolean>
+  >,
 ): [RefObject<HTMLDivElement | null>, boolean, Dispatch<SetStateAction<boolean>>] => {
   return [{ current: null }, open, setOpen]
 }
@@ -67,14 +73,12 @@ describe('HistoryBlockComponent', () => {
   })
 
   it('should render title and register select or delete hook with node key', () => {
-    render(
-      <HistoryBlockComponent
-        nodeKey="history-node-1"
-        onEditRole={vi.fn()}
-      />,
-    )
+    render(<HistoryBlockComponent nodeKey="history-node-1" onEditRole={vi.fn()} />)
 
-    expect(mockUseSelectOrDelete).toHaveBeenCalledWith('history-node-1', DELETE_HISTORY_BLOCK_COMMAND)
+    expect(mockUseSelectOrDelete).toHaveBeenCalledWith(
+      'history-node-1',
+      DELETE_HISTORY_BLOCK_COMMAND,
+    )
     expect(screen.getByText('common.promptEditor.history.item.title')).toBeInTheDocument()
   })
 
@@ -83,10 +87,7 @@ describe('HistoryBlockComponent', () => {
     mockUseTrigger.mockReturnValue(createTriggerHookReturn(true))
 
     const { container } = render(
-      <HistoryBlockComponent
-        nodeKey="history-node-2"
-        onEditRole={vi.fn()}
-      />,
+      <HistoryBlockComponent nodeKey="history-node-2" onEditRole={vi.fn()} />,
     )
 
     const wrapper = container.firstElementChild
@@ -116,12 +117,7 @@ describe('HistoryBlockComponent', () => {
     const setOpen = vi.fn() as unknown as Dispatch<SetStateAction<boolean>>
     mockUseTrigger.mockReturnValue(createTriggerHookReturn(false, setOpen))
 
-    render(
-      <HistoryBlockComponent
-        nodeKey="history-node-trigger"
-        onEditRole={vi.fn()}
-      />,
-    )
+    render(<HistoryBlockComponent nodeKey="history-node-trigger" onEditRole={vi.fn()} />)
 
     await user.click(screen.getByTestId('popover-trigger'))
 
@@ -236,12 +232,7 @@ describe('HistoryBlockComponent', () => {
       eventEmitter: undefined,
     })
 
-    render(
-      <HistoryBlockComponent
-        nodeKey="history-node-7"
-        onEditRole={vi.fn()}
-      />,
-    )
+    render(<HistoryBlockComponent nodeKey="history-node-7" onEditRole={vi.fn()} />)
 
     expect(screen.getByText('common.promptEditor.history.item.title')).toBeInTheDocument()
   })

@@ -30,6 +30,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
@@ -132,6 +133,7 @@ class CompletionApi(WebApiResource):
                 streaming=streaming,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -184,7 +186,7 @@ class CompletionStopApi(WebApiResource):
             app_mode=AppMode.value_of(app_model.mode),
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @web_ns.route("/chat-messages")
@@ -219,7 +221,10 @@ class ChatApi(WebApiResource):
             # Eagerly validate conversation to avoid hanging on invalid conversation_id
             if payload.conversation_id:
                 ConversationService.get_conversation(
-                    app_model=app_model, conversation_id=payload.conversation_id, user=end_user
+                    app_model=app_model,
+                    conversation_id=payload.conversation_id,
+                    user=end_user,
+                    session=db.session(),
                 )
 
             response = AppGenerateService.generate(
@@ -231,6 +236,7 @@ class ChatApi(WebApiResource):
                 streaming=streaming,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -286,4 +292,4 @@ class ChatStopApi(WebApiResource):
             app_mode=app_mode,
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200

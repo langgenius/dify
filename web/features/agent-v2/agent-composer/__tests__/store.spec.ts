@@ -32,7 +32,9 @@ describe('agent composer store conversions', () => {
     expect(store.get(agentComposerDraftAtom).prompt).toBe('Build draft prompt')
     expect(store.get(agentComposerOriginalDraftAtom)?.prompt).toBe('Build draft prompt')
     expect(store.get(agentComposerPublishedDraftAtom)?.prompt).toBe('Build draft prompt')
-    expect(store.get(agentComposerOriginalConfigAtom)?.prompt?.system_prompt).toBe('Build draft prompt')
+    expect(store.get(agentComposerOriginalConfigAtom)?.prompt?.system_prompt).toBe(
+      'Build draft prompt',
+    )
   })
 
   it('should hydrate editable form state from an AgentSoulConfig and preserve it in the config snapshot', () => {
@@ -203,22 +205,24 @@ describe('agent composer store conversions', () => {
         }),
       ],
     })
-    expect(formState.tools).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        id: 'duckduckgo',
-        kind: 'provider',
-        actions: [
-          expect.objectContaining({
-            toolName: 'ddg_search',
-          }),
-        ],
-      }),
-      expect.objectContaining({
-        id: 'run-tests',
-        kind: 'cli',
-        installCommand: 'pnpm install',
-      }),
-    ]))
+    expect(formState.tools).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'duckduckgo',
+          kind: 'provider',
+          actions: [
+            expect.objectContaining({
+              toolName: 'ddg_search',
+            }),
+          ],
+        }),
+        expect.objectContaining({
+          id: 'run-tests',
+          kind: 'cli',
+          installCommand: 'pnpm install',
+        }),
+      ]),
+    )
     expect(formState.toolSettings['duckduckgo:ddg_search']).toEqual({
       query: 'latest docs',
       used_in_agent_nodes: true,

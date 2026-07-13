@@ -19,7 +19,9 @@ function buildAudioContext(channelLength = 512) {
       return Promise.resolve({ getChannelData: (_ch: number) => arr })
     }
 
-    close() { return Promise.resolve() }
+    close() {
+      return Promise.resolve()
+    }
   }
 }
 
@@ -43,10 +45,10 @@ async function advanceWaveformTimer() {
   })
 }
 
-// eslint-disable-next-line ts/no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 type ReactEventHandler = ((...args: any[]) => void) | undefined
 function getReactProps<T extends Element>(el: T): Record<string, ReactEventHandler> {
-  const key = Object.keys(el).find(k => k.startsWith('__reactProps$'))
+  const key = Object.keys(el).find((k) => k.startsWith('__reactProps$'))
   return key ? (el as unknown as Record<string, Record<string, ReactEventHandler>>)[key]! : {}
 }
 
@@ -58,7 +60,7 @@ const getPauseButton = () => screen.getByRole('button', { name: 'common.operatio
 beforeEach(() => {
   vi.clearAllMocks()
   vi.useFakeTimers()
-  ; (useThemeMock as ReturnType<typeof vi.fn>).mockReturnValue({ theme: Theme.light })
+  ;(useThemeMock as ReturnType<typeof vi.fn>).mockReturnValue({ theme: Theme.light })
   HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined)
   HTMLMediaElement.prototype.pause = vi.fn()
   HTMLMediaElement.prototype.load = vi.fn()
@@ -250,8 +252,12 @@ describe('AudioPlayer — waveform generation', () => {
 
   it('should use fallback waveform when decodeAudioData rejects', async () => {
     class FailDecodeContext {
-      decodeAudioData() { return Promise.reject(new Error('decode error')) }
-      close() { return Promise.resolve() }
+      decodeAudioData() {
+        return Promise.reject(new Error('decode error'))
+      }
+      close() {
+        return Promise.resolve()
+      }
     }
     vi.stubGlobal('AudioContext', FailDecodeContext)
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
@@ -296,14 +302,16 @@ describe('AudioPlayer — waveform generation', () => {
     vi.stubGlobal('AudioContext', buildAudioContext(300))
     const fetchSpy = stubFetchOk(256)
 
-    render(<AudioPlayer srcs={['https://cdn.example/first.mp3', 'https://cdn.example/second.mp3']} />)
+    render(
+      <AudioPlayer srcs={['https://cdn.example/first.mp3', 'https://cdn.example/second.mp3']} />,
+    )
     await advanceWaveformTimer()
 
     expect(fetchSpy).toHaveBeenCalledWith('https://cdn.example/first.mp3', { mode: 'cors' })
   })
 
   it('should cover dark theme waveform draw branch', async () => {
-    ; (useThemeMock as ReturnType<typeof vi.fn>).mockReturnValue({ theme: Theme.dark })
+    ;(useThemeMock as ReturnType<typeof vi.fn>).mockReturnValue({ theme: Theme.dark })
     vi.stubGlobal('AudioContext', buildAudioContext(300))
     stubFetchOk(256)
 
@@ -380,13 +388,16 @@ describe('AudioPlayer — canvas seek interactions', () => {
     await act(async () => {
       fireEvent.click(canvas, { clientX: 50 })
     })
-    const callsAfterFirst = (HTMLMediaElement.prototype.play as ReturnType<typeof vi.fn>).mock.calls.length
+    const callsAfterFirst = (HTMLMediaElement.prototype.play as ReturnType<typeof vi.fn>).mock.calls
+      .length
 
     await act(async () => {
       fireEvent.click(canvas, { clientX: 80 })
     })
 
-    expect((HTMLMediaElement.prototype.play as ReturnType<typeof vi.fn>).mock.calls.length).toBe(callsAfterFirst)
+    expect((HTMLMediaElement.prototype.play as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
+      callsAfterFirst,
+    )
   })
 
   it('should update hoverTime on mousemove within buffered range', async () => {
@@ -439,7 +450,10 @@ describe('AudioPlayer — missing coverage', () => {
     // Note: React 18 / testing-library wraps updates automatically, but we still wait for advanceWaveformTimer
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     let fillRectCalled = false
-    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, ...args: Parameters<typeof HTMLCanvasElement.prototype.getContext>) {
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      ...args: Parameters<typeof HTMLCanvasElement.prototype.getContext>
+    ) {
       const ctx = originalGetContext.apply(this, args) as CanvasRenderingContext2D | null
       if (ctx) {
         Object.defineProperty(ctx, 'roundRect', { value: undefined, configurable: true })
@@ -463,7 +477,7 @@ describe('AudioPlayer — missing coverage', () => {
   })
 
   it('should handle play error gracefully when togglePlay is clicked', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(new Error('play failed'))
 
     render(<AudioPlayer src="https://example.com/audio.mp3" />)
@@ -487,7 +501,8 @@ describe('AudioPlayer — missing coverage', () => {
     const canvas = screen.getByTestId('waveform-canvas') as HTMLCanvasElement
     const audio = document.querySelector('audio') as HTMLAudioElement
     Object.defineProperty(audio, 'duration', { value: 120, configurable: true })
-    canvas.getBoundingClientRect = () => ({ left: 0, width: 200, top: 0, height: 10, right: 200, bottom: 10 }) as DOMRect
+    canvas.getBoundingClientRect = () =>
+      ({ left: 0, width: 200, top: 0, height: 10, right: 200, bottom: 10 }) as DOMRect
 
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(new Error('play failed'))
 
@@ -510,7 +525,8 @@ describe('AudioPlayer — missing coverage', () => {
     const canvas = screen.getByTestId('waveform-canvas') as HTMLCanvasElement
     const audio = document.querySelector('audio') as HTMLAudioElement
     Object.defineProperty(audio, 'duration', { value: 120, configurable: true })
-    canvas.getBoundingClientRect = () => ({ left: 0, width: 200, top: 0, height: 10, right: 200, bottom: 10 }) as DOMRect
+    canvas.getBoundingClientRect = () =>
+      ({ left: 0, width: 200, top: 0, height: 10, right: 200, bottom: 10 }) as DOMRect
 
     await act(async () => {
       // Use touch events
@@ -644,7 +660,7 @@ describe('AudioPlayer — additional branch coverage', () => {
   })
 
   it('should cover Dark theme waveform states', async () => {
-    ; (useThemeMock as ReturnType<typeof vi.fn>).mockReturnValue({ theme: Theme.dark })
+    ;(useThemeMock as ReturnType<typeof vi.fn>).mockReturnValue({ theme: Theme.dark })
     vi.stubGlobal('AudioContext', buildAudioContext(300))
     stubFetchOk(128)
 

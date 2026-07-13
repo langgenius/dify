@@ -21,13 +21,7 @@ type Props = Readonly<{
   onRemove: (index: number) => void
 }>
 
-const OutputVarList: FC<Props> = ({
-  readonly,
-  outputs,
-  outputKeyOrders,
-  onChange,
-  onRemove,
-}) => {
+const OutputVarList: FC<Props> = ({ readonly, outputs, outputKeyOrders, onChange, onRemove }) => {
   const { t } = useTranslation()
 
   const list = outputKeyOrders.map((key) => {
@@ -37,51 +31,70 @@ const OutputVarList: FC<Props> = ({
     }
   })
 
-  const { run: validateVarInput } = useDebounceFn((existingVariables: typeof list, newKey: string) => {
-    const result = checkKeys([newKey], true)
-    if (!result.isValid) {
-      toast.error(t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }))
-      return
-    }
-    if (existingVariables.some(key => key.variable?.trim() === newKey.trim())) {
-      toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }))
-    }
-  }, { wait: 500 })
+  const { run: validateVarInput } = useDebounceFn(
+    (existingVariables: typeof list, newKey: string) => {
+      const result = checkKeys([newKey], true)
+      if (!result.isValid) {
+        toast.error(
+          t(($) => $[`varKeyError.${result.errorMessageKey}`], {
+            ns: 'appDebug',
+            key: result.errorKey,
+          }),
+        )
+        return
+      }
+      if (existingVariables.some((key) => key.variable?.trim() === newKey.trim())) {
+        toast.error(t(($) => $['varKeyError.keyAlreadyExists'], { ns: 'appDebug', key: newKey }))
+      }
+    },
+    { wait: 500 },
+  )
 
-  const handleVarNameChange = useCallback((index: number) => {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      const oldKey = list[index]!.variable
+  const handleVarNameChange = useCallback(
+    (index: number) => {
+      return (e: React.ChangeEvent<HTMLInputElement>) => {
+        const oldKey = list[index]!.variable
 
-      replaceSpaceWithUnderscoreInVarNameInput(e.target)
-      const newKey = e.target.value
+        replaceSpaceWithUnderscoreInVarNameInput(e.target)
+        const newKey = e.target.value
 
-      validateVarInput(list.filter((_, itemIndex) => itemIndex !== index), newKey)
+        validateVarInput(
+          list.filter((_, itemIndex) => itemIndex !== index),
+          newKey,
+        )
 
-      const newOutputs = produce(outputs, (draft) => {
-        draft[newKey] = draft[oldKey]!
-        // Only delete old key if no other entry shares this name
-        if (!list.some((item, i) => i !== index && item.variable === oldKey))
-          delete draft[oldKey]
-      })
-      onChange(newOutputs, index, newKey)
-    }
-  }, [list, onChange, outputs, validateVarInput])
+        const newOutputs = produce(outputs, (draft) => {
+          draft[newKey] = draft[oldKey]!
+          // Only delete old key if no other entry shares this name
+          if (!list.some((item, i) => i !== index && item.variable === oldKey)) delete draft[oldKey]
+        })
+        onChange(newOutputs, index, newKey)
+      }
+    },
+    [list, onChange, outputs, validateVarInput],
+  )
 
-  const handleVarTypeChange = useCallback((index: number) => {
-    return (value: string) => {
-      const key = list[index]!.variable
-      const newOutputs = produce(outputs, (draft) => {
-        draft[key]!.type = value as VarType
-      })
-      onChange(newOutputs)
-    }
-  }, [list, onChange, outputs])
+  const handleVarTypeChange = useCallback(
+    (index: number) => {
+      return (value: string) => {
+        const key = list[index]!.variable
+        const newOutputs = produce(outputs, (draft) => {
+          draft[key]!.type = value as VarType
+        })
+        onChange(newOutputs)
+      }
+    },
+    [list, onChange, outputs],
+  )
 
-  const handleVarRemove = useCallback((index: number) => {
-    return () => {
-      onRemove(index)
-    }
-  }, [onRemove])
+  const handleVarRemove = useCallback(
+    (index: number) => {
+      return () => {
+        onRemove(index)
+      }
+    },
+    [onRemove],
+  )
 
   return (
     <div className="space-y-2">

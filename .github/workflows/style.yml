@@ -2,6 +2,10 @@ name: Style check
 
 on:
   workflow_call:
+    inputs:
+      base-rev:
+        required: true
+        type: string
 
 concurrency:
   group: style-${{ github.head_ref || github.run_id }}
@@ -30,13 +34,18 @@ jobs:
         with:
           files: |
             api/**
+            scripts/ast_grep_guard.py
             scripts/check_no_new_getattr.py
+            scripts/check_no_new_controller_sqlalchemy.py
+            scripts/lint_controller_sqlalchemy.py
             scripts/ast_grep_rules/no_new_getattr.yml
+            scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml
             .github/workflows/style.yml
+            .github/workflows/main-ci.yml
 
       - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           enable-cache: false
           python-version: "3.12"
@@ -54,17 +63,13 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
 
-      - name: Fetch merge target ref for getattr guard
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
-
-      - name: Bind merge target branch for getattr guard
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: git show-ref --verify --quiet refs/heads/main || git branch main origin/main
-
       - name: Run No New Getattr Guard
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: uv run --project api python scripts/check_no_new_getattr.py --mode ci --merge-target main
+        run: uv run --project api python scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"
+
+      - name: Run No New Controller SQLAlchemy Guard
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv run --project api python scripts/check_no_new_controller_sqlalchemy.py --base-rev "${{ inputs.base-rev }}"
 
       - name: Run Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -132,7 +137,7 @@ jobs:
 
   ts-common-style:
     name: TS Common
-    runs-on: depot-ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     permissions:
       checks: write
       pull-requests: read
@@ -157,7 +162,13 @@ jobs:
             pnpm-lock.yaml
             pnpm-workspace.yaml
             .nvmrc
+            vite.config.ts
+            lint.config.ts
             eslint.config.mjs
+            oxlint-suppressions.json
+            eslint-suppressions.json
+            .vscode/**
+            .github/workflows/autofix.yml
             .github/workflows/style.yml
             .github/actions/setup-web/**
 
@@ -165,30 +176,9 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
 
-      - name: Restore ESLint cache
+      - name: Static check
         if: steps.changed-files.outputs.any_changed == 'true'
-        id: eslint-cache-restore
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .eslintcache
-          key: ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-
-
-      - name: Style check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: vp run lint:ci
-
-      - name: Type check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: vp run type-check
-
-      - name: Save ESLint cache
-        if: steps.changed-files.outputs.any_changed == 'true' && success() && steps.eslint-cache-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .eslintcache
-          key: ${{ steps.eslint-cache-restore.outputs.cache-primary-key }}
+        run: pnpm -w check
 
   superlinter:
     name: SuperLinter

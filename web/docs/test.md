@@ -30,11 +30,6 @@ pnpm test path/to/file.spec.tsx
 - **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
 - **Reusable mocks**: Place shared mock factories inside `web/__mocks__/` and use `vi.mock('module-name')` to point to them rather than redefining mocks in every spec.
 - **Mocking behavior**: Modules are not mocked automatically. Use `vi.mock(...)` in tests, or place global mocks in `vitest.setup.ts`.
-- **Script utilities**: `web/scripts/analyze-component.js` analyzes component complexity and generates test prompts for AI assistants. Commands:
-  - `pnpm analyze-component <path>` - Analyze and generate test prompt
-  - `pnpm analyze-component <path> --json` - Output analysis as JSON
-  - `pnpm analyze-component <path> --review` - Generate test review prompt
-  - `pnpm analyze-component --help` - Show help
 - **Integration suites**: Files in `web/__tests__/` exercise cross-component flows. Prefer adding new end-to-end style specs there rather than mixing them into component directories.
 
 ## Test Authoring Principles
@@ -51,29 +46,6 @@ pnpm test path/to/file.spec.tsx
 - **De-flake**: Control time, randomness, network, concurrency, and ordering.
 - **Fast & stable**: Keep unit tests running in milliseconds; reserve integration tests for cross-module behavior with isolation.
 - **Structured describe blocks**: Organize tests with `describe` sections and add a brief comment before each block to explain the scenario it covers so readers can quickly understand the scope.
-
-## Component Complexity Guidelines
-
-Use `pnpm analyze-component <path>` to analyze component complexity and adopt different testing strategies based on the results.
-
-### 🔴 Very Complex Components (Complexity > 50)
-
-- **Refactor first**: Break component into smaller pieces
-- **Integration tests**: Test complex workflows end-to-end
-- **Data-driven tests**: Use `test.each()` for multiple scenarios
-- **Performance benchmarks**: Add performance tests for critical paths
-
-### ⚠️ Complex Components (Complexity 30-50)
-
-- **Multiple describe blocks**: Group related test cases
-- **Integration scenarios**: Test feature combinations
-- **Organized structure**: Keep tests maintainable
-
-### 📏 Large Components (500+ lines)
-
-- **Consider refactoring**: Split into smaller components if possible
-- **Section testing**: Test major sections separately
-- **Helper functions**: Reduce test complexity with utilities
 
 ## Basic Guidelines
 
@@ -372,10 +344,12 @@ describe('ComponentName', () => {
    ```typescript
    import { createReactI18nextMock } from '@/test/i18n-mock'
 
-   vi.mock('react-i18next', () => createReactI18nextMock({
-     'my.custom.key': 'Custom translation',
-     'button.save': 'Save',
-   }))
+   vi.mock('react-i18next', () =>
+     createReactI18nextMock({
+       'my.custom.key': 'Custom translation',
+       'button.save': 'Save',
+     }),
+   )
    ```
 
    **Avoid**: Manually defining `useTranslation` mocks that just return the key - the global mock already does this.
@@ -395,8 +369,7 @@ vi.mock('external-overlay-library', () => ({
   },
   OverlayContent: ({ children }) => {
     // ✅ Matches actual: returns null when open is false
-    if (!mockOverlayOpenState)
-      return null
+    if (!mockOverlayOpenState) return null
     return <div>{children}</div>
   },
 }))

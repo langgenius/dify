@@ -13,15 +13,16 @@ const REQUIRED_APP_STAR_KEYS = [
 
 type AppTranslations = Record<string, unknown>
 
-const getSupportedLocales = () => fs.readdirSync(I18N_DIR)
-  .filter(item => fs.statSync(path.join(I18N_DIR, item)).isDirectory())
-  .sort()
+const getSupportedLocales = () =>
+  fs
+    .readdirSync(I18N_DIR)
+    .filter((item) => fs.statSync(path.join(I18N_DIR, item)).isDirectory())
+    .sort()
 
 const loadAppTranslations = (locale: string): AppTranslations => {
   const filePath = path.join(I18N_DIR, locale, 'app.json')
 
-  if (!fs.existsSync(filePath))
-    throw new Error(`Translation file not found: ${filePath}`)
+  if (!fs.existsSync(filePath)) throw new Error(`Translation file not found: ${filePath}`)
 
   return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as AppTranslations
 }
@@ -33,12 +34,10 @@ describe('App star i18n translations', () => {
     const missingKeys = supportedLocales.flatMap((locale) => {
       const translations = loadAppTranslations(locale)
 
-      return REQUIRED_APP_STAR_KEYS
-        .filter((key) => {
-          const value = translations[key]
-          return typeof value !== 'string' || value.trim() === ''
-        })
-        .map(key => `${locale}:${key}`)
+      return REQUIRED_APP_STAR_KEYS.filter((key) => {
+        const value = translations[key]
+        return typeof value !== 'string' || value.trim() === ''
+      }).map((key) => `${locale}:${key}`)
     })
 
     expect(supportedLocales.length).toBeGreaterThan(0)

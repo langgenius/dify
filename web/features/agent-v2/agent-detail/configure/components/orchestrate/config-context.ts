@@ -21,8 +21,7 @@ export const AgentConfigApiContextProvider = AgentConfigApiContext.Provider
 
 export const useAgentConfigApiContext = () => {
   const context = use(AgentConfigApiContext)
-  if (!context)
-    throw new Error('AgentConfigApiContextProvider is required for config-backed UI.')
+  if (!context) throw new Error('AgentConfigApiContextProvider is required for config-backed UI.')
 
   return context
 }

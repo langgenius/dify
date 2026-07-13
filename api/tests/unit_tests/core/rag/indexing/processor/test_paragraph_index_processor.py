@@ -209,7 +209,7 @@ class TestParagraphIndexProcessor:
             vector = mock_vector_cls.return_value
             processor.clean(dataset, ["node-1"], delete_summaries=True)
 
-        mock_summary.assert_called_once_with(dataset, ["seg-1"])
+        mock_summary.assert_called_once_with(dataset=dataset, segment_ids=["seg-1"])
         vector.delete_by_ids.assert_called_once_with(["node-1"])
 
     def test_clean_economy_deletes_summaries_and_keywords(
@@ -225,7 +225,7 @@ class TestParagraphIndexProcessor:
         ):
             processor.clean(dataset, None, delete_summaries=True)
 
-        mock_summary.assert_called_once_with(dataset, None)
+        mock_summary.assert_called_once_with(dataset=dataset, segment_ids=None)
         mock_keyword_cls.return_value.delete.assert_called_once()
 
     def test_clean_deletes_keywords_by_ids(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:

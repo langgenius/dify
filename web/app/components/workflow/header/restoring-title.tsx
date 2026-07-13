@@ -9,38 +9,37 @@ const RestoringTitle = () => {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { formatTime } = useTimestamp()
-  const currentVersion = useStore(state => state.currentVersion)
+  const currentVersion = useStore((state) => state.currentVersion)
   const isDraft = currentVersion?.version === WorkflowVersion.Draft
-  const publishStatus = isDraft ? t('common.unpublished', { ns: 'workflow' }) : t('common.published', { ns: 'workflow' })
+  const publishStatus = isDraft
+    ? t(($) => $['common.unpublished'], { ns: 'workflow' })
+    : t(($) => $['common.published'], { ns: 'workflow' })
 
   const versionName = useMemo(() => {
-    if (isDraft)
-      return t('versionHistory.currentDraft', { ns: 'workflow' })
-    return currentVersion?.marked_name || t('versionHistory.defaultName', { ns: 'workflow' })
+    if (isDraft) return t(($) => $['versionHistory.currentDraft'], { ns: 'workflow' })
+    return (
+      currentVersion?.marked_name || t(($) => $['versionHistory.defaultName'], { ns: 'workflow' })
+    )
   }, [currentVersion, t, isDraft])
 
   return (
     <div className="flex flex-col gap-y-0.5">
       <div className="flex items-center gap-x-1">
-        <span className="system-sm-semibold text-text-primary">
-          {versionName}
-        </span>
+        <span className="system-sm-semibold text-text-primary">{versionName}</span>
         <span className="rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
-          {t('common.viewOnly', { ns: 'workflow' })}
+          {t(($) => $['common.viewOnly'], { ns: 'workflow' })}
         </span>
       </div>
       <div className="flex h-4 items-center gap-x-1 system-xs-regular text-text-tertiary">
-        {
-          currentVersion && (
-            <>
-              <span>{publishStatus}</span>
-              <span>·</span>
-              <span>{`${formatTimeFromNow((isDraft ? currentVersion.updated_at : currentVersion.created_at) * 1000)} ${formatTime(currentVersion.created_at, 'HH:mm:ss')}`}</span>
-              <span>·</span>
-              <span>{currentVersion?.created_by?.name || ''}</span>
-            </>
-          )
-        }
+        {currentVersion && (
+          <>
+            <span>{publishStatus}</span>
+            <span>·</span>
+            <span>{`${formatTimeFromNow((isDraft ? currentVersion.updated_at : currentVersion.created_at) * 1000)} ${formatTime(currentVersion.created_at, 'HH:mm:ss')}`}</span>
+            <span>·</span>
+            <span>{currentVersion?.created_by?.name || ''}</span>
+          </>
+        )}
       </div>
     </div>
   )

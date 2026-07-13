@@ -20,7 +20,12 @@ const mocks = vi.hoisted(() => ({
     queryFn: vi.fn().mockResolvedValue({ data: [], scope: 'specific' }),
   })),
   userAccessSettingsKey: vi.fn(() => ['rbac-access-config', 'apps', 'user-access-settings']),
-  userAccessSettingsQueryKey: vi.fn(() => ['rbac-access-config', 'apps', 'user-access-settings', 'app-1']),
+  userAccessSettingsQueryKey: vi.fn(() => [
+    'rbac-access-config',
+    'apps',
+    'user-access-settings',
+    'app-1',
+  ]),
   updateOpenScope: vi.fn().mockResolvedValue({}),
   updateUserAccessSettings: vi.fn().mockResolvedValue({}),
   removeMemberBindings: vi.fn().mockResolvedValue({}),
@@ -137,10 +142,15 @@ describe('use-app-access-config', () => {
     })
 
     it('should update user access settings for an app id', async () => {
-      const { result } = renderHook(() => useUpdateAppUserAccessSettings('app-1'), { wrapper: createWrapper() })
+      const { result } = renderHook(() => useUpdateAppUserAccessSettings('app-1'), {
+        wrapper: createWrapper(),
+      })
 
       await act(async () => {
-        await result.current.mutateAsync({ accountId: 'account-1', accessPolicyIds: ['policy-1', 'policy-2'] })
+        await result.current.mutateAsync({
+          accountId: 'account-1',
+          accessPolicyIds: ['policy-1', 'policy-2'],
+        })
       })
 
       expect(mocks.updateUserAccessSettings).toHaveBeenCalledWith({
@@ -157,7 +167,9 @@ describe('use-app-access-config', () => {
     })
 
     it('should remove app access policy member bindings for account ids', async () => {
-      const { result } = renderHook(() => useRemoveAppAccessPolicyMemberBindings('app-1'), { wrapper: createWrapper() })
+      const { result } = renderHook(() => useRemoveAppAccessPolicyMemberBindings('app-1'), {
+        wrapper: createWrapper(),
+      })
 
       await act(async () => {
         await result.current.mutateAsync({ accessPolicyId: 'policy-1', accountIds: ['account-1'] })
@@ -177,7 +189,9 @@ describe('use-app-access-config', () => {
     })
 
     it('should update open scope for an app id', async () => {
-      const { result } = renderHook(() => useUpdateAppOpenScope('app-1'), { wrapper: createWrapper() })
+      const { result } = renderHook(() => useUpdateAppOpenScope('app-1'), {
+        wrapper: createWrapper(),
+      })
 
       await act(async () => {
         await result.current.mutateAsync('all')

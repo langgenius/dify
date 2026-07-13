@@ -65,7 +65,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
         if not dataset:
             return ""
         for hit_callback in self.hit_callbacks:
-            hit_callback.on_query(query, dataset.id, db.session)
+            hit_callback.on_query(query, dataset.id, db.session())
         dataset_retrieval = DatasetRetrieval()
         metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
             session,
@@ -162,7 +162,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                 else:
                     documents = []
                 for hit_callback in self.hit_callbacks:
-                    hit_callback.on_tool_end(documents, db.session)
+                    hit_callback.on_tool_end(documents, db.session())
                 document_score_list = {}
                 if dataset.indexing_technique != IndexTechniqueType.ECONOMY:
                     for item in documents:

@@ -18,16 +18,13 @@ export function buildRunBody(args: RunBodyArgs): Record<string, unknown> {
   const body: Record<string, unknown> = {
     inputs: args.inputs ?? {},
   }
-  if (args.message !== undefined && args.message !== '')
-    body.query = args.message
+  if (args.message !== undefined && args.message !== '') body.query = args.message
   if (args.conversationId !== undefined && args.conversationId !== '')
     body.conversation_id = args.conversationId
   if (args.workspaceId !== undefined && args.workspaceId !== '')
     body.workspace_id = args.workspaceId
-  if (args.workflowId !== undefined && args.workflowId !== '')
-    body.workflow_id = args.workflowId
-  if (args.files !== undefined && args.files.length > 0)
-    body.files = args.files
+  if (args.workflowId !== undefined && args.workflowId !== '') body.workflow_id = args.workflowId
+  if (args.files !== undefined && args.files.length > 0) body.files = args.files
   return body
 }
 
@@ -54,7 +51,7 @@ export class AppRunClient {
     body: Record<string, unknown>,
     opts: StreamOptions = {},
   ): Promise<AsyncIterable<SseEvent>> {
-    const res = await this.http.stream(`apps/${encodeURIComponent(appId)}/run`, {
+    const res = await this.http.stream(`apps/${encodeURIComponent(appId)}:run`, {
       method: 'POST',
       json: body,
       headers: { Accept: 'text/event-stream' },
@@ -62,8 +59,7 @@ export class AppRunClient {
       throwOnError: true,
       retryOnRateLimit: opts.retryOnRateLimit,
     })
-    if (res.body === null)
-      throw new Error('streaming response body missing')
+    if (res.body === null) throw new Error('streaming response body missing')
     return normalizeDifyStream(parseSSE(res.body, opts.signal))
   }
 
@@ -79,7 +75,7 @@ export class AppRunClient {
     action: string,
     inputs: Record<string, unknown>,
   ): Promise<void> {
-    await this.orpc.apps.byAppId.form.humanInput.byFormToken.post({
+    await this.orpc.apps.byAppId.humanInputForms.byFormToken.submit.post({
       params: { app_id: appId, form_token: formToken },
       body: { action, inputs },
     })
@@ -100,8 +96,7 @@ export class AppRunClient {
       signal: opts.signal,
       throwOnError: true,
     })
-    if (res.body === null)
-      throw new Error('reconnect stream body missing')
+    if (res.body === null) throw new Error('reconnect stream body missing')
     return normalizeDifyStream(parseSSE(res.body, opts.signal))
   }
 }

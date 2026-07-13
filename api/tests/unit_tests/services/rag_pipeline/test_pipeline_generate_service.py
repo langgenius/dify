@@ -1,28 +1,13 @@
-from collections.abc import Iterator
 from types import SimpleNamespace
 from typing import cast
-from uuid import uuid4
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy import create_engine, func, select
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.dataset import Document, Pipeline
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.dataset import Pipeline
 from models.model import Account, App, EndUser
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
-
-
-@pytest.fixture
-def document_session() -> Iterator[Session]:
-    engine = create_engine("sqlite:///:memory:")
-    Document.__table__.create(engine)
-    session_factory = sessionmaker(bind=engine, expire_on_commit=False)
-    with session_factory() as session:
-        yield session
-    engine.dispose()
 
 
 def test_get_max_active_requests_uses_smallest_non_zero_limit(mocker: MockerFixture) -> None:
@@ -62,12 +47,13 @@ def test_get_workflow(mocker: MockerFixture, invoke_from, workflow, expected_err
     rag_pipeline_service.get_published_workflow.return_value = workflow
 
     pipeline = cast(Pipeline, SimpleNamespace(id="pipeline-1"))
+    session = mocker.Mock()
 
     if expected_error:
         with pytest.raises(ValueError, match=expected_error):
-            PipelineGenerateService._get_workflow(pipeline, invoke_from)
+            PipelineGenerateService._get_workflow(pipeline, invoke_from, session)
     else:
-        result = PipelineGenerateService._get_workflow(pipeline, invoke_from)
+        result = PipelineGenerateService._get_workflow(pipeline, invoke_from, session)
         assert result == workflow
 
 
@@ -75,10 +61,10 @@ def test_generate_updates_document_status_and_returns_event_stream(mocker: Mocke
     pipeline = cast(Pipeline, SimpleNamespace(id="pipeline-1"))
     user = cast(Account | EndUser, SimpleNamespace(id="user-1"))
     args = {"original_document_id": "doc-1", "query": "hello"}
+    session_mock = mocker.Mock()
 
     mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=SimpleNamespace(id="wf-1"))
     update_status_mock = mocker.patch.object(PipelineGenerateService, "update_document_status")
-    session = mocker.Mock()
 
     generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
     generator_instance = generator_cls.return_value
@@ -86,49 +72,39 @@ def test_generate_updates_document_status_and_returns_event_stream(mocker: Mocke
     generator_cls.convert_to_event_stream.return_value = "stream-events"
 
     result = PipelineGenerateService.generate(
-        session=session,
         pipeline=pipeline,
         user=user,
         args=args,
         invoke_from=InvokeFrom.WEB_APP,
         streaming=True,
+        session=session_mock,
     )
 
     assert result == "stream-events"
-    update_status_mock.assert_called_once_with("doc-1", session)
+    update_status_mock.assert_called_once_with("doc-1", session=session_mock)
 
 
-def test_update_document_status_updates_existing_document(document_session: Session) -> None:
-    session = document_session
-    document_id = str(uuid4())
-    document = Document(
-        id=document_id,
-        tenant_id=str(uuid4()),
-        dataset_id=str(uuid4()),
-        position=1,
-        data_source_type=DataSourceType.UPLOAD_FILE,
-        batch="batch-1",
-        name="Doc",
-        created_from=DocumentCreatedFrom.WEB,
-        created_by=str(uuid4()),
-        indexing_status=IndexingStatus.COMPLETED,
-    )
-    session.add(document)
-    session.commit()
+def test_update_document_status_updates_existing_document(mocker: MockerFixture) -> None:
+    document = SimpleNamespace(indexing_status="completed")
 
-    PipelineGenerateService.update_document_status(document_id, session)
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = document
+    add_mock = session_mock.add
 
-    updated_document = session.get(Document, document_id)
-    assert updated_document is not None
-    assert updated_document.indexing_status == IndexingStatus.WAITING
+    PipelineGenerateService.update_document_status("doc-1", session=session_mock)
+
+    assert document.indexing_status == "waiting"
+    add_mock.assert_called_once_with(document)
 
 
-def test_update_document_status_skips_when_document_missing(document_session: Session) -> None:
-    session = document_session
+def test_update_document_status_skips_when_document_missing(mocker: MockerFixture) -> None:
+    session_mock = mocker.Mock()
+    session_mock.get.return_value = None
+    add_mock = session_mock.add
 
-    PipelineGenerateService.update_document_status(str(uuid4()), session)
+    PipelineGenerateService.update_document_status("missing", session=session_mock)
 
-    assert session.scalar(select(func.count()).select_from(Document)) == 0
+    add_mock.assert_not_called()
 
 
 # --- generate_single_iteration ---
@@ -144,8 +120,9 @@ def test_generate_single_iteration_delegates(mocker: MockerFixture) -> None:
 
     pipeline = cast(Pipeline, SimpleNamespace(id="p1"))
     user = cast(Account, SimpleNamespace(id="u1"))
+    session = mocker.Mock()
 
-    result = PipelineGenerateService.generate_single_iteration(pipeline, user, "node-1", {"key": "val"})
+    result = PipelineGenerateService.generate_single_iteration(pipeline, user, "node-1", {"key": "val"}, session)
 
     assert result == "stream-iter"
     generator_instance.single_iteration_generate.assert_called_once()
@@ -164,8 +141,9 @@ def test_generate_single_loop_delegates(mocker: MockerFixture) -> None:
 
     pipeline = cast(Pipeline, SimpleNamespace(id="p1"))
     user = cast(Account, SimpleNamespace(id="u1"))
+    session = mocker.Mock()
 
-    result = PipelineGenerateService.generate_single_loop(pipeline, user, "node-1", {"key": "val"})
+    result = PipelineGenerateService.generate_single_loop(pipeline, user, "node-1", {"key": "val"}, session)
 
     assert result == "stream-loop"
     generator_instance.single_loop_generate.assert_called_once()

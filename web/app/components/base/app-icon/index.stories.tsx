@@ -8,7 +8,8 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Reusable avatar for applications and workflows. Supports emoji or uploaded imagery, rounded-sm mode, edit overlays, and multiple sizes.',
+        component:
+          'Reusable avatar for applications and workflows. Supports emoji or uploaded imagery, rounded-sm mode, edit overlays, and multiple sizes.',
       },
     },
   },
@@ -25,7 +26,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  render: args => (
+  render: (args) => (
     <div className="flex items-center gap-4">
       <AppIcon {...args} />
       <AppIcon {...args} rounded icon="🧠" background="#E0F2FE" />
@@ -46,10 +47,18 @@ export const Default: Story = {
 
 export const Sizes: Story = {
   render: (args) => {
-    const sizes: Array<ComponentProps<typeof AppIcon>['size']> = ['xs', 'tiny', 'small', 'medium', 'large', 'xl', 'xxl']
+    const sizes: Array<ComponentProps<typeof AppIcon>['size']> = [
+      'xs',
+      'tiny',
+      'small',
+      'medium',
+      'large',
+      'xl',
+      'xxl',
+    ]
     return (
       <div className="flex flex-wrap items-end gap-4">
-        {sizes.map(size => (
+        {sizes.map((size) => (
           <div key={size} className="flex flex-col items-center gap-2">
             <AppIcon {...args} size={size} icon="🚀" background="#E5DEFF" />
             <span className="text-xs text-text-tertiary uppercase">{size}</span>
@@ -73,14 +82,9 @@ export const Sizes: Story = {
 }
 
 export const WithEditOverlay: Story = {
-  render: args => (
+  render: (args) => (
     <div className="flex items-center gap-4">
-      <AppIcon
-        {...args}
-        icon="🛠️"
-        background="#E7F5FF"
-        showEditIcon
-      />
+      <AppIcon {...args} icon="🛠️" background="#E7F5FF" showEditIcon />
       <AppIcon
         {...args}
         iconType="image"

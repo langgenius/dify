@@ -3,9 +3,7 @@ import VariableSelectorField from '../variable-selector'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   default: ({ onChange }: { onChange?: () => void }) => (
-    <button onClick={() => onChange?.()}>
-      Variable picker
-    </button>
+    <button onClick={() => onChange?.()}>Variable picker</button>
   ),
 }))
 

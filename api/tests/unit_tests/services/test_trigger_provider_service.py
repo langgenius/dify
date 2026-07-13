@@ -444,7 +444,7 @@ def test_delete_trigger_provider_should_raise_error_when_subscription_missing(
 
     # Act + Assert
     with pytest.raises(ValueError, match="not found"):
-        TriggerProviderService.delete_trigger_provider(mock_session, "tenant-1", "sub-1")
+        TriggerProviderService.delete_trigger_provider("tenant-1", "sub-1", session=mock_session)
 
 
 def test_delete_trigger_provider_should_delete_and_clear_cache_even_if_unsubscribe_fails(
@@ -476,7 +476,7 @@ def test_delete_trigger_provider_should_delete_and_clear_cache_even_if_unsubscri
     mock_delete_cache = mocker.patch("services.trigger.trigger_provider_service.delete_cache_for_subscription")
 
     # Act
-    TriggerProviderService.delete_trigger_provider(mock_session, "tenant-1", "sub-1")
+    TriggerProviderService.delete_trigger_provider("tenant-1", "sub-1", session=mock_session)
 
     # Assert
     mock_session.delete.assert_called_once_with(subscription)
@@ -507,7 +507,7 @@ def test_delete_trigger_provider_should_skip_unsubscribe_for_unauthorized(
     )
 
     # Act
-    TriggerProviderService.delete_trigger_provider(mock_session, "tenant-1", "sub-2")
+    TriggerProviderService.delete_trigger_provider("tenant-1", "sub-2", session=mock_session)
 
     # Assert
     mock_unsubscribe.assert_not_called()

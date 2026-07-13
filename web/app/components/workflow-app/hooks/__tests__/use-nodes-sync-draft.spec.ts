@@ -1,6 +1,5 @@
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
@@ -33,7 +32,7 @@ let workflowStoreState: {
 
 let featuresState: {
   features: {
-    opening: { enabled: boolean, opening_statement: string, suggested_questions: string[] }
+    opening: { enabled: boolean; opening_statement: string; suggested_questions: string[] }
     suggested: Record<string, unknown>
     text2speech: Record<string, unknown>
     speech2text: Record<string, unknown>
@@ -72,10 +71,10 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-serial-async-callback', () => ({
-  useSerialAsyncCallback: (fn: (...args: unknown[]) => Promise<void>, checkFn: () => boolean) =>
+  useSerialAsyncCallback:
+    (fn: (...args: unknown[]) => Promise<void>, checkFn: () => boolean) =>
     (...args: unknown[]) => {
-      if (!checkFn())
-        return fn(...args)
+      if (!checkFn()) return fn(...args)
     },
 }))
 
@@ -135,7 +134,9 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       },
     }
     mockGetNodesReadOnly.mockReturnValue(false)
-    mockGetNodes.mockReturnValue([{ id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } }])
+    mockGetNodes.mockReturnValue([
+      { id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } },
+    ])
     mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new', updated_at: 1 })
     mockCollaborationIsConnected.mockReturnValue(false)
     mockCollaborationGetIsLeader.mockReturnValue(true)
@@ -143,27 +144,33 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
   })
 
   it('should call handleRefreshWorkflowDraft(true) — not updating canvas — on draft_workflow_not_sync', async () => {
-    const error = { json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }), bodyUsed: false }
+    const error = {
+      json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
+      bodyUsed: false,
+    }
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
     const { result } = renderUseNodesSyncDraft()
     await act(async () => {
       await result.current.doSyncWorkflowDraft(false)
     })
-    await new Promise(r => setTimeout(r, 0))
+    await new Promise((r) => setTimeout(r, 0))
 
     expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledWith(true)
   })
 
   it('should NOT refresh when notRefreshWhenSyncError=true', async () => {
-    const error = { json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }), bodyUsed: false }
+    const error = {
+      json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
+      bodyUsed: false,
+    }
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
     const { result } = renderUseNodesSyncDraft()
     await act(async () => {
       await result.current.doSyncWorkflowDraft(true)
     })
-    await new Promise(r => setTimeout(r, 0))
+    await new Promise((r) => setTimeout(r, 0))
 
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
@@ -176,7 +183,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     await act(async () => {
       await result.current.doSyncWorkflowDraft(false)
     })
-    await new Promise(r => setTimeout(r, 0))
+    await new Promise((r) => setTimeout(r, 0))
 
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
@@ -210,27 +217,51 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       await result.current.doSyncWorkflowDraft(false)
     })
 
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
-      params: expect.not.objectContaining({
-        source_workflow_id: expect.anything(),
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.not.objectContaining({
+          source_workflow_id: expect.anything(),
+        }),
       }),
-    }))
+    )
   })
 
   it('should strip temp entities and private data, use the latest hash, and invoke success callbacks', async () => {
     reactFlowState = {
       ...reactFlowState,
       edges: [
-        { id: 'edge-1', source: 'n1', target: 'n2', data: { _isTemp: false, _private: 'drop', stable: 'keep' } },
-        { id: 'placeholder-edge', source: 'start-placeholder', target: 'n1', data: { stable: 'drop' } },
+        {
+          id: 'edge-1',
+          source: 'n1',
+          target: 'n2',
+          data: { _isTemp: false, _private: 'drop', stable: 'keep' },
+        },
+        {
+          id: 'placeholder-edge',
+          source: 'start-placeholder',
+          target: 'n1',
+          data: { stable: 'drop' },
+        },
         { id: 'temp-edge', source: 'n2', target: 'n3', data: { _isTemp: true } },
       ],
       transform: [10, 20, 1.5],
     }
     mockGetNodes.mockReturnValue([
-      { id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start, _tempField: 'drop', label: 'Start' } },
-      { id: 'start-placeholder', position: { x: 1, y: 1 }, data: { type: BlockEnum.StartPlaceholder } },
-      { id: 'temp-node', position: { x: 2, y: 2 }, data: { type: BlockEnum.Answer, _isTempNode: true } },
+      {
+        id: 'n1',
+        position: { x: 0, y: 0 },
+        data: { type: BlockEnum.Start, _tempField: 'drop', label: 'Start' },
+      },
+      {
+        id: 'start-placeholder',
+        position: { x: 1, y: 1 },
+        data: { type: BlockEnum.StartPlaceholder },
+      },
+      {
+        id: 'temp-node',
+        position: { x: 2, y: 2 },
+        data: { type: BlockEnum.Answer, _isTempNode: true },
+      },
     ])
     workflowStoreState = {
       ...workflowStoreState,
@@ -266,7 +297,9 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       url: '/apps/app-1/workflows/draft',
       params: {
         graph: {
-          nodes: [{ id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start, label: 'Start' } }],
+          nodes: [
+            { id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start, label: 'Start' } },
+          ],
           edges: [{ id: 'edge-1', source: 'n1', target: 'n2', data: { stable: 'keep' } }],
           viewport: { x: 10, y: 20, zoom: 1.5 },
         },
@@ -296,7 +329,12 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     reactFlowState = {
       ...reactFlowState,
       edges: [
-        { id: 'edge-1', source: 'n1', target: 'pending-agent', data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent } },
+        {
+          id: 'edge-1',
+          source: 'n1',
+          target: 'pending-agent',
+          data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent },
+        },
         { id: 'temp-edge', source: 'temp-node', target: 'pending-agent', data: {} },
       ],
     }
@@ -319,7 +357,11 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
           selected: true,
         },
       },
-      { id: 'temp-node', position: { x: 2, y: 2 }, data: { type: BlockEnum.Answer, _isTempNode: true } },
+      {
+        id: 'temp-node',
+        position: { x: 2, y: 2 },
+        data: { type: BlockEnum.Answer, _isTempNode: true },
+      },
     ])
 
     const { result } = renderUseNodesSyncDraft()
@@ -328,33 +370,40 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       await result.current.doSyncWorkflowDraft(false)
     })
 
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
-      params: expect.objectContaining({
-        graph: expect.objectContaining({
-          nodes: [
-            { id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } },
-            {
-              id: 'pending-agent',
-              position: { x: 1, y: 1 },
-              data: {
-                type: BlockEnum.Agent,
-                title: 'Agent',
-                desc: '',
-                agent_node_kind: 'dify_agent',
-                version: '2',
-                agent_binding: {
-                  binding_type: 'inline_agent',
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          graph: expect.objectContaining({
+            nodes: [
+              { id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } },
+              {
+                id: 'pending-agent',
+                position: { x: 1, y: 1 },
+                data: {
+                  type: BlockEnum.Agent,
+                  title: 'Agent',
+                  desc: '',
+                  agent_node_kind: 'dify_agent',
+                  version: '2',
+                  agent_binding: {
+                    binding_type: 'inline_agent',
+                  },
+                  selected: true,
                 },
-                selected: true,
               },
-            },
-          ],
-          edges: [
-            { id: 'edge-1', source: 'n1', target: 'pending-agent', data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent } },
-          ],
+            ],
+            edges: [
+              {
+                id: 'edge-1',
+                source: 'n1',
+                target: 'pending-agent',
+                data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent },
+              },
+            ],
+          }),
         }),
       }),
-    }))
+    )
   })
 
   it('should post workflow draft with keepalive when the page closes', () => {
@@ -374,23 +423,28 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       result.current.syncWorkflowDraftWhenPageClose()
     })
 
-    expect(mockPostWithKeepalive).toHaveBeenCalledWith('/api/apps/app-1/workflows/draft', expect.objectContaining({
-      graph: expect.objectContaining({
-        viewport: { x: 1, y: 2, zoom: 3 },
+    expect(mockPostWithKeepalive).toHaveBeenCalledWith(
+      '/api/apps/app-1/workflows/draft',
+      expect.objectContaining({
+        graph: expect.objectContaining({
+          viewport: { x: 1, y: 2, zoom: 3 },
+        }),
+        hash: 'hash-123',
       }),
-      hash: 'hash-123',
-    }))
+    )
   })
 
   it('should not post the local start placeholder when the page closes', () => {
     reactFlowState = {
       ...reactFlowState,
-      edges: [
-        { id: 'placeholder-edge', source: 'start-placeholder', target: 'n1', data: {} },
-      ],
+      edges: [{ id: 'placeholder-edge', source: 'start-placeholder', target: 'n1', data: {} }],
     }
     mockGetNodes.mockReturnValue([
-      { id: 'start-placeholder', position: { x: 0, y: 0 }, data: { type: BlockEnum.StartPlaceholder } },
+      {
+        id: 'start-placeholder',
+        position: { x: 0, y: 0 },
+        data: { type: BlockEnum.StartPlaceholder },
+      },
       { id: 'n1', position: { x: 1, y: 1 }, data: { type: BlockEnum.Start } },
     ])
 
@@ -400,12 +454,15 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       result.current.syncWorkflowDraftWhenPageClose()
     })
 
-    expect(mockPostWithKeepalive).toHaveBeenCalledWith('/api/apps/app-1/workflows/draft', expect.objectContaining({
-      graph: expect.objectContaining({
-        nodes: [{ id: 'n1', position: { x: 1, y: 1 }, data: { type: BlockEnum.Start } }],
-        edges: [],
+    expect(mockPostWithKeepalive).toHaveBeenCalledWith(
+      '/api/apps/app-1/workflows/draft',
+      expect.objectContaining({
+        graph: expect.objectContaining({
+          nodes: [{ id: 'n1', position: { x: 1, y: 1 }, data: { type: BlockEnum.Start } }],
+          edges: [],
+        }),
       }),
-    }))
+    )
   })
 
   it('should emit sync request instead of syncing when current user is collaboration follower', async () => {

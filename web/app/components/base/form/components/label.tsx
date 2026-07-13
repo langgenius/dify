@@ -11,14 +11,7 @@ export type LabelProps = {
   className?: string
 }
 
-const Label = ({
-  htmlFor,
-  label,
-  isRequired,
-  showOptional,
-  tooltip,
-  className,
-}: LabelProps) => {
+const Label = ({ htmlFor, label, isRequired, showOptional, tooltip, className }: LabelProps) => {
   const { t } = useTranslation()
 
   return (
@@ -30,8 +23,14 @@ const Label = ({
       >
         {label}
       </label>
-      {!isRequired && showOptional && <div className="ml-1 system-xs-regular text-text-tertiary">{t('label.optional', { ns: 'common' })}</div>}
-      {isRequired && <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>}
+      {!isRequired && showOptional && (
+        <div className="ml-1 system-xs-regular text-text-tertiary">
+          {t(($) => $['label.optional'], { ns: 'common' })}
+        </div>
+      )}
+      {isRequired && (
+        <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
+      )}
       {tooltip && (
         <Infotip aria-label={tooltip} className="ml-0.5 size-4" popupClassName="w-[200px]">
           {tooltip}

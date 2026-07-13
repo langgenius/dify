@@ -15,11 +15,9 @@ type PendingRegistrationSuccessEvent = {
 
 const getSessionStorage = (): Storage | null => {
   try {
-    if (typeof window === 'undefined')
-      return null
+    if (typeof window === 'undefined') return null
     return window.sessionStorage
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -31,14 +29,17 @@ const getSessionStorage = (): Storage | null => {
  * Amplitude attributes events to whatever identity is active when `track` runs. At
  * registration time the client does not yet know the user ID, so firing the event
  * immediately records it under an anonymous profile. We persist the event here and
- * replay it once `setUserId` runs in the app context provider after the redirect.
+ * replay it once `setUserId` runs in the bootstrap effects after the redirect.
  */
-export const rememberRegistrationSuccess = (
-  { method, utmInfo }: { method: RegistrationMethod, utmInfo?: Record<string, unknown> | null },
-) => {
+export const rememberRegistrationSuccess = ({
+  method,
+  utmInfo,
+}: {
+  method: RegistrationMethod
+  utmInfo?: Record<string, unknown> | null
+}) => {
   const storage = getSessionStorage()
-  if (!storage)
-    return
+  if (!storage) return
 
   const pending: PendingRegistrationSuccessEvent = {
     eventName: utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success',
@@ -47,8 +48,7 @@ export const rememberRegistrationSuccess = (
 
   try {
     storage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, JSON.stringify(pending))
-  }
-  catch {}
+  } catch {}
 }
 
 /**
@@ -60,29 +60,23 @@ export const rememberRegistrationSuccess = (
  */
 export const flushRegistrationSuccess = () => {
   const storage = getSessionStorage()
-  if (!storage)
-    return
+  if (!storage) return
 
   let raw: string | null = null
   try {
     raw = storage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)
-  }
-  catch {
+  } catch {
     return
   }
 
-  if (!raw)
-    return
+  if (!raw) return
 
   try {
     storage.removeItem(REGISTRATION_SUCCESS_STORAGE_KEY)
-  }
-  catch {}
+  } catch {}
 
   try {
     const pending = JSON.parse(raw) as PendingRegistrationSuccessEvent
-    if (pending?.eventName)
-      trackEvent(pending.eventName, pending.properties)
-  }
-  catch {}
+    if (pending?.eventName) trackEvent(pending.eventName, pending.properties)
+  } catch {}
 }

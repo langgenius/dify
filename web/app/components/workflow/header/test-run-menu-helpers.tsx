@@ -1,12 +1,8 @@
-/* eslint-disable react-refresh/only-export-components */
+/* oxlint-disable react/only-export-components */
 import type { MouseEvent, MouseEventHandler, ReactElement } from 'react'
 import type { TriggerOption } from './test-run-menu'
 import { DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
-import {
-  cloneElement,
-  isValidElement,
-  useEffect,
-} from 'react'
+import { cloneElement, isValidElement, useEffect } from 'react'
 import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 
 export type ShortcutMapping = {
@@ -33,14 +29,10 @@ export const OptionRow = ({
       onClick={() => onSelect(option)}
     >
       <div className="flex min-w-0 flex-1 items-center">
-        <div className="flex size-6 shrink-0 items-center justify-center">
-          {option.icon}
-        </div>
+        <div className="flex size-6 shrink-0 items-center justify-center">{option.icon}</div>
         <span className="ml-2 truncate">{option.name}</span>
       </div>
-      {shortcutKey && (
-        <ShortcutKbd hotkey={shortcutKey} className="ml-2" textColor="secondary" />
-      )}
+      {shortcutKey && <ShortcutKbd hotkey={shortcutKey} className="ml-2" textColor="secondary" />}
     </DropdownMenuItem>
   )
 }
@@ -55,8 +47,7 @@ export const useShortcutMenu = ({
   handleSelect: (option: TriggerOption) => void
 }) => {
   useEffect(() => {
-    if (!open)
-      return
+    if (!open) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || event.altKey || event.ctrlKey || event.metaKey)
@@ -86,8 +77,7 @@ export const SingleOptionTrigger = ({
   runSoleOption: () => void
 }) => {
   const handleRunClick = (event?: MouseEvent<HTMLElement>) => {
-    if (event?.defaultPrevented)
-      return
+    if (event?.defaultPrevented) return
 
     runSoleOption()
   }
@@ -96,14 +86,12 @@ export const SingleOptionTrigger = ({
     const childElement = children as ReactElement<{ onClick?: MouseEventHandler<HTMLElement> }>
     const originalOnClick = childElement.props?.onClick
 
-    // eslint-disable-next-line react/no-clone-element
+    // oxlint-disable-next-line react/no-clone-element
     return cloneElement(childElement, {
       onClick: (event: MouseEvent<HTMLElement>) => {
-        if (typeof originalOnClick === 'function')
-          originalOnClick(event)
+        if (typeof originalOnClick === 'function') originalOnClick(event)
 
-        if (event?.defaultPrevented)
-          return
+        if (event?.defaultPrevented) return
 
         runSoleOption()
       },

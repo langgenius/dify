@@ -200,7 +200,7 @@ class CompletionConversationDetailApi(Resource):
         conversation_id_str = str(conversation_id)
 
         try:
-            ConversationService.delete(app_model, conversation_id_str, current_user)
+            ConversationService.delete(app_model, conversation_id_str, current_user, session=db.session())
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
@@ -354,7 +354,7 @@ class ChatConversationDetailApi(Resource):
         conversation_id_str = str(conversation_id)
 
         try:
-            ConversationService.delete(app_model, conversation_id_str, current_user)
+            ConversationService.delete(app_model, conversation_id_str, current_user, session=db.session())
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 

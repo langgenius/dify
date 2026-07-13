@@ -48,7 +48,7 @@ const ToolBaseForm: FC<ToolBaseFormProps> = ({
       {/* Tool picker */}
       <div className="flex flex-col gap-1">
         <div className="flex h-6 items-center justify-between system-sm-semibold text-text-secondary">
-          {t('detailPanel.toolSelector.toolLabel', { ns: 'plugin' })}
+          {t(($) => $['detailPanel.toolSelector.toolLabel'], { ns: 'plugin' })}
           {currentProvider?.plugin_unique_identifier && (
             <ReadmeEntrance
               pluginDetail={currentProvider as unknown as PluginDetail}
@@ -60,15 +60,15 @@ const ToolBaseForm: FC<ToolBaseFormProps> = ({
         <ToolPicker
           placement="bottom"
           offset={offset}
-          trigger={(
+          trigger={
             <ToolTrigger
               open={panelShowState || isShowChooseTool}
               value={value}
               provider={currentProvider}
             />
-          )}
+          }
           isShow={panelShowState || isShowChooseTool}
-          onShowChange={hasTrigger ? (onPanelShowStateChange || (() => {})) : onShowChange}
+          onShowChange={hasTrigger ? onPanelShowStateChange || (() => {}) : onShowChange}
           disabled={false}
           supportAddCustomTool
           onSelect={onSelectTool}
@@ -81,12 +81,14 @@ const ToolBaseForm: FC<ToolBaseFormProps> = ({
       {/* Description */}
       <div className="flex flex-col gap-1">
         <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
-          {t('detailPanel.toolSelector.descriptionLabel', { ns: 'plugin' })}
+          {t(($) => $['detailPanel.toolSelector.descriptionLabel'], { ns: 'plugin' })}
         </div>
         <Textarea
           className="resize-none"
-          aria-label={t('detailPanel.toolSelector.descriptionLabel', { ns: 'plugin' })}
-          placeholder={t('detailPanel.toolSelector.descriptionPlaceholder', { ns: 'plugin' })}
+          aria-label={t(($) => $['detailPanel.toolSelector.descriptionLabel'], { ns: 'plugin' })}
+          placeholder={t(($) => $['detailPanel.toolSelector.descriptionPlaceholder'], {
+            ns: 'plugin',
+          })}
           value={value?.extra?.description || ''}
           onValueChange={onDescriptionChange}
           disabled={!value?.provider_name}

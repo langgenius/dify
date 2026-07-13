@@ -34,25 +34,34 @@ export const useSearchFilter = (options: UseSearchFilterOptions): UseSearchFilte
   const [selectedStatus, setSelectedStatus] = useState<boolean | 'all'>('all')
 
   const statusList = useRef<SegmentStatusFilterOption[]>([
-    { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) },
-    { value: 0, name: t('list.status.disabled', { ns: 'datasetDocuments' }) },
-    { value: 1, name: t('list.status.enabled', { ns: 'datasetDocuments' }) },
+    { value: 'all', name: t(($) => $['list.index.all'], { ns: 'datasetDocuments' }) },
+    { value: 0, name: t(($) => $['list.status.disabled'], { ns: 'datasetDocuments' }) },
+    { value: 1, name: t(($) => $['list.status.enabled'], { ns: 'datasetDocuments' }) },
   ])
 
-  const { run: handleSearch } = useDebounceFn(() => {
-    setSearchValue(inputValue)
-    onPageChange(1)
-  }, { wait: 500 })
+  const { run: handleSearch } = useDebounceFn(
+    () => {
+      setSearchValue(inputValue)
+      onPageChange(1)
+    },
+    { wait: 500 },
+  )
 
-  const handleInputChange = useCallback((value: string) => {
-    setInputValue(value)
-    handleSearch()
-  }, [handleSearch])
+  const handleInputChange = useCallback(
+    (value: string) => {
+      setInputValue(value)
+      handleSearch()
+    },
+    [handleSearch],
+  )
 
-  const onChangeStatus = useCallback(({ value }: SegmentStatusFilterOption) => {
-    setSelectedStatus(value === 'all' ? 'all' : !!value)
-    onPageChange(1)
-  }, [onPageChange])
+  const onChangeStatus = useCallback(
+    ({ value }: SegmentStatusFilterOption) => {
+      setSelectedStatus(value === 'all' ? 'all' : !!value)
+      onPageChange(1)
+    },
+    [onPageChange],
+  )
 
   const onClearFilter = useCallback(() => {
     setInputValue('')
@@ -66,8 +75,7 @@ export const useSearchFilter = (options: UseSearchFilterOptions): UseSearchFilte
   }, [onPageChange])
 
   const selectDefaultValue = useMemo(() => {
-    if (selectedStatus === 'all')
-      return 'all'
+    if (selectedStatus === 'all') return 'all'
     return selectedStatus ? 1 : 0
   }, [selectedStatus])
 

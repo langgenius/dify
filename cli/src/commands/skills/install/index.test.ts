@@ -6,9 +6,11 @@ import { renderSkill } from '@/help/skill'
 import { versionInfo } from '@/version/info'
 import SkillsInstall from './index'
 
-const tree: CommandTree = { skills: { subcommands: { install: { command: SkillsInstall, subcommands: {} } } } }
+const tree: CommandTree = {
+  skills: { subcommands: { install: { command: SkillsInstall, subcommands: {} } } },
+}
 
-type Captured = { stdout: string, stderr: string, exit: number | undefined }
+type Captured = { stdout: string; stderr: string; exit: number | undefined }
 
 async function captureRun(argv: string[]): Promise<Captured> {
   const captured: Captured = { stdout: '', stderr: '', exit: undefined }
@@ -30,8 +32,7 @@ async function captureRun(argv: string[]): Promise<Captured> {
 
   try {
     await run(tree, argv)
-  }
-  finally {
+  } finally {
     process.stdout.write = origStdout
     process.stderr.write = origStderr
     process.exit = origExit

@@ -30,8 +30,7 @@ import 'dayjs/locale/zh-tw'
  * @example formatNumber(0.0000008) will return '0.0000008'
  */
 export const formatNumber = (num: number | string) => {
-  if (!num)
-    return num
+  if (!num) return num
   const n = typeof num === 'string' ? Number(num) : num
 
   let numStr: string
@@ -47,15 +46,13 @@ export const formatNumber = (num: number | string) => {
       const mantissa = str.split('e')[0]
       const mantissaDecimalPart = mantissa!.split('.')[1]
       precision = exponent + (mantissaDecimalPart?.length || 0)
-    }
-    else {
+    } else {
       // Decimal notation: count decimal places
       const decimalPart = str.split('.')[1]
       precision = decimalPart?.length || 0
     }
     numStr = n.toFixed(precision)
-  }
-  else {
+  } else {
     numStr = n.toString()
   }
 
@@ -71,16 +68,14 @@ export const formatNumber = (num: number | string) => {
  * @example formatFileSize(1024 * 1024) will return '1.00 MB'
  */
 export const formatFileSize = (fileSize: number) => {
-  if (!fileSize)
-    return fileSize
+  if (!fileSize) return fileSize
   const units = ['', 'K', 'M', 'G', 'T', 'P']
   let index = 0
   while (fileSize >= 1024 && index < units.length) {
     fileSize = fileSize / 1024
     index++
   }
-  if (index === 0)
-    return `${fileSize.toFixed(2)} bytes`
+  if (index === 0) return `${fileSize.toFixed(2)} bytes`
   return `${fileSize.toFixed(2)} ${units[index]}B`
 }
 
@@ -90,8 +85,7 @@ export const formatFileSize = (fileSize: number) => {
  * @example formatTime(60 * 60) will return '1.00 h'
  */
 export const formatTime = (seconds: number) => {
-  if (!seconds)
-    return seconds
+  if (!seconds) return seconds
   const units = ['sec', 'min', 'h']
   let index = 0
   while (seconds >= 60 && index < units.length) {
@@ -114,8 +108,7 @@ export const formatTime = (seconds: number) => {
  */
 export const formatNumberAbbreviated = (num: number) => {
   // If less than 1000, return as-is
-  if (num < 1000)
-    return num.toString()
+  if (num < 1000) return num.toString()
 
   // Define thresholds and suffixes
   const units = [
@@ -159,13 +152,17 @@ export const formatToLocalTime = (time: Dayjs, local: Locale, format: string) =>
  * @example getFileExtension('.hidden.txt') will return 'txt'
  */
 export const getFileExtension = (fileName: string): string => {
-  if (!fileName)
-    return ''
+  if (!fileName) return ''
 
   // Handle hidden files (starting with dot) by finding dot after the first character
   const dotIndex = fileName.indexOf('.', fileName.startsWith('.') ? 1 : 0)
-  if (dotIndex === -1 || dotIndex === fileName.length - 1)
-    return ''
+  if (dotIndex === -1 || dotIndex === fileName.length - 1) return ''
 
-  return fileName.slice(dotIndex + 1).split('.').pop()?.toLowerCase() ?? ''
+  return (
+    fileName
+      .slice(dotIndex + 1)
+      .split('.')
+      .pop()
+      ?.toLowerCase() ?? ''
+  )
 }

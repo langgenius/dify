@@ -25,6 +25,7 @@ from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
+from graphon.filters import ResponseStreamFilter
 from graphon.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
@@ -486,6 +487,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
     generate_entity = resumption_context.get_generate_entity()
 
     graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    response_stream_filter = resumption_context.get_response_stream_filter()
 
     conversation = None
     message = None
@@ -562,6 +564,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                 message=message,
                 generate_entity=generate_entity,
                 graph_runtime_state=graph_runtime_state,
+                response_stream_filter=response_stream_filter,
                 session_factory=session_factory,
                 pause_state_config=pause_config,
                 workflow_run_id=workflow_run_id,
@@ -574,6 +577,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                 user=user,
                 generate_entity=generate_entity,
                 graph_runtime_state=graph_runtime_state,
+                response_stream_filter=response_stream_filter,
                 session_factory=session_factory,
                 pause_state_config=pause_config,
                 workflow_run_id=workflow_run_id,
@@ -592,6 +596,7 @@ def _resume_advanced_chat(
     message: Message,
     generate_entity: AdvancedChatAppGenerateEntity,
     graph_runtime_state: GraphRuntimeState,
+    response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
     workflow_run_id: str,
@@ -631,6 +636,7 @@ def _resume_advanced_chat(
             workflow_node_execution_repository=workflow_node_execution_repository,
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
+            response_stream_filter=response_stream_filter,
         )
     except Exception:
         logger.exception("Failed to resume chatflow execution for workflow run %s", workflow_run_id)
@@ -654,6 +660,7 @@ def _resume_workflow(
     user: Account | EndUser,
     generate_entity: WorkflowAppGenerateEntity,
     graph_runtime_state: GraphRuntimeState,
+    response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
     workflow_run_id: str,
@@ -693,6 +700,7 @@ def _resume_workflow(
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             pause_state_config=pause_state_config,
+            response_stream_filter=response_stream_filter,
         )
     except Exception:
         logger.exception("Failed to resume workflow execution for workflow run %s", workflow_run_id)

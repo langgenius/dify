@@ -44,14 +44,12 @@ class SavedMessageListApi(WebApiResource):
         query = SavedMessageListQuery.model_validate(raw_args)
 
         pagination = SavedMessageService.pagination_by_last_id(
-            db.session(), app_model, end_user, query.last_id, query.limit
+            app_model, end_user, query.last_id, query.limit, session=db.session()
         )
         adapter = TypeAdapter(SavedMessageItem)
         items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
         return SavedMessageInfiniteScrollPagination(
-            limit=pagination.limit,
-            has_more=pagination.has_more,
-            data=items,
+            limit=pagination.limit, has_more=pagination.has_more, data=items
         ).model_dump(mode="json")
 
     @web_ns.doc("Save Message")
@@ -80,7 +78,7 @@ class SavedMessageListApi(WebApiResource):
         payload = SavedMessageCreatePayload.model_validate(web_ns.payload or {})
 
         try:
-            SavedMessageService.save(db.session(), app_model, end_user, payload.message_id)
+            SavedMessageService.save(app_model, end_user, payload.message_id, session=db.session())
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
@@ -102,12 +100,13 @@ class SavedMessageApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(204, "Message removed successfully")
     def delete(self, app_model: App, end_user: EndUser, message_id: UUID):
         message_id_str = str(message_id)
 
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        SavedMessageService.delete(db.session(), app_model, end_user, message_id_str)
+        SavedMessageService.delete(app_model, end_user, message_id_str, session=db.session())
 
         return "", 204

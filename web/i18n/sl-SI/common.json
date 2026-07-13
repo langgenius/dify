@@ -288,7 +288,6 @@
   "menus.explore": "Raziskuj",
   "menus.exploreMarketplace": "Raziščite Marketplace",
   "menus.plugins": "Integracije",
-  "menus.roster": "Seznam agentov",
   "menus.status": "beta",
   "menus.tools": "Orodja",
   "model.capabilities": "Multimodalne zmogljivosti",
@@ -444,6 +443,7 @@
   "operation.download": "Prenesi",
   "operation.downloadFailed": "Prenos ni uspel. Prosim, poskusite znova pozneje.",
   "operation.downloadSuccess": "Prenos končan.",
+  "operation.downloading": "Prenašanje...",
   "operation.duplicate": "Podvoji",
   "operation.edit": "Uredi",
   "operation.exporting": "Izvažanje",
@@ -596,6 +596,8 @@
   "voiceInput.notAllow": "Mikrofon ni pooblaščen",
   "voiceInput.speaking": "Spregovorite zdaj ...",
   "voiceInput.start": "Glasovni vnos",
+  "voiceInput.starting": "Zagon mikrofona ...",
+  "voiceInput.stop": "Ustavi snemanje",
   "workflowAsToolPage.description": "Vsak objavljen workflow pretvorite v ponovno uporabno orodje. Uporabite ga v več aplikacijah, da ohranite modularnost in se izognete ponavljanju.",
   "you": "Ti"
 }

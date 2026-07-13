@@ -8,35 +8,30 @@ type TabProps = {
   setCurrentTab: (tab: CreateFromDSLModalTab) => void
 }
 
-const Tab = ({
-  currentTab,
-  setCurrentTab,
-}: TabProps) => {
+const Tab = ({ currentTab, setCurrentTab }: TabProps) => {
   const { t } = useTranslation()
 
   const tabs = [
     {
       key: CreateFromDSLModalTab.FROM_FILE,
-      label: t('importFromDSLFile', { ns: 'app' }),
+      label: t(($) => $.importFromDSLFile, { ns: 'app' }),
     },
     {
       key: CreateFromDSLModalTab.FROM_URL,
-      label: t('importFromDSLUrl', { ns: 'app' }),
+      label: t(($) => $.importFromDSLUrl, { ns: 'app' }),
     },
   ]
 
   return (
     <div className="flex h-9 items-center gap-x-6 border-b border-divider-subtle px-6 system-md-semibold text-text-tertiary">
-      {
-        tabs.map(tab => (
-          <Item
-            key={tab.key}
-            isActive={currentTab === tab.key}
-            label={tab.label}
-            onClick={setCurrentTab.bind(null, tab.key)}
-          />
-        ))
-      }
+      {tabs.map((tab) => (
+        <Item
+          key={tab.key}
+          isActive={currentTab === tab.key}
+          label={tab.label}
+          onClick={setCurrentTab.bind(null, tab.key)}
+        />
+      ))}
     </div>
   )
 }

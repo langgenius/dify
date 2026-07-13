@@ -288,7 +288,6 @@
   "menus.explore": "Исследовать",
   "menus.exploreMarketplace": "Подробнее о Marketplace",
   "menus.plugins": "Интеграции",
-  "menus.roster": "Список агентов",
   "menus.status": "бета",
   "menus.tools": "Инструменты",
   "model.capabilities": "Мультимодальные возможности",
@@ -444,6 +443,7 @@
   "operation.download": "Скачать",
   "operation.downloadFailed": "Скачивание не удалось. Пожалуйста, попробуйте еще раз позже.",
   "operation.downloadSuccess": "Загрузка завершена.",
+  "operation.downloading": "Скачивание...",
   "operation.duplicate": "Дублировать",
   "operation.edit": "Редактировать",
   "operation.exporting": "Экспорт",
@@ -596,6 +596,8 @@
   "voiceInput.notAllow": "микрофон не авторизован",
   "voiceInput.speaking": "Говорите сейчас...",
   "voiceInput.start": "Голосовой ввод",
+  "voiceInput.starting": "Запуск микрофона...",
+  "voiceInput.stop": "Остановить запись",
   "workflowAsToolPage.description": "Преобразуйте любой опубликованный workflow в переиспользуемый инструмент. Используйте его в нескольких приложениях, чтобы сохранять модульность и избегать повторений.",
   "you": "Ты"
 }

@@ -36,7 +36,7 @@ from controllers.console.wraps import (
     with_current_user_id,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import AGENT_RUNTIME_EXIT_INTENT_ARG, InvokeFrom
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -416,6 +416,7 @@ def _create_build_chat_finalization_message(
         "draft_type": "debug_build",
         "conversation_id": debug_conversation_id,
         "auto_generate_name": False,
+        AGENT_RUNTIME_EXIT_INTENT_ARG: "delete",
     }
     external_trace_id = get_external_trace_id(request)
     if external_trace_id:

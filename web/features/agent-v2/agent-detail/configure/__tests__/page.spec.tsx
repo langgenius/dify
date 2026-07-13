@@ -64,7 +64,7 @@ const modelHooksState = vi.hoisted(() => ({
       provider: 'langgenius/openai/openai',
     },
     model: 'gpt-4o-mini',
-  } as { provider: { provider: string }, model: string } | undefined,
+  } as { provider: { provider: string }; model: string } | undefined,
 }))
 
 function createDeferredPromise<T>() {
@@ -76,7 +76,10 @@ function createDeferredPromise<T>() {
   return { promise, resolve }
 }
 
-function expectFirstMockCallBefore(first: ReturnType<typeof vi.fn>, second: ReturnType<typeof vi.fn>) {
+function expectFirstMockCallBefore(
+  first: ReturnType<typeof vi.fn>,
+  second: ReturnType<typeof vi.fn>,
+) {
   const firstCallOrder = first.mock.invocationCallOrder[0]
   const secondCallOrder = second.mock.invocationCallOrder[0]
 
@@ -94,14 +97,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     useQuery: vi.fn((options: { queryKey?: readonly string[] }) => {
       const queryKey = options.queryKey?.[0]
 
-      if (queryKey === 'agent')
-        return mocks.queryState.agent
-      if (queryKey === 'composer')
-        return mocks.queryState.composer
-      if (queryKey === 'version')
-        return mocks.queryState.version
-      if (queryKey === 'build-draft')
-        return mocks.queryState.buildDraft
+      if (queryKey === 'agent') return mocks.queryState.agent
+      if (queryKey === 'composer') return mocks.queryState.composer
+      if (queryKey === 'version') return mocks.queryState.version
+      if (queryKey === 'build-draft') return mocks.queryState.buildDraft
 
       return {
         data: undefined,
@@ -219,7 +218,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('../components/orchestrate', async () => {
   const { useAtomValue } = await import('jotai')
-  const { agentComposerPromptAtom } = await import('@/features/agent-v2/agent-composer/store-modules/prompt')
+  const { agentComposerPromptAtom } =
+    await import('@/features/agent-v2/agent-composer/store-modules/prompt')
 
   return {
     AgentOrchestratePanel: (props: {
@@ -237,7 +237,9 @@ vi.mock('../components/orchestrate', async () => {
           <span>{`readonly:${props.readOnly ? 'yes' : 'no'}`}</span>
           <span>{`publish:${props.showPublishBar ? 'yes' : 'no'}`}</span>
           <span>{`prompt:${prompt}`}</span>
-          <button type="button" onClick={props.onOpenVersions}>open versions</button>
+          <button type="button" onClick={props.onOpenVersions}>
+            open versions
+          </button>
           {props.bottomAction}
         </div>
       )
@@ -255,8 +257,12 @@ vi.mock('../components/orchestrate/build-draft-bar', () => ({
   }) => (
     <div role="region" aria-label="build-draft-bar">
       <span>{`changes:${props.changesCount}`}</span>
-      <button type="button" disabled={props.disabled} onClick={props.onApply}>apply build draft</button>
-      <button type="button" disabled={props.disabled} onClick={props.onDiscard}>discard build draft</button>
+      <button type="button" disabled={props.disabled} onClick={props.onApply}>
+        apply build draft
+      </button>
+      <button type="button" disabled={props.disabled} onClick={props.onDiscard}>
+        discard build draft
+      </button>
     </div>
   ),
 }))
@@ -279,21 +285,30 @@ vi.mock('../components/preview/build-chat', async () => {
           <span>{`build:${props.conversationId ?? 'none'}`}</span>
           <span>{`clear:${props.clearChatList ? 'yes' : 'no'}`}</span>
           <span>{`sent:${messageSent ? 'yes' : 'no'}`}</span>
-          <button type="button" onClick={() => props.onConversationIdChange?.('build-conversation-new')}>
+          <button
+            type="button"
+            onClick={() => props.onConversationIdChange?.('build-conversation-new')}
+          >
             save build conversation
           </button>
           <button
             type="button"
             onClick={() => {
-              void props.onSaveDraftBeforeRun?.().then(() => {
-                setMessageSent(true)
-                props.onConversationIdChange?.('build-conversation-new')
-              }).catch(() => undefined)
+              void props
+                .onSaveDraftBeforeRun?.()
+                .then(() => {
+                  setMessageSent(true)
+                  props.onConversationIdChange?.('build-conversation-new')
+                })
+                .catch(() => undefined)
             }}
           >
             send build message
           </button>
-          <button type="button" onClick={() => props.onConversationComplete?.('build-conversation-new')}>
+          <button
+            type="button"
+            onClick={() => props.onConversationComplete?.('build-conversation-new')}
+          >
             complete build conversation
           </button>
         </div>
@@ -309,7 +324,10 @@ vi.mock('../components/preview/preview-chat', () => ({
   }) => (
     <div role="region" aria-label="preview-chat">
       <span>{`preview:${props.conversationId ?? 'none'}`}</span>
-      <button type="button" onClick={() => props.onConversationIdChange?.('preview-conversation-new')}>
+      <button
+        type="button"
+        onClick={() => props.onConversationIdChange?.('preview-conversation-new')}
+      >
         save preview conversation
       </button>
     </div>
@@ -323,14 +341,13 @@ vi.mock('../components/preview/chat-features-panel', () => ({
     }
     disabled?: boolean
     show: boolean
-  }) => props.show
-    ? (
-        <div role="region" aria-label="chat-features-panel">
-          <span>{`chatFeaturesDisabled:${props.disabled ? 'yes' : 'no'}`}</span>
-          <span>{`opening:${props.appFeatures?.opening_statement ?? ''}`}</span>
-        </div>
-      )
-    : null,
+  }) =>
+    props.show ? (
+      <div role="region" aria-label="chat-features-panel">
+        <span>{`chatFeaturesDisabled:${props.disabled ? 'yes' : 'no'}`}</span>
+        <span>{`opening:${props.appFeatures?.opening_statement ?? ''}`}</span>
+      </div>
+    ) : null,
 }))
 
 vi.mock('../components/preview/header', () => ({
@@ -346,7 +363,11 @@ vi.mock('../components/preview/header', () => ({
   }) => (
     <div>
       <div>{props.mode}</div>
-      <button type="button" disabled={!props.previewEnabled} onClick={() => props.onModeChange('preview')}>
+      <button
+        type="button"
+        disabled={!props.previewEnabled}
+        onClick={() => props.onModeChange('preview')}
+      >
         preview mode
       </button>
       <button type="button" onClick={() => props.onModeChange('build')}>
@@ -369,7 +390,9 @@ vi.mock('../components/preview/header', () => ({
 
 vi.mock('../components/preview/versions-panel', () => ({
   AgentPreviewVersionsPanel: (props: { onSelectVersion: (versionId: string) => void }) => (
-    <button type="button" onClick={() => props.onSelectVersion('snapshot-2')}>select version</button>
+    <button type="button" onClick={() => props.onSelectVersion('snapshot-2')}>
+      select version
+    </button>
   ),
 }))
 
@@ -451,7 +474,9 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      const configureSection = screen.getByRole('region', { name: 'agentV2.agentDetail.sections.configure' })
+      const configureSection = screen.getByRole('region', {
+        name: 'agentV2.agentDetail.sections.configure',
+      })
       expect(configureSection).toHaveAttribute('aria-busy', 'true')
       expect(configureSection).toHaveClass('bg-background-body')
       expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
@@ -475,8 +500,12 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getAllByRole('region', { name: 'agentV2.agentDetail.sections.configure' })).toHaveLength(1)
-      expect(screen.getByRole('region', { name: 'agentV2.agentDetail.sections.configure' })).toBeVisible()
+      expect(
+        screen.getAllByRole('region', { name: 'agentV2.agentDetail.sections.configure' }),
+      ).toHaveLength(1)
+      expect(
+        screen.getByRole('region', { name: 'agentV2.agentDetail.sections.configure' }),
+      ).toBeVisible()
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toBeInTheDocument()
     })
   })
@@ -500,21 +529,28 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:debug-conversation-old')
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
+        'build:debug-conversation-old',
+      )
       expect(screen.queryByRole('region', { name: 'preview-chat' })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'save build conversation' }))
 
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:build-conversation-new')
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
+        'build:build-conversation-new',
+      )
       expect(mocks.refreshDebugConversation).not.toHaveBeenCalled()
 
       await user.click(screen.getByRole('button', { name: 'restart preview' }))
 
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
-        params: {
-          agent_id: 'agent-1',
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
         },
-      }, expect.any(Object))
+        expect.any(Object),
+      )
 
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
 
@@ -545,7 +581,9 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:debug-conversation-old')
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
+        'build:debug-conversation-old',
+      )
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('clear:no')
 
       await user.click(screen.getByRole('button', { name: 'restart preview' }))
@@ -591,7 +629,9 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:debug-conversation-new')
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
+        'build:debug-conversation-new',
+      )
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('clear:no')
     })
 
@@ -618,8 +658,12 @@ describe('AgentConfigurePage', () => {
 
       await user.click(previewButton)
 
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:debug-conversation-old')
-      expect(screen.queryByRole('region', { name: 'preview-chat', hidden: true })).not.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
+        'build:debug-conversation-old',
+      )
+      expect(
+        screen.queryByRole('region', { name: 'preview-chat', hidden: true }),
+      ).not.toBeInTheDocument()
     })
 
     it('should disable restart when the debug conversation has no messages', async () => {
@@ -691,9 +735,15 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('readonly:no')
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:no')
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('publish:yes')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:no',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'buildDraft:no',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'publish:yes',
+      )
       expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
     })
 
@@ -775,9 +825,15 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('readonly:yes')
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:yes')
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('publish:no')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:yes',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'buildDraft:yes',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'publish:no',
+      )
       expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
     })
 
@@ -822,7 +878,9 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:yes')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'buildDraft:yes',
+      )
 
       fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
 
@@ -882,7 +940,9 @@ describe('AgentConfigurePage', () => {
         expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
       })
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
-      expect(screen.queryByRole('button', { name: 'open working directory' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'open working directory' }),
+      ).not.toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
 
@@ -943,7 +1003,9 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.queryByRole('button', { name: 'open working directory' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'open working directory' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should show chat features from the active build draft source as read-only', async () => {
@@ -996,8 +1058,12 @@ describe('AgentConfigurePage', () => {
 
       await user.click(screen.getByRole('button', { name: 'chat features' }))
 
-      expect(screen.getByRole('region', { name: 'chat-features-panel' })).toHaveTextContent('chatFeaturesDisabled:yes')
-      expect(screen.getByRole('region', { name: 'chat-features-panel' })).toHaveTextContent('opening:build opening')
+      expect(screen.getByRole('region', { name: 'chat-features-panel' })).toHaveTextContent(
+        'chatFeaturesDisabled:yes',
+      )
+      expect(screen.getByRole('region', { name: 'chat-features-panel' })).toHaveTextContent(
+        'opening:build opening',
+      )
     })
 
     it('should switch to build draft mode without resetting the sending chat when sending from normal draft mode', async () => {
@@ -1033,27 +1099,40 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('readonly:no')
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:no')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:no',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'buildDraft:no',
+      )
 
       fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
 
       await waitFor(() => {
-        expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith({
-          params: {
-            agent_id: 'agent-1',
+        expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith(
+          {
+            params: {
+              agent_id: 'agent-1',
+            },
+            body: {
+              force: false,
+            },
           },
-          body: {
-            force: false,
-          },
-        }, expect.any(Object))
+          expect.any(Object),
+        )
       })
       await waitFor(() => {
         expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
       })
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:build-conversation-new')
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('readonly:yes')
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:yes')
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
+        'build:build-conversation-new',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:yes',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'buildDraft:yes',
+      )
       expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
@@ -1100,7 +1179,9 @@ describe('AgentConfigurePage', () => {
       })
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:no')
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:no')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'buildDraft:no',
+      )
     })
 
     it('should keep the build draft bar disabled while a build conversation is responding', async () => {
@@ -1462,7 +1543,9 @@ describe('AgentConfigurePage', () => {
         await staleRefresh.promise
       })
 
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('prompt:build prompt')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:build prompt',
+      )
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
     })
@@ -1501,19 +1584,24 @@ describe('AgentConfigurePage', () => {
 
       await user.click(screen.getByRole('button', { name: 'restart preview' }))
 
-      await waitFor(() => expect(mocks.discardBuildDraft).toHaveBeenCalledWith(
+      await waitFor(() =>
+        expect(mocks.discardBuildDraft).toHaveBeenCalledWith(
+          {
+            params: {
+              agent_id: 'agent-1',
+            },
+          },
+          expect.any(Object),
+        ),
+      )
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
         {
           params: {
             agent_id: 'agent-1',
           },
         },
         expect.any(Object),
-      ))
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
-        params: {
-          agent_id: 'agent-1',
-        },
-      }, expect.any(Object))
+      )
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
     })
 
@@ -1564,8 +1652,12 @@ describe('AgentConfigurePage', () => {
       await user.click(screen.getByRole('button', { name: 'open versions' }))
       await user.click(screen.getByRole('button', { name: 'select version' }))
 
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('readonly:yes')
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('publish:yes')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:yes',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'publish:yes',
+      )
       expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
     })
 
@@ -1628,22 +1720,26 @@ describe('AgentConfigurePage', () => {
 
       await user.click(screen.getByRole('button', { name: 'apply build draft' }))
 
-      await waitFor(() => expect(mocks.finalizeBuildChat).toHaveBeenCalledWith(
-        {
-          params: {
-            agent_id: 'agent-1',
+      await waitFor(() =>
+        expect(mocks.finalizeBuildChat).toHaveBeenCalledWith(
+          {
+            params: {
+              agent_id: 'agent-1',
+            },
           },
-        },
-        expect.any(Object),
-      ))
-      await waitFor(() => expect(mocks.applyBuildDraft).toHaveBeenCalledWith(
-        {
-          params: {
-            agent_id: 'agent-1',
+          expect.any(Object),
+        ),
+      )
+      await waitFor(() =>
+        expect(mocks.applyBuildDraft).toHaveBeenCalledWith(
+          {
+            params: {
+              agent_id: 'agent-1',
+            },
           },
-        },
-        expect.any(Object),
-      ))
+          expect.any(Object),
+        ),
+      )
       expectFirstMockCallBefore(mocks.finalizeBuildChat, mocks.applyBuildDraft)
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: ['agent'],
@@ -1651,15 +1747,20 @@ describe('AgentConfigurePage', () => {
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: ['agents'],
       })
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
-        params: {
-          agent_id: 'agent-1',
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
         },
-      }, expect.any(Object))
+        expect.any(Object),
+      )
       expect(refetchComposer).toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
       await waitFor(() => {
-        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('prompt:applied prompt')
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+          'prompt:applied prompt',
+        )
       })
     })
 
@@ -1722,33 +1823,44 @@ describe('AgentConfigurePage', () => {
 
       await user.click(screen.getByRole('button', { name: 'apply build draft' }))
 
-      await waitFor(() => expect(mocks.finalizeBuildChat).toHaveBeenCalledWith(
-        {
-          params: {
-            agent_id: 'agent-1',
+      await waitFor(() =>
+        expect(mocks.finalizeBuildChat).toHaveBeenCalledWith(
+          {
+            params: {
+              agent_id: 'agent-1',
+            },
           },
-        },
-        expect.any(Object),
-      ))
-      await waitFor(() => expect(mocks.applyBuildDraft).toHaveBeenCalledWith(
-        {
-          params: {
-            agent_id: 'agent-1',
+          expect.any(Object),
+        ),
+      )
+      await waitFor(() =>
+        expect(mocks.applyBuildDraft).toHaveBeenCalledWith(
+          {
+            params: {
+              agent_id: 'agent-1',
+            },
           },
-        },
-        expect.any(Object),
-      ))
+          expect.any(Object),
+        ),
+      )
       expectFirstMockCallBefore(mocks.finalizeBuildChat, mocks.applyBuildDraft)
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
-        params: {
-          agent_id: 'agent-1',
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
         },
-      }, expect.any(Object))
+        expect.any(Object),
+      )
       expect(refetchComposer).toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
       await waitFor(() => {
-        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:no')
-        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('prompt:applied prompt')
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+          'buildDraft:no',
+        )
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+          'prompt:applied prompt',
+        )
       })
     })
 
@@ -1786,19 +1898,24 @@ describe('AgentConfigurePage', () => {
 
       await user.click(screen.getByRole('button', { name: 'discard build draft' }))
 
-      await waitFor(() => expect(mocks.discardBuildDraft).toHaveBeenCalledWith(
+      await waitFor(() =>
+        expect(mocks.discardBuildDraft).toHaveBeenCalledWith(
+          {
+            params: {
+              agent_id: 'agent-1',
+            },
+          },
+          expect.any(Object),
+        ),
+      )
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
         {
           params: {
             agent_id: 'agent-1',
           },
         },
         expect.any(Object),
-      ))
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
-        params: {
-          agent_id: 'agent-1',
-        },
-      }, expect.any(Object))
+      )
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
     })
 
@@ -1837,22 +1954,29 @@ describe('AgentConfigurePage', () => {
 
       await user.click(screen.getByRole('button', { name: 'discard build draft' }))
 
-      await waitFor(() => expect(mocks.discardBuildDraft).toHaveBeenCalledWith(
+      await waitFor(() =>
+        expect(mocks.discardBuildDraft).toHaveBeenCalledWith(
+          {
+            params: {
+              agent_id: 'agent-1',
+            },
+          },
+          expect.any(Object),
+        ),
+      )
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
         {
           params: {
             agent_id: 'agent-1',
           },
         },
         expect.any(Object),
-      ))
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
-        params: {
-          agent_id: 'agent-1',
-        },
-      }, expect.any(Object))
+      )
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
       await waitFor(() => {
-        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:no')
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+          'buildDraft:no',
+        )
       })
     })
   })
