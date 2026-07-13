@@ -453,6 +453,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     message_id=message.id,
                     model_name=application_generate_entity.model_conf.model,
                     queue_manager=queue_manager,
+                    show_retrieve_source=bool(
+                        app_config.additional_features and app_config.additional_features.show_retrieve_source
+                    ),
                     session_scope_snapshot_id=application_generate_entity.agent_runtime_session_snapshot_id,
                     agent_runtime_exit_intent=application_generate_entity.agent_runtime_exit_intent,
                 )

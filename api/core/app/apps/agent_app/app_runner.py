@@ -2,9 +2,9 @@
 
 Unlike the legacy ``AgentChatAppRunner`` (which runs an in-process ReAct loop),
 this runner delegates to the Agent backend, consumes the streamed event flow,
-republishes the assistant answer through the existing EasyUI chat task
-pipeline, and then either saves or retires the conversation-owned runtime
-session depending on the turn's exit policy.
+republishes the assistant answer and structured knowledge citations through the
+existing EasyUI chat task pipeline, and then either saves or retires the
+conversation-owned runtime session depending on the turn's exit policy.
 """
 
 from __future__ import annotations
@@ -16,9 +16,10 @@ from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any, Literal
 
+from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolArgs
 from dify_agent.protocol import DeferredToolResultsPayload
-from pydantic import JsonValue
+from pydantic import JsonValue, ValidationError
 
 from clients.agent_backend import (
     AgentBackendAgentMessageDeltaInternalEvent,
@@ -52,7 +53,9 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueRetrieverResourcesEvent,
 )
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
@@ -123,6 +126,65 @@ def _llm_usage_from_agent_backend(usage: Mapping[str, Any] | None) -> LLMUsage |
     except (TypeError, ValueError):
         logger.warning("Failed to parse Agent backend usage metadata: %s", usage, exc_info=True)
         return None
+
+
+def _validated_retriever_resources(payload: object) -> list[RetrievalSourceMetadata]:
+    """Validate backend citation payloads without failing the Agent turn."""
+    if not isinstance(payload, list):
+        return []
+
+    resources: list[RetrievalSourceMetadata] = []
+    for item in payload:
+        if not isinstance(item, Mapping):
+            continue
+        try:
+            resources.append(RetrievalSourceMetadata.model_validate(item))
+        except ValidationError:
+            logger.warning("Ignoring malformed Agent App retriever resource", exc_info=True)
+    return resources
+
+
+def _stream_event_retriever_resources(event: AgentBackendStreamInternalEvent) -> list[RetrievalSourceMetadata]:
+    """Extract knowledge citation metadata from a Pydantic AI tool result."""
+    data = event.data
+    if not isinstance(data, dict):
+        return []
+
+    for part in (data.get("part"), data.get("result")):
+        if not isinstance(part, dict):
+            continue
+        metadata = part.get("metadata")
+        if isinstance(metadata, dict):
+            resources = _validated_retriever_resources(metadata.get("retriever_resources"))
+            if resources:
+                return resources
+    return []
+
+
+def _eager_retriever_resources(snapshot: CompositorSessionSnapshot) -> list[RetrievalSourceMetadata]:
+    """Read preloaded knowledge citations from the knowledge-layer snapshot."""
+    resources: list[RetrievalSourceMetadata] = []
+    for layer in snapshot.layers:
+        if layer.name != "knowledge":
+            continue
+        eager_results = layer.runtime_state.get("eager_results")
+        if not isinstance(eager_results, list):
+            continue
+        for eager_result in eager_results:
+            if isinstance(eager_result, dict):
+                resources.extend(_validated_retriever_resources(eager_result.get("retriever_resources")))
+    return resources
+
+
+def _publish_retriever_resources(
+    queue_manager: AppQueueManager,
+    resources: list[RetrievalSourceMetadata],
+) -> None:
+    if resources:
+        queue_manager.publish(
+            QueueRetrieverResourcesEvent(retriever_resources=resources),
+            PublishFrom.APPLICATION_MANAGER,
+        )
 
 
 def publish_text_answer(
@@ -642,6 +704,7 @@ class AgentAppRunner:
         message_id: str,
         model_name: str,
         queue_manager: AppQueueManager,
+        show_retrieve_source: bool = False,
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
         agent_runtime_exit_intent: AgentRuntimeExitIntent = "suspend",
     ) -> None:
@@ -678,7 +741,13 @@ class AgentAppRunner:
             queue_manager=queue_manager,
             model_name=model_name,
             query=query,
+            show_retrieve_source=show_retrieve_source,
         )
+
+        if show_retrieve_source and isinstance(
+            terminal, (AgentBackendDeferredToolCallInternalEvent, AgentBackendRunSucceededInternalEvent)
+        ):
+            _publish_retriever_resources(queue_manager, _eager_retriever_resources(terminal.session_snapshot))
 
         if isinstance(terminal, AgentBackendDeferredToolCallInternalEvent):
             if not preserve_session:
@@ -908,6 +977,7 @@ class AgentAppRunner:
         queue_manager: AppQueueManager,
         model_name: str,
         query: str | None,
+        show_retrieve_source: bool,
     ):
         """Consume backend events while preserving raw recorder granularity."""
         terminal = None
@@ -964,6 +1034,11 @@ class AgentAppRunner:
 
                     if isinstance(internal_event, AgentBackendStreamInternalEvent):
                         flush_pending_agent_message_text()
+                        if show_retrieve_source:
+                            _publish_retriever_resources(
+                                queue_manager,
+                                _stream_event_retriever_resources(internal_event),
+                            )
                         try:
                             process_recorder.handle_stream_event(internal_event)
                         except Exception:

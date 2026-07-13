@@ -4,8 +4,11 @@ The layer depends on ``DifyExecutionContextLayer`` for tenant/app/user/invoke
 identity. Generated-query sets become one stable model-visible
 ``knowledge_base_search(set_name, query)`` tool, while user-query sets are
 retrieved eagerly during context entry and exposed as additional user prompt
-content. Eager observations are persisted only as JSON-safe runtime state so
-Agenton session snapshots can resume without repeating unchanged retrievals.
+content. Structured retriever resources stay in tool-return metadata and eager
+runtime state so API consumers can produce citations without exposing that
+application-only payload to the model. Eager observations are persisted only as
+JSON-safe runtime state so Agenton session snapshots can resume without
+repeating unchanged retrievals.
 """
 
 from __future__ import annotations
@@ -17,7 +20,9 @@ import logging
 from typing import ClassVar, cast
 
 import httpx
+from pydantic import JsonValue
 from pydantic_ai import RunContext, Tool
+from pydantic_ai.messages import ToolReturn
 from pydantic_ai.tools import ToolDefinition
 from typing_extensions import Self, override
 
@@ -124,13 +129,13 @@ class DifyKnowledgeBaseLayer(
         )
         set_by_name = {knowledge_set.name: knowledge_set for knowledge_set in generated_sets}
 
-        async def knowledge_base_search(_ctx: RunContext[object], set_name: str, query: str) -> str:
+        async def knowledge_base_search(_ctx: RunContext[object], set_name: str, query: str) -> ToolReturn[str]:
             knowledge_set = set_by_name.get(set_name)
             if knowledge_set is None:
-                return f"unknown knowledge set: {set_name}"
+                return _knowledge_tool_return(f"unknown knowledge set: {set_name}")
             normalized_query = query.strip()
             if not normalized_query:
-                return BLANK_QUERY_OBSERVATION
+                return _knowledge_tool_return(BLANK_QUERY_OBSERVATION)
             return await self._retrieve_for_set(
                 client=client,
                 caller=caller,
@@ -279,6 +284,7 @@ class DifyKnowledgeBaseLayer(
                         query=query,
                         observation=_format_observation(response, self.config, include_heading=False),
                         status="success" if response.results else "empty",
+                        retriever_resources=_retriever_resources(response),
                     )
                 )
 
@@ -293,7 +299,7 @@ class DifyKnowledgeBaseLayer(
         knowledge_set: DifyKnowledgeSetConfig,
         query: str,
         retryable_observation: bool,
-    ) -> str:
+    ) -> ToolReturn[str]:
         try:
             response = await client.retrieve(
                 tenant_id=caller["tenant_id"],
@@ -321,7 +327,7 @@ class DifyKnowledgeBaseLayer(
                     },
                     exc_info=True,
                 )
-                return TEMPORARY_UNAVAILABLE_OBSERVATION
+                return _knowledge_tool_return(TEMPORARY_UNAVAILABLE_OBSERVATION)
             logger.error(
                 "knowledge base search failed",
                 extra={
@@ -336,7 +342,10 @@ class DifyKnowledgeBaseLayer(
                 exc_info=True,
             )
             raise
-        return _format_observation(response, self.config)
+        return _knowledge_tool_return(
+            _format_observation(response, self.config),
+            retriever_resources=_retriever_resources(response),
+        )
 
 
 def _build_caller_context(execution_context: object) -> dict[str, str]:
@@ -426,6 +435,63 @@ def _eager_config_fingerprint(user_query_sets: list[DifyKnowledgeSetConfig]) -> 
     ]
     serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _knowledge_tool_return(
+    observation: str,
+    *,
+    retriever_resources: list[dict[str, JsonValue]] | None = None,
+) -> ToolReturn[str]:
+    """Keep the model-visible observation separate from citation metadata."""
+    return ToolReturn(
+        return_value=observation,
+        metadata={"retriever_resources": retriever_resources or []},
+    )
+
+
+def _retriever_resources(response: DifyKnowledgeRetrieveResponse) -> list[dict[str, JsonValue]]:
+    """Map inner retrieval results to the Agent App citation resource shape.
+
+    The inner API returns workflow ``Source`` records. Citation consumers use
+    the legacy flat ``RetrievalSourceMetadata`` shape, including renamed segment
+    counters, so the conversion stays at this boundary while the complete model
+    observation remains unchanged.
+    """
+    resources: list[dict[str, JsonValue]] = []
+    metadata_field_map = {
+        "position": "position",
+        "dataset_id": "dataset_id",
+        "dataset_name": "dataset_name",
+        "document_id": "document_id",
+        "document_name": "document_name",
+        "data_source_type": "data_source_type",
+        "segment_id": "segment_id",
+        "score": "score",
+        "segment_hit_count": "hit_count",
+        "segment_word_count": "word_count",
+        "segment_position": "segment_position",
+        "segment_index_node_hash": "index_node_hash",
+        "doc_metadata": "doc_metadata",
+        "page": "page",
+    }
+    for result in response.results:
+        source_metadata = result.metadata.model_dump(mode="json", by_alias=True, exclude_none=True)
+        resource: dict[str, JsonValue] = {
+            target_key: source_metadata[source_key]
+            for source_key, target_key in metadata_field_map.items()
+            if source_key in source_metadata
+        }
+        resource["retriever_from"] = "agent"
+        for key, value in (
+            ("content", result.content),
+            ("title", result.title),
+            ("files", result.files),
+            ("summary", result.summary),
+        ):
+            if value is not None:
+                resource[key] = value
+        resources.append(resource)
+    return resources
 
 
 def _format_observation(

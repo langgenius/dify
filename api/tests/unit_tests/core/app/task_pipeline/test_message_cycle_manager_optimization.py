@@ -434,13 +434,29 @@ class TestMessageCycleManagerOptimization:
 
         duplicate = RetrievalSourceMetadata(dataset_id="d1", document_id="doc1")
         new_resource = RetrievalSourceMetadata(dataset_id="d2", document_id="doc2")
+        duplicate_new_resource = RetrievalSourceMetadata(dataset_id="d2", document_id="doc2")
 
-        event = QueueRetrieverResourcesEvent(retriever_resources=[duplicate, new_resource])
+        event = QueueRetrieverResourcesEvent(retriever_resources=[duplicate, new_resource, duplicate_new_resource])
         message_cycle_manager.handle_retriever_resources(event)
 
         assert len(message_cycle_manager._task_state.metadata.retriever_resources) == 2
         assert message_cycle_manager._task_state.metadata.retriever_resources[0].position == 1
         assert message_cycle_manager._task_state.metadata.retriever_resources[1].position == 2
+
+    def test_handle_retriever_resources_ignores_event_when_citations_are_disabled(self, message_cycle_manager):
+        """Leave message metadata unchanged when the citations toggle is disabled."""
+        message_cycle_manager._application_generate_entity.app_config = SimpleNamespace(
+            additional_features=SimpleNamespace(show_retrieve_source=False)
+        )
+        message_cycle_manager._task_state = SimpleNamespace(metadata=TaskStateMetadata(retriever_resources=[]))
+
+        message_cycle_manager.handle_retriever_resources(
+            QueueRetrieverResourcesEvent(
+                retriever_resources=[RetrievalSourceMetadata(dataset_id="d1", document_id="doc1")]
+            )
+        )
+
+        assert message_cycle_manager._task_state.metadata.retriever_resources == []
 
     def test_message_file_to_stream_response_builds_signed_url(self, message_cycle_manager):
         """Build a stream response with a signed tool file URL.
