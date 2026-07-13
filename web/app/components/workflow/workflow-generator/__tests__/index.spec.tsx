@@ -1,4 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import type { WorkflowGenerateErrorResponse } from '@dify/contracts/api/console/workflow-generate/types.gen'
+import type { GenerateWorkflowStreamCallbacks } from '@/service/workflow-generator'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import WorkflowGeneratorModal from '../index'
 import { useWorkflowGeneratorStore } from '../store'
@@ -89,6 +91,63 @@ describe('WorkflowGeneratorModal', () => {
       await user.type(instruction, 'Summarize a URL')
 
       expect(instruction).toHaveValue('Summarize a URL')
+    })
+  })
+
+  describe('Generation errors', () => {
+    it('should localize every structured generation error', async () => {
+      const user = userEvent.setup()
+      const errorCodes: WorkflowGenerateErrorResponse['code'][] = [
+        'DANGLING_EDGE',
+        'DUPLICATE_NODE_ID',
+        'EMPTY_INSTRUCTION',
+        'EMPTY_PLAN',
+        'GRAPH_CYCLE',
+        'INSTRUCTION_TOO_LONG',
+        'INVALID_CONTAINER',
+        'INVALID_JSON',
+        'INVALID_SCHEMA',
+        'MISSING_START',
+        'MISSING_TERMINAL',
+        'MODEL_ERROR',
+        'UNKNOWN_NODE_REFERENCE',
+        'UNKNOWN_TOOL',
+        'UNRESOLVED_REFERENCE',
+      ]
+      let nextErrorIndex = 0
+      mockGenerateWorkflowStream.mockImplementation(
+        (_body: unknown, callbacks: GenerateWorkflowStreamCallbacks) => {
+          const code = errorCodes[nextErrorIndex++]!
+          callbacks.onResult?.({
+            errors: [{ code, detail: `${code} detail` }],
+            graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+          })
+        },
+      )
+      render(<WorkflowGeneratorModal />)
+
+      const instruction = screen.getByRole('textbox', {
+        name: /workflowGenerator\.instruction/i,
+      })
+      await user.type(instruction, 'Build a researched answer')
+      const generateButton = screen.getByRole('button', {
+        name: /workflowGenerator\.generate/i,
+      })
+      await waitFor(() => expect(generateButton).toBeEnabled())
+
+      for (const [index, code] of errorCodes.entries()) {
+        const action =
+          index === 0
+            ? generateButton
+            : await screen.findByRole('button', {
+                name: /workflowGenerator\.regenerate/i,
+              })
+        await user.click(action)
+
+        expect(
+          await screen.findByText(new RegExp(`workflowGenerator\\.errors\\.${code}`, 'i')),
+        ).toBeInTheDocument()
+      }
     })
   })
 })
