@@ -45,6 +45,7 @@ export const lintConfig = {
     '**/storybook-static/**',
     'e2e/.auth/**',
     'e2e/cucumber-report/**',
+    'packages/contracts/generated/**',
     'packages/contracts/openapi/**',
     'web/next/**',
     'web/next-env.d.ts',

@@ -12,6 +12,7 @@ const config: KnipConfig = {
     'bin/**/*.{js,ts,mjs}',
     'tsslint.config.ts',
     'dev-proxy.config.ts',
+    'plugins/eslint/index.js',
   ],
   project: [
     '**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts,css,mdx}!',
@@ -35,7 +36,7 @@ const config: KnipConfig = {
     'i18n-config/locale-resources/*.ts',
   ],
   ignoreBinaries: ['pbcopy', 'which'],
-  ignoreDependencies: ['@iconify-json/*', '@storybook/addon-onboarding'],
+  ignoreDependencies: ['@iconify-json/*', '@storybook/addon-onboarding', 'eslint'],
   /// keep-sorted
   rules: {
     // TODO: fix these warnings
