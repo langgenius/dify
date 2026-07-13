@@ -173,7 +173,7 @@ class FileService:
 
         return upload_file
 
-    def get_file_preview(self, file_id: str, tenant_id: str):
+    def get_file_preview(self, file_id: str, tenant_id: str) -> str:
         """
         Return a short text preview extracted from a document file.
         """
@@ -191,9 +191,7 @@ class FileService:
             raise UnsupportedFileTypeError()
 
         text = ExtractProcessor.load_from_upload_file(upload_file, return_text=True)
-        text = text[0:PREVIEW_WORDS_LIMIT] if text else ""
-
-        return text
+        return text[0:PREVIEW_WORDS_LIMIT] if text else ""
 
     def get_image_preview(self, file_id: str, timestamp: str, nonce: str, sign: str):
         result = file_helpers.verify_image_signature(
@@ -268,7 +266,7 @@ class FileService:
 
     @staticmethod
     def get_upload_files_by_ids(
-        session: Session, tenant_id: str, upload_file_ids: Sequence[str]
+        tenant_id: str, upload_file_ids: Sequence[str], *, session: Session
     ) -> dict[str, UploadFile]:
         """
         Fetch `UploadFile` rows for a tenant in a single batch query.

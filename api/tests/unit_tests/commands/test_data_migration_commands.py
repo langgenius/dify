@@ -1,7 +1,15 @@
+"""CLI migration tests using real command-owned SQLite sessions.
+
+Migration services and package I/O remain fakes so these cases can focus on
+CLI parsing and session lifecycle without fabricating the SQLAlchemy boundary.
+"""
+
 import json
 from pathlib import Path
 
 from click.testing import CliRunner
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from commands import data_migration
 from commands.data_migration import (
@@ -18,24 +26,6 @@ from services.data_migration.entities import (
     MigrationPackage,
     ReportContext,
 )
-
-
-class FakeSessionContext:
-    session: object
-    entered: bool
-    exited: bool
-
-    def __init__(self, session: object) -> None:
-        self.session = session
-        self.entered = False
-        self.exited = False
-
-    def __enter__(self) -> object:
-        self.entered = True
-        return self.session
-
-    def __exit__(self, *_args: object) -> None:
-        self.exited = True
 
 
 def test_export_command_requires_input_and_output():
@@ -99,9 +89,7 @@ def test_export_template_command_requires_overwrite_for_existing_output(tmp_path
     assert "already exists" in result.output
 
 
-def test_export_command_uses_cli_owned_session(monkeypatch, tmp_path: Path):
-    session = object()
-    session_context = FakeSessionContext(session)
+def test_export_command_uses_cli_owned_session(monkeypatch, tmp_path: Path, sqlite_engine: Engine):
     captured: dict[str, object] = {}
     input_file = tmp_path / "export-config.json"
     output_file = tmp_path / "migration-package.json"
@@ -109,8 +97,8 @@ def test_export_command_uses_cli_owned_session(monkeypatch, tmp_path: Path):
     package = MigrationPackage.from_mapping({"metadata": {"version": "1", "source_scope": "single"}})
 
     class FakeMigrationExportService:
-        def export(self, export_session, selection):
-            captured["session"] = export_session
+        def export(self, selection, *, session):
+            captured["session"] = session
             captured["selection"] = selection
             return ExportResult(package=package, report_items=[], report_context=ReportContext())
 
@@ -120,7 +108,7 @@ def test_export_command_uses_cli_owned_session(monkeypatch, tmp_path: Path):
             captured["path"] = path
             captured["overwrite"] = overwrite
 
-    monkeypatch.setattr(data_migration.session_factory, "create_session", lambda: session_context)
+    monkeypatch.setattr(data_migration.session_factory, "create_session", lambda: Session(sqlite_engine))
     monkeypatch.setattr(data_migration, "MigrationExportService", FakeMigrationExportService)
     monkeypatch.setattr(data_migration, "MigrationPackageService", FakeMigrationPackageService)
 
@@ -130,17 +118,16 @@ def test_export_command_uses_cli_owned_session(monkeypatch, tmp_path: Path):
     )
 
     assert result.exit_code == 0
-    assert captured["session"] is session
+    captured_session = captured["session"]
+    assert isinstance(captured_session, Session)
+    assert captured_session.get_bind() is sqlite_engine
+    assert captured_session.in_transaction() is False
     assert captured["package"] is package
     assert captured["path"] == str(output_file)
     assert captured["overwrite"] is False
-    assert session_context.entered
-    assert session_context.exited
 
 
-def test_import_command_uses_cli_owned_session(monkeypatch, tmp_path: Path):
-    session = object()
-    session_context = FakeSessionContext(session)
+def test_import_command_uses_cli_owned_session(monkeypatch, tmp_path: Path, sqlite_engine: Engine):
     captured: dict[str, object] = {}
     input_file = tmp_path / "migration-package.json"
     input_file.write_text("{}")
@@ -156,8 +143,8 @@ def test_import_command_uses_cli_owned_session(monkeypatch, tmp_path: Path):
     )
 
     class FakeMigrationImportService:
-        def import_package(self, import_session, request):
-            captured["session"] = import_session
+        def import_package(self, request, *, session):
+            captured["session"] = session
             captured["request"] = request
             return ImportResult(report_items=[], report_context=ReportContext(target_tenant="target"))
 
@@ -166,7 +153,7 @@ def test_import_command_uses_cli_owned_session(monkeypatch, tmp_path: Path):
             captured["path"] = path
             return package
 
-    monkeypatch.setattr(data_migration.session_factory, "create_session", lambda: session_context)
+    monkeypatch.setattr(data_migration.session_factory, "create_session", lambda: Session(sqlite_engine))
     monkeypatch.setattr(data_migration, "MigrationImportService", FakeMigrationImportService)
     monkeypatch.setattr(data_migration, "MigrationPackageService", FakeMigrationPackageService)
 
@@ -176,10 +163,11 @@ def test_import_command_uses_cli_owned_session(monkeypatch, tmp_path: Path):
     )
 
     assert result.exit_code == 0
-    assert captured["session"] is session
+    captured_session = captured["session"]
+    assert isinstance(captured_session, Session)
+    assert captured_session.get_bind() is sqlite_engine
+    assert captured_session.in_transaction() is False
     assert captured["path"] == str(input_file)
     request = captured["request"]
     assert request.package is package
     assert request.options_override == ImportOptions(conflict_strategy=ConflictStrategy.SKIP)
-    assert session_context.entered
-    assert session_context.exited

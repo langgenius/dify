@@ -227,6 +227,15 @@ def _previous_node_prompt_payload(result, selector: str) -> object:
     raise AssertionError(f"missing prompt payload for {selector}")
 
 
+def _uploaded_workflow_files_prompt_payload(result) -> object:
+    prefix = "  - sys.files: "
+    user_prompt = _workflow_user_prompt(result)
+    for line in user_prompt.splitlines():
+        if line.startswith(prefix):
+            return json.loads(line.removeprefix(prefix))
+    raise AssertionError("missing prompt payload for sys.files")
+
+
 def test_builds_create_run_request_from_agent_soul_and_node_job():
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(_context())
 
@@ -420,6 +429,8 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     assert "final_output.report" in output_description
     assert "never invent the `reference` value" in output_description
     assert "Do not call `final_output` before the upload command succeeds" in output_description
+    assert "accepted file-mapping shape and the returned `reference`" in output_description
+    assert "include the returned `download_url` in that reply" in output_description
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
     assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["model_settings"] == {"temperature": 0.2}
@@ -719,7 +730,11 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
                                 "top_k": 6,
                                 "score_threshold": 0.4,
                                 "reranking_model": {"provider": "cohere", "model": "rerank-v3"},
-                                "weights": {"weight_type": "weighted_score", "vector_setting": {"vector_weight": 0.7}},
+                                "weights": {
+                                    "weight_type": "weighted_score",
+                                    "vector_setting": {"vector_weight": 0.7},
+                                    "keyword_setting": {"keyword_weight": 0.3},
+                                },
                             },
                             "metadata_filtering": {
                                 "mode": "manual",
@@ -786,7 +801,10 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
                 "reranking_mode": "reranking_model",
                 "reranking_enable": True,
                 "reranking_model": {"provider": "cohere", "model": "rerank-v3"},
-                "weights": {"weight_type": "weighted_score", "vector_setting": {"vector_weight": 0.7}},
+                "weights": {
+                    "vector_setting": {"vector_weight": 0.7},
+                    "keyword_setting": {"keyword_weight": 0.3},
+                },
                 "model": None,
             },
             "metadata_filtering": {
@@ -1165,6 +1183,37 @@ def test_previous_node_file_output_uses_agent_stub_download_mapping_in_workflow_
     }
 
 
+def test_previous_node_file_mapping_strips_extra_fields_in_workflow_context():
+    file_reference = build_file_reference(record_id="tool-file-1")
+
+    class FileMappingVariablePool(FakeVariablePool):
+        def get(self, selector):
+            if list(selector) == ["previous-node", "report"]:
+                return SimpleNamespace(
+                    value={
+                        "filename": "report.pdf",
+                        "transfer_method": "tool_file",
+                        "reference": file_reference,
+                        "external": True,
+                    }
+                )
+            return super().get(selector)
+
+    context = replace(_context(), variable_pool=FileMappingVariablePool())
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Review {{#previous-node.report#}} before responding.",
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    assert _previous_node_prompt_payload(result, "previous-node.report") == {
+        "transfer_method": "tool_file",
+        "reference": file_reference,
+    }
+
+
 def test_scalar_previous_node_output_appears_in_workflow_context_section():
     context = _context()
     context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
@@ -1250,6 +1299,48 @@ def test_previous_node_file_array_uses_agent_stub_download_mappings_in_workflow_
             "url": "https://example.com/second.pdf",
         },
     ]
+
+
+def test_uploaded_workflow_files_are_included_without_prompt_marker():
+    file_reference = build_file_reference(record_id="uploaded-file-1")
+
+    class UploadedFilesVariablePool(FakeVariablePool):
+        def get(self, selector):
+            if list(selector) == ["sys", "files"]:
+                return ArrayFileSegment(
+                    value=[
+                        File(
+                            type=FileType.DOCUMENT,
+                            transfer_method=FileTransferMethod.LOCAL_FILE,
+                            reference=file_reference,
+                            remote_url=None,
+                            filename="requirements.pdf",
+                            extension=".pdf",
+                            mime_type="application/pdf",
+                            size=12,
+                        )
+                    ]
+                )
+            return super().get(selector)
+
+    context = replace(_context(), variable_pool=UploadedFilesVariablePool())
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Answer the user's question.",
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    user_prompt = _workflow_user_prompt(result)
+    assert "- Uploaded workflow files:" in user_prompt
+    assert _uploaded_workflow_files_prompt_payload(result) == [
+        {
+            "transfer_method": "local_file",
+            "reference": file_reference,
+        }
+    ]
+    assert "Previous node outputs:" not in user_prompt
 
 
 def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_context():

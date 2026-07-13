@@ -288,7 +288,6 @@
   "menus.explore": "Explore",
   "menus.exploreMarketplace": "Explore Marketplace",
   "menus.plugins": "Integrations",
-  "menus.roster": "Roster",
   "menus.status": "beta",
   "menus.tools": "Tools",
   "model.capabilities": "MultiModal Capabilities",
@@ -444,6 +443,7 @@
   "operation.download": "Download",
   "operation.downloadFailed": "Download failed. Please try again later.",
   "operation.downloadSuccess": "Download Completed.",
+  "operation.downloading": "Downloading",
   "operation.duplicate": "Duplicate",
   "operation.edit": "Edit",
   "operation.exporting": "Exporting",
@@ -596,6 +596,8 @@
   "voiceInput.notAllow": "microphone not authorized",
   "voiceInput.speaking": "Speak now...",
   "voiceInput.start": "Voice input",
+  "voiceInput.starting": "Starting microphone...",
+  "voiceInput.stop": "Stop recording",
   "workflowAsToolPage.description": "Turn any published workflow into a reusable tool. Use it across multiple apps to keep your builds modular and avoid repetition.",
   "you": "You"
 }

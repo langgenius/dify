@@ -48,7 +48,7 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
-from core.workflow.system_variables import SystemVariableKey, get_system_text
+from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -354,16 +354,21 @@ class WorkflowAgentRuntimeRequestBuilder:
     ) -> str:
         lines: list[str] = []
         query = get_system_text(context.variable_pool, SystemVariableKey.QUERY)
+        uploaded_files = self._summarize_uploaded_workflow_files(context.variable_pool)
         resolved_outputs = self._resolve_previous_node_outputs(
             context.variable_pool,
             node_job.previous_node_output_refs,
         )
-        if not query and not resolved_outputs:
+        if not query and uploaded_files is None and not resolved_outputs:
             return ""
 
         lines.append("Workflow context loaded for this run:")
         if query:
             lines.append(f"- User query: {query}")
+
+        if uploaded_files is not None:
+            lines.append("- Uploaded workflow files:")
+            lines.append(f"  - sys.files: {uploaded_files}")
 
         if resolved_outputs:
             lines.append("- Previous node outputs:")
@@ -372,6 +377,14 @@ class WorkflowAgentRuntimeRequestBuilder:
 
         lines.append("The above workflow context is run-specific. Do not treat it as Agent Soul or persistent memory.")
         return "\n".join(lines)
+
+    def _summarize_uploaded_workflow_files(self, variable_pool: VariablePoolReader) -> str | None:
+        files = get_system_value(variable_pool, SystemVariableKey.FILES)
+        if files is None:
+            return None
+        if isinstance(files, list | tuple) and not files:
+            return None
+        return self._summarize_value(files)
 
     def _build_workflow_task_prompt(
         self,
@@ -441,7 +454,7 @@ class WorkflowAgentRuntimeRequestBuilder:
     def _resolve_prompt_payload_value(cls, value: Any) -> tuple[Any, bool]:
         # File-valued workflow context must surface as Agent Stub download
         # mappings so the model can materialize those inputs with
-        # `dify-agent file download --mapping ...` inside the sandbox.
+        # `dify-agent file download TRANSFER_METHOD REFERENCE_OR_URL` inside the sandbox.
         download_mapping = cls._agent_stub_download_mapping(value)
         if download_mapping is not None:
             return download_mapping, True
@@ -486,7 +499,21 @@ class WorkflowAgentRuntimeRequestBuilder:
                 return mapping.model_dump(mode="json", exclude_none=True)
 
             if isinstance(value, Mapping):
-                mapping = AgentStubFileMapping.model_validate(value)
+                transfer_method = value.get("transfer_method")
+                if not isinstance(transfer_method, str):
+                    return None
+                if transfer_method == "remote_url":
+                    mapping = AgentStubFileMapping(
+                        transfer_method="remote_url",
+                        url=value.get("url") or value.get("remote_url"),
+                    )
+                elif transfer_method in {"local_file", "tool_file", "datasource_file"}:
+                    mapping = AgentStubFileMapping(
+                        transfer_method=cast(AgentStubFileTransferMethod, transfer_method),
+                        reference=value.get("reference"),
+                    )
+                else:
+                    return None
                 return mapping.model_dump(mode="json", exclude_none=True)
         except ValidationError:
             return None
@@ -587,11 +614,12 @@ class WorkflowAgentRuntimeRequestBuilder:
         broad generated schema but fails API-side output type checking.
 
         For files produced inside an Agent run, the supported persisted shape is
-        narrower than every downloadable mapping: the sandbox must upload the
-        local artifact via ``dify-agent file upload <path>``, which returns a
-        ``tool_file`` mapping. ``local_file`` and ``datasource_file`` are valid
-        for existing file references in workflow context, not for newly produced
-        Agent output files.
+        narrower than the full CLI upload stdout: the sandbox must upload the
+        local artifact via ``dify-agent file upload <path>``, then use the
+        returned ``reference`` inside the accepted ``tool_file`` mapping shape
+        for structured ``final_output``. ``local_file`` and ``datasource_file``
+        are valid for existing file references in workflow context, not for
+        newly produced Agent output files.
         """
         return {
             "title": "AgentStubFileMapping",
@@ -646,9 +674,9 @@ class WorkflowAgentRuntimeRequestBuilder:
             if output.type == DeclaredOutputType.FILE:
                 file_output_lines.append(
                     f"- `{output.name}`: create the file in the sandbox, run `dify-agent file upload <path>`, "
-                    f"and set `final_output.{output.name}` to the returned AgentStubFileMapping JSON object. "
-                    "Do not call `final_output` before the upload command succeeds. Do not use the local path, "
-                    "filename, URL, or a synthesized/base64-encoded value as the `reference`."
+                    f"then set `final_output.{output.name}` to a `tool_file` mapping using the returned "
+                    f"`reference`. Do not call `final_output` before the upload command succeeds. Do not use "
+                    "the local path, filename, URL, or a synthesized/base64-encoded value as the `reference`."
                 )
             elif (
                 output.type == DeclaredOutputType.ARRAY
@@ -657,9 +685,9 @@ class WorkflowAgentRuntimeRequestBuilder:
             ):
                 file_output_lines.append(
                     f"- `{output.name}`: for every produced file, run `dify-agent file upload <path>` and set "
-                    f"`final_output.{output.name}` to an array of the returned AgentStubFileMapping JSON objects. "
-                    "Do not call `final_output` before all upload commands succeed. Do not use local paths, filenames, "
-                    "URLs, or synthesized/base64-encoded values as `reference` values."
+                    f"`final_output.{output.name}` to an array of `tool_file` mappings using the returned "
+                    f"`reference` values. Do not call `final_output` before all upload commands succeed. Do not use "
+                    "local paths, filenames, URLs, or synthesized/base64-encoded values as `reference` values."
                 )
         if not file_output_lines:
             return None
@@ -667,8 +695,12 @@ class WorkflowAgentRuntimeRequestBuilder:
         return "\n".join(
             [
                 "When filling file outputs, do not return a local filesystem path directly.",
-                "Upload each sandbox-local file through the Agent Stub CLI first. Copy the JSON printed by "
-                "`dify-agent file upload <path>` verbatim into the final output; never invent the `reference` value.",
+                "Upload each sandbox-local file through the Agent Stub CLI first. For structured `final_output`, use "
+                "only the accepted file-mapping shape and the returned `reference`; never invent the `reference` "
+                "value.",
+                "If you are replying to the user in natural language and want them to open or download the produced "
+                "file, include the returned `download_url` in that reply instead of copying it into structured "
+                "`final_output` unless the schema explicitly asks for it.",
                 *file_output_lines,
             ]
         )
@@ -766,6 +798,26 @@ def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBa
 
 
 def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> DifyKnowledgeRetrievalConfig:
+    weights = None
+    if retrieval.weights is not None:
+        # The dify-agent runtime payload only consumes the nested vector/keyword
+        # settings; ``weight_type`` is an API-side authoring detail and must not
+        # leak into the inner request shape.
+        weights = (
+            cast(
+                dict[str, Any],
+                {
+                    key: value
+                    for key, value in {
+                        "vector_setting": retrieval.weights.vector_setting,
+                        "keyword_setting": retrieval.weights.keyword_setting,
+                    }.items()
+                    if value is not None
+                },
+            )
+            or None
+        )
+
     return DifyKnowledgeRetrievalConfig(
         mode=retrieval.mode,
         top_k=retrieval.top_k,
@@ -778,9 +830,7 @@ def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> Dif
         )
         if retrieval.reranking_model is not None
         else None,
-        weights=cast(dict[str, Any], retrieval.weights.model_dump(mode="json", exclude_none=True))
-        if retrieval.weights is not None
-        else None,
+        weights=weights,
         model=_knowledge_model_config(retrieval.model),
     )
 

@@ -17,9 +17,10 @@ import Divider from '@/app/components/base/divider'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
-import { usePathname, useRouter } from '@/next/navigation'
+import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { getAgentDetailPath, getAgentIdFromPathname } from './routes'
+import { AgentDetailSidebarActions } from './sidebar-actions'
 
 type AgentDetailTopProps = {
   expand?: boolean
@@ -82,13 +83,9 @@ const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
   },
 ]
 
-export function AgentDetailTop({
-  expand = true,
-  onToggle,
-}: AgentDetailTopProps) {
+export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps) {
   const { t: tApp } = useTranslation('app')
   const { t: tCommon } = useTranslation('common')
-  const router = useRouter()
   const setGotoAnythingOpen = useSetGotoAnythingOpen()
 
   if (!expand) {
@@ -109,47 +106,42 @@ export function AgentDetailTop({
   return (
     <div className="flex items-center py-2 pr-2 pl-1">
       <div className="flex min-w-0 flex-1 items-center gap-px">
-        <div className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 transition-colors hover:bg-background-default-hover">
-          <button
-            type="button"
-            aria-label={tCommon('operation.back')}
-            className="flex size-4 items-center justify-center text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            onClick={() => router.back()}
-          >
-            <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-          </button>
-          <Link
-            href="/"
-            aria-label={tCommon('mainNav.home')}
-            className="flex size-4 items-center justify-center text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
-          </Link>
-        </div>
-        <span className="shrink-0 system-md-regular text-text-quaternary">
-          /
-        </span>
-        <Link href="/roster" className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden">
-          {tCommon('menus.roster')}
+        <Link
+          href="/"
+          aria-label={tCommon(($) => $['mainNav.home'])}
+          className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 text-text-tertiary transition-colors hover:bg-background-default-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        >
+          <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+          <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
+        </Link>
+        <span className="shrink-0 system-md-regular text-text-quaternary">/</span>
+        <Link
+          href="/agents"
+          className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        >
+          Agents
         </Link>
       </div>
       <Tooltip>
         <TooltipTrigger
-          render={(
+          render={
             <button
               type="button"
-              aria-label={tApp('gotoAnything.searchTitle')}
+              aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
               className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={() => setGotoAnythingOpen(true)}
             >
               <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
             </button>
-          )}
+          }
         />
-        <TooltipContent placement="bottom" className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]">
-          <span className="px-0.5">{tApp('gotoAnything.quickAction')}</span>
+        <TooltipContent
+          placement="bottom"
+          className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
+        >
+          <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
           <KbdGroup>
-            {SEARCH_SHORTCUT.map(key => (
+            {SEARCH_SHORTCUT.map((key) => (
               <Kbd key={key}>{formatForDisplay(key)}</Kbd>
             ))}
           </KbdGroup>
@@ -167,28 +159,28 @@ export function AgentDetailTop({
   )
 }
 
-export function AgentDetailSection({
-  expand = true,
-}: AgentDetailSectionProps) {
+export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
   const { t } = useTranslation('agentV2')
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
-  const agentQuery = useQuery(consoleQuery.agent.byAgentId.get.queryOptions({
-    input: agentId
-      ? {
-          params: {
-            agent_id: agentId,
-          },
-        }
-      : skipToken,
-  }))
+  const agentQuery = useQuery(
+    consoleQuery.agent.byAgentId.get.queryOptions({
+      input: agentId
+        ? {
+            params: {
+              agent_id: agentId,
+            },
+          }
+        : skipToken,
+    }),
+  )
 
-  if (!agentId)
-    return null
+  if (!agentId) return null
 
   const navigation = getAgentDetailNavigation(agentId)
   const agent = agentQuery.data
-  const imageUrl = (agent?.icon_type === 'image' || agent?.icon_type === 'link') ? agent.icon : undefined
+  const imageUrl =
+    agent?.icon_type === 'image' || agent?.icon_type === 'link' ? agent.icon : undefined
   const iconType = (imageUrl ? 'image' : agent?.icon_type) as AgentIconType | null | undefined
 
   return (
@@ -203,16 +195,13 @@ export function AgentDetailSection({
         </div>
       )}
       <div className={cn('py-2', expand && '-mx-1')}>
-        <div className={cn(
-          'flex h-13 items-center rounded-xl py-1.5 pr-2 pl-1.5',
-          !expand && 'justify-center',
-        )}
-        >
-          <div className={cn(
-            'shrink-0',
-            expand && 'mr-2',
+        <div
+          className={cn(
+            'flex h-13 items-center rounded-xl py-1.5 pr-2 pl-1.5',
+            !expand && 'justify-center',
           )}
-          >
+        >
+          <div className={cn('shrink-0', expand && 'mr-2')}>
             <span aria-hidden>
               <AppIcon
                 size="large"
@@ -224,13 +213,16 @@ export function AgentDetailSection({
               />
             </span>
           </div>
-          <div className={cn('flex h-10 min-w-0 flex-1 flex-col justify-center', !expand && 'hidden')}>
-            <div className="truncate system-md-semibold text-text-secondary">
-              {agent?.name ?? t('agentDetail.title')}
+          <div className={cn('flex h-10 min-w-0 flex-1 items-center gap-2', !expand && 'hidden')}>
+            <div className="flex min-w-0 flex-1 flex-col justify-center">
+              <div className="truncate system-md-semibold text-text-secondary">
+                {agent?.name ?? t(($) => $['agentDetail.title'])}
+              </div>
+              <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
+                {agent?.role ?? t(($) => $['agentDetail.type'])}
+              </div>
             </div>
-            <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
-              {agent?.role ?? t('agentDetail.type')}
-            </div>
+            {agent && expand && <AgentDetailSidebarActions agent={agent} />}
           </div>
         </div>
       </div>
@@ -246,13 +238,16 @@ export function AgentDetailSection({
           )}
         />
       </div>
-      <nav className={cn('flex flex-col gap-y-0.5 py-2', expand ? 'px-1' : 'px-3')} aria-label={t('agentDetail.navigationLabel')}>
-        {navigation.map(item => (
+      <nav
+        className={cn('flex flex-col gap-y-0.5 py-2', expand ? 'px-1' : 'px-3')}
+        aria-label={t(($) => $['agentDetail.navigationLabel'])}
+      >
+        {navigation.map((item) => (
           <NavLink
             key={item.href}
             mode={expand ? 'expand' : 'collapse'}
             iconMap={{ selected: item.activeIcon, normal: item.icon }}
-            name={t(item.labelKey)}
+            name={t(($) => $[item.labelKey])}
             href={item.href}
             pathname={pathname}
           />

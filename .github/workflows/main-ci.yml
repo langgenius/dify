@@ -46,13 +46,21 @@ jobs:
       vdb-changed: ${{ steps.changes.outputs.vdb }}
       migration-changed: ${{ steps.changes.outputs.migration }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
         id: changes
         with:
           filters: |
             api:
               - 'api/**'
+              - 'scripts/ast_grep_guard.py'
+              - 'scripts/check_no_new_getattr.py'
+              - 'scripts/check_no_new_controller_sqlalchemy.py'
+              - 'scripts/lint_controller_sqlalchemy.py'
+              - 'scripts/ast_grep_rules/no_new_getattr.yml'
+              - 'scripts/ast_grep_rules/no_new_controller_sqlalchemy.yml'
+              - '.github/workflows/style.yml'
+              - '.github/workflows/main-ci.yml'
               - '.github/workflows/api-tests.yml'
               - 'docker/.env.example'
               - 'docker/envs/middleware.env.example'
@@ -67,7 +75,7 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
-              - 'eslint.config.mjs'
+              - 'lint.config.ts'
               - '.npmrc'
               - '.nvmrc'
               - '.github/workflows/cli-tests.yml'
@@ -380,6 +388,8 @@ jobs:
     needs: pre_job
     if: needs.pre_job.outputs.should_skip != 'true'
     uses: ./.github/workflows/style.yml
+    with:
+      base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
 
   vdb-tests-run:
     name: Run VDB Tests

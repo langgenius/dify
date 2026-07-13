@@ -1,8 +1,8 @@
 'use client'
-import type { RadioRootProps } from '@langgenius/dify-ui/radio'
+import type { RadioItemProps } from '@langgenius/dify-ui/radio'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
+import { RadioControl, RadioItem } from '@langgenius/dify-ui/radio'
 
 type BaseProps = {
   className?: string
@@ -16,7 +16,7 @@ type BaseProps = {
 
 type SelectableRadioCardProps<Value = string> = BaseProps & {
   noRadio?: false
-} & Omit<RadioRootProps<Value>, 'children' | 'className' | 'variant' | 'render' | 'nativeButton'>
+} & Omit<RadioItemProps<Value>, 'children' | 'className' | 'render' | 'nativeButton'>
 
 type StaticRadioCardProps = BaseProps & {
   noRadio: true
@@ -39,13 +39,19 @@ function RadioCard<Value = string>(props: Props<Value>) {
     } = props
 
     return (
-      <div className={cn(
-        'relative rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg p-3',
-        className,
-      )}
+      <div
+        className={cn(
+          'relative rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg p-3',
+          className,
+        )}
       >
         <div className="flex w-full gap-x-2 text-left">
-          <div className={cn(iconBgClassName, 'flex size-8 shrink-0 items-center justify-center rounded-lg shadow-md')}>
+          <div
+            className={cn(
+              iconBgClassName,
+              'flex size-8 shrink-0 items-center justify-center rounded-lg shadow-md',
+            )}
+          >
             {icon}
           </div>
           <div className="min-w-0 grow pr-8">
@@ -56,9 +62,7 @@ function RadioCard<Value = string>(props: Props<Value>) {
         {Boolean(chosenConfig) && (
           <div className="mt-2 flex gap-x-2">
             <div className="size-8 shrink-0"></div>
-            <div className={cn(chosenConfigWrapClassName, 'grow')}>
-              {chosenConfig}
-            </div>
+            <div className={cn(chosenConfigWrapClassName, 'grow')}>{chosenConfig}</div>
           </div>
         )}
       </div>
@@ -79,7 +83,12 @@ function RadioCard<Value = string>(props: Props<Value>) {
 
   const content = (
     <>
-      <div className={cn(iconBgClassName, 'flex size-8 shrink-0 items-center justify-center rounded-lg shadow-md')}>
+      <div
+        className={cn(
+          iconBgClassName,
+          'flex size-8 shrink-0 items-center justify-center rounded-lg shadow-md',
+        )}
+      >
         {icon}
       </div>
       <div className="min-w-0 grow pr-8">
@@ -96,26 +105,21 @@ function RadioCard<Value = string>(props: Props<Value>) {
   const config = !!chosenConfig && (
     <div className="mt-2 hidden gap-x-2 group-has-data-checked/radio-card:flex">
       <div className="size-8 shrink-0"></div>
-      <div className={cn(chosenConfigWrapClassName, 'grow')}>
-        {chosenConfig}
-      </div>
+      <div className={cn(chosenConfigWrapClassName, 'grow')}>{chosenConfig}</div>
     </div>
   )
 
   return (
-    <div
-      className={rootClassName}
-    >
-      <RadioRoot<Value>
+    <div className={rootClassName}>
+      <RadioItem<Value>
         {...radioRootProps}
-        variant="unstyled"
         nativeButton
         render={<button type="button" />}
         className="flex w-full cursor-pointer gap-x-2 border-none bg-transparent p-0 text-left outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active"
       >
         {content}
         <RadioControl className="absolute top-3 right-3" aria-hidden="true" />
-      </RadioRoot>
+      </RadioItem>
       {config}
     </div>
   )

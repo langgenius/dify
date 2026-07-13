@@ -6,23 +6,24 @@ import { useDocumentSelection } from '../use-document-selection'
 
 type LocalDoc = SimpleDocumentDetail & { percent?: number }
 
-const createMockDocument = (overrides: Partial<LocalDoc> = {}): LocalDoc => ({
-  id: 'doc1',
-  name: 'Test Document',
-  data_source_type: DataSourceType.FILE,
-  data_source_info: {},
-  data_source_detail_dict: {},
-  word_count: 100,
-  hit_count: 10,
-  created_at: 1000000,
-  position: 1,
-  doc_form: 'text_model',
-  enabled: true,
-  archived: false,
-  display_status: 'available',
-  created_from: 'api',
-  ...overrides,
-} as LocalDoc)
+const createMockDocument = (overrides: Partial<LocalDoc> = {}): LocalDoc =>
+  ({
+    id: 'doc1',
+    name: 'Test Document',
+    data_source_type: DataSourceType.FILE,
+    data_source_info: {},
+    data_source_detail_dict: {},
+    word_count: 100,
+    hit_count: 10,
+    created_at: 1000000,
+    position: 1,
+    doc_form: 'text_model',
+    enabled: true,
+    archived: false,
+    display_status: 'available',
+    created_from: 'api',
+    ...overrides,
+  }) as LocalDoc
 
 describe('useDocumentSelection', () => {
   describe('hasErrorDocumentsSelected', () => {

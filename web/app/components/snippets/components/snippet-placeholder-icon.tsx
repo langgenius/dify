@@ -14,7 +14,7 @@ export function SnippetPlaceholderIcon({
   return (
     <div
       className={cn(
-        'flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-divider-subtle bg-state-accent-hover text-text-accent shadow-xs',
+        'flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-divider-subtle bg-state-accent-hover text-[#5D6FBB] shadow-xs',
         className,
       )}
       aria-hidden="true"

@@ -288,7 +288,6 @@
   "menus.explore": "Explorer",
   "menus.exploreMarketplace": "Explorer Marketplace",
   "menus.plugins": "Intégrations",
-  "menus.roster": "Répertoire des agents",
   "menus.status": "bêta",
   "menus.tools": "Outils",
   "model.capabilities": "Capacités multimodales",
@@ -444,6 +443,7 @@
   "operation.download": "Télécharger",
   "operation.downloadFailed": "Échec du téléchargement. Veuillez réessayer plus tard.",
   "operation.downloadSuccess": "Téléchargement terminé.",
+  "operation.downloading": "Téléchargement...",
   "operation.duplicate": "Dupliquer",
   "operation.edit": "Modifier",
   "operation.exporting": "Exportation",
@@ -596,6 +596,8 @@
   "voiceInput.notAllow": "microphone non autorisé",
   "voiceInput.speaking": "Parle maintenant...",
   "voiceInput.start": "Saisie vocale",
+  "voiceInput.starting": "Démarrage du microphone...",
+  "voiceInput.stop": "Arrêter l’enregistrement",
   "workflowAsToolPage.description": "Transformez tout workflow publié en outil réutilisable. Utilisez-le dans plusieurs apps pour garder vos projets modulaires et éviter les répétitions.",
   "you": "Vous"
 }

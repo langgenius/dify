@@ -36,19 +36,25 @@ export type AgentV2WorkflowOutputVariable = {
   name: string
   type: string
 }
+export type AgentBuilderSpeechToTextRequest = {
+  contentType: string
+  path: string
+  status: number
+}
 
 export const createAgentBuilderWorldState = () => ({
   preflight: {
     agentDecisionModel: undefined as AgentBuilderChatModel | undefined,
     brokenModel: undefined as AgentBuilderChatModel | undefined,
     preseededResources: {} as Record<string, AgentBuilderPreseededResource>,
+    speechToTextModel: undefined as AgentBuilderChatModel | undefined,
     stableModel: undefined as AgentBuilderChatModel | undefined,
   },
   accessPoint: {
     apiReferencePage: undefined as Page | undefined,
     composerDraftSnapshot: undefined as string | undefined,
     generatedApiKey: undefined as string | undefined,
-    serviceApiResponse: undefined as { body: unknown, ok: boolean, status: number } | undefined,
+    serviceApiResponse: undefined as { body: unknown; ok: boolean; status: number } | undefined,
     serviceApiBaseURL: undefined as string | undefined,
     webAppPage: undefined as Page | undefined,
     webAppURL: undefined as string | undefined,
@@ -56,6 +62,9 @@ export const createAgentBuilderWorldState = () => ({
   },
   configure: {
     concurrentPage: undefined as Page | undefined,
+  },
+  speechToText: {
+    request: undefined as AgentBuilderSpeechToTextRequest | undefined,
   },
   workflow: {
     agentConsolePage: undefined as Page | undefined,
@@ -123,8 +132,7 @@ export class DifyWorld extends World {
     this.page.setDefaultTimeout(30_000)
 
     this.page.on('console', (message: ConsoleMessage) => {
-      if (message.type() === 'error')
-        this.consoleErrors.push(message.text())
+      if (message.type() === 'error') this.consoleErrors.push(message.text())
     })
     this.page.on('pageerror', (error) => {
       this.pageErrors.push(error.message)
@@ -143,8 +151,7 @@ export class DifyWorld extends World {
   }
 
   getPage() {
-    if (!this.page)
-      throw new Error('Playwright page has not been initialized for this scenario.')
+    if (!this.page) throw new Error('Playwright page has not been initialized for this scenario.')
 
     return this.page
   }
@@ -164,14 +171,12 @@ export class DifyWorld extends World {
     for (const cleanup of this.scenarioCleanups.toReversed()) {
       try {
         await cleanup()
-      }
-      catch (error) {
+      } catch (error) {
         errors.push(error instanceof Error ? error.message : String(error))
       }
     }
 
-    if (errors.length > 0)
-      this.attach(`Cleanup errors:\n${errors.join('\n')}`, 'text/plain')
+    if (errors.length > 0) this.attach(`Cleanup errors:\n${errors.join('\n')}`, 'text/plain')
   }
 
   async closeSession() {

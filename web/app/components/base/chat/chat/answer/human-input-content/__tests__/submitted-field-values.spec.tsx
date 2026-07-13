@@ -93,7 +93,10 @@ describe('SubmittedFieldValues', () => {
     render(<SubmittedFieldValues fields={fields} values={values} />)
 
     expect(screen.getByTestId('submitted-field-attachment')).toHaveTextContent('decision.pdf')
-    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute('src', 'https://example.com/evidence-1.png')
+    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute(
+      'src',
+      'https://example.com/evidence-1.png',
+    )
     expect(screen.getByText('evidence-2.pdf')).toBeInTheDocument()
     expect(screen.getAllByTestId('file-list')).toHaveLength(2)
   })
@@ -119,7 +122,10 @@ describe('SubmittedFieldValues', () => {
 
     expect(screen.getByTestId('submitted-field-summary')).toHaveTextContent('Unstructured summary')
     expect(screen.getByTestId('submitted-field-attachment')).toHaveTextContent('decision.pdf')
-    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute('src', 'https://example.com/evidence-1.png')
+    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute(
+      'src',
+      'https://example.com/evidence-1.png',
+    )
     expect(screen.getByText('evidence-2.pdf')).toBeInTheDocument()
   })
 

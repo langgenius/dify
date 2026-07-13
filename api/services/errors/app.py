@@ -18,12 +18,6 @@ class WorkflowIdFormatError(Exception):
     pass
 
 
-class WorkflowQuotaLimitError(Exception):
-    """Raised when workflow execution quota is exceeded (for async/background workflows)."""
-
-    pass
-
-
 class QuotaExceededError(ValueError):
     """Raised when billing quota is exceeded for a feature."""
 

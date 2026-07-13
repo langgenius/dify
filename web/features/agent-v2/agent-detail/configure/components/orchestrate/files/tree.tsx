@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  FileTree,
   FileTreeFile,
   FileTreeFolder,
   FileTreeFolderPanel,
@@ -11,15 +12,11 @@ import {
   FileTreeIcon,
   FileTreeLabel,
   FileTreeList,
-  FileTreeRoot,
 } from '@langgenius/dify-ui/file-tree'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { Fragment } from 'react'
 
-type AgentFileTreeFolderOpenStrategy = (context: {
-  file: AgentFileNode
-  depth: number
-}) => boolean
+type AgentFileTreeFolderOpenStrategy = (context: { file: AgentFileNode; depth: number }) => boolean
 
 type AgentFileTreeRenderFile = (context: {
   depth: number
@@ -28,20 +25,14 @@ type AgentFileTreeRenderFile = (context: {
   children: ReactNode
 }) => ReactNode
 
-type AgentFileTreeRenderFolderPanel = (context: {
-  depth: number
-  file: AgentFileNode
-}) => ReactNode
+type AgentFileTreeRenderFolderPanel = (context: { depth: number; file: AgentFileNode }) => ReactNode
 
 type AgentFileTreeRenderFolderSuffix = (context: {
   depth: number
   file: AgentFileNode
 }) => ReactNode
 
-type AgentFileTreeFolderOpenState = (context: {
-  file: AgentFileNode
-  depth: number
-}) => boolean
+type AgentFileTreeFolderOpenState = (context: { file: AgentFileNode; depth: number }) => boolean
 
 const firstLevelFolderOpenStrategy: AgentFileTreeFolderOpenStrategy = ({ depth }) => depth === 1
 
@@ -63,8 +54,8 @@ function AgentFileTreeRows({
   depth: number
   folderOpenStrategy: AgentFileTreeFolderOpenStrategy
   folderOpenState?: AgentFileTreeFolderOpenState
-  onFolderOpenChange?: (context: { file: AgentFileNode, depth: number, open: boolean }) => void
-  onFolderDoubleClick?: (context: { file: AgentFileNode, depth: number }) => void
+  onFolderOpenChange?: (context: { file: AgentFileNode; depth: number; open: boolean }) => void
+  onFolderDoubleClick?: (context: { file: AgentFileNode; depth: number }) => void
   onFolderOpen?: (file: AgentFileNode) => void
   renderFile: AgentFileTreeRenderFile
   renderFolderSuffix?: AgentFileTreeRenderFolderSuffix
@@ -74,7 +65,9 @@ function AgentFileTreeRows({
     const children = (
       <>
         <FileTreeIcon type={file.icon} />
-        <FileTreeLabel className="max-w-full" title={file.name}>{file.name}</FileTreeLabel>
+        <FileTreeLabel className="max-w-full" title={file.name}>
+          {file.name}
+        </FileTreeLabel>
       </>
     )
 
@@ -84,14 +77,16 @@ function AgentFileTreeRows({
           key={file.id}
           defaultOpen={folderOpenStrategy({ file, depth })}
           open={folderOpenState?.({ file, depth })}
-          onOpenChange={open => onFolderOpenChange?.({ file, depth, open })}
+          onOpenChange={(open) => onFolderOpenChange?.({ file, depth, open })}
         >
           <FileTreeFolderTrigger
             onClick={() => onFolderOpen?.(file)}
             onDoubleClick={() => onFolderDoubleClick?.({ file, depth })}
           >
             <FileTreeIcon type="folder" />
-            <FileTreeLabel className="max-w-full" title={file.name}>{file.name}</FileTreeLabel>
+            <FileTreeLabel className="max-w-full" title={file.name}>
+              {file.name}
+            </FileTreeLabel>
             {renderFolderSuffix?.({ depth, file })}
           </FileTreeFolderTrigger>
           <FileTreeFolderPanel>
@@ -167,8 +162,8 @@ export function AgentFileTree({
   listClassName?: string
   folderOpenStrategy?: AgentFileTreeFolderOpenStrategy
   folderOpenState?: AgentFileTreeFolderOpenState
-  onFolderOpenChange?: (context: { file: AgentFileNode, depth: number, open: boolean }) => void
-  onFolderDoubleClick?: (context: { file: AgentFileNode, depth: number }) => void
+  onFolderOpenChange?: (context: { file: AgentFileNode; depth: number; open: boolean }) => void
+  onFolderDoubleClick?: (context: { file: AgentFileNode; depth: number }) => void
   onFolderOpen?: (file: AgentFileNode) => void
   renderFile?: AgentFileTreeRenderFile
   renderFolderSuffix?: AgentFileTreeRenderFolderSuffix
@@ -182,12 +177,12 @@ export function AgentFileTree({
         label={label}
         labelledBy={labelledBy}
         slotClassNames={{
-          viewport: 'max-h-[inherit] overscroll-contain',
+          viewport: 'max-h-[inherit]',
           content: 'w-full max-w-full min-w-0!',
           scrollbar: 'hidden',
         }}
       >
-        <FileTreeRoot
+        <FileTree
           id={id}
           aria-label={treeLabel}
           className={cn('w-full max-w-full min-w-0 p-0', rootClassName)}
@@ -207,7 +202,7 @@ export function AgentFileTree({
               renderFolderPanel={renderFolderPanel}
             />
           </FileTreeList>
-        </FileTreeRoot>
+        </FileTree>
       </ScrollArea>
     </div>
   )

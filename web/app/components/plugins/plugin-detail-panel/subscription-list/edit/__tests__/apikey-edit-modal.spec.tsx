@@ -48,7 +48,7 @@ vi.mock('@/service/use-triggers', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign((args: { type: string, message: string }) => mockToast(args), {
+  toast: Object.assign((args: { type: string; message: string }) => mockToast(args), {
     success: (message: string) => mockToast({ type: 'success', message }),
     error: (message: string) => mockToast({ type: 'error', message }),
     warning: (message: string) => mockToast({ type: 'warning', message }),
@@ -88,9 +88,15 @@ describe('ApiKeyEditModal', () => {
 
     render(<ApiKeyEditModal subscription={createSubscription()} onClose={onClose} />)
 
-    expect(screen.getByRole('button', { name: 'pluginTrigger.modal.common.verify' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'pluginTrigger.modal.common.back' })).not.toBeInTheDocument()
-    expect(screen.getByText(content => content.includes('common.provider.encrypted.front'))).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'pluginTrigger.modal.common.verify' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'pluginTrigger.modal.common.back' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText((content) => content.includes('common.provider.encrypted.front')),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 

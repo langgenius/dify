@@ -31,7 +31,9 @@ type UseTriggerEventsLimitModalOptions = {
 
 type UseTriggerEventsLimitModalResult = {
   showTriggerEventsLimitModal: ModalState<TriggerEventsLimitModalPayload> | null
-  setShowTriggerEventsLimitModal: Dispatch<SetStateAction<ModalState<TriggerEventsLimitModalPayload> | null>>
+  setShowTriggerEventsLimitModal: Dispatch<
+    SetStateAction<ModalState<TriggerEventsLimitModalPayload> | null>
+  >
   persistTriggerEventsLimitModalDismiss: () => void
 }
 
@@ -44,31 +46,28 @@ export const useTriggerEventsLimitModal = ({
   isFetchedPlan,
   currentWorkspaceId,
 }: UseTriggerEventsLimitModalOptions): UseTriggerEventsLimitModalResult => {
-  const [showTriggerEventsLimitModal, setShowTriggerEventsLimitModal] = useState<ModalState<TriggerEventsLimitModalPayload> | null>(null)
+  const [showTriggerEventsLimitModal, setShowTriggerEventsLimitModal] =
+    useState<ModalState<TriggerEventsLimitModalPayload> | null>(null)
   const dismissedTriggerEventsLimitStorageKeysRef = useRef<Record<string, boolean>>({})
   const triggerEventsLimitModalState = useMemo(() => {
-    if (!IS_CLOUD_EDITION)
-      return null
-    if (!currentWorkspaceId)
-      return null
-    if (!isFetchedPlan)
-      return null
+    if (!IS_CLOUD_EDITION) return null
+    if (!currentWorkspaceId) return null
+    if (!isFetchedPlan) return null
 
     const { type, usage, total, reset } = plan
     const isUnlimited = total.triggerEvents === NUM_INFINITE
     const reachedLimit = total.triggerEvents > 0 && usage.triggerEvents >= total.triggerEvents
 
-    if (type === Plan.team || isUnlimited || !reachedLimit)
-      return null
+    if (type === Plan.team || isUnlimited || !reachedLimit) return null
 
-    const resetInDays = type === Plan.professional && total.triggerEvents !== NUM_INFINITE
-      ? reset.triggerEvents ?? undefined
-      : undefined
+    const resetInDays =
+      type === Plan.professional && total.triggerEvents !== NUM_INFINITE
+        ? (reset.triggerEvents ?? undefined)
+        : undefined
     const cycleTag = (() => {
       if (typeof reset.triggerEvents === 'number')
         return dayjs().startOf('day').add(reset.triggerEvents, 'day').format('YYYY-MM-DD')
-      if (type === Plan.sandbox)
-        return dayjs().endOf('month').format('YYYY-MM-DD')
+      if (type === Plan.sandbox) return dayjs().endOf('month').format('YYYY-MM-DD')
       return 'none'
     })()
 
@@ -87,31 +86,24 @@ export const useTriggerEventsLimitModal = ({
   )
 
   useEffect(() => {
-    if (!IS_CLOUD_EDITION)
-      return
-    if (isServer)
-      return
-    if (!currentWorkspaceId)
-      return
+    if (!IS_CLOUD_EDITION) return
+    if (isServer) return
+    if (!currentWorkspaceId) return
     if (!isFetchedPlan) {
       setShowTriggerEventsLimitModal(null)
       return
     }
 
     if (!triggerEventsLimitModalState) {
-      if (showTriggerEventsLimitModal)
-        setShowTriggerEventsLimitModal(null)
+      if (showTriggerEventsLimitModal) setShowTriggerEventsLimitModal(null)
       return
     }
 
     const { resetInDays, storageKey } = triggerEventsLimitModalState
-    if (dismissedTriggerEventsLimitStorageKeysRef.current[storageKey])
-      return
-    if (persistedTriggerEventsLimitDismiss === '1')
-      return
+    if (dismissedTriggerEventsLimitStorageKeysRef.current[storageKey]) return
+    if (persistedTriggerEventsLimitDismiss === '1') return
 
-    if (showTriggerEventsLimitModal?.payload.storageKey === storageKey)
-      return
+    if (showTriggerEventsLimitModal?.payload.storageKey === storageKey) return
 
     setShowTriggerEventsLimitModal({
       payload: {
@@ -126,11 +118,9 @@ export const useTriggerEventsLimitModal = ({
 
   const persistTriggerEventsLimitModalDismiss = useCallback(() => {
     const storageKey = showTriggerEventsLimitModal?.payload.storageKey
-    if (!storageKey)
-      return
-    if (showTriggerEventsLimitModal?.payload.persistDismiss) {
+    if (!storageKey) return
+    if (showTriggerEventsLimitModal?.payload.persistDismiss)
       setPersistedTriggerEventsLimitDismiss('1')
-    }
     dismissedTriggerEventsLimitStorageKeysRef.current[storageKey] = true
   }, [showTriggerEventsLimitModal, setPersistedTriggerEventsLimitDismiss])
 

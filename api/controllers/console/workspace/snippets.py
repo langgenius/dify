@@ -1,12 +1,9 @@
 import logging
-from datetime import datetime
-from typing import Any
 from urllib.parse import quote
+from uuid import UUID
 
 from flask import Response, request
-from flask_restx import Resource, marshal
-from pydantic import Field as PydanticField
-from pydantic import field_validator
+from flask_restx import Resource
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
@@ -37,8 +34,8 @@ from controllers.console.wraps import (
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from fields.snippet_fields import snippet_fields, snippet_list_fields
-from libs.helper import to_timestamp
+from fields.snippet_fields import SnippetListItemResponse, SnippetPaginationResponse, SnippetResponse
+from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.snippet import SnippetType
@@ -64,77 +61,6 @@ class SnippetDependencyCheckResponse(ResponseModel):
 class SnippetUseCountResponse(ResponseModel):
     result: str
     use_count: int
-
-
-class SnippetTagResponse(ResponseModel):
-    id: str
-    name: str
-    type: str
-
-
-class SnippetAccountResponse(ResponseModel):
-    id: str
-    name: str
-    email: str
-
-
-class SnippetListItemResponse(ResponseModel):
-    id: str
-    name: str
-    description: str | None
-    type: SnippetType
-    version: int
-    use_count: int
-    is_published: bool
-    icon_info: dict[str, Any] | None
-    tags: list[SnippetTagResponse]
-    created_by: str | None
-    author_name: str | None
-    created_at: int
-    updated_by: str | None
-    updated_at: int
-
-    @field_validator("created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int:
-        timestamp = to_timestamp(value)
-        if timestamp is None:
-            raise ValueError("timestamp is required")
-        return timestamp
-
-
-class SnippetResponse(ResponseModel):
-    id: str
-    name: str
-    description: str | None
-    type: SnippetType
-    version: int
-    use_count: int
-    is_published: bool
-    icon_info: dict[str, Any] | None
-    graph: dict[str, Any] = PydanticField(validation_alias="graph_dict")
-    input_fields: list[dict[str, Any]] = PydanticField(validation_alias="input_fields_list")
-    tags: list[SnippetTagResponse]
-    created_by: SnippetAccountResponse | None = PydanticField(validation_alias="created_by_account")
-    created_at: int
-    updated_by: SnippetAccountResponse | None = PydanticField(validation_alias="updated_by_account")
-    updated_at: int
-
-    @field_validator("created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int:
-        timestamp = to_timestamp(value)
-        if timestamp is None:
-            raise ValueError("timestamp is required")
-        return timestamp
-
-
-class SnippetPaginationResponse(ResponseModel):
-    data: list[SnippetListItemResponse]
-    page: int
-    limit: int
-    total: int
-    has_more: bool
 
 
 def _snippet_service() -> SnippetService:
@@ -189,7 +115,7 @@ class CustomizedSnippetsApi(Resource):
         snippet_service = _snippet_service()
         snippets, total, has_more = snippet_service.get_snippets(
             tenant_id=current_tenant_id,
-            session=db.session,
+            session=db.session(),
             page=query.page,
             limit=query.limit,
             keyword=query.keyword,
@@ -198,13 +124,16 @@ class CustomizedSnippetsApi(Resource):
             tag_ids=query.tag_ids,
         )
 
-        return {
-            "data": marshal(snippets, snippet_list_fields),
-            "page": query.page,
-            "limit": query.limit,
-            "total": total,
-            "has_more": has_more,
-        }, 200
+        return dump_response(
+            SnippetPaginationResponse,
+            {
+                "data": snippets,
+                "page": query.page,
+                "limit": query.limit,
+                "total": total,
+                "has_more": has_more,
+            },
+        ), 200
 
     @console_ns.doc("create_customized_snippet")
     @console_ns.expect(console_ns.models.get(CreateSnippetPayload.__name__))
@@ -245,7 +174,7 @@ class CustomizedSnippetsApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return marshal(snippet, snippet_fields), 201
+        return dump_response(SnippetResponse, snippet), 201
 
 
 @console_ns.route("/workspaces/current/customized-snippets/<uuid:snippet_id>")
@@ -257,7 +186,7 @@ class CustomizedSnippetDetailApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, snippet_id: str):
+    def get(self, current_tenant_id: str, snippet_id: UUID):
         """Get customized snippet details."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
@@ -268,7 +197,7 @@ class CustomizedSnippetDetailApi(Resource):
         if not snippet:
             raise NotFound("Snippet not found")
 
-        return marshal(snippet, snippet_fields), 200
+        return dump_response(SnippetResponse, snippet), 200
 
     @console_ns.doc("update_customized_snippet")
     @console_ns.expect(console_ns.models.get(UpdateSnippetPayload.__name__))
@@ -317,7 +246,7 @@ class CustomizedSnippetDetailApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return marshal(snippet, snippet_fields), 200
+        return dump_response(SnippetResponse, snippet), 200
 
     @console_ns.doc("delete_customized_snippet")
     @console_ns.response(204, "Snippet deleted successfully")

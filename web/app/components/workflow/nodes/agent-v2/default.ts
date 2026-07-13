@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { AgentV2NodeType } from './types'
 import { BlockEnum } from '../../types'
@@ -7,6 +8,7 @@ import { hasValidAgentBinding } from './types'
 const metaData = genNodeMetaData({
   sort: 3,
   type: BlockEnum.AgentV2,
+  helpLinkUri: 'agent',
 })
 
 const nodeDefault: NodeDefault<AgentV2NodeType> = {
@@ -18,13 +20,13 @@ const nodeDefault: NodeDefault<AgentV2NodeType> = {
     agent_node_kind: 'dify_agent',
     version: '2',
   },
-  checkValid(payload, t) {
+  checkValid(payload, t: TFunction<'workflow'>) {
     if (!hasValidAgentBinding(payload)) {
       return {
         isValid: false,
-        errorMessage: t('errorMsg.fieldRequired', {
+        errorMessage: t(($) => $['errorMsg.fieldRequired'], {
           ns: 'workflow',
-          field: t('nodes.agent.roster.label', { ns: 'workflow' }),
+          field: t(($) => $['nodes.agent.roster.label'], { ns: 'workflow' }),
         }),
       }
     }

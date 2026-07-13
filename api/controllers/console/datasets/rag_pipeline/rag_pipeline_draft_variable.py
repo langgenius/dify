@@ -98,7 +98,7 @@ class RagPipelineVariableCollectionApi(Resource):
         query = PaginationQuery.model_validate(request.args.to_dict())
 
         # fetch draft workflow by app_model
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session())
         workflow_exist = rag_pipeline_service.is_workflow_exist(pipeline=pipeline)
         if not workflow_exist:
             raise DraftWorkflowNotExist()
@@ -290,7 +290,7 @@ class RagPipelineVariableResetApi(Resource):
             session=db.session(),
         )
 
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session())
         draft_workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
         if draft_workflow is None:
             raise NotFoundError(
@@ -347,7 +347,7 @@ class RagPipelineEnvironmentVariableCollectionApi(Resource):
         Get draft workflow
         """
         # fetch draft workflow by app_model
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session())
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
         if workflow is None:
             raise DraftWorkflowNotExist()

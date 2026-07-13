@@ -12,7 +12,7 @@ from services.message_service import MessageService
 class SavedMessageService:
     @classmethod
     def pagination_by_last_id(
-        cls, session: Session, app_model: App, user: Account | EndUser | None, last_id: str | None, limit: int
+        cls, app_model: App, user: Account | EndUser | None, last_id: str | None, limit: int, *, session: Session
     ) -> InfiniteScrollPagination:
         if not user:
             raise ValueError("User is required")
@@ -28,11 +28,16 @@ class SavedMessageService:
         message_ids = [sm.message_id for sm in saved_messages]
 
         return MessageService.pagination_by_last_id(
-            app_model=app_model, user=user, last_id=last_id, limit=limit, include_ids=message_ids
+            app_model=app_model,
+            user=user,
+            last_id=last_id,
+            limit=limit,
+            include_ids=message_ids,
+            session=session,
         )
 
     @classmethod
-    def save(cls, session: Session, app_model: App, user: Account | EndUser | None, message_id: str):
+    def save(cls, app_model: App, user: Account | EndUser | None, message_id: str, *, session: Session):
         if not user:
             return
         saved_message = session.scalar(
@@ -49,7 +54,7 @@ class SavedMessageService:
         if saved_message:
             return
 
-        message = MessageService.get_message(app_model=app_model, user=user, message_id=message_id)
+        message = MessageService.get_message(app_model=app_model, user=user, message_id=message_id, session=session)
 
         saved_message = SavedMessage(
             app_id=app_model.id,
@@ -62,7 +67,7 @@ class SavedMessageService:
         session.commit()
 
     @classmethod
-    def delete(cls, session: Session, app_model: App, user: Account | EndUser | None, message_id: str):
+    def delete(cls, app_model: App, user: Account | EndUser | None, message_id: str, *, session: Session):
         if not user:
             return
         saved_message = session.scalar(

@@ -70,7 +70,7 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation() -> None:
             side_effect=lambda messages, **_kwargs: messages,
         ),
     ):
-        response = AgentToolInnerService().invoke(session, _request())
+        response = AgentToolInnerService().invoke(_request(), session=session)
 
     assert response.observation == "ok"
     assert response.metadata == {
@@ -89,7 +89,7 @@ def test_invoke_raises_app_not_found_when_session_has_no_app() -> None:
     session.get.return_value = None
 
     with pytest.raises(AgentToolInnerServiceError) as exc_info:
-        AgentToolInnerService().invoke(session, _request())
+        AgentToolInnerService().invoke(_request(), session=session)
 
     assert exc_info.value.error_code == "app_not_found"
     assert exc_info.value.status_code == 404
@@ -102,7 +102,7 @@ def test_invoke_raises_app_tenant_mismatch_when_app_belongs_to_other_tenant() ->
     session.get.return_value = fake_app
 
     with pytest.raises(AgentToolInnerServiceError) as exc_info:
-        AgentToolInnerService().invoke(session, _request())
+        AgentToolInnerService().invoke(_request(), session=session)
 
     assert exc_info.value.error_code == "app_tenant_mismatch"
     assert exc_info.value.status_code == 403
@@ -120,7 +120,7 @@ def test_invoke_maps_tool_runtime_app_not_found_value_error_to_specific_error_co
         patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", side_effect=ValueError("app not found")),
     ):
         with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            AgentToolInnerService().invoke(session, _request())
+            AgentToolInnerService().invoke(_request(), session=session)
 
     assert exc_info.value.error_code == "app_not_found"
     assert exc_info.value.status_code == 404
@@ -141,7 +141,7 @@ def test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper() -> N
         ),
     ):
         with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            AgentToolInnerService().invoke(session, _request())
+            AgentToolInnerService().invoke(_request(), session=session)
 
     assert exc_info.value.error_code == "agent_tool_invoke_failed"
 
@@ -161,6 +161,6 @@ def test_invoke_maps_runtime_lookup_errors_to_service_error_codes(error: Excepti
 
     with patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", side_effect=error):
         with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            AgentToolInnerService().invoke(session, _request())
+            AgentToolInnerService().invoke(_request(), session=session)
 
     assert exc_info.value.error_code == expected_code

@@ -4,7 +4,7 @@ Feature: Agent Builder preseeded environment
   Scenario: Agent lifecycle permissions are available
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
-    And the Agent v2 composer draft uses the normal E2E prompt
+    And the Agent v2 composer draft is publishable
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
@@ -13,6 +13,11 @@ Feature: Agent Builder preseeded environment
   Scenario: Stable chat model is available
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
+
+  @speech-to-text-model
+  Scenario: Default speech-to-text model is available
+    Given I am signed in as the default E2E admin
+    And the workspace default speech-to-text model is active
 
   @agent-decision-model
   Scenario: Agent-decision chat model is available
@@ -88,11 +93,6 @@ Feature: Agent Builder preseeded environment
   Scenario: OAuth2 tool Agent includes credential fixture configuration
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent With OAuth Tool" includes an OAuth2 tool credential
-
-  @file-tree-fixture
-  Scenario: File tree Agent includes fixture files
-    Given I am signed in as the default E2E admin
-    And the Agent Builder preseeded Agent "E2E Agent With File Tree" includes the file tree fixture files
 
   @dual-retrieval-fixture
   Scenario: Dual retrieval Agent is available

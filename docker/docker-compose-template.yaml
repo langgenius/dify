@@ -220,7 +220,7 @@ services:
   # API service
   api:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.15.0
+    image: langgenius/dify-api:1.16.0-rc1
     environment:
       MODE: api
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -231,6 +231,7 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       PLUGIN_DAEMON_TIMEOUT: ${PLUGIN_DAEMON_TIMEOUT:-600.0}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+      AGENT_BACKEND_BASE_URL: ${AGENT_BACKEND_BASE_URL:-http://agent_backend:5050}
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -248,6 +249,8 @@ services:
         required: false
       redis:
         condition: service_started
+      agent_backend:
+        condition: service_started
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
@@ -264,7 +267,7 @@ services:
   # WebSocket service for workflow collaboration.
   api_websocket:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.15.0
+    image: langgenius/dify-api:1.16.0-rc1
     profiles:
       - collaboration
     environment:
@@ -290,7 +293,7 @@ services:
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.15.0
+    image: langgenius/dify-api:1.16.0-rc1
     environment:
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -298,6 +301,7 @@ services:
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+      AGENT_BACKEND_BASE_URL: ${AGENT_BACKEND_BASE_URL:-http://agent_backend:5050}
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -314,6 +318,8 @@ services:
         condition: service_healthy
         required: false
       redis:
+        condition: service_started
+      agent_backend:
         condition: service_started
     volumes:
       # Mount the storage directory to the container, for storing user files.
@@ -333,7 +339,7 @@ services:
   # Celery beat for scheduling periodic tasks.
   worker_beat:
     <<: *shared-worker-beat-config
-    image: langgenius/dify-api:1.15.0
+    image: langgenius/dify-api:1.16.0-rc1
     environment:
       MODE: beat
     depends_on:
@@ -366,7 +372,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.15.0
+    image: langgenius/dify-web:1.16.0-rc1
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
@@ -516,6 +522,21 @@ services:
     networks:
       - ssrf_proxy_network
 
+  # Local sandbox for Dify Agent shell workspaces.
+  local_sandbox:
+    image: langgenius/dify-agent-local-sandbox:1.16.0-rc1
+    restart: always
+    environment:
+      SHELLCTL_AUTH_TOKEN: ${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5004/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - default
+
   # plugin daemon
   plugin_daemon:
     image: langgenius/dify-plugin-daemon:0.6.3-local
@@ -602,6 +623,44 @@ services:
       seekdb:
         condition: service_healthy
         required: false
+
+  # Dify Agent backend service.
+  agent_backend:
+    image: langgenius/dify-agent-backend:1.16.0-rc1
+    restart: always
+    env_file:
+      - path: ./envs/core-services/dify-agent.env
+        required: false
+      - path: ./envs/security.env
+        required: false
+      - path: ./envs/databases/redis.env
+        required: false
+      - ./.env
+    environment:
+      DIFY_AGENT_REDIS_URL: ${DIFY_AGENT_REDIS_URL:-redis://:${REDIS_PASSWORD:-difyai123456}@redis:6379/2}
+      DIFY_AGENT_REDIS_PREFIX: ${DIFY_AGENT_REDIS_PREFIX:-dify-agent}
+      DIFY_AGENT_PLUGIN_DAEMON_URL: ${DIFY_AGENT_PLUGIN_DAEMON_URL:-${PLUGIN_DAEMON_URL:-http://plugin_daemon:5002}}
+      DIFY_AGENT_PLUGIN_DAEMON_API_KEY: ${DIFY_AGENT_PLUGIN_DAEMON_API_KEY:-${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}}
+      DIFY_AGENT_INNER_API_URL: ${DIFY_AGENT_INNER_API_URL:-${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}}
+      DIFY_AGENT_INNER_API_KEY: ${DIFY_AGENT_INNER_API_KEY:-${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}}
+      DIFY_AGENT_SHELLCTL_ENTRYPOINT: ${DIFY_AGENT_SHELLCTL_ENTRYPOINT:-http://local_sandbox:5004}
+      DIFY_AGENT_SHELLCTL_AUTH_TOKEN: ${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}
+      DIFY_AGENT_STUB_API_BASE_URL: ${DIFY_AGENT_STUB_API_BASE_URL:-http://agent_backend:5050/agent-stub}
+      # This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
+      # Replace this development default in production.
+      # Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'
+      DIFY_AGENT_SERVER_SECRET_KEY: ${DIFY_AGENT_SERVER_SECRET_KEY:-MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY}
+      DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: ${DIFY_AGENT_SHUTDOWN_GRACE_SECONDS:-30}
+      DIFY_AGENT_RUN_RETENTION_SECONDS: ${DIFY_AGENT_RUN_RETENTION_SECONDS:-259200}
+    depends_on:
+      redis:
+        condition: service_started
+      plugin_daemon:
+        condition: service_started
+      local_sandbox:
+        condition: service_started
+    networks:
+      - default
 
   # ssrf_proxy server
   # for more information, please refer to

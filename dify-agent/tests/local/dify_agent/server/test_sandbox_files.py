@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import types
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Literal, cast
@@ -16,11 +17,85 @@ from agenton.compositor import CompositorSessionSnapshot, LayerProvider
 from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers.base import LifecycleState
 from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol, ShellctlProvider
-from dify_agent.agent_stub.server.shell_agent_stub_env import (
+from dify_agent.agent_stub.shell_env import (
     AGENT_STUB_API_BASE_URL_ENV_VAR,
     AGENT_STUB_AUTH_JWE_ENV_VAR,
     AGENT_STUB_DRIVE_BASE_ENV_VAR,
 )
+
+if "graphon.model_runtime.entities.llm_entities" not in sys.modules:
+    graphon_module = types.ModuleType("graphon")
+    model_runtime_module = types.ModuleType("graphon.model_runtime")
+    entities_module = types.ModuleType("graphon.model_runtime.entities")
+    llm_entities_module = types.ModuleType("graphon.model_runtime.entities.llm_entities")
+    message_entities_module = types.ModuleType("graphon.model_runtime.entities.message_entities")
+
+    llm_entities_module.LLMResultChunk = type("LLMResultChunk", (), {})
+    llm_entities_module.LLMUsage = type("LLMUsage", (), {})
+
+    for name in (
+        "AssistantPromptMessage",
+        "AudioPromptMessageContent",
+        "DocumentPromptMessageContent",
+        "ImagePromptMessageContent",
+        "PromptMessage",
+        "PromptMessageContentUnionTypes",
+        "PromptMessageTool",
+        "SystemPromptMessage",
+        "TextPromptMessageContent",
+        "ToolPromptMessage",
+        "UserPromptMessage",
+        "VideoPromptMessageContent",
+    ):
+        setattr(message_entities_module, name, type(name, (), {}))
+
+    sys.modules["graphon"] = graphon_module
+    sys.modules["graphon.model_runtime"] = model_runtime_module
+    sys.modules["graphon.model_runtime.entities"] = entities_module
+    sys.modules["graphon.model_runtime.entities.llm_entities"] = llm_entities_module
+    sys.modules["graphon.model_runtime.entities.message_entities"] = message_entities_module
+
+    graphon_module.model_runtime = model_runtime_module
+    model_runtime_module.entities = entities_module
+    entities_module.llm_entities = llm_entities_module
+    entities_module.message_entities = message_entities_module
+
+if "jsonschema" not in sys.modules:
+    jsonschema_module = types.ModuleType("jsonschema")
+    jsonschema_exceptions_module = types.ModuleType("jsonschema.exceptions")
+    jsonschema_protocols_module = types.ModuleType("jsonschema.protocols")
+    jsonschema_validators_module = types.ModuleType("jsonschema.validators")
+
+    class _SchemaError(Exception):
+        pass
+
+    class _ValidationError(Exception):
+        path: tuple[object, ...] = ()
+
+    class _Validator:
+        @staticmethod
+        def check_schema(schema):
+            return None
+
+        def __init__(self, schema):
+            self.schema = schema
+
+        def iter_errors(self, value):
+            return iter(())
+
+    def _validator_for(schema):
+        return _Validator
+
+    jsonschema_module.SchemaError = _SchemaError
+    jsonschema_exceptions_module.ValidationError = _ValidationError
+    jsonschema_protocols_module.Validator = _Validator
+    jsonschema_validators_module.validator_for = _validator_for
+
+    sys.modules["jsonschema"] = jsonschema_module
+    sys.modules["jsonschema.exceptions"] = jsonschema_exceptions_module
+    sys.modules["jsonschema.protocols"] = jsonschema_protocols_module
+    sys.modules["jsonschema.validators"] = jsonschema_validators_module
+
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell import DifyShellLayerConfig
@@ -319,7 +394,7 @@ def test_embedded_scripts_allow_parent_relative_paths(tmp_path: Path) -> None:
                 "import sys",
                 'if sys.argv[1:] != ["file", "upload", "../shared/notes.txt"]:',
                 '    raise SystemExit(f"unexpected args: {sys.argv[1:]!r}")',
-                'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref"}))',
+                'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref", "download_url": "https://files.example.com/notes.txt"}))',
             ]
         )
         + "\n",
@@ -349,7 +424,11 @@ def test_embedded_scripts_allow_parent_relative_paths(tmp_path: Path) -> None:
     }
     assert upload_payload == {
         "path": "../shared/notes.txt",
-        "file": {"transfer_method": "tool_file", "reference": "file-ref"},
+        "file": {
+            "transfer_method": "tool_file",
+            "reference": "file-ref",
+            "download_url": "https://files.example.com/notes.txt",
+        },
     }
 
 
@@ -373,7 +452,7 @@ def test_embedded_scripts_expand_home_relative_paths(tmp_path: Path) -> None:
                 "import sys",
                 'if sys.argv[1:] != ["file", "upload", "~/shared/notes.txt"]:',
                 '    raise SystemExit(f"unexpected args: {sys.argv[1:]!r}")',
-                'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref"}))',
+                'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref", "download_url": "https://files.example.com/notes.txt"}))',
             ]
         )
         + "\n",
@@ -399,7 +478,11 @@ def test_embedded_scripts_expand_home_relative_paths(tmp_path: Path) -> None:
     }
     assert upload_payload == {
         "path": "~/shared/notes.txt",
-        "file": {"transfer_method": "tool_file", "reference": "file-ref"},
+        "file": {
+            "transfer_method": "tool_file",
+            "reference": "file-ref",
+            "download_url": "https://files.example.com/notes.txt",
+        },
     }
 
 
@@ -433,7 +516,11 @@ def test_upload_injects_agent_stub_env_and_returns_mapping() -> None:
             output=_wrap(
                 {
                     "path": "report.txt",
-                    "file": {"transfer_method": "tool_file", "reference": "file-ref"},
+                    "file": {
+                        "transfer_method": "tool_file",
+                        "reference": "file-ref",
+                        "download_url": "https://files.example.com/report.txt",
+                    },
                 },
                 noise=True,
             ),
@@ -444,6 +531,7 @@ def test_upload_injects_agent_stub_env_and_returns_mapping() -> None:
 
     assert result.file.transfer_method == "tool_file"
     assert result.file.reference == "file-ref"
+    assert result.file.download_url == "https://files.example.com/report.txt"
     script_call = _sandbox_python_run_call(client)
     assert script_call.cwd == "/home/agent-1/workspace/abc12ff"
     assert script_call.env == {
@@ -452,6 +540,26 @@ def test_upload_injects_agent_stub_env_and_returns_mapping() -> None:
         AGENT_STUB_AUTH_JWE_ENV_VAR: "token-for:tenant-1:abc12ff",
         AGENT_STUB_DRIVE_BASE_ENV_VAR: "/mnt/drive/agent-1",
     }
+
+
+def test_upload_rejects_missing_download_url_in_shell_payload() -> None:
+    service, _client = _service(
+        lambda script, cwd, env, timeout: _Job(
+            job_id="sandbox-job",
+            output=_wrap(
+                {
+                    "path": "report.txt",
+                    "file": {
+                        "transfer_method": "tool_file",
+                        "reference": "file-ref",
+                    },
+                }
+            ),
+        )
+    )
+
+    with pytest.raises(SandboxFileError, match="sandbox command returned invalid payload"):
+        _ = asyncio.run(service.upload_file(SandboxUploadRequest(locator=_locator(), path="report.txt")))
 
 
 def test_shell_result_details_include_output_metadata_and_tail() -> None:
@@ -497,7 +605,14 @@ def test_read_and_upload_allow_relative_paths(
             output=_wrap(
                 {"path": expected_path, "size": 5, "truncated": False, "binary": False, "text": "hello"}
                 if isinstance(sandbox_request, SandboxReadRequest)
-                else {"path": expected_path, "file": {"transfer_method": "tool_file", "reference": "file-ref"}}
+                else {
+                    "path": expected_path,
+                    "file": {
+                        "transfer_method": "tool_file",
+                        "reference": "file-ref",
+                        "download_url": "https://files.example.com/report.txt",
+                    },
+                }
             ),
         )
     )
@@ -508,5 +623,6 @@ def test_read_and_upload_allow_relative_paths(
     else:
         result = asyncio.run(service.upload_file(sandbox_request))
         assert result.path == expected_path
+        assert result.file.download_url == "https://files.example.com/report.txt"
 
     assert expected_command in _sandbox_python_run_call(client).script

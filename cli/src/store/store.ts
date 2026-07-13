@@ -3,7 +3,18 @@ import type { Platform } from '@/sys'
 import { promises as fsp } from 'node:fs'
 import { dirname } from 'node:path'
 import { AsyncEntry } from '@napi-rs/keyring'
-import yaml from 'js-yaml'
+import {
+  binaryTag,
+  CORE_SCHEMA,
+  dump,
+  loadAll,
+  mergeTag,
+  omapTag,
+  pairsTag,
+  setTag,
+  timestampTag,
+  YAMLException,
+} from 'js-yaml'
 import lockfile from 'lockfile'
 import { pid, resolvePlatform } from '@/sys'
 import { BadYamlFormatError, ConcurrentAccessError } from './errors'
@@ -11,16 +22,24 @@ import { BadYamlFormatError, ConcurrentAccessError } from './errors'
 const FILE_PERM = 0o600
 const DIR_PERM = 0o700
 const LOCK_STALE_MS = 30_000
+const YAML_LOAD_SCHEMA = CORE_SCHEMA.withTags(
+  binaryTag,
+  mergeTag,
+  omapTag,
+  pairsTag,
+  setTag,
+  timestampTag,
+)
 
 function lockAsync(path: string, opts: LockOptions): Promise<void> {
   return new Promise((resolve, reject) => {
-    lockfile.lock(path, opts, err => (err ? reject(err) : resolve()))
+    lockfile.lock(path, opts, (err) => (err ? reject(err) : resolve()))
   })
 }
 
 function unlockAsync(path: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    lockfile.unlock(path, err => (err ? reject(err) : resolve()))
+    lockfile.unlock(path, (err) => (err ? reject(err) : resolve()))
   })
 }
 
@@ -36,7 +55,7 @@ export type Store = {
 }
 
 export const STORAGE_MODES = ['keychain', 'file'] as const
-export type StorageMode = typeof STORAGE_MODES[number]
+export type StorageMode = (typeof STORAGE_MODES)[number]
 
 abstract class FileBasedStore implements Store {
   filePath: string
@@ -73,12 +92,12 @@ abstract class FileBasedStore implements Store {
       try {
         await fsp.writeFile(tmp, this.rawContent, { mode: FILE_PERM })
         this.platform.atomicReplace(tmp, this.filePath)
-      }
-      catch (err) {
+      } catch (err) {
         try {
           await fsp.unlink(tmp)
+        } catch {
+          /* tmp may not exist */
         }
-        catch { /* tmp may not exist */ }
         throw err
       }
     }
@@ -92,8 +111,7 @@ abstract class FileBasedStore implements Store {
       await lockAsync(`${this.filePath}.lock`, {
         stale: LOCK_STALE_MS,
       })
-    }
-    catch (err) {
+    } catch (err) {
       const code = (err as NodeJS.ErrnoException).code
       if (code === 'EEXIST') {
         throw new ConcurrentAccessError(this.filePath)
@@ -106,8 +124,7 @@ abstract class FileBasedStore implements Store {
     try {
       this.rawContent = await fsp.readFile(this.filePath, 'utf8')
       this.dirty = false
-    }
-    catch (err) {
+    } catch (err) {
       const code = (err as NodeJS.ErrnoException).code
       if (code !== 'ENOENT') {
         throw err
@@ -116,7 +133,7 @@ abstract class FileBasedStore implements Store {
   }
 
   public setRawContent(content: string): void {
-    this.dirty = (content !== this.getRawContent())
+    this.dirty = content !== this.getRawContent()
     this.rawContent = content
   }
 
@@ -128,8 +145,7 @@ abstract class FileBasedStore implements Store {
     await this.lock()
     try {
       return await body()
-    }
-    finally {
+    } finally {
       await this.unlock()
     }
   }
@@ -163,10 +179,8 @@ abstract class FileBasedStore implements Store {
   async rm(): Promise<void> {
     try {
       await fsp.unlink(this.filePath)
-    }
-    catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'ENOENT')
-        throw err
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
     }
   }
 
@@ -202,7 +216,7 @@ export class YamlStore extends FileBasedStore {
   async setTyped<T>(data: T): Promise<void> {
     await this.withLock(async () => {
       await this.load()
-      this.setRawContent(yaml.dump(data, { lineWidth: -1, noRefs: true }))
+      this.setRawContent(dump(data, { lineWidth: -1, noRefs: true }))
       await this.flush()
     })
   }
@@ -211,47 +225,47 @@ export class YamlStore extends FileBasedStore {
     const data = loadYaml(this.getRawContent(), this.filePath) || {}
     const parts = key.key.split('.')
     const lastKey = parts.pop()
-    if (lastKey === undefined)
-      return
+    if (lastKey === undefined) return
     let current: Record<string, unknown> = data
     for (const part of parts) {
-      if (current[part] === null || current[part] === undefined || typeof current[part] !== 'object')
+      if (
+        current[part] === null ||
+        current[part] === undefined ||
+        typeof current[part] !== 'object'
+      )
         current[part] = {}
       current = current[part] as Record<string, unknown>
     }
     current[lastKey] = value
-    this.setRawContent(yaml.dump(data, { lineWidth: -1, noRefs: true }))
+    this.setRawContent(dump(data, { lineWidth: -1, noRefs: true }))
   }
 
   doUnset<T>(key: Key<T>): void {
     const data = loadYaml(this.getRawContent(), this.filePath) || {}
     const parts = key.key.split('.')
     const lastKey = parts.pop()
-    if (lastKey === undefined)
-      return
+    if (lastKey === undefined) return
     let current: Record<string, unknown> = data
     for (const part of parts) {
       const next = current[part]
-      if (next === null || next === undefined || typeof next !== 'object')
-        return
+      if (next === null || next === undefined || typeof next !== 'object') return
       current = next as Record<string, unknown>
     }
-    if (!(lastKey in current))
-      return
+    if (!(lastKey in current)) return
     delete current[lastKey]
-    this.setRawContent(yaml.dump(data, { lineWidth: -1, noRefs: true }))
+    this.setRawContent(dump(data, { lineWidth: -1, noRefs: true }))
   }
 }
 
 function loadYaml(raw: string | undefined, file_path: string): Record<string, unknown> | null {
-  if (raw === undefined)
-    return null
+  if (raw === undefined) return null
   try {
-    return (yaml.load(raw) ?? {}) as Record<string, unknown>
-  }
-  catch (err) {
-    if (err instanceof yaml.YAMLException)
-      throw new BadYamlFormatError(file_path, raw, err)
+    const documents = loadAll(raw, { schema: YAML_LOAD_SCHEMA })
+    if (documents.length > 1)
+      throw new YAMLException('expected a single document in the stream, but found more')
+    return (documents[0] ?? {}) as Record<string, unknown>
+  } catch (err) {
+    if (err instanceof YAMLException) throw new BadYamlFormatError(file_path, raw, err)
     throw err
   }
 }
@@ -271,11 +285,9 @@ export class KeyringBasedStore implements Store {
   async get<T>(key: Key<T>): Promise<T> {
     try {
       const v = await new AsyncEntry(this.service, key.key).getPassword()
-      if (v === null || v === undefined || v === '')
-        return key.default
+      if (v === null || v === undefined || v === '') return key.default
       return JSON.parse(v) as T
-    }
-    catch {
+    } catch {
       return key.default
     }
   }
@@ -287,7 +299,8 @@ export class KeyringBasedStore implements Store {
   async unset<T>(key: Key<T>): Promise<void> {
     try {
       await new AsyncEntry(this.service, key.key).deletePassword()
+    } catch {
+      /* missing entry is fine */
     }
-    catch { /* missing entry is fine */ }
   }
 }

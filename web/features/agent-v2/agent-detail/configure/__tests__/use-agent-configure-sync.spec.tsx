@@ -4,7 +4,10 @@ import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { agentComposerDraftAtom, agentComposerPublishedDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import {
+  agentComposerDraftAtom,
+  agentComposerPublishedDraftAtom,
+} from '@/features/agent-v2/agent-composer/store'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
@@ -15,33 +18,44 @@ const toastMock = vi.hoisted(() => ({
   success: vi.fn(),
 }))
 
-const composerPutMutationFn = vi.hoisted(() => vi.fn(async (variables: {
-  body: {
-    agent_soul: Record<string, unknown>
-  }
-}) => ({
-  agent_soul: variables.body.agent_soul,
-})))
+const composerPutMutationFn = vi.hoisted(() =>
+  vi.fn(
+    async (variables: {
+      body: {
+        agent_soul: Record<string, unknown>
+      }
+    }) => ({
+      agent_soul: variables.body.agent_soul,
+    }),
+  ),
+)
 
-const composerPutMutationOptions = vi.hoisted(() => vi.fn((options?: {
-  onSuccess?: (data: { agent_soul: Record<string, unknown> }, variables: {
-    params: { agent_id: string }
-    body: {
-      agent_soul: Record<string, unknown>
-    }
-  }) => void
-}) => ({
-  mutationFn: async (variables: {
-    params: { agent_id: string }
-    body: {
-      agent_soul: Record<string, unknown>
-    }
-  }) => {
-    const data = await composerPutMutationFn(variables)
-    options?.onSuccess?.(data, variables)
-    return data
-  },
-})))
+const composerPutMutationOptions = vi.hoisted(() =>
+  vi.fn(
+    (options?: {
+      onSuccess?: (
+        data: { agent_soul: Record<string, unknown> },
+        variables: {
+          params: { agent_id: string }
+          body: {
+            agent_soul: Record<string, unknown>
+          }
+        },
+      ) => void
+    }) => ({
+      mutationFn: async (variables: {
+        params: { agent_id: string }
+        body: {
+          agent_soul: Record<string, unknown>
+        }
+      }) => {
+        const data = await composerPutMutationFn(variables)
+        options?.onSuccess?.(data, variables)
+        return data
+      },
+    }),
+  ),
+)
 
 type PublishAgentVariables = {
   params: { agent_id: string }
@@ -54,26 +68,31 @@ type PublishAgentResponse = {
   result: string
 }
 
-const publishAgentMutationFn = vi.hoisted(() => vi.fn(async (_variables: PublishAgentVariables): Promise<PublishAgentResponse> => ({
-  active_config_snapshot: {
-    id: 'snapshot-1',
-  },
-  active_config_snapshot_id: 'snapshot-1',
-  result: 'success',
-})))
+const publishAgentMutationFn = vi.hoisted(() =>
+  vi.fn(
+    async (_variables: PublishAgentVariables): Promise<PublishAgentResponse> => ({
+      active_config_snapshot: {
+        id: 'snapshot-1',
+      },
+      active_config_snapshot_id: 'snapshot-1',
+      result: 'success',
+    }),
+  ),
+)
 
-const publishAgentMutationOptions = vi.hoisted(() => vi.fn((options?: {
-  onSuccess?: (
-    data: PublishAgentResponse,
-    variables: PublishAgentVariables,
-  ) => void
-}) => ({
-  mutationFn: async (variables: PublishAgentVariables) => {
-    const data = await publishAgentMutationFn(variables)
-    options?.onSuccess?.(data, variables)
-    return data
-  },
-})))
+const publishAgentMutationOptions = vi.hoisted(() =>
+  vi.fn(
+    (options?: {
+      onSuccess?: (data: PublishAgentResponse, variables: PublishAgentVariables) => void
+    }) => ({
+      mutationFn: async (variables: PublishAgentVariables) => {
+        const data = await publishAgentMutationFn(variables)
+        options?.onSuccess?.(data, variables)
+        return data
+      },
+    }),
+  ),
+)
 
 function createDeferredPromise<T>() {
   let resolve!: (value: T) => void
@@ -89,6 +108,11 @@ function setDocumentVisibilityState(visibilityState: DocumentVisibilityState) {
     configurable: true,
     value: visibilityState,
   })
+}
+
+const configuredModel = {
+  provider: 'langgenius/openai/openai',
+  model: 'gpt-4o-mini',
 }
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -150,19 +174,21 @@ function renderUseAgentConfigureSync({
   const store = createStore()
   const wrapper = ({ children }: PropsWithChildren) => (
     <QueryClientProvider client={queryClient}>
-      <JotaiProvider store={store}>
-        {children}
-      </JotaiProvider>
+      <JotaiProvider store={store}>{children}</JotaiProvider>
     </QueryClientProvider>
   )
 
   return {
-    ...renderHook(() => useAgentConfigureSync({
-      agentId: 'agent-1',
-      baseConfig,
-      currentModel,
-      enabled: true,
-    }), { wrapper }),
+    ...renderHook(
+      () =>
+        useAgentConfigureSync({
+          agentId: 'agent-1',
+          baseConfig,
+          currentModel,
+          enabled: true,
+        }),
+      { wrapper },
+    ),
     queryClient,
     store,
   }
@@ -207,20 +233,22 @@ describe('useAgentConfigureSync', () => {
       await vi.advanceTimersByTimeAsync(5000)
     })
 
-    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
-      params: {
-        agent_id: 'agent-1',
-      },
-      body: expect.objectContaining({
-        variant: 'agent_app',
-        save_strategy: 'save_to_current_version',
-        agent_soul: expect.objectContaining({
-          prompt: expect.objectContaining({
-            system_prompt: 'Draft only prompt',
+    expect(composerPutMutationFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: expect.objectContaining({
+          variant: 'agent_app',
+          save_strategy: 'save_to_current_version',
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Draft only prompt',
+            }),
           }),
         }),
       }),
-    }))
+    )
     expect(queryClient.getQueryData(['agent-composer', 'agent-1'])).toEqual({
       agent_soul: expect.objectContaining({
         prompt: expect.objectContaining({
@@ -289,25 +317,63 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
-    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
-      params: {
-        agent_id: 'agent-1',
-      },
-      body: expect.objectContaining({
-        variant: 'agent_app',
-        save_strategy: 'save_to_current_version',
-        agent_soul: expect.objectContaining({
-          prompt: expect.objectContaining({
-            system_prompt: 'Closing prompt',
+    expect(composerPutMutationFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: expect.objectContaining({
+          variant: 'agent_app',
+          save_strategy: 'save_to_current_version',
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Closing prompt',
+            }),
           }),
         }),
       }),
-    }))
+    )
 
     await act(async () => {
       saveDeferred.resolve({ agent_soul: {} })
       await Promise.resolve()
     })
+  })
+
+  it('should save the latest dirty draft when Configure unmounts before autosave runs', async () => {
+    const { store, unmount } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Route leave prompt',
+      })
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+
+    await act(async () => {
+      unmount()
+      await Promise.resolve()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+    expect(composerPutMutationFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: expect.objectContaining({
+          variant: 'agent_app',
+          save_strategy: 'save_to_current_version',
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Route leave prompt',
+            }),
+          }),
+        }),
+      }),
+    )
   })
 
   it('should include Agent Soul files when autosaving file changes', async () => {
@@ -332,20 +398,22 @@ describe('useAgentConfigureSync', () => {
       await vi.advanceTimersByTimeAsync(5000)
     })
 
-    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
-      body: expect.objectContaining({
-        agent_soul: expect.objectContaining({
-          config_files: [
-            {
-              file_id: 'drive-file-1',
-              file_kind: 'upload_file',
-              name: 'uploaded.md',
-            },
-          ],
-          config_skills: [],
+    expect(composerPutMutationFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            config_files: [
+              {
+                file_id: 'drive-file-1',
+                file_kind: 'upload_file',
+                name: 'uploaded.md',
+              },
+            ],
+            config_skills: [],
+          }),
         }),
       }),
-    }))
+    )
   })
 
   it('should preserve uploaded skills when prompt is updated immediately after upload', async () => {
@@ -370,27 +438,29 @@ describe('useAgentConfigureSync', () => {
       await vi.advanceTimersByTimeAsync(5000)
     })
 
-    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
-      body: expect.objectContaining({
-        agent_soul: expect.objectContaining({
-          prompt: expect.objectContaining({
-            system_prompt: 'Use [§skill:Tender Analyzer:Tender Analyzer§]',
+    expect(composerPutMutationFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Use [§skill:Tender Analyzer:Tender Analyzer§]',
+            }),
+            config_skills: [
+              {
+                description: 'Extracts tender requirements.',
+                file_id: 'tool-file-1',
+                file_kind: 'tool_file',
+                hash: 'sha256:skill-1',
+                mime_type: 'application/zip',
+                name: 'Tender Analyzer',
+                size: 42,
+              },
+            ],
+            config_files: [],
           }),
-          config_skills: [
-            {
-              description: 'Extracts tender requirements.',
-              file_id: 'tool-file-1',
-              file_kind: 'tool_file',
-              hash: 'sha256:skill-1',
-              mime_type: 'application/zip',
-              name: 'Tender Analyzer',
-              size: 42,
-            },
-          ],
-          config_files: [],
         }),
       }),
-    }))
+    )
   })
 
   it('should preserve uploaded files when prompt is updated immediately after upload', async () => {
@@ -416,26 +486,28 @@ describe('useAgentConfigureSync', () => {
       await vi.advanceTimersByTimeAsync(5000)
     })
 
-    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
-      body: expect.objectContaining({
-        agent_soul: expect.objectContaining({
-          prompt: expect.objectContaining({
-            system_prompt: 'Use [§file:uploaded.md:uploaded.md§]',
+    expect(composerPutMutationFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Use [§file:uploaded.md:uploaded.md§]',
+            }),
+            config_files: [
+              {
+                file_id: 'drive-file-1',
+                file_kind: 'upload_file',
+                hash: 'sha256:file-1',
+                mime_type: 'text/markdown',
+                name: 'uploaded.md',
+                size: 5,
+              },
+            ],
+            config_skills: [],
           }),
-          config_files: [
-            {
-              file_id: 'drive-file-1',
-              file_kind: 'upload_file',
-              hash: 'sha256:file-1',
-              mime_type: 'text/markdown',
-              name: 'uploaded.md',
-              size: 5,
-            },
-          ],
-          config_skills: [],
         }),
       }),
-    }))
+    )
   })
 
   it('should autosave when knowledge retrieval validation fails', async () => {
@@ -499,20 +571,22 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
-    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
-      params: {
-        agent_id: 'agent-1',
-      },
-      body: expect.objectContaining({
-        variant: 'agent_app',
-        save_strategy: 'save_to_current_version',
-        agent_soul: expect.objectContaining({
-          prompt: expect.objectContaining({
-            system_prompt: 'Run prompt',
+    expect(composerPutMutationFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: expect.objectContaining({
+          variant: 'agent_app',
+          save_strategy: 'save_to_current_version',
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Run prompt',
+            }),
           }),
         }),
       }),
-    }))
+    )
     expect(result.current.draftSavedAt).toBe(1710000200000)
   })
 
@@ -570,17 +644,19 @@ describe('useAgentConfigureSync', () => {
       await result.current.saveDraft()
     })
 
-    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
-      body: expect.objectContaining({
-        agent_soul: expect.objectContaining({
-          model: expect.objectContaining({
-            model_provider: 'langgenius/openai/openai',
-            model: 'gpt-4o-mini',
-            plugin_id: 'langgenius/openai',
+    expect(composerPutMutationFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            model: expect.objectContaining({
+              model_provider: 'langgenius/openai/openai',
+              model: 'gpt-4o-mini',
+              plugin_id: 'langgenius/openai',
+            }),
           }),
         }),
       }),
-    }))
+    )
   })
 
   it('should save draft manually when knowledge retrieval validation fails', async () => {
@@ -607,7 +683,9 @@ describe('useAgentConfigureSync', () => {
   })
 
   it('should publish only when publishDraft is called explicitly', async () => {
-    const { queryClient, result, store } = renderUseAgentConfigureSync()
+    const { queryClient, result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     queryClient.setQueryData(['agent-detail', 'agent-1'], {
       active_config_is_published: false,
@@ -624,20 +702,22 @@ describe('useAgentConfigureSync', () => {
       await result.current.publishDraft()
     })
 
-    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
-      params: {
-        agent_id: 'agent-1',
-      },
-      body: expect.objectContaining({
-        variant: 'agent_app',
-        save_strategy: 'save_to_current_version',
-        agent_soul: expect.objectContaining({
-          prompt: expect.objectContaining({
-            system_prompt: 'Published prompt',
+    expect(composerPutMutationFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: expect.objectContaining({
+          variant: 'agent_app',
+          save_strategy: 'save_to_current_version',
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Published prompt',
+            }),
           }),
         }),
       }),
-    }))
+    )
     expect(publishAgentMutationFn).toHaveBeenCalledWith({
       params: {
         agent_id: 'agent-1',
@@ -654,12 +734,28 @@ describe('useAgentConfigureSync', () => {
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
+  it('should toast and skip publish when no model is configured', async () => {
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Published prompt',
+      })
+    })
+
+    await act(async () => {
+      await result.current.publishDraft()
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith('common.modelProvider.selectModel')
+  })
+
   it('should keep default model fallback from creating unpublished changes after publish', async () => {
     const { result, store } = renderUseAgentConfigureSync({
-      currentModel: {
-        provider: 'langgenius/openai/openai',
-        model: 'gpt-4o-mini',
-      },
+      currentModel: configuredModel,
     })
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -681,6 +777,7 @@ describe('useAgentConfigureSync', () => {
 
   it('should keep base config fallback fields from creating unpublished changes after publish', async () => {
     const { result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
       baseConfig: {
         app_features: {
           file_upload: {
@@ -708,7 +805,9 @@ describe('useAgentConfigureSync', () => {
   })
 
   it('should publish the current draft snapshot instead of a stale caller payload', async () => {
-    const { result, store } = renderUseAgentConfigureSync()
+    const { result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
 
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -721,22 +820,26 @@ describe('useAgentConfigureSync', () => {
       await result.current.publishDraft()
     })
 
-    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
-      body: expect.objectContaining({
-        save_strategy: 'save_to_current_version',
-        agent_soul: expect.objectContaining({
-          prompt: expect.objectContaining({
-            system_prompt: 'Current draft prompt',
+    expect(composerPutMutationFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          save_strategy: 'save_to_current_version',
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Current draft prompt',
+            }),
           }),
         }),
       }),
-    }))
+    )
     expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
   })
 
   it('should reject publish and keep the publish mutation untouched when saving the draft fails', async () => {
     composerPutMutationFn.mockRejectedValueOnce(new Error('save failed'))
-    const { queryClient, result, store } = renderUseAgentConfigureSync()
+    const { queryClient, result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
     queryClient.setQueryData(['agent-detail', 'agent-1'], {
       active_config_is_published: false,
       name: 'Agent',
@@ -749,7 +852,9 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    await expect(result.current.publishDraft()).rejects.toThrow('Failed to save agent composer draft.')
+    await expect(result.current.publishDraft()).rejects.toThrow(
+      'Failed to save agent composer draft.',
+    )
 
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
     expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
@@ -760,7 +865,9 @@ describe('useAgentConfigureSync', () => {
   })
 
   it('should toast and skip publish when knowledge retrieval validation fails', async () => {
-    const { result, store } = renderUseAgentConfigureSync()
+    const { result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
 
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -781,11 +888,15 @@ describe('useAgentConfigureSync', () => {
 
     expect(composerPutMutationFn).not.toHaveBeenCalled()
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
-    expect(toastMock.error).toHaveBeenCalledWith('common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label"}')
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label"}',
+    )
   })
 
   it('should toast metadata filtering model error when publishing with automatic metadata filtering and no model', async () => {
-    const { result, store } = renderUseAgentConfigureSync()
+    const { result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
 
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -807,13 +918,17 @@ describe('useAgentConfigureSync', () => {
 
     expect(composerPutMutationFn).not.toHaveBeenCalled()
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
-    expect(toastMock.error).toHaveBeenCalledWith('agentV2.agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired')
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'agentV2.agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired',
+    )
   })
 
   it('should expose publishing status from the publish mutation while publish is pending', async () => {
     const publishDeferred = createDeferredPromise<PublishAgentResponse>()
     publishAgentMutationFn.mockReturnValueOnce(publishDeferred.promise)
-    const { result } = renderUseAgentConfigureSync()
+    const { result } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
     let publishPromise!: Promise<void>
     act(() => {
       publishPromise = result.current.publishDraft()

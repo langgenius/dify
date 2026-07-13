@@ -1,6 +1,12 @@
 import type { ActionItem, AppSearchResult, SearchResult } from './types'
 import type { App } from '@/types/app'
-import { RiFileListLine, RiLayoutLine, RiLineChartLine, RiNodeTree, RiTerminalBoxLine } from '@remixicon/react'
+import {
+  RiFileListLine,
+  RiLayoutLine,
+  RiLineChartLine,
+  RiNodeTree,
+  RiTerminalBoxLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { fetchAppList } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
@@ -10,7 +16,7 @@ import AppIcon from '../../base/app-icon'
 
 const WORKFLOW_MODES = new Set([AppModeEnum.WORKFLOW, AppModeEnum.ADVANCED_CHAT])
 
-type AppSection = { id: string, label: string, path: string, icon: React.ElementType }
+type AppSection = { id: string; label: string; path: string; icon: React.ElementType }
 
 const getAppSections = (app: App): AppSection[] => {
   const base = `/app/${app.id}`
@@ -22,7 +28,12 @@ const getAppSections = (app: App): AppSection[] => {
     ]
   }
   return [
-    { id: 'configuration', label: 'Configuration', path: `${base}/configuration`, icon: RiLayoutLine },
+    {
+      id: 'configuration',
+      label: 'Configuration',
+      path: `${base}/configuration`,
+      icon: RiLayoutLine,
+    },
     { id: 'overview', label: 'Overview', path: `${base}/overview`, icon: RiLineChartLine },
     { id: 'logs', label: 'Logs', path: `${base}/logs`, icon: RiFileListLine },
     { id: 'develop', label: 'Develop', path: `${base}/develop`, icon: RiTerminalBoxLine },
@@ -47,7 +58,7 @@ const appIcon = (app: App) => (
 )
 
 const parser = (apps: App[]): AppSearchResult[] => {
-  return apps.map(app => ({
+  return apps.map((app) => ({
     id: app.id,
     title: app.name,
     description: app.description,
@@ -107,8 +118,7 @@ export const appAction: ActionItem = {
       })
       const apps = response?.data || []
       return isScoped ? parserWithSections(apps) : parser(apps)
-    }
-    catch (error) {
+    } catch (error) {
       console.warn('App search failed:', error)
       return []
     }

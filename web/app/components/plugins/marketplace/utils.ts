@@ -7,9 +7,7 @@ import type {
 import type { ActivePluginType } from './constants'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import {
-  MARKETPLACE_API_PREFIX,
-} from '@/config'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 import { marketplaceClient } from '@/service/client'
 import { getMarketplaceUrl } from '@/utils/var'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
@@ -21,15 +19,16 @@ type MarketplaceFetchOptions = {
 export function buildCarouselPages<T>(items: T[], itemsPerPage: number): T[][] {
   const pages: T[][] = []
 
-  for (let i = 0; i < items.length; i += itemsPerPage)
-    pages.push(items.slice(i, i + itemsPerPage))
+  for (let i = 0; i < items.length; i += itemsPerPage) pages.push(items.slice(i, i + itemsPerPage))
 
   return pages
 }
 
 type MarketplacePluginPayload = MarketplacePlugin | (Plugin & { labels?: Plugin['label'] })
 
-export const getPluginIconInMarketplace = (plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>) => {
+export const getPluginIconInMarketplace = (
+  plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>,
+) => {
   if (plugin.type === 'bundle')
     return `${MARKETPLACE_API_PREFIX}/bundles/${plugin.org}/${plugin.name}/icon`
   return `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`
@@ -52,13 +51,19 @@ export const getFormattedPlugin = (payload: MarketplacePluginPayload): Plugin =>
   }
 }
 
-export const getPluginLinkInMarketplace = (plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>, params?: Record<string, string | undefined>) => {
+export const getPluginLinkInMarketplace = (
+  plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>,
+  params?: Record<string, string | undefined>,
+) => {
   if (plugin.type === 'bundle')
     return getMarketplaceUrl(`/bundles/${plugin.org}/${plugin.name}`, params)
   return getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`, params)
 }
 
-export const getMarketplaceCategoryUrl = (category?: string, params?: Record<string, string | undefined>) => {
+export const getMarketplaceCategoryUrl = (
+  category?: string,
+  params?: Record<string, string | undefined>,
+) => {
   return getMarketplaceUrl(category ? `/plugins/${category}` : '/plugins', params)
 }
 export const getMarketplacePluginsByCollectionId = async (
@@ -69,18 +74,21 @@ export const getMarketplacePluginsByCollectionId = async (
   let plugins: Plugin[] = []
 
   try {
-    const marketplaceCollectionPluginsDataJson = await marketplaceClient.collectionPlugins({
-      params: {
-        collectionId,
+    const marketplaceCollectionPluginsDataJson = await marketplaceClient.collectionPlugins(
+      {
+        params: {
+          collectionId,
+        },
+        body: query ?? {},
       },
-      body: query ?? {},
-    }, {
-      signal: options?.signal,
-    })
-    plugins = (marketplaceCollectionPluginsDataJson.data?.plugins || []).map(plugin => getFormattedPlugin(plugin))
-  }
-  // eslint-disable-next-line unused-imports/no-unused-vars
-  catch (e) {
+      {
+        signal: options?.signal,
+      },
+    )
+    plugins = (marketplaceCollectionPluginsDataJson.data?.plugins || []).map((plugin) =>
+      getFormattedPlugin(plugin),
+    )
+  } catch {
     plugins = []
   }
 
@@ -94,24 +102,27 @@ export const getMarketplaceCollectionsAndPlugins = async (
   let marketplaceCollections: MarketplaceCollection[] = []
   let marketplaceCollectionPluginsMap: Record<string, Plugin[]> = {}
   try {
-    const marketplaceCollectionsDataJson = await marketplaceClient.collections({
-      query: {
-        ...query,
-        page: 1,
-        page_size: 100,
+    const marketplaceCollectionsDataJson = await marketplaceClient.collections(
+      {
+        query: {
+          ...query,
+          page: 1,
+          page_size: 100,
+        },
       },
-    }, {
-      signal: options?.signal,
-    })
+      {
+        signal: options?.signal,
+      },
+    )
     marketplaceCollections = marketplaceCollectionsDataJson.data?.collections || []
-    await Promise.all(marketplaceCollections.map(async (collection: MarketplaceCollection) => {
-      const plugins = await getMarketplacePluginsByCollectionId(collection.name, query, options)
+    await Promise.all(
+      marketplaceCollections.map(async (collection: MarketplaceCollection) => {
+        const plugins = await getMarketplacePluginsByCollectionId(collection.name, query, options)
 
-      marketplaceCollectionPluginsMap[collection.name] = plugins
-    }))
-  }
-  // eslint-disable-next-line unused-imports/no-unused-vars
-  catch (e) {
+        marketplaceCollectionPluginsMap[collection.name] = plugins
+      }),
+    )
+  } catch {
     marketplaceCollections = []
     marketplaceCollectionPluginsMap = {}
   }
@@ -136,41 +147,35 @@ export const getMarketplacePlugins = async (
     }
   }
 
-  const {
-    query,
-    sort_by,
-    sort_order,
-    category,
-    tags,
-    type,
-    page_size = 40,
-  } = queryParams
+  const { query, sort_by, sort_order, category, tags, type, page_size = 40 } = queryParams
 
   try {
-    const res = await marketplaceClient.searchAdvanced({
-      params: {
-        kind: type === 'bundle' ? 'bundles' : 'plugins',
+    const res = await marketplaceClient.searchAdvanced(
+      {
+        params: {
+          kind: type === 'bundle' ? 'bundles' : 'plugins',
+        },
+        body: {
+          page: pageParam,
+          page_size,
+          query,
+          sort_by,
+          sort_order,
+          category: category !== 'all' ? category : '',
+          tags,
+        },
       },
-      body: {
-        page: pageParam,
-        page_size,
-        query,
-        sort_by,
-        sort_order,
-        category: category !== 'all' ? category : '',
-        tags,
-      },
-    }, { signal })
+      { signal },
+    )
     const resPlugins = res.data.bundles || res.data.plugins || []
 
     return {
-      plugins: resPlugins.map(plugin => getFormattedPlugin(plugin)),
+      plugins: resPlugins.map((plugin) => getFormattedPlugin(plugin)),
       total: res.data.total,
       page: pageParam,
       page_size,
     }
-  }
-  catch {
+  } catch {
     return {
       plugins: [],
       total: 0,
@@ -181,29 +186,35 @@ export const getMarketplacePlugins = async (
 }
 
 export const getMarketplaceListCondition = (pluginType: string) => {
-  if ([PluginCategoryEnum.tool, PluginCategoryEnum.agent, PluginCategoryEnum.model, PluginCategoryEnum.datasource, PluginCategoryEnum.trigger].includes(pluginType as PluginCategoryEnum))
+  if (
+    [
+      PluginCategoryEnum.tool,
+      PluginCategoryEnum.agent,
+      PluginCategoryEnum.model,
+      PluginCategoryEnum.datasource,
+      PluginCategoryEnum.trigger,
+    ].includes(pluginType as PluginCategoryEnum)
+  )
     return `category=${pluginType}`
 
-  if (pluginType === PluginCategoryEnum.extension)
-    return 'category=endpoint'
+  if (pluginType === PluginCategoryEnum.extension) return 'category=endpoint'
 
-  if (pluginType === 'bundle')
-    return 'type=bundle'
+  if (pluginType === 'bundle') return 'type=bundle'
 
   return ''
 }
 
 export const getMarketplaceListFilterType = (category: ActivePluginType) => {
-  if (category === PLUGIN_TYPE_SEARCH_MAP.all)
-    return undefined
+  if (category === PLUGIN_TYPE_SEARCH_MAP.all) return undefined
 
-  if (category === PLUGIN_TYPE_SEARCH_MAP.bundle)
-    return 'bundle'
+  if (category === PLUGIN_TYPE_SEARCH_MAP.bundle) return 'bundle'
 
   return 'plugin'
 }
 
-export function getCollectionsParams(category: ActivePluginType): CollectionsAndPluginsSearchParams {
+export function getCollectionsParams(
+  category: ActivePluginType,
+): CollectionsAndPluginsSearchParams {
   if (category === PLUGIN_TYPE_SEARCH_MAP.all) {
     return {}
   }

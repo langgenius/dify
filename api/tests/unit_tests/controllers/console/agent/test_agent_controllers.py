@@ -236,7 +236,7 @@ def test_agent_app_list_and_create_use_agent_route(
                 items=[_app_detail_obj(id="app-list", bound_agent_id="agent-list")],
             )
 
-        def create_app(self, tenant_id: str, params, current_user: object) -> object:
+        def create_app(self, tenant_id: str, params, current_user: object, *, session: object) -> object:
             captured["create"] = {"tenant_id": tenant_id, "params": params, "current_user": current_user}
             return _app_detail_obj(id="app-created", bound_agent_id="agent-created")
 
@@ -392,7 +392,8 @@ def test_agent_app_create_omits_optional_role_as_empty_string(
     captured: dict[str, object] = {}
 
     class FakeAppService:
-        def create_app(self, tenant_id: str, params: object, account: object) -> object:
+        def create_app(self, tenant_id: str, params: object, account: object, *, session: object) -> object:
+            del session
             captured["create"] = {"tenant_id": tenant_id, "params": params, "account": account}
             return _app_detail_obj(id="app-created", bound_agent_id="agent-created")
 
@@ -472,11 +473,11 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
             captured["get_app"] = app_obj
             return app_obj
 
-        def update_app(self, app_obj: object, args: dict[str, object]) -> object:
+        def update_app(self, app_obj: object, args: dict[str, object], *, session: object) -> object:
             captured["update"] = {"app": app_obj, "args": args}
             return _app_detail_obj(id="app-1", name=args["name"], bound_agent_id=agent_id)
 
-        def delete_app(self, app_obj: object) -> None:
+        def delete_app(self, app_obj: object, *, session: object) -> None:
             captured["delete"] = app_obj
 
     monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
@@ -661,18 +662,26 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
         discard_agent_app_build_draft,
     )
 
+    def assert_call_without_session(key: str, expected: dict[str, object]) -> None:
+        call = dict(captured[key])  # type: ignore[arg-type]
+        assert call.pop("session", None) is not None
+        assert call == expected
+
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/publish",
         json={"version_note": "publish v1"},
     ):
         published = unwrap(AgentPublishApi.post)(AgentPublishApi(), "tenant-1", current_user, agent_id)
     assert published["active_config_snapshot_id"] == "version-1"
-    assert captured["publish"] == {
-        "tenant_id": "tenant-1",
-        "agent_id": agent_id,
-        "account_id": account_id,
-        "version_note": "publish v1",
-    }
+    assert_call_without_session(
+        "publish",
+        {
+            "tenant_id": "tenant-1",
+            "agent_id": agent_id,
+            "account_id": account_id,
+            "version_note": "publish v1",
+        },
+    )
 
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft/checkout",
@@ -682,17 +691,20 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
             AgentBuildDraftCheckoutApi(), "tenant-1", current_user, agent_id
         )
     assert checked_out["draft"]["id"] == "build-draft-1"
-    assert captured["checkout"] == {
-        "tenant_id": "tenant-1",
-        "agent_id": agent_id,
-        "account_id": account_id,
-        "force": True,
-    }
+    assert_call_without_session(
+        "checkout",
+        {
+            "tenant_id": "tenant-1",
+            "agent_id": agent_id,
+            "account_id": account_id,
+            "force": True,
+        },
+    )
 
     with app.test_request_context("/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft"):
         loaded = unwrap(AgentBuildDraftApi.get)(AgentBuildDraftApi(), "tenant-1", current_user, agent_id)
     assert loaded["draft"]["id"] == "build-draft-1"
-    assert captured["load"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
+    assert_call_without_session("load", {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id})
 
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft",
@@ -711,7 +723,7 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
     ):
         applied = unwrap(AgentBuildDraftApplyApi.post)(AgentBuildDraftApplyApi(), "tenant-1", current_user, agent_id)
     assert applied == {"result": "success", "draft": {"id": "draft-1"}}
-    assert captured["apply"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
+    assert_call_without_session("apply", {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id})
 
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft",
@@ -719,7 +731,7 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
     ):
         discarded = unwrap(AgentBuildDraftApi.delete)(AgentBuildDraftApi(), "tenant-1", current_user, agent_id)
     assert discarded == {"result": "success"}
-    assert captured["discard"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
+    assert_call_without_session("discard", {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id})
 
 
 def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(
@@ -775,7 +787,7 @@ def test_agent_api_status_and_key_routes_resolve_backing_app(
     monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda app_id: 1)
 
     class FakeAppService:
-        def update_app_api_status(self, app_obj: object, enable_api: bool) -> object:
+        def update_app_api_status(self, app_obj: object, enable_api: bool, *, session: object) -> object:
             captured["enable"] = {"app": app_obj, "enable_api": enable_api}
             app_model.enable_api = enable_api
             return app_model
@@ -890,7 +902,7 @@ def test_agent_app_update_allows_empty_role(app: Flask, monkeypatch: pytest.Monk
         def get_app(self, app_obj: object) -> object:
             return app_obj
 
-        def update_app(self, app_obj: object, args: dict[str, object]) -> object:
+        def update_app(self, app_obj: object, args: dict[str, object], *, session: object) -> object:
             captured["update"] = {"app": app_obj, "args": args}
             return _app_detail_obj(id="app-1", name=args["name"], bound_agent_id=agent_id)
 
@@ -1292,6 +1304,7 @@ def test_workflow_composer_copy_from_roster(app: Flask, monkeypatch: pytest.Monk
         )
 
     assert result["binding"]["binding_type"] == "inline_agent"
+    assert captured.pop("session") is not None
     assert captured == {
         "tenant_id": "tenant-1",
         "app_id": "app-1",
@@ -1563,6 +1576,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     assert args["conversation_id"] == "debug-conversation-1"
     assert args["inputs"] == {}
     assert args["auto_generate_name"] is False
+    assert args[completion_controller.AGENT_RUNTIME_EXIT_INTENT_ARG] == "delete"
     assert args["external_trace_id"] == "trace-1"
 
 
@@ -1649,6 +1663,51 @@ def test_agent_chat_helper_forces_agent_streaming_and_external_trace(
     assert args["conversation_id"] == "debug-conversation-1"
     assert args["auto_generate_name"] is False
     assert args["external_trace_id"] == "trace-1"
+
+
+def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
+    current_user = SimpleNamespace(id=account_id)
+    captured: dict[str, object] = {}
+
+    def generate(**kwargs: object) -> dict[str, object]:
+        captured.update(kwargs)
+        return {"answer": "ok"}
+
+    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
+    monkeypatch.setattr(
+        completion_controller,
+        "_resolve_current_user_agent_debug_conversation_id",
+        lambda **kwargs: "debug-conversation-1",
+    )
+    monkeypatch.setattr(
+        completion_controller.helper,
+        "compact_generate_response",
+        lambda response: {"response": response},
+    )
+
+    with app.test_request_context(
+        json={
+            "inputs": {},
+            "query": "hello",
+            "response_mode": "streaming",
+            completion_controller.AGENT_RUNTIME_EXIT_INTENT_ARG: "delete",
+        }
+    ):
+        result = completion_controller._create_chat_message(
+            current_user=current_user,
+            app_model=app_model,
+            session=Mock(),
+        )
+
+    assert result == {"response": {"answer": "ok"}}
+    assert captured["streaming"] is True
+    args = cast(dict[str, object], captured["args"])
+    assert args["response_mode"] == "streaming"
+    assert args["conversation_id"] == "debug-conversation-1"
+    assert completion_controller.AGENT_RUNTIME_EXIT_INTENT_ARG not in args
 
 
 def test_agent_chat_helper_rejects_foreign_debug_conversation(
@@ -1896,8 +1955,18 @@ def test_list_agent_chat_messages_uses_current_user_conversation(
         captured.update(kwargs)
         return conversation
 
+    class SessionProxy:
+        def __call__(self):
+            return session
+
+        def scalar(self, stmt: object):
+            return session.scalar(stmt)
+
+        def scalars(self, stmt: object):
+            return session.scalars(stmt)
+
     monkeypatch.setattr(message_controller.ConversationService, "get_conversation", get_conversation)
-    monkeypatch.setattr(message_controller, "db", SimpleNamespace(session=session))
+    monkeypatch.setattr(message_controller, "db", SimpleNamespace(session=SessionProxy()))
     monkeypatch.setattr(message_controller, "attach_message_extra_contents", lambda messages: None)
     monkeypatch.setattr(message_controller, "MessageInfiniteScrollPaginationResponse", FakeMessagePaginationResponse)
 
@@ -1905,6 +1974,7 @@ def test_list_agent_chat_messages_uses_current_user_conversation(
         result = message_controller._list_chat_messages(app_model=app_model, current_user=current_user)
 
     assert result == {"data": [message_id], "limit": 20, "has_more": False}
+    assert captured.pop("session") is session
     assert captured == {"app_model": app_model, "conversation_id": conversation_id, "user": current_user}
 
 

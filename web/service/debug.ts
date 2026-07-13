@@ -24,21 +24,38 @@ export const stopChatMessageResponding = async (appId: string, taskId: string) =
   return post(`apps/${appId}/chat-messages/${taskId}/stop`)
 }
 
-export const sendCompletionMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onError, onMessageReplace }: {
-  onData: IOnData
-  onCompleted: IOnCompleted
-  onError: IOnError
-  onMessageReplace: IOnMessageReplace
-}) => {
-  return ssePost(`apps/${appId}/completion-messages`, {
-    body: {
-      ...body,
-      response_mode: 'streaming',
+export const sendCompletionMessage = async (
+  appId: string,
+  body: Record<string, any>,
+  {
+    onData,
+    onCompleted,
+    onError,
+    onMessageReplace,
+  }: {
+    onData: IOnData
+    onCompleted: IOnCompleted
+    onError: IOnError
+    onMessageReplace: IOnMessageReplace
+  },
+) => {
+  return ssePost(
+    `apps/${appId}/completion-messages`,
+    {
+      body: {
+        ...body,
+        response_mode: 'streaming',
+      },
     },
-  }, { onData, onCompleted, onError, onMessageReplace })
+    { onData, onCompleted, onError, onMessageReplace },
+  )
 }
 
-export const fetchSuggestedQuestions = (appId: string, messageId: string, getAbortController?: any) => {
+export const fetchSuggestedQuestions = (
+  appId: string,
+  messageId: string,
+  getAbortController?: any,
+) => {
   return get(
     `apps/${appId}/chat-messages/${messageId}/suggested-questions`,
     {},
@@ -48,14 +65,22 @@ export const fetchSuggestedQuestions = (appId: string, messageId: string, getAbo
   )
 }
 
-export const fetchConversationMessages = (appId: string, conversation_id: string, getAbortController?: any) => {
-  return get(`apps/${appId}/chat-messages`, {
-    params: {
-      conversation_id,
+export const fetchConversationMessages = (
+  appId: string,
+  conversation_id: string,
+  getAbortController?: any,
+) => {
+  return get(
+    `apps/${appId}/chat-messages`,
+    {
+      params: {
+        conversation_id,
+      },
     },
-  }, {
-    getAbortController,
-  })
+    {
+      getAbortController,
+    },
+  )
 }
 
 export const generateBasicAppFirstTimeRule = (body: Record<string, any>) => {
@@ -85,19 +110,19 @@ export const generateRule = (body: Record<string, any>) => {
 // string interpolation (``workflowGenerator.errors.${code}``) rather than
 // importing the union. Kept here so the ``GenerateWorkflowResponse``
 // definition below documents the contract in one place.
-type GenerateWorkflowErrorCode
-  = | 'INVALID_JSON'
-    | 'INVALID_SCHEMA'
-    | 'EMPTY_INSTRUCTION'
-    | 'EMPTY_PLAN'
-    | 'UNKNOWN_NODE_REFERENCE'
-    | 'INVALID_CONTAINER'
-    | 'UNRESOLVED_REFERENCE'
-    | 'UNKNOWN_TOOL'
-    | 'MISSING_TERMINAL'
-    | 'MISSING_START'
-    | 'DANGLING_EDGE'
-    | 'MODEL_ERROR'
+type GenerateWorkflowErrorCode =
+  | 'INVALID_JSON'
+  | 'INVALID_SCHEMA'
+  | 'EMPTY_INSTRUCTION'
+  | 'EMPTY_PLAN'
+  | 'UNKNOWN_NODE_REFERENCE'
+  | 'INVALID_CONTAINER'
+  | 'UNRESOLVED_REFERENCE'
+  | 'UNKNOWN_TOOL'
+  | 'MISSING_TERMINAL'
+  | 'MISSING_START'
+  | 'DANGLING_EDGE'
+  | 'MODEL_ERROR'
 
 type GenerateWorkflowError = {
   code: GenerateWorkflowErrorCode | string
@@ -139,7 +164,12 @@ export type GenerateWorkflowBody = {
   mode: 'workflow' | 'advanced-chat' | 'auto'
   instruction: string
   ideal_output?: string
-  model_config: { provider: string, name: string, mode: string, completion_params?: Record<string, unknown> }
+  model_config: {
+    provider: string
+    name: string
+    mode: string
+    completion_params?: Record<string, unknown>
+  }
   /**
    * Existing draft graph for the cmd+k `/refine` flow. When present the
    * backend refines this graph instead of generating from scratch. Omitted
@@ -167,9 +197,13 @@ export const generateWorkflow = (body: GenerateWorkflowBody, options?: GenerateW
   // otherwise the shared ``post()`` wrapper sees ``undefined`` and that
   // breaks tests asserting the 2-arg call shape, with no behaviour upside.
   if (options?.getAbortController) {
-    return post<GenerateWorkflowResponse>('/workflow-generate', { body }, {
-      getAbortController: options.getAbortController,
-    })
+    return post<GenerateWorkflowResponse>(
+      '/workflow-generate',
+      { body },
+      {
+        getAbortController: options.getAbortController,
+      },
+    )
   }
   return post<GenerateWorkflowResponse>('/workflow-generate', { body })
 }
@@ -222,8 +256,8 @@ export const generateWorkflowStream = (
   callbacks: GenerateWorkflowStreamCallbacks,
 ) => {
   return sseGeneratorPost('/workflow-generate/stream', body, {
-    onPlan: data => callbacks.onPlan?.(data as unknown as WorkflowGenPlan),
-    onResult: data => callbacks.onResult?.(data as unknown as GenerateWorkflowResponse),
+    onPlan: (data) => callbacks.onPlan?.(data as unknown as WorkflowGenPlan),
+    onResult: (data) => callbacks.onResult?.(data as unknown as GenerateWorkflowResponse),
     onError: callbacks.onError,
     onCompleted: callbacks.onCompleted,
     getAbortController: callbacks.getAbortController,
@@ -254,9 +288,13 @@ export const fetchWorkflowInstructionSuggestions = (
   options?: GenerateWorkflowOptions,
 ) => {
   if (options?.getAbortController) {
-    return post<WorkflowInstructionSuggestionsResponse>('/workflow-generate/suggestions', { body }, {
-      getAbortController: options.getAbortController,
-    })
+    return post<WorkflowInstructionSuggestionsResponse>(
+      '/workflow-generate/suggestions',
+      { body },
+      {
+        getAbortController: options.getAbortController,
+      },
+    )
   }
   return post<WorkflowInstructionSuggestionsResponse>('/workflow-generate/suggestions', { body })
 }
@@ -266,8 +304,19 @@ export const fetchPromptTemplate = ({
   mode,
   modelName,
   hasSetDataSet,
-}: { appMode: AppModeEnum, mode: ModelModeType, modelName: string, hasSetDataSet: boolean }) => {
-  return get<Promise<{ chat_prompt_config: ChatPromptConfig, completion_prompt_config: CompletionPromptConfig, stop: [] }>>('/app/prompt-templates', {
+}: {
+  appMode: AppModeEnum
+  mode: ModelModeType
+  modelName: string
+  hasSetDataSet: boolean
+}) => {
+  return get<
+    Promise<{
+      chat_prompt_config: ChatPromptConfig
+      completion_prompt_config: CompletionPromptConfig
+      stop: []
+    }>
+  >('/app/prompt-templates', {
     params: {
       app_mode: appMode,
       model_mode: mode,
@@ -280,6 +329,9 @@ export const fetchPromptTemplate = ({
 export const fetchTextGenerationMessage = ({
   appId,
   messageId,
-}: { appId: string, messageId: string }) => {
+}: {
+  appId: string
+  messageId: string
+}) => {
   return get<Promise<any>>(`/apps/${appId}/messages/${messageId}`)
 }

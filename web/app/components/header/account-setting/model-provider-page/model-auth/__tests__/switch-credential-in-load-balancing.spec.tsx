@@ -1,4 +1,7 @@
-import type { CustomModel, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  CustomModel,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -8,11 +11,42 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['credential.use', 'credential.create', 'credential.manage'],
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 // Mock components
 vi.mock('../authorized', () => ({
@@ -37,7 +71,12 @@ vi.mock('../authorized', () => ({
       data-hide-add-action={String(!!hideAddAction)}
       data-trigger-only-open-modal={String(!!triggerOnlyOpenModal)}
     >
-      <div data-testid="trigger-container" onClick={() => onItemClick?.(items[0]!.credentials[0])}>
+      <div
+        role="presentation"
+        data-testid="trigger-container"
+        onClick={() => onItemClick?.(items[0]!.credentials[0])}
+        onKeyDown={() => undefined}
+      >
         {renderTrigger()}
       </div>
     </div>
@@ -195,7 +234,11 @@ describe('SwitchCredentialInLoadBalancing', () => {
 
   // not_allowed_to_use=true: indicator is red and destructive button text is shown
   it('should show red indicator and unavailable button text when credential has not_allowed_to_use=true', () => {
-    const unavailableCredential = { credential_id: 'cred-1', credential_name: 'Key 1', not_allowed_to_use: true }
+    const unavailableCredential = {
+      credential_id: 'cred-1',
+      credential_name: 'Key 1',
+      not_allowed_to_use: true,
+    }
 
     render(
       <SwitchCredentialInLoadBalancing
@@ -213,7 +256,11 @@ describe('SwitchCredentialInLoadBalancing', () => {
 
   // from_enterprise=true on the selected credential: Enterprise badge appears in the trigger
   it('should show Enterprise badge when selected credential has from_enterprise=true', () => {
-    const enterpriseCredential = { credential_id: 'cred-1', credential_name: 'Enterprise Key', from_enterprise: true }
+    const enterpriseCredential = {
+      credential_id: 'cred-1',
+      credential_name: 'Enterprise Key',
+      from_enterprise: true,
+    }
 
     render(
       <SwitchCredentialInLoadBalancing

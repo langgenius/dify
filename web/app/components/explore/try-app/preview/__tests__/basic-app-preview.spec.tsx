@@ -34,9 +34,15 @@ vi.mock('@/app/components/app/configuration/config', async () => {
 
   function MockConfig() {
     const { modelConfig } = useDebugConfigurationContext()
-    const hasDeletedTool = modelConfig.agentConfig.tools.some(tool => 'tool_name' in tool && tool.isDeleted === true)
+    const hasDeletedTool = modelConfig.agentConfig.tools.some(
+      (tool) => 'tool_name' in tool && tool.isDeleted === true,
+    )
 
-    return <div data-testid="config-component" data-has-deleted-tool={String(hasDeletedTool)}>Config</div>
+    return (
+      <div data-testid="config-component" data-has-deleted-tool={String(hasDeletedTool)}>
+        Config
+      </div>
+    )
   }
 
   return {
@@ -360,10 +366,7 @@ describe('BasicAppPreview', () => {
       const modelConfig = appWithDatasets.model_config as Record<string, unknown>
       modelConfig.dataset_configs = {
         datasets: {
-          datasets: [
-            { dataset: { id: 'dataset-1' } },
-            { dataset: { id: 'dataset-2' } },
-          ],
+          datasets: [{ dataset: { id: 'dataset-1' } }, { dataset: { id: 'dataset-2' } }],
         },
       }
 
@@ -507,7 +510,10 @@ describe('BasicAppPreview', () => {
       render(<BasicAppPreview appId="test-app-id" />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('config-component')).toHaveAttribute('data-has-deleted-tool', 'true')
+        expect(screen.getByTestId('config-component')).toHaveAttribute(
+          'data-has-deleted-tool',
+          'true',
+        )
       })
     })
   })

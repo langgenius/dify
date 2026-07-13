@@ -1,14 +1,13 @@
 import json
 import logging
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.db import session_factory
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from graphon.enums import BuiltinNodeTypes, NodeType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -59,9 +58,8 @@ class SnippetService:
             session_maker = None
         if session is not None:
             session_maker = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
-        elif session_maker is None:
-            session_maker = session_factory.get_session_maker()
-        assert session_maker is not None
+        if session_maker is None:
+            raise ValueError("SnippetService requires a session or session_maker.")
         self._session = session
         self._session_maker = session_maker
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
@@ -70,7 +68,7 @@ class SnippetService:
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @contextmanager
-    def _session_scope(self) -> Iterator[Session]:
+    def _session_scope(self) -> Generator[Session, None, None]:
         current_session = getattr(self, "_session", None)
         if current_session is not None:
             yield current_session
@@ -192,7 +190,7 @@ class SnippetService:
         self,
         *,
         tenant_id: str,
-        session: scoped_session,
+        session: Session,
         page: int = 1,
         limit: int = 20,
         keyword: str | None = None,
@@ -627,8 +625,6 @@ class SnippetService:
             conversation_variables=[],
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             kind=WorkflowKind.SNIPPET.value,
-            marked_name="",
-            marked_comment="",
         )
         session.add(workflow)
 

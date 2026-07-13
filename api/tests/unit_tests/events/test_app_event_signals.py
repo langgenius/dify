@@ -1,17 +1,19 @@
-from unittest.mock import MagicMock, patch
+from collections.abc import Iterator
+from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.orm import Session
+
+from events.app_event import app_was_deleted, app_was_updated
+from models.account import Account
+from models.model import App, AppMode, IconType
+from services.app_service import AppService
 
 
 @pytest.fixture
-def mock_db():
-    with patch("services.app_service.db") as mock_db:
-        mock_db.session = MagicMock()
-        yield mock_db
-
-
-@pytest.fixture
-def _mock_deps():
+def _mock_deps() -> Iterator[None]:
     with (
         patch("services.app_service.BillingService"),
         patch("services.app_service.FeatureService"),
@@ -22,73 +24,85 @@ def _mock_deps():
 
 
 @pytest.fixture
-def app_model():
-    app = MagicMock()
-    app.id = "app-123"
-    app.tenant_id = "tenant-456"
-    app.name = "Old Name"
-    app.icon_type = "emoji"
-    app.icon = "🤖"
-    app.icon_background = "#fff"
-    app.enable_site = False
-    app.enable_api = False
+def account(sqlite_session: Session) -> Account:
+    account = Account(name="Signal Tester", email="signal-tester@example.com")
+    sqlite_session.add(account)
+    sqlite_session.commit()
+    return account
+
+
+@pytest.fixture
+def app_model(sqlite_session: Session, account: Account) -> App:
+    app = App(
+        tenant_id=str(uuid4()),
+        name="Old Name",
+        description="Old description",
+        mode=AppMode.COMPLETION,
+        icon_type=IconType.EMOJI,
+        icon="🤖",
+        icon_background="#fff",
+        enable_site=False,
+        enable_api=False,
+        created_by=account.id,
+        max_active_requests=0,
+    )
+    sqlite_session.add(app)
+    sqlite_session.commit()
     return app
 
 
-def _make_collector(target: list):
-    def handler(sender, **kw):
+def _make_collector(target: list[App]):
+    def handler(sender: App, **_kwargs: object) -> None:
         target.append(sender)
 
     return handler
 
 
-@pytest.mark.usefixtures("mock_db", "_mock_deps")
+@pytest.mark.parametrize("sqlite_session", [(App, Account)], indirect=True)
+@pytest.mark.usefixtures("_mock_deps")
 class TestAppWasDeletedSignal:
-    def test_sends_signal(self, app_model):
-        from events.app_event import app_was_deleted
-        from services.app_service import AppService
-
-        received = []
+    def test_sends_signal(self, app_model: App, sqlite_session: Session) -> None:
+        received: list[App] = []
         handler = _make_collector(received)
         app_was_deleted.connect(handler)
         try:
-            AppService().delete_app(app_model)
+            AppService().delete_app(app_model, session=sqlite_session)
         finally:
             app_was_deleted.disconnect(handler)
 
         assert received == [app_model]
+        assert sqlite_session.get(App, app_model.id) is None
 
-    def test_signal_fires_before_db_delete(self, app_model, mock_db):
-        from events.app_event import app_was_deleted
-        from services.app_service import AppService
-
+    def test_signal_fires_before_db_delete(self, app_model: App, sqlite_session: Session) -> None:
         call_order: list[str] = []
 
-        def handler(sender, **kw):
+        def signal_handler(_sender: App, **_kwargs: object) -> None:
             call_order.append("signal")
 
-        app_was_deleted.connect(handler)
-        mock_db.session.delete.side_effect = lambda _: call_order.append("db_delete")
+        def before_flush(session: Session, *_args: object) -> None:
+            if app_model in session.deleted:
+                call_order.append("db_delete")
 
+        app_was_deleted.connect(signal_handler)
+        event.listen(sqlite_session, "before_flush", before_flush)
         try:
-            AppService().delete_app(app_model)
+            AppService().delete_app(app_model, session=sqlite_session)
         finally:
-            app_was_deleted.disconnect(handler)
+            event.remove(sqlite_session, "before_flush", before_flush)
+            app_was_deleted.disconnect(signal_handler)
 
-        assert call_order.index("signal") < call_order.index("db_delete")
+        assert call_order == ["signal", "db_delete"]
+        assert sqlite_session.get(App, app_model.id) is None
 
 
-@pytest.mark.usefixtures("mock_db")
+@pytest.mark.parametrize("sqlite_session", [(App, Account)], indirect=True)
 class TestAppWasUpdatedSignal:
-    def test_update_app(self, app_model):
-        from events.app_event import app_was_updated
-        from services.app_service import AppService
-
-        received = []
+    def test_update_app(self, app_model: App, account: Account, sqlite_session: Session) -> None:
+        received: list[App] = []
         handler = _make_collector(received)
         app_was_updated.connect(handler)
 
-        with patch("services.app_service.current_user", MagicMock(id="user-1")):
+        with patch("services.app_service.current_user", account):
             try:
                 AppService().update_app(
                     app_model,
@@ -101,106 +115,104 @@ class TestAppWasUpdatedSignal:
                         "use_icon_as_answer_icon": False,
                         "max_active_requests": 0,
                     },
+                    session=sqlite_session,
                 )
             finally:
                 app_was_updated.disconnect(handler)
 
+        persisted = sqlite_session.get(App, app_model.id)
         assert received == [app_model]
+        assert persisted is not None
+        assert persisted.name == "New"
+        assert persisted.description == "Desc"
+        assert persisted.updated_by == account.id
 
-    def test_update_app_name(self, app_model):
-        from events.app_event import app_was_updated
-        from services.app_service import AppService
-
-        received = []
+    def test_update_app_name(self, app_model: App, account: Account, sqlite_session: Session) -> None:
+        received: list[App] = []
         handler = _make_collector(received)
         app_was_updated.connect(handler)
 
-        with patch("services.app_service.current_user", MagicMock(id="user-1")):
+        with patch("services.app_service.current_user", account):
             try:
-                AppService().update_app_name(app_model, "New Name")
+                AppService().update_app_name(app_model, "New Name", session=sqlite_session)
             finally:
                 app_was_updated.disconnect(handler)
 
         assert received == [app_model]
+        assert sqlite_session.get(App, app_model.id).name == "New Name"  # type: ignore[union-attr]
 
-    def test_update_app_icon(self, app_model):
-        from events.app_event import app_was_updated
-        from services.app_service import AppService
-
-        received = []
+    def test_update_app_icon(self, app_model: App, account: Account, sqlite_session: Session) -> None:
+        received: list[App] = []
         handler = _make_collector(received)
         app_was_updated.connect(handler)
 
-        with patch("services.app_service.current_user", MagicMock(id="user-1")):
+        with patch("services.app_service.current_user", account):
             try:
-                AppService().update_app_icon(app_model, "🎉", "#000")
+                AppService().update_app_icon(app_model, "🎉", "#000", session=sqlite_session)
+            finally:
+                app_was_updated.disconnect(handler)
+
+        persisted = sqlite_session.get(App, app_model.id)
+        assert received == [app_model]
+        assert persisted is not None
+        assert (persisted.icon, persisted.icon_background) == ("🎉", "#000")
+
+    def test_update_app_site_status_sends_when_changed(
+        self, app_model: App, account: Account, sqlite_session: Session
+    ) -> None:
+        received: list[App] = []
+        handler = _make_collector(received)
+        app_was_updated.connect(handler)
+
+        with patch("services.app_service.current_user", account):
+            try:
+                AppService().update_app_site_status(app_model, True, session=sqlite_session)
             finally:
                 app_was_updated.disconnect(handler)
 
         assert received == [app_model]
+        assert sqlite_session.get(App, app_model.id).enable_site is True  # type: ignore[union-attr]
 
-    def test_update_app_site_status_sends_when_changed(self, app_model):
-        from events.app_event import app_was_updated
-        from services.app_service import AppService
-
-        received = []
+    def test_update_app_site_status_skips_when_unchanged(self, app_model: App, sqlite_session: Session) -> None:
+        app_model.enable_site = True
+        sqlite_session.commit()
+        received: list[App] = []
         handler = _make_collector(received)
         app_was_updated.connect(handler)
-
-        with patch("services.app_service.current_user", MagicMock(id="user-1")):
-            try:
-                app_model.enable_site = False
-                AppService().update_app_site_status(app_model, True)
-            finally:
-                app_was_updated.disconnect(handler)
-
-        assert received == [app_model]
-
-    def test_update_app_site_status_skips_when_unchanged(self, app_model):
-        from events.app_event import app_was_updated
-        from services.app_service import AppService
-
-        received = []
-        handler = _make_collector(received)
-        app_was_updated.connect(handler)
-
         try:
-            app_model.enable_site = True
-            AppService().update_app_site_status(app_model, True)
+            AppService().update_app_site_status(app_model, True, session=sqlite_session)
         finally:
             app_was_updated.disconnect(handler)
 
         assert received == []
+        assert sqlite_session.get(App, app_model.id).enable_site is True  # type: ignore[union-attr]
 
-    def test_update_app_api_status_sends_when_changed(self, app_model):
-        from events.app_event import app_was_updated
-        from services.app_service import AppService
-
-        received = []
+    def test_update_app_api_status_sends_when_changed(
+        self, app_model: App, account: Account, sqlite_session: Session
+    ) -> None:
+        received: list[App] = []
         handler = _make_collector(received)
         app_was_updated.connect(handler)
 
-        with patch("services.app_service.current_user", MagicMock(id="user-1")):
+        with patch("services.app_service.current_user", account):
             try:
-                app_model.enable_api = False
-                AppService().update_app_api_status(app_model, True)
+                AppService().update_app_api_status(app_model, True, session=sqlite_session)
             finally:
                 app_was_updated.disconnect(handler)
 
         assert received == [app_model]
+        assert sqlite_session.get(App, app_model.id).enable_api is True  # type: ignore[union-attr]
 
-    def test_update_app_api_status_skips_when_unchanged(self, app_model):
-        from events.app_event import app_was_updated
-        from services.app_service import AppService
-
-        received = []
+    def test_update_app_api_status_skips_when_unchanged(self, app_model: App, sqlite_session: Session) -> None:
+        app_model.enable_api = True
+        sqlite_session.commit()
+        received: list[App] = []
         handler = _make_collector(received)
         app_was_updated.connect(handler)
-
         try:
-            app_model.enable_api = True
-            AppService().update_app_api_status(app_model, True)
+            AppService().update_app_api_status(app_model, True, session=sqlite_session)
         finally:
             app_was_updated.disconnect(handler)
 
         assert received == []
+        assert sqlite_session.get(App, app_model.id).enable_api is True  # type: ignore[union-attr]

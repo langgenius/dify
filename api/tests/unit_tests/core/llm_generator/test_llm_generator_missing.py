@@ -149,12 +149,12 @@ class TestWorkflowServiceInterface:
         from core.llm_generator.llm_generator import WorkflowServiceInterface
 
         class MockService(WorkflowServiceInterface):
-            def get_draft_workflow(self, app_model, workflow_id=None):
-                return super().get_draft_workflow(app_model, workflow_id)
+            def get_draft_workflow(self, app_model, workflow_id=None, *, session):
+                return super().get_draft_workflow(app_model, workflow_id, session=session)
 
             def get_node_last_run(self, app_model, workflow, node_id):
                 return super().get_node_last_run(app_model, workflow, node_id)
 
         service = MockService()
-        service.get_draft_workflow(None)
+        service.get_draft_workflow(None, session=None)
         service.get_node_last_run(None, None, "node")

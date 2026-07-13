@@ -3,7 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Plan } from '@/app/components/billing/type'
 import { segmentImportStatus } from '@/types/dataset'
-
 import { SegmentAdd } from '../index'
 
 // Mock provider context
@@ -131,7 +130,9 @@ describe('SegmentAdd', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /list\.action\.batchAdd/i }))
 
-      expect(await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i }),
+      ).toBeInTheDocument()
     })
 
     it('should call showBatchModal when batch add is clicked', async () => {
@@ -229,14 +230,18 @@ describe('SegmentAdd', () => {
   // Progress bar width tests
   describe('Progress Bar', () => {
     it('should show 3/12 width progress bar for WAITING status', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.waiting} />)
+      const { container } = render(
+        <SegmentAdd {...defaultProps} importStatus={segmentImportStatus.waiting} />,
+      )
 
       const progressBar = container.querySelector('.w-3\\/12')
       expect(progressBar).toBeInTheDocument()
     })
 
     it('should show 2/3 width progress bar for PROCESSING status', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.processing} />)
+      const { container } = render(
+        <SegmentAdd {...defaultProps} importStatus={segmentImportStatus.processing} />,
+      )
 
       const progressBar = container.querySelector('.w-2\\/3')
       expect(progressBar).toBeInTheDocument()

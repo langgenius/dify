@@ -1,6 +1,5 @@
 import type {
   AgentAppComposerResponse,
-  AgentDriveListResponse,
   AgentDriveSkillListResponse,
   AgentSoulConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
@@ -12,11 +11,7 @@ import {
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
 } from '../agent-builder-resources'
-import {
-  agentBuilderFileTreeFixtureFileNames,
-  agentBuilderFileTreeFixtureFiles,
-  agentBuilderTestMaterials,
-} from '../test-materials'
+import { agentBuilderTestMaterials } from '../test-materials'
 import {
   asArray,
   asRecord,
@@ -37,12 +32,11 @@ import {
   splitToolResourceId,
 } from './tools'
 
-type AgentSoulDifyToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['dify_tools']>[number]
+type AgentSoulDifyToolConfig = NonNullable<
+  NonNullable<AgentSoulConfig['tools']>['dify_tools']
+>[number]
 
-const hasKnowledgeDataset = (
-  soul: Record<string, unknown>,
-  dataset: PreseededResource,
-) => {
+const hasKnowledgeDataset = (soul: Record<string, unknown>, dataset: PreseededResource) => {
   const knowledge = asRecord(soul.knowledge)
   const sets = asArray(knowledge.sets)
 
@@ -79,10 +73,8 @@ const hasKnowledgeSet = (
       return datasetRecord.id === dataset.id || datasetRecord.name === dataset.name
     })
 
-    if (!hasExpectedDataset || query.mode !== queryMode)
-      return false
-    if (queryValue === undefined)
-      return true
+    if (!hasExpectedDataset || query.mode !== queryMode) return false
+    if (queryValue === undefined) return true
 
     return asString(query.value).trim() === queryValue
   })
@@ -92,8 +84,9 @@ const getOAuth2ToolCredentialFixture = (toolItems: unknown[]) =>
   toolItems.find((item) => {
     const record = asRecord(item)
 
-    return record.credential_type === 'oauth2'
-      && Boolean(asString(asRecord(record.credential_ref).id))
+    return (
+      record.credential_type === 'oauth2' && Boolean(asString(asRecord(record.credential_ref).id))
+    )
   }) as AgentSoulDifyToolConfig | undefined
 
 export async function skipMissingPreseededAgent(
@@ -144,15 +137,14 @@ export async function skipMissingPreseededAgentDriveSkill(
   skillName: string,
 ): Promise<'skipped' | PreseededResource> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped')
-    return agent
+  if (agent === 'skipped') return agent
 
   const ctx = await createApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agent.id}/drive/skills`)
     await expectApiResponseOK(response, `Check preseeded Agent skill ${skillName}`)
     const body = (await response.json()) as AgentDriveSkillListResponse
-    const skill = body.items?.find(item => item.name === skillName)
+    const skill = body.items?.find((item) => item.name === skillName)
 
     if (!skill) {
       return skipBlockedPrecondition(
@@ -166,8 +158,7 @@ export async function skipMissingPreseededAgentDriveSkill(
       kind: 'skill',
       name: skill.name,
     }
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -177,34 +168,29 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
   agentName: string,
 ): Promise<'skipped' | PreseededResource> {
   const stableModel = await skipMissingAgentBuilderStableChatModel(world)
-  if (stableModel === 'skipped')
-    return stableModel
+  if (stableModel === 'skipped') return stableModel
 
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped')
-    return agent
+  if (agent === 'skipped') return agent
 
   const summarySkill = await skipMissingPreseededAgentDriveSkill(
     world,
     agentName,
     agentBuilderPreseededResources.summarySkill,
   )
-  if (summarySkill === 'skipped')
-    return summarySkill
+  if (summarySkill === 'skipped') return summarySkill
 
   const jsonTool = await skipMissingPreseededTool(
     world,
     agentBuilderPreseededResources.jsonReplaceTool,
   )
-  if (jsonTool === 'skipped')
-    return jsonTool
+  if (jsonTool === 'skipped') return jsonTool
 
   const knowledgeBase = await skipMissingReadyPreseededDataset(
     world,
     agentBuilderPreseededResources.agentKnowledgeBase,
   )
-  if (knowledgeBase === 'skipped')
-    return knowledgeBase
+  if (knowledgeBase === 'skipped') return knowledgeBase
 
   const ctx = await createApiContext()
   try {
@@ -227,8 +213,7 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
       agentBuilderTestMaterials.smallFile,
       agentBuilderTestMaterials.specialFilename,
     ]) {
-      if (!hasNamedOrKeyedEntry(files, fileName))
-        missing.push(`file ${fileName}`)
+      if (!hasNamedOrKeyedEntry(files, fileName)) missing.push(`file ${fileName}`)
     }
 
     const skills = asArray(soul.config_skills)
@@ -238,8 +223,8 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
     const { providerName, toolName } = splitToolResourceId(jsonTool.id)
     const parsedTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
     if (
-      parsedTool.ok
-      && !hasToolEntry(asArray(asRecord(soul.tools).dify_tools), {
+      parsedTool.ok &&
+      !hasToolEntry(asArray(asRecord(soul.tools).dify_tools), {
         providerDisplayName: parsedTool.providerName,
         providerName,
         toolDisplayName: parsedTool.toolName,
@@ -260,8 +245,7 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
     }
 
     return agent
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -271,30 +255,26 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
   agentName: string,
 ): Promise<'skipped' | PreseededResource> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped')
-    return agent
+  if (agent === 'skipped') return agent
 
   const summarySkill = await skipMissingPreseededAgentDriveSkill(
     world,
     agentName,
     agentBuilderPreseededResources.summarySkill,
   )
-  if (summarySkill === 'skipped')
-    return summarySkill
+  if (summarySkill === 'skipped') return summarySkill
 
   const jsonTool = await skipMissingPreseededTool(
     world,
     agentBuilderPreseededResources.jsonReplaceTool,
   )
-  if (jsonTool === 'skipped')
-    return jsonTool
+  if (jsonTool === 'skipped') return jsonTool
 
   const tavilyTool = await skipMissingPreseededTool(
     world,
     agentBuilderPreseededResources.tavilySearchTool,
   )
-  if (tavilyTool === 'skipped')
-    return tavilyTool
+  if (tavilyTool === 'skipped') return tavilyTool
 
   const ctx = await createApiContext()
   try {
@@ -309,11 +289,13 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
     if (!hasNamedOrKeyedEntry(skills, agentBuilderPreseededResources.summarySkill))
       missing.push(agentBuilderPreseededResources.summarySkill)
 
-    const { providerName: jsonProviderName, toolName: jsonToolName } = splitToolResourceId(jsonTool.id)
+    const { providerName: jsonProviderName, toolName: jsonToolName } = splitToolResourceId(
+      jsonTool.id,
+    )
     const parsedJsonTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
     if (
-      parsedJsonTool.ok
-      && !findToolEntry(toolItems, {
+      parsedJsonTool.ok &&
+      !findToolEntry(toolItems, {
         providerDisplayName: parsedJsonTool.providerName,
         providerName: jsonProviderName,
         toolDisplayName: parsedJsonTool.toolName,
@@ -323,7 +305,9 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
       missing.push(agentBuilderPreseededResources.jsonReplaceTool)
     }
 
-    const { providerName: tavilyProviderName, toolName: tavilyToolName } = splitToolResourceId(tavilyTool.id)
+    const { providerName: tavilyProviderName, toolName: tavilyToolName } = splitToolResourceId(
+      tavilyTool.id,
+    )
     const parsedTavilyTool = splitToolDisplayName(agentBuilderPreseededResources.tavilySearchTool)
     const tavilyEntry = parsedTavilyTool.ok
       ? findToolEntry(toolItems, {
@@ -336,9 +320,10 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
 
     if (!tavilyEntry) {
       missing.push(agentBuilderPreseededResources.tavilySearchTool)
-    }
-    else if (!hasUnauthorizedToolCredentialState(tavilyEntry)) {
-      missing.push(`${agentBuilderPreseededResources.tavilySearchTool} unauthorized credential state`)
+    } else if (!hasUnauthorizedToolCredentialState(tavilyEntry)) {
+      missing.push(
+        `${agentBuilderPreseededResources.tavilySearchTool} unauthorized credential state`,
+      )
     }
 
     if (missing.length > 0) {
@@ -349,8 +334,7 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
     }
 
     return agent
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -360,13 +344,15 @@ export async function skipMissingPreseededOAuthToolAgentConfiguration(
   agentName: string,
 ): Promise<'skipped' | PreseededResource> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped')
-    return agent
+  if (agent === 'skipped') return agent
 
   const ctx = await createApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
-    await expectApiResponseOK(response, `Check preseeded Agent OAuth2 tool configuration ${agentName}`)
+    await expectApiResponseOK(
+      response,
+      `Check preseeded Agent OAuth2 tool configuration ${agentName}`,
+    )
     const body = (await response.json()) as AgentAppComposerResponse
     const toolItems = asArray(asRecord(body.agent_soul?.tools).dify_tools)
     const oauthTool = getOAuth2ToolCredentialFixture(toolItems)
@@ -377,19 +363,21 @@ export async function skipMissingPreseededOAuthToolAgentConfiguration(
         `Preseeded Agent "${agentName}" is missing an OAuth2 tool with a credential reference.`,
         {
           owner: 'seed',
-          remediation: 'Seed an Agent v2 fixture that includes a built-in OAuth2 tool with credential_type oauth2 and credential_ref.id.',
+          remediation:
+            'Seed an Agent v2 fixture that includes a built-in OAuth2 tool with credential_type oauth2 and credential_ref.id.',
         },
       )
     }
 
     return agent
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
 
-export async function getPreseededOAuthToolConfig(agentId: string): Promise<AgentSoulDifyToolConfig> {
+export async function getPreseededOAuthToolConfig(
+  agentId: string,
+): Promise<AgentSoulDifyToolConfig> {
   const ctx = await createApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agentId}/composer`)
@@ -399,11 +387,12 @@ export async function getPreseededOAuthToolConfig(agentId: string): Promise<Agen
     const oauthTool = getOAuth2ToolCredentialFixture(toolItems)
 
     if (!oauthTool)
-      throw new Error(`Preseeded Agent ${agentId} does not include an OAuth2 tool credential fixture.`)
+      throw new Error(
+        `Preseeded Agent ${agentId} does not include an OAuth2 tool credential fixture.`,
+      )
 
     return oauthTool
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -413,15 +402,13 @@ export async function skipMissingPreseededDualRetrievalAgentConfiguration(
   agentName: string,
 ): Promise<'skipped' | PreseededResource> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped')
-    return agent
+  if (agent === 'skipped') return agent
 
   const knowledgeBase = await skipMissingReadyPreseededDataset(
     world,
     agentBuilderPreseededResources.agentKnowledgeBase,
   )
-  if (knowledgeBase === 'skipped')
-    return knowledgeBase
+  if (knowledgeBase === 'skipped') return knowledgeBase
 
   const ctx = await createApiContext()
   try {
@@ -451,85 +438,7 @@ export async function skipMissingPreseededDualRetrievalAgentConfiguration(
     }
 
     return agent
-  }
-  finally {
-    await ctx.dispose()
-  }
-}
-
-export async function skipMissingPreseededAgentFileTreeFixture(
-  world: DifyWorld,
-  agentName: string,
-): Promise<'skipped' | PreseededResource> {
-  const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped')
-    return agent
-
-  const ctx = await createApiContext()
-  try {
-    const query = buildQuery({ prefix: 'files/' })
-    const response = await ctx.get(`/console/api/agent/${agent.id}/drive/files?${query}`)
-    await expectApiResponseOK(response, `Check preseeded Agent file tree ${agentName}`)
-    const body = (await response.json()) as AgentDriveListResponse
-    const keys = (body.items ?? []).map(item => item.key)
-    const missingFiles = agentBuilderFileTreeFixtureFiles.filter(
-      filePath =>
-        !keys.some(key => key === `files/${filePath}` || key.endsWith(`/${filePath}`)),
-    )
-
-    if (missingFiles.length > 0) {
-      return skipBlockedPrecondition(
-        world,
-        `Preseeded Agent "${agentName}" is missing file tree fixture files: ${missingFiles.join(', ')}.`,
-      )
-    }
-
-    return {
-      id: agent.id,
-      kind: 'agent',
-      name: agent.name,
-    }
-  }
-  finally {
-    await ctx.dispose()
-  }
-}
-
-export async function skipMissingPreseededAgentFlatFileFixtureConfiguration(
-  world: DifyWorld,
-  agentName: string,
-): Promise<'skipped' | PreseededResource> {
-  const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped')
-    return agent
-
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
-    await expectApiResponseOK(response, `Check preseeded Agent flat file fixture ${agentName}`)
-    const body = (await response.json()) as AgentAppComposerResponse
-    const configFiles = Array.isArray(body.agent_soul?.config_files)
-      ? body.agent_soul.config_files
-      : []
-    const fileNames = configFiles
-      .map(file => (typeof file === 'object' && file !== null && 'name' in file ? file.name : undefined))
-      .filter((name): name is string => typeof name === 'string')
-    const missingFiles = agentBuilderFileTreeFixtureFileNames.filter(fileName => !fileNames.includes(fileName))
-
-    if (missingFiles.length > 0) {
-      return skipBlockedPrecondition(
-        world,
-        `Preseeded Agent "${agentName}" is missing current flat Files fixture configuration: ${missingFiles.join(', ')}. Hierarchical Files display remains blocked until Agent config files support tree paths.`,
-      )
-    }
-
-    return {
-      id: agent.id,
-      kind: 'agent',
-      name: agent.name,
-    }
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }

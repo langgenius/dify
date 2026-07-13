@@ -288,7 +288,6 @@
   "menus.explore": "探索",
   "menus.exploreMarketplace": "探索 Marketplace",
   "menus.plugins": "集成",
-  "menus.roster": "Agent 名冊",
   "menus.status": "beta",
   "menus.tools": "工具",
   "model.capabilities": "多模式功能",
@@ -444,6 +443,7 @@
   "operation.download": "下載",
   "operation.downloadFailed": "下載失敗。請稍後再試。",
   "operation.downloadSuccess": "下載完成。",
+  "operation.downloading": "下載中",
   "operation.duplicate": "複製",
   "operation.edit": "編輯",
   "operation.exporting": "匯出中",
@@ -596,6 +596,8 @@
   "voiceInput.notAllow": "麥克風未授權",
   "voiceInput.speaking": "現在講...",
   "voiceInput.start": "語音輸入",
+  "voiceInput.starting": "正在啟動麥克風...",
+  "voiceInput.stop": "停止錄音",
   "workflowAsToolPage.description": "將任意已發布工作流程作為可重複使用的工具，在多個應用中使用以保持模組化並避免重複設定。",
   "you": "你"
 }

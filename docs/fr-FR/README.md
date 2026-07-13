@@ -103,8 +103,6 @@ Toutes les offres de Dify sont accompagnées d'API correspondantes, vous permett
 - **Dify pour les entreprises / organisations</br>**
   Nous proposons des fonctionnalités supplémentaires adaptées aux entreprises. [Envoyez-nous un e-mail](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) pour discuter des besoins de l'entreprise. </br>
 
-  > Pour les startups et les petites entreprises utilisant AWS, consultez [Dify Premium sur AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) et déployez-le dans votre propre VPC AWS en un clic. C'est une offre AMI abordable avec la possibilité de créer des applications avec un logo et une marque personnalisés.
-
 ## Rester en avance
 
 Mettez une étoile à Dify sur GitHub et soyez instantanément informé des nouvelles versions.

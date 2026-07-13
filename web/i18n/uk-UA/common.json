@@ -288,7 +288,6 @@
   "menus.explore": "Досліджувати",
   "menus.exploreMarketplace": "Дізнайтеся більше про Marketplace",
   "menus.plugins": "Інтеграції",
-  "menus.roster": "Список агентів",
   "menus.status": "бета",
   "menus.tools": "Інструменти",
   "model.capabilities": "Можливості MultiModal",
@@ -444,6 +443,7 @@
   "operation.download": "Завантажити",
   "operation.downloadFailed": "Не вдалося завантажити. Будь ласка, спробуйте ще раз пізніше.",
   "operation.downloadSuccess": "Завантаження завершено.",
+  "operation.downloading": "Завантаження...",
   "operation.duplicate": "дублікат",
   "operation.edit": "Редагувати",
   "operation.exporting": "Експорт",
@@ -596,6 +596,8 @@
   "voiceInput.notAllow": "мікрофон не авторизований",
   "voiceInput.speaking": "Говоріть зараз...",
   "voiceInput.start": "Голосове введення",
+  "voiceInput.starting": "Запуск мікрофона...",
+  "voiceInput.stop": "Зупинити запис",
   "workflowAsToolPage.description": "Перетворіть будь-який опублікований workflow на багаторазовий інструмент. Використовуйте його в кількох застосунках, щоб зберігати модульність і уникати повторень.",
   "you": "Ти"
 }

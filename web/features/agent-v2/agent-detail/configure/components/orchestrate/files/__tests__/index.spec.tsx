@@ -3,7 +3,7 @@ import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -36,9 +36,14 @@ const mocks = vi.hoisted(() => ({
       size: 5,
     },
   })),
-  deleteFileMutationFn: vi.fn(async (_input: unknown) => ({ removed_names: ['brief.md'], result: 'success' })),
+  deleteFileMutationFn: vi.fn(async (_input: unknown) => ({
+    removed_names: ['brief.md'],
+    result: 'success',
+  })),
   previewQueryOptions: vi.fn((_options: ConfigFileQueryOptionsInput) => ({})),
   downloadQueryOptions: vi.fn((_options: ConfigFileQueryOptionsInput) => ({})),
+  downloadBlob: vi.fn(),
+  downloadUrl: vi.fn(),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -46,6 +51,11 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     success: vi.fn(),
     error: vi.fn(),
   },
+}))
+
+vi.mock('@/utils/download', () => ({
+  downloadBlob: mocks.downloadBlob,
+  downloadUrl: mocks.downloadUrl,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -118,14 +128,12 @@ function ConfigSnapshotProbe() {
   const draft = useAtomValue(agentComposerDraftAtom)
   const configSnapshot = formStateToAgentSoulConfig({ formState: draft })
 
-  return (
-    <pre data-testid="config-snapshot-probe">
-      {JSON.stringify(configSnapshot)}
-    </pre>
-  )
+  return <pre data-testid="config-snapshot-probe">{JSON.stringify(configSnapshot)}</pre>
 }
 
-function createInitialDraft(overrides: Partial<AgentSoulConfigFormState> = {}): AgentSoulConfigFormState {
+function createInitialDraft(
+  overrides: Partial<AgentSoulConfigFormState> = {},
+): AgentSoulConfigFormState {
   return {
     ...defaultAgentSoulConfigFormState,
     files: [
@@ -169,7 +177,10 @@ function renderAgentFiles({
   return render(
     <QueryClientProvider client={queryClient}>
       <AgentConfigApiContextProvider value={apiContext}>
-        <AgentComposerProvider initialDraft={initialDraft} initialOriginalConfig={initialOriginalConfig}>
+        <AgentComposerProvider
+          initialDraft={initialDraft}
+          initialOriginalConfig={initialOriginalConfig}
+        >
           <AgentOrchestrateReadOnlyContext value={readOnly}>
             <AgentFiles />
             <ConfigSnapshotProbe />
@@ -229,7 +240,9 @@ describe('AgentFiles', () => {
     const user = userEvent.setup()
     renderAgentFiles({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i }))
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i }),
+    )
 
     const input = await waitFor(() => {
       const element = document.querySelector('input[type="file"]')
@@ -238,7 +251,9 @@ describe('AgentFiles', () => {
     })
     const file = new File(['hello'], 'uploaded.md', { type: 'text/markdown' })
     await user.upload(input, file)
-    await user.click(screen.getByRole('button', { name: /agentDetail\.configure\.files\.upload\.action/i }))
+    await user.click(
+      screen.getByRole('button', { name: /agentDetail\.configure\.files\.upload\.action/i }),
+    )
 
     await waitFor(() => {
       expect(mocks.uploadFileMutationFn).toHaveBeenCalled()
@@ -293,7 +308,9 @@ describe('AgentFiles', () => {
       },
     })
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i }))
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i }),
+    )
 
     const input = await waitFor(() => {
       const element = document.querySelector('input[type="file"]')
@@ -302,7 +319,9 @@ describe('AgentFiles', () => {
     })
     const file = new File(['hello'], 'uploaded.md', { type: 'text/markdown' })
     await user.upload(input, file)
-    await user.click(screen.getByRole('button', { name: /agentDetail\.configure\.files\.upload\.action/i }))
+    await user.click(
+      screen.getByRole('button', { name: /agentDetail\.configure\.files\.upload\.action/i }),
+    )
 
     await waitFor(() => {
       expect(mocks.commitFileMutationFn.mock.calls[0]?.[0]).toEqual({
@@ -323,19 +342,21 @@ describe('AgentFiles', () => {
     await user.click(screen.getByText('diagram.png').closest('button')!)
 
     await waitFor(() => {
-      expect(mocks.previewQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            app_id: 'app-1',
-            name: 'diagram.png',
-          },
-          query: {
-            draft_type: 'draft',
-            node_id: 'node-1',
-            version_id: 'draft-1',
-          },
+      expect(mocks.previewQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              app_id: 'app-1',
+              name: 'diagram.png',
+            },
+            query: {
+              draft_type: 'draft',
+              node_id: 'node-1',
+              version_id: 'draft-1',
+            },
+          }),
         }),
-      }))
+      )
     })
   })
 
@@ -346,25 +367,88 @@ describe('AgentFiles', () => {
     await user.click(screen.getByText('diagram.png').closest('button')!)
 
     await waitFor(() => {
-      expect(mocks.previewQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            agent_id: 'agent-1',
-            name: 'diagram.png',
-          },
+      expect(mocks.previewQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              agent_id: 'agent-1',
+              name: 'diagram.png',
+            },
+          }),
         }),
-      }))
+      )
     })
 
     await waitFor(() => {
-      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            agent_id: 'agent-1',
-            name: 'diagram.png',
-          },
+      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              agent_id: 'agent-1',
+              name: 'diagram.png',
+            },
+          }),
         }),
-      }))
+      )
+    })
+  })
+
+  it('should download configured files from the row action by config name', async () => {
+    const user = userEvent.setup()
+    renderAgentFiles()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.files\.download.*diagram\.png/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              agent_id: 'agent-1',
+              name: 'diagram.png',
+            },
+          }),
+        }),
+      )
+    })
+    expect(mocks.downloadUrl).toHaveBeenCalledWith({
+      url: 'https://example.com/diagram.png',
+      fileName: 'diagram.png',
+    })
+  })
+
+  it('should download the selected file from the preview header action', async () => {
+    const user = userEvent.setup()
+    renderAgentFiles()
+
+    await user.click(screen.getByText('diagram.png').closest('button')!)
+    const dialog = await screen.findByRole('dialog')
+
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: /common\.operation\.download.*diagram\.png/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              agent_id: 'agent-1',
+              name: 'diagram.png',
+            },
+          }),
+        }),
+      )
+    })
+    expect(mocks.downloadUrl).toHaveBeenCalledWith({
+      url: 'https://example.com/diagram.png',
+      fileName: 'diagram.png',
     })
   })
 
@@ -375,7 +459,9 @@ describe('AgentFiles', () => {
     })
 
     expect(screen.getByText('build_note.md')).toBeInTheDocument()
-    const fileNames = screen.getAllByText(/^(build_note\.md|diagram\.png|brief\.md)$/).map(element => element.textContent)
+    const fileNames = screen
+      .getAllByText(/^(build_note\.md|diagram\.png|brief\.md)$/)
+      .map((element) => element.textContent)
     expect(fileNames).toEqual(['build_note.md', 'diagram.png', 'brief.md'])
 
     vi.clearAllMocks()
@@ -383,20 +469,76 @@ describe('AgentFiles', () => {
     await user.click(screen.getByText('build_note.md').closest('button')!)
 
     expect(await screen.findByText('Build context from the latest build chat.')).toBeInTheDocument()
-    expect(mocks.previewQueryOptions).not.toHaveBeenCalledWith(expect.objectContaining({
-      input: expect.objectContaining({
-        params: expect.objectContaining({
-          name: 'build_note.md',
+    expect(mocks.previewQueryOptions).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          params: expect.objectContaining({
+            name: 'build_note.md',
+          }),
         }),
       }),
-    }))
-    expect(mocks.downloadQueryOptions).not.toHaveBeenCalledWith(expect.objectContaining({
-      input: expect.objectContaining({
-        params: expect.objectContaining({
-          name: 'build_note.md',
+    )
+    expect(mocks.downloadQueryOptions).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          params: expect.objectContaining({
+            name: 'build_note.md',
+          }),
         }),
       }),
-    }))
+    )
+  })
+
+  it('should download the virtual build note file as markdown content', async () => {
+    const user = userEvent.setup()
+    renderAgentFiles({
+      initialDraft: createInitialDraft({ configNote: 'Build context from the latest build chat.' }),
+    })
+
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.files\.download.*build_note\.md/,
+      }),
+    )
+
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'build_note.md',
+    })
+    const blob = mocks.downloadBlob.mock.calls[0]?.[0].data as Blob
+    await expect(blob.text()).resolves.toBe('Build context from the latest build chat.')
+    expect(mocks.downloadQueryOptions).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          params: expect.objectContaining({
+            name: 'build_note.md',
+          }),
+        }),
+      }),
+    )
+  })
+
+  it('should download the virtual build note from the preview header action', async () => {
+    const user = userEvent.setup()
+    renderAgentFiles({
+      initialDraft: createInitialDraft({ configNote: 'Build context from the latest build chat.' }),
+    })
+
+    await user.click(screen.getByText('build_note.md').closest('button')!)
+    const dialog = await screen.findByRole('dialog')
+
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: /common\.operation\.download.*build_note\.md/,
+      }),
+    )
+
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'build_note.md',
+    })
+    const blob = mocks.downloadBlob.mock.calls[0]?.[0].data as Blob
+    await expect(blob.text()).resolves.toBe('Build context from the latest build chat.')
   })
 
   it('should show generated build note metadata with an explanatory infotip', async () => {
@@ -405,11 +547,23 @@ describe('AgentFiles', () => {
       initialDraft: createInitialDraft({ configNote: 'Build context from the latest build chat.' }),
     })
 
-    expect(screen.getByText('agentV2.agentDetail.configure.files.buildNote.generated')).toBeInTheDocument()
+    const generatedBadge = screen.getByText(
+      'agentV2.agentDetail.configure.files.buildNote.generated',
+    )
+    const buildNoteRow = generatedBadge.closest('li')
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.files.buildNote.tooltip' }))
+    expect(generatedBadge).toBeInTheDocument()
+    expect(buildNoteRow).not.toBeNull()
 
-    expect(await screen.findByText('agentDetail.configure.files.buildNote.richTooltip')).toBeInTheDocument()
+    await user.click(
+      within(buildNoteRow!).getByRole('button', {
+        name: 'agentV2.agentDetail.configure.files.buildNote.tooltip',
+      }),
+    )
+
+    expect(
+      await screen.findByText('agentV2.agentDetail.configure.files.buildNote.richTooltip'),
+    ).toBeInTheDocument()
   })
 
   it('should clear config note when deleting the virtual build note file', async () => {
@@ -418,9 +572,11 @@ describe('AgentFiles', () => {
       initialDraft: createInitialDraft({ configNote: 'Build context from the latest build chat.' }),
     })
 
-    await user.click(screen.getByRole('button', {
-      name: /agentV2\.agentDetail\.configure\.files\.remove.*build_note\.md/,
-    }))
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.files\.remove.*build_note\.md/,
+      }),
+    )
 
     expect(screen.queryByText('build_note.md')).not.toBeInTheDocument()
     expect(mocks.deleteFileMutationFn).not.toHaveBeenCalled()
@@ -434,6 +590,8 @@ describe('AgentFiles', () => {
 
     expect(screen.getByText('diagram.png')).toBeInTheDocument()
     expect(screen.getByText('brief.md')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i }),
+    ).not.toBeInTheDocument()
   })
 })

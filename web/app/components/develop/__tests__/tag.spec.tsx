@@ -141,7 +141,11 @@ describe('Tag', () => {
 
   describe('color styles for medium variant', () => {
     it('should apply full emerald medium styles', () => {
-      render(<Tag color="emerald" variant="medium">TEST</Tag>)
+      render(
+        <Tag color="emerald" variant="medium">
+          TEST
+        </Tag>,
+      )
       const tag = screen.getByText('TEST')
       expect(tag.className).toContain('ring-emerald-300')
       expect(tag.className).toContain('bg-emerald-400/10')
@@ -149,7 +153,11 @@ describe('Tag', () => {
     })
 
     it('should apply full sky medium styles', () => {
-      render(<Tag color="sky" variant="medium">TEST</Tag>)
+      render(
+        <Tag color="sky" variant="medium">
+          TEST
+        </Tag>,
+      )
       const tag = screen.getByText('TEST')
       expect(tag.className).toContain('ring-sky-300')
       expect(tag.className).toContain('bg-sky-400/10')
@@ -157,7 +165,11 @@ describe('Tag', () => {
     })
 
     it('should apply full amber medium styles', () => {
-      render(<Tag color="amber" variant="medium">TEST</Tag>)
+      render(
+        <Tag color="amber" variant="medium">
+          TEST
+        </Tag>,
+      )
       const tag = screen.getByText('TEST')
       expect(tag.className).toContain('ring-amber-300')
       expect(tag.className).toContain('bg-amber-400/10')
@@ -165,7 +177,11 @@ describe('Tag', () => {
     })
 
     it('should apply full rose medium styles', () => {
-      render(<Tag color="rose" variant="medium">TEST</Tag>)
+      render(
+        <Tag color="rose" variant="medium">
+          TEST
+        </Tag>,
+      )
       const tag = screen.getByText('TEST')
       expect(tag.className).toContain('ring-rose-200')
       expect(tag.className).toContain('bg-rose-50')
@@ -173,7 +189,11 @@ describe('Tag', () => {
     })
 
     it('should apply full zinc medium styles', () => {
-      render(<Tag color="zinc" variant="medium">TEST</Tag>)
+      render(
+        <Tag color="zinc" variant="medium">
+          TEST
+        </Tag>,
+      )
       const tag = screen.getByText('TEST')
       expect(tag.className).toContain('ring-zinc-200')
       expect(tag.className).toContain('bg-zinc-50')
@@ -183,7 +203,11 @@ describe('Tag', () => {
 
   describe('color styles for small variant', () => {
     it('should apply emerald small styles', () => {
-      render(<Tag color="emerald" variant="small">TEST</Tag>)
+      render(
+        <Tag color="emerald" variant="small">
+          TEST
+        </Tag>,
+      )
       const tag = screen.getByText('TEST')
       expect(tag.className).toContain('text-emerald-500')
       expect(tag.className).not.toContain('bg-emerald-400/10')
@@ -191,25 +215,41 @@ describe('Tag', () => {
     })
 
     it('should apply sky small styles', () => {
-      render(<Tag color="sky" variant="small">TEST</Tag>)
+      render(
+        <Tag color="sky" variant="small">
+          TEST
+        </Tag>,
+      )
       const tag = screen.getByText('TEST')
       expect(tag.className).toContain('text-sky-500')
     })
 
     it('should apply amber small styles', () => {
-      render(<Tag color="amber" variant="small">TEST</Tag>)
+      render(
+        <Tag color="amber" variant="small">
+          TEST
+        </Tag>,
+      )
       const tag = screen.getByText('TEST')
       expect(tag.className).toContain('text-amber-500')
     })
 
     it('should apply rose small styles', () => {
-      render(<Tag color="rose" variant="small">TEST</Tag>)
+      render(
+        <Tag color="rose" variant="small">
+          TEST
+        </Tag>,
+      )
       const tag = screen.getByText('TEST')
       expect(tag.className).toContain('text-red-500')
     })
 
     it('should apply zinc small styles', () => {
-      render(<Tag color="zinc" variant="small">TEST</Tag>)
+      render(
+        <Tag color="zinc" variant="small">
+          TEST
+        </Tag>,
+      )
       const tag = screen.getByText('TEST')
       expect(tag.className).toContain('text-zinc-400')
     })

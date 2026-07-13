@@ -3,11 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import InSiteMessageNotification from '../notification'
 
-const {
-  mockConfig,
-  mockNotification,
-  mockNotificationDismiss,
-} = vi.hoisted(() => ({
+const { mockConfig, mockNotification, mockNotificationDismiss } = vi.hoisted(() => ({
   mockConfig: {
     isCloudEdition: true,
   },
@@ -62,9 +58,7 @@ const createWrapper = () => {
   })
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 
   return Wrapper
@@ -119,7 +113,12 @@ describe('InSiteMessageNotification', () => {
             body: JSON.stringify({
               main: 'Parsed body main',
               actions: [
-                { action: 'link', data: 'https://example.com/docs', text: 'Visit docs', type: 'primary' },
+                {
+                  action: 'link',
+                  data: 'https://example.com/docs',
+                  text: 'Visit docs',
+                  type: 'primary',
+                },
                 { action: 'close', text: 'Outline close', type: 'outline' },
                 { action: 'close', text: 'Dismiss now', type: 'default' },
                 { action: 'link', data: 'https://example.com/invalid', text: 100, type: 'primary' },

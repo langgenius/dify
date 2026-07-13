@@ -8,7 +8,7 @@ Do not add deeper `AGENTS.md` files unless an Agent v2 submodule becomes indepen
 
 Agent v2 scenarios live under `features/agent-v2/` and use the `@agent-v2` capability tag.
 
-The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=true` in `scripts/common.ts`, because `/roster` routes are guarded by that feature flag.
+The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=true` in `scripts/common.ts`, because `/agents` routes are guarded by that feature flag.
 
 Preview/Test Run scenarios are not part of the current build-mode slice unless explicitly requested. Current Agent v2 coverage should prioritize Configure, Build draft, saved configuration display, publish state, Access Point, preflight, files, advanced settings, and other build-mode behavior. Published Web app runtime is not Builder Preview; keep it as a separate `@web-app-runtime` slice because it exercises the public app surface and real model-backed responses after publish.
 
@@ -28,7 +28,7 @@ Use tags in three layers:
 - `@build` — Build mode and Build draft behavior.
 - `@build-unavailable-resources` — feature-gated Build chat recovery when the user requests unavailable Skills or Tools.
 - `@files` — Files section upload, display, and fixture behavior.
-- `@files-limits` — file limit behavior. Multiple-file drop is stable core coverage; format, size, count, and in-progress upload recovery remain feature-gated until their product contracts are stable.
+- `@files-limits` — file limit behavior. Multiple-file drop is stable core coverage; format and size rejection remain feature-gated until their product contracts are stable.
 - `@knowledge` — Knowledge Retrieval configuration display, persistence, and reference cleanup.
 - `@advanced-settings` — Env Editor, Content Moderation, and related Advanced Settings behavior.
 - `@agent-create` — Agent Roster creation and initial Configure navigation.
@@ -36,6 +36,8 @@ Use tags in three layers:
 - `@publish` — publish and publish-bar state.
 - `@access-point` — Web app, Backend service API, and Workflow access surfaces.
 - `@stable-model` — active model fixture dependency. Apply this to every scenario that includes `the Agent Builder stable chat model is available` or otherwise requires an active model configured in the workspace.
+- `@speech-to-text-model` — active workspace default Speech-to-Text model dependency. Apply this to scenarios that include `the workspace default speech-to-text model is active`.
+- `@microphone` — deterministic Chromium fake microphone dependency. The scenario hook launches a fake-audio browser and grants microphone permission only to tagged scenarios.
 - `@agent-decision-model` — stronger active model fixture dependency for scenarios that specifically validate Agent autonomous planning or resource-selection behavior, such as generated-query Knowledge Retrieval. Do not use it for scenarios that only need a model to exist or answer a deterministic prompt.
 - `@tool-fixture` — preseeded Tool dependency such as `JSON Process / JSON Replace` or `Tavily / Tavily Search`.
 - `@skill-fixture` — checked-in or preseeded Skill dependency such as `e2e-summary-skill`.
@@ -43,7 +45,6 @@ Use tags in three layers:
 - `@full-config-agent` — fixed `E2E New Agent Builder Full Config` Agent dependency.
 - `@tool-states-agent` — fixed `E2E New Agent Builder Tool States` Agent dependency.
 - `@oauth-tool-agent` — fixed `E2E Agent With OAuth Tool` Agent dependency for OAuth2 tool credential preservation.
-- `@file-tree-fixture` — fixed file-tree Agent drive/config-files dependency.
 - `@dual-retrieval-fixture` — fixed dual Knowledge Retrieval Agent dependency.
 - `@backend-api-access` — fixed or scenario-owned Backend service API access dependency.
 - `@published-web-app` — fixed or scenario-owned published Web app access dependency.
@@ -76,6 +77,7 @@ Keep Agent v2 step definitions grouped by user capability, not by DOM component 
 - `access-point-service-api.steps.ts` — Backend service API entrypoints, keys, API reference, and service requests.
 - `access-point-workflow.steps.ts` — Workflow access references.
 - `preflight.steps.ts` — explicit `Given` entrypoints for Agent Builder preflight resources.
+- `speech-to-text.steps.ts` — Agent Build voice input, multipart request, and transcribed input behavior.
 
 Cucumber step definitions are globally registered. Do not duplicate the same step text across files, even if one is written as `Given` and another as `Then`.
 
@@ -88,6 +90,7 @@ Agent v2 business state belongs under `world.agentBuilder`; do not keep adding A
 Use the existing namespace shape:
 
 - `world.agentBuilder.preflight.stableModel`
+- `world.agentBuilder.preflight.speechToTextModel`
 - `world.agentBuilder.preflight.brokenModel`
 - `world.agentBuilder.preflight.preseededResources`
 - `world.agentBuilder.accessPoint.serviceApiBaseURL`
@@ -99,6 +102,7 @@ Use the existing namespace shape:
 - `world.agentBuilder.accessPoint.workflowReferencePage`
 - `world.agentBuilder.accessPoint.composerDraftSnapshot`
 - `world.agentBuilder.configure.concurrentPage`
+- `world.agentBuilder.speechToText.request`
 - `world.agentBuilder.workflow.agentConsolePage`
 - `world.agentBuilder.workflow.outputVariables`
 
@@ -164,6 +168,8 @@ Use `the Agent v2 runtime backend is available` before scenarios tagged `@agent-
 
 Use `the Agent Builder stable chat model is available` before scenarios that need a real Agent Soul model configuration. This includes true runtime scenarios, model-backed build-mode assertions, and Workflow Agent v2 node setup because the backend rejects Agent nodes without model config. Do not add the model preflight to pure navigation or identity checks unless the setup API itself requires model config. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` are selectors for a model already configured in the workspace; they are not provider credentials. The step defaults to `openai` / `gpt-5-nano` / `llm`, verifies the selected model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`.
 
+Use `the workspace default speech-to-text model is active` before real speech-to-text scenarios. The preflight reads `/console/api/workspaces/current/default-model?model_type=speech2text`, verifies that same provider/model is active in the Speech-to-Text model list, and stores it on `DifyWorld.agentBuilder.preflight.speechToTextModel`. It must not configure a model or provider credential. External runtime preparation selects `E2E_SPEECH_TO_TEXT_MODEL_PROVIDER` / `E2E_SPEECH_TO_TEXT_MODEL_NAME`, defaulting to `openai` / `gpt-4o-mini-transcribe`, reuses `E2E_MODEL_PROVIDER_CREDENTIALS_JSON` when provider setup is required, and selects the active model as the workspace default.
+
 Use `the Agent Builder agent-decision chat model is available` before scenarios that need a stronger model to exercise Agent autonomous planning, generated query selection, or tool/resource choice. `E2E_AGENT_DECISION_MODEL_PROVIDER`, `E2E_AGENT_DECISION_MODEL_NAME`, and optional `E2E_AGENT_DECISION_MODEL_TYPE` are selectors for a second active model fixture, defaulting to `openai` / `gpt-5.5` / `llm`. The step stores the model on `DifyWorld.agentBuilder.preflight.agentDecisionModel`. Do not use this fixture as a broad replacement for `@stable-model`; it is intentionally narrower and costlier.
 
 Keep `@stable-model` on Build draft apply scenarios that click `Apply`. The current product path calls `/build-chat/finalize` before applying the draft, and the backend returns `model is required` when the Agent Soul has no model config. Discard-only and pending-draft isolation scenarios can stay model-free when they do not finalize the Build draft.
@@ -206,10 +212,6 @@ Use `the Agent Builder preseeded Agent "{agent}" includes an OAuth2 tool credent
 
 Use `the Agent Builder preseeded Agent "{agent}" includes the dual retrieval fixture configuration` for the fixed Dual Retrieval Agent prerequisite. It composes the indexed knowledge-base preflight, then reads `/console/api/agent/{agent_id}/composer` to verify `agent_soul.knowledge.sets` includes both an Agent-decide generated query set and a custom user-query set using the fixed custom query.
 
-Use `the Agent Builder preseeded Agent "{agent}" includes the file tree fixture files` for file-tree display prerequisites. It verifies the Agent drive contains every file from `agentBuilderFileTreeFixtureFiles` through `/console/api/agent/{agent_id}/drive/files?prefix=files/`.
-
-Use `the Agent Builder preseeded Agent "{agent}" includes the current flat file fixture configuration` for the current Agent Edit Files section. Agent config files are still a flat `config_files` list and reject path separators, so this preflight verifies the fixture file basenames are present in the Agent Soul. Treat this as partial coverage for tree-display requirements until the product supports hierarchical config files in the visible Files section.
-
 Use `the Agent Builder preseeded Agent "{agent}" has published Web app access` to verify that a fixed Agent is published, Web app access is enabled, and the Agent detail response includes the site token and base URL needed to open the Web app.
 
 Use `the Agent Builder preseeded Agent "{agent}" is referenced by workflow "{workflow}"` to verify Workflow access prerequisites. It checks both fixed resources exist, then uses `/console/api/agent/{agent_id}/referencing-workflows`, the same Console API used by the Access Point Workflow references table, to verify the workflow references the Agent through at least one published Agent node.
@@ -230,6 +232,6 @@ Order blocked steps by the real owner of the first unresolved condition. If a sc
 
 Use partial coverage only when current product behavior is intentionally narrower than the written requirement and the test still asserts a real user-visible behavior. Example: Files are currently flat in Agent config files, so the flat Files list can be asserted while tree display remains blocked until product support exists.
 
-Multiple-file drop is already covered as stable `@core @files-limits` behavior. File format, size, count, and in-progress upload limit cases remain feature-gated until the product exposes stable Agent config file restrictions and user-visible recovery/error states. Do not convert those gated `@files-limits` scenarios to passing tests by relying on default environment behavior; first align the product contract or seed configuration.
+Multiple-file drop is already covered as stable `@core @files-limits` behavior. File format and size rejection remain feature-gated until the product exposes stable Agent config file restrictions and user-visible error states. Do not convert those gated `@files-limits` scenarios to passing tests by relying on default environment behavior; first align the product contract or seed configuration.
 
 Do not mark a scenario as complete if it only proves setup state and does not assert the user-visible behavior or persisted product contract required by the case.

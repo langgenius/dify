@@ -1,9 +1,6 @@
 import type { EditorConfig, Klass, LexicalEditor, LexicalNode, SerializedTextNode } from 'lexical'
 import { createEditor } from 'lexical'
-import {
-  $createVariableValueBlockNode,
-  VariableValueBlockNode,
-} from '../node'
+import { $createVariableValueBlockNode, VariableValueBlockNode } from '../node'
 
 describe('VariableValueBlockNode', () => {
   let editor: LexicalEditor

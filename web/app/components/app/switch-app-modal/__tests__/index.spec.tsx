@@ -28,19 +28,6 @@ vi.mock('@/service/apps', () => ({
   deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
 }))
 
-let mockIsEditor = true
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsEditor,
-    userProfile: {
-      email: 'user@example.com',
-    },
-    langGeniusVersionInfo: {
-      current_version: '1.0.0',
-    },
-  }),
-}))
-
 let mockEnableBilling = false
 let mockPlan = {
   type: Plan.sandbox,
@@ -124,10 +111,14 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
-    success: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'success', message, ...options }),
-    error: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'error', message, ...options }),
-    warning: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'warning', message, ...options }),
-    info: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'info', message, ...options }),
+    success: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'success', message, ...options }),
+    error: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'error', message, ...options }),
+    warning: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'warning', message, ...options }),
+    info: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'info', message, ...options }),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -147,7 +138,6 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
       onSuccess={onSuccess}
       {...overrides}
     />,
-
   )
 
   return {
@@ -172,7 +162,6 @@ describe('SwitchAppModal', () => {
       originalSetAppDetail(...args)
     })
     useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
-    mockIsEditor = true
     mockEnableBilling = false
     mockPlan = {
       type: Plan.sandbox,
@@ -322,12 +311,14 @@ describe('SwitchAppModal', () => {
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
       await waitFor(() => {
-        expect(mockSwitchApp).toHaveBeenCalledWith(expect.objectContaining({
-          appID: appDetail.id,
-          icon_type: 'emoji',
-          icon: '🚀',
-          icon_background: '#E4FBCC',
-        }))
+        expect(mockSwitchApp).toHaveBeenCalledWith(
+          expect.objectContaining({
+            appID: appDetail.id,
+            icon_type: 'emoji',
+            icon: '🚀',
+            icon_background: '#E4FBCC',
+          }),
+        )
       })
     })
 
@@ -349,7 +340,9 @@ describe('SwitchAppModal', () => {
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-      expect(screen.queryByRole('button', { name: 'common.operation.confirm' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.confirm' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByRole('checkbox')).not.toBeChecked()
     })
 
@@ -397,7 +390,10 @@ describe('SwitchAppModal', () => {
 
       // Assert
       await waitFor(() => {
-        expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
+        expect(notify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'app.newApp.appCreateFailed',
+        })
       })
       expect(onClose).not.toHaveBeenCalled()
       expect(onSuccess).not.toHaveBeenCalled()
