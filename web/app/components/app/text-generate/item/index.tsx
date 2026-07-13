@@ -151,9 +151,9 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   useEffect(() => {
     if (controlClearMoreLikeThis) {
-      // eslint-disable-next-line react/set-state-in-effect
+      // oxlint-disable-next-line eslint-react/set-state-in-effect
       setChildMessageId(null)
-      // eslint-disable-next-line react/set-state-in-effect
+      // oxlint-disable-next-line eslint-react/set-state-in-effect
       setCompletionRes('')
     }
   }, [controlClearMoreLikeThis])
@@ -161,7 +161,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   // regeneration clear child
   useEffect(() => {
     if (isLoading)
-      // eslint-disable-next-line react/set-state-in-effect
+      // oxlint-disable-next-line eslint-react/set-state-in-effect
       setChildMessageId(null)
   }, [isLoading])
 
@@ -180,7 +180,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     setCurrentTab(tab)
   }
   useEffect(() => {
-    // eslint-disable-next-line react/set-state-in-effect
+    // oxlint-disable-next-line eslint-react/set-state-in-effect
     setCurrentTab(getDefaultGenerationTab(workflowProcessData))
   }, [workflowProcessData])
   const handleSubmitHumanInputForm = useCallback(

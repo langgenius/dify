@@ -298,10 +298,6 @@ export default defineConfig({
     },
     postProcess: [
       {
-        command: 'eslint',
-        args: ['--fix', '{{path}}/*.ts'],
-      },
-      {
         command: 'vp',
         args: ['fmt', '{{path}}'],
       },

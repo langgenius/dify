@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
+from sqlalchemy.orm import Session
 
 from services.recommend_app.buildin.buildin_retrieval import BuildInRecommendAppRetrieval
 from services.recommend_app.recommend_app_type import RecommendAppType
@@ -32,38 +33,45 @@ class TestBuildInRecommendAppRetrieval:
         retrieval = BuildInRecommendAppRetrieval()
         assert retrieval.get_type() == RecommendAppType.BUILDIN
 
-    def test_get_recommended_apps_and_categories_delegates(self):
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_get_recommended_apps_and_categories_delegates(self, sqlite_session: Session):
         with patch.object(
             BuildInRecommendAppRetrieval,
             "fetch_recommended_apps_from_builtin",
             return_value={"apps": []},
         ) as mock_fetch:
             retrieval = BuildInRecommendAppRetrieval()
-            result = retrieval.get_recommended_apps_and_categories("en-US", session=MagicMock())
+            result = retrieval.get_recommended_apps_and_categories("en-US", session=sqlite_session)
             mock_fetch.assert_called_once_with("en-US")
             assert result == {"apps": []}
+            assert not sqlite_session.in_transaction()
 
-    @patch("services.recommend_app.buildin.buildin_retrieval.DatabaseRecommendAppRetrieval")
-    def test_get_learn_dify_apps_delegates_to_database(self, mock_database_retrieval):
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_get_learn_dify_apps_delegates_to_database(self, sqlite_session: Session):
         expected = {"recommended_apps": [{"id": "learn-dify-app"}]}
-        mock_database_retrieval.fetch_learn_dify_apps_from_db.return_value = expected
-        session = MagicMock()
+        with patch(
+            "services.recommend_app.buildin.buildin_retrieval.DatabaseRecommendAppRetrieval"
+        ) as mock_database_retrieval:
+            mock_database_retrieval.fetch_learn_dify_apps_from_db.return_value = expected
 
-        result = BuildInRecommendAppRetrieval().get_learn_dify_apps("en-US", session=session)
+            result = BuildInRecommendAppRetrieval().get_learn_dify_apps("en-US", session=sqlite_session)
 
         assert result == expected
-        mock_database_retrieval.fetch_learn_dify_apps_from_db.assert_called_once_with("en-US", session=session)
+        mock_database_retrieval.fetch_learn_dify_apps_from_db.assert_called_once_with("en-US", session=sqlite_session)
+        assert not sqlite_session.in_transaction()
 
-    def test_get_recommend_app_detail_delegates(self):
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_get_recommend_app_detail_delegates(self, sqlite_session: Session):
         with patch.object(
             BuildInRecommendAppRetrieval,
             "fetch_recommended_app_detail_from_builtin",
             return_value={"id": "app-1"},
         ) as mock_fetch:
             retrieval = BuildInRecommendAppRetrieval()
-            result = retrieval.get_recommend_app_detail("app-1", session=MagicMock())
+            result = retrieval.get_recommend_app_detail("app-1", session=sqlite_session)
             mock_fetch.assert_called_once_with("app-1")
             assert result == {"id": "app-1"}
+            assert not sqlite_session.in_transaction()
 
     def test_get_builtin_data_reads_json_and_caches(self, tmp_path: Path):
         json_file = tmp_path / "constants" / "recommended_apps.json"

@@ -75,7 +75,7 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
-              - 'eslint.config.mjs'
+              - 'lint.config.ts'
               - '.npmrc'
               - '.nvmrc'
               - '.github/workflows/cli-tests.yml'

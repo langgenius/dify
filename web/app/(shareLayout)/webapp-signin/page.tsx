@@ -33,7 +33,7 @@ const WebSSOForm: FC = () => {
     await webAppLogout(shareCode!)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router, webAppLogout, shareCode])
+  }, [getSigninUrl, router, shareCode])
 
   if (!redirectUrl) {
     return (

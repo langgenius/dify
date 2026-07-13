@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
+/* oxlint-disable react/only-export-components */
 import type { SelectorParam, TFunction } from 'i18next'
 import type { ComponentType, FormEvent, ReactNode } from 'react'
 import type {

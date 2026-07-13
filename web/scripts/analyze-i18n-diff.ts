@@ -102,7 +102,7 @@ function parseTsContent(content: string): NestedTranslation {
   // Use Function constructor to safely evaluate the object literal
   // This handles JS object syntax like unquoted keys, template literals, etc.
   try {
-    // eslint-disable-next-line no-new-func
+    // oxlint-disable-next-line no-new-func
     const fn = new Function(`return (${cleaned})`)
     return fn() as NestedTranslation
   } catch (e) {

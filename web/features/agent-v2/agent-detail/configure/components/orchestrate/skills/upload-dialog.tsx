@@ -17,8 +17,9 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { formatFileSize } from '@/utils/format'
 
@@ -60,9 +61,11 @@ function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
 function AgentSkillPackageUploader({
   file,
   onChange,
+  showWarning,
 }: {
   file?: File
   onChange: (file?: File) => void
+  showWarning: boolean
 }) {
   const { t } = useTranslation('agentV2')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -183,6 +186,33 @@ function AgentSkillPackageUploader({
           </div>
         </div>
       )}
+      {showWarning && (
+        <div className="mt-2 flex items-start gap-2 rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
+          <span
+            aria-hidden
+            className="mt-0.5 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
+          />
+          <ul className="list-disc space-y-1 pl-4 system-xs-regular text-text-warning">
+            <li>
+              <Trans
+                i18nKey={($) => $['agentDetail.configure.skills.upload.warning.specification']}
+                ns="agentV2"
+                components={{
+                  specificationLink: (
+                    <Link
+                      href="https://agentskills.io/specification"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-sm underline outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    />
+                  ),
+                }}
+              />
+            </li>
+            <li>{t(($) => $['agentDetail.configure.skills.upload.warning.files'])}</li>
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
@@ -283,7 +313,11 @@ export function AgentSkillUploadDialog({
         <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
           {t(($) => $['agentDetail.configure.skills.upload.description'])}
         </DialogDescription>
-        <AgentSkillPackageUploader file={file} onChange={setFile} />
+        <AgentSkillPackageUploader
+          file={file}
+          onChange={setFile}
+          showWarning={uploadSkillMutation.isError}
+        />
         <div className="flex justify-end gap-2 pt-6">
           <Button
             type="button"

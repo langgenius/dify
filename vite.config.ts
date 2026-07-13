@@ -1,9 +1,12 @@
 import { defineConfig } from 'vite-plus'
+import { lintConfig } from './lint.config'
 
-const lintFiles = '*.{js,cjs,mjs,jsx,ts,cts,mts,tsx,json,jsonc,json5,md,yml,yaml,toml}'
+const lintFiles = '*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'
+const eslintFiles = '*.{json,jsonc,json5,md,yml,yaml,toml}'
 const formatOnlyFiles = '*.{mdx,css,scss,less,html,vue,svelte,gql,graphql,hbs,handlebars}'
-const lintFix = 'eslint --fix --pass-on-unpruned-suppressions --no-error-on-unmatched-pattern'
-const format = 'vp fmt --no-error-on-unmatched-pattern'
+const checkFix = 'vp check --fix --no-error-on-unmatched-pattern'
+const eslintFix =
+  'eslint --fix --pass-on-unpruned-suppressions --no-error-on-unmatched-pattern --no-warn-ignored'
 
 const nonFrontendIgnores = [
   '.agents/**',
@@ -30,6 +33,7 @@ const generatedIgnores = [
   'e2e/.auth/**',
   'e2e/cucumber-report/**',
   'eslint-suppressions.json',
+  'oxlint-suppressions.json',
   'web/next/**',
   'web/next-env.d.ts',
   'web/public/embed.min.js',
@@ -40,9 +44,11 @@ const generatedIgnores = [
 const formatterUnstableInputs = ['web/app/components/develop/template/*.mdx']
 
 export default defineConfig({
+  lint: lintConfig,
   staged: {
-    [lintFiles]: [lintFix, format],
-    [formatOnlyFiles]: format,
+    [lintFiles]: checkFix,
+    [eslintFiles]: [eslintFix, checkFix],
+    [formatOnlyFiles]: checkFix,
   },
   fmt: {
     ignorePatterns: [...nonFrontendIgnores, ...generatedIgnores, ...formatterUnstableInputs],

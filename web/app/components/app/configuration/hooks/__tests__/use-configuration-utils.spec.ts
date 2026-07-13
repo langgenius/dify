@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { VisionSettings } from '@/types/app'
 import { withSelectorKey } from '@/test/i18n-mock'
 import {
