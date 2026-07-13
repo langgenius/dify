@@ -63,8 +63,7 @@ export const validateDSLContent = (content: string, mode?: AppModeEnum) => {
     const nodes = data?.workflow?.graph?.nodes ?? []
     const invalidNodes = getInvalidNodeTypes(mode)
     return !nodes.some((node: Node<CommonNodeType>) => invalidNodes.includes(node?.data?.type))
-  }
-  catch {
+  } catch {
     return false
   }
 }
@@ -73,15 +72,20 @@ export const isImportCompleted = (status: DSLImportStatus) => {
   return status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS
 }
 
-export const getImportNotificationPayload = (status: DSLImportStatus, t: TFunction): ImportNotificationPayload => {
+export const getImportNotificationPayload = (
+  status: DSLImportStatus,
+  t: TFunction,
+): ImportNotificationPayload => {
   return {
     type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-    message: status === DSLImportStatus.COMPLETED
-      ? t($ => $['common.importSuccess'], { ns: 'workflow' })
-      : t($ => $['common.importWarning'], { ns: 'workflow' }),
-    children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-      ? t($ => $['common.importWarningDetails'], { ns: 'workflow' })
-      : undefined,
+    message:
+      status === DSLImportStatus.COMPLETED
+        ? t(($) => $['common.importSuccess'], { ns: 'workflow' })
+        : t(($) => $['common.importWarning'], { ns: 'workflow' }),
+    children:
+      status === DSLImportStatus.COMPLETED_WITH_WARNINGS
+        ? t(($) => $['common.importWarningDetails'], { ns: 'workflow' })
+        : undefined,
   }
 }
 
@@ -91,13 +95,22 @@ export const normalizeWorkflowFeatures = (features: WorkflowFeatures) => {
       image: {
         enabled: !!features.file_upload?.image?.enabled,
         number_limits: features.file_upload?.image?.number_limits || 3,
-        transfer_methods: features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+        transfer_methods: features.file_upload?.image?.transfer_methods || [
+          'local_file',
+          'remote_url',
+        ],
       },
       enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
-      allowed_file_types: features.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
-      allowed_file_extensions: features.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image]!.map(ext => `.${ext}`),
-      allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-      number_limits: features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
+      allowed_file_types: features.file_upload?.allowed_file_types || [
+        SupportUploadFileTypes.image,
+      ],
+      allowed_file_extensions:
+        features.file_upload?.allowed_file_extensions ||
+        FILE_EXTS[SupportUploadFileTypes.image]!.map((ext) => `.${ext}`),
+      allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods ||
+        features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+      number_limits:
+        features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
     },
     opening: {
       enabled: !!features.opening_statement,

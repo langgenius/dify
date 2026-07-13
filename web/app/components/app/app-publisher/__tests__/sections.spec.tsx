@@ -3,11 +3,18 @@ import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
-import { AccessModeDisplay, PublisherAccessSection, PublisherActionsSection, PublisherSummarySection } from '../sections'
+import {
+  AccessModeDisplay,
+  PublisherAccessSection,
+  PublisherActionsSection,
+  PublisherSummarySection,
+} from '../sections'
 
 vi.mock('../publish-with-multiple-model', () => ({
   default: ({ onSelect }: { onSelect: (item: Record<string, unknown>) => void }) => (
-    <button type="button" onClick={() => onSelect({ model: 'gpt-4o' })}>publish-multiple-model</button>
+    <button type="button" onClick={() => onSelect({ model: 'gpt-4o' })}>
+      publish-multiple-model
+    </button>
   ),
 }))
 
@@ -23,10 +30,12 @@ vi.mock('../suggested-action', () => ({
     onClick?: () => void
     link?: string
     disabled?: boolean
-    actionButton?: { ariaLabel: string, onClick: () => void }
+    actionButton?: { ariaLabel: string; onClick: () => void }
   }) => (
     <div>
-      <button type="button" data-link={link} disabled={disabled} onClick={onClick}>{children}</button>
+      <button type="button" data-link={link} disabled={disabled} onClick={onClick}>
+        {children}
+      </button>
       {actionButton && (
         <button
           type="button"
@@ -184,7 +193,9 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    expect(screen.getByText(/(?:^|\.)accessControlDialog\.accessItems\.anyone(?=$|:)/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/(?:^|\.)accessControlDialog\.accessItems\.anyone(?=$|:)/),
+    ).toBeInTheDocument()
     expect(render(<AccessModeDisplay />).container).toBeEmptyDOMElement()
   })
 
@@ -200,7 +211,9 @@ describe('app-publisher sections', () => {
     )
 
     expect(screen.queryByText(/(?:^|\.)publishApp\.title(?=$|:)/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/(?:^|\.)accessControlDialog\.accessItems\.anyone(?=$|:)/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/(?:^|\.)accessControlDialog\.accessItems\.anyone(?=$|:)/),
+    ).not.toBeInTheDocument()
   })
 
   it('should render workflow actions, batch run links, and workflow tool configuration', () => {
@@ -242,7 +255,10 @@ describe('app-publisher sections', () => {
       />,
     )
 
-    expect(screen.getByText(/(?:^|\.)common\.batchRunApp(?=$|:)/)).toHaveAttribute('data-link', 'https://example.com/app?mode=batch')
+    expect(screen.getByText(/(?:^|\.)common\.batchRunApp(?=$|:)/)).toHaveAttribute(
+      'data-link',
+      'https://example.com/app?mode=batch',
+    )
     fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ })[0]!)
     expect(handleOpenRunConfig).toHaveBeenCalledWith('https://example.com/app')
     fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)operation\.config(?=$|:)/ })[1]!)

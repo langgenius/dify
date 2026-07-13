@@ -8,11 +8,11 @@ function releaseCreatedAt(release: Release) {
 }
 
 function releaseById(releaseRows: Release[], releaseId?: string) {
-  return releaseRows.find(release => release.id === releaseId)
+  return releaseRows.find((release) => release.id === releaseId)
 }
 
 function releaseOrderIndex(releaseRows: Release[], releaseId?: string) {
-  return releaseRows.findIndex(release => release.id === releaseId)
+  return releaseRows.findIndex((release) => release.id === releaseId)
 }
 
 function compareReleaseOrder(
@@ -20,17 +20,19 @@ function compareReleaseOrder(
   currentRelease: Release,
   releaseRows: Release[],
 ) {
-  if (!targetRelease)
-    return undefined
-  if (targetRelease.id === currentRelease.id)
-    return 0
+  if (!targetRelease) return undefined
+  if (targetRelease.id === currentRelease.id) return 0
 
   const normalizedTargetRelease = releaseById(releaseRows, targetRelease.id) ?? targetRelease
   const normalizedCurrentRelease = releaseById(releaseRows, currentRelease.id) ?? currentRelease
   const targetCreatedAt = releaseCreatedAt(normalizedTargetRelease)
   const currentCreatedAt = releaseCreatedAt(normalizedCurrentRelease)
 
-  if (targetCreatedAt !== undefined && currentCreatedAt !== undefined && targetCreatedAt !== currentCreatedAt)
+  if (
+    targetCreatedAt !== undefined &&
+    currentCreatedAt !== undefined &&
+    targetCreatedAt !== currentCreatedAt
+  )
     return targetCreatedAt > currentCreatedAt ? 1 : -1
 
   const targetIndex = releaseOrderIndex(releaseRows, targetRelease.id)
@@ -52,14 +54,11 @@ export function releaseDeploymentAction({
   releaseRows: Release[]
   isExistingRelease?: boolean
 }): ReleaseDeploymentAction {
-  if (!currentRelease)
-    return isExistingRelease ? 'deployExistingRelease' : 'deploy'
+  if (!currentRelease) return isExistingRelease ? 'deployExistingRelease' : 'deploy'
 
   const order = compareReleaseOrder(targetRelease, currentRelease, releaseRows)
-  if (order === -1)
-    return 'rollback'
-  if (order === 1)
-    return 'promote'
+  if (order === -1) return 'rollback'
+  if (order === 1) return 'promote'
 
   return targetRelease && targetRelease.id !== currentRelease.id
     ? 'promote'

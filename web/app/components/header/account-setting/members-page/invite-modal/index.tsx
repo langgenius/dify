@@ -23,31 +23,23 @@ type IInviteModalProps = {
   onSend: (invitationResults: InvitationResult[]) => void
 }
 
-const InviteModal = ({
-  isEmailSetup,
-  onCancel,
-  onSend,
-}: IInviteModalProps) => {
+const InviteModal = ({ isEmailSetup, onCancel, onSend }: IInviteModalProps) => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const licenseLimit = useProviderContextSelector(s => s.licenseLimit)
-  const refreshLicenseLimit = useProviderContextSelector(s => s.refreshLicenseLimit)
+  const licenseLimit = useProviderContextSelector((s) => s.licenseLimit)
+  const refreshLicenseLimit = useProviderContextSelector((s) => s.refreshLicenseLimit)
   const [emails, setEmails] = useState<string[]>([])
   const isLimited = licenseLimit.workspace_members.limit > 0
   const usedSize = emails.length + licenseLimit.workspace_members.size
-  const isLimitExceeded = isLimited && (usedSize > licenseLimit.workspace_members.limit)
+  const isLimitExceeded = isLimited && usedSize > licenseLimit.workspace_members.limit
 
   const locale = useLocale()
   const [role, setRole] = useState<string>('')
 
-  const [isSubmitting, {
-    setTrue: setIsSubmitting,
-    setFalse: setIsSubmitted,
-  }] = useBoolean(false)
+  const [isSubmitting, { setTrue: setIsSubmitting, setFalse: setIsSubmitted }] = useBoolean(false)
 
   const handleSend = useCallback(async () => {
-    if (isLimitExceeded || isSubmitting)
-      return
+    if (isLimitExceeded || isSubmitting) return
     setIsSubmitting()
     if (emails.map((email: string) => emailRegex.test(email)).every(Boolean)) {
       try {
@@ -62,21 +54,31 @@ const InviteModal = ({
           onCancel()
           onSend(invitation_results)
         }
-      }
-      catch { }
-    }
-    else {
-      toast.error(t($ => $['members.emailInvalid'], { ns: 'common' }))
+      } catch {}
+    } else {
+      toast.error(t(($) => $['members.emailInvalid'], { ns: 'common' }))
     }
     setIsSubmitted()
-  }, [isLimitExceeded, emails, role, locale, onCancel, onSend, t, isSubmitting, refreshLicenseLimit, queryClient, setIsSubmitted, setIsSubmitting])
+  }, [
+    isLimitExceeded,
+    emails,
+    role,
+    locale,
+    onCancel,
+    onSend,
+    t,
+    isSubmitting,
+    refreshLicenseLimit,
+    queryClient,
+    setIsSubmitted,
+    setIsSubmitting,
+  ])
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onCancel()
+        if (!open) onCancel()
       }}
     >
       <DialogContent
@@ -86,20 +88,28 @@ const InviteModal = ({
         <DialogCloseButton className="top-6 right-8" />
         <div className="mb-2 pr-8">
           <DialogTitle className="text-xl font-semibold text-text-primary">
-            {t($ => $['members.inviteTeamMember'], { ns: 'common' })}
+            {t(($) => $['members.inviteTeamMember'], { ns: 'common' })}
           </DialogTitle>
         </div>
-        <div className="mb-3 text-[13px] text-text-tertiary">{t($ => $['members.inviteTeamMemberTip'], { ns: 'common' })}</div>
+        <div className="mb-3 text-[13px] text-text-tertiary">
+          {t(($) => $['members.inviteTeamMemberTip'], { ns: 'common' })}
+        </div>
         {!isEmailSetup && (
           <div className="grow basis-0 overflow-y-auto pb-4">
             <div className="relative mb-1 rounded-xl border border-components-panel-border p-2 shadow-xs">
-              <div className="absolute top-0 left-0 size-full rounded-xl opacity-40" style={{ background: 'linear-gradient(92deg, rgba(255, 171, 0, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
+              <div
+                className="absolute top-0 left-0 size-full rounded-xl opacity-40"
+                style={{
+                  background:
+                    'linear-gradient(92deg, rgba(255, 171, 0, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)',
+                }}
+              ></div>
               <div className="relative flex size-full items-start">
                 <div className="mr-0.5 shrink-0 p-0.5">
                   <div className="i-ri-error-warning-fill size-5 text-text-warning" />
                 </div>
                 <div className="system-xs-medium text-text-primary">
-                  <span>{t($ => $['members.emailNotSetup'], { ns: 'common' })}</span>
+                  <span>{t(($) => $['members.emailNotSetup'], { ns: 'common' })}</span>
                 </div>
               </div>
             </div>
@@ -107,10 +117,15 @@ const InviteModal = ({
         )}
 
         <div>
-          <div className="mb-2 text-sm font-medium text-text-primary">{t($ => $['members.email'], { ns: 'common' })}</div>
+          <div className="mb-2 text-sm font-medium text-text-primary">
+            {t(($) => $['members.email'], { ns: 'common' })}
+          </div>
           <div className="mb-8 flex h-36 flex-col items-stretch">
             <ReactMultiEmail
-              className={cn('size-full border-components-input-border-active bg-components-input-bg-normal! px-3 pt-2 outline-hidden', 'appearance-none overflow-y-auto rounded-lg text-sm text-text-primary!')}
+              className={cn(
+                'size-full border-components-input-border-active bg-components-input-bg-normal! px-3 pt-2 outline-hidden',
+                'appearance-none overflow-y-auto rounded-lg text-sm text-text-primary!',
+              )}
               autoFocus
               emails={emails}
               inputClassName="bg-transparent"
@@ -121,7 +136,7 @@ const InviteModal = ({
                   <button
                     type="button"
                     data-tag-handle
-                    aria-label={`${t($ => $['operation.remove'], { ns: 'common' })} ${email}`}
+                    aria-label={`${t(($) => $['operation.remove'], { ns: 'common' })} ${email}`}
                     className="border-none bg-transparent p-0 text-inherit"
                     onClick={() => removeEmail(index)}
                   >
@@ -129,15 +144,23 @@ const InviteModal = ({
                   </button>
                 </div>
               )}
-              placeholder={t($ => $['members.emailPlaceholder'], { ns: 'common' }) || ''}
+              placeholder={t(($) => $['members.emailPlaceholder'], { ns: 'common' }) || ''}
             />
-            <div className={
-              cn('flex items-center justify-end system-xs-regular text-text-tertiary', (isLimited && usedSize > licenseLimit.workspace_members.limit) ? 'text-text-destructive' : '')
-            }
+            <div
+              className={cn(
+                'flex items-center justify-end system-xs-regular text-text-tertiary',
+                isLimited && usedSize > licenseLimit.workspace_members.limit
+                  ? 'text-text-destructive'
+                  : '',
+              )}
             >
               <span>{usedSize}</span>
               <span>/</span>
-              <span>{isLimited ? licenseLimit.workspace_members.limit : t($ => $['license.unlimited'], { ns: 'common' })}</span>
+              <span>
+                {isLimited
+                  ? licenseLimit.workspace_members.limit
+                  : t(($) => $['license.unlimited'], { ns: 'common' })}
+              </span>
             </div>
           </div>
           <div className="mb-6">
@@ -150,7 +173,7 @@ const InviteModal = ({
             disabled={!emails.length || !role || isLimitExceeded || isSubmitting}
             variant="primary"
           >
-            {t($ => $['members.sendInvite'], { ns: 'common' })}
+            {t(($) => $['members.sendInvite'], { ns: 'common' })}
           </Button>
         </div>
       </DialogContent>

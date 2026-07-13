@@ -23,22 +23,19 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 function isPackageUploadResponse(value: unknown): value is PackageUploadResponse {
-  if (!isObject(value))
-    return false
+  if (!isObject(value)) return false
 
   return typeof value.unique_identifier === 'string' && isObject(value.manifest)
 }
 
 function getRejectedResponse(error: unknown): unknown {
-  if (!isObject(error) || !('response' in error))
-    return undefined
+  if (!isObject(error) || !('response' in error)) return undefined
 
   return error.response
 }
 
 function getUploadFailureMessage(response: unknown): string | undefined {
-  if (!isObject(response))
-    return undefined
+  if (!isObject(response)) return undefined
 
   return (response as UploadFailureResponse).message
 }
@@ -47,10 +44,7 @@ type Props = Readonly<{
   isBundle: boolean
   file: File
   onCancel: () => void
-  onPackageUploaded: (result: {
-    uniqueIdentifier: string
-    manifest: PluginDeclaration
-  }) => void
+  onPackageUploaded: (result: { uniqueIdentifier: string; manifest: PluginDeclaration }) => void
   onBundleUploaded: (result: Dependency[]) => void
   onFailed: (errorMsg: string) => void
 }>
@@ -65,32 +59,34 @@ const Uploading: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const fileName = file.name
-  const handleUploadedResponse = React.useCallback((response: unknown) => {
-    if (isBundle) {
-      if (Array.isArray(response)) {
-        onBundleUploaded(response as Dependency[])
+  const handleUploadedResponse = React.useCallback(
+    (response: unknown) => {
+      if (isBundle) {
+        if (Array.isArray(response)) {
+          onBundleUploaded(response as Dependency[])
+          return
+        }
+        onFailed(t(($) => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
         return
       }
-      onFailed(t($ => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
-      return
-    }
 
-    if (!isPackageUploadResponse(response)) {
-      onFailed(t($ => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
-      return
-    }
+      if (!isPackageUploadResponse(response)) {
+        onFailed(t(($) => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
+        return
+      }
 
-    onPackageUploaded({
-      uniqueIdentifier: response.unique_identifier,
-      manifest: response.manifest,
-    })
-  }, [isBundle, onBundleUploaded, onFailed, onPackageUploaded, t])
+      onPackageUploaded({
+        uniqueIdentifier: response.unique_identifier,
+        manifest: response.manifest,
+      })
+    },
+    [isBundle, onBundleUploaded, onFailed, onPackageUploaded, t],
+  )
 
   const handleUpload = React.useCallback(async () => {
     try {
       handleUploadedResponse(await uploadFile(file, isBundle))
-    }
-    catch (error: unknown) {
+    } catch (error: unknown) {
       const response = getRejectedResponse(error)
       const message = getUploadFailureMessage(response)
       if (message) {
@@ -110,7 +106,7 @@ const Uploading: FC<Props> = ({
         <div className="flex items-center gap-1 self-stretch">
           <span className="i-ri-loader-2-line size-4 animate-spin-slow text-text-accent" />
           <div className="system-md-regular text-text-secondary">
-            {t($ => $[`${i18nPrefix}.uploadingPackage`], {
+            {t(($) => $[`${i18nPrefix}.uploadingPackage`], {
               ns: 'plugin',
               packageName: fileName,
             })}
@@ -130,14 +126,10 @@ const Uploading: FC<Props> = ({
       {/* Action Buttons */}
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         <Button variant="secondary" className="min-w-[72px]" onClick={onCancel}>
-          {t($ => $['operation.cancel'], { ns: 'common' })}
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-        <Button
-          variant="primary"
-          className="min-w-[72px]"
-          disabled
-        >
-          {t($ => $[`${i18nPrefix}.install`], { ns: 'plugin' })}
+        <Button variant="primary" className="min-w-[72px]" disabled>
+          {t(($) => $[`${i18nPrefix}.install`], { ns: 'plugin' })}
         </Button>
       </div>
     </>

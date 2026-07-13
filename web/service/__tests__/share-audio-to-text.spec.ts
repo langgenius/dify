@@ -62,7 +62,9 @@ describe('audioToText', () => {
     it('should reject an installed app request without an app ID', async () => {
       const { AppSourceType, audioToText } = await import('../share')
 
-      expect(() => audioToText(AppSourceType.installedApp, undefined, new FormData())).toThrow('app ID is required')
+      expect(() => audioToText(AppSourceType.installedApp, undefined, new FormData())).toThrow(
+        'app ID is required',
+      )
       expect(consolePost).not.toHaveBeenCalled()
     })
   })

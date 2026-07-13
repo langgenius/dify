@@ -19,8 +19,14 @@ import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
-import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '@/app/components/tools/content-inset'
-import { useCanManageMCP, useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
+import {
+  toolsContentInsetClassNames,
+  toolsUnifiedContentFrameClassName,
+} from '@/app/components/tools/content-inset'
+import {
+  useCanManageMCP,
+  useCanManageTools,
+} from '@/app/components/tools/hooks/use-tool-permissions'
 import Marketplace from '@/app/components/tools/marketplace'
 import MCPList from '@/app/components/tools/mcp'
 import ProviderDetail from '@/app/components/tools/provider/detail'
@@ -36,7 +42,7 @@ import { ToolProviderToolbar } from './tool-provider-toolbar'
 type ProviderListProps = {
   category?: ToolCategory
   contentInset?: ToolsContentInset
-  layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
+  layout?: (parts: { body: ReactNode; toolbar: ReactNode }) => ReactNode
 }
 
 type BuiltinMarketplacePanelProps = {
@@ -52,16 +58,12 @@ const BuiltinMarketplacePanel = ({
   keywords,
   tagFilterValue,
 }: BuiltinMarketplacePanelProps) => {
-  const {
-    isMarketplaceArrowVisible,
-    marketplaceContext,
-    showMarketplacePanel,
-    toolListTailRef,
-  } = useToolMarketplacePanel({
-    containerRef,
-    keywords,
-    tagFilterValue,
-  })
+  const { isMarketplaceArrowVisible, marketplaceContext, showMarketplacePanel, toolListTailRef } =
+    useToolMarketplacePanel({
+      containerRef,
+      keywords,
+      tagFilterValue,
+    })
 
   return (
     <>
@@ -78,25 +80,17 @@ const BuiltinMarketplacePanel = ({
   )
 }
 
-const ProviderList = ({
-  category,
-  contentInset = 'default',
-  layout,
-}: ProviderListProps) => {
+const ProviderList = ({ category, contentInset = 'default', layout }: ProviderListProps) => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'
   const { t } = useTranslation()
   const { getTagLabel } = useTags()
-  const {
-    canDeletePlugin,
-    canSetPluginPreferences,
-    canUpdatePlugin,
-  } = usePluginSettingsAccess()
+  const { canDeletePlugin, canSetPluginPreferences, canUpdatePlugin } = usePluginSettingsAccess()
   const canManageTools = useCanManageTools()
   const canManageMCP = useCanManageMCP()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
+    select: (s) => s.enable_marketplace,
   })
   const { activeTab, handleCategoryChange, isRouteCategory } = useToolProviderCategory(category)
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
@@ -104,9 +98,9 @@ const ProviderList = ({
   const showToolsUpdateSetting = activeTab === 'builtin' && canSetPluginPreferences
   const showLabelFilter = activeTab === 'builtin'
   const options = [
-    { value: 'builtin', text: t($ => $['type.builtIn'], { ns: 'tools' }) },
-    { value: 'api', text: t($ => $['type.custom'], { ns: 'tools' }) },
-    { value: 'workflow', text: t($ => $['type.workflow'], { ns: 'tools' }) },
+    { value: 'builtin', text: t(($) => $['type.builtIn'], { ns: 'tools' }) },
+    { value: 'api', text: t(($) => $['type.custom'], { ns: 'tools' }) },
+    { value: 'workflow', text: t(($) => $['type.workflow'], { ns: 'tools' }) },
     { value: 'mcp', text: 'MCP' },
   ]
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
@@ -124,22 +118,33 @@ const ProviderList = ({
   const handleCreatedMCPProviderHandled = useCallback(() => {
     setCreatedMCPProviderId(undefined)
   }, [])
-  const { data: collectionList = [], isLoading: isCollectionListLoading, refetch } = useAllToolProviders()
+  const {
+    data: collectionList = [],
+    isLoading: isCollectionListLoading,
+    refetch,
+  } = useAllToolProviders()
   const activeTabCollectionList = useMemo(() => {
-    return collectionList.filter(collection => collection.type === activeTab)
+    return collectionList.filter((collection) => collection.type === activeTab)
   }, [activeTab, collectionList])
   const hasCategoryCollections = activeTabCollectionList.length > 0
-  const shouldShowCustomToolCreateCard = canManageTools && !(activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
+  const shouldShowCustomToolCreateCard =
+    canManageTools && !(activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
   const shouldShowMCPCreateCard = canManageMCP && !(activeTab === 'mcp' && hasCategoryCollections)
-  const shouldShowToolbarCreateAction
-    = (activeTab === 'mcp' && canManageMCP && hasCategoryCollections)
-      || (activeTab === 'api' && canManageTools && !isCollectionListLoading && hasCategoryCollections)
+  const shouldShowToolbarCreateAction =
+    (activeTab === 'mcp' && canManageMCP && hasCategoryCollections) ||
+    (activeTab === 'api' && canManageTools && !isCollectionListLoading && hasCategoryCollections)
   const filteredCollectionList = useMemo(() => {
     return activeTabCollectionList.filter((collection) => {
-      if (showLabelFilter && tagFilterValue.length > 0 && (!collection.labels || collection.labels.every(label => !tagFilterValue.includes(label))))
+      if (
+        showLabelFilter &&
+        tagFilterValue.length > 0 &&
+        (!collection.labels || collection.labels.every((label) => !tagFilterValue.includes(label)))
+      )
         return false
       if (keywords)
-        return Object.values(collection.label).some(value => value.toLowerCase().includes(keywords.toLowerCase()))
+        return Object.values(collection.label).some((value) =>
+          value.toLowerCase().includes(keywords.toLowerCase()),
+        )
       return true
     })
   }, [activeTabCollectionList, showLabelFilter, tagFilterValue, keywords])
@@ -153,7 +158,7 @@ const ProviderList = ({
 
   const [currentProviderId, setCurrentProviderId] = useState<string | undefined>()
   const currentProvider = useMemo<Collection | undefined>(() => {
-    return filteredCollectionList.find(collection => collection.id === currentProviderId)
+    return filteredCollectionList.find((collection) => collection.id === currentProviderId)
   }, [currentProviderId, filteredCollectionList])
   const { data: checkedInstalledData } = useCheckInstalled({
     pluginIds: currentProvider?.plugin_id ? [currentProvider.plugin_id] : [],
@@ -176,18 +181,20 @@ const ProviderList = ({
       showLabelFilter={showLabelFilter}
       showToolsUpdateSetting={showToolsUpdateSetting}
       tagFilterValue={tagFilterValue}
-      toolbarAction={shouldShowToolbarCreateAction
-        ? (
-            <ToolProviderCreateAction
-              activeTab={activeTab}
-              hasCategoryCollections={hasCategoryCollections}
-              isCollectionListLoading={isCollectionListLoading}
-              onCustomToolCreated={refetch}
-              onMCPProviderCreated={handleMCPProviderCreated}
-            />
-          )
-        : undefined}
-      onCategoryChange={state => handleCategoryChange(state, () => setCurrentProviderId(undefined))}
+      toolbarAction={
+        shouldShowToolbarCreateAction ? (
+          <ToolProviderCreateAction
+            activeTab={activeTab}
+            hasCategoryCollections={hasCategoryCollections}
+            isCollectionListLoading={isCollectionListLoading}
+            onCustomToolCreated={refetch}
+            onMCPProviderCreated={handleMCPProviderCreated}
+          />
+        ) : undefined
+      }
+      onCategoryChange={(state) =>
+        handleCategoryChange(state, () => setCurrentProviderId(undefined))
+      }
       onKeywordsChange={handleKeywordsChange}
       onTagsChange={handleTagsChange}
     />
@@ -199,7 +206,7 @@ const ProviderList = ({
         <ScrollAreaRoot className="relative min-h-0 grow overflow-hidden bg-components-panel-bg">
           <ScrollAreaViewport
             ref={containerRef}
-            aria-label={t($ => $['menus.tools'], { ns: 'common' })}
+            aria-label={t(($) => $['menus.tools'], { ns: 'common' })}
             className="overscroll-contain"
             role="region"
           >
@@ -220,9 +227,15 @@ const ProviderList = ({
                   onSelectProvider={setCurrentProviderId}
                 />
               )}
-              {!isCollectionListLoading && !activeTabCollectionList.length && activeTab === 'builtin' && (
-                <Empty lightCard text={t($ => $.noTools, { ns: 'tools' })} className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
-              )}
+              {!isCollectionListLoading &&
+                !activeTabCollectionList.length &&
+                activeTab === 'builtin' && (
+                  <Empty
+                    lightCard
+                    text={t(($) => $.noTools, { ns: 'tools' })}
+                    className={cn('h-[224px] shrink-0', toolListFrameClassName)}
+                  />
+                )}
               {isCollectionSearchEmpty && activeTab === 'builtin' && (
                 <div className={cn('h-[224px] shrink-0', toolListFrameClassName)} />
               )}
@@ -267,8 +280,7 @@ const ProviderList = ({
     </>
   )
 
-  if (layout)
-    return layout({ body, toolbar })
+  if (layout) return layout({ body, toolbar })
 
   return (
     <>

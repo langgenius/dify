@@ -1,3 +1,4 @@
+import uuid
 from inspect import unwrap
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -309,6 +310,37 @@ class TestChatApi:
         ):
             with pytest.raises(completion_module.NotFound):
                 method(api, MagicMock(), user, chat_app)
+
+    def test_invalid_conversation_id_fails_fast_as_not_found(self, app: Flask, chat_app, user) -> None:
+        # A nonexistent conversation_id must fail fast as 404, before the streaming
+        # generator is created. Previously the lookup only ran inside the generator,
+        # so an invalid id surfaced as a hang instead of a clean error.
+        payload_patch = patch.object(
+            type(completion_module.console_ns),
+            "payload",
+            new_callable=PropertyMock,
+            return_value={"inputs": {}, "query": "hi", "conversation_id": str(uuid.uuid4())},
+        )
+        generate_mock = MagicMock(return_value={"ok": True})
+
+        api = completion_module.ChatApi()
+        method = unwrap(api.post)
+
+        with (
+            app.test_request_context("/", json={}),
+            payload_patch,
+            patch.object(
+                completion_module.ConversationService,
+                "get_conversation",
+                side_effect=completion_module.services.errors.conversation.ConversationNotExistsError(),
+            ),
+            patch.object(completion_module.AppGenerateService, "generate", generate_mock),
+        ):
+            with pytest.raises(completion_module.NotFound):
+                method(api, MagicMock(), user, chat_app)
+
+        # The lookup must run before generation, so the generator is never started.
+        generate_mock.assert_not_called()
 
     def test_app_unavailable_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()

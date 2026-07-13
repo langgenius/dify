@@ -6,15 +6,16 @@ import userEvent from '@testing-library/user-event'
 import { $getNodeByKey } from 'lexical'
 import AgentOutputBlockComponent from '../component'
 
-const { mockEditorFocus, mockEditorUpdate, mockGetRootText, mockSelectNext, mockSetOutput } = vi.hoisted(() => ({
-  mockEditorFocus: vi.fn(),
-  mockEditorUpdate: vi.fn((callback: () => void) => callback()),
-  mockGetRootText: {
-    value: '[§output:summary:summary§]',
-  },
-  mockSelectNext: vi.fn(),
-  mockSetOutput: vi.fn(),
-}))
+const { mockEditorFocus, mockEditorUpdate, mockGetRootText, mockSelectNext, mockSetOutput } =
+  vi.hoisted(() => ({
+    mockEditorFocus: vi.fn(),
+    mockEditorUpdate: vi.fn((callback: () => void) => callback()),
+    mockGetRootText: {
+      value: '[§output:summary:summary§]',
+    },
+    mockSelectNext: vi.fn(),
+    mockSetOutput: vi.fn(),
+  }))
 
 vi.mock('@lexical/react/LexicalComposerContext')
 vi.mock('@langgenius/dify-ui/select', () => ({
@@ -30,7 +31,9 @@ vi.mock('@langgenius/dify-ui/select', () => ({
     <div>
       <span data-testid="type-select-state">{open ? 'open' : 'closed'}</span>
       {children}
-      <button type="button" onClick={() => onValueChange('file')}>Select file</button>
+      <button type="button" onClick={() => onValueChange('file')}>
+        Select file
+      </button>
     </div>
   ),
   SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -56,9 +59,11 @@ vi.mock('lexical', async (importOriginal) => {
     ...actual,
     $getNodeByKey: vi.fn(),
     $getRoot: vi.fn(() => ({
-      getChildren: () => [{
-        getTextContent: () => mockGetRootText.value,
-      }],
+      getChildren: () => [
+        {
+          getTextContent: () => mockGetRootText.value,
+        },
+      ],
     })),
   }
 })
@@ -103,7 +108,9 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }) as HTMLInputElement
+    const input = screen.getByRole('textbox', {
+      name: 'workflow.nodes.agent.outputVars.nameLabel',
+    }) as HTMLInputElement
 
     expect(input).toHaveFocus()
     expect(input.selectionStart).toBe(0)
@@ -122,7 +129,9 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }) as HTMLInputElement
+    const input = screen.getByRole('textbox', {
+      name: 'workflow.nodes.agent.outputVars.nameLabel',
+    }) as HTMLInputElement
 
     expect(input).toHaveFocus()
     expect(input.selectionStart).toBe('summary'.length)
@@ -189,13 +198,16 @@ describe('AgentOutputBlockComponent', () => {
     )
     expect(mockSetOutput).toHaveBeenCalledTimes(1)
     expect(mockEditorFocus).not.toHaveBeenCalled()
-    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({
-        name: 'summary',
-        type: 'string',
-        required: false,
-      }),
-    ]), '[§output:summary:summary§]')
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'summary',
+          type: 'string',
+          required: false,
+        }),
+      ]),
+      '[§output:summary:summary§]',
+    )
   })
 
   it('syncs the output name and moves the editor selection after the output block when committing with Enter', async () => {
@@ -237,11 +249,14 @@ describe('AgentOutputBlockComponent', () => {
     )
     expect(mockSelectNext).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('type-select-state')).toHaveTextContent('closed')
-    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({
-        name: 'summary',
-      }),
-    ]), 'Generate [§output:summary:summary§]')
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'summary',
+        }),
+      ]),
+      'Generate [§output:summary:summary§]',
+    )
     await waitFor(() => {
       expect(mockEditorFocus).toHaveBeenCalledTimes(1)
     })
@@ -289,11 +304,14 @@ describe('AgentOutputBlockComponent', () => {
     expect(input).not.toHaveFocus()
     expect((input as HTMLInputElement).selectionStart).toBe('summary'.length)
     expect((input as HTMLInputElement).selectionEnd).toBe('summary'.length)
-    expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({
-        name: 'summary',
-      }),
-    ]), 'Generate [§output:summary:summary§]')
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'summary',
+        }),
+      ]),
+      'Generate [§output:summary:summary§]',
+    )
   })
 
   it('commits the input DOM value on Enter even before React state rerenders', () => {
@@ -372,7 +390,9 @@ describe('AgentOutputBlockComponent', () => {
     )
 
     const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
-    const typeTrigger = screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.typeLabel' })
+    const typeTrigger = screen.getByRole('button', {
+      name: 'workflow.nodes.agent.outputVars.typeLabel',
+    })
 
     fireEvent.change(input, { target: { value: 'summary' } })
     fireEvent.mouseDown(typeTrigger)
@@ -437,8 +457,12 @@ describe('AgentOutputBlockComponent', () => {
       />,
     )
 
-    expect(screen.queryByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.outputVars.typeLabel' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'workflow.nodes.agent.outputVars.typeLabel' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByText('qna_report_pdf')).toBeInTheDocument()
     expect(screen.getByText('file')).toBeInTheDocument()
   })

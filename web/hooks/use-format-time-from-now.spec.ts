@@ -15,7 +15,6 @@ import type { Mock } from 'vitest'
 import { renderHook } from '@testing-library/react'
 // Import after mock to get the mocked version
 import { useLocale } from '@/context/i18n'
-
 import { useFormatTimeFromNow } from './use-format-time-from-now'
 
 vi.mock('@/context/i18n', () => ({
@@ -51,7 +50,7 @@ describe('useFormatTimeFromNow', () => {
       const { result } = renderHook(() => useFormatTimeFromNow())
 
       const now = Date.now()
-      const oneHourAgo = now - (60 * 60 * 1000)
+      const oneHourAgo = now - 60 * 60 * 1000
       const formatted = result.current.formatTimeFromNow(oneHourAgo)
 
       // Should contain "hour" or "hours" and "ago"
@@ -69,7 +68,7 @@ describe('useFormatTimeFromNow', () => {
       const { result } = renderHook(() => useFormatTimeFromNow())
 
       const now = Date.now()
-      const fiveSecondsAgo = now - (5 * 1000)
+      const fiveSecondsAgo = now - 5 * 1000
       const formatted = result.current.formatTimeFromNow(fiveSecondsAgo)
 
       expect(formatted).toMatch(/second|seconds|few seconds/)
@@ -85,7 +84,7 @@ describe('useFormatTimeFromNow', () => {
       const { result } = renderHook(() => useFormatTimeFromNow())
 
       const now = Date.now()
-      const threeDaysAgo = now - (3 * 24 * 60 * 60 * 1000)
+      const threeDaysAgo = now - 3 * 24 * 60 * 60 * 1000
       const formatted = result.current.formatTimeFromNow(threeDaysAgo)
 
       expect(formatted).toMatch(/day|days/)
@@ -102,7 +101,7 @@ describe('useFormatTimeFromNow', () => {
       const { result } = renderHook(() => useFormatTimeFromNow())
 
       const now = Date.now()
-      const twoHoursFromNow = now + (2 * 60 * 60 * 1000)
+      const twoHoursFromNow = now + 2 * 60 * 60 * 1000
       const formatted = result.current.formatTimeFromNow(twoHoursFromNow)
 
       expect(formatted).toMatch(/in/)
@@ -121,7 +120,7 @@ describe('useFormatTimeFromNow', () => {
       const { result } = renderHook(() => useFormatTimeFromNow())
 
       const now = Date.now()
-      const oneHourAgo = now - (60 * 60 * 1000)
+      const oneHourAgo = now - 60 * 60 * 1000
       const formatted = result.current.formatTimeFromNow(oneHourAgo)
 
       // Chinese should contain Chinese characters
@@ -138,7 +137,7 @@ describe('useFormatTimeFromNow', () => {
       const { result } = renderHook(() => useFormatTimeFromNow())
 
       const now = Date.now()
-      const oneHourAgo = now - (60 * 60 * 1000)
+      const oneHourAgo = now - 60 * 60 * 1000
       const formatted = result.current.formatTimeFromNow(oneHourAgo)
 
       // Spanish should contain "hace" (ago)
@@ -155,7 +154,7 @@ describe('useFormatTimeFromNow', () => {
       const { result } = renderHook(() => useFormatTimeFromNow())
 
       const now = Date.now()
-      const oneHourAgo = now - (60 * 60 * 1000)
+      const oneHourAgo = now - 60 * 60 * 1000
       const formatted = result.current.formatTimeFromNow(oneHourAgo)
 
       // French should contain "il y a" (ago)
@@ -172,7 +171,7 @@ describe('useFormatTimeFromNow', () => {
       const { result } = renderHook(() => useFormatTimeFromNow())
 
       const now = Date.now()
-      const oneHourAgo = now - (60 * 60 * 1000)
+      const oneHourAgo = now - 60 * 60 * 1000
       const formatted = result.current.formatTimeFromNow(oneHourAgo)
 
       // Japanese should contain Japanese characters
@@ -189,7 +188,7 @@ describe('useFormatTimeFromNow', () => {
       const { result } = renderHook(() => useFormatTimeFromNow())
 
       const now = Date.now()
-      const oneHourAgo = now - (60 * 60 * 1000)
+      const oneHourAgo = now - 60 * 60 * 1000
       const formatted = result.current.formatTimeFromNow(oneHourAgo)
 
       // Portuguese should contain "há" (ago)
@@ -206,7 +205,7 @@ describe('useFormatTimeFromNow', () => {
       const { result } = renderHook(() => useFormatTimeFromNow())
 
       const now = Date.now()
-      const oneHourAgo = now - (60 * 60 * 1000)
+      const oneHourAgo = now - 60 * 60 * 1000
       const formatted = result.current.formatTimeFromNow(oneHourAgo)
 
       // Should still return a valid string (in English)
@@ -241,7 +240,7 @@ describe('useFormatTimeFromNow', () => {
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
-      const farFuture = Date.now() + (365 * 24 * 60 * 60 * 1000) // 1 year from now
+      const farFuture = Date.now() + 365 * 24 * 60 * 60 * 1000 // 1 year from now
       const formatted = result.current.formatTimeFromNow(farFuture)
 
       expect(typeof formatted).toBe('string')
@@ -256,7 +255,7 @@ describe('useFormatTimeFromNow', () => {
       const { result, rerender } = renderHook(() => useFormatTimeFromNow())
 
       const now = Date.now()
-      const oneHourAgo = now - (60 * 60 * 1000)
+      const oneHourAgo = now - 60 * 60 * 1000
 
       // First render with English
       ;(useLocale as Mock).mockReturnValue('en-US')
@@ -338,7 +337,7 @@ describe('useFormatTimeFromNow', () => {
       ]
 
       const now = Date.now()
-      const oneHourAgo = now - (60 * 60 * 1000)
+      const oneHourAgo = now - 60 * 60 * 1000
 
       locales.forEach((locale) => {
         ;(useLocale as Mock).mockReturnValue(locale)

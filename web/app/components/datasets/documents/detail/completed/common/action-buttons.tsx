@@ -28,8 +28,8 @@ const ActionButtons: FC<IActionButtonsProps> = ({
   showRegenerationButton = true,
 }) => {
   const { t } = useTranslation()
-  const docForm = useDocumentContext(s => s.docForm)
-  const parentMode = useDocumentContext(s => s.parentMode)
+  const docForm = useDocumentContext((s) => s.docForm)
+  const parentMode = useDocumentContext((s) => s.parentMode)
 
   useHotkey('Escape', (e) => {
     e.preventDefault()
@@ -38,8 +38,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
 
   useHotkey('Mod+S', (e) => {
     e.preventDefault()
-    if (loading)
-      return
+    if (loading) return
     handleSave()
   })
 
@@ -49,36 +48,34 @@ const ActionButtons: FC<IActionButtonsProps> = ({
 
   return (
     <div className="flex items-center gap-x-2">
-      <Button
-        onClick={handleCancel}
-      >
+      <Button onClick={handleCancel}>
         <div className="flex items-center gap-x-1">
-          <span className="system-sm-medium text-components-button-secondary-text">{t($ => $['operation.cancel'], { ns: 'common' })}</span>
+          <span className="system-sm-medium text-components-button-secondary-text">
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </span>
           <Kbd>{formatForDisplay('Escape')}</Kbd>
         </div>
       </Button>
-      {(isParentChildParagraphMode && actionType === 'edit' && !isChildChunk && showRegenerationButton)
-        ? (
-            <Button
-              onClick={handleRegeneration}
-              disabled={loading}
-            >
-              <span className="system-sm-medium text-components-button-secondary-text">
-                {t($ => $['operation.saveAndRegenerate'], { ns: 'common' })}
-              </span>
-            </Button>
-          )
-        : null}
-      <Button
-        variant="primary"
-        onClick={handleSave}
-        disabled={loading}
-      >
+      {isParentChildParagraphMode &&
+      actionType === 'edit' &&
+      !isChildChunk &&
+      showRegenerationButton ? (
+        <Button onClick={handleRegeneration} disabled={loading}>
+          <span className="system-sm-medium text-components-button-secondary-text">
+            {t(($) => $['operation.saveAndRegenerate'], { ns: 'common' })}
+          </span>
+        </Button>
+      ) : null}
+      <Button variant="primary" onClick={handleSave} disabled={loading}>
         <div className="flex items-center gap-x-1">
-          <span className="text-components-button-primary-text">{t($ => $['operation.save'], { ns: 'common' })}</span>
+          <span className="text-components-button-primary-text">
+            {t(($) => $['operation.save'], { ns: 'common' })}
+          </span>
           <KbdGroup>
-            {['Mod', 'S'].map(key => (
-              <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+            {['Mod', 'S'].map((key) => (
+              <Kbd key={key} color="white">
+                {formatForDisplay(key)}
+              </Kbd>
             ))}
           </KbdGroup>
         </div>

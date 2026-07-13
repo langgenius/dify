@@ -15,15 +15,11 @@ type PopupProps = {
   showHitInfo?: boolean
 }
 
-const Popup: FC<PopupProps> = ({
-  data,
-  showHitInfo = false,
-}) => {
+const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const fileType = data.dataSourceType !== 'notion'
-    ? (/\.([^.]*)$/.exec(data.documentName)?.[1] || '')
-    : 'notion'
+  const fileType =
+    data.dataSourceType !== 'notion' ? /\.([^.]*)$/.exec(data.documentName)?.[1] || '' : 'notion'
 
   const { mutateAsync: downloadDocument, isPending: isDownloading } = useDocumentDownload()
 
@@ -34,27 +30,25 @@ const Popup: FC<PopupProps> = ({
     const isUploadFile = data.dataSourceType === 'upload_file' || data.dataSourceType === 'file'
     const datasetId = data.sources?.[0]?.dataset_id
     const documentId = data.documentId || data.sources?.[0]?.document_id
-    if (!isUploadFile || !datasetId || !documentId || isDownloading)
-      return
+    if (!isUploadFile || !datasetId || !documentId || isDownloading) return
 
     const res = await downloadDocument({ datasetId, documentId })
-    if (res?.url)
-      downloadUrl({ url: res.url, fileName: data.documentName })
+    if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
   }
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         nativeButton={false}
-        render={(
-          <div data-testid="popup-trigger" className="flex h-7 max-w-[240px] items-center rounded-lg bg-components-button-secondary-bg px-2">
+        render={
+          <div
+            data-testid="popup-trigger"
+            className="flex h-7 max-w-[240px] items-center rounded-lg bg-components-button-secondary-bg px-2"
+          >
             <FileIcon type={fileType} className="mr-1 size-4 shrink-0" />
             <div className="truncate text-xs text-text-tertiary">{data.documentName}</div>
           </div>
-        )}
+        }
       />
       <PopoverContent
         placement="top-start"
@@ -62,95 +56,124 @@ const Popup: FC<PopupProps> = ({
         alignOffset={-2}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div data-testid="popup-content" className="max-w-[360px] rounded-xl bg-background-section-burn shadow-lg backdrop-blur-[5px]">
+        <div
+          data-testid="popup-content"
+          className="max-w-[360px] rounded-xl bg-background-section-burn shadow-lg backdrop-blur-[5px]"
+        >
           <div className="px-4 pt-3 pb-2">
             <div className="flex h-[18px] items-center">
               <FileIcon type={fileType} className="mr-1 size-4 shrink-0" />
               <div className="truncate system-xs-medium text-text-tertiary">
-                {(data.dataSourceType === 'upload_file' || data.dataSourceType === 'file') && !!data.sources?.[0]?.dataset_id
-                  ? (
-                      <button
-                        type="button"
-                        className="cursor-pointer truncate border-none bg-transparent p-0 text-left text-text-tertiary hover:underline"
-                        onClick={handleDownloadUploadFile}
-                        disabled={isDownloading}
-                      >
-                        {data.documentName}
-                      </button>
-                    )
-                  : data.documentName}
+                {(data.dataSourceType === 'upload_file' || data.dataSourceType === 'file') &&
+                !!data.sources?.[0]?.dataset_id ? (
+                  <button
+                    type="button"
+                    className="cursor-pointer truncate border-none bg-transparent p-0 text-left text-text-tertiary hover:underline"
+                    onClick={handleDownloadUploadFile}
+                    disabled={isDownloading}
+                  >
+                    {data.documentName}
+                  </button>
+                ) : (
+                  data.documentName
+                )}
               </div>
             </div>
           </div>
           <div className="max-h-[450px] overflow-y-auto rounded-lg bg-components-panel-bg px-4 py-0.5">
             <div className="w-full">
-              {
-                data.sources.map((source, index) => {
-                  const itemKey = source.document_id
-                    ? `${source.document_id}-${source.segment_position ?? index}`
-                    : source.index_node_hash ?? `${data.documentId ?? 'doc'}-${index}`
+              {data.sources.map((source, index) => {
+                const itemKey = source.document_id
+                  ? `${source.document_id}-${source.segment_position ?? index}`
+                  : (source.index_node_hash ?? `${data.documentId ?? 'doc'}-${index}`)
 
-                  return (
-                    <Fragment key={itemKey}>
-                      <div data-testid="popup-source-item" className="group py-3">
-                        <div className="mb-2 flex items-center justify-between">
-                          <div className="flex h-5 items-center rounded-md border border-divider-subtle px-1.5">
-                            {/* replaced svg component with tailwind icon class per lint rule */}
-                            <i className="mr-0.5 i-custom-vender-line-general-hash-02 size-3 text-text-quaternary" aria-hidden />
-                            <div data-testid="popup-segment-position" className="text-[11px] font-medium text-text-tertiary">
-                              {source.segment_position || index + 1}
-                            </div>
+                return (
+                  <Fragment key={itemKey}>
+                    <div data-testid="popup-source-item" className="group py-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="flex h-5 items-center rounded-md border border-divider-subtle px-1.5">
+                          {/* replaced svg component with tailwind icon class per lint rule */}
+                          <i
+                            className="mr-0.5 i-custom-vender-line-general-hash-02 size-3 text-text-quaternary"
+                            aria-hidden
+                          />
+                          <div
+                            data-testid="popup-segment-position"
+                            className="text-[11px] font-medium text-text-tertiary"
+                          >
+                            {source.segment_position || index + 1}
                           </div>
-                          {
-                            showHitInfo && (
-                              <Link
-                                data-testid="popup-dataset-link"
-                                href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
-                                className="hidden h-[18px] items-center text-xs text-text-accent group-hover:flex"
-                              >
-                                {t($ => $['chat.citation.linkToDataset'], { ns: 'common' })}
-                                <i className="ml-1 i-custom-vender-line-arrows-arrow-up-right size-3" aria-hidden />
-                              </Link>
-                            )
-                          }
                         </div>
-                        <div data-testid="popup-source-content" className="text-[13px] wrap-break-word text-text-secondary">{source.content}</div>
-                        {
-                          showHitInfo && (
-                            <div data-testid="popup-hit-info" className="mt-2 flex flex-wrap items-center system-xs-medium text-text-quaternary">
-                              <Tooltip
-                                text={t($ => $['chat.citation.characters'], { ns: 'common' })}
-                                data={source.word_count}
-                                icon={<i className="mr-1 i-custom-vender-line-editor-type-square size-3" aria-hidden />}
-                              />
-                              <Tooltip
-                                text={t($ => $['chat.citation.hitCount'], { ns: 'common' })}
-                                data={source.hit_count}
-                                icon={<i className="mr-1 i-custom-vender-line-general-target-04 size-3" aria-hidden />}
-                              />
-                              <Tooltip
-                                text={t($ => $['chat.citation.vectorHash'], { ns: 'common' })}
-                                data={source.index_node_hash?.substring(0, 7)}
-                                icon={<i className="mr-1 i-custom-vender-line-editor-bezier-curve-03 size-3" aria-hidden />}
-                              />
-                              {
-                                !!source.score && (
-                                  <ProgressTooltip data={Number(source.score.toFixed(2))} />
-                                )
-                              }
-                            </div>
-                          )
-                        }
+                        {showHitInfo && (
+                          <Link
+                            data-testid="popup-dataset-link"
+                            href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
+                            className="hidden h-[18px] items-center text-xs text-text-accent group-hover:flex"
+                          >
+                            {t(($) => $['chat.citation.linkToDataset'], { ns: 'common' })}
+                            <i
+                              className="ml-1 i-custom-vender-line-arrows-arrow-up-right size-3"
+                              aria-hidden
+                            />
+                          </Link>
+                        )}
                       </div>
-                      {
-                        index !== data.sources.length - 1 && (
-                          <div data-testid="popup-source-divider" className="my-1 h-px bg-divider-regular" />
-                        )
-                      }
-                    </Fragment>
-                  )
-                })
-              }
+                      <div
+                        data-testid="popup-source-content"
+                        className="text-[13px] wrap-break-word text-text-secondary"
+                      >
+                        {source.content}
+                      </div>
+                      {showHitInfo && (
+                        <div
+                          data-testid="popup-hit-info"
+                          className="mt-2 flex flex-wrap items-center system-xs-medium text-text-quaternary"
+                        >
+                          <Tooltip
+                            text={t(($) => $['chat.citation.characters'], { ns: 'common' })}
+                            data={source.word_count}
+                            icon={
+                              <i
+                                className="mr-1 i-custom-vender-line-editor-type-square size-3"
+                                aria-hidden
+                              />
+                            }
+                          />
+                          <Tooltip
+                            text={t(($) => $['chat.citation.hitCount'], { ns: 'common' })}
+                            data={source.hit_count}
+                            icon={
+                              <i
+                                className="mr-1 i-custom-vender-line-general-target-04 size-3"
+                                aria-hidden
+                              />
+                            }
+                          />
+                          <Tooltip
+                            text={t(($) => $['chat.citation.vectorHash'], { ns: 'common' })}
+                            data={source.index_node_hash?.substring(0, 7)}
+                            icon={
+                              <i
+                                className="mr-1 i-custom-vender-line-editor-bezier-curve-03 size-3"
+                                aria-hidden
+                              />
+                            }
+                          />
+                          {!!source.score && (
+                            <ProgressTooltip data={Number(source.score.toFixed(2))} />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {index !== data.sources.length - 1 && (
+                      <div
+                        data-testid="popup-source-divider"
+                        className="my-1 h-px bg-divider-regular"
+                      />
+                    )}
+                  </Fragment>
+                )
+              })}
             </div>
           </div>
         </div>

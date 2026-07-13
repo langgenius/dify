@@ -72,7 +72,10 @@ describe('Form', () => {
       render(<Form {...defaultProps} />)
       const docLink = screen.getByText('dataset.externalAPIPanelDocumentation')
       expect(docLink).toBeInTheDocument()
-      expect(docLink.closest('a')).toHaveAttribute('href', expect.stringContaining('docs.example.com'))
+      expect(docLink.closest('a')).toHaveAttribute(
+        'href',
+        expect.stringContaining('docs.example.com'),
+      )
     })
 
     it('should render password type input for secret fields', () => {
@@ -101,7 +104,9 @@ describe('Form', () => {
     })
 
     it('should apply fieldLabelClassName to labels', () => {
-      const { container } = render(<Form {...defaultProps} fieldLabelClassName="custom-label-class" />)
+      const { container } = render(
+        <Form {...defaultProps} fieldLabelClassName="custom-label-class" />,
+      )
       const labels = container.querySelectorAll('label.custom-label-class')
       expect(labels.length).toBe(3)
     })

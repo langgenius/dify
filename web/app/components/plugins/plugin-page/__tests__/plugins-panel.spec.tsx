@@ -42,21 +42,29 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('../context', () => ({
-  usePluginPageContext: (selector: (value: {
-    filters: typeof mockState.filters
-    setFilters: typeof mockSetFilters
-    currentPluginID: string | undefined
-    setCurrentPluginID: typeof mockSetCurrentPluginID
-  }) => unknown) => selector({
-    filters: mockState.filters,
-    setFilters: mockSetFilters,
-    currentPluginID: mockState.currentPluginID,
-    setCurrentPluginID: mockSetCurrentPluginID,
-  }),
+  usePluginPageContext: (
+    selector: (value: {
+      filters: typeof mockState.filters
+      setFilters: typeof mockSetFilters
+      currentPluginID: string | undefined
+      setCurrentPluginID: typeof mockSetCurrentPluginID
+    }) => unknown,
+  ) =>
+    selector({
+      filters: mockState.filters,
+      setFilters: mockSetFilters,
+      currentPluginID: mockState.currentPluginID,
+      setCurrentPluginID: mockSetCurrentPluginID,
+    }),
 }))
 
 vi.mock('../filter-management', () => ({
-  default: ({ hideCategoryFilter, hideTagFilter, onFilterChange, rightSlot }: {
+  default: ({
+    hideCategoryFilter,
+    hideTagFilter,
+    onFilterChange,
+    rightSlot,
+  }: {
     hideCategoryFilter?: boolean
     hideTagFilter?: boolean
     onFilterChange: (filters: typeof mockState.filters) => void
@@ -67,11 +75,13 @@ vi.mock('../filter-management', () => ({
         data-testid="filter-management"
         data-hide-category-filter={hideCategoryFilter ? 'true' : 'false'}
         data-hide-tag-filter={hideTagFilter ? 'true' : 'false'}
-        onClick={() => onFilterChange({
-          categories: [],
-          tags: [],
-          searchQuery: 'beta',
-        })}
+        onClick={() =>
+          onFilterChange({
+            categories: [],
+            tags: [],
+            searchQuery: 'beta',
+          })
+        }
       >
         filter
       </button>
@@ -81,23 +91,60 @@ vi.mock('../filter-management', () => ({
 }))
 
 vi.mock('../empty', () => ({
-  default: ({ canInstall, contentInset, onSwitchToMarketplace, variant }: { canInstall?: boolean, contentInset?: string, onSwitchToMarketplace?: () => void, variant?: string }) => (
-    <div data-can-install={canInstall ? 'true' : 'false'} data-content-inset={contentInset} data-has-marketplace-action={onSwitchToMarketplace ? 'true' : 'false'} data-testid="empty-state" data-variant={variant}>empty</div>
+  default: ({
+    canInstall,
+    contentInset,
+    onSwitchToMarketplace,
+    variant,
+  }: {
+    canInstall?: boolean
+    contentInset?: string
+    onSwitchToMarketplace?: () => void
+    variant?: string
+  }) => (
+    <div
+      data-can-install={canInstall ? 'true' : 'false'}
+      data-content-inset={contentInset}
+      data-has-marketplace-action={onSwitchToMarketplace ? 'true' : 'false'}
+      data-testid="empty-state"
+      data-variant={variant}
+    >
+      empty
+    </div>
   ),
 }))
 
 vi.mock('../list', () => ({
-  default: ({ children, pluginList }: { children?: React.ReactNode, pluginList: PluginDetail[] }) => (
+  default: ({
+    children,
+    pluginList,
+  }: {
+    children?: React.ReactNode
+    pluginList: PluginDetail[]
+  }) => (
     <div data-testid="plugin-list">
-      {pluginList.map(plugin => <div key={plugin.plugin_id} data-testid="plugin-list-item">{plugin.plugin_id}</div>)}
+      {pluginList.map((plugin) => (
+        <div key={plugin.plugin_id} data-testid="plugin-list-item">
+          {plugin.plugin_id}
+        </div>
+      ))}
       {children}
     </div>
   ),
 }))
 
 vi.mock('@/app/components/integrations/tool-provider-card', () => ({
-  default: ({ collection, showBuiltInBadge }: { collection: Collection, showBuiltInBadge?: boolean }) => (
-    <div data-show-built-in-badge={showBuiltInBadge ? 'true' : 'false'} data-testid="builtin-tool-card">
+  default: ({
+    collection,
+    showBuiltInBadge,
+  }: {
+    collection: Collection
+    showBuiltInBadge?: boolean
+  }) => (
+    <div
+      data-show-built-in-badge={showBuiltInBadge ? 'true' : 'false'}
+      data-testid="builtin-tool-card"
+    >
       {collection.id}
     </div>
   ),
@@ -113,22 +160,38 @@ vi.mock('@/app/components/integrations/hooks/use-tool-marketplace-panel', () => 
 }))
 
 vi.mock('@/app/components/tools/marketplace', () => ({
-  default: ({ filterPluginTags, searchPluginText }: { filterPluginTags: string[], searchPluginText: string }) => (
-    <div data-filter-plugin-tags={filterPluginTags.join(',')} data-search-plugin-text={searchPluginText} data-testid="tool-marketplace" />
+  default: ({
+    filterPluginTags,
+    searchPluginText,
+  }: {
+    filterPluginTags: string[]
+    searchPluginText: string
+  }) => (
+    <div
+      data-filter-plugin-tags={filterPluginTags.join(',')}
+      data-search-plugin-text={searchPluginText}
+      data-testid="tool-marketplace"
+    />
   ),
 }))
 
 vi.mock('@/app/components/tools/provider/detail', () => ({
-  default: ({ collection, onHide }: { collection: Collection, onHide: () => void }) => (
+  default: ({ collection, onHide }: { collection: Collection; onHide: () => void }) => (
     <div data-testid="builtin-tool-detail">
       <span>{collection.id}</span>
-      <button type="button" onClick={onHide}>hide builtin detail</button>
+      <button type="button" onClick={onHide}>
+        hide builtin detail
+      </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel', () => ({
-  default: ({ detail, onHide, onUpdate }: {
+  default: ({
+    detail,
+    onHide,
+    onUpdate,
+  }: {
     detail?: PluginDetail
     onHide: () => void
     onUpdate: () => void
@@ -141,32 +204,38 @@ vi.mock('@/app/components/plugins/plugin-detail-panel', () => ({
   ),
 }))
 
-const createPlugin = (pluginId: string, label: string, tags: string[] = [], category: PluginCategoryEnum = PluginCategoryEnum.tool): PluginDetail => ({
-  id: pluginId,
-  created_at: '2024-01-01',
-  updated_at: '2024-01-02',
-  name: label,
-  plugin_id: pluginId,
-  plugin_unique_identifier: `${pluginId}-uid`,
-  declaration: {
-    category,
-    name: pluginId,
-    label: { en_US: label },
-    description: { en_US: `${label} description` },
-    tags,
-  } as PluginDetail['declaration'],
-  installation_id: `${pluginId}-install`,
-  tenant_id: 'tenant-1',
-  endpoints_setups: 0,
-  endpoints_active: 0,
-  version: '1.0.0',
-  latest_version: '1.0.0',
-  latest_unique_identifier: `${pluginId}-uid`,
-  source: 'marketplace' as PluginDetail['source'],
-  status: 'active',
-  deprecated_reason: '',
-  alternative_plugin_id: '',
-}) as PluginDetail
+const createPlugin = (
+  pluginId: string,
+  label: string,
+  tags: string[] = [],
+  category: PluginCategoryEnum = PluginCategoryEnum.tool,
+): PluginDetail =>
+  ({
+    id: pluginId,
+    created_at: '2024-01-01',
+    updated_at: '2024-01-02',
+    name: label,
+    plugin_id: pluginId,
+    plugin_unique_identifier: `${pluginId}-uid`,
+    declaration: {
+      category,
+      name: pluginId,
+      label: { en_US: label },
+      description: { en_US: `${label} description` },
+      tags,
+    } as PluginDetail['declaration'],
+    installation_id: `${pluginId}-install`,
+    tenant_id: 'tenant-1',
+    endpoints_setups: 0,
+    endpoints_active: 0,
+    version: '1.0.0',
+    latest_version: '1.0.0',
+    latest_unique_identifier: `${pluginId}-uid`,
+    source: 'marketplace' as PluginDetail['source'],
+    status: 'active',
+    deprecated_reason: '',
+    alternative_plugin_id: '',
+  }) as PluginDetail
 
 const createBuiltinTool = (id: string, label: string, labels: string[] = []): Collection => ({
   id,
@@ -240,7 +309,9 @@ describe('PluginsPanel', () => {
     render(<PluginsPanel />)
 
     expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('px-12')
-    expect(screen.getByTestId('filter-management-wrap').parentElement).not.toHaveClass('max-w-[1600px]')
+    expect(screen.getByTestId('filter-management-wrap').parentElement).not.toHaveClass(
+      'max-w-[1600px]',
+    )
     expect(screen.getByTestId('empty-state')).toHaveAttribute('data-content-inset', 'default')
   })
 
@@ -261,7 +332,10 @@ describe('PluginsPanel', () => {
 
     render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.trigger} />)
 
-    expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-category-filter', 'true')
+    expect(screen.getByTestId('filter-management')).toHaveAttribute(
+      'data-hide-category-filter',
+      'true',
+    )
     expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'false')
     expect(screen.getByTestId('plugin-list')).toHaveTextContent('trigger-plugin')
     expect(screen.getByTestId('plugin-list')).not.toHaveTextContent('tool-plugin')
@@ -312,7 +386,10 @@ describe('PluginsPanel', () => {
     expect(screen.getByTestId('plugin-list')).not.toHaveTextContent('rag-tool-plugin')
     expect(screen.getByTestId('builtin-tool-card')).toHaveTextContent('search-builtin-tool')
     expect(screen.getByTestId('plugin-list')).not.toHaveTextContent('rag-builtin-tool')
-    expect(screen.getByTestId('tool-marketplace')).toHaveAttribute('data-filter-plugin-tags', 'search')
+    expect(screen.getByTestId('tool-marketplace')).toHaveAttribute(
+      'data-filter-plugin-tags',
+      'search',
+    )
   })
 
   it('renders builtin tools after plugin tools on the tool integrations page', () => {
@@ -322,9 +399,7 @@ describe('PluginsPanel', () => {
     mockUseInstalledPluginList.mockReturnValue({
       data: {
         plugins: [],
-        builtin_tools: [
-          createBuiltinTool('builtin-tool', 'Builtin Tool'),
-        ],
+        builtin_tools: [createBuiltinTool('builtin-tool', 'Builtin Tool')],
       },
       isLoading: false,
       isFetching: false,
@@ -342,17 +417,20 @@ describe('PluginsPanel', () => {
     expect(builtinToolCard).toHaveTextContent('builtin-tool')
     expect(builtinToolCard).toHaveAttribute('data-show-built-in-badge', 'true')
     expect(pluginList).toContainElement(builtinToolCard)
-    expect(screen.getByRole('button', { name: 'builtin-tool' })).toHaveAttribute('aria-pressed', 'false')
-    expect(pluginItem.compareDocumentPosition(builtinToolCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'builtin-tool' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    expect(
+      pluginItem.compareDocumentPosition(builtinToolCard) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('opens the builtin tool detail from the builtin tools list', () => {
     mockUseInstalledPluginList.mockReturnValue({
       data: {
         plugins: [],
-        builtin_tools: [
-          createBuiltinTool('builtin-tool', 'Builtin Tool'),
-        ],
+        builtin_tools: [createBuiltinTool('builtin-tool', 'Builtin Tool')],
       },
       isLoading: false,
       isFetching: false,
@@ -401,7 +479,12 @@ describe('PluginsPanel', () => {
     render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.tool} />)
 
     expect(screen.getByTestId('tool-marketplace')).toBeInTheDocument()
-    expect(screen.getByTestId('plugin-list').compareDocumentPosition(screen.getByTestId('tool-marketplace')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(
+      screen
+        .getByTestId('plugin-list')
+        .compareDocumentPosition(screen.getByTestId('tool-marketplace')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('uses the Figma trigger toolbar frame and renders the toolbar action', () => {
@@ -413,9 +496,20 @@ describe('PluginsPanel', () => {
       />,
     )
 
-    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('h-12', 'py-2', 'max-w-[1600px]', 'px-6')
-    expect(screen.getByTestId('filter-management-wrap').parentElement).not.toHaveClass('sticky', 'top-0', 'z-10')
-    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('bg-components-panel-bg')
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass(
+      'h-12',
+      'py-2',
+      'max-w-[1600px]',
+      'px-6',
+    )
+    expect(screen.getByTestId('filter-management-wrap').parentElement).not.toHaveClass(
+      'sticky',
+      'top-0',
+      'z-10',
+    )
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass(
+      'bg-components-panel-bg',
+    )
     expect(screen.getByText('update setting')).toBeInTheDocument()
   })
 
@@ -428,17 +522,40 @@ describe('PluginsPanel', () => {
       />,
     )
 
-    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('h-12', 'py-2', 'max-w-[1600px]', 'px-6')
-    expect(screen.getByTestId('filter-management-wrap').parentElement).not.toHaveClass('sticky', 'top-0', 'z-10')
-    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('bg-components-panel-bg')
-    expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-category-filter', 'true')
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass(
+      'h-12',
+      'py-2',
+      'max-w-[1600px]',
+      'px-6',
+    )
+    expect(screen.getByTestId('filter-management-wrap').parentElement).not.toHaveClass(
+      'sticky',
+      'top-0',
+      'z-10',
+    )
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass(
+      'bg-components-panel-bg',
+    )
+    expect(screen.getByTestId('filter-management')).toHaveAttribute(
+      'data-hide-category-filter',
+      'true',
+    )
     expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'true')
     expect(screen.getByText('update setting')).toBeInTheDocument()
-    expect(screen.getByTestId('empty-state')).toHaveAttribute('data-variant', 'integrationsAgentStrategy')
+    expect(screen.getByTestId('empty-state')).toHaveAttribute(
+      'data-variant',
+      'integrationsAgentStrategy',
+    )
   })
 
   it('passes install permission to the integration category empty state', () => {
-    render(<PluginsPanel canInstall={false} contentInset="compact" fixedCategory={PluginCategoryEnum.trigger} />)
+    render(
+      <PluginsPanel
+        canInstall={false}
+        contentInset="compact"
+        fixedCategory={PluginCategoryEnum.trigger}
+      />,
+    )
 
     expect(screen.getByTestId('empty-state')).toHaveAttribute('data-can-install', 'false')
   })
@@ -452,18 +569,39 @@ describe('PluginsPanel', () => {
       />,
     )
 
-    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass('h-12', 'py-2', 'max-w-[1600px]', 'px-6')
-    expect(screen.getByTestId('filter-management-wrap').parentElement).not.toHaveClass('sticky', 'top-0', 'z-10')
-    expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-category-filter', 'true')
+    expect(screen.getByTestId('filter-management-wrap').parentElement).toHaveClass(
+      'h-12',
+      'py-2',
+      'max-w-[1600px]',
+      'px-6',
+    )
+    expect(screen.getByTestId('filter-management-wrap').parentElement).not.toHaveClass(
+      'sticky',
+      'top-0',
+      'z-10',
+    )
+    expect(screen.getByTestId('filter-management')).toHaveAttribute(
+      'data-hide-category-filter',
+      'true',
+    )
     expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'true')
     expect(screen.getByText('update setting')).toBeInTheDocument()
-    expect(screen.getByTestId('empty-state')).toHaveAttribute('data-variant', 'integrationsExtension')
+    expect(screen.getByTestId('empty-state')).toHaveAttribute(
+      'data-variant',
+      'integrationsExtension',
+    )
   })
 
   it('passes the marketplace action to the empty state', () => {
     const onSwitchToMarketplace = vi.fn()
 
-    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.extension} onSwitchToMarketplace={onSwitchToMarketplace} />)
+    render(
+      <PluginsPanel
+        contentInset="compact"
+        fixedCategory={PluginCategoryEnum.extension}
+        onSwitchToMarketplace={onSwitchToMarketplace}
+      />,
+    )
 
     expect(screen.getByTestId('empty-state')).toHaveAttribute('data-has-marketplace-action', 'true')
   })
@@ -472,7 +610,12 @@ describe('PluginsPanel', () => {
     mockState.filters.tags = ['search']
     mockPluginListWithLatestVersion.mockReturnValue([
       createPlugin('rag-extension', 'Rag Extension', ['rag'], PluginCategoryEnum.extension),
-      createPlugin('search-extension', 'Search Extension', ['search'], PluginCategoryEnum.extension),
+      createPlugin(
+        'search-extension',
+        'Search Extension',
+        ['search'],
+        PluginCategoryEnum.extension,
+      ),
     ])
 
     render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.extension} />)
@@ -528,9 +671,7 @@ describe('PluginsPanel', () => {
   it('renders the empty state and keeps the current plugin detail in sync', () => {
     mockState.currentPluginID = 'beta-tool'
     mockState.filters.searchQuery = 'missing'
-    mockPluginListWithLatestVersion.mockReturnValue([
-      createPlugin('beta-tool', 'Beta Tool'),
-    ])
+    mockPluginListWithLatestVersion.mockReturnValue([createPlugin('beta-tool', 'Beta Tool')])
 
     render(<PluginsPanel />)
 

@@ -55,44 +55,41 @@ export function AgentFormFields({
             className="relative min-w-0 flex-1"
             validate={(value) => {
               if (typeof value === 'string' && value.length > 0 && !value.trim())
-                return t($ => $['roster.createForm.nameRequired'])
+                return t(($) => $['roster.createForm.nameRequired'])
 
               return null
             }}
           >
-            <FieldLabel>
-              {t($ => $['roster.createForm.nameLabel'])}
-            </FieldLabel>
+            <FieldLabel>{t(($) => $['roster.createForm.nameLabel'])}</FieldLabel>
             <FieldControl
               autoComplete="off"
               // eslint-disable-next-line jsx-a11y/no-autofocus -- Agent roster dialogs open from explicit commands, and the name field is the primary editable control.
               autoFocus
               maxLength={255}
               onValueChange={onNameChange}
-              placeholder={t($ => $['roster.createForm.namePlaceholder'])}
+              placeholder={t(($) => $['roster.createForm.namePlaceholder'])}
               required
               value={name}
             />
             <div className="absolute top-full left-0 mt-1">
-              <FieldError match="valueMissing">{t($ => $['roster.createForm.nameRequired'])}</FieldError>
+              <FieldError match="valueMissing">
+                {t(($) => $['roster.createForm.nameRequired'])}
+              </FieldError>
               <FieldError match="customError" />
             </div>
           </Field>
-          <Field
-            name="role"
-            className="relative min-w-0 flex-1"
-          >
+          <Field name="role" className="relative min-w-0 flex-1">
             <FieldLabel>
-              {t($ => $['roster.createForm.roleLabel'])}
+              {t(($) => $['roster.createForm.roleLabel'])}
               <span className="ml-1 system-xs-regular text-text-tertiary">
-                {tCommon($ => $['label.optional'])}
+                {tCommon(($) => $['label.optional'])}
               </span>
             </FieldLabel>
             <FieldControl
               autoComplete="off"
               maxLength={255}
               onValueChange={onRoleChange}
-              placeholder={t($ => $['roster.createForm.rolePlaceholder'])}
+              placeholder={t(($) => $['roster.createForm.rolePlaceholder'])}
               value={role}
             />
           </Field>
@@ -100,16 +97,16 @@ export function AgentFormFields({
       </div>
       <Field name="description">
         <FieldLabel>
-          {t($ => $['roster.createForm.descriptionLabel'])}
+          {t(($) => $['roster.createForm.descriptionLabel'])}
           <span className="ml-1 system-xs-regular text-text-tertiary">
-            {tCommon($ => $['label.optional'])}
+            {tCommon(($) => $['label.optional'])}
           </span>
         </FieldLabel>
         <Textarea
           autoComplete="off"
           className="h-20 resize-none"
           onValueChange={onDescriptionChange}
-          placeholder={t($ => $['roster.createForm.descriptionPlaceholder'])}
+          placeholder={t(($) => $['roster.createForm.descriptionPlaceholder'])}
           value={description}
         />
       </Field>

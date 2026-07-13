@@ -16,7 +16,8 @@ export const voiceInputTestMaterial = {
 } as const
 
 export const getTestMaterialPath = (fileName: string) => path.join(testMaterialsDir, fileName)
-export const getVoiceInputTestMaterialPath = () => getTestMaterialPath(voiceInputTestMaterial.fileName)
+export const getVoiceInputTestMaterialPath = () =>
+  getTestMaterialPath(voiceInputTestMaterial.fileName)
 
 export async function getGeneratedTextMaterialPath({
   fileName,

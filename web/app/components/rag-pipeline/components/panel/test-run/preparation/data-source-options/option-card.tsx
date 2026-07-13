@@ -14,13 +14,7 @@ type OptionCardProps = {
   onClick?: (value: string) => void
 }
 
-const OptionCard = ({
-  label,
-  value,
-  selected,
-  nodeData,
-  onClick,
-}: OptionCardProps) => {
+const OptionCard = ({ label, value, selected, nodeData, onClick }: OptionCardProps) => {
   const toolIcon = useToolIcon(nodeData)
 
   const handleClickCard = useCallback(() => {
@@ -38,13 +32,13 @@ const OptionCard = ({
       onClick={handleClickCard}
     >
       <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border bg-background-default-dodge p-1">
-        <BlockIcon
-          type={BlockEnum.DataSource}
-          toolIcon={toolIcon}
-        />
+        <BlockIcon type={BlockEnum.DataSource} toolIcon={toolIcon} />
       </div>
       <div
-        className={cn('line-clamp-2 grow system-sm-medium text-text-secondary', selected && 'text-text-primary')}
+        className={cn(
+          'line-clamp-2 grow system-sm-medium text-text-secondary',
+          selected && 'text-text-primary',
+        )}
         title={label}
       >
         {label}

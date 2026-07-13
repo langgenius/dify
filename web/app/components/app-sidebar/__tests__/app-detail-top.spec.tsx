@@ -5,8 +5,22 @@ import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import AppDetailTop from '../app-detail-top'
 
 vi.mock('../toggle-button', () => ({
-  default: ({ expand, handleToggle, icon }: { expand: boolean, handleToggle: () => void, icon?: ReactNode }) => (
-    <button type="button" data-testid="toggle-button" data-expand={expand} data-has-icon={Boolean(icon)} onClick={handleToggle}>
+  default: ({
+    expand,
+    handleToggle,
+    icon,
+  }: {
+    expand: boolean
+    handleToggle: () => void
+    icon?: ReactNode
+  }) => (
+    <button
+      type="button"
+      data-testid="toggle-button"
+      data-expand={expand}
+      data-has-icon={Boolean(icon)}
+      onClick={handleToggle}
+    >
       Toggle
     </button>
   ),
@@ -21,11 +35,7 @@ function GotoAnythingOpenProbe() {
 const renderWithGotoAnythingStore = (ui: ReactNode) => {
   const store = createStore()
 
-  return render(
-    <JotaiProvider store={store}>
-      {ui}
-    </JotaiProvider>,
-  )
+  return render(<JotaiProvider store={store}>{ui}</JotaiProvider>)
 }
 
 describe('AppDetailTop', () => {

@@ -49,9 +49,12 @@ vi.mock('@/service/share', async () => {
   const actual = await vi.importActual<typeof import('@/service/share')>('@/service/share')
   return {
     ...actual,
-    sendCompletionMessage: (...args: Parameters<typeof actual.sendCompletionMessage>) => sendCompletionMessageMock(...args),
-    sendWorkflowMessage: (...args: Parameters<typeof actual.sendWorkflowMessage>) => sendWorkflowMessageMock(...args),
-    stopChatMessageResponding: (...args: Parameters<typeof actual.stopChatMessageResponding>) => stopChatMessageRespondingMock(...args),
+    sendCompletionMessage: (...args: Parameters<typeof actual.sendCompletionMessage>) =>
+      sendCompletionMessageMock(...args),
+    sendWorkflowMessage: (...args: Parameters<typeof actual.sendWorkflowMessage>) =>
+      sendWorkflowMessageMock(...args),
+    stopChatMessageResponding: (...args: Parameters<typeof actual.stopChatMessageResponding>) =>
+      stopChatMessageRespondingMock(...args),
   }
 })
 
@@ -72,9 +75,7 @@ vi.mock('@/app/components/share/text-generation/no-data', () => ({
 
 const promptConfig: PromptConfig = {
   prompt_template: 'template',
-  prompt_variables: [
-    { key: 'name', name: 'Name', type: 'string', required: true },
-  ],
+  prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
 }
 
 const siteInfo: SiteInfo = {
@@ -132,7 +133,11 @@ describe('Result', () => {
   it('should stream completion results and stop the current task', async () => {
     let completionHandlers: {
       onCompleted: () => void
-      onData: (chunk: string, isFirstMessage: boolean, info: { messageId: string, taskId?: string }) => void
+      onData: (
+        chunk: string,
+        isFirstMessage: boolean,
+        info: { messageId: string; taskId?: string },
+      ) => void
       onError: () => void
       onMessageReplace: (messageReplace: { answer: string }) => void
     } | null = null
@@ -144,11 +149,7 @@ describe('Result', () => {
     const onCompleted = vi.fn()
     const onRunControlChange = vi.fn()
     const { rerender } = render(
-      <Result
-        {...baseProps}
-        onCompleted={onCompleted}
-        onRunControlChange={onRunControlChange}
-      />,
+      <Result {...baseProps} onCompleted={onCompleted} onRunControlChange={onRunControlChange} />,
     )
 
     rerender(
@@ -173,14 +174,21 @@ describe('Result', () => {
     expect(screen.getByTestId('text-generation-res').textContent).toContain('Hello')
 
     await waitFor(() => {
-      expect(onRunControlChange).toHaveBeenLastCalledWith(expect.objectContaining({
-        isStopping: false,
-      }))
+      expect(onRunControlChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          isStopping: false,
+        }),
+      )
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'operation.stopResponding' }))
     await waitFor(() => {
-      expect(stopChatMessageRespondingMock).toHaveBeenCalledWith('app-1', 'task-1', AppSourceType.webApp, 'app-1')
+      expect(stopChatMessageRespondingMock).toHaveBeenCalledWith(
+        'app-1',
+        'task-1',
+        AppSourceType.webApp,
+        'app-1',
+      )
     })
 
     await act(async () => {
@@ -188,9 +196,11 @@ describe('Result', () => {
     })
 
     expect(onCompleted).toHaveBeenCalledWith('Hello', undefined, true)
-    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(expect.objectContaining({
-      messageId: 'message-1',
-    }))
+    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        messageId: 'message-1',
+      }),
+    )
   })
 
   it('should render workflow results after workflow completion', async () => {
@@ -200,22 +210,9 @@ describe('Result', () => {
     })
 
     const onCompleted = vi.fn()
-    const { rerender } = render(
-      <Result
-        {...baseProps}
-        isWorkflow
-        onCompleted={onCompleted}
-      />,
-    )
+    const { rerender } = render(<Result {...baseProps} isWorkflow onCompleted={onCompleted} />)
 
-    rerender(
-      <Result
-        {...baseProps}
-        isWorkflow
-        controlSend={1}
-        onCompleted={onCompleted}
-      />,
-    )
+    rerender(<Result {...baseProps} isWorkflow controlSend={1} onCompleted={onCompleted} />)
 
     await act(async () => {
       workflowHandlers?.onWorkflowStarted?.({
@@ -263,44 +260,42 @@ describe('Result', () => {
     })
 
     expect(screen.getByTestId('text-generation-res').textContent).toContain('{"answer":"Hello"}')
-    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(expect.objectContaining({
-      workflowProcessData: expect.objectContaining({
-        resultText: 'Hello',
-        status: 'succeeded',
+    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        workflowProcessData: expect.objectContaining({
+          resultText: 'Hello',
+          status: 'succeeded',
+        }),
       }),
-    }))
+    )
     expect(onCompleted).toHaveBeenCalledWith('{"answer":"Hello"}', undefined, true)
   })
 
   it('should render batch task ids for both short and long indexes', () => {
-    const { rerender } = render(
-      <Result
-        {...baseProps}
-        isCallBatchAPI
-        taskId={3}
-      />,
+    const { rerender } = render(<Result {...baseProps} isCallBatchAPI taskId={3} />)
+
+    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        taskId: '03',
+      }),
     )
 
-    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(expect.objectContaining({
-      taskId: '03',
-    }))
+    rerender(<Result {...baseProps} isCallBatchAPI taskId={12} />)
 
-    rerender(
-      <Result
-        {...baseProps}
-        isCallBatchAPI
-        taskId={12}
-      />,
+    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        taskId: '12',
+      }),
     )
-
-    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(expect.objectContaining({
-      taskId: '12',
-    }))
   })
 
   it('should render the mobile stop button layout while a batch run is responding', async () => {
     let completionHandlers: {
-      onData: (chunk: string, isFirstMessage: boolean, info: { messageId: string, taskId?: string }) => void
+      onData: (
+        chunk: string,
+        isFirstMessage: boolean,
+        info: { messageId: string; taskId?: string },
+      ) => void
     } | null = null
 
     sendCompletionMessageMock.mockImplementation(async (_data, handlers) => {
@@ -308,24 +303,11 @@ describe('Result', () => {
     })
 
     const { rerender } = render(
-      <Result
-        {...baseProps}
-        isCallBatchAPI
-        isMobile
-        isPC={false}
-        taskId={2}
-      />,
+      <Result {...baseProps} isCallBatchAPI isMobile isPC={false} taskId={2} />,
     )
 
     rerender(
-      <Result
-        {...baseProps}
-        controlSend={1}
-        isCallBatchAPI
-        isMobile
-        isPC={false}
-        taskId={2}
-      />,
+      <Result {...baseProps} controlSend={1} isCallBatchAPI isMobile isPC={false} taskId={2} />,
     )
 
     await act(async () => {
@@ -335,6 +317,8 @@ describe('Result', () => {
       })
     })
 
-    expect(screen.getByRole('button', { name: 'operation.stopResponding' }).parentElement?.className).toContain('justify-center')
+    expect(
+      screen.getByRole('button', { name: 'operation.stopResponding' }).parentElement?.className,
+    ).toContain('justify-center')
   })
 })

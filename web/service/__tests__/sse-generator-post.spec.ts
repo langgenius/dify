@@ -45,13 +45,19 @@ describe('sseGeneratorPost', () => {
     const onError = vi.fn()
     let controller: AbortController | undefined
 
-    sseGeneratorPost('/workflow-generate/stream', { mode: 'workflow' }, {
-      onPlan,
-      onResult,
-      onCompleted,
-      onError,
-      getAbortController: (c) => { controller = c },
-    })
+    sseGeneratorPost(
+      '/workflow-generate/stream',
+      { mode: 'workflow' },
+      {
+        onPlan,
+        onResult,
+        onCompleted,
+        onError,
+        getAbortController: (c) => {
+          controller = c
+        },
+      },
+    )
 
     await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledTimes(1))
 

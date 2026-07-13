@@ -109,7 +109,9 @@ let workletRespondsToStop = true
 
 class MockAudioWorkletNode {
   port: {
-    onmessage: ((event: MessageEvent<{ type: 'data', buffer: ArrayBuffer } | { type: 'stopped' }>) => void) | null
+    onmessage:
+      | ((event: MessageEvent<{ type: 'data'; buffer: ArrayBuffer } | { type: 'stopped' }>) => void)
+      | null
     postMessage: (message: { type: string }) => void
   }
 
@@ -117,11 +119,10 @@ class MockAudioWorkletNode {
     this.port = {
       onmessage: null,
       postMessage: vi.fn((message: { type: string }) => {
-        if (message.type !== 'stop' || !workletRespondsToStop)
-          return
+        if (message.type !== 'stop' || !workletRespondsToStop) return
         this.port.onmessage?.({
           data: { type: 'data', buffer: new Float32Array([0.25, -0.25]).buffer },
-        } as MessageEvent<{ type: 'data', buffer: ArrayBuffer }>)
+        } as MessageEvent<{ type: 'data'; buffer: ArrayBuffer }>)
         this.port.onmessage?.({ data: { type: 'stopped' } } as MessageEvent<{ type: 'stopped' }>)
       }),
     }
@@ -144,8 +145,7 @@ describe('startVoiceRecorder', () => {
     mediaMocks.outputCancel.mockResolvedValue()
     mediaMocks.outputStart.mockResolvedValue()
     mediaMocks.outputFinalize.mockImplementation(async () => {
-      if (mediaMocks.target)
-        mediaMocks.target.buffer = new Uint8Array([1, 2, 3]).buffer
+      if (mediaMocks.target) mediaMocks.target.buffer = new Uint8Array([1, 2, 3]).buffer
     })
     workletRespondsToStop = true
     audioContextState = 'running'
@@ -194,9 +194,11 @@ describe('startVoiceRecorder', () => {
 
     it('should release a microphone stream that resolves after setup is cancelled', async () => {
       let resolveStream: (stream: MediaStream) => void = () => {}
-      getUserMedia.mockReturnValueOnce(new Promise((resolve) => {
-        resolveStream = resolve
-      }))
+      getUserMedia.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveStream = resolve
+        }),
+      )
       const abortController = new AbortController()
       const recorderPromise = startVoiceRecorder(abortController.signal)
       await vi.waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(1))
@@ -271,13 +273,14 @@ describe('startVoiceRecorder', () => {
 
     it('should release microphone resources before MP3 finalization completes', async () => {
       let resolveFinalize: () => void = () => {}
-      mediaMocks.outputFinalize.mockReturnValueOnce(new Promise((resolve) => {
-        resolveFinalize = () => {
-          if (mediaMocks.target)
-            mediaMocks.target.buffer = new Uint8Array([1, 2, 3]).buffer
-          resolve()
-        }
-      }))
+      mediaMocks.outputFinalize.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFinalize = () => {
+            if (mediaMocks.target) mediaMocks.target.buffer = new Uint8Array([1, 2, 3]).buffer
+            resolve()
+          }
+        }),
+      )
       const recorder = await startVoiceRecorder()
 
       const stopPromise = recorder.stop()
@@ -361,13 +364,14 @@ describe('startVoiceRecorder', () => {
 
     it('should release capture while an in-flight stop finishes encoding', async () => {
       let resolveFinalize: () => void = () => {}
-      mediaMocks.outputFinalize.mockReturnValueOnce(new Promise((resolve) => {
-        resolveFinalize = () => {
-          if (mediaMocks.target)
-            mediaMocks.target.buffer = new Uint8Array([1, 2, 3]).buffer
-          resolve()
-        }
-      }))
+      mediaMocks.outputFinalize.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFinalize = () => {
+            if (mediaMocks.target) mediaMocks.target.buffer = new Uint8Array([1, 2, 3]).buffer
+            resolve()
+          }
+        }),
+      )
       const recorder = await startVoiceRecorder()
       const stopPromise = recorder.stop()
       await vi.waitFor(() => expect(mediaMocks.outputFinalize).toHaveBeenCalledTimes(1))
@@ -430,8 +434,7 @@ describe('startVoiceRecorder', () => {
 
         await expect(startWithUnavailableEncoder()).rejects.toThrow()
         expect(getUserMedia).not.toHaveBeenCalled()
-      }
-      finally {
+      } finally {
         vi.doUnmock('../mp3-encoder')
       }
     })

@@ -40,11 +40,15 @@ describe('transcribeAudio', () => {
     const signal = new AbortController().signal
     vi.mocked(audioToText).mockResolvedValue({ text: 'app transcript' })
 
-    const result = await transcribeAudio({
-      type: 'app',
-      appId: 'app-1',
-      appSourceType: AppSourceType.installedApp,
-    }, file, signal)
+    const result = await transcribeAudio(
+      {
+        type: 'app',
+        appId: 'app-1',
+        appSourceType: AppSourceType.installedApp,
+      },
+      file,
+      signal,
+    )
 
     expect(result).toEqual({ text: 'app transcript' })
     const formData = vi.mocked(audioToText).mock.calls[0]![2]
@@ -61,10 +65,13 @@ describe('transcribeAudio', () => {
     const result = await transcribeAudio({ type: 'consoleApp', appId: 'app-1' }, file, signal)
 
     expect(result).toEqual({ text: 'console app transcript' })
-    expect(post).toHaveBeenCalledWith({
-      body: { file },
-      params: { app_id: 'app-1' },
-    }, { signal })
+    expect(post).toHaveBeenCalledWith(
+      {
+        body: { file },
+        params: { app_id: 'app-1' },
+      },
+      { signal },
+    )
     expect(audioToText).not.toHaveBeenCalled()
   })
 
@@ -75,22 +82,29 @@ describe('transcribeAudio', () => {
     const post = consoleClient.agent.byAgentId.audioToText.post
     vi.mocked(post).mockResolvedValue({ text: 'agent transcript' })
 
-    const result = await transcribeAudio({
-      type: 'agent',
-      agentId: 'agent-1',
-      draftType: 'debug_build',
-    }, file, signal)
+    const result = await transcribeAudio(
+      {
+        type: 'agent',
+        agentId: 'agent-1',
+        draftType: 'debug_build',
+      },
+      file,
+      signal,
+    )
 
     expect(result).toEqual({ text: 'agent transcript' })
-    expect(post).toHaveBeenCalledWith({
-      body: {
-        draft_type: 'debug_build',
-        file,
+    expect(post).toHaveBeenCalledWith(
+      {
+        body: {
+          draft_type: 'debug_build',
+          file,
+        },
+        params: {
+          agent_id: 'agent-1',
+        },
       },
-      params: {
-        agent_id: 'agent-1',
-      },
-    }, { signal })
+      { signal },
+    )
     expect(audioToText).not.toHaveBeenCalled()
   })
 })

@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import NormalForm from '../normal-form'
 
 vi.mock('@tanstack/react-query', async () => {
-  const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
+  const actual =
+    await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
   return {
     ...actual,
     useQuery: vi.fn(),
@@ -125,7 +126,9 @@ describe('NormalForm', () => {
       render(<NormalForm />)
 
       await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith('/signin/invite-settings?invite_token=invite-token')
+        expect(mockReplace).toHaveBeenCalledWith(
+          '/signin/invite-settings?invite_token=invite-token',
+        )
       })
     })
   })

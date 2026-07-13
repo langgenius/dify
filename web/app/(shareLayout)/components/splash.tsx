@@ -7,13 +7,18 @@ import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAccessToken } from '@/service/share'
-import { setWebAppAccessToken, setWebAppPassport, webAppLoginStatus, webAppLogout } from '@/service/webapp-auth'
+import {
+  setWebAppAccessToken,
+  setWebAppPassport,
+  webAppLoginStatus,
+  webAppLogout,
+} from '@/service/webapp-auth'
 
 const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
-  const shareCode = useWebAppStore(s => s.shareCode)
-  const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
-  const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
+  const shareCode = useWebAppStore((s) => s.shareCode)
+  const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
+  const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)
   const searchParams = useSearchParams()
   const router = useRouter()
   const redirectUrl = searchParams.get('redirect_url')
@@ -40,33 +45,30 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
       return
     }
 
-    if (tokenFromUrl)
-      setWebAppAccessToken(tokenFromUrl)
+    if (tokenFromUrl) setWebAppAccessToken(tokenFromUrl)
 
     const redirectOrFinish = () => {
-      if (redirectUrl)
-        router.replace(decodeURIComponent(redirectUrl))
-      else
-        setIsLoading(false)
+      if (redirectUrl) router.replace(decodeURIComponent(redirectUrl))
+      else setIsLoading(false)
     }
 
     const proceedToAuth = () => {
       setIsLoading(false)
     }
 
-    (async () => {
+    ;(async () => {
       // if access mode is public, user login is always true, but the app login(passport) may be expired
-      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(shareCode!, embeddedUserId || undefined)
+      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(
+        shareCode!,
+        embeddedUserId || undefined,
+      )
       if (userLoggedIn && appLoggedIn) {
         redirectOrFinish()
-      }
-      else if (!userLoggedIn && !appLoggedIn) {
+      } else if (!userLoggedIn && !appLoggedIn) {
         proceedToAuth()
-      }
-      else if (!userLoggedIn && appLoggedIn) {
+      } else if (!userLoggedIn && appLoggedIn) {
         redirectOrFinish()
-      }
-      else if (userLoggedIn && !appLoggedIn) {
+      } else if (userLoggedIn && !appLoggedIn) {
         try {
           const { access_token } = await fetchAccessToken({
             appCode: shareCode!,
@@ -74,28 +76,27 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
           })
           setWebAppPassport(shareCode!, access_token)
           redirectOrFinish()
-        }
-        catch {
+        } catch {
           await webAppLogout(shareCode!)
           proceedToAuth()
         }
       }
     })()
-  }, [
-    shareCode,
-    redirectUrl,
-    router,
-    message,
-    webAppAccessMode,
-    tokenFromUrl,
-    embeddedUserId,
-  ])
+  }, [shareCode, redirectUrl, router, message, webAppAccessMode, tokenFromUrl, embeddedUserId])
 
   if (message) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-y-4">
-        <AppUnavailable className="size-auto" code={code || t($ => $['common.appUnavailable'], { ns: 'share' })} unknownReason={message} />
-        <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>{code === '403' ? t($ => $['userProfile.logout'], { ns: 'common' }) : t($ => $['login.backToHome'], { ns: 'share' })}</span>
+        <AppUnavailable
+          className="size-auto"
+          code={code || t(($) => $['common.appUnavailable'], { ns: 'share' })}
+          unknownReason={message}
+        />
+        <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>
+          {code === '403'
+            ? t(($) => $['userProfile.logout'], { ns: 'common' })
+            : t(($) => $['login.backToHome'], { ns: 'share' })}
+        </span>
       </div>
     )
   }

@@ -39,11 +39,19 @@ jobs:
         with:
           files: |
             web/**
+            cli/**
+            e2e/**
             packages/**
+            sdks/nodejs-client/**
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
             .nvmrc
+            vite.config.ts
+            eslint.config.mjs
+            .vscode/**
+            .github/workflows/autofix.yml
+            .github/workflows/style.yml
       - name: Check api inputs
         if: github.event_name != 'merge_group'
         id: api-changes
@@ -78,7 +86,7 @@ jobs:
           python-version: "3.11"
 
       - if: github.event_name != 'merge_group'
-        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
 
       - name: Generate Docker Compose
         if: github.event_name != 'merge_group' && steps.docker-compose-changes.outputs.any_changed == 'true'
@@ -161,7 +169,11 @@ jobs:
       - name: ESLint autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
         run: |
-          vp exec eslint --concurrency=2 --prune-suppressions --quiet || true
+          vp exec eslint --fix --concurrency=2 --prune-suppressions --quiet || true
+
+      - name: Format frontend files
+        if: github.event_name != 'merge_group' && (steps.web-changes.outputs.any_changed == 'true' || steps.frontend-contract-changes.outputs.any_changed == 'true')
+        run: vp fmt
 
       - if: github.event_name != 'merge_group'
         uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1.3.4

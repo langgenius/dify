@@ -80,15 +80,16 @@ const isAppIconType = (value: unknown): value is AppIconType => {
 }
 
 const isAccessMode = (value: unknown): value is AccessMode => {
-  return value === AccessMode.PUBLIC
-    || value === AccessMode.SPECIFIC_GROUPS_MEMBERS
-    || value === AccessMode.ORGANIZATION
-    || value === AccessMode.EXTERNAL_MEMBERS
+  return (
+    value === AccessMode.PUBLIC ||
+    value === AccessMode.SPECIFIC_GROUPS_MEMBERS ||
+    value === AccessMode.ORGANIZATION ||
+    value === AccessMode.EXTERNAL_MEMBERS
+  )
 }
 
 const normalizeAccessMode = (value: unknown) => {
-  if (isAccessMode(value))
-    return value
+  if (isAccessMode(value)) return value
 
   throw new Error('Web app access mode response returned an unsupported access mode.')
 }
@@ -101,14 +102,16 @@ const normalizeAppBasicInfo = (
   source: RecommendedAppInfoResponse | InstalledAppInfoResponse | null | undefined,
   fallbackId: string,
 ): App['app'] => {
-  const description = source && 'description' in source && typeof source.description === 'string'
-    ? source.description
-    : ''
-  const useIconAsAnswerIcon = source
-    && 'use_icon_as_answer_icon' in source
-    && typeof source.use_icon_as_answer_icon === 'boolean'
-    ? source.use_icon_as_answer_icon
-    : false
+  const description =
+    source && 'description' in source && typeof source.description === 'string'
+      ? source.description
+      : ''
+  const useIconAsAnswerIcon =
+    source &&
+    'use_icon_as_answer_icon' in source &&
+    typeof source.use_icon_as_answer_icon === 'boolean'
+      ? source.use_icon_as_answer_icon
+      : false
 
   return {
     id: source?.id ?? fallbackId,
@@ -149,7 +152,9 @@ const normalizeExploreAppsResponse = (response: GetExploreAppsResponse): Explore
   }
 }
 
-const normalizeLearnDifyAppsResponse = (response: GetExploreAppsLearnDifyResponse): LearnDifyAppsResponse => {
+const normalizeLearnDifyAppsResponse = (
+  response: GetExploreAppsLearnDifyResponse,
+): LearnDifyAppsResponse => {
   return {
     recommended_apps: response.recommended_apps.map(normalizeRecommendedApp),
   }
@@ -176,7 +181,9 @@ const normalizeInstalledApp = (installedApp: InstalledAppResponse): InstalledApp
   }
 }
 
-const normalizeInstalledAppsResponse = (response: InstalledAppListResponse): InstalledAppsResponse => {
+const normalizeInstalledAppsResponse = (
+  response: InstalledAppListResponse,
+): InstalledAppsResponse => {
   return {
     installed_apps: response.installed_apps.map(normalizeInstalledApp),
   }
@@ -186,9 +193,9 @@ const normalizeBannerContent = (content: unknown): Banner['content'] => {
   const record = isRecord(content) ? content : {}
 
   return {
-    'category': getStringProperty(record, 'category'),
-    'title': getStringProperty(record, 'title'),
-    'description': getStringProperty(record, 'description'),
+    category: getStringProperty(record, 'category'),
+    title: getStringProperty(record, 'title'),
+    description: getStringProperty(record, 'description'),
     'img-src': getStringProperty(record, 'img-src'),
   }
 }
@@ -213,10 +220,8 @@ const normalizeToolIcons = (value: unknown) => {
   const result: Record<string, ToolIcon> = {}
 
   Object.entries(record).forEach(([key, item]) => {
-    if (typeof item === 'string')
-      result[key] = item
-    else if (isRecord(item))
-      result[key] = item
+    if (typeof item === 'string') result[key] = item
+    else if (isRecord(item)) result[key] = item
   })
 
   return result
@@ -233,8 +238,7 @@ const isTtsAutoPlay = (value: unknown): value is TtsAutoPlay => {
 }
 
 const isUserInputFormItem = (value: unknown): value is ChatConfig['user_input_form'][number] => {
-  if (!isRecord(value))
-    return false
+  if (!isRecord(value)) return false
 
   return [
     'text-input',
@@ -246,14 +250,18 @@ const isUserInputFormItem = (value: unknown): value is ChatConfig['user_input_fo
     'file-list',
     'external_data_tool',
     'json_object',
-  ].some(key => isRecord(getValue(value, key)))
+  ].some((key) => isRecord(getValue(value, key)))
 }
 
-const isModel = (value: unknown): value is NonNullable<ChatConfig['suggested_questions_after_answer']['model']> => {
+const isModel = (
+  value: unknown,
+): value is NonNullable<ChatConfig['suggested_questions_after_answer']['model']> => {
   return isRecord(value)
 }
 
-const isAnnotationReplyConfig = (value: unknown): value is NonNullable<ChatConfig['annotation_reply']> => {
+const isAnnotationReplyConfig = (
+  value: unknown,
+): value is NonNullable<ChatConfig['annotation_reply']> => {
   return isRecord(value)
 }
 
@@ -334,12 +342,16 @@ const normalizeInstalledAppParametersViewModel = (
     prompt_type: PromptMode.simple,
     user_input_form: response.user_input_form.filter(isUserInputFormItem),
     more_like_this: normalizeEnabledConfig(response.more_like_this),
-    suggested_questions_after_answer: normalizeSuggestedQuestionsAfterAnswer(response.suggested_questions_after_answer),
+    suggested_questions_after_answer: normalizeSuggestedQuestionsAfterAnswer(
+      response.suggested_questions_after_answer,
+    ),
     speech_to_text: normalizeEnabledConfig(response.speech_to_text),
     text_to_speech: normalizeTextToSpeech(response.text_to_speech),
     retriever_resource: normalizeEnabledConfig(response.retriever_resource),
     sensitive_word_avoidance: normalizeEnabledConfig(response.sensitive_word_avoidance),
-    ...(isAnnotationReplyConfig(response.annotation_reply) ? { annotation_reply: response.annotation_reply } : {}),
+    ...(isAnnotationReplyConfig(response.annotation_reply)
+      ? { annotation_reply: response.annotation_reply }
+      : {}),
     agent_mode: {
       enabled: false,
       tools: [],
@@ -351,39 +363,42 @@ const normalizeInstalledAppParametersViewModel = (
 }
 
 export const fetchAppList = (language?: string) => {
-  if (!language)
-    return consoleClient.explore.apps.get({}).then(normalizeExploreAppsResponse)
+  if (!language) return consoleClient.explore.apps.get({}).then(normalizeExploreAppsResponse)
 
-  return consoleClient.explore.apps.get({
-    query: { language },
-  }).then(normalizeExploreAppsResponse)
+  return consoleClient.explore.apps
+    .get({
+      query: { language },
+    })
+    .then(normalizeExploreAppsResponse)
 }
 
 export const fetchLearnDifyAppList = (language?: string) => {
   if (!language)
     return consoleClient.explore.apps.learnDify.get({}).then(normalizeLearnDifyAppsResponse)
 
-  return consoleClient.explore.apps.learnDify.get({
-    query: { language },
-  }).then(normalizeLearnDifyAppsResponse)
+  return consoleClient.explore.apps.learnDify
+    .get({
+      query: { language },
+    })
+    .then(normalizeLearnDifyAppsResponse)
 }
 
 export const fetchAppDetail = async (id: string): Promise<ExploreAppDetailResponse> => {
   const response = await consoleClient.explore.apps.byAppId.get({
     params: { app_id: id },
   })
-  if (!response)
-    throw new Error('Recommended app not found')
+  if (!response) throw new Error('Recommended app not found')
   return normalizeAppDetail(response)
 }
 
 export const fetchInstalledAppList = (appId?: string | null) => {
-  if (!appId)
-    return consoleClient.installedApps.get({}).then(normalizeInstalledAppsResponse)
+  if (!appId) return consoleClient.installedApps.get({}).then(normalizeInstalledAppsResponse)
 
-  return consoleClient.installedApps.get({
-    query: { app_id: appId },
-  }).then(normalizeInstalledAppsResponse)
+  return consoleClient.installedApps
+    .get({
+      query: { app_id: appId },
+    })
+    .then(normalizeInstalledAppsResponse)
 }
 
 export const uninstallApp = (id: string) => {
@@ -402,30 +417,41 @@ export const updatePinStatus = (id: string, isPinned: boolean) => {
 }
 
 export const getAppAccessModeByAppId = (appId: string) => {
-  return consoleClient.enterprise.webAppAuth.getWebAppAccessMode({
-    query: { appId },
-  }).then((response): AppAccessModeResponse => ({
-    accessMode: normalizeAccessMode(isRecord(response) ? getValue(response, 'accessMode') : undefined),
-  }))
+  return consoleClient.enterprise.webAppAuth
+    .getWebAppAccessMode({
+      query: { appId },
+    })
+    .then(
+      (response): AppAccessModeResponse => ({
+        accessMode: normalizeAccessMode(
+          isRecord(response) ? getValue(response, 'accessMode') : undefined,
+        ),
+      }),
+    )
 }
 
 export const fetchInstalledAppParams = (appId: string) => {
-  return consoleClient.installedApps.byInstalledAppId.parameters.get({
-    params: { installed_app_id: appId },
-  }).then(normalizeInstalledAppParametersViewModel)
+  return consoleClient.installedApps.byInstalledAppId.parameters
+    .get({
+      params: { installed_app_id: appId },
+    })
+    .then(normalizeInstalledAppParametersViewModel)
 }
 
 export const fetchInstalledAppMeta = (appId: string) => {
-  return consoleClient.installedApps.byInstalledAppId.meta.get({
-    params: { installed_app_id: appId },
-  }).then(normalizeAppMeta)
+  return consoleClient.installedApps.byInstalledAppId.meta
+    .get({
+      params: { installed_app_id: appId },
+    })
+    .then(normalizeAppMeta)
 }
 
 export const fetchBanners = (language?: string) => {
-  if (!language)
-    return consoleClient.explore.banners.get({}).then(normalizeBannersResponse)
+  if (!language) return consoleClient.explore.banners.get({}).then(normalizeBannersResponse)
 
-  return consoleClient.explore.banners.get({
-    query: { language },
-  }).then(normalizeBannersResponse)
+  return consoleClient.explore.banners
+    .get({
+      query: { language },
+    })
+    .then(normalizeBannersResponse)
 }

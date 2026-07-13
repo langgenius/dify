@@ -1,7 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
@@ -243,11 +242,13 @@ describe('useNodesSyncDraft', () => {
         await result.current.doSyncWorkflowDraft()
       })
 
-      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
-        params: expect.not.objectContaining({
-          source_workflow_id: expect.anything(),
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.not.objectContaining({
+            source_workflow_id: expect.anything(),
+          }),
         }),
-      }))
+      )
     })
 
     it('should call onSuccess callback when sync succeeds', async () => {
@@ -344,7 +345,7 @@ describe('useNodesSyncDraft', () => {
         await result.current.doSyncWorkflowDraft(false)
       })
 
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalled()
     })
@@ -367,7 +368,7 @@ describe('useNodesSyncDraft', () => {
         await result.current.doSyncWorkflowDraft(true)
       })
 
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
     })
@@ -458,7 +459,14 @@ describe('useNodesSyncDraft', () => {
     it('should remove underscore-prefixed keys from edges', () => {
       mockStoreGetState.mockReturnValue({
         getNodes: mockGetNodes,
-        edges: [{ id: 'edge-1', source: 'node-1', target: 'node-2', data: { _hidden: true, visible: false } }],
+        edges: [
+          {
+            id: 'edge-1',
+            source: 'node-1',
+            target: 'node-2',
+            data: { _hidden: true, visible: false },
+          },
+        ],
         transform: [0, 0, 1],
       })
       mockGetNodes.mockReturnValue([

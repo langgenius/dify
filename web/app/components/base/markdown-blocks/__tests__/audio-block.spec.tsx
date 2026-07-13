@@ -1,10 +1,8 @@
 import type { NamedExoticComponent } from 'react'
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-
 // AudioBlock.integration.spec.tsx
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import AudioBlock from '../audio-block'
 
 // Mock the nested AudioPlayer used by AudioGallery (do not mock AudioGallery itself)

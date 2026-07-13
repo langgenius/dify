@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteAgentByAgentIdApiKeysByApiKeyIdPath,
   zDeleteAgentByAgentIdApiKeysByApiKeyIdResponse,
@@ -991,7 +990,7 @@ export const drive = {
  */
 export const post13 = oc
   .route({
-    description: 'Update an Agent App\'s presentation features (opener, follow-up, citations, ...)',
+    description: "Update an Agent App's presentation features (opener, follow-up, citations, ...)",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAgentByAgentIdFeatures',
@@ -1166,7 +1165,7 @@ export const publish = {
  */
 export const get28 = oc
   .route({
-    description: 'List workflow apps that reference this Agent App\'s bound Agent (read-only)',
+    description: "List workflow apps that reference this Agent App's bound Agent (read-only)",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdReferencingWorkflows',

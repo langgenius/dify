@@ -27,15 +27,10 @@ export const StepTwoFooter: FC<StepTwoFooterProps> = ({
       <div className="mt-8 flex items-center py-2">
         <Button onClick={onPrevious}>
           <RiArrowLeftLine className="mr-1 size-4" />
-          {t($ => $['stepTwo.previousStep'], { ns: 'datasetCreation' })}
+          {t(($) => $['stepTwo.previousStep'], { ns: 'datasetCreation' })}
         </Button>
-        <Button
-          className="ml-auto"
-          loading={isCreating}
-          variant="primary"
-          onClick={onCreate}
-        >
-          {t($ => $['stepTwo.nextStep'], { ns: 'datasetCreation' })}
+        <Button className="ml-auto" loading={isCreating} variant="primary" onClick={onCreate}>
+          {t(($) => $['stepTwo.nextStep'], { ns: 'datasetCreation' })}
         </Button>
       </div>
     )
@@ -43,15 +38,11 @@ export const StepTwoFooter: FC<StepTwoFooterProps> = ({
 
   return (
     <div className="mt-8 flex items-center py-2">
-      <Button
-        loading={isCreating}
-        variant="primary"
-        onClick={onCreate}
-      >
-        {t($ => $['stepTwo.save'], { ns: 'datasetCreation' })}
+      <Button loading={isCreating} variant="primary" onClick={onCreate}>
+        {t(($) => $['stepTwo.save'], { ns: 'datasetCreation' })}
       </Button>
       <Button className="ml-2" onClick={onCancel}>
-        {t($ => $['stepTwo.cancel'], { ns: 'datasetCreation' })}
+        {t(($) => $['stepTwo.cancel'], { ns: 'datasetCreation' })}
       </Button>
     </div>
   )

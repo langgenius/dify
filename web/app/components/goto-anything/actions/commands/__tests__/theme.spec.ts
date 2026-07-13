@@ -18,7 +18,7 @@ describe('themeCommand', () => {
       const results = await themeCommand.search('', 'en')
 
       expect(results).toHaveLength(3)
-      expect(results.map(r => r.id)).toEqual(['system', 'light', 'dark'])
+      expect(results.map((r) => r.id)).toEqual(['system', 'light', 'dark'])
     })
 
     it('returns all theme options with correct type', async () => {
@@ -26,7 +26,10 @@ describe('themeCommand', () => {
 
       results.forEach((r) => {
         expect(r.type).toBe('command')
-        expect(r.data).toEqual({ command: 'theme.set', args: expect.objectContaining({ value: expect.any(String) }) })
+        expect(r.data).toEqual({
+          command: 'theme.set',
+          args: expect.objectContaining({ value: expect.any(String) }),
+        })
       })
     })
 

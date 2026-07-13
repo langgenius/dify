@@ -170,7 +170,7 @@ export const namespaces = [
   'tools',
   'workflow',
 ] as const satisfies ReadonlyArray<keyof Resources>
-export type Namespace = typeof namespaces[number]
+export type Namespace = (typeof namespaces)[number]
 
-export const namespacesInFileName = namespaces.map(ns => kebabCase(ns))
-export type NamespaceInFileName = typeof namespacesInFileName[number]
+export const namespacesInFileName = namespaces.map((ns) => kebabCase(ns))
+export type NamespaceInFileName = (typeof namespacesInFileName)[number]

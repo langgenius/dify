@@ -54,23 +54,29 @@ describe('end/use-config', () => {
     const { result } = renderHook(() => useConfig('end-node', currentInputs))
     const config = mockUseVarList.mock.calls[0]![0] as { setInputs: (inputs: EndNodeType) => void }
 
-    expect(mockUseVarList).toHaveBeenCalledWith(expect.objectContaining({
-      inputs: currentInputs,
-      setInputs: expect.any(Function),
-      varKey: 'outputs',
-    }))
+    expect(mockUseVarList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputs: currentInputs,
+        setInputs: expect.any(Function),
+        varKey: 'outputs',
+      }),
+    )
     expect(result.current.readOnly).toBe(true)
     expect(result.current.handleVarListChange).toBe(mockHandleVarListChange)
     expect(result.current.handleAddVariable).toBe(mockHandleAddVariable)
 
     act(() => {
-      config.setInputs(createPayload({
-        outputs: currentInputs.outputs,
-      }))
+      config.setInputs(
+        createPayload({
+          outputs: currentInputs.outputs,
+        }),
+      )
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      outputs: currentInputs.outputs,
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outputs: currentInputs.outputs,
+      }),
+    )
   })
 })

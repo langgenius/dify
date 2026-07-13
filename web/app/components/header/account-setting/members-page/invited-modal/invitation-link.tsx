@@ -11,9 +11,7 @@ type IInvitationLinkProps = {
   value: SuccessInvitationResult
 }
 
-const InvitationLink = ({
-  value,
-}: IInvitationLinkProps) => {
+const InvitationLink = ({ value }: IInvitationLinkProps) => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
 
@@ -41,7 +39,7 @@ const InvitationLink = ({
         <div className="relative h-full grow text-[13px]">
           <Tooltip>
             <TooltipTrigger
-              render={(
+              render={
                 <button
                   type="button"
                   className="absolute inset-x-0 top-0 block w-full cursor-pointer truncate border-none bg-transparent p-0 px-2 text-left text-text-primary"
@@ -49,29 +47,29 @@ const InvitationLink = ({
                 >
                   {value.url}
                 </button>
-              )}
+              }
             />
             <TooltipContent>
-              {isCopied ? t($ => $.copied, { ns: 'appApi' }) : t($ => $.copy, { ns: 'appApi' })}
+              {isCopied ? t(($) => $.copied, { ns: 'appApi' }) : t(($) => $.copy, { ns: 'appApi' })}
             </TooltipContent>
           </Tooltip>
         </div>
         <div className="h-4 shrink-0 border border-divider-regular bg-divider-regular" />
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <div className="shrink-0 px-0.5">
                 <button
                   type="button"
-                  aria-label={t($ => $.copy, { ns: 'appApi' })}
+                  aria-label={t(($) => $.copy, { ns: 'appApi' })}
                   className={`box-border flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-base-hover ${s.copyIcon} ${isCopied ? s.copied : ''}`}
                   onClick={copyHandle}
                 />
               </div>
-            )}
+            }
           />
           <TooltipContent>
-            {isCopied ? t($ => $.copied, { ns: 'appApi' }) : t($ => $.copy, { ns: 'appApi' })}
+            {isCopied ? t(($) => $.copied, { ns: 'appApi' }) : t(($) => $.copy, { ns: 'appApi' })}
           </TooltipContent>
         </Tooltip>
       </div>

@@ -30,18 +30,17 @@ describe('runConfigUnset', () => {
     expect(out).toBe('unset defaults.format\n')
     const r = await loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
-    if (r.found)
-      expect(r.config.schema_version).toBe(1)
+    if (r.found) expect(r.config.schema_version).toBe(1)
   })
 
   it('rejects unknown key', async () => {
     let caught: unknown
     try {
       await runConfigUnset({ store: getConfigurationStore(), key: 'bogus' })
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
-    if (isBaseError(caught))
-      expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
+    if (isBaseError(caught)) expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
   })
 })

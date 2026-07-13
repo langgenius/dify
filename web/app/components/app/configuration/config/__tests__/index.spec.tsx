@@ -211,12 +211,14 @@ describe('Config - Prompt Handling', () => {
     latestConfigPromptProps.onChange('Updated template', additions)
 
     expect(contextValue.setPrevPromptConfig).toHaveBeenCalledWith(contextValue.modelConfig.configs)
-    expect(contextValue.setModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      configs: expect.objectContaining({
-        prompt_template: 'Updated template',
-        prompt_variables: [...previousVariables, ...additions],
+    expect(contextValue.setModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configs: expect.objectContaining({
+          prompt_template: 'Updated template',
+          prompt_variables: [...previousVariables, ...additions],
+        }),
       }),
-    }))
+    )
     expect(mockFormattingDispatcher).toHaveBeenCalledTimes(1)
   })
 
@@ -237,10 +239,12 @@ describe('Config - Prompt Handling', () => {
     latestConfigVarProps.onPromptVariablesChange(replacementVariables)
 
     expect(contextValue.setPrevPromptConfig).toHaveBeenCalledWith(contextValue.modelConfig.configs)
-    expect(contextValue.setModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      configs: expect.objectContaining({
-        prompt_variables: replacementVariables,
+    expect(contextValue.setModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configs: expect.objectContaining({
+          prompt_variables: replacementVariables,
+        }),
       }),
-    }))
+    )
   })
 })

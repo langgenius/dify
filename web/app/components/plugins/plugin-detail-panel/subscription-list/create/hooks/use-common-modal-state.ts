@@ -3,7 +3,10 @@ import type { SimpleDetail } from '../../../store'
 import type { SchemaItem } from '../components/modal-steps'
 import type { PluginTriggerTranslate } from './use-common-modal-state.helpers'
 import type { FormRefObject } from '@/app/components/base/form/types'
-import type { TriggerLogEntity, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import type {
+  TriggerLogEntity,
+  TriggerSubscriptionBuilder,
+} from '@/app/components/workflow/block-selector/types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { debounce } from 'es-toolkit/compat'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -107,14 +110,16 @@ export const useCommonModalState = ({
     (selector, options) => t(selector, options),
     [t],
   )
-  const detail = usePluginStore(state => state.detail)
+  const detail = usePluginStore((state) => state.detail)
   const { refetch } = useSubscriptionList()
 
   // State
   const [currentStep, setCurrentStep] = useState<ApiKeyStep>(
     createType === SupportedCreationMethods.APIKEY ? ApiKeyStep.Verify : ApiKeyStep.Configuration,
   )
-  const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>(builder)
+  const [subscriptionBuilder, setSubscriptionBuilder] = useState<
+    TriggerSubscriptionBuilder | undefined
+  >(builder)
 
   // Form refs
   const manualPropertiesFormRef = useRef<FormRefObject>(null)
@@ -123,17 +128,20 @@ export const useCommonModalState = ({
   const apiKeyCredentialsFormRef = useRef<FormRefObject>(null)
 
   // Mutations
-  const { mutate: verifyCredentials, isPending: isVerifyingCredentials } = useVerifyAndUpdateTriggerSubscriptionBuilder()
+  const { mutate: verifyCredentials, isPending: isVerifyingCredentials } =
+    useVerifyAndUpdateTriggerSubscriptionBuilder()
   const { mutateAsync: createBuilder } = useCreateTriggerSubscriptionBuilder()
   const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
   const { mutate: updateBuilder } = useUpdateTriggerSubscriptionBuilder()
 
   // Schemas
   const manualPropertiesSchema = detail?.declaration?.trigger?.subscription_schema || []
-  const autoCommonParametersSchema = detail?.declaration.trigger?.subscription_constructor?.parameters || []
+  const autoCommonParametersSchema =
+    detail?.declaration.trigger?.subscription_constructor?.parameters || []
 
   const apiKeyCredentialsSchema = useMemo<SchemaItem[]>(() => {
-    const rawSchema = detail?.declaration?.trigger?.subscription_constructor?.credentials_schema || []
+    const rawSchema =
+      detail?.declaration?.trigger?.subscription_constructor?.credentials_schema || []
     return toSchemaWithTooltip(rawSchema) as SchemaItem[]
   }, [detail?.declaration?.trigger?.subscription_constructor?.credentials_schema])
 
@@ -149,22 +157,25 @@ export const useCommonModalState = ({
 
   // Debounced update for manual properties
   const debouncedUpdate = useMemo(
-    () => debounce((provider: string, builderId: string, properties: Record<string, unknown>) => {
-      updateBuilder(
-        {
-          provider,
-          subscriptionBuilderId: builderId,
-          properties,
-        },
-        {
-          onError: async (error: unknown) => {
-            const errorMessage = await parsePluginErrorMessage(error) || t($ => $['modal.errors.updateFailed'], { ns: 'pluginTrigger' })
-            console.error('Failed to update subscription builder:', error)
-            toast.error(errorMessage)
+    () =>
+      debounce((provider: string, builderId: string, properties: Record<string, unknown>) => {
+        updateBuilder(
+          {
+            provider,
+            subscriptionBuilderId: builderId,
+            properties,
           },
-        },
-      )
-    }, 500),
+          {
+            onError: async (error: unknown) => {
+              const errorMessage =
+                (await parsePluginErrorMessage(error)) ||
+                t(($) => $['modal.errors.updateFailed'], { ns: 'pluginTrigger' })
+              console.error('Failed to update subscription builder:', error)
+              toast.error(errorMessage)
+            },
+          },
+        )
+      }, 500),
     [updateBuilder, t],
   )
 
@@ -193,23 +204,24 @@ export const useCommonModalState = ({
 
   // Handle manual properties change
   const handleManualPropertiesChange = useCallback(() => {
-    if (!subscriptionBuilder || !detail?.provider)
-      return
+    if (!subscriptionBuilder || !detail?.provider) return
 
-    const formValues = manualPropertiesFormRef.current?.getFormValues({ needCheckValidatedValues: false })
-      || { values: {}, isCheckValidated: true }
+    const formValues = manualPropertiesFormRef.current?.getFormValues({
+      needCheckValidatedValues: false,
+    }) || { values: {}, isCheckValidated: true }
 
     debouncedUpdate(detail.provider, subscriptionBuilder.id, formValues.values)
   }, [subscriptionBuilder, detail?.provider, debouncedUpdate])
 
   // Handle API key credentials change
   const handleApiKeyCredentialsChange = useCallback(() => {
-    if (!apiKeyCredentialsSchema.length)
-      return
-    apiKeyCredentialsFormRef.current?.setFields([{
-      name: apiKeyCredentialsSchema[0]!.name,
-      errors: [],
-    }])
+    if (!apiKeyCredentialsSchema.length) return
+    apiKeyCredentialsFormRef.current?.setFields([
+      {
+        name: apiKeyCredentialsSchema[0]!.name,
+        errors: [],
+      },
+    ])
   }, [apiKeyCredentialsSchema])
 
   // Handle verify
@@ -230,10 +242,12 @@ export const useCommonModalState = ({
 
     const credentialFieldName = getFirstFieldName(credentials, apiKeyCredentialsSchema)
 
-    apiKeyCredentialsFormRef.current?.setFields([{
-      name: credentialFieldName,
-      errors: [],
-    }])
+    apiKeyCredentialsFormRef.current?.setFields([
+      {
+        name: credentialFieldName,
+        errors: [],
+      },
+    ])
 
     verifyCredentials(
       {
@@ -243,15 +257,19 @@ export const useCommonModalState = ({
       },
       {
         onSuccess: () => {
-          toast.success(t($ => $['modal.apiKey.verify.success'], { ns: 'pluginTrigger' }))
+          toast.success(t(($) => $['modal.apiKey.verify.success'], { ns: 'pluginTrigger' }))
           setCurrentStep(ApiKeyStep.Configuration)
         },
         onError: async (error: unknown) => {
-          const errorMessage = await parsePluginErrorMessage(error) || t($ => $['modal.apiKey.verify.error'], { ns: 'pluginTrigger' })
-          apiKeyCredentialsFormRef.current?.setFields([{
-            name: credentialFieldName,
-            errors: [errorMessage],
-          }])
+          const errorMessage =
+            (await parsePluginErrorMessage(error)) ||
+            t(($) => $['modal.apiKey.verify.error'], { ns: 'pluginTrigger' })
+          apiKeyCredentialsFormRef.current?.setFields([
+            {
+              name: credentialFieldName,
+              errors: [errorMessage],
+            },
+          ])
         },
       },
     )
@@ -275,23 +293,21 @@ export const useCommonModalState = ({
       manualPropertiesFormValues: getFormValues(manualPropertiesFormRef),
     })
 
-    if (!params)
-      return
+    if (!params) return
 
-    buildSubscription(
-      params,
-      {
-        onSuccess: () => {
-          toast.success(t($ => $['subscription.createSuccess'], { ns: 'pluginTrigger' }))
-          onClose()
-          refetch?.()
-        },
-        onError: async (error: unknown) => {
-          const errorMessage = await parsePluginErrorMessage(error) || t($ => $['subscription.createFailed'], { ns: 'pluginTrigger' })
-          toast.error(errorMessage)
-        },
+    buildSubscription(params, {
+      onSuccess: () => {
+        toast.success(t(($) => $['subscription.createSuccess'], { ns: 'pluginTrigger' }))
+        onClose()
+        refetch?.()
       },
-    )
+      onError: async (error: unknown) => {
+        const errorMessage =
+          (await parsePluginErrorMessage(error)) ||
+          t(($) => $['subscription.createFailed'], { ns: 'pluginTrigger' })
+        toast.error(errorMessage)
+      },
+    })
   }, [
     subscriptionBuilder,
     detail?.provider,
@@ -306,10 +322,8 @@ export const useCommonModalState = ({
 
   // Handle confirm (dispatch based on step)
   const handleConfirm = useCallback(() => {
-    if (currentStep === ApiKeyStep.Verify)
-      handleVerify()
-    else
-      handleCreate()
+    if (currentStep === ApiKeyStep.Verify) handleVerify()
+    else handleCreate()
   }, [currentStep, handleVerify, handleCreate])
 
   // Confirm button text

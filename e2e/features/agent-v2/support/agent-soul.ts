@@ -18,17 +18,17 @@ export const defaultAgentSoulConfig: AgentSoulConfig = {
   },
 }
 
-export const normalAgentPrompt
-  = 'You are a Dify Agent E2E test assistant. Reply briefly to every user message, and always include AGENT_E2E_PASS in your response.'
+export const normalAgentPrompt =
+  'You are a Dify Agent E2E test assistant. Reply briefly to every user message, and always include AGENT_E2E_PASS in your response.'
 
-export const updatedAgentPrompt
-  = 'You are a Dify Agent E2E test assistant. Every response must start with E2E_AGENT_UPDATED.'
+export const updatedAgentPrompt =
+  'You are a Dify Agent E2E test assistant. Every response must start with E2E_AGENT_UPDATED.'
 
-export const concurrentFirstAgentPrompt
-  = 'You are a Dify Agent E2E concurrent edit assistant. Always include E2E_CONCURRENT_FIRST in saved instructions.'
+export const concurrentFirstAgentPrompt =
+  'You are a Dify Agent E2E concurrent edit assistant. Always include E2E_CONCURRENT_FIRST in saved instructions.'
 
-export const concurrentSecondAgentPrompt
-  = 'You are a Dify Agent E2E concurrent edit assistant. Always include E2E_CONCURRENT_SECOND in saved instructions.'
+export const concurrentSecondAgentPrompt =
+  'You are a Dify Agent E2E concurrent edit assistant. Always include E2E_CONCURRENT_SECOND in saved instructions.'
 
 export const normalAgentSoulConfig: AgentSoulConfig = {
   prompt: {
@@ -55,8 +55,7 @@ const stableAgentModelSettings = {
 const getAgentModelPluginId = (provider: string) => {
   const [organization, pluginName] = provider.split('/').filter(Boolean)
 
-  if (organization && pluginName)
-    return `${organization}/${pluginName}`
+  if (organization && pluginName) return `${organization}/${pluginName}`
 
   return provider ? `langgenius/${provider}` : ''
 }
@@ -86,9 +85,7 @@ export function createAgentSoulConfigWithModel(
   }
 }
 
-export function createAgentSoulConfigWithSpeechToText(
-  agentSoul: AgentSoulConfig,
-): AgentSoulConfig {
+export function createAgentSoulConfigWithSpeechToText(agentSoul: AgentSoulConfig): AgentSoulConfig {
   return {
     ...agentSoul,
     app_features: {
@@ -101,8 +98,7 @@ export function createAgentSoulConfigWithSpeechToText(
 }
 
 export function createPublishableAgentSoulConfig(agentSoul: AgentSoulConfig): AgentSoulConfig {
-  if (agentSoul.model)
-    return agentSoul
+  if (agentSoul.model) return agentSoul
 
   return createAgentSoulConfigWithModel(agentSoul, publishOnlyAgentModel)
 }
@@ -140,10 +136,7 @@ export function createAgentSoulConfigWithDifyTool(
     ...agentSoul,
     tools: {
       ...agentSoul.tools,
-      dify_tools: [
-        ...(agentSoul.tools?.dify_tools ?? []),
-        tool,
-      ],
+      dify_tools: [...(agentSoul.tools?.dify_tools ?? []), tool],
     },
   }
 }

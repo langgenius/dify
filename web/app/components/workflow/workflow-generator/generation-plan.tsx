@@ -33,7 +33,7 @@ const PlanningSkeleton = memo(() => {
       </SkeletonRow>
       <div className="grow overflow-hidden rounded-2xl border border-divider-subtle bg-background-default p-4">
         <SkeletonContainer className="gap-3">
-          {SKELETON_ROWS.map(key => (
+          {SKELETON_ROWS.map((key) => (
             <SkeletonRow key={key} className="items-start">
               <SkeletonRectangle className="size-6 shrink-0 rounded-lg" />
               <div className="flex grow flex-col gap-1.5">
@@ -46,7 +46,7 @@ const PlanningSkeleton = memo(() => {
       </div>
       <div className="mt-3 flex items-center gap-1.5 text-[13px] text-text-tertiary">
         <RiLoader4Line className="size-4 animate-spin" />
-        <span>{t($ => $['workflowGenerator.phases.planning'])}</span>
+        <span>{t(($) => $['workflowGenerator.phases.planning'])}</span>
       </div>
     </div>
   )
@@ -65,8 +65,7 @@ PlanningSkeleton.displayName = 'PlanningSkeleton'
 const GenerationPlan = ({ plan }: Props) => {
   const { t } = useTranslation('workflow')
 
-  if (!plan)
-    return <PlanningSkeleton />
+  if (!plan) return <PlanningSkeleton />
 
   return (
     <div className="flex h-full w-0 grow flex-col bg-background-default-subtle p-6">
@@ -74,8 +73,14 @@ const GenerationPlan = ({ plan }: Props) => {
         <div className="mb-3 flex items-center gap-2">
           {plan.icon && <span className="text-xl leading-none">{plan.icon}</span>}
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-text-primary">{plan.app_name || plan.title}</div>
-            {plan.description && <div className="truncate system-xs-regular text-text-tertiary">{plan.description}</div>}
+            <div className="truncate text-sm font-semibold text-text-primary">
+              {plan.app_name || plan.title}
+            </div>
+            {plan.description && (
+              <div className="truncate system-xs-regular text-text-tertiary">
+                {plan.description}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -89,11 +94,12 @@ const GenerationPlan = ({ plan }: Props) => {
                 <div className="system-sm-medium text-text-secondary">
                   {node.label}
                   <span className="ml-1 system-xs-regular text-text-quaternary">
-                    ·
-                    {node.node_type}
+                    ·{node.node_type}
                   </span>
                 </div>
-                {node.purpose && <div className="system-xs-regular text-text-tertiary">{node.purpose}</div>}
+                {node.purpose && (
+                  <div className="system-xs-regular text-text-tertiary">{node.purpose}</div>
+                )}
               </div>
             </li>
           ))}
@@ -102,7 +108,7 @@ const GenerationPlan = ({ plan }: Props) => {
 
       <div className="mt-3 flex items-center gap-1.5 text-[13px] text-text-tertiary">
         <RiLoader4Line className="size-4 animate-spin" />
-        <span>{t($ => $['workflowGenerator.phases.building'])}</span>
+        <span>{t(($) => $['workflowGenerator.phases.building'])}</span>
       </div>
     </div>
   )

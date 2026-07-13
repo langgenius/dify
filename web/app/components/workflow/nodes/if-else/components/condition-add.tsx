@@ -1,20 +1,9 @@
 import type { HandleAddCondition } from '../types'
-import type {
-  NodeOutPutVar,
-  ValueSelector,
-  Var,
-} from '@/app/components/workflow/types'
+import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiAddLine } from '@remixicon/react'
-import {
-  useCallback,
-  useState,
-} from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 
@@ -36,27 +25,25 @@ const ConditionAdd = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  const handleSelectVariable = useCallback((valueSelector: ValueSelector, varItem: Var) => {
-    onSelectVariable(caseId, valueSelector, varItem)
-    setOpen(false)
-  }, [caseId, onSelectVariable])
+  const handleSelectVariable = useCallback(
+    (valueSelector: ValueSelector, varItem: Var) => {
+      onSelectVariable(caseId, valueSelector, varItem)
+      setOpen(false)
+    },
+    [caseId, onSelectVariable],
+  )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={(
-          <Button
-            size="small"
-            className={className}
-            disabled={disabled}
-          >
+        render={
+          <Button size="small" className={className} disabled={disabled}>
             <RiAddLine className="mr-1 size-3.5" />
-            {t($ => $['nodes.ifElse.addCondition'], { ns: 'workflow' })}
+            {t(($) => $['nodes.ifElse.addCondition'], { ns: 'workflow' })}
           </Button>
-        )}
+        }
         onClick={(e) => {
-          if (disabled)
-            e.preventDefault()
+          if (disabled) e.preventDefault()
         }}
       />
       <PopoverContent
@@ -65,11 +52,7 @@ const ConditionAdd = ({
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
-          <VarReferenceVars
-            vars={variables}
-            isSupportFileVar
-            onChange={handleSelectVariable}
-          />
+          <VarReferenceVars vars={variables} isSupportFileVar onChange={handleSelectVariable} />
         </div>
       </PopoverContent>
     </Popover>

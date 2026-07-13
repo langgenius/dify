@@ -59,7 +59,7 @@ type IBizChartProps = {
 
 type IChartProps = {
   className?: string
-  basicInfo: { title: string, explanation: string, timePeriod: string }
+  basicInfo: { title: string; explanation: string; timePeriod: string }
   valueKey?: string
   isAvg?: boolean
   unit?: string
@@ -97,11 +97,14 @@ const Chart: React.FC<IChartProps> = ({
     unit,
   })
   const tokenSummary = getTokenSummary(statistics)
-  const showTokenSummary = CHART_TYPE_CONFIG[chartType].showTokens && hasNonZeroChartData(statistics, 'total_price')
+  const showTokenSummary =
+    CHART_TYPE_CONFIG[chartType].showTokens && hasNonZeroChartData(statistics, 'total_price')
   const isZeroSummary = summaryValue === '0' || summaryValue === '0 ms'
 
   return (
-    <div className={`flex h-[316px] w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg xl:min-w-[480px] ${className ?? ''}`}>
+    <div
+      className={`flex h-[316px] w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg xl:min-w-[480px] ${className ?? ''}`}
+    >
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center">
           <div className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary">
@@ -115,26 +118,26 @@ const Chart: React.FC<IChartProps> = ({
         </div>
       </div>
       <div className="flex h-8 shrink-0 items-baseline gap-1 px-6 py-1">
-        <div className={`shrink-0 title-3xl-semi-bold ${isZeroSummary ? 'text-text-quaternary' : 'text-text-primary'}`}>
+        <div
+          className={`shrink-0 title-3xl-semi-bold ${isZeroSummary ? 'text-text-quaternary' : 'text-text-primary'}`}
+        >
           {summaryValue}
         </div>
         {showTokenSummary && (
           <div className="min-w-0 truncate system-sm-medium text-text-tertiary">
-            {t($ => $['analysis.tokenUsage.consumed'], { ns: 'appOverview' })}
-            {' '}
-            Tokens
-            {' '}
+            {t(($) => $['analysis.tokenUsage.consumed'], { ns: 'appOverview' })} Tokens{' '}
             <span>(</span>
-            <span className="text-orange-400">
-              ~
-              {tokenSummary}
-            </span>
+            <span className="text-orange-400">~{tokenSummary}</span>
             <span>)</span>
           </div>
         )}
       </div>
       <div className="h-[240px] shrink-0 px-6 pb-4">
-        <ReactECharts option={options} opts={ECHARTS_RENDER_OPTIONS} style={{ height: '100%', width: '100%' }} />
+        <ReactECharts
+          option={options}
+          opts={ECHARTS_RENDER_OPTIONS}
+          style={{ height: '100%', width: '100%' }}
+        />
       </div>
     </div>
   )
@@ -144,32 +147,37 @@ type ChartResponse = {
   data: ChartRow[]
 }
 
-type UseChartData = (id: string, query?: PeriodParams['query']) => {
+type UseChartData = (
+  id: string,
+  query?: PeriodParams['query'],
+) => {
   data?: ChartResponse
   isLoading: boolean
 }
 
 const CHART_TRANSLATION_SELECTOR_MAP = {
-  'analysis.activeUsers.explanation': $ => $['analysis.activeUsers.explanation'],
-  'analysis.activeUsers.title': $ => $['analysis.activeUsers.title'],
-  'analysis.avgResponseTime.explanation': $ => $['analysis.avgResponseTime.explanation'],
-  'analysis.avgResponseTime.title': $ => $['analysis.avgResponseTime.title'],
-  'analysis.avgSessionInteractions.explanation': $ => $['analysis.avgSessionInteractions.explanation'],
-  'analysis.avgSessionInteractions.title': $ => $['analysis.avgSessionInteractions.title'],
-  'analysis.avgUserInteractions.explanation': $ => $['analysis.avgUserInteractions.explanation'],
-  'analysis.avgUserInteractions.title': $ => $['analysis.avgUserInteractions.title'],
-  'analysis.ms': $ => $['analysis.ms'],
-  'analysis.tokenPS': $ => $['analysis.tokenPS'],
-  'analysis.tokenUsage.explanation': $ => $['analysis.tokenUsage.explanation'],
-  'analysis.tokenUsage.title': $ => $['analysis.tokenUsage.title'],
-  'analysis.totalConversations.explanation': $ => $['analysis.totalConversations.explanation'],
-  'analysis.totalConversations.title': $ => $['analysis.totalConversations.title'],
-  'analysis.totalMessages.explanation': $ => $['analysis.totalMessages.explanation'],
-  'analysis.totalMessages.title': $ => $['analysis.totalMessages.title'],
-  'analysis.tps.explanation': $ => $['analysis.tps.explanation'],
-  'analysis.tps.title': $ => $['analysis.tps.title'],
-  'analysis.userSatisfactionRate.explanation': $ => $['analysis.userSatisfactionRate.explanation'],
-  'analysis.userSatisfactionRate.title': $ => $['analysis.userSatisfactionRate.title'],
+  'analysis.activeUsers.explanation': ($) => $['analysis.activeUsers.explanation'],
+  'analysis.activeUsers.title': ($) => $['analysis.activeUsers.title'],
+  'analysis.avgResponseTime.explanation': ($) => $['analysis.avgResponseTime.explanation'],
+  'analysis.avgResponseTime.title': ($) => $['analysis.avgResponseTime.title'],
+  'analysis.avgSessionInteractions.explanation': ($) =>
+    $['analysis.avgSessionInteractions.explanation'],
+  'analysis.avgSessionInteractions.title': ($) => $['analysis.avgSessionInteractions.title'],
+  'analysis.avgUserInteractions.explanation': ($) => $['analysis.avgUserInteractions.explanation'],
+  'analysis.avgUserInteractions.title': ($) => $['analysis.avgUserInteractions.title'],
+  'analysis.ms': ($) => $['analysis.ms'],
+  'analysis.tokenPS': ($) => $['analysis.tokenPS'],
+  'analysis.tokenUsage.explanation': ($) => $['analysis.tokenUsage.explanation'],
+  'analysis.tokenUsage.title': ($) => $['analysis.tokenUsage.title'],
+  'analysis.totalConversations.explanation': ($) => $['analysis.totalConversations.explanation'],
+  'analysis.totalConversations.title': ($) => $['analysis.totalConversations.title'],
+  'analysis.totalMessages.explanation': ($) => $['analysis.totalMessages.explanation'],
+  'analysis.totalMessages.title': ($) => $['analysis.totalMessages.title'],
+  'analysis.tps.explanation': ($) => $['analysis.tps.explanation'],
+  'analysis.tps.title': ($) => $['analysis.tps.title'],
+  'analysis.userSatisfactionRate.explanation': ($) =>
+    $['analysis.userSatisfactionRate.explanation'],
+  'analysis.userSatisfactionRate.title': ($) => $['analysis.userSatisfactionRate.title'],
 } satisfies Record<string, SelectorParam<'appOverview'>>
 
 type ChartTranslationKey = keyof typeof CHART_TRANSLATION_SELECTOR_MAP
@@ -203,13 +211,13 @@ const createBizChartComponent = ({
     const { t } = useTranslation()
     const { data: response, isLoading } = useChartData(id, period.query)
 
-    if (isLoading || !response)
-      return <Loading />
+    if (isLoading || !response) return <Loading />
 
     const noDataFlag = !response.data || response.data.length === 0
     const fallbackKey = emptyValueKey ?? valueKey
     const titleSelector: SelectorParam<'appOverview'> = CHART_TRANSLATION_SELECTOR_MAP[titleKey]
-    const explanationSelector: SelectorParam<'appOverview'> = CHART_TRANSLATION_SELECTOR_MAP[explanationKey]
+    const explanationSelector: SelectorParam<'appOverview'> =
+      CHART_TRANSLATION_SELECTOR_MAP[explanationKey]
     const unitSelector: SelectorParam<'appOverview'> | undefined = unitKey
       ? CHART_TRANSLATION_SELECTOR_MAP[unitKey]
       : undefined
@@ -231,7 +239,11 @@ const createBizChartComponent = ({
         chartType={chartType}
         valueKey={valueKey}
         isAvg={isAvg}
-        unit={unitKey && unitSelector ? t(unitSelector, { ns: 'appOverview', defaultValue: unitKey }) : undefined}
+        unit={
+          unitKey && unitSelector
+            ? t(unitSelector, { ns: 'appOverview', defaultValue: unitKey })
+            : undefined
+        }
         className={className}
         {...(noDataFlag && { yMax: yMaxWhenEmpty })}
       />

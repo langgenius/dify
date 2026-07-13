@@ -72,7 +72,10 @@ describe('VoiceInput', () => {
       y: 0,
       toJSON: () => ({}),
     })
-    vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1))
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn(() => 1),
+    )
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
   })
 
@@ -126,20 +129,20 @@ describe('VoiceInput', () => {
       const staleCancel = vi.fn().mockResolvedValue(undefined)
       const activeCancel = vi.fn().mockResolvedValue(undefined)
       vi.mocked(startVoiceRecorder)
-        .mockReturnValueOnce(new Promise((resolve) => {
-          resolveFirstRecorder = resolve
-        }))
-        .mockReturnValueOnce(new Promise((resolve) => {
-          resolveSecondRecorder = resolve
-        }))
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveFirstRecorder = resolve
+          }),
+        )
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveSecondRecorder = resolve
+          }),
+        )
 
       render(
         <StrictMode>
-          <VoiceInput
-            onCancel={vi.fn()}
-            onConverted={vi.fn()}
-            target={target}
-          />
+          <VoiceInput onCancel={vi.fn()} onConverted={vi.fn()} target={target} />
         </StrictMode>,
       )
       resolveSecondRecorder({ ...recorder, cancel: activeCancel })
@@ -155,13 +158,7 @@ describe('VoiceInput', () => {
       const { props, rerender } = renderVoiceInput()
       await screen.findByText('common.voiceInput.speaking')
 
-      rerender(
-        <VoiceInput
-          {...props}
-          onCancel={vi.fn()}
-          onStartError={vi.fn()}
-        />,
-      )
+      rerender(<VoiceInput {...props} onCancel={vi.fn()} onStartError={vi.fn()} />)
 
       expect(startVoiceRecorder).toHaveBeenCalledTimes(1)
       expect(recorderCancel).not.toHaveBeenCalled()
@@ -191,9 +188,11 @@ describe('VoiceInput', () => {
 
     it('should ignore repeated stop requests', async () => {
       let resolveStop: (blob: Blob) => void = () => {}
-      recorderStop.mockReturnValueOnce(new Promise((resolve) => {
-        resolveStop = resolve
-      }))
+      recorderStop.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveStop = resolve
+        }),
+      )
       renderVoiceInput()
       const stopButton = await screen.findByRole('button', { name: 'common.voiceInput.stop' })
 
@@ -245,9 +244,11 @@ describe('VoiceInput', () => {
 
     it('should not upload when conversion is cancelled while the recorder is stopping', async () => {
       let resolveStop: (blob: Blob) => void = () => {}
-      recorderStop.mockReturnValueOnce(new Promise((resolve) => {
-        resolveStop = resolve
-      }))
+      recorderStop.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveStop = resolve
+        }),
+      )
       const { props } = renderVoiceInput()
 
       fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))
@@ -263,9 +264,12 @@ describe('VoiceInput', () => {
 
     it('should not upload when conversion is cancelled while the draft is saving', async () => {
       let resolveDraftSave: () => void = () => {}
-      const onBeforeTranscribe = vi.fn(() => new Promise<void>((resolve) => {
-        resolveDraftSave = resolve
-      }))
+      const onBeforeTranscribe = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveDraftSave = resolve
+          }),
+      )
       const { props } = renderVoiceInput({ onBeforeTranscribe })
 
       fireEvent.click(await screen.findByRole('button', { name: 'common.voiceInput.stop' }))

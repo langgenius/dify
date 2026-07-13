@@ -12,10 +12,11 @@ import { getCurrentAgentId } from './configure-helpers'
 const getAgentInput = (world: DifyWorld) =>
   world.getPage().getByPlaceholder('Describe what your agent should do')
 
-const normalizeFixturePhrase = (value: string) => value
-  .toLocaleLowerCase()
-  .replaceAll('seven', '7')
-  .replaceAll(/[^\p{L}\p{N}]+/gu, '')
+const normalizeFixturePhrase = (value: string) =>
+  value
+    .toLocaleLowerCase()
+    .replaceAll('seven', '7')
+    .replaceAll(/[^\p{L}\p{N}]+/gu, '')
 
 Given(
   'an Agent v2 test agent with speech-to-text enabled has been created via API',
@@ -54,10 +55,11 @@ When(
       { timeout: 15_000 },
     )
 
-    const responsePromise = page.waitForResponse(response => (
-      response.request().method() === 'POST'
-      && new URL(response.url()).pathname === `/console/api/agent/${agentId}/audio-to-text`
-    ))
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === `/console/api/agent/${agentId}/audio-to-text`,
+    )
     await page.getByRole('button', { name: 'Stop recording' }).click()
     const response = await responsePromise
     const request = response.request()
@@ -72,24 +74,24 @@ When(
 
 Then('the Agent v2 speech-to-text request should succeed', async function (this: DifyWorld) {
   const request = this.agentBuilder.speechToText.request
-  if (!request)
-    throw new Error('No Agent v2 speech-to-text request was captured.')
+  if (!request) throw new Error('No Agent v2 speech-to-text request was captured.')
 
-  expect(request).toEqual(expect.objectContaining({
-    contentType: expect.stringContaining('multipart/form-data'),
-    path: `/console/api/agent/${getCurrentAgentId(this)}/audio-to-text`,
-    status: 200,
-  }))
+  expect(request).toEqual(
+    expect.objectContaining({
+      contentType: expect.stringContaining('multipart/form-data'),
+      path: `/console/api/agent/${getCurrentAgentId(this)}/audio-to-text`,
+      status: 200,
+    }),
+  )
 })
 
 Then(
   'the transcribed fixture phrase {string} should appear in the Agent v2 input',
   async function (this: DifyWorld, expectedPhrase: string) {
     const input = getAgentInput(this)
-    await expect.poll(
-      async () => normalizeFixturePhrase(await input.inputValue()),
-      { timeout: 60_000 },
-    ).toBe(normalizeFixturePhrase(expectedPhrase))
+    await expect
+      .poll(async () => normalizeFixturePhrase(await input.inputValue()), { timeout: 60_000 })
+      .toBe(normalizeFixturePhrase(expectedPhrase))
   },
 )
 
