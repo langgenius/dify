@@ -56,11 +56,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   const [submitError, setSubmitError] = useState<SubmitError>(null)
   const emailInputRef = useRef<HTMLInputElement>(null)
   const roleTriggerRef = useRef<HTMLButtonElement>(null)
-  const invalidRecipientError = recipients.some(({ isValid }) => !isValid)
-    ? t(($) => $['members.emailInvalid'], { ns: 'common' })
-    : null
   const emailServerError = submitError?.target === 'emails' ? submitError.message : undefined
-  const emailError = invalidRecipientError || emailServerError
   const roleError = submitError?.target === 'role' ? submitError.message : undefined
   const currentSize = licenseLimit.workspace_members.size ?? 0
   const memberLimit = licenseLimit.workspace_members.limit
@@ -68,7 +64,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   const validRecipientCount = recipients.filter(({ isValid }) => isValid).length
   const exceedsRemainingSeats = remainingSeats !== null && validRecipientCount > remainingSeats
   const formErrors = {
-    ...(emailError ? { emails: emailError } : {}),
+    ...(emailServerError ? { emails: emailServerError } : {}),
     ...(roleError ? { role: roleError } : {}),
   }
 
@@ -94,35 +90,12 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
     const submittedDraft = new FormData(event.currentTarget).get('emails')
     const draftValue = typeof submittedDraft === 'string' ? submittedDraft : draft
 
-    const submittedDraftRecipients = mergeEmailRecipients([], draftValue)
-    if (draftValue.trim() && submittedDraftRecipients.some(({ isValid }) => !isValid)) {
-      emailInputRef.current?.focus()
-      return
-    }
-
     const nextRecipients = mergeEmailRecipients(recipients, draftValue)
-
-    if (nextRecipients.length === 0) {
-      setSubmitError({
-        target: 'emails',
-        message: t(($) => $['members.emailRequired'], { ns: 'common' }),
-      })
-      emailInputRef.current?.focus()
-      return
-    }
-
-    if (nextRecipients.some(({ isValid }) => !isValid)) {
-      emailInputRef.current?.focus()
-      return
-    }
 
     setRecipients(nextRecipients)
     setDraft('')
 
-    if (!role) {
-      roleTriggerRef.current?.focus()
-      return
-    }
+    if (!role) return
 
     setSubmitError(null)
     try {

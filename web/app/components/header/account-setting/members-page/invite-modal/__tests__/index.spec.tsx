@@ -137,6 +137,20 @@ describe('InviteModal', () => {
     })
   })
 
+  it('should focus the email field first when the untouched form is submitted with Enter', async () => {
+    const user = userEvent.setup()
+    renderModal()
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await waitFor(() => expect(input).toHaveFocus())
+    await user.keyboard('{Enter}')
+
+    expect(input).toHaveFocus()
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByText(/members\.emailRequired/i)).toBeInTheDocument()
+    expect(inviteMember).not.toHaveBeenCalled()
+  })
+
   it('does not render dialog content while controlled closed', () => {
     renderModal({ open: false })
 

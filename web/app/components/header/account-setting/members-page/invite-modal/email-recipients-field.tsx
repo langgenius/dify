@@ -55,6 +55,18 @@ export function EmailRecipientsField({
       ? t(($) => $['members.emailInvalid'], { ns: 'common' })
       : error
 
+  const validateRecipients = (value: unknown) => {
+    const nextDraft = typeof value === 'string' ? value : draft
+    const nextRecipients = mergeEmailRecipients(recipients, nextDraft)
+
+    if (nextRecipients.length === 0) return t(($) => $['members.emailRequired'], { ns: 'common' })
+
+    if (nextRecipients.some(({ isValid }) => !isValid))
+      return t(($) => $['members.emailInvalid'], { ns: 'common' })
+
+    return null
+  }
+
   const updateRecipients = (nextRecipients: EmailRecipient[]) => {
     onRecipientsChange(nextRecipients)
     onChange?.()
@@ -154,7 +166,7 @@ export function EmailRecipientsField({
   }
 
   return (
-    <Field name="emails" invalid={Boolean(fieldError)}>
+    <Field name="emails" invalid={Boolean(fieldError)} validate={validateRecipients}>
       <div className="flex items-center justify-between gap-3">
         <FieldLabel>{t(($) => $['members.emailRecipients'], { ns: 'common' })}</FieldLabel>
         {recipients.length > 0 && (
@@ -171,8 +183,7 @@ export function EmailRecipientsField({
           'flex max-h-24 min-h-10 flex-wrap content-start items-center gap-1 overflow-y-auto rounded-lg border border-transparent bg-components-input-bg-normal px-2 py-1.5 transition-[background-color,border-color,box-shadow]',
           'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
           'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
-          fieldError &&
-            'border-components-input-border-destructive bg-components-input-bg-destructive',
+          'group-data-invalid/field:border-components-input-border-destructive group-data-invalid/field:bg-components-input-bg-destructive',
           disabled &&
             'cursor-not-allowed bg-components-input-bg-disabled hover:border-transparent hover:bg-components-input-bg-disabled',
         )}
@@ -308,9 +319,12 @@ export function EmailRecipientsField({
       {fieldError ? (
         <FieldError match>{fieldError}</FieldError>
       ) : (
-        <FieldDescription>
-          {t(($) => $['members.emailRecipientsTip'], { ns: 'common' })}
-        </FieldDescription>
+        <>
+          <FieldError match="customError" />
+          <FieldDescription className="group-data-invalid/field:hidden">
+            {t(($) => $['members.emailRecipientsTip'], { ns: 'common' })}
+          </FieldDescription>
+        </>
       )}
     </Field>
   )
