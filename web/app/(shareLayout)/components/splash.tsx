@@ -1,11 +1,16 @@
 'use client'
-import type { FC, PropsWithChildren } from 'react'
+import type { PropsWithChildren } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  isWebAppSigninPath,
+  resolveWebAppLoginRedirect,
+} from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
-import { useRouter, useSearchParams } from '@/next/navigation'
+import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAccessToken } from '@/service/share'
 import {
   setWebAppAccessToken,
@@ -13,12 +18,16 @@ import {
   webAppLoginStatus,
   webAppLogout,
 } from '@/service/webapp-auth'
+import { getClientLoginFallback } from '@/utils/login-redirect'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { basePath } from '@/utils/var'
 
-const Splash: FC<PropsWithChildren> = ({ children }) => {
+function Splash({ children }: PropsWithChildren) {
   const { t } = useTranslation()
   const shareCode = useWebAppStore((s) => s.shareCode)
   const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
   const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
   const redirectUrl = searchParams.get('redirect_url')
@@ -29,26 +38,43 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     const params = new URLSearchParams(searchParams)
     params.delete('message')
     params.delete('code')
+    const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
+    if (loginRedirect) params.set('redirect_url', loginRedirect.target.href)
+    else params.delete('redirect_url')
     return `/webapp-signin?${params.toString()}`
-  }, [searchParams])
+  }, [redirectUrl, searchParams])
 
   const backToHome = useCallback(async () => {
-    await webAppLogout(shareCode!)
+    const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
+    const effectiveShareCode = loginRedirect?.appCode || shareCode
+    if (!effectiveShareCode || (isWebAppSigninPath(pathname) && !loginRedirect)) {
+      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      return
+    }
+
+    await webAppLogout(effectiveShareCode)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router, shareCode])
+  }, [getSigninUrl, pathname, redirectUrl, router, shareCode])
 
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
-    if (message) {
-      setIsLoading(false)
+    const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
+    const isSigninRoute = isWebAppSigninPath(pathname)
+    if ((redirectUrl !== null && !loginRedirect) || (isSigninRoute && !loginRedirect)) {
+      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
       return
     }
+
+    const effectiveShareCode = loginRedirect?.appCode || shareCode
+    if (!effectiveShareCode) return
+
+    if (message) return
 
     if (tokenFromUrl) setWebAppAccessToken(tokenFromUrl)
 
     const redirectOrFinish = () => {
-      if (redirectUrl) router.replace(decodeURIComponent(redirectUrl))
+      if (loginRedirect) replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
       else setIsLoading(false)
     }
 
@@ -59,7 +85,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     ;(async () => {
       // if access mode is public, user login is always true, but the app login(passport) may be expired
       const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(
-        shareCode!,
+        effectiveShareCode,
         embeddedUserId || undefined,
       )
       if (userLoggedIn && appLoggedIn) {
@@ -71,18 +97,27 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
       } else if (userLoggedIn && !appLoggedIn) {
         try {
           const { access_token } = await fetchAccessToken({
-            appCode: shareCode!,
+            appCode: effectiveShareCode,
             userId: embeddedUserId || undefined,
           })
-          setWebAppPassport(shareCode!, access_token)
+          setWebAppPassport(effectiveShareCode, access_token)
           redirectOrFinish()
         } catch {
-          await webAppLogout(shareCode!)
+          await webAppLogout(effectiveShareCode)
           proceedToAuth()
         }
       }
     })()
-  }, [shareCode, redirectUrl, router, message, webAppAccessMode, tokenFromUrl, embeddedUserId])
+  }, [
+    shareCode,
+    redirectUrl,
+    pathname,
+    router,
+    message,
+    webAppAccessMode,
+    tokenFromUrl,
+    embeddedUserId,
+  ])
 
   if (message) {
     return (
@@ -100,6 +135,8 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
       </div>
     )
   }
+
+  if (!shareCode && redirectUrl === null && !isWebAppSigninPath(pathname)) return <>{children}</>
 
   if (isLoading) {
     return (

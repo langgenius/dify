@@ -218,9 +218,6 @@
     }
   },
   "web/app/(shareLayout)/components/splash.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -276,9 +273,6 @@
     },
     "no-restricted-imports": {
       "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/(shareLayout)/webapp-signin/normalForm.tsx": {
