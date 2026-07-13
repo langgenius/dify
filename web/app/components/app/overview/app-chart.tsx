@@ -1,4 +1,4 @@
-/* eslint-disable react/only-export-components */
+/* oxlint-disable react/only-export-components */
 'use client'
 import type { Dayjs } from 'dayjs'
 import type { SelectorParam } from 'i18next'

@@ -1,4 +1,4 @@
-/* eslint-disable typescript/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { fireEvent, render, screen } from '@testing-library/react'
 import WorkflowBody from '../workflow-body'
 

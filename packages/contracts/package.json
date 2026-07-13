@@ -18,7 +18,7 @@
     }
   },
   "scripts": {
-    "gen-api-contract": "uv run --project ../../api ../../api/dev/generate_swagger_specs.py --output-dir openapi && uv run --project ../../api ../../api/dev/generate_fastopenapi_specs.py --output-dir openapi && node -e \"fs.rmSync('generated/api', { recursive: true, force: true })\" && openapi-ts -f openapi-ts.api.config.ts && pnpm -w lint:scope:fix packages/contracts/generated/api && vp fmt generated/api",
+    "gen-api-contract": "uv run --project ../../api ../../api/dev/generate_swagger_specs.py --output-dir openapi && uv run --project ../../api ../../api/dev/generate_fastopenapi_specs.py --output-dir openapi && node -e \"fs.rmSync('generated/api', { recursive: true, force: true })\" && openapi-ts -f openapi-ts.api.config.ts && pnpm -w lint:oxlint:scope:fix packages/contracts/generated/api && pnpm -w lint:eslint:scope:fix packages/contracts/generated/api && vp fmt generated/api",
     "gen-enterprise-contract": "openapi-ts -f openapi-ts.enterprise.config.ts",
     "test": "vp test openapi-yaml.test.ts",
     "type-check": "tsc"

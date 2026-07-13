@@ -5,7 +5,7 @@ import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../../constants'
 import { useAppsQueryState } from '../use-apps-query-state'
 
 const renderWithAdapter = (searchParams = '') => {
-  // eslint-disable-next-line eslint-react/use-state -- renderHook executes a custom hook, not React.useState
+  // oxlint-disable-next-line eslint-react/use-state -- renderHook executes a custom hook, not React.useState
   return renderHookWithNuqs(() => useAppsQueryState(), { searchParams })
 }
 

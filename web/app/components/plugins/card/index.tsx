@@ -77,7 +77,7 @@ const Card = ({
   const cornerMarkText = categoriesMap[type === 'bundle' ? type : category]?.label ?? ''
 
   const wrapClassName = cn(
-    // eslint-disable-next-line tailwindcss/no-unknown-classes -- Used by page feedback tooling to identify plugin cards.
+    // oxlint-disable-next-line tailwindcss/no-unknown-classes -- Used by page feedback tooling to identify plugin cards.
     'hover-bg-components-panel-on-panel-item-bg relative overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs',
     isMarketplaceVariant &&
       'h-[148px] transition-all group-hover:bg-components-panel-on-panel-item-bg-hover group-hover:shadow-md',

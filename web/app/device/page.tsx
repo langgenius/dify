@@ -76,7 +76,7 @@ export default function DevicePage() {
   useEffect(() => {
     if (view.kind !== 'code_entry' && view.kind !== 'chooser') return
     if (ssoError) {
-      setView({ kind: 'error_sso', code: ssoError, userCode: urlUserCode }) // eslint-disable-line eslint-react/set-state-in-effect
+      setView({ kind: 'error_sso', code: ssoError, userCode: urlUserCode }) // oxlint-disable-line eslint-react/set-state-in-effect
       router.replace(pathname)
       return
     }
@@ -84,17 +84,17 @@ export default function DevicePage() {
     // The URL was already scrubbed on the first effect run, so urlUserCode
     // is empty here — advance using the userCode stashed in view state.
     if (view.kind === 'chooser' && account) {
-      setView({ kind: 'authorize_account', userCode: view.userCode }) // eslint-disable-line eslint-react/set-state-in-effect
+      setView({ kind: 'authorize_account', userCode: view.userCode }) // oxlint-disable-line eslint-react/set-state-in-effect
       return
     }
     let consumed = false
     if (ssoVerified) {
-      setView({ kind: 'authorize_sso' }) // eslint-disable-line eslint-react/set-state-in-effect
+      setView({ kind: 'authorize_sso' }) // oxlint-disable-line eslint-react/set-state-in-effect
       consumed = true
     } else if (urlUserCode && isValidUserCode(urlUserCode)) {
       if (account)
-        setView({ kind: 'authorize_account', userCode: urlUserCode }) // eslint-disable-line eslint-react/set-state-in-effect
-      else setView({ kind: 'chooser', userCode: urlUserCode }) // eslint-disable-line eslint-react/set-state-in-effect
+        setView({ kind: 'authorize_account', userCode: urlUserCode }) // oxlint-disable-line eslint-react/set-state-in-effect
+      else setView({ kind: 'chooser', userCode: urlUserCode }) // oxlint-disable-line eslint-react/set-state-in-effect
       consumed = true
     }
     if (consumed && (urlUserCode || ssoVerified)) router.replace(pathname)

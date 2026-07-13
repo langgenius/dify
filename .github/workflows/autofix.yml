@@ -49,6 +49,9 @@ jobs:
             .nvmrc
             vite.config.ts
             lint.config.ts
+            eslint.config.mjs
+            oxlint-suppressions.json
+            eslint-suppressions.json
             .vscode/**
             .github/workflows/autofix.yml
             .github/workflows/style.yml
@@ -169,7 +172,12 @@ jobs:
       - name: Oxlint autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
         run: |
-          vp lint --fix --prune-suppressions --quiet packages web e2e vite.config.ts lint.config.ts || true
+          pnpm lint:oxlint:scope:fix packages web e2e vite.config.ts lint.config.ts --prune-suppressions --quiet || true
+
+      - name: ESLint fallback autofix
+        if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
+        run: |
+          pnpm lint:eslint:fix --quiet || true
 
       - name: Format frontend files
         if: github.event_name != 'merge_group' && (steps.web-changes.outputs.any_changed == 'true' || steps.frontend-contract-changes.outputs.any_changed == 'true')

@@ -64,7 +64,7 @@ const SnippetList = () => {
   const { t } = useTranslation()
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  // eslint-disable-next-line eslint-react/use-state -- custom URL query hook, not React.useState
+  // oxlint-disable-next-line eslint-react/use-state -- custom URL query hook, not React.useState
   const {
     query: { tagIDs, keywords, creatorIDs },
     setKeywords,

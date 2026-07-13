@@ -1,6 +1,6 @@
 import type { PermissionKeysResponse } from '@/models/access-control'
 import { queryOptions } from '@tanstack/react-query'
-// eslint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports
 import { get } from '../base'
 
 const NAME_SPACE = 'workspace-permission-keys'

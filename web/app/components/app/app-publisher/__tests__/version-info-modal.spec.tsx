@@ -1,4 +1,4 @@
-/* eslint-disable typescript/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import VersionInfoModal from '../version-info-modal'

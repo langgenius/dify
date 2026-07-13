@@ -43,7 +43,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { fetchModelProviderModelList } from '@/service/common'
 import { fetchPluginInfoFromMarketPlace, uninstallPlugin } from '@/service/plugins'
 import { hasPermission } from '@/utils/permission'
-// eslint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports
 import { get, getMarketplace, post, postMarketplace } from './base'
 import { consoleQuery } from './client'
 import { useInvalidateAllBuiltInTools } from './use-tools'

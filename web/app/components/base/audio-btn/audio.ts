@@ -2,7 +2,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { AppSourceType, textToAudioStream } from '@/service/share'
 
 declare global {
-  // eslint-disable-next-line typescript/consistent-type-definitions
+  // oxlint-disable-next-line typescript/consistent-type-definitions
   interface Window {
     ManagedMediaSource: any
   }

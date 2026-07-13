@@ -28,7 +28,20 @@
   "oxc.fmt.configPath": "./vite.config.ts",
 
   // Lint fix
+  "eslint.useFlatConfig": true,
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact",
+    "json",
+    "jsonc",
+    "markdown",
+    "yaml",
+    "toml"
+  ],
   "editor.codeActionsOnSave": {
-    "source.fixAll.oxc": "explicit"
+    "source.fixAll.oxc": "explicit",
+    "source.fixAll.eslint": "explicit"
   }
 }

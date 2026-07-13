@@ -74,7 +74,7 @@ const CredentialPanelContent = ({
 }
 
 const CredentialPanel = ({ provider }: CredentialPanelProps) => {
-  // eslint-disable-next-line eslint-react/use-state -- This is a domain hook, not React's useState.
+  // oxlint-disable-next-line eslint-react/use-state -- This is a domain hook, not React's useState.
   const credentialPanelInfo = useCredentialPanelState(provider)
   const { isChangingPriority, handleChangePriority } = useChangeProviderPriority(provider)
 

@@ -83,7 +83,7 @@ const { checkValid: checkDocumentExtractorValid } = DocumentExtractorDefault
 const { checkValid: checkLoopValid } = LoopDefault
 const { checkValid: checkHumanInputValid } = HumanInputDefault
 
-// eslint-disable-next-line typescript/no-unsafe-function-type
+// oxlint-disable-next-line typescript/no-unsafe-function-type
 const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.LLM]: checkLLMValid,
   [BlockEnum.KnowledgeRetrieval]: checkKnowledgeRetrievalValid,

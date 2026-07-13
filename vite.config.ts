@@ -2,9 +2,11 @@ import { defineConfig } from 'vite-plus'
 import { lintConfig } from './lint.config'
 
 const lintFiles = '*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'
-const formatOnlyFiles =
-  '*.{json,jsonc,json5,md,mdx,yml,yaml,toml,css,scss,less,html,vue,svelte,gql,graphql,hbs,handlebars}'
+const eslintFiles = '*.{json,jsonc,json5,md,yml,yaml,toml}'
+const formatOnlyFiles = '*.{mdx,css,scss,less,html,vue,svelte,gql,graphql,hbs,handlebars}'
 const lintFix = 'vp lint --fix --no-error-on-unmatched-pattern'
+const eslintFix =
+  'eslint --fix --pass-on-unpruned-suppressions --no-error-on-unmatched-pattern --no-warn-ignored'
 const format = 'vp fmt --no-error-on-unmatched-pattern'
 
 const nonFrontendIgnores = [
@@ -31,6 +33,7 @@ const generatedIgnores = [
   '**/storybook-static/**',
   'e2e/.auth/**',
   'e2e/cucumber-report/**',
+  'eslint-suppressions.json',
   'oxlint-suppressions.json',
   'web/next/**',
   'web/next-env.d.ts',
@@ -44,7 +47,8 @@ const formatterUnstableInputs = ['web/app/components/develop/template/*.mdx']
 export default defineConfig({
   lint: lintConfig,
   staged: {
-    [lintFiles]: [lintFix, format],
+    [lintFiles]: [lintFix, eslintFix, format],
+    [eslintFiles]: [eslintFix, format],
     [formatOnlyFiles]: format,
   },
   fmt: {

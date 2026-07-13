@@ -1,0 +1,12 @@
+{
+  "web/types/assets.d.ts": {
+    "ts/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "web/types/lamejs.d.ts": {
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  }
+}

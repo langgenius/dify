@@ -1,4 +1,4 @@
-/* eslint-disable typescript/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'

@@ -1,5 +1,5 @@
 // Testing the SSE helper requires importing the module under test directly.
-// eslint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports
 import { sseGeneratorPost } from '../base'
 
 vi.mock('@/utils/var', () => ({

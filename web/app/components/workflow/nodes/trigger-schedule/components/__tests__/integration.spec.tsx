@@ -1,4 +1,4 @@
-/* eslint-disable typescript/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { ScheduleTriggerNodeType } from '../../types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

@@ -97,7 +97,7 @@ const SettingBuiltInTool: FC<Props> = ({
       } catch {}
       setIsLoading(false)
     })()
-    // eslint-disable-next-line react/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [collection?.name, collection?.id, collection?.type])
 
   useEffect(() => {

@@ -211,7 +211,7 @@ export function useInstallMultiState({
   // Notify parent when all plugin data and install info is ready
   useEffect(() => {
     if (isLoadedAllData && installedInfo) onLoadedAllPlugin(installedInfo!)
-    // eslint-disable-next-line react/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [isLoadedAllData, installedInfo])
 
   // Callback: handle GitHub plugin fetch success

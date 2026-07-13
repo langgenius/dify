@@ -1,4 +1,4 @@
-/* eslint-disable typescript/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { ModelConfig, PromptVariable } from '@/models/debug'
 import type { ToolItem } from '@/types/app'
 import { render, screen } from '@testing-library/react'

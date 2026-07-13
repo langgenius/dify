@@ -268,7 +268,7 @@ const ChatInputArea = ({
                       )
                 }
                 // Existing chat behavior focuses the composer as soon as it opens.
-                // eslint-disable-next-line jsx-a11y/no-autofocus
+                // oxlint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus={autoFocus}
                 minRows={1}
                 value={query}

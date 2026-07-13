@@ -306,7 +306,7 @@ const WorkflowGeneratorModal: React.FC = () => {
     // The cleanup function reads refs only, so it's stable; we intentionally
     // exclude ``abortInFlight`` from deps to avoid re-running this effect on
     // every render.
-    // eslint-disable-next-line react/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [])
 
   // Note: the modal is mounted lazily by ``mount.tsx`` which unmounts it when
@@ -619,7 +619,7 @@ const WorkflowGeneratorModal: React.FC = () => {
               <Textarea
                 // Autofocus is appropriate here: the modal's sole purpose is to
                 // capture an instruction, so focusing it on open aids the flow.
-                // eslint-disable-next-line jsx-a11y/no-autofocus
+                // oxlint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
                 className="h-[160px]"
                 placeholder={

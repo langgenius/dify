@@ -299,7 +299,11 @@ export default defineConfig({
     postProcess: [
       {
         command: 'pnpm',
-        args: ['-w', 'lint:scope:fix', '{{path}}/*.ts'],
+        args: ['-w', 'lint:oxlint:scope:fix', '{{path}}/*.ts'],
+      },
+      {
+        command: 'pnpm',
+        args: ['-w', 'lint:eslint:scope:fix', '{{path}}/*.ts'],
       },
       {
         command: 'vp',

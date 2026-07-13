@@ -164,6 +164,9 @@ jobs:
             .nvmrc
             vite.config.ts
             lint.config.ts
+            eslint.config.mjs
+            oxlint-suppressions.json
+            eslint-suppressions.json
             .vscode/**
             .github/workflows/autofix.yml
             .github/workflows/style.yml

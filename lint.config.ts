@@ -41,7 +41,7 @@ export const lintConfig = {
     '**/.vinext/**',
     '**/coverage/**',
     '**/dist/**',
-    '**/*.d.ts',
+    '**/*.d.{ts,cts,mts}',
     '**/storybook-static/**',
     'e2e/.auth/**',
     'e2e/cucumber-report/**',
@@ -89,7 +89,7 @@ export const lintConfig = {
   ],
   options: {
     reportUnusedDisableDirectives: 'warn',
-    respectEslintDisableDirectives: true,
+    respectEslintDisableDirectives: false,
     typeAware: true,
     typeCheck: false,
   },
@@ -139,7 +139,7 @@ export const lintConfig = {
       },
     ],
     'no-const-assign': 'error',
-    'no-control-regex': 'error',
+    'no-control-regex': 'off',
     'no-debugger': 'error',
     'no-delete-var': 'error',
     'no-dupe-class-members': 'error',
@@ -1310,19 +1310,6 @@ export const lintConfig = {
       },
     },
     {
-      files: ['packages/dify-ui/**/*.{ts,cts,mts}', 'packages/dify-ui/**/*.tsx'],
-      rules: {
-        'tailwindcss/no-duplicate-classes': 'error',
-        'tailwindcss/no-deprecated-classes': 'error',
-        'tailwindcss/no-unknown-classes': 'error',
-      },
-      excludeFiles: [
-        'packages/dify-ui/**/__tests__/**',
-        'packages/dify-ui/**/*.spec.{ts,tsx}',
-        'packages/dify-ui/**/*.test.{ts,tsx}',
-      ],
-    },
-    {
       files: ['packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
       rules: {
         'eslint-react/no-context-provider': 'off',
@@ -1382,7 +1369,7 @@ export const lintConfig = {
         'no-cond-assign': 'error',
         'no-console': 'off',
         'no-const-assign': 'error',
-        'no-control-regex': 'error',
+        'no-control-regex': 'off',
         'no-debugger': 'error',
         'no-delete-var': 'error',
         'no-dupe-class-members': 'error',

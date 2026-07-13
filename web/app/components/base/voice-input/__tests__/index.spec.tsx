@@ -97,7 +97,7 @@ describe('VoiceInput', () => {
 
   it('should start recording on mount and show speaking state', async () => {
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    // eslint-disable-next-line typescript/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const recorder = mockState.recorderInstances[0] as any
     expect(recorder.start).toHaveBeenCalled()
     expect(await screen.findByText('common.voiceInput.speaking'))!.toBeInTheDocument()
@@ -123,7 +123,7 @@ describe('VoiceInput', () => {
     const stopBtn = await screen.findByTestId('voice-input-stop')
     await user.click(stopBtn)
 
-    // eslint-disable-next-line typescript/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const recorder = mockState.recorderInstances[0] as any
     expect(await screen.findByTestId('voice-input-converting-text'))!.toBeInTheDocument()
     expect(screen.getByText('common.voiceInput.converting'))!.toBeInTheDocument()
@@ -179,7 +179,7 @@ describe('VoiceInput', () => {
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
     await screen.findByTestId('voice-input-stop')
 
-    // eslint-disable-next-line typescript/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const firstRecorder = mockState.recorderInstances[0] as any
     expect(firstRecorder.getRecordAnalyseData).toHaveBeenCalled()
   })
@@ -197,7 +197,7 @@ describe('VoiceInput', () => {
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
     await screen.findByTestId('voice-input-stop')
 
-    // eslint-disable-next-line typescript/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const firstRecorder = mockState.recorderInstances[0] as any
     expect(firstRecorder.getRecordAnalyseData).toHaveBeenCalled()
   })
@@ -345,7 +345,7 @@ describe('VoiceInput', () => {
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
     await screen.findByTestId('voice-input-stop')
 
-    // eslint-disable-next-line typescript/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const recorder = mockState.recorderInstances[0] as any
     expect(recorder.getRecordAnalyseData).toHaveBeenCalled()
   })
@@ -385,7 +385,7 @@ describe('VoiceInput', () => {
 
   it('should cleanup on unmount', () => {
     const { unmount } = render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
-    // eslint-disable-next-line typescript/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const recorder = mockState.recorderInstances[0] as any
 
     unmount()
@@ -410,7 +410,7 @@ describe('VoiceInput', () => {
     render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
     await screen.findByTestId('voice-input-stop')
 
-    // eslint-disable-next-line typescript/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     const recorder = mockState.recorderInstances[0] as any
     expect(recorder.getRecordAnalyseData).toHaveBeenCalled()
   })

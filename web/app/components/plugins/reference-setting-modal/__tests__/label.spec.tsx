@@ -78,7 +78,7 @@ describe('Label', () => {
   describe('Component Memoization', () => {
     it('should be memoized with React.memo', () => {
       expect(Label).toBeDefined()
-      // eslint-disable-next-line typescript/no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any
       expect((Label as any).$$typeof?.toString()).toContain('Symbol')
     })
   })

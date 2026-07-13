@@ -6,8 +6,9 @@
 
 * @crazywoola @laipz8200
 
-# Oxlint bulk suppression baseline.
+# Lint bulk suppression baselines.
 /oxlint-suppressions.json
+/eslint-suppressions.json
 
 # CODEOWNERS file
 /.github/CODEOWNERS @laipz8200 @crazywoola

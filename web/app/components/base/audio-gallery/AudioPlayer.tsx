@@ -56,7 +56,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     const primarySrc = srcs?.[0] || src
     if (primarySrc) {
       // Delayed generation of waveform data
-      // eslint-disable-next-line typescript/no-use-before-define
+      // oxlint-disable-next-line typescript/no-use-before-define
       const timer = setTimeout(generateWaveformData, 1000, primarySrc)
       return () => {
         audio.removeEventListener('loadedmetadata', setAudioData)

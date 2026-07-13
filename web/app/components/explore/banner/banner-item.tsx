@@ -1,4 +1,4 @@
-/* eslint-disable eslint-react/set-state-in-effect */
+/* oxlint-disable eslint-react/set-state-in-effect */
 import type { Banner } from '@/models/app'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'

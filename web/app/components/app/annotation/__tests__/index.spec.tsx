@@ -1,4 +1,4 @@
-/* eslint-disable typescript/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { Mock } from 'vitest'
 import type { AnnotationItem } from '../type'
 import type { App } from '@/types/app'

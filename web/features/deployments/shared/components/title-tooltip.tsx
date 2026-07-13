@@ -47,7 +47,7 @@ export function TitleTooltip({
     setShouldShowContent(shouldShowTooltipContent(element, content))
   }
 
-  // eslint-disable-next-line react/no-clone-element -- Preserve the trigger element while adding overflow checks.
+  // oxlint-disable-next-line react/no-clone-element -- Preserve the trigger element while adding overflow checks.
   const trigger = cloneElement(children as ReactElement<TriggerProps>, {
     onFocusCapture: (event) => {
       childProps.onFocusCapture?.(event)

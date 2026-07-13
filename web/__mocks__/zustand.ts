@@ -4,7 +4,7 @@ import { act } from '@testing-library/react'
 export * from 'zustand'
 
 const { create: actualCreate, createStore: actualCreateStore } =
-  // eslint-disable-next-line antfu/no-top-level-await
+  // oxlint-disable-next-line antfu/no-top-level-await
   await vi.importActual<typeof ZustandExportedTypes>('zustand')
 
 export const storeResetFns = new Set<() => void>()

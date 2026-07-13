@@ -1,5 +1,5 @@
 import type { ChatConfig, ChatItem, Feedback } from '../types'
-/* eslint-disable typescript/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { InputValueTypes } from '@/app/components/share/text-generation/types'
 import type { Locale } from '@/i18n-config'
 import type { AppData, ConversationItem } from '@/models/share'
@@ -194,7 +194,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const [initUserVariables, setInitUserVariables] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
-    // eslint-disable-next-line eslint-react/set-state-in-effect
+    // oxlint-disable-next-line eslint-react/set-state-in-effect
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
@@ -299,7 +299,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {
     if (appConversationData?.data && !appConversationDataLoading)
-      // eslint-disable-next-line eslint-react/set-state-in-effect
+      // oxlint-disable-next-line eslint-react/set-state-in-effect
       setOriginConversationList(appConversationData?.data)
   }, [appConversationData, appConversationDataLoading])
   const conversationList = useMemo(() => {
@@ -341,7 +341,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   )
   useEffect(() => {
     if (currentConversationItem && !isTryApp)
-      // eslint-disable-next-line eslint-react/set-state-in-effect
+      // oxlint-disable-next-line eslint-react/set-state-in-effect
       setCurrentConversationInputs(currentConversationLatestInputs || {})
   }, [currentConversationItem, currentConversationLatestInputs])
   const checkInputsRequired = useCallback(

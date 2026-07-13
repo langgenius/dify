@@ -1,4 +1,4 @@
-/* eslint-disable typescript/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import FeaturesWrappedAppPublisher from '../features-wrapper'
 

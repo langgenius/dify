@@ -6,7 +6,7 @@ type ConversationField = {
 }
 
 declare global {
-  // eslint-disable-next-line typescript/consistent-type-definitions
+  // oxlint-disable-next-line typescript/consistent-type-definitions
   interface Window {
     zE?: (
       command: string,

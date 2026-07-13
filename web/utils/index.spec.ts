@@ -33,7 +33,7 @@ describe('asyncRunSafe', () => {
   })
 
   it('should return [Error] when promise rejects with undefined', async () => {
-    // eslint-disable-next-line prefer-promise-reject-errors
+    // oxlint-disable-next-line prefer-promise-reject-errors
     const result = await asyncRunSafe(Promise.reject())
     expect(result[0]).toBeInstanceOf(Error)
     expect(result[0]?.message).toBe('unknown error')
