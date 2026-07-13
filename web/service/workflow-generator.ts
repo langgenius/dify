@@ -6,9 +6,7 @@ import type {
 } from '@dify/contracts/api/console/workflow-generate/types.gen'
 // The generated client handles JSON endpoints. Streaming remains on the
 // generator-specific SSE adapter until oRPC supports this event framing.
-// eslint-disable-next-line no-restricted-imports
-import { sseGeneratorPost } from './base'
-import { consoleClient } from './client'
+import { consoleClient, streamWorkflowGeneration } from './client'
 
 export type GenerateWorkflowBody = WorkflowGeneratePayload
 export type GenerateWorkflowResponse = WorkflowGenerateResponse
@@ -37,7 +35,7 @@ export function generateWorkflowStream(
   body: GenerateWorkflowBody,
   callbacks: GenerateWorkflowStreamCallbacks,
 ) {
-  return sseGeneratorPost('/workflow-generate/stream', body, {
+  return streamWorkflowGeneration('/workflow-generate/stream', body, {
     onPlan: (data) => callbacks.onPlan?.(data as WorkflowGenPlan),
     onResult: (data) => callbacks.onResult?.(data as GenerateWorkflowResponse),
     onError: callbacks.onError,

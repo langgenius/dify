@@ -3,8 +3,8 @@ import type { AppModeEnum } from '@/types/app'
 // no-restricted-imports rule targets production imports, not test
 // instrumentation — mirrors sibling service specs (annotation.spec.ts etc.).
 // oxlint-disable-next-line no-restricted-imports
-import { get, post, sseGeneratorPost, ssePost } from './base'
-import { consoleClient } from './client'
+import { get, post, ssePost } from './base'
+import { consoleClient, streamWorkflowGeneration } from './client'
 import {
   fetchConversationMessages,
   fetchPromptTemplate,
@@ -27,10 +27,10 @@ vi.mock('./base', () => ({
   post: vi.fn(),
   get: vi.fn(),
   ssePost: vi.fn(),
-  sseGeneratorPost: vi.fn(),
 }))
 
 vi.mock('./client', () => ({
+  streamWorkflowGeneration: vi.fn(),
   consoleClient: {
     workflowGenerate: {
       post: vi.fn(),
@@ -185,7 +185,7 @@ describe('debug service — generateWorkflow', () => {
         getAbortController: vi.fn(),
       }
 
-      vi.mocked(sseGeneratorPost).mockImplementation((_url, _body, options) => {
+      vi.mocked(streamWorkflowGeneration).mockImplementation((_url, _body, options) => {
         options?.onPlan?.({ title: 'plan' })
         options?.onResult?.({ graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } } })
         return Promise.resolve()
@@ -193,7 +193,7 @@ describe('debug service — generateWorkflow', () => {
 
       await generateWorkflowStream(body, callbacks)
 
-      expect(sseGeneratorPost).toHaveBeenCalled()
+      expect(streamWorkflowGeneration).toHaveBeenCalled()
       expect(callbacks.onPlan).toHaveBeenCalled()
       expect(callbacks.onResult).toHaveBeenCalled()
     })
