@@ -25,7 +25,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from libs.pagination import PaginatedResult, paginate_query
 from models import Account, AppStar
-from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
+from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentIconType, AgentScope, AgentStatus
 from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
 from services.agent.errors import AgentNameConflictError
@@ -102,7 +102,7 @@ class AppService:
                     Agent.tenant_id == tenant_id,
                     Agent.app_id == App.id,
                     Agent.scope == AgentScope.ROSTER,
-                    Agent.source == AgentSource.AGENT_APP,
+                    Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                     Agent.status == AgentStatus.ACTIVE,
                 )
                 .correlate(App)
@@ -529,7 +529,7 @@ class AppService:
                 Agent.tenant_id == app.tenant_id,
                 Agent.app_id == app.id,
                 Agent.scope == AgentScope.ROSTER,
-                Agent.source == AgentSource.AGENT_APP,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                 Agent.status == AgentStatus.ACTIVE,
             )
         )

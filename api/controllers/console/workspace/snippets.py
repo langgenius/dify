@@ -39,6 +39,7 @@ from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.snippet import SnippetType
+from services.entities.dsl_entities import DslImportWarning
 from services.snippet_dsl_service import ImportStatus, SnippetDslService
 from services.snippet_service import SnippetService
 
@@ -52,6 +53,7 @@ class SnippetImportResponse(ResponseModel):
     current_dsl_version: str
     imported_dsl_version: str
     error: str
+    warnings: list[DslImportWarning]
 
 
 class SnippetDependencyCheckResponse(ResponseModel):
@@ -256,8 +258,9 @@ class CustomizedSnippetDetailApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
+    @with_current_user
     @with_current_tenant_id
-    def delete(self, current_tenant_id: str, snippet_id: str):
+    def delete(self, current_tenant_id: str, current_user: Account, snippet_id: str):
         """Delete customized snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
@@ -273,6 +276,7 @@ class CustomizedSnippetDetailApi(Resource):
             SnippetService.delete_snippet(
                 session=session,
                 snippet=snippet,
+                account_id=current_user.id,
             )
             session.commit()
 
@@ -358,7 +362,10 @@ class CustomizedSnippetImportApi(Resource):
                 name=payload.name,
                 description=payload.description,
             )
-            session.commit()
+            if result.status in {ImportStatus.FAILED, ImportStatus.PENDING}:
+                session.rollback()
+            else:
+                session.commit()
 
         # Return appropriate status code based on result
         status = result.status
@@ -389,7 +396,10 @@ class CustomizedSnippetImportConfirmApi(Resource):
         with Session(db.engine) as session:
             import_service = SnippetDslService(session)
             result = import_service.confirm_import(import_id=import_id, account=current_user)
-            session.commit()
+            if result.status == ImportStatus.FAILED:
+                session.rollback()
+            else:
+                session.commit()
 
         if result.status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400

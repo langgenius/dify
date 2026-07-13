@@ -4295,7 +4295,7 @@ class TestWorkflowAgentDraftBindingSync:
         assert session.added == []
         assert session.flushes == 1
 
-    def test_rejects_inline_binding_for_agent_owned_by_another_node(self):
+    def test_clones_inline_binding_for_agent_owned_by_another_node(self, monkeypatch):
         workflow = Workflow(
             id="workflow-1",
             tenant_id="tenant-1",
@@ -4334,13 +4334,18 @@ class TestWorkflowAgentDraftBindingSync:
             active_config_snapshot_id="inline-snapshot-1",
         )
         session = FakeSession(scalar=[agent], scalars=[[]])
+        clone = MagicMock(return_value=(SimpleNamespace(id="cloned-agent"), "cloned-snapshot"))
+        monkeypatch.setattr(WorkflowAgentPublishService, "_clone_inline_graph_binding_for_node", clone)
 
-        with pytest.raises(ValueError, match="inline_agent binding does not belong to this node"):
-            WorkflowAgentPublishService.sync_agent_bindings_for_draft(
-                session=session,
-                draft_workflow=workflow,
-                account_id="account-1",
-            )
+        WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+            session=session,
+            draft_workflow=workflow,
+            account_id="account-1",
+        )
+
+        clone.assert_called_once()
+        assert session.added[0].agent_id == "cloned-agent"
+        assert session.added[0].current_snapshot_id == "cloned-snapshot"
 
     def test_rejects_agent_node_graph_binding_with_unsupported_type(self):
         workflow = Workflow(

@@ -18,7 +18,7 @@ from services.snippet_dsl_service import (
     [
         ("not-a-version", ImportStatus.FAILED),
         ("999.0.0", ImportStatus.PENDING),
-        ("0.1.0", ImportStatus.COMPLETED),
+        ("0.1.0", ImportStatus.COMPLETED_WITH_WARNINGS),
     ],
 )
 def test_check_version_compatibility_special_cases(version, expected):
@@ -333,7 +333,7 @@ workflow:
         yaml_content=yaml_content,
     )
 
-    assert result.status == ImportStatus.COMPLETED
+    assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
     assert result.snippet_id == "snippet-1"
     dependencies = create_or_update.call_args.kwargs["dependencies"]
     assert dependencies[0].value.plugin_unique_identifier == "langgenius/openai:0.0.1"

@@ -50,6 +50,13 @@ class AgentSource(StrEnum):
     SYSTEM = "system"
 
 
+# Source records provenance. Product capability is determined by scope and
+# backing ownership, so imported resources participate in both supported Agent
+# surfaces instead of being filtered out by their origin.
+APP_BACKED_AGENT_SOURCES = (AgentSource.AGENT_APP, AgentSource.IMPORTED)
+WORKFLOW_ONLY_AGENT_SOURCES = (AgentSource.WORKFLOW, AgentSource.IMPORTED)
+
+
 class AgentIconType(StrEnum):
     """Supported icon storage formats for Agent roster entries."""
 
@@ -87,6 +94,8 @@ class AgentConfigRevisionOperation(StrEnum):
     RESTORE_VERSION = "restore_version"
     # Publishes the editable Agent Soul draft as a new immutable version.
     PUBLISH_DRAFT = "publish_draft"
+    # Seeds a new Agent from a portable DSL package.
+    IMPORT_PACKAGE = "import_package"
 
 
 class AgentConfigDraftType(StrEnum):
