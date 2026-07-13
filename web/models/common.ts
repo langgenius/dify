@@ -147,10 +147,6 @@ export type InvitationResult =
       message: string
     }
 
-export type InvitationResponse = CommonResponse & {
-  invitation_results: InvitationResult[]
-}
-
 export type CodeBasedExtensionForm = {
   type: string
   label: I18nText
