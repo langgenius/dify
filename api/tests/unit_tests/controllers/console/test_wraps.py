@@ -16,6 +16,7 @@ from controllers.console.wraps import (
     _is_setup_completed,
     account_initialization_required,
     cloud_edition_billing_enabled,
+    cloud_edition_billing_paid_plan_required,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
     cloud_utm_record,
@@ -486,6 +487,53 @@ class TestBillingEnabled:
         assert exc_info.value.code == 403
         assert "Billing feature is not enabled" in str(exc_info.value.description)
         get_features.assert_not_called()
+
+
+class TestBillingPaidPlanRequired:
+    @pytest.mark.parametrize("plan", ["professional", "team"])
+    def test_should_allow_paid_plan(self, plan: str):
+        @cloud_edition_billing_paid_plan_required
+        def paid_view():
+            return "paid_success"
+
+        billing_info = {"enabled": True, "subscription": {"plan": plan}}
+        with (
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch("controllers.console.wraps.BillingService.get_info", return_value=billing_info) as get_info,
+        ):
+            result = paid_view()
+
+        assert result == "paid_success"
+        get_info.assert_called_once_with("tenant123", exclude_vector_space=True)
+
+    @pytest.mark.parametrize(
+        ("enabled", "plan"),
+        [(False, "professional"), (True, "sandbox"), (True, "unknown")],
+    )
+    def test_should_reject_non_paid_plan(self, enabled: bool, plan: str):
+        app = create_app_with_login()
+
+        @cloud_edition_billing_paid_plan_required
+        def paid_view():
+            return "paid_success"
+
+        billing_info = {"enabled": enabled, "subscription": {"plan": plan}}
+        with app.test_request_context():
+            with (
+                patch(
+                    "controllers.console.wraps.current_account_with_tenant",
+                    return_value=(MockUser("test_user"), "tenant123"),
+                ),
+                patch("controllers.console.wraps.BillingService.get_info", return_value=billing_info),
+                pytest.raises(HTTPException) as exc_info,
+            ):
+                paid_view()
+
+        assert exc_info.value.code == 403
+        assert "requires a paid plan" in str(exc_info.value.description)
 
 
 class TestBillingResourceLimits:

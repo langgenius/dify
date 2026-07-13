@@ -10,15 +10,19 @@ import datetime
 import hashlib
 import io
 import logging
+import re
 import zipfile
 from collections.abc import Sequence
 from typing import cast
 
+import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.csv as pa_csv
 import pyarrow.parquet as pq
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.helper.csv_sanitizer import CSVSanitizer
 from extensions.ext_database import db
 from libs.archive_storage import ArchiveStorage, get_archive_storage, get_export_storage
 from models.workflow import WorkflowRunArchiveBundle
@@ -44,6 +48,7 @@ logger = logging.getLogger(__name__)
 
 ARCHIVE_DOWNLOAD_ROOT_PREFIX = "workflow-runs/downloads/v1/"
 ARCHIVE_DOWNLOAD_MIME_TYPE = "application/zip"
+_CSV_FORMULA_PREFIX_PATTERN = f"^[{re.escape(''.join(CSVSanitizer.FORMULA_CHARS))}]"
 
 
 class WorkflowRunArchiveDownloadPreparer:
@@ -77,17 +82,15 @@ class WorkflowRunArchiveDownloadPreparer:
 
     def prepare(self, *, tenant_id: str, download_id: str) -> WorkflowRunArchiveDownloadTask | None:
         """Prepare a ZIP for an existing Redis task and persist terminal task state."""
-        task = self.cache.get(tenant_id=tenant_id, download_id=download_id)
-        if task is None:
-            logger.info("Workflow run archive download task expired before preparation: %s", download_id)
-            return None
-        if task.status == WorkflowRunArchiveDownloadStatus.READY:
-            return task
-        if task.status == WorkflowRunArchiveDownloadStatus.FAILED:
-            logger.info("Skipping failed workflow run archive download task: %s", download_id)
-            return task
-
-        processing_task = self._mark_processing(task)
+        with self.cache.lock(tenant_id=tenant_id, download_id=download_id):
+            task = self.cache.get(tenant_id=tenant_id, download_id=download_id)
+            if task is None:
+                logger.info("Workflow run archive download task expired before preparation: %s", download_id)
+                return None
+            if task.status != WorkflowRunArchiveDownloadStatus.PENDING:
+                logger.info("Skipping workflow run archive download task in %s state: %s", task.status, download_id)
+                return task
+            processing_task = self._mark_processing(task)
         try:
             archive_storage = self.archive_storage or get_archive_storage()
             download_storage = self.download_storage or get_export_storage()
@@ -169,8 +172,7 @@ class WorkflowRunArchiveDownloadPreparer:
                 "finished_at": now,
             }
         )
-        self.cache.save(ready_task)
-        return ready_task
+        return self._save_terminal_task(task, ready_task)
 
     def _mark_failed(self, task: WorkflowRunArchiveDownloadTask, *, error: str) -> WorkflowRunArchiveDownloadTask:
         now = datetime.datetime.now(datetime.UTC)
@@ -182,8 +184,26 @@ class WorkflowRunArchiveDownloadPreparer:
                 "finished_at": now,
             }
         )
-        self.cache.save(failed_task)
-        return failed_task
+        return self._save_terminal_task(task, failed_task)
+
+    def _save_terminal_task(
+        self,
+        processing_task: WorkflowRunArchiveDownloadTask,
+        terminal_task: WorkflowRunArchiveDownloadTask,
+    ) -> WorkflowRunArchiveDownloadTask:
+        with self.cache.lock(tenant_id=processing_task.tenant_id, download_id=processing_task.download_id):
+            current = self.cache.get(
+                tenant_id=processing_task.tenant_id,
+                download_id=processing_task.download_id,
+            )
+            if (
+                current is None
+                or current.status != WorkflowRunArchiveDownloadStatus.PROCESSING
+                or current.celery_task_id != processing_task.celery_task_id
+            ):
+                return current or terminal_task
+            self.cache.save(terminal_task)
+            return terminal_task
 
 
 def build_archive_download_file_name(task: WorkflowRunArchiveDownloadTask) -> str:
@@ -316,6 +336,15 @@ def _parquet_payload_to_csv(payload: bytes, *, include_header: bool) -> bytes:
     table = pq.read_table(io.BytesIO(payload))
     if table.num_columns == 0:
         return b""
+    for index, field in enumerate(table.schema):
+        if pa.types.is_string(field.type) or pa.types.is_large_string(field.type):
+            sanitized_column = pc.replace_substring_regex(  # pyrefly: ignore[missing-attribute]
+                table.column(index),
+                pattern=_CSV_FORMULA_PREFIX_PATTERN,
+                replacement=r"'\0",
+                max_replacements=1,
+            )
+            table = table.set_column(index, field, sanitized_column)
     buffer = io.BytesIO()
     pa_csv.write_csv(
         table,

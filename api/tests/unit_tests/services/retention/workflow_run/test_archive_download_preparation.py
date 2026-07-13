@@ -3,6 +3,7 @@ import hashlib
 import io
 import json
 import zipfile
+from contextlib import nullcontext
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock
@@ -65,6 +66,9 @@ class FakeTaskCache:
         if self.task and self.task.tenant_id == tenant_id and self.task.download_id == download_id:
             return self.task
         return None
+
+    def lock(self, *, tenant_id: str, download_id: str):
+        return nullcontext()
 
     def save(self, task: WorkflowRunArchiveDownloadTask) -> None:
         self.task = task
@@ -170,11 +174,11 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready() 
     task = _task(bundle_refs)
     first_bundle_payloads = {
         "workflow_app_logs": _parquet_bytes([{"id": "log-a", "workflow_run_id": "run-a"}]),
-        "workflow_runs": _parquet_bytes([{"id": "run-a", "status": "succeeded"}]),
+        "workflow_runs": _parquet_bytes([{"id": "run-a", "status": "succeeded", "error": "=1+1"}]),
     }
     second_bundle_payloads = {
         "workflow_app_logs": _parquet_bytes([{"id": "log-b", "workflow_run_id": "run-b"}]),
-        "workflow_runs": _parquet_bytes([{"id": "run-b", "status": "failed"}]),
+        "workflow_runs": _parquet_bytes([{"id": "run-b", "status": "failed", "error": "safe"}]),
     }
     archive_storage = FakeArchiveStorage(
         {
@@ -223,9 +227,9 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready() 
             "workflow-run-logs-2025-03/workflow_runs.csv",
         }
         workflow_runs_csv = archive.read("workflow-run-logs-2025-03/workflow_runs.csv").decode("utf-8")
-        assert workflow_runs_csv.count('"id","status"') == 1
-        assert '"run-a","succeeded"' in workflow_runs_csv
-        assert '"run-b","failed"' in workflow_runs_csv
+        assert workflow_runs_csv.count('"id","status","error"') == 1
+        assert '"run-a","succeeded","\'=1+1"' in workflow_runs_csv
+        assert '"run-b","failed","safe"' in workflow_runs_csv
 
 
 def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch() -> None:
@@ -248,3 +252,41 @@ def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch
     assert result.status == WorkflowRunArchiveDownloadStatus.FAILED
     assert "checksum mismatch" in (result.error or "")
     assert storage.put_objects == {}
+
+
+def test_prepare_workflow_run_archive_download_skips_duplicate_worker() -> None:
+    task = _task().model_copy(update={"celery_task_id": "celery-task-1"})
+    storage = FakeArchiveStorage({})
+    cache = FakeTaskCache(task)
+    preparer = _preparer(storage=storage, cache=cache, bundles=[])
+    nested_results: list[WorkflowRunArchiveDownloadTask | None] = []
+    preparer._get_task_bundles = MagicMock(return_value=[])
+
+    def build_payload(*_args: object) -> bytes:
+        nested_results.append(preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id))
+        return b"zip"
+
+    preparer._build_zip_payload = MagicMock(side_effect=build_payload)
+
+    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
+
+    assert result is not None
+    assert result.status == WorkflowRunArchiveDownloadStatus.READY
+    assert nested_results[0] is not None
+    assert nested_results[0].status == WorkflowRunArchiveDownloadStatus.PROCESSING
+    preparer._build_zip_payload.assert_called_once()
+
+
+def test_failed_worker_cannot_overwrite_ready_task() -> None:
+    processing_task = _task().model_copy(
+        update={"status": WorkflowRunArchiveDownloadStatus.PROCESSING, "celery_task_id": "celery-task-1"}
+    )
+    ready_task = processing_task.model_copy(update={"status": WorkflowRunArchiveDownloadStatus.READY})
+    cache = FakeTaskCache(ready_task)
+    preparer = _preparer(storage=FakeArchiveStorage({}), cache=cache)
+
+    result = preparer._mark_failed(processing_task, error="late failure")
+
+    assert result == ready_task
+    assert cache.task == ready_task
+    assert cache.saved_tasks == []

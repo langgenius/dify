@@ -13,7 +13,10 @@ from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
+    cloud_edition_billing_enabled,
+    cloud_edition_billing_paid_plan_required,
     is_admin_or_owner_required,
+    only_edition_cloud,
     rbac_permission_required,
     setup_required,
 )
@@ -118,6 +121,9 @@ class WorkflowRunArchivesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @only_edition_cloud
+    @cloud_edition_billing_enabled
+    @cloud_edition_billing_paid_plan_required
     @is_admin_or_owner_required
     @rbac_permission_required(
         RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
@@ -140,6 +146,9 @@ class WorkflowRunArchiveDownloadsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @only_edition_cloud
+    @cloud_edition_billing_enabled
+    @cloud_edition_billing_paid_plan_required
     @is_admin_or_owner_required
     @rbac_permission_required(
         RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
@@ -168,6 +177,9 @@ class WorkflowRunArchiveDownloadApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @only_edition_cloud
+    @cloud_edition_billing_enabled
+    @cloud_edition_billing_paid_plan_required
     @is_admin_or_owner_required
     @rbac_permission_required(
         RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
@@ -194,6 +206,9 @@ class WorkflowRunArchiveDownloadFileApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @only_edition_cloud
+    @cloud_edition_billing_enabled
+    @cloud_edition_billing_paid_plan_required
     @is_admin_or_owner_required
     @rbac_permission_required(
         RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False

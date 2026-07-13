@@ -6,6 +6,7 @@ import json
 import logging
 from collections.abc import Sequence
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 ARCHIVE_DOWNLOAD_FORMAT_VERSION = "v1"
 DEFAULT_ARCHIVE_DOWNLOAD_TASK_TTL_SECONDS = 24 * 60 * 60
+ARCHIVE_DOWNLOAD_TASK_LOCK_TIMEOUT_SECONDS = 30
 _CACHE_KEY_PREFIX = "workflow_run_archive_download"
 
 
@@ -90,15 +92,12 @@ class WorkflowRunArchiveDownloadTaskCache:
             task.model_dump_json(),
         )
 
-    def create_if_absent(self, task: WorkflowRunArchiveDownloadTask) -> bool:
-        ttl_seconds = self._ttl_seconds(task.expires_at)
-        result = self._redis.set(
-            self._cache_key(tenant_id=task.tenant_id, download_id=task.download_id),
-            task.model_dump_json(),
-            ex=ttl_seconds,
-            nx=True,
+    def lock(self, *, tenant_id: str, download_id: str) -> Any:
+        return self._redis.lock(
+            f"{self._cache_key(tenant_id=tenant_id, download_id=download_id)}:lock",
+            timeout=ARCHIVE_DOWNLOAD_TASK_LOCK_TIMEOUT_SECONDS,
+            blocking_timeout=ARCHIVE_DOWNLOAD_TASK_LOCK_TIMEOUT_SECONDS,
         )
-        return bool(result)
 
     def delete(self, *, tenant_id: str, download_id: str) -> None:
         self._redis.delete(self._cache_key(tenant_id=tenant_id, download_id=download_id))

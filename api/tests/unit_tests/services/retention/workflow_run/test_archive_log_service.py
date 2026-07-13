@@ -1,4 +1,5 @@
 import datetime
+from contextlib import nullcontext
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock
@@ -24,28 +25,22 @@ from services.retention.workflow_run.archive_log_service import (
 
 
 class FakeTaskCache:
-    created_task: WorkflowRunArchiveDownloadTask | None
     saved_task: WorkflowRunArchiveDownloadTask | None
     existing_task: WorkflowRunArchiveDownloadTask | None
     tasks_by_download_id: dict[str, WorkflowRunArchiveDownloadTask]
-    create_result: bool
 
     def __init__(
         self,
         *,
-        create_result: bool = True,
         existing_task: WorkflowRunArchiveDownloadTask | None = None,
         tasks_by_download_id: dict[str, WorkflowRunArchiveDownloadTask] | None = None,
     ) -> None:
-        self.created_task = None
         self.saved_task = None
         self.existing_task = existing_task
         self.tasks_by_download_id = tasks_by_download_id or {}
-        self.create_result = create_result
 
-    def create_if_absent(self, task: WorkflowRunArchiveDownloadTask) -> bool:
-        self.created_task = task
-        return self.create_result
+    def lock(self, *, tenant_id: str, download_id: str):
+        return nullcontext()
 
     def get(self, *, tenant_id: str, download_id: str) -> WorkflowRunArchiveDownloadTask | None:
         if self.tasks_by_download_id:
@@ -54,6 +49,7 @@ class FakeTaskCache:
 
     def save(self, task: WorkflowRunArchiveDownloadTask) -> None:
         self.saved_task = task
+        self.existing_task = task
 
 
 def _bundle(
@@ -88,7 +84,7 @@ def _fake_dispatcher(dispatched_tasks: list[WorkflowRunArchiveDownloadTask]) -> 
         cache: WorkflowRunArchiveDownloadTaskCache,
     ) -> WorkflowRunArchiveDownloadTask:
         dispatched_tasks.append(task)
-        return task.model_copy(update={"celery_task_id": "celery-task-1"})
+        return task
 
     return dispatch
 
@@ -201,8 +197,8 @@ def test_create_workflow_run_archive_download_task_creates_stable_pending_task()
         ("00-of-02", "bundle-a"),
     ]
     assert task.archive_bytes == 3072
-    assert cache.created_task == dispatched_tasks[0]
-    assert task.celery_task_id == "celery-task-1"
+    assert cache.saved_task == dispatched_tasks[0]
+    assert task.celery_task_id is not None
 
 
 def test_create_workflow_run_archive_download_task_returns_existing_task_when_cache_key_exists() -> None:
@@ -217,7 +213,7 @@ def test_create_workflow_run_archive_download_task_returns_existing_task_when_ca
         archive_bytes=1024,
         download_id="existing-download",
     ).model_copy(update={"celery_task_id": "celery-task-1"})
-    cache = FakeTaskCache(create_result=False, existing_task=existing_task)
+    cache = FakeTaskCache(existing_task=existing_task)
     dispatched_tasks: list[WorkflowRunArchiveDownloadTask] = []
 
     task = create_workflow_run_archive_download_task(
@@ -253,7 +249,7 @@ def test_create_workflow_run_archive_download_task_retries_failed_cached_task() 
             bundle_refs=[("00-of-01", "bundle-a")],
         ),
     ).model_copy(update={"status": WorkflowRunArchiveDownloadStatus.FAILED, "error": "failed"})
-    cache = FakeTaskCache(create_result=False, existing_task=existing_task)
+    cache = FakeTaskCache(existing_task=existing_task)
     dispatched_tasks: list[WorkflowRunArchiveDownloadTask] = []
 
     task = create_workflow_run_archive_download_task(
@@ -268,8 +264,66 @@ def test_create_workflow_run_archive_download_task_retries_failed_cached_task() 
 
     assert task.status == WorkflowRunArchiveDownloadStatus.PENDING
     assert task.error is None
-    assert task.celery_task_id == "celery-task-1"
+    assert task.celery_task_id is not None
     assert cache.saved_task == dispatched_tasks[0]
+
+
+@pytest.mark.parametrize("retry_failed_task", [False, True])
+def test_create_workflow_run_archive_download_task_claims_dispatch_once(retry_failed_task: bool) -> None:
+    session = MagicMock()
+    session.scalars.return_value = [_bundle(shard="00-of-01", bundle_id="bundle-a", archive_bytes=1024)]
+    download_id = build_archive_download_id(
+        tenant_id="tenant-1",
+        year=2025,
+        month=3,
+        bundle_refs=[("00-of-01", "bundle-a")],
+    )
+    existing_task = None
+    if retry_failed_task:
+        existing_task = build_pending_archive_download_task(
+            tenant_id="tenant-1",
+            requested_by="account-1",
+            year=2025,
+            month=3,
+            bundle_ids=["bundle-a"],
+            bundle_refs=[("00-of-01", "bundle-a")],
+            archive_bytes=1024,
+            download_id=download_id,
+        ).model_copy(update={"status": WorkflowRunArchiveDownloadStatus.FAILED})
+    cache = FakeTaskCache(existing_task=existing_task)
+    dispatched_tasks: list[WorkflowRunArchiveDownloadTask] = []
+    concurrent_results: list[WorkflowRunArchiveDownloadTask] = []
+
+    def dispatch(
+        task: WorkflowRunArchiveDownloadTask,
+        task_cache: WorkflowRunArchiveDownloadTaskCache,
+    ) -> WorkflowRunArchiveDownloadTask:
+        dispatched_tasks.append(task)
+        concurrent_results.append(
+            create_workflow_run_archive_download_task(
+                session,
+                tenant_id="tenant-1",
+                requested_by="account-2",
+                year=2025,
+                month=3,
+                cache=task_cache,
+                dispatcher=dispatch,
+            )
+        )
+        return task
+
+    result = create_workflow_run_archive_download_task(
+        session,
+        tenant_id="tenant-1",
+        requested_by="account-1",
+        year=2025,
+        month=3,
+        cache=cast(WorkflowRunArchiveDownloadTaskCache, cache),
+        dispatcher=dispatch,
+    )
+
+    assert dispatched_tasks == [result]
+    assert concurrent_results == [result]
 
 
 def test_create_workflow_run_archive_download_task_rejects_missing_month() -> None:

@@ -192,20 +192,21 @@ def create_workflow_run_archive_download_task(
     )
     task_cache = cache or WorkflowRunArchiveDownloadTaskCache()
     dispatch = dispatcher or _dispatch_workflow_run_archive_download_task
-    if task_cache.create_if_absent(task):
-        return dispatch(task, task_cache)
+    with task_cache.lock(tenant_id=tenant_id, download_id=download_id):
+        existing = task_cache.get(tenant_id=tenant_id, download_id=download_id)
+        if existing is None or existing.status == WorkflowRunArchiveDownloadStatus.FAILED:
+            task_to_queue = task
+        elif existing.status == WorkflowRunArchiveDownloadStatus.PENDING and not existing.celery_task_id:
+            task_to_queue = existing
+        else:
+            return existing
 
-    existing = task_cache.get(tenant_id=tenant_id, download_id=download_id)
-    if existing is not None:
-        if existing.status == WorkflowRunArchiveDownloadStatus.FAILED:
-            task_cache.save(task)
-            return dispatch(task, task_cache)
-        if existing.status == WorkflowRunArchiveDownloadStatus.PENDING and not existing.celery_task_id:
-            return dispatch(existing, task_cache)
-        return existing
+        queued_task = task_to_queue.model_copy(
+            update={"celery_task_id": uuid.uuid4().hex, "updated_at": datetime.datetime.now(datetime.UTC)}
+        )
+        task_cache.save(queued_task)
 
-    task_cache.save(task)
-    return dispatch(task, task_cache)
+    return dispatch(queued_task, task_cache)
 
 
 def get_workflow_run_archive_download_task(
@@ -259,26 +260,22 @@ def _dispatch_workflow_run_archive_download_task(
     cache: WorkflowRunArchiveDownloadTaskCache,
 ) -> WorkflowRunArchiveDownloadTask:
     """
-    Enqueue background ZIP preparation and persist the Celery id before the worker can start.
-
-    The Redis task key is the idempotency boundary. We generate the Celery id in the API process, save it on the task,
-    then submit with that exact id so duplicate console requests keep seeing one logical download request.
+    Enqueue background ZIP preparation after the caller atomically claimed and cached the Celery id.
     """
     from tasks.workflow_run_archive_download_tasks import prepare_workflow_run_archive_download_task
 
-    now = datetime.datetime.now(datetime.UTC)
-    celery_task_id = uuid.uuid4().hex
-    queued_task = task.model_copy(update={"celery_task_id": celery_task_id, "updated_at": now})
-    cache.save(queued_task)
+    celery_task_id = task.celery_task_id
+    if celery_task_id is None:
+        raise ValueError("celery_task_id is required before dispatch")
 
     try:
         prepare_workflow_run_archive_download_task.apply_async(
-            args=(queued_task.tenant_id, queued_task.download_id),
+            args=(task.tenant_id, task.download_id),
             task_id=celery_task_id,
         )
     except Exception:
         failure_time = datetime.datetime.now(datetime.UTC)
-        failed_task = queued_task.model_copy(
+        failed_task = task.model_copy(
             update={
                 "status": WorkflowRunArchiveDownloadStatus.FAILED,
                 "error": "Failed to enqueue archive download task.",
@@ -286,8 +283,16 @@ def _dispatch_workflow_run_archive_download_task(
                 "finished_at": failure_time,
             }
         )
-        cache.save(failed_task)
-        logger.exception("Failed to enqueue workflow run archive download task %s", queued_task.download_id)
-        return failed_task
+        with cache.lock(tenant_id=task.tenant_id, download_id=task.download_id):
+            current = cache.get(tenant_id=task.tenant_id, download_id=task.download_id)
+            if (
+                current is not None
+                and current.status == WorkflowRunArchiveDownloadStatus.PENDING
+                and current.celery_task_id == celery_task_id
+            ):
+                cache.save(failed_task)
+                current = failed_task
+        logger.exception("Failed to enqueue workflow run archive download task %s", task.download_id)
+        return current or failed_task
 
-    return queued_task
+    return task

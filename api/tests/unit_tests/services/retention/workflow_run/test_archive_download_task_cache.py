@@ -1,9 +1,11 @@
 import datetime
+from contextlib import nullcontext
 
 import pytest
 
 from services.retention.workflow_run.archive_download_task_cache import (
     ARCHIVE_DOWNLOAD_FORMAT_VERSION,
+    ARCHIVE_DOWNLOAD_TASK_LOCK_TIMEOUT_SECONDS,
     WorkflowRunArchiveDownloadStatus,
     WorkflowRunArchiveDownloadTask,
     WorkflowRunArchiveDownloadTaskCache,
@@ -17,6 +19,7 @@ class FakeRedis:
 
     def __init__(self) -> None:
         self.store = {}
+        self.lock_calls: list[tuple[str, float | None, float | None]] = []
 
     def get(self, name: str | bytes) -> bytes | str | None:
         key = name.decode("utf-8") if isinstance(name, bytes) else name
@@ -28,19 +31,6 @@ class FakeRedis:
         self.store[key] = (time, value)
         return True
 
-    def set(
-        self,
-        name: str | bytes,
-        value: str,
-        ex: int | None = None,
-        nx: bool = False,
-    ) -> object:
-        key = name.decode("utf-8") if isinstance(name, bytes) else name
-        if nx and key in self.store:
-            return None
-        self.store[key] = (ex or 0, value)
-        return True
-
     def delete(self, *names: str | bytes) -> object:
         deleted = 0
         for name in names:
@@ -48,6 +38,15 @@ class FakeRedis:
             if self.store.pop(key, None) is not None:
                 deleted += 1
         return deleted
+
+    def lock(
+        self,
+        name: str,
+        timeout: float | None = None,
+        blocking_timeout: float | None = None,
+    ):
+        self.lock_calls.append((name, timeout, blocking_timeout))
+        return nullcontext()
 
 
 def test_build_pending_archive_download_task_sets_ephemeral_payload() -> None:
@@ -141,26 +140,20 @@ def test_archive_download_task_cache_round_trips_with_ttl() -> None:
     assert 0 < ttl <= 3600
 
 
-def test_archive_download_task_cache_create_if_absent_is_idempotent() -> None:
+def test_archive_download_task_cache_uses_per_download_lock() -> None:
     redis = FakeRedis()
     cache = WorkflowRunArchiveDownloadTaskCache(redis)
-    first = build_pending_archive_download_task(
-        tenant_id="tenant-1",
-        requested_by="account-1",
-        year=2025,
-        month=3,
-        bundle_ids=["bundle-a"],
-        archive_bytes=1024,
-        ttl_seconds=3600,
-        download_id="download-1",
-    )
-    second = first.model_copy(update={"archive_bytes": 2048})
 
-    assert cache.create_if_absent(first) is True
-    assert cache.create_if_absent(second) is False
+    with cache.lock(tenant_id="tenant-1", download_id="download-1"):
+        pass
 
-    restored = cache.get(tenant_id="tenant-1", download_id="download-1")
-    assert restored == first
+    assert redis.lock_calls == [
+        (
+            "workflow_run_archive_download:tenant-1:download-1:lock",
+            ARCHIVE_DOWNLOAD_TASK_LOCK_TIMEOUT_SECONDS,
+            ARCHIVE_DOWNLOAD_TASK_LOCK_TIMEOUT_SECONDS,
+        )
+    ]
 
 
 def test_archive_download_task_cache_delete_removes_entry() -> None:
