@@ -224,7 +224,6 @@ catalog:
   react-dom: 19.2.7
   react-easy-crop: 6.2.2
   react-i18next: 17.0.9
-  react-multi-email: 1.0.25
   react-papaparse: 4.4.0
   react-pdf-highlighter: 8.0.0-rc.0
   react-server-dom-webpack: 19.2.7

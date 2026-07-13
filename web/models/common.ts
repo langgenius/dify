@@ -130,27 +130,6 @@ export type FileUploadConfigResponse = {
   file_upload_limit: number // default is 5
 }
 
-export type InvitationResult =
-  | {
-      status: 'success'
-      email: string
-      url: string
-    }
-  | {
-      status: 'already_member'
-      email: string
-      message?: string
-    }
-  | {
-      status: 'failed'
-      email: string
-      message: string
-    }
-
-export type InvitationResponse = CommonResponse & {
-  invitation_results: InvitationResult[]
-}
-
 export type CodeBasedExtensionForm = {
   type: string
   label: I18nText

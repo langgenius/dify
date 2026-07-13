@@ -3331,11 +3331,6 @@
       "count": 2
     }
   },
-  "web/app/components/header/account-setting/members-page/invite-modal/index.tsx": {
-    "jsx_a11y/no-autofocus": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/members-page/transfer-ownership-modal/member-selector.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -6888,7 +6883,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 9
+      "count": 8
     }
   },
   "web/service/datasets.ts": {
