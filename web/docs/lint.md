@@ -58,7 +58,7 @@ Always review automatic fixes before committing. JS plugins are allowed to provi
 
 ### Type-aware Linting
 
-The root configuration enables `typeAware` without enabling Oxlint's full `typeCheck` diagnostics. This preserves the Node SDK's existing type-aware lint rules without making lint duplicate the repository type-check task.
+The root configuration enables `typeAware` without enabling Oxlint's full `typeCheck` diagnostics. This preserves the Node SDK's existing type-aware lint rules without making lint duplicate the repository type-check task. Vite+ 0.2.4 cannot resolve pnpm's `tsgolint` shim on Windows, so type-aware linting is disabled there until the executable resolution is fixed upstream. Windows still runs the regular Oxlint rules and the repository type-check task; Linux and macOS continue to enforce the type-aware rule baseline.
 
 The web package still runs its existing TSSLint rule separately:
 
@@ -105,6 +105,7 @@ ESLint is intentionally limited to non-code files. The remaining limitations and
 | Markdown code blocks     | ESLint validates the Markdown document, but fenced JavaScript and TypeScript blocks are not passed through the former overlapping preset. This remains deferred rather than duplicating the Oxlint rule set.     |
 | Override-scoped settings | The three Dify UI Tailwind rules are disabled with the rest of ESLint's code path. Oxlint still applies the web `react-x.additionalStateHooks` setting globally because it cannot scope settings to an override. |
 | Oxlint disable severity  | Oxlint only accepts `reportUnusedDisableDirectives` at the root, where it remains `warn`; the former Dify UI-specific ESLint `error` severity is no longer applied to code files.                                |
+| Windows type-aware lint  | Vite+ 0.2.4 cannot resolve pnpm's `tsgolint` shim on Windows. Windows runs non-type-aware Oxlint plus the repository type check; Linux and macOS retain type-aware Oxlint rules.                                 |
 
 Suppression comments belong to exactly one linter. Use `oxlint-disable` for code rules from `lint.config.ts`, and use `eslint-disable` only for non-code rules from `eslint.config.mjs`. Oxlint deliberately sets `respectEslintDisableDirectives` to `false`, so an ESLint comment cannot hide an Oxlint finding.
 

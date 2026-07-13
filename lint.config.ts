@@ -1,10 +1,13 @@
 import type { OxlintConfig } from 'vite-plus/lint'
 import path from 'node:path'
+import process from 'node:process'
 
 const rootDir = import.meta.dirname
 const webDir = path.resolve(rootDir, 'web')
 const webTailwindEntry = path.resolve(webDir, 'app/styles/globals.css')
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
+// Vite+ 0.2.4 cannot resolve pnpm's tsgolint shim on Windows.
+const supportsTypeAwareLint = process.platform !== 'win32'
 
 /**
  * Oxlint equivalent of the ESLint configurations that were active before the migration.
@@ -90,7 +93,7 @@ export const lintConfig = {
   options: {
     reportUnusedDisableDirectives: 'warn',
     respectEslintDisableDirectives: false,
-    typeAware: true,
+    typeAware: supportsTypeAwareLint,
     typeCheck: false,
   },
   settings: {
