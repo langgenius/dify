@@ -51,8 +51,8 @@ class WorkflowRunService:
         self,
         app_model: App,
         args: WorkflowRunListArgs,
+        session: Session | scoped_session,
         triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
-        session: Session | scoped_session | None = None,
     ) -> InfiniteScrollPagination:
         """
         Get advanced chat app workflow run list
@@ -81,8 +81,7 @@ class WorkflowRunService:
         run_ids = [workflow_run.id for workflow_run in workflow_runs]
         messages_by_run_id: dict[str, Message] = {}
         if run_ids:
-            actual_session = session if session is not None else db.session
-            messages = actual_session.scalars(
+            messages = session.scalars(
                 select(Message).where(
                     Message.app_id == app_model.id,
                     Message.workflow_run_id.in_(run_ids),
