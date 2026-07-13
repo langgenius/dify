@@ -139,6 +139,7 @@ export type WorkflowRunNodeExecutionResponse = {
   predecessor_node_id?: string | null
   process_data?: unknown
   process_data_truncated?: boolean | null
+  retry_index?: number | null
   status?: string | null
   title?: string | null
 }
