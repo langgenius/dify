@@ -98,7 +98,7 @@ const Chart: React.FC<IChartProps> = ({
   })
   const tokenSummary = getTokenSummary(statistics)
   const showTokenSummary = CHART_TYPE_CONFIG[chartType].showTokens && hasNonZeroChartData(statistics, 'total_price')
-  const isZeroSummary = summaryValue === '0' || summaryValue === '0 ms'
+  const isZeroSummary = !hasNonZeroChartData(statistics, yField)
 
   return (
     <div className={`flex h-[316px] w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg xl:min-w-[480px] ${className ?? ''}`}>

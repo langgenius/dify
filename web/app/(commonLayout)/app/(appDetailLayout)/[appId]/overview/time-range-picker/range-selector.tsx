@@ -80,7 +80,7 @@ const RangeSelector: FC<Props> = ({
       </SelectTrigger>
       <SelectContent className="translate-x-[-24px]" popupClassName="w-[200px]" listClassName="p-1">
         {items.map(item => (
-          <SelectItem key={item.value} value={item.value} className="h-8 py-0 pr-2 pl-7 system-md-regular">
+          <SelectItem key={item.value} value={item.value} className="relative h-8 py-0 pr-2 pl-7 system-md-regular">
             <SelectItemText className="px-0">{item.name}</SelectItemText>
             <SelectItemIndicator className="absolute top-[8px] left-2 ml-0" />
           </SelectItem>
