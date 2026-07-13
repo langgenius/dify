@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* eslint-disable typescript/no-explicit-any */
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
 import { renderHook } from '@testing-library/react'
 import { useChat } from '../../hooks'

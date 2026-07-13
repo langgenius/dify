@@ -298,8 +298,8 @@ export default defineConfig({
     },
     postProcess: [
       {
-        command: 'eslint',
-        args: ['--fix', '{{path}}/*.ts'],
+        command: 'pnpm',
+        args: ['-w', 'lint:scope:fix', '{{path}}/*.ts'],
       },
       {
         command: 'vp',

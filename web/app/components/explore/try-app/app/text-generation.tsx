@@ -111,7 +111,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
         // legacy of image upload compatible
         image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
-        // eslint-disable-next-line ts/no-explicit-any
+        // eslint-disable-next-line typescript/no-explicit-any
       } as any)
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({

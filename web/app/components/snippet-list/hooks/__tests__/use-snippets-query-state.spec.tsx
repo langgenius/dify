@@ -4,7 +4,7 @@ import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from '../../constants'
 import { useSnippetsQueryState } from '../use-snippets-query-state'
 
 const renderWithAdapter = (searchParams = '') => {
-  // eslint-disable-next-line react/use-state -- renderHook executes a custom hook, not React.useState
+  // eslint-disable-next-line eslint-react/use-state -- renderHook executes a custom hook, not React.useState
   return renderHookWithNuqs(() => useSnippetsQueryState(), { searchParams })
 }
 

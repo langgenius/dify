@@ -29,19 +29,6 @@
 
   // Lint fix
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
-  },
-
-  // Enable ESLint for linted languages
-  "eslint.validate": [
-    "javascript",
-    "javascriptreact",
-    "typescript",
-    "typescriptreact",
-    "markdown",
-    "json",
-    "jsonc",
-    "yaml",
-    "toml"
-  ]
+    "source.fixAll.oxc": "explicit"
+  }
 }

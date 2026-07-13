@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* eslint-disable typescript/no-explicit-any */
 import type { IPromptProps } from '../index'
 import type { PromptItem, PromptVariable } from '@/models/debug'
 import { fireEvent, render, screen } from '@testing-library/react'

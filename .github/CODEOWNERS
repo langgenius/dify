@@ -6,8 +6,8 @@
 
 * @crazywoola @laipz8200
 
-# ESLint suppression file is maintained by autofix.ci pruning.
-/eslint-suppressions.json
+# Oxlint bulk suppression baseline.
+/oxlint-suppressions.json
 
 # CODEOWNERS file
 /.github/CODEOWNERS @laipz8200 @crazywoola

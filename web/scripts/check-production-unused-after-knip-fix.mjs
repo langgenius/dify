@@ -73,7 +73,7 @@ async function restoreWorktree() {
     throw new Error('Failed to restore tracked files after knip --fix.')
   }
 
-  const cleanResult = await run('git', ['clean', '-fd', '--', 'web', '.eslintcache'], {
+  const cleanResult = await run('git', ['clean', '-fd', '--', 'web'], {
     cwd: repoRoot,
   })
   if (cleanResult.status !== 0) {

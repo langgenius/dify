@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* eslint-disable typescript/no-explicit-any */
 import type { AgentNodeType } from '../types'
 import type { StrategyParamItem } from '@/app/components/plugins/types'
 import type { PanelProps } from '@/types/workflow'

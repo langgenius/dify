@@ -46,7 +46,7 @@ describe('MessageLogModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     clickAwayHandler = null
-    // eslint-disable-next-line ts/no-explicit-any
+    // eslint-disable-next-line typescript/no-explicit-any
     vi.mocked(useStore).mockImplementation((selector: any) =>
       selector({
         appDetail: { id: 'app-1' },

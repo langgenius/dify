@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* eslint-disable typescript/no-explicit-any */
 import type { App } from '@/models/explore'
 import type { AppIconType } from '@/types/app'
 import { screen, within } from '@testing-library/react'
@@ -73,7 +73,7 @@ describe('AppCard', () => {
 
   const renderWithProvider = (ui: React.ReactElement) => {
     return render(
-      // eslint-disable-next-line react/no-context-provider
+      // eslint-disable-next-line eslint-react/no-context-provider
       <AppListContext.Provider
         value={{
           currentApp: undefined,

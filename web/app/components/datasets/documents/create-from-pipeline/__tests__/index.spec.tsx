@@ -204,7 +204,7 @@ vi.mock('@/app/components/datasets/create/step-one/upgrade-card', () => ({
 }))
 
 // Mock zustand store
-// eslint-disable-next-line ts/no-explicit-any
+// eslint-disable-next-line typescript/no-explicit-any
 type MockDataSourceStore = any
 
 const mockStoreState = {

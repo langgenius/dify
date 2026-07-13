@@ -307,8 +307,8 @@ expect(JSON.parse(out).workspaces).toHaveLength(2)
 | `pnpm test`             | Full vitest suite — run before every commit        |
 | `pnpm test:coverage`    | Coverage report                                    |
 | `pnpm type-check`       | `tsc --noEmit` — catches type errors without build |
-| `pnpm lint`             | ESLint check                                       |
-| `pnpm lint:fix`         | ESLint code-quality fixes                          |
+| `pnpm lint`             | Oxlint check                                       |
+| `pnpm lint:fix`         | Oxlint code-quality fixes                          |
 | `vp fmt`                | Oxfmt formatting and import sorting                |
 | `pnpm build`            | Production bundle (`vp pack`)                      |
 | `pnpm tree:gen`         | Regenerate `src/commands/tree.ts` (registry)       |
@@ -323,7 +323,7 @@ expect(JSON.parse(out).workspaces).toHaveLength(2)
 
 ## Lint rules that catch contributors
 
-Repo runs `@antfu/eslint-config` for code-quality rules and Vite+ Oxfmt for formatting.
+The repository runs Vite+ Oxlint for code-quality rules and Vite+ Oxfmt for formatting.
 
 | Rule                               | What it catches                                    |
 | ---------------------------------- | -------------------------------------------------- |
@@ -333,7 +333,7 @@ Repo runs `@antfu/eslint-config` for code-quality rules and Vite+ Oxfmt for form
 | `unicorn/no-new-array`             | Use `Array.from({ length: n })` not `new Array(n)` |
 | `noUncheckedIndexedAccess` (tsc)   | `arr[i]` is `T \| undefined`; guard before use     |
 
-Run `pnpm lint:fix` for ESLint fixes, then `vp fmt` so Oxfmt produces the final layout.
+Run `pnpm lint:fix` for Oxlint fixes, then `vp fmt` so Oxfmt produces the final layout.
 
 ---
 

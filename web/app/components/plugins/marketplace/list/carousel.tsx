@@ -1,6 +1,6 @@
 'use client'
 
-/* eslint-disable react/set-state-in-effect */
+/* eslint-disable eslint-react/set-state-in-effect */
 import { cn } from '@langgenius/dify-ui/cn'
 import Autoplay from 'embla-carousel-autoplay'
 import useEmblaCarousel from 'embla-carousel-react'

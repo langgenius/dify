@@ -48,7 +48,7 @@ jobs:
             pnpm-workspace.yaml
             .nvmrc
             vite.config.ts
-            eslint.config.mjs
+            lint.config.ts
             .vscode/**
             .github/workflows/autofix.yml
             .github/workflows/style.yml
@@ -166,10 +166,10 @@ jobs:
         if: github.event_name != 'merge_group' && steps.frontend-contract-changes.outputs.any_changed == 'true'
         run: pnpm --dir packages/contracts gen-api-contract
 
-      - name: ESLint autofix
+      - name: Oxlint autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
         run: |
-          vp exec eslint --fix --concurrency=2 --prune-suppressions --quiet || true
+          vp lint --fix --prune-suppressions --quiet packages web e2e vite.config.ts lint.config.ts || true
 
       - name: Format frontend files
         if: github.event_name != 'merge_group' && (steps.web-changes.outputs.any_changed == 'true' || steps.frontend-contract-changes.outputs.any_changed == 'true')

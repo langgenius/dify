@@ -68,7 +68,7 @@ const Citation: FC<CitationProps> = ({
       }
     }
     setLimitNumberInOneLine(limit)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react/exhaustive-deps
   }, [])
 
   const resourcesLength = resources.length

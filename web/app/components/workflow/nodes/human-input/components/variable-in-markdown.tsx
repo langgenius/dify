@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
+/* eslint-disable react/only-export-components */
 import type { TFunction } from 'i18next'
 import type { FormInputItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'

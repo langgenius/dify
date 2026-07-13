@@ -69,14 +69,14 @@ const TimePicker = ({
       const dayjsValue = toDayjs(value, { timezone })
       if (!dayjsValue) return
 
-      // eslint-disable-next-line react/set-state-in-effect -- value/timezone changes intentionally resync the internal selected time.
+      // eslint-disable-next-line eslint-react/set-state-in-effect -- value/timezone changes intentionally resync the internal selected time.
       setSelectedTime(dayjsValue)
 
       if (timezoneChanged && !valueChanged) onChange(dayjsValue)
       return
     }
 
-    // eslint-disable-next-line react/set-state-in-effect -- value/timezone changes intentionally resync the internal selected time.
+    // eslint-disable-next-line eslint-react/set-state-in-effect -- value/timezone changes intentionally resync the internal selected time.
     setSelectedTime((prev) => {
       if (!isDayjsObject(prev)) return undefined
       return timezone ? getDateWithTimezone({ date: prev, timezone }) : prev

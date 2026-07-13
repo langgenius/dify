@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components, react/component-hook-factories */
+/* eslint-disable react/only-export-components */
 'use client'
 import type { Dayjs } from 'dayjs'
 import type { SelectorParam } from 'i18next'

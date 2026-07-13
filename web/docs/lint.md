@@ -1,6 +1,6 @@
 # Format and Lint Guide
 
-We use Vite+ Oxfmt for formatting, ESLint for code-quality rules, and TypeScript for type safety.
+We use Vite+ Oxfmt for formatting, Vite+ Oxlint for code-quality rules, and TypeScript for type safety.
 
 ## Format
 
@@ -19,66 +19,86 @@ vp fmt --check
 The shared formatter options and ignore boundaries live in the root `vite.config.ts`.
 Editor format-on-save must point Oxc at that file so local edits match the commit hook and CI.
 
-## ESLint
+## Lint
 
-### Common Flags
-
-**File/folder targeting**: Append paths to lint specific files or directories.
+Run the repository lint from the root:
 
 ```sh
-pnpm eslint [options] file.js [file.js] [dir]
+pnpm lint
 ```
 
-**`--cache`**: Caches lint results for faster subsequent runs.
-Keep this enabled by default; only disable when you encounter unexpected lint results.
-
-**`--concurrency`**: Enables multi-threaded linting.
-Use `--concurrency=auto` or experiment with specific numbers to find the optimal setting for your machine.
-Keep this enabled when linting multiple files.
-
-- [ESLint multi-thread linting blog post]
-
-**`--fix`**: Automatically fixes code-quality violations such as unused imports and preferred syntax.
-Run `vp fmt` after ESLint fixes so Oxfmt produces the final layout.
-Always review the diff before committing to ensure no unintended changes.
-
-**`--quiet`**: Suppresses warnings and only shows errors.
-Useful when you want to reduce noise from existing warnings.
-
-**`--suppress-all`**: Temporarily suppresses error-level violations and records them, allowing CI to pass.
-Treat this as an escape hatch—fix these errors when time permits.
-
-**`--prune-suppressions`**: Removes outdated suppressions after you've fixed the underlying errors.
-
-- [ESLint bulk suppressions blog post]
-
-### The Auto-Fix Workflow and Suppression Strategy
-
-To streamline your development process, we recommend configuring your editor to automatically fix lint errors on save.
-Use Oxfmt for format-on-save and ESLint code actions for lint-only fixes.
-As a fallback, the commit hook runs `vp staged`, which applies ESLint fixes and then formats staged files with `vp fmt`.
-To prevent workflow disruptions, these commit hooks are intentionally bypassed when you are merging branches, rebasing, or cherry-picking.
-
-Additionally, we currently track many existing legacy errors in eslint-suppressions.json.
-You do not need to spend time manually pruning these suppressions (we already append `--pass-on-unpruned-suppressions` in the commit hook);
-once you open a Pull Request, the CI pipeline will automatically handle the cleanup for you.
-
-### Type-Aware Linting
-
-Some ESLint rules require type information, such as [no-leaked-conditional-rendering].
-However, [typed linting via typescript-eslint] is too slow for practical use.
-So we use [TSSLint] instead.
+Call Vite+ directly with files or directories to target a smaller scope:
 
 ```sh
-pnpm lint:tss
+vp lint web/app/components packages/dify-ui/src/button
 ```
 
-This command lints the entire project and is intended for final verification before committing or pushing changes.
+Apply safe fixes, then format the result:
+
+```sh
+vp lint --fix web/app/components
+vp fmt web/app/components
+```
+
+Use `pnpm lint:quiet` to hide warnings. Oxlint runs in parallel by default, so the former ESLint cache and concurrency flags are not needed.
+
+The complete rule baseline lives in `lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
+
+Oxlint native rules are preferred. Rules that do not have a native equivalent use `jsPlugins` where the ESLint plugin API is compatible. The `eslint` package remains installed only to satisfy those plugins' peer dependencies; repository lint commands do not invoke ESLint.
+
+### Auto-fix Workflow
+
+Configure the Oxc editor extension to format and apply Oxlint fixes on save. As a fallback, the commit hook runs `vp staged`, applies `vp lint --fix` to staged JavaScript and TypeScript files, and then formats all supported staged files with Oxfmt. The autofix workflow also prunes resolved bulk suppressions.
+
+Always review automatic fixes before committing. JS plugins are allowed to provide fixes, and their behavior is not necessarily identical to a native Oxlint rule.
+
+### Type-aware Linting
+
+The root configuration enables `typeAware` without enabling Oxlint's full `typeCheck` diagnostics. This preserves the Node SDK's existing type-aware lint rules without making lint duplicate the repository type-check task.
+
+The web package still runs its existing TSSLint rule separately:
+
+```sh
+pnpm --dir web lint:tss
+```
+
+Run the regular type check before committing or pushing:
+
+```sh
+pnpm type-check
+```
+
+### Bulk Suppressions
+
+Existing error diagnostics are tracked in the root `oxlint-suppressions.json`. Oxlint hides errors while their per-file rule count stays at or below the recorded baseline and reports newly added errors. Warnings remain visible and do not fail lint.
+
+The bulk-suppression flags are available in the bundled Oxlint version but are currently hidden from `vp lint --help`. Run them from the repository root so every package uses the same baseline:
+
+```sh
+pnpm lint:scope packages web e2e cli sdks/nodejs-client vite.config.ts lint.config.ts --suppress-all
+pnpm lint:scope packages web e2e cli sdks/nodejs-client vite.config.ts lint.config.ts --prune-suppressions
+```
+
+The Oxc editor extension does not yet apply the bulk-suppression baseline, so the editor may still display findings that the CLI suppresses.
+
+### Known Migration Gaps
+
+The following ESLint behavior is not currently expressible with the Vite+ Oxlint integration:
+
+| Area                                        | Current status                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| JSON, JSONC, YAML, TOML, and Markdown rules | Oxlint JS plugins cannot provide custom parsers or file formats. Oxfmt still formats these files, but the former JSONC semantic rules, package and tsconfig key ordering, pnpm workspace checks, Markdown preferences, and i18n JSON rules are deferred.                                                                                          |
+| TypeScript declaration files                | The Oxlint 1.72 JS plugin runner crashes on declaration-only syntax used by the repository. `*.d.ts` files are excluded from lint until that compatibility issue is fixed; TypeScript still checks them.                                                                                                                                          |
+| Missing core rules                          | `one-var`, `no-unreachable-loop`, `no-undef-init`, generic `no-restricted-syntax`, and JavaScript `dot-notation` have no equivalent in the bundled Oxlint version. The web restriction on importing `ahooks/useLocalStorageState` was rewritten with native `no-restricted-imports`; erasable TypeScript syntax remains covered by its JS plugin. |
+| Override-scoped settings                    | Oxlint does not support `settings` inside overrides. The shared `better-tailwindcss` and `react-x` settings use the web values, so Dify UI cannot retain its separate Tailwind entry point yet.                                                                                                                                                   |
+| Unused disable severity                     | Oxlint only accepts `reportUnusedDisableDirectives` at the root. It is set to `warn`; the former Dify UI-only `error` severity cannot be preserved.                                                                                                                                                                                               |
+| JS plugin stability                         | JS plugin support is alpha. Plugins that require a custom parser or type-aware ESLint parser services cannot be used.                                                                                                                                                                                                                             |
+
+Existing `eslint-disable` comments remain recognized because `respectEslintDisableDirectives` is enabled. Use the rule IDs from `lint.config.ts` when adding or updating a directive.
 
 ### Introducing New Plugins or Rules
 
-If a new rule causes many existing code errors or automatic fixes generate too many diffs, do not use the `--fix` option for automatic fixes.
-You can introduce the rule first, then use the `--suppress-all` option to temporarily suppress these errors, and gradually fix them in subsequent changes.
+Prefer a native Oxlint rule. If none exists, verify that the rule works through a JS plugin on representative files before enabling it. Record the limitation here instead of retaining a second ESLint lint path when the language, parser, settings, or type-aware plugin API is unsupported.
 
 For overlay import policy and composition rules, see [Overlay Guide].
 
@@ -86,7 +106,7 @@ For overlay import policy and composition rules, see [Overlay Guide].
 
 You should be able to see suggestions from TypeScript in your editor for all open files.
 
-However, it can be useful to run the TypeScript 7 command-line (tsgo) to type check all files:
+Run the repository type check from the root:
 
 ```sh
 pnpm type-check
@@ -94,10 +114,5 @@ pnpm type-check
 
 Type checking is powered by [`tsgo`] (the native TypeScript 7 compiler), which is significantly faster than `tsc`.
 
-[ESLint bulk suppressions blog post]: https://eslint.org/blog/2025/04/introducing-bulk-suppressions
-[ESLint multi-thread linting blog post]: https://eslint.org/blog/2025/08/multithread-linting
 [Overlay Guide]: ./overlay.md
-[TSSLint]: https://github.com/johnsoncodehk/tsslint
 [`tsgo`]: https://devblogs.microsoft.com/typescript/announcing-typescript-7-0-beta
-[no-leaked-conditional-rendering]: https://www.eslint-react.xyz/docs/rules/no-leaked-conditional-rendering
-[typed linting via typescript-eslint]: https://typescript-eslint.io/getting-started/typed-linting

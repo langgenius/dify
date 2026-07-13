@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
+/* eslint-disable eslint-react/set-state-in-effect */
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useRef, useState } from 'react'

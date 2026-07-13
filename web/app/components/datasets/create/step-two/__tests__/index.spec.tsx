@@ -204,7 +204,7 @@ vi.mock('@/config', async () => {
 
 // Mock PreviewDocumentPicker to allow testing handlePickerChange
 vi.mock('@/app/components/datasets/common/document-picker/preview-document-picker', () => ({
-  /* eslint-disable ts/no-explicit-any */
+  /* eslint-disable typescript/no-explicit-any */
   default: ({
     onChange,
     value,
@@ -223,7 +223,7 @@ vi.mock('@/app/components/datasets/common/document-picker/preview-document-picke
       ))}
     </div>
   ),
-  /* eslint-enable ts/no-explicit-any */
+  /* eslint-enable typescript/no-explicit-any */
 }))
 
 vi.mock('@/app/components/datasets/settings/utils', () => ({
@@ -2521,14 +2521,14 @@ describe('StepTwo Component', () => {
     })
 
     it('should show general option for empty dataset (no doc_form)', () => {
-      // eslint-disable-next-line ts/no-explicit-any
+      // eslint-disable-next-line typescript/no-explicit-any
       mockCurrentDataset = { ...mockDataset, doc_form: undefined as any }
       render(<StepTwo {...defaultStepTwoProps} datasetId="test-id" />)
       expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
     })
 
     it('should show both options in empty dataset upload', () => {
-      // eslint-disable-next-line ts/no-explicit-any
+      // eslint-disable-next-line typescript/no-explicit-any
       mockCurrentDataset = { ...mockDataset, doc_form: undefined as any }
       render(<StepTwo {...defaultStepTwoProps} datasetId="test-id" />)
       // isUploadInEmptyDataset=true shows both options

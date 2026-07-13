@@ -1,7 +1,7 @@
 import AudioPlayer from '@/app/components/base/audio-btn/audio'
 
 declare global {
-  // eslint-disable-next-line ts/consistent-type-definitions
+  // eslint-disable-next-line typescript/consistent-type-definitions
   interface AudioPlayerManager {
     instance: AudioPlayerManager
   }

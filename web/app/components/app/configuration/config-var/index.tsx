@@ -205,7 +205,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     [handleOpenExternalDataToolModal, onPromptVariablesChange, promptVariables],
   )
 
-  // eslint-disable-next-line ts/no-explicit-any
+  // eslint-disable-next-line typescript/no-explicit-any
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === ADD_EXTERNAL_DATA_TOOL) {
       const payload = v.payload

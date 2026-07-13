@@ -39,7 +39,7 @@ const OpeningSettingModal = ({
   const { t } = useTranslation()
   const [tempValue, setTempValue] = useState(data?.opening_statement || '')
   useEffect(() => {
-    // eslint-disable-next-line react/set-state-in-effect
+    // eslint-disable-next-line eslint-react/set-state-in-effect
     setTempValue(data.opening_statement || '')
   }, [data.opening_statement])
   const [tempSuggestedQuestions, setTempSuggestedQuestions] = useState(

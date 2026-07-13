@@ -27,7 +27,7 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 const renderPanelHook = (provider: ModelProvider | undefined) => {
-  // eslint-disable-next-line react/use-state -- This is a domain hook, not React's useState.
+  // eslint-disable-next-line eslint-react/use-state -- This is a domain hook, not React's useState.
   return renderHookWithSystemFeatures(() => useCredentialPanelState(provider), {
     trialModels: mockTrialModels,
   })
