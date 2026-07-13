@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react'
+import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
@@ -35,6 +36,8 @@ vi.mock('@/next/dynamic', async () => {
         showPromptLog?: boolean
         footerNotice?: string
         chatNode?: ReactNode
+        speechToTextTarget?: SpeechToTextTarget
+        onBeforeSpeechToText?: () => Promise<unknown>
       }) {
         const [sent, setSent] = useState(false)
 
@@ -45,6 +48,12 @@ vi.mock('@/next/dynamic', async () => {
             data-send-button-loading={String(!!props.sendButtonLoading)}
             data-show-prompt-log={String(!!props.showPromptLog)}
             data-footer-notice={props.footerNotice ?? ''}
+            data-speech-agent-id={
+              props.speechToTextTarget?.type === 'agent' ? props.speechToTextTarget.agentId : ''
+            }
+            data-speech-draft-type={
+              props.speechToTextTarget?.type === 'agent' ? props.speechToTextTarget.draftType : ''
+            }
           >
             {props.chatNode}
             <span>{`sessionSent:${sent ? 'yes' : 'no'}`}</span>
@@ -60,6 +69,9 @@ vi.mock('@/next/dynamic', async () => {
             <button type="button" onClick={props.onStopResponding}>
               stop
             </button>
+            <button type="button" onClick={() => void props.onBeforeSpeechToText?.()}>
+              before speech
+            </button>
           </div>
         )
       },
@@ -67,8 +79,22 @@ vi.mock('@/next/dynamic', async () => {
 })
 
 vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
-  default: ({ footerNotice }: { footerNotice?: ReactNode }) => (
-    <div data-testid="agent-preview-chat-input">{footerNotice}</div>
+  default: ({
+    footerNotice,
+    speechToTextTarget,
+  }: {
+    footerNotice?: ReactNode
+    speechToTextTarget?: SpeechToTextTarget
+  }) => (
+    <div
+      data-testid="agent-preview-chat-input"
+      data-speech-agent-id={speechToTextTarget?.type === 'agent' ? speechToTextTarget.agentId : ''}
+      data-speech-draft-type={
+        speechToTextTarget?.type === 'agent' ? speechToTextTarget.draftType : ''
+      }
+    >
+      {footerNotice}
+    </div>
   ),
 }))
 
@@ -339,6 +365,45 @@ describe('AgentPreviewChat', () => {
     stopPostMock.mockResolvedValue({ result: 'success' })
     stopCallbackRef.current = undefined
     sendResultRef.current = undefined
+  })
+
+  it('should bind Agent preview voice input to the normal Agent draft', () => {
+    renderPreviewChat({
+      renderEmptyState: ({ inputNode }) => inputNode,
+    })
+
+    expect(screen.getByTestId('agent-preview-chat-input')).toHaveAttribute(
+      'data-speech-agent-id',
+      'agent-1',
+    )
+    expect(screen.getByTestId('agent-preview-chat-input')).toHaveAttribute(
+      'data-speech-draft-type',
+      'draft',
+    )
+    expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-speech-agent-id', 'agent-1')
+    expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-speech-draft-type', 'draft')
+  })
+
+  it('should bind Agent build voice input to the account build draft', () => {
+    renderPreviewChat({
+      draftType: 'debug_build',
+      renderEmptyState: ({ inputNode }) => inputNode,
+    })
+
+    expect(screen.getByTestId('agent-preview-chat-input')).toHaveAttribute(
+      'data-speech-draft-type',
+      'debug_build',
+    )
+    expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-speech-draft-type', 'debug_build')
+  })
+
+  it('should expose the owning save-before-transcribe callback', () => {
+    const onBeforeSpeechToText = vi.fn().mockResolvedValue(undefined)
+    renderPreviewChat({ onBeforeSpeechToText })
+
+    fireEvent.click(screen.getByRole('button', { name: 'before speech' }))
+
+    expect(onBeforeSpeechToText).toHaveBeenCalledTimes(1)
   })
 
   it('should initialize preview chat with the stable debug conversation history', async () => {

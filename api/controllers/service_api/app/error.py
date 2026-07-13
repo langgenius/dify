@@ -97,6 +97,12 @@ class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     code = 400
 
 
+class SpeechToTextDisabledError(BaseHTTPException):
+    error_code = "speech_to_text_disabled"
+    description = "Speech to text is disabled."
+    code = 400
+
+
 class FileNotFoundError(BaseHTTPException):
     error_code = "file_not_found"
     description = "The requested file was not found."

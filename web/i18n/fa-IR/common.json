@@ -596,6 +596,8 @@
   "voiceInput.notAllow": "میکروفون مجاز نیست",
   "voiceInput.speaking": "اکنون صحبت کنید...",
   "voiceInput.start": "ورودی صوتی",
+  "voiceInput.starting": "در حال راه‌اندازی میکروفون...",
+  "voiceInput.stop": "توقف ضبط",
   "workflowAsToolPage.description": "هر workflow منتشرشده را به ابزاری قابل استفاده مجدد تبدیل کنید. از آن در چندین برنامه استفاده کنید تا ساختار ماژولار بماند و از تکرار جلوگیری شود.",
   "you": "تو"
 }
