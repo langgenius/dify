@@ -9,6 +9,19 @@ compatible while live command execution no longer depends on the sandbox user's
 ambient home directory. Entering or re-entering the layer re-ensures the live
 home/workspace directories for the currently bound ``agent_id`` before user
 commands are sent.
+
+Sandbox lifecycle:
+    The shell provider exposes four operations: ``create``, ``attach``,
+    ``suspend``, and ``delete``. On the first run (no ``sandbox_id`` in
+    runtime state) ``resource_context()`` calls ``create()`` to provision a
+    new sandbox and persists the returned ``sandbox_id``. On subsequent runs
+    it calls ``attach(sandbox_id)`` to re-connect to the existing sandbox.
+    If the sandbox has expired (the provider raises ``SandboxExpiredError``),
+    the error propagates to the caller — the user must start a new session.
+    On normal exit (suspend) the resource is detached via ``suspend()``,
+    keeping the sandbox alive. On final cleanup (``on_context_delete``) the
+    resource is destroyed via ``delete()``. This allows the enterprise
+    provider to reuse the same sandbox pod across conversation turns.
 """
 
 from __future__ import annotations
@@ -72,36 +85,38 @@ _SHELL_OUTPUT_PROMPT_EDGE_BYTES = 8 * 1024
 _SHELLCTL_OUTPUT_LIMIT_BYTES = 2 * _SHELL_OUTPUT_PROMPT_EDGE_BYTES
 _REMOTE_COMPLETE_OUTPUT_MAX_BYTES = 1024 * 1024
 _REMOTE_COMMAND_TIMEOUT_SECONDS = 60.0
-_SHELL_LAYER_PREFIX_PROMPT = """You have access to a shell layer. It provides four tools:
+_SHELL_LAYER_PREFIX_PROMPT = """You can run commands in an isolated shell workspace.
+
+Available shell tools:
 
 1. shell_run
-   Start a new shell job in the current isolated workspace.
-   Use it to execute commands or scripts.
+   Starts a new shell job in the current workspace.
+   Use it to run commands or scripts.
 
 2. shell_wait
-   Wait for more output or completion from an existing shell job.
+   Waits for more output or completion from an existing shell job.
    Use it when shell_run returns done=false.
 
 3. shell_input
-   Send stdin text to a running shell job, then wait for new output.
-   Use it for interactive commands that are waiting for input.
+   Sends stdin text to a running shell job, then waits for new output.
+   Use it only when an interactive command is waiting for input.
 
 4. shell_interrupt
-   Interrupt a running shell job.
+   Interrupts a running shell job.
    Use it to stop a long-running, stuck, or no-longer-needed command.
 
 Common arguments:
 
 - script:
-  The command or script to execute. Used by shell_run.
+  Command or script to execute. Used by shell_run.
 
 - job_id:
-  The id of a shell job returned by shell_run.
+  Shell job id returned by shell_run.
   Use it with shell_wait, shell_input, and shell_interrupt.
   Never invent a job_id.
 
 - timeout:
-  Maximum time, in seconds, to wait for output or completion for this tool call.
+  Maximum time in seconds to wait for output or completion for this tool call.
   A timeout does not necessarily mean the job has stopped; if done=false, use shell_wait again.
 
 - text:
@@ -118,25 +133,44 @@ Usage rules:
 - Use shell_input only when the job is running and waiting for stdin.
 - Use shell_interrupt when a job is stuck or should be stopped.
 
+Installed CLI:
+
+- `dify-agent` is already installed in this shell environment and can be used directly.
+- Use the generated `dify-agent ... --help` output in the config prompt for exact command syntax.
+- Do not install or recreate the `dify-agent` CLI.
+
 Workspace persistence rules:
 
-- The current workspace cwd is stable during this agent run, but it is temporary and may be deleted later.
-- Do not use the current workspace cwd as persistent storage.
-- $HOME outside the current workspace cwd is persistent storage. In build draft mode, when Agent config context reports
-  `config_version.kind` as `build_draft` and `config_version.writable` as true, changes there can be persisted for
-  later runs. In non-build-draft modes, those changes are rolled back.
-- Saving config files, skills, env, or notes still requires the corresponding Agent config CLI mutation command; follow
-  the Agent config CLI help in the config layer. Shell file edits alone do not save config.
+- The current workspace cwd is stable during this run, but it is temporary and may be deleted later.
+- Do not treat files in the current workspace cwd as persisted state.
+- In build mode, config changes persist only after you run the matching `dify-agent config ...` mutation command.
+- Shell file edits alone do not save Agent config files, skills, env, or notes.
+- In non-build modes, local shell changes are not a persistence mechanism for Agent configuration.
 
-The script argument of shell_run can be a normal shell script, or a shebang script.
-If the first line is a shebang, the shell layer executes the script directly.
+shell_run script rules:
+
+- The script argument can be a normal shell script or a shebang script.
+- If the first line is a shebang, the shell executes the script directly.
 
 Tips:
 
-- When using Python, prefer a uv script with a PEP 723 dependency header.
+- Python 3.12, uv, pip, Node.js, pnpm, and pnx are preinstalled in the local sandbox.
+- For one-off Python dependencies, prefer a uv script with a PEP 723 dependency header or:
+  `uv run --with <package> python <script-or--c>`.
+- For reusable Python CLI tools, use `uv tool install <tool>`; installed commands land in `$HOME/.local/bin`.
+  Run them by full path or add `$HOME/.local/bin` to PATH in the command that needs them.
+- `python3 -m pip install --user <package>` also installs into `$HOME/.local`; add `$HOME/.local/bin` to PATH
+  when you need console scripts.
+- For reusable Node.js CLIs, use user-level global installs:
+  `PNPM_HOME=$HOME/.local/share/pnpm PATH=$HOME/.local/share/pnpm/bin:$PATH pnpm add -g <package>`.
+  Installed commands land in `$PNPM_HOME/bin`; run them by full path or with the same PATH prefix.
+- For one-off Node.js CLIs, prefer `pnx <command> [args]`.
+- Do not install new packages into system or image tool paths such as `/usr/local`, `/usr`, or `/opt/dify-agent-tools`.
+- If you need MCP, install the MCP server in the shell environment and start that server when you use it.
 
-  Example:
+Example shell_run script:
 
+[begin script]
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
 # requires-python = ">=3.12"
@@ -150,7 +184,8 @@ import httpx
 from rich import print
 
 response = httpx.get("https://example.com", timeout=10)
-print(f"[green]status:[/green] {response.status_code}")"""
+print(f"[green]status:[/green] {response.status_code}")
+[end script]"""
 _SHELL_LAYER_SUFFIX_PROMPT = """Environment variables may contain API keys, tokens, or credentials.
 You may refer to environment variable names when needed."""
 
@@ -171,6 +206,7 @@ class DifyShellLayerDeps(LayerDeps):
 class DifyShellRuntimeState(BaseModel):
     session_id: str | None = None
     workspace_cwd: str | None = None
+    sandbox_id: str | None = None
     job_ids: list[str] = Field(default_factory=list)
     job_offsets: dict[str, NonNegativeInt] = Field(default_factory=dict)
 
@@ -217,6 +253,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     _shell_resource: ShellResourceProtocol | None = None
+    _resource_should_delete: bool = False
 
     @classmethod
     @override
@@ -267,15 +304,41 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     @override
     @asynccontextmanager
     async def resource_context(self) -> AsyncGenerator[None]:
+        """Acquire the live shell resource for one run invocation.
+
+        On the first run (no ``sandbox_id`` in runtime state) the provider's
+        ``create()`` is called to provision a new sandbox. On subsequent runs
+        ``attach(sandbox_id)`` re-connects to the existing sandbox. If the
+        sandbox has expired (``SandboxExpiredError``), the error propagates
+        to the caller — the user must start a new session.
+
+        On exit, ``suspend()`` is called by default to keep the sandbox alive.
+        If ``on_context_delete()`` ran (setting ``_resource_should_delete``),
+        ``delete()`` is called instead to destroy the sandbox.
+        """
         if self._shell_resource is not None:
             raise RuntimeError("DifyShellLayer resource_context() is already active for this layer instance.")
-        resource = await self.shell_provider.create()
+        sandbox_id = self.runtime_state.sandbox_id
+        if sandbox_id is not None:
+            resource = await self.shell_provider.attach(sandbox_id)
+        else:
+            resource = await self.shell_provider.create()
+            self.runtime_state = DifyShellRuntimeState.model_validate(
+                {
+                    **self.runtime_state.model_dump(mode="python"),
+                    "sandbox_id": resource.sandbox_id,
+                }
+            )
         self._shell_resource = resource
+        self._resource_should_delete = False
         try:
             yield
         finally:
             self._shell_resource = None
-            await resource.close()
+            if self._resource_should_delete:
+                await resource.delete()
+            else:
+                await resource.suspend()
 
     @override
     async def on_context_create(self) -> None:
@@ -287,6 +350,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         except BaseException:
             if session_id is not None:
                 await self._cleanup_workspace_best_effort(session_id)
+            self._resource_should_delete = True
             raise
         self.runtime_state = DifyShellRuntimeState.model_validate(
             {
@@ -325,6 +389,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 )
         await self._delete_tracked_jobs_best_effort(self.runtime_state.job_ids)
         self._clear_tracked_jobs()
+        self._resource_should_delete = True
 
     async def _tool_run(self, script: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
         try:

@@ -29,7 +29,7 @@
  */
 
 import type { AuthFixture } from '../../helpers/cli.js'
-import { afterEach, beforeEach, describe, expect, it, inject } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import {
   assertErrorEnvelope,
   assertExitCode,
@@ -39,7 +39,7 @@ import {
   assertPipeFriendlyJson,
 } from '../../helpers/assert.js'
 import { withAuthFixture, withTempConfig } from '../../helpers/cli.js'
-import { loadE2EEnv, resolveEnv } from '../../setup/env.js'
+import { resolveEnv } from '../../setup/env.js'
 
 // @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
 const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
@@ -48,8 +48,12 @@ const E = resolveEnv(caps)
 describe('E2E / JSON & YAML output format (spec 5.2)', () => {
   let fx: AuthFixture
 
-  beforeEach(async () => { fx = await withAuthFixture(E) })
-  afterEach(async () => { await fx.cleanup() })
+  beforeEach(async () => {
+    fx = await withAuthFixture(E)
+  })
+  afterEach(async () => {
+    await fx.cleanup()
+  })
 
   // ── 5.31  JSON schema stability ────────────────────────────────────────────
 
@@ -78,10 +82,10 @@ describe('E2E / JSON & YAML output format (spec 5.2)', () => {
     expect(Array.isArray(parsed.data)).toBe(true)
     expect(parsed.data.length).toBeGreaterThan(0)
     // At least one device entry must have the last_used_at key present (even if null)
-    const hasKey = parsed.data.some(d => Object.prototype.hasOwnProperty.call(d, 'last_used_at'))
+    const hasKey = parsed.data.some((d) => Object.prototype.hasOwnProperty.call(d, 'last_used_at'))
     expect(hasKey, 'last_used_at key must be present in device entries').toBe(true)
     // Verify null serialisation — if the field is null it must be JSON null
-    const nullEntry = parsed.data.find(d => d.last_used_at === null)
+    const nullEntry = parsed.data.find((d) => d.last_used_at === null)
     if (nullEntry) {
       // Confirm the raw JSON contains the literal "null" value
       // The JSON may be compact (no space) or indented — match both
@@ -123,7 +127,10 @@ describe('E2E / JSON & YAML output format (spec 5.2)', () => {
     // a two-level nested structure.
     const result = await fx.r(['describe', 'app', E.chatAppId, '-o', 'json'])
     assertExitCode(result, 0)
-    const parsed = assertJson<{ info: Record<string, unknown>, parameters: Record<string, unknown> }>(result)
+    const parsed = assertJson<{
+      info: Record<string, unknown>
+      parameters: Record<string, unknown>
+    }>(result)
     // Both top-level fields must be proper objects, not strings
     expect(typeof parsed.info).toBe('object')
     expect(parsed.info).not.toBeNull()
@@ -168,8 +175,7 @@ describe('E2E / JSON & YAML output format (spec 5.2)', () => {
       const r1 = await runFn(['get', 'app', '-o', 'json'], { configDir: unauthTmp.configDir })
       assertNonZeroExit(r1)
       envelope1 = assertErrorEnvelope(r1)
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
     // Scenario B: non-existent app → server error (error in stderr when -o json)

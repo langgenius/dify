@@ -16,10 +16,8 @@ import { registerCommands, unregisterCommands } from './command-bus'
  */
 const currentStudioMode = (): WorkflowGeneratorMode | null => {
   const appMode = useAppStore.getState().appDetail?.mode
-  if (appMode === AppModeEnum.WORKFLOW)
-    return 'workflow'
-  if (appMode === AppModeEnum.ADVANCED_CHAT)
-    return 'advanced-chat'
+  if (appMode === AppModeEnum.WORKFLOW) return 'workflow'
+  if (appMode === AppModeEnum.ADVANCED_CHAT) return 'advanced-chat'
   return null
 }
 
@@ -33,8 +31,7 @@ const currentStudioMode = (): WorkflowGeneratorMode | null => {
 const openRefineGenerator = () => {
   const appDetail = useAppStore.getState().appDetail
   const mode = currentStudioMode()
-  if (!appDetail || !mode)
-    return
+  if (!appDetail || !mode) return
   useWorkflowGeneratorStore.getState().openGenerator({
     intent: 'refine',
     mode,
@@ -54,7 +51,7 @@ export const refineCommand: SlashCommandHandler = {
   aliases: ['improve'],
   // Fallback only — the palette localises the root row via the slashKeyMap in
   // command-selector.tsx (gotoAnything.actions.refineCategoryDesc).
-  description: 'Refine the current workflow or chatflow graph',
+  description: getI18n().t(($) => $['gotoAnything.actions.refineCategoryDesc'], { ns: 'app' }),
   mode: 'direct',
 
   // Only surface inside a Workflow / Advanced-Chat Studio — elsewhere there's
@@ -65,18 +62,23 @@ export const refineCommand: SlashCommandHandler = {
 
   async search(_args: string, locale?: string) {
     const i18n = getI18n()
-    return [{
-      id: 'refine-current',
-      title: i18n.t('gotoAnything.actions.refineTitle', { ns: 'app', lng: locale }),
-      description: i18n.t('gotoAnything.actions.refineDesc', { ns: 'app', lng: locale }),
-      type: 'command' as const,
-      icon: (
-        <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-          <RiSparkling2Line className="size-4 text-text-tertiary" />
-        </div>
-      ),
-      data: { command: 'refine.open', args: {} },
-    }]
+    return [
+      {
+        id: 'refine-current',
+        title: i18n.t(($) => $['gotoAnything.actions.refineTitle'], { ns: 'app', lng: locale }),
+        description: i18n.t(($) => $['gotoAnything.actions.refineDesc'], {
+          ns: 'app',
+          lng: locale,
+        }),
+        type: 'command' as const,
+        icon: (
+          <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
+            <RiSparkling2Line className="size-4 text-text-tertiary" />
+          </div>
+        ),
+        data: { command: 'refine.open', args: {} },
+      },
+    ]
   },
 
   register() {

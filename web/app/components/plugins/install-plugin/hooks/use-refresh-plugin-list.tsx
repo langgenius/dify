@@ -1,12 +1,19 @@
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useInvalidateDefaultModel, useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import {
+  useInvalidateDefaultModel,
+  useModelList,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useProviderContext } from '@/context/provider-context'
 import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useInvalidateStrategyProviders } from '@/service/use-strategy'
-import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders, useInvalidateRAGRecommendedPlugins } from '@/service/use-tools'
+import {
+  useInvalidateAllBuiltInTools,
+  useInvalidateAllToolProviders,
+  useInvalidateRAGRecommendedPlugins,
+} from '@/service/use-tools'
 import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { PluginCategoryEnum } from '../../types'
 
@@ -44,7 +51,10 @@ const useRefreshPluginList = () => {
 
   const invalidateRAGRecommendedPlugins = useInvalidateRAGRecommendedPlugins()
   return {
-    refreshPluginList: (manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | PluginCategoryPayload | null, refreshAllType?: boolean) => {
+    refreshPluginList: (
+      manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | PluginCategoryPayload | null,
+      refreshAllType?: boolean,
+    ) => {
       // installed list
       invalidateInstalledPluginList()
 
@@ -59,7 +69,10 @@ const useRefreshPluginList = () => {
       if ((manifest && PluginCategoryEnum.trigger.includes(manifest.category)) || refreshAllType)
         invalidateAllTriggerPlugins()
 
-      if ((manifest && PluginCategoryEnum.datasource.includes(manifest.category)) || refreshAllType) {
+      if (
+        (manifest && PluginCategoryEnum.datasource.includes(manifest.category)) ||
+        refreshAllType
+      ) {
         invalidateAllDataSources()
         invalidateDataSourceListAuth()
       }
@@ -72,7 +85,7 @@ const useRefreshPluginList = () => {
         refetchRerankModelList()
         refetchSpeech2textModelList()
         refetchTTSModelList()
-        SYSTEM_MODEL_TYPES.forEach(type => invalidateDefaultModel(type))
+        SYSTEM_MODEL_TYPES.forEach((type) => invalidateDefaultModel(type))
       }
 
       // agent select

@@ -8,16 +8,18 @@ import { useDataSourceStore, useDataSourceStoreWithSelector } from '../data-sour
  * Hook for local file datasource store operations
  */
 export const useLocalFile = () => {
-  const {
-    localFileList,
-    currentLocalFile,
-  } = useDataSourceStoreWithSelector(useShallow(state => ({
-    localFileList: state.localFileList,
-    currentLocalFile: state.currentLocalFile,
-  })))
+  const { localFileList, currentLocalFile } = useDataSourceStoreWithSelector(
+    useShallow((state) => ({
+      localFileList: state.localFileList,
+      currentLocalFile: state.currentLocalFile,
+    })),
+  )
   const dataSourceStore = useDataSourceStore()
 
-  const allFileLoaded = useMemo(() => (localFileList.length > 0 && localFileList.every(file => file.file.id)), [localFileList])
+  const allFileLoaded = useMemo(
+    () => localFileList.length > 0 && localFileList.every((file) => file.file.id),
+    [localFileList],
+  )
 
   const hidePreviewLocalFile = useCallback(() => {
     const { setCurrentLocalFile } = dataSourceStore.getState()
@@ -36,30 +38,31 @@ export const useLocalFile = () => {
  * Hook for online document datasource store operations
  */
 export const useOnlineDocument = () => {
-  const {
-    documentsData,
-    onlineDocuments,
-    currentDocument,
-  } = useDataSourceStoreWithSelector(useShallow(state => ({
-    documentsData: state.documentsData,
-    onlineDocuments: state.onlineDocuments,
-    currentDocument: state.currentDocument,
-  })))
+  const { documentsData, onlineDocuments, currentDocument } = useDataSourceStoreWithSelector(
+    useShallow((state) => ({
+      documentsData: state.documentsData,
+      onlineDocuments: state.onlineDocuments,
+      currentDocument: state.currentDocument,
+    })),
+  )
   const dataSourceStore = useDataSourceStore()
 
   const currentWorkspace = documentsData[0]
 
   const PagesMapAndSelectedPagesId: DataSourceNotionPageMap = useMemo(() => {
-    const pagesMap = (documentsData || []).reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
-      next.pages.forEach((page) => {
-        prev[page.page_id] = {
-          ...page,
-          workspace_id: next.workspace_id,
-        }
-      })
+    const pagesMap = (documentsData || []).reduce(
+      (prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
+        next.pages.forEach((page) => {
+          prev[page.page_id] = {
+            ...page,
+            workspace_id: next.workspace_id,
+          }
+        })
 
-      return prev
-    }, {})
+        return prev
+      },
+      {},
+    )
     return pagesMap
   }, [documentsData])
 
@@ -97,13 +100,12 @@ export const useOnlineDocument = () => {
  * Hook for website crawl datasource store operations
  */
 export const useWebsiteCrawl = () => {
-  const {
-    websitePages,
-    currentWebsite,
-  } = useDataSourceStoreWithSelector(useShallow(state => ({
-    websitePages: state.websitePages,
-    currentWebsite: state.currentWebsite,
-  })))
+  const { websitePages, currentWebsite } = useDataSourceStoreWithSelector(
+    useShallow((state) => ({
+      websitePages: state.websitePages,
+      currentWebsite: state.currentWebsite,
+    })),
+  )
   const dataSourceStore = useDataSourceStore()
 
   const hideWebsitePreview = useCallback(() => {
@@ -113,13 +115,8 @@ export const useWebsiteCrawl = () => {
   }, [dataSourceStore])
 
   const clearWebsiteCrawlData = useCallback(() => {
-    const {
-      setStep,
-      setCrawlResult,
-      setWebsitePages,
-      setPreviewIndex,
-      setCurrentWebsite,
-    } = dataSourceStore.getState()
+    const { setStep, setCrawlResult, setWebsitePages, setPreviewIndex, setCurrentWebsite } =
+      dataSourceStore.getState()
     setStep(CrawlStep.init)
     setCrawlResult(undefined)
     setCurrentWebsite(undefined)
@@ -139,27 +136,21 @@ export const useWebsiteCrawl = () => {
  * Hook for online drive datasource store operations
  */
 export const useOnlineDrive = () => {
-  const {
-    onlineDriveFileList,
-    selectedFileIds,
-  } = useDataSourceStoreWithSelector(useShallow(state => ({
-    onlineDriveFileList: state.onlineDriveFileList,
-    selectedFileIds: state.selectedFileIds,
-  })))
+  const { onlineDriveFileList, selectedFileIds } = useDataSourceStoreWithSelector(
+    useShallow((state) => ({
+      onlineDriveFileList: state.onlineDriveFileList,
+      selectedFileIds: state.selectedFileIds,
+    })),
+  )
   const dataSourceStore = useDataSourceStore()
 
   const selectedOnlineDriveFileList = useMemo(() => {
-    return selectedFileIds.map(id => onlineDriveFileList.find(item => item.id === id)!)
+    return selectedFileIds.map((id) => onlineDriveFileList.find((item) => item.id === id)!)
   }, [onlineDriveFileList, selectedFileIds])
 
   const clearOnlineDriveData = useCallback(() => {
-    const {
-      setOnlineDriveFileList,
-      setBucket,
-      setPrefix,
-      setKeywords,
-      setSelectedFileIds,
-    } = dataSourceStore.getState()
+    const { setOnlineDriveFileList, setBucket, setPrefix, setKeywords, setSelectedFileIds } =
+      dataSourceStore.getState()
     setOnlineDriveFileList([])
     setBucket('')
     setPrefix([])

@@ -3,7 +3,14 @@ import { VarType } from '@/app/components/workflow/types'
 import { ComparisonOperator } from './types'
 
 export const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
-  return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
+  return [
+    ComparisonOperator.empty,
+    ComparisonOperator.notEmpty,
+    ComparisonOperator.isNull,
+    ComparisonOperator.isNotNull,
+    ComparisonOperator.exists,
+    ComparisonOperator.notExists,
+  ].includes(operator)
 }
 
 const notTranslateKey = [
@@ -15,14 +22,19 @@ const notTranslateKey = [
   ComparisonOperator.lessThanOrEqual,
 ] as const
 
-type NotTranslateOperator = typeof notTranslateKey[number]
+type NotTranslateOperator = (typeof notTranslateKey)[number]
 type TranslatableComparisonOperator = Exclude<ComparisonOperator, NotTranslateOperator>
 
-export function isComparisonOperatorNeedTranslate(operator: ComparisonOperator): operator is TranslatableComparisonOperator
-export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator
-export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator {
-  if (!operator)
-    return false
+export function isComparisonOperatorNeedTranslate(
+  operator: ComparisonOperator,
+): operator is TranslatableComparisonOperator
+export function isComparisonOperatorNeedTranslate(
+  operator?: ComparisonOperator,
+): operator is TranslatableComparisonOperator
+export function isComparisonOperatorNeedTranslate(
+  operator?: ComparisonOperator,
+): operator is TranslatableComparisonOperator {
+  if (!operator) return false
   return !(notTranslateKey as readonly ComparisonOperator[]).includes(operator)
 }
 
@@ -44,10 +56,7 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
           ComparisonOperator.notEmpty,
         ]
       case 'type':
-        return [
-          ComparisonOperator.in,
-          ComparisonOperator.notIn,
-        ]
+        return [ComparisonOperator.in, ComparisonOperator.notIn]
       case 'size':
         return [
           ComparisonOperator.largerThan,
@@ -74,10 +83,7 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
           ComparisonOperator.notEmpty,
         ]
       case 'transfer_method':
-        return [
-          ComparisonOperator.in,
-          ComparisonOperator.notIn,
-        ]
+        return [ComparisonOperator.in, ComparisonOperator.notIn]
       case 'url':
         return [
           ComparisonOperator.contains,
@@ -128,15 +134,9 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
         ComparisonOperator.notEmpty,
       ]
     case VarType.boolean:
-      return [
-        ComparisonOperator.is,
-        ComparisonOperator.isNot,
-      ]
+      return [ComparisonOperator.is, ComparisonOperator.isNot]
     case VarType.file:
-      return [
-        ComparisonOperator.exists,
-        ComparisonOperator.notExists,
-      ]
+      return [ComparisonOperator.exists, ComparisonOperator.notExists]
     case VarType.arrayString:
     case VarType.arrayNumber:
     case VarType.arrayBoolean:
@@ -148,10 +148,7 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
       ]
     case VarType.array:
     case VarType.arrayObject:
-      return [
-        ComparisonOperator.empty,
-        ComparisonOperator.notEmpty,
-      ]
+      return [ComparisonOperator.empty, ComparisonOperator.notEmpty]
     case VarType.arrayFile:
       return [
         ComparisonOperator.contains,
@@ -171,16 +168,21 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
 }
 
 export const comparisonOperatorNotRequireValue = (operator?: ComparisonOperator) => {
-  if (!operator)
-    return false
+  if (!operator) return false
 
-  return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
+  return [
+    ComparisonOperator.empty,
+    ComparisonOperator.notEmpty,
+    ComparisonOperator.isNull,
+    ComparisonOperator.isNotNull,
+    ComparisonOperator.exists,
+    ComparisonOperator.notExists,
+  ].includes(operator)
 }
 
 export const branchNameCorrect = (branches: Branch[]) => {
   const branchLength = branches.length
-  if (branchLength < 2)
-    throw new Error('if-else node branch number must than 2')
+  if (branchLength < 2) throw new Error('if-else node branch number must than 2')
 
   if (branchLength === 2) {
     return branches.map((branch) => {

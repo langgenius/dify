@@ -21,13 +21,12 @@ const getDisplayKeys = (
 ) => {
   const displayOptions = platform ? { platform } : undefined
 
-  if (typeof hotkey !== 'string')
-    return [formatForDisplay(hotkey, displayOptions)]
+  if (typeof hotkey !== 'string') return [formatForDisplay(hotkey, displayOptions)]
 
   return hotkey
     .split('+')
     .filter(Boolean)
-    .map(key => formatForDisplay(key, displayOptions))
+    .map((key) => formatForDisplay(key, displayOptions))
 }
 
 export const ShortcutKbd = ({
@@ -38,30 +37,24 @@ export const ShortcutKbd = ({
   bgColor = 'gray',
   platform,
 }: ShortcutKbdProps) => {
-  const displayHotkey = hotkey ?? (shortcut ? getWorkflowCanvasShortcutDisplayHotkey(shortcut) : undefined)
+  const displayHotkey =
+    hotkey ?? (shortcut ? getWorkflowCanvasShortcutDisplayHotkey(shortcut) : undefined)
 
-  if (!displayHotkey)
-    return null
+  if (!displayHotkey) return null
 
   const displayKeys = getDisplayKeys(displayHotkey, platform)
 
   return (
-    <KbdGroup
-      className={cn(
-        className,
-      )}
-    >
-      {
-        displayKeys.map(key => (
-          <Kbd
-            key={key}
-            color={bgColor}
-            className={cn(textColor === 'secondary' && 'text-text-tertiary')}
-          >
-            {key}
-          </Kbd>
-        ))
-      }
+    <KbdGroup className={cn(className)}>
+      {displayKeys.map((key) => (
+        <Kbd
+          key={key}
+          color={bgColor}
+          className={cn(textColor === 'secondary' && 'text-text-tertiary')}
+        >
+          {key}
+        </Kbd>
+      ))}
     </KbdGroup>
   )
 }

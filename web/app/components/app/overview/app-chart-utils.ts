@@ -25,7 +25,7 @@ type TooltipParams = {
 
 const valueFormatter = (value: string | number) => value
 
-const COLOR_TYPE_MAP: Record<ColorType, { lineColor: string, bgColor: [string, string] }> = {
+const COLOR_TYPE_MAP: Record<ColorType, { lineColor: string; bgColor: [string, string] }> = {
   green: {
     lineColor: 'rgba(6, 148, 162, 1)',
     bgColor: ['rgba(6, 148, 162, 0.2)', 'rgba(67, 174, 185, 0.08)'],
@@ -77,7 +77,8 @@ const sumValues = (values: Decimal.Value[]): number => Decimal.sum(...values).to
 
 const getRowValue = (row: ChartRow, field: string): Decimal.Value => row[field] ?? 0
 
-const getChartColors = (chartType: ChartType) => COLOR_TYPE_MAP[CHART_TYPE_CONFIG[chartType].colorType]
+const getChartColors = (chartType: ChartType) =>
+  COLOR_TYPE_MAP[CHART_TYPE_CONFIG[chartType].colorType]
 
 const getMarkLineSeedData = (statisticsLength: number) => {
   const markLineLength = statisticsLength >= 2 ? statisticsLength - 2 : statisticsLength
@@ -101,10 +102,9 @@ const getTooltipContent = (chartType: ChartType, yField: string, params: Tooltip
 }
 
 export const getChartValueField = (statistics: ChartRow[], valueKey?: string) => {
-  if (valueKey)
-    return valueKey
+  if (valueKey) return valueKey
 
-  return Object.keys(statistics[0] ?? {}).find(name => name.includes('count')) ?? 'count'
+  return Object.keys(statistics[0] ?? {}).find((name) => name.includes('count')) ?? 'count'
 }
 
 export const hasNonZeroChartData = (statistics: ChartRow[], yField: string) => {
@@ -127,14 +127,12 @@ export const getSummaryValue = ({
   isAvg?: boolean
   unit?: string
 }) => {
-  const values = statistics.map(item => getRowValue(item, yField))
+  const values = statistics.map((item) => getRowValue(item, yField))
   const divisor = values.length || 1
-  const sumData = isAvg ? (sumValues(values) / divisor) : sumValues(values)
+  const sumData = isAvg ? sumValues(values) / divisor : sumValues(values)
 
   if (chartType === 'costs' || chartType === 'workflowCosts') {
-    const formattedCost = sumData < 1000
-      ? sumData
-      : `${formatNumber(Math.round(sumData / 1000))}k`
+    const formattedCost = sumData < 1000 ? sumData : `${formatNumber(Math.round(sumData / 1000))}k`
 
     return `${formattedCost}`
   }
@@ -143,7 +141,9 @@ export const getSummaryValue = ({
 }
 
 export const getTokenSummary = (statistics: ChartRow[]) => {
-  const totalPrice = sumValues(statistics.map(item => Number.parseFloat(String(get(item, 'total_price', '0')))))
+  const totalPrice = sumValues(
+    statistics.map((item) => Number.parseFloat(String(get(item, 'total_price', '0')))),
+  )
   return totalPrice.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -177,47 +177,50 @@ export const buildChartOptions = ({
       position: 'top',
       borderWidth: 0,
     },
-    xAxis: [{
-      type: 'category',
-      boundaryGap: false,
-      axisLabel: {
-        color: COMMON_COLOR_MAP.label,
-        hideOverlap: true,
-        overflow: 'break',
-        formatter(value) {
-          return dayjs(value).format(commonDateFormat)
+    xAxis: [
+      {
+        type: 'category',
+        boundaryGap: false,
+        axisLabel: {
+          color: COMMON_COLOR_MAP.label,
+          hideOverlap: true,
+          overflow: 'break',
+          formatter(value) {
+            return dayjs(value).format(commonDateFormat)
+          },
+        },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            color: COMMON_COLOR_MAP.splitLineLight,
+            width: 1,
+            type: [10, 10],
+          },
+          interval(index) {
+            return index === 0 || index === xData.length - 1
+          },
         },
       },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: {
-        show: true,
-        lineStyle: {
-          color: COMMON_COLOR_MAP.splitLineLight,
-          width: 1,
-          type: [10, 10],
-        },
-        interval(index) {
-          return index === 0 || index === xData.length - 1
-        },
-      },
-    }, {
-      position: 'bottom',
-      boundaryGap: false,
-      data: markLineSeedData,
-      axisLabel: { show: false },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: {
-        show: true,
-        lineStyle: {
-          color: COMMON_COLOR_MAP.splitLineDark,
-        },
-        interval(_index, value) {
-          return !!value
+      {
+        position: 'bottom',
+        boundaryGap: false,
+        data: markLineSeedData,
+        axisLabel: { show: false },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            color: COMMON_COLOR_MAP.splitLineDark,
+          },
+          interval(_index, value) {
+            return !!value
+          },
         },
       },
-    }],
+    ],
     yAxis: {
       max: yMax ?? 'dataMax',
       type: 'value',
@@ -247,13 +250,16 @@ export const buildChartOptions = ({
             y: 0,
             x2: 0,
             y2: 1,
-            colorStops: [{
-              offset: 0,
-              color: chartColors.bgColor[0],
-            }, {
-              offset: 1,
-              color: chartColors.bgColor[1],
-            }],
+            colorStops: [
+              {
+                offset: 0,
+                color: chartColors.bgColor[0],
+              },
+              {
+                offset: 1,
+                color: chartColors.bgColor[1],
+              },
+            ],
             global: false,
           },
         },
@@ -268,10 +274,20 @@ export const buildChartOptions = ({
   }
 }
 
-export const getDefaultChartData = ({ start, end, key = 'count' }: { start: string, end: string, key?: string }) => {
+export const getDefaultChartData = ({
+  start,
+  end,
+  key = 'count',
+}: {
+  start: string
+  end: string
+  key?: string
+}) => {
   const diffDays = dayjs(end).diff(dayjs(start), 'day')
-  return Array.from({ length: diffDays || 1 }, () => ({ date: '', [key]: 0 })).map((item, index) => {
-    item.date = dayjs(start).add(index, 'day').format(commonDateFormat)
-    return item
-  })
+  return Array.from({ length: diffDays || 1 }, () => ({ date: '', [key]: 0 })).map(
+    (item, index) => {
+      item.date = dayjs(start).add(index, 'day').format(commonDateFormat)
+      return item
+    },
+  )
 }

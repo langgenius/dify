@@ -20,7 +20,12 @@ const mocks = vi.hoisted(() => ({
     queryFn: vi.fn().mockResolvedValue({ data: [], scope: 'specific' }),
   })),
   userAccessSettingsKey: vi.fn(() => ['rbac-access-config', 'datasets', 'user-access-settings']),
-  userAccessSettingsQueryKey: vi.fn(() => ['rbac-access-config', 'datasets', 'user-access-settings', 'dataset-1']),
+  userAccessSettingsQueryKey: vi.fn(() => [
+    'rbac-access-config',
+    'datasets',
+    'user-access-settings',
+    'dataset-1',
+  ]),
   updateOpenScope: vi.fn().mockResolvedValue({}),
   updateUserAccessSettings: vi.fn().mockResolvedValue({}),
   removeMemberBindings: vi.fn().mockResolvedValue({}),
@@ -122,7 +127,9 @@ describe('use-dataset-access-config', () => {
   // User access settings mirror the app access-config API shape for datasets.
   describe('User Access Settings', () => {
     it('should fetch user access settings for a dataset id', () => {
-      renderHook(() => useDatasetUserAccessSettings('dataset-1', 'zh'), { wrapper: createWrapper() })
+      renderHook(() => useDatasetUserAccessSettings('dataset-1', 'zh'), {
+        wrapper: createWrapper(),
+      })
 
       expect(mocks.userAccessSettingsQueryOptions).toHaveBeenCalledWith({
         input: {
@@ -137,10 +144,15 @@ describe('use-dataset-access-config', () => {
     })
 
     it('should update user access settings for a dataset id', async () => {
-      const { result } = renderHook(() => useUpdateDatasetUserAccessSettings('dataset-1'), { wrapper: createWrapper() })
+      const { result } = renderHook(() => useUpdateDatasetUserAccessSettings('dataset-1'), {
+        wrapper: createWrapper(),
+      })
 
       await act(async () => {
-        await result.current.mutateAsync({ accountId: 'account-1', accessPolicyIds: ['policy-1', 'policy-2'] })
+        await result.current.mutateAsync({
+          accountId: 'account-1',
+          accessPolicyIds: ['policy-1', 'policy-2'],
+        })
       })
 
       expect(mocks.updateUserAccessSettings).toHaveBeenCalledWith({
@@ -157,7 +169,9 @@ describe('use-dataset-access-config', () => {
     })
 
     it('should remove dataset access policy member bindings for account ids', async () => {
-      const { result } = renderHook(() => useRemoveDatasetAccessPolicyMemberBindings('dataset-1'), { wrapper: createWrapper() })
+      const { result } = renderHook(() => useRemoveDatasetAccessPolicyMemberBindings('dataset-1'), {
+        wrapper: createWrapper(),
+      })
 
       await act(async () => {
         await result.current.mutateAsync({ accessPolicyId: 'policy-1', accountIds: ['account-1'] })
@@ -177,7 +191,9 @@ describe('use-dataset-access-config', () => {
     })
 
     it('should update open scope for a dataset id', async () => {
-      const { result } = renderHook(() => useUpdateDatasetOpenScope('dataset-1'), { wrapper: createWrapper() })
+      const { result } = renderHook(() => useUpdateDatasetOpenScope('dataset-1'), {
+        wrapper: createWrapper(),
+      })
 
       await act(async () => {
         await result.current.mutateAsync('specific')

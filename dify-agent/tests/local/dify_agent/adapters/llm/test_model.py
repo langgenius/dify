@@ -242,6 +242,45 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.parts[0].part_kind, "text")
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
 
+    async def test_request_uses_unique_fallback_ids_for_same_name_tool_calls(self) -> None:
+        messages = [
+            ModelRequest(parts=[UserPromptPart("hello")]),
+            ModelResponse(
+                parts=[
+                    ToolCallPart(tool_name="lookup", args={"query": "first"}, tool_call_id=""),
+                    ToolCallPart(tool_name="lookup", args={"query": "second"}, tool_call_id=""),
+                ]
+            ),
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            prompt_messages = payload["data"]["prompt_messages"]
+            tool_calls = prompt_messages[1]["tool_calls"]
+
+            self.assertEqual(tool_calls[0]["id"], "tool-call-0-lookup")
+            self.assertEqual(tool_calls[1]["id"], "tool-call-1-lookup")
+
+            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+
+            response = await adapter.request(
+                messages,
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            )
+
+        self.assertEqual(response.model_name, "demo-model")
+        self.assertEqual(response.parts[0].part_kind, "text")
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
     async def test_request_collapses_text_only_assistant_history_parts_to_string_content(self) -> None:
         messages = [
             ModelRequest(parts=[UserPromptPart("initial request")]),
@@ -420,7 +459,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 LLMResultChunk(
                     model="demo-model",
                     delta=LLMResultChunkDelta(
-                        index=1,
+                        index=0,
                         message=AssistantPromptMessage(
                             content="",
                             tool_calls=[
@@ -473,6 +512,72 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cast(ToolCallPart, response.parts[1]).tool_name, "weather")
         self.assertEqual(response.parts[2].part_kind, "text")
         self.assertEqual(cast(TextPart, response.parts[2]).content, "world")
+
+    async def test_request_stream_assigns_fallback_ids_to_tool_calls_without_ids(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                AssistantPromptMessage.ToolCall(
+                                    id=None,
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="shell_run",
+                                        arguments='{"script":"lookup find"}',
+                                    ),
+                                )
+                            ],
+                        ),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                AssistantPromptMessage.ToolCall(
+                                    id=None,
+                                    type="function",
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name="shell_run",
+                                        arguments='{"script":"lookup out"}',
+                                    ),
+                                )
+                            ],
+                        ),
+                    ),
+                ),
+            )
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                events = [event async for event in stream]
+                response = stream.get()
+
+        self.assertTrue(events)
+        self.assertEqual([part.part_kind for part in response.parts], ["tool-call", "tool-call"])
+        self.assertEqual(cast(ToolCallPart, response.parts[0]).tool_call_id, "chunk-0-tool-0")
+        self.assertEqual(cast(ToolCallPart, response.parts[1]).tool_call_id, "chunk-1-tool-0")
+        self.assertEqual(cast(ToolCallPart, response.parts[0]).args, '{"script":"lookup find"}')
+        self.assertEqual(cast(ToolCallPart, response.parts[1]).args, '{"script":"lookup out"}')
 
     async def test_request_splits_embedded_thinking_tags_into_parts(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:

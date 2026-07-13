@@ -33,7 +33,7 @@ const {
 } = vi.hoisted(() => ({
   mockHandlePaneContextmenuCancel: vi.fn(),
   mockWorkflowStoreSetState: vi.fn(),
-  mockGenerateNewNode: vi.fn(({ type, data }: { type: string, data: Record<string, unknown> }) => ({
+  mockGenerateNewNode: vi.fn(({ type, data }: { type: string; data: Record<string, unknown> }) => ({
     newNode: {
       id: 'generated-node',
       type,
@@ -45,22 +45,25 @@ const {
     },
   })),
   mockGetNodeCustomTypeByNodeDataType: vi.fn((type: string) => `${type}-custom`),
-  mockGetNodesWithSameDefaultDataType: vi.fn((
-    nodes: Array<{ data: { agent_node_kind?: string, type?: BlockEnum, version?: string } }>,
-    type: BlockEnum,
-    defaultValue: { agent_node_kind?: string, type?: BlockEnum, version?: string },
-  ) => {
-    const dataType = defaultValue.type ?? type
-    if (dataType !== type && defaultValue.version) {
-      return nodes.filter(node =>
-        node.data.type === dataType
-        && node.data.version === defaultValue.version
-        && node.data.agent_node_kind === defaultValue.agent_node_kind,
-      )
-    }
+  mockGetNodesWithSameDefaultDataType: vi.fn(
+    (
+      nodes: Array<{ data: { agent_node_kind?: string; type?: BlockEnum; version?: string } }>,
+      type: BlockEnum,
+      defaultValue: { agent_node_kind?: string; type?: BlockEnum; version?: string },
+    ) => {
+      const dataType = defaultValue.type ?? type
+      if (dataType !== type && defaultValue.version) {
+        return nodes.filter(
+          (node) =>
+            node.data.type === dataType &&
+            node.data.version === defaultValue.version &&
+            node.data.agent_node_kind === defaultValue.agent_node_kind,
+        )
+      }
 
-    return nodes.filter(node => node.data.type === dataType)
-  }),
+      return nodes.filter((node) => node.data.type === dataType)
+    },
+  ),
 }))
 
 let latestBlockSelectorProps: BlockSelectorMockProps | null = null
@@ -69,24 +72,21 @@ let mockIsChatMode = false
 let mockFlowType: FlowType = FlowType.appFlow
 
 const mockAvailableNextBlocks = [BlockEnum.Answer, BlockEnum.Code]
-const mockNodesMetaDataMap: Partial<Record<BlockEnum, { defaultValue: Record<string, unknown> }>> = {
-  [BlockEnum.Answer]: {
-    defaultValue: {
-      title: 'Answer',
-      desc: '',
-      type: BlockEnum.Answer,
+const mockNodesMetaDataMap: Partial<Record<BlockEnum, { defaultValue: Record<string, unknown> }>> =
+  {
+    [BlockEnum.Answer]: {
+      defaultValue: {
+        title: 'Answer',
+        desc: '',
+        type: BlockEnum.Answer,
+      },
     },
-  },
-}
+  }
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
   default: (props: BlockSelectorMockProps) => {
     latestBlockSelectorProps = props
-    return (
-      <div data-testid="block-selector">
-        {props.trigger(props.open)}
-      </div>
-    )
+    return <div data-testid="block-selector">{props.trigger(props.open)}</div>
   },
 }))
 
@@ -178,19 +178,19 @@ describe('AddBlock', () => {
       expect(latestBlockSelectorProps?.showStartTab).toBe(false)
     })
 
-    it.each([
-      BlockEnum.Start,
-      BlockEnum.TriggerWebhook,
-    ])('should keep the normal default tab when a %s node already exists', async (type) => {
-      renderWithReactFlow([
-        createNode({ id: 'entry-node', position: { x: 0, y: 0 }, data: { type } }),
-      ])
+    it.each([BlockEnum.Start, BlockEnum.TriggerWebhook])(
+      'should keep the normal default tab when a %s node already exists',
+      async (type) => {
+        renderWithReactFlow([
+          createNode({ id: 'entry-node', position: { x: 0, y: 0 }, data: { type } }),
+        ])
 
-      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
+        await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
 
-      expect(latestBlockSelectorProps?.showStartTab).toBe(true)
-      expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
-    })
+        expect(latestBlockSelectorProps?.showStartTab).toBe(true)
+        expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
+      },
+    )
 
     it('should pass keyboard isolation to the selector when requested by the caller', async () => {
       renderWorkflowFlowComponent(<AddBlock isolateKeyboardEvents />, { nodes: [], edges: [] })
@@ -268,8 +268,16 @@ describe('AddBlock', () => {
         },
       }
       renderWithReactFlow([
-        createNode({ id: 'old-agent', position: { x: 0, y: 0 }, data: { type: BlockEnum.Agent, version: '2' } }),
-        createNode({ id: 'agent-v2', position: { x: 80, y: 0 }, data: { agent_node_kind: 'dify_agent', type: BlockEnum.Agent, version: '2' } }),
+        createNode({
+          id: 'old-agent',
+          position: { x: 0, y: 0 },
+          data: { type: BlockEnum.Agent, version: '2' },
+        }),
+        createNode({
+          id: 'agent-v2',
+          position: { x: 80, y: 0 },
+          data: { agent_node_kind: 'dify_agent', type: BlockEnum.Agent, version: '2' },
+        }),
       ])
 
       await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())

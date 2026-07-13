@@ -1,4 +1,7 @@
-import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  Model,
+  ModelItem,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const agentIncompatibleModelPatterns: RegExp[] = [
   // openai
@@ -67,8 +70,8 @@ const agentSuggestedModelPatterns: RegExp[] = [
   /^(?:claude[ .-])?opus[ .-]4\.7$/i,
   /^(?:claude[ .-])?sonnet[ .-]4\.6$/i,
 
-  // gemini
-  /^gemini 3\.1 pro preview$/i,
+  // The Gemini model plugin quality is not strong enough yet, so do not recommend it for now.
+  // /^gemini 3\.1 pro preview$/i,
 
   // x
   /^grok[ .-]4\.3$/i,
@@ -91,9 +94,9 @@ const agentSuggestedModelPatterns: RegExp[] = [
 ]
 
 export function isAgentCompatibleModel(_provider: Model, modelItem: ModelItem) {
-  return !agentIncompatibleModelPatterns.some(pattern => pattern.test(modelItem.label.en_US))
+  return !agentIncompatibleModelPatterns.some((pattern) => pattern.test(modelItem.label.en_US))
 }
 
 export function isAgentSuggestedModel(_provider: Model, modelItem: ModelItem) {
-  return agentSuggestedModelPatterns.some(pattern => pattern.test(modelItem.label.en_US))
+  return agentSuggestedModelPatterns.some((pattern) => pattern.test(modelItem.label.en_US))
 }

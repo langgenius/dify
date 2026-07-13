@@ -9,13 +9,23 @@ import { useMemo, useState } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import ExpirationTime from '@/app/components/base/chat/chat/answer/human-input-content/expiration-time'
-import { getButtonStyle, getRenderedFormInputs, hasInvalidRequiredHumanInput, initializeInputs, splitByOutputVar } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import {
+  getButtonStyle,
+  getRenderedFormInputs,
+  hasInvalidRequiredHumanInput,
+  initializeInputs,
+  splitByOutputVar,
+} from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import BrandingFooter from './branding-footer'
 
 type LoadedFormContentProps = {
   formData: FormData
   isSubmitting: boolean
-  onSubmit: (inputs: Record<string, HumanInputFieldValue>, actionID: string, formInputs: FormData['inputs']) => void
+  onSubmit: (
+    inputs: Record<string, HumanInputFieldValue>,
+    actionID: string,
+    formInputs: FormData['inputs'],
+  ) => void
   removeWebappBrand?: boolean
   replaceWebappLogo?: string | null
 }
@@ -47,9 +57,11 @@ const LoadedFormContent = ({
   }, [formData.form_content])
 
   const handleInputsChange = (name: string, value: HumanInputFieldValue) => {
-    setInputs(prevInputs => produce(prevInputs, (draft) => {
-      draft[name] = value
-    }))
+    setInputs((prevInputs) =>
+      produce(prevInputs, (draft) => {
+        draft[name] = value
+      }),
+    )
   }
 
   const submit = (actionID: string) => {

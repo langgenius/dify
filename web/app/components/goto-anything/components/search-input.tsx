@@ -27,12 +27,9 @@ const SearchInput: FC<SearchInputProps> = ({
   const { t } = useTranslation()
 
   const getModeLabel = () => {
-    if (searchMode === 'scopes')
-      return 'SCOPES'
-    else if (searchMode === 'commands')
-      return 'COMMANDS'
-    else
-      return searchMode.replace('@', '').toUpperCase()
+    if (searchMode === 'scopes') return 'SCOPES'
+    else if (searchMode === 'commands') return 'COMMANDS'
+    else return searchMode.replace('@', '').toUpperCase()
   }
 
   return (
@@ -42,8 +39,8 @@ const SearchInput: FC<SearchInputProps> = ({
         <Input
           ref={inputRef}
           value={value}
-          placeholder={placeholder || t('gotoAnything.searchPlaceholder', { ns: 'app' })}
-          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder || t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' })}
+          onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           className="flex-1 border-0! bg-transparent! shadow-none!"
           wrapperClassName="flex-1 border-0! bg-transparent!"
@@ -56,7 +53,7 @@ const SearchInput: FC<SearchInputProps> = ({
         )}
       </div>
       <KbdGroup>
-        {['Mod', 'K'].map(key => (
+        {['Mod', 'K'].map((key) => (
           <Kbd key={key}>{formatForDisplay(key)}</Kbd>
         ))}
       </KbdGroup>

@@ -7,7 +7,9 @@ vi.mock('@/app/components/base/file-uploader/file-type-icon', () => ({
   default: ({ type }: { type: string }) => <span data-testid="file-type-icon">{type}</span>,
 }))
 vi.mock('@/app/components/base/icons/src/public/knowledge/online-drive', () => ({
-  BucketsBlue: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="bucket-icon" {...props} />,
+  BucketsBlue: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="bucket-icon" {...props} />
+  ),
   Folder: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="folder-icon" {...props} />,
 }))
 

@@ -9,7 +9,7 @@ import ViewFormDropdown from '../view-form-dropdown'
 
 // Mocks for components used by InputsFormContent (the real sibling)
 vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
-  default: ({ value, name }: { value: boolean, name: string }) => (
+  default: ({ value, name }: { value: boolean; name: string }) => (
     <div data-testid="mock-bool-input" role="checkbox" aria-checked={value}>
       {name}
     </div>
@@ -17,7 +17,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-i
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value, placeholder }: { value: string, placeholder?: React.ReactNode }) => (
+  default: ({ value, placeholder }: { value: string; placeholder?: React.ReactNode }) => (
     <div data-testid="mock-code-editor">
       <span>{value}</span>
       {placeholder}

@@ -474,7 +474,7 @@ class AppDslService:
                 ]
 
                 workflow_service = WorkflowService()
-                current_draft_workflow = workflow_service.get_draft_workflow(app_model=app)
+                current_draft_workflow = workflow_service.get_draft_workflow(app_model=app, session=self._session)
                 if current_draft_workflow:
                     unique_hash = current_draft_workflow.unique_hash
                 else:
@@ -500,6 +500,7 @@ class AppDslService:
                     account=account,
                     environment_variables=environment_variables,
                     conversation_variables=conversation_variables,
+                    session=self._session,
                 )
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config
@@ -521,7 +522,14 @@ class AppDslService:
         return app
 
     @classmethod
-    def export_dsl(cls, app_model: App, include_secret: bool = False, workflow_id: str | None = None) -> str:
+    def export_dsl(
+        cls,
+        app_model: App,
+        *,
+        session: Session,
+        include_secret: bool = False,
+        workflow_id: str | None = None,
+    ) -> str:
         """
         Export app
         :param app_model: App instance
@@ -548,7 +556,11 @@ class AppDslService:
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             cls._append_workflow_export_data(
-                export_data=export_data, app_model=app_model, include_secret=include_secret, workflow_id=workflow_id
+                export_data=export_data,
+                app_model=app_model,
+                include_secret=include_secret,
+                workflow_id=workflow_id,
+                session=session,
             )
         else:
             cls._append_model_config_export_data(export_data, app_model)
@@ -557,7 +569,13 @@ class AppDslService:
 
     @classmethod
     def _append_workflow_export_data(
-        cls, *, export_data: dict[str, Any], app_model: App, include_secret: bool, workflow_id: str | None = None
+        cls,
+        *,
+        export_data: dict[str, Any],
+        app_model: App,
+        include_secret: bool,
+        session: Session,
+        workflow_id: str | None = None,
     ):
         """
         Append workflow export data
@@ -565,7 +583,7 @@ class AppDslService:
         :param app_model: App instance
         """
         workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model, workflow_id)
+        workflow = workflow_service.get_draft_workflow(app_model, workflow_id, session=session)
         if not workflow:
             raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
 

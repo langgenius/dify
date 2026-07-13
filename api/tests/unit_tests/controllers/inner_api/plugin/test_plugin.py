@@ -318,6 +318,7 @@ class TestPluginDownloadFileRequestApi:
         mock_payload.user_id = "user-id"
         mock_payload.user_from = "account"
         mock_payload.invoke_from = "debugger"
+        mock_payload.for_external = False
         reference = build_file_reference(record_id="tool-file-1")
         mock_payload.file.model_dump.return_value = {
             "transfer_method": "tool_file",
@@ -333,6 +334,7 @@ class TestPluginDownloadFileRequestApi:
             user_from="account",
             invoke_from="debugger",
             file_mapping={"transfer_method": "tool_file", "reference": reference},
+            for_external=False,
         )
         assert result["data"] == {
             "filename": "report.pdf",

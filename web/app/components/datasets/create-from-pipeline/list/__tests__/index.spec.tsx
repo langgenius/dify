@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-
 import List from '../index'
 
 vi.mock('../built-in-pipeline-list', () => ({

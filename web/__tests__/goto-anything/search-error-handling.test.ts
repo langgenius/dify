@@ -8,19 +8,10 @@ import type { MockedFunction } from 'vitest'
  * 3. Verify consistent error handling across different search types
  * 4. Ensure errors don't propagate to UI layer causing "search failed"
  */
-
 import { Actions, searchAnything } from '@/app/components/goto-anything/actions'
 import { fetchAppList } from '@/service/apps'
 import { postMarketplace } from '@/service/base'
 import { fetchDatasets } from '@/service/datasets'
-
-// Mock react-i18next before importing modules that use it
-vi.mock('react-i18next', () => ({
-  getI18n: () => ({
-    t: (key: string) => key,
-    language: 'en',
-  }),
-}))
 
 // Mock API functions
 vi.mock('@/service/base', () => ({
@@ -124,8 +115,20 @@ describe('GotoAnything Search Error Handling', () => {
   describe('Unified search entry error handling', () => {
     it('regular search (without @prefix) should return successful results even when partial APIs fail', async () => {
       // Set app and knowledge success, plugin failure
-      mockFetchAppList.mockResolvedValue({ data: [], has_more: false, limit: 10, page: 1, total: 0 })
-      mockFetchDatasets.mockResolvedValue({ data: [], has_more: false, limit: 10, page: 1, total: 0 })
+      mockFetchAppList.mockResolvedValue({
+        data: [],
+        has_more: false,
+        limit: 10,
+        page: 1,
+        total: 0,
+      })
+      mockFetchDatasets.mockResolvedValue({
+        data: [],
+        has_more: false,
+        limit: 10,
+        page: 1,
+        total: 0,
+      })
       mockPostMarketplace.mockRejectedValue(new Error('Plugin API failed'))
 
       const result = await searchAnything('en', 'test')

@@ -8,8 +8,7 @@ import usePSInfo from './use-ps-info'
 const PartnerStack: FC = () => {
   const { saveOrUpdate, bind } = usePSInfo()
   useEffect(() => {
-    if (!IS_CLOUD_EDITION)
-      return
+    if (!IS_CLOUD_EDITION) return
     // Save PartnerStack info in cookie first. Because if user hasn't logged in, redirecting to login page would cause lose the partnerStack info in URL.
     saveOrUpdate()
     // bind PartnerStack info after user logged in

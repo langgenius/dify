@@ -1,8 +1,4 @@
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,10 +12,7 @@ type ApiBasedExtensionSelectorProps = {
   onChange: (value: string) => void
 }
 
-export function ApiBasedExtensionSelector({
-  value,
-  onChange,
-}: ApiBasedExtensionSelectorProps) {
+export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtensionSelectorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [addModalOpen, setAddModalOpen] = useState(false)
@@ -32,55 +25,47 @@ export function ApiBasedExtensionSelector({
     setOpen(false)
   }
 
-  const currentItem = apiBasedExtensions.find(item => item.id === value)
+  const currentItem = apiBasedExtensions.find((item) => item.id === value)
 
   const handleApiBasedExtensionSaved = () => {
     setAddModalOpen(false)
   }
   const handleAddModalOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen)
-      setAddModalOpen(false)
+    if (!nextOpen) setAddModalOpen(false)
   }
 
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={(
-            <button
-              type="button"
-              className="block w-full border-0 bg-transparent p-0 text-left"
-            >
-              {currentItem
-                ? (
-                    <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3">
-                      <div className="text-sm text-text-primary">
-                        {currentItem.name}
-                      </div>
-                      <div className="flex items-center">
-                        <div className="mr-1.5 w-[270px] truncate text-right text-xs text-text-quaternary">
-                          {currentItem.api_endpoint}
-                        </div>
-                        <span
-                          className={`i-ri-arrow-down-s-line size-4 text-text-secondary ${!open && 'opacity-60'}`}
-                          aria-hidden="true"
-                        />
-                      </div>
+          render={
+            <button type="button" className="block w-full border-0 bg-transparent p-0 text-left">
+              {currentItem ? (
+                <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3">
+                  <div className="text-sm text-text-primary">{currentItem.name}</div>
+                  <div className="flex items-center">
+                    <div className="mr-1.5 w-[270px] truncate text-right text-xs text-text-quaternary">
+                      {currentItem.api_endpoint}
                     </div>
-                  )
-                : (
-                    <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3 text-sm text-text-quaternary">
-                      {t('apiBasedExtension.selector.placeholder', {
-                        ns: 'common',
-                      })}
-                      <span
-                        className={`i-ri-arrow-down-s-line h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`}
-                        aria-hidden="true"
-                      />
-                    </div>
-                  )}
+                    <span
+                      className={`i-ri-arrow-down-s-line size-4 text-text-secondary ${!open && 'opacity-60'}`}
+                      aria-hidden="true"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3 text-sm text-text-quaternary">
+                  {t(($) => $['apiBasedExtension.selector.placeholder'], {
+                    ns: 'common',
+                  })}
+                  <span
+                    className={`i-ri-arrow-down-s-line h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`}
+                    aria-hidden="true"
+                  />
+                </div>
+              )}
             </button>
-          )}
+          }
         />
         <PopoverContent
           placement="bottom-start"
@@ -92,7 +77,7 @@ export function ApiBasedExtensionSelector({
             <div className="p-1">
               <div className="flex items-center justify-between px-3 pt-2 pb-1">
                 <div className="text-xs font-medium text-text-tertiary">
-                  {t('apiBasedExtension.selector.title', { ns: 'common' })}
+                  {t(($) => $['apiBasedExtension.selector.title'], { ns: 'common' })}
                 </div>
                 <button
                   type="button"
@@ -104,7 +89,7 @@ export function ApiBasedExtensionSelector({
                     })
                   }}
                 >
-                  {t('apiBasedExtension.selector.manage', { ns: 'common' })}
+                  {t(($) => $['apiBasedExtension.selector.manage'], { ns: 'common' })}
                   <span
                     className="ml-0.5 i-custom-vender-line-arrows-arrow-up-right size-3"
                     aria-hidden="true"
@@ -112,7 +97,7 @@ export function ApiBasedExtensionSelector({
                 </button>
               </div>
               <div className="max-h-[250px] overflow-y-auto">
-                {apiBasedExtensions.map(item => (
+                {apiBasedExtensions.map((item) => (
                   <button
                     type="button"
                     key={item.id}
@@ -120,9 +105,7 @@ export function ApiBasedExtensionSelector({
                     onClick={() => handleSelect(item.id)}
                   >
                     <div className="text-sm text-text-primary">{item.name}</div>
-                    <div className="text-xs text-text-tertiary">
-                      {item.api_endpoint}
-                    </div>
+                    <div className="text-xs text-text-tertiary">{item.api_endpoint}</div>
                   </button>
                 ))}
               </div>
@@ -137,11 +120,8 @@ export function ApiBasedExtensionSelector({
                   setAddModalOpen(true)
                 }}
               >
-                <span
-                  className="mr-2 i-ri-add-line size-4"
-                  aria-hidden="true"
-                />
-                {t('operation.add', { ns: 'common' })}
+                <span className="mr-2 i-ri-add-line size-4" aria-hidden="true" />
+                {t(($) => $['operation.add'], { ns: 'common' })}
               </button>
             </div>
           </div>

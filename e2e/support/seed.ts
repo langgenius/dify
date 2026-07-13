@@ -66,8 +66,7 @@ export async function runSeedTasks(tasks: SeedTask[], context: SeedContext) {
   for (const task of tasks) {
     const result = await task.run(context)
     results.push(result)
-    if (result.resource)
-      context.resources.set(task.id, result.resource)
+    if (result.resource) context.resources.set(task.id, result.resource)
 
     const suffix = result.reason ? `: ${result.reason}` : ''
     console.warn(`[seed] ${result.status.padEnd(8)} ${result.title}${suffix}`)
@@ -81,11 +80,15 @@ export async function writeSeedReport(pack: string, results: SeedResult[]) {
   const reportPath = path.join(reportDir, `${pack}.json`)
   await writeFile(
     reportPath,
-    `${JSON.stringify({
-      generated_at: new Date().toISOString(),
-      pack,
-      results,
-    }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        generated_at: new Date().toISOString(),
+        pack,
+        results,
+      },
+      null,
+      2,
+    )}\n`,
     'utf8',
   )
 

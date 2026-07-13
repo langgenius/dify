@@ -1,10 +1,8 @@
 export function getUrlOrigin(url?: string) {
-  if (!url)
-    return undefined
+  if (!url) return undefined
   try {
     return new URL(url).origin
-  }
-  catch {
+  } catch {
     return url
   }
 }
