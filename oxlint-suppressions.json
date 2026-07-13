@@ -1321,11 +1321,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/features/new-feature-panel/annotation-reply/__tests__/config-param-modal.spec.tsx": {
-    "jsx_a11y/role-has-required-aria-props": {
-      "count": 1
-    }
-  },
   "web/app/components/base/features/new-feature-panel/annotation-reply/__tests__/index.spec.tsx": {
     "import/no-duplicates": {
       "count": 1
