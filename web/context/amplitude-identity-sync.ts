@@ -6,7 +6,7 @@ import { atom } from 'jotai'
 import { atomEffect } from 'jotai-effect'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
-import { userProfileAtom } from './account-state'
+import { userProfileOrNullAtom } from './account-state'
 import { currentWorkspaceAtom } from './workspace-state'
 
 type AmplitudeProperties = Record<string, string | number | boolean>
@@ -38,10 +38,10 @@ function buildAmplitudeProperties({
 }
 
 export const amplitudeIdentitySyncAtom = atomEffect((get, set) => {
-  const userProfile = get(userProfileAtom)
+  const userProfile = get(userProfileOrNullAtom)
   const currentWorkspace = get(currentWorkspaceAtom)
 
-  if (!userProfile.id) return
+  if (!userProfile?.id) return
 
   const properties = buildAmplitudeProperties({
     currentWorkspace,
