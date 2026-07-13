@@ -1,21 +1,19 @@
 import copy
 import logging
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import resolve_account_fallback
 from models import Account
-from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
-from models.enums import DatasetMetadataType
+from models.dataset import DatasetMetadata, DatasetMetadataBinding
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
-    MetadataOperationData,
 )
 
 logger = logging.getLogger(__name__)
