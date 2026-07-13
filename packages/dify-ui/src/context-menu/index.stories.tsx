@@ -35,7 +35,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound context menu built on Base UI ContextMenu. Open by right-clicking the trigger area.',
+        component:
+          'Compound context menu built on Base UI ContextMenu. Open by right-clicking the trigger area.',
       },
     },
   },
@@ -167,11 +168,20 @@ export const WithLinkItems: Story = {
         <ContextMenuLinkItem href="https://docs.dify.ai" rel="noopener noreferrer" target="_blank">
           Dify Docs
         </ContextMenuLinkItem>
-        <ContextMenuLinkItem href="https://roadmap.dify.ai" rel="noopener noreferrer" target="_blank">
+        <ContextMenuLinkItem
+          href="https://roadmap.dify.ai"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
           Product Roadmap
         </ContextMenuLinkItem>
         <ContextMenuSeparator />
-        <ContextMenuLinkItem variant="destructive" href="https://example.com/delete" rel="noopener noreferrer" target="_blank">
+        <ContextMenuLinkItem
+          variant="destructive"
+          href="https://example.com/delete"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
           Dangerous External Action
         </ContextMenuLinkItem>
       </ContextMenuContent>

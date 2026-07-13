@@ -6,7 +6,9 @@ from typing import Any
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
+from clients.agent_backend import AgentBackendSessionCleanupPayload
 from configs import dify_config
+from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
 from factories import variable_factory
@@ -22,6 +24,7 @@ from services.errors.conversation import (
     LastConversationNotExistsError,
 )
 from services.errors.message import MessageNotExistsError
+from tasks.agent_backend_session_cleanup_task import cleanup_conversation_agent_runtime_session
 from tasks.delete_conversation_task import delete_conversation_related_data
 
 logger = logging.getLogger(__name__)
@@ -186,10 +189,23 @@ class ConversationService:
         """
         Delete a conversation only if it belongs to the given user and app context.
 
+        Before removing the conversation row, this best-effort lifecycle path
+        enumerates any ACTIVE conversation-owned Agent backend runtime sessions,
+        enqueues asynchronous backend cleanup for rows with persisted runtime
+        layer specs, and then retires the local session rows even if enqueueing
+        fails. Conversation deletion and related-data cleanup scheduling still
+        proceed when that lifecycle bookkeeping only partially succeeds.
+
         Raises:
             ConversationNotExistsError: When the conversation is not visible to the current user.
         """
         conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
+        session_store = AgentAppRuntimeSessionStore()
+        stored_sessions = session_store.list_active_sessions_for_conversation(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            conversation_id=conversation.id,
+        )
 
         try:
             logger.info(
@@ -197,15 +213,66 @@ class ConversationService:
                 app_model.name,
                 conversation_id,
             )
+            for stored_session in stored_sessions:
+                try:
+                    if stored_session.runtime_layer_specs:
+                        payload = AgentBackendSessionCleanupPayload(
+                            session_snapshot=stored_session.session_snapshot,
+                            runtime_layer_specs=stored_session.runtime_layer_specs,
+                            idempotency_key=(
+                                f"{stored_session.scope.tenant_id}:{stored_session.scope.app_id}:"
+                                f"{stored_session.scope.conversation_id}:agent-runtime-session-cleanup:"
+                                f"{stored_session.scope.agent_id}:"
+                                f"{stored_session.scope.agent_config_snapshot_id or 'no-config'}:"
+                                f"{stored_session.backend_run_id or 'no-run'}"
+                            ),
+                            metadata={
+                                "tenant_id": stored_session.scope.tenant_id,
+                                "app_id": stored_session.scope.app_id,
+                                "conversation_id": stored_session.scope.conversation_id,
+                                "agent_id": stored_session.scope.agent_id,
+                                "agent_config_snapshot_id": stored_session.scope.agent_config_snapshot_id,
+                                "previous_agent_backend_run_id": stored_session.backend_run_id,
+                            },
+                        )
+                        cleanup_conversation_agent_runtime_session.delay(payload.model_dump(mode="json"))
+                except Exception:
+                    logger.warning(
+                        "Failed to enqueue Agent backend cleanup for conversation deletion: "
+                        "tenant_id=%s app_id=%s conversation_id=%s agent_id=%s backend_run_id=%s",
+                        stored_session.scope.tenant_id,
+                        stored_session.scope.app_id,
+                        stored_session.scope.conversation_id,
+                        stored_session.scope.agent_id,
+                        stored_session.backend_run_id,
+                        exc_info=True,
+                    )
+                finally:
+                    try:
+                        session_store.mark_cleaned(
+                            scope=stored_session.scope,
+                            backend_run_id=stored_session.backend_run_id,
+                        )
+                    except Exception:
+                        logger.warning(
+                            "Failed to retire Agent App runtime session for conversation deletion: "
+                            "tenant_id=%s app_id=%s conversation_id=%s agent_id=%s backend_run_id=%s",
+                            stored_session.scope.tenant_id,
+                            stored_session.scope.app_id,
+                            stored_session.scope.conversation_id,
+                            stored_session.scope.agent_id,
+                            stored_session.backend_run_id,
+                            exc_info=True,
+                        )
 
             session.delete(conversation)
             session.commit()
 
             delete_conversation_related_data.delay(conversation.id)
 
-        except Exception as e:
+        except Exception:
             session.rollback()
-            raise e
+            raise
 
     @classmethod
     def get_conversational_variable(

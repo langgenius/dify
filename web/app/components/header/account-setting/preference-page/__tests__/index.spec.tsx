@@ -41,20 +41,33 @@ vi.mock('@langgenius/dify-ui/select', async () => {
           <button type="button" disabled={context.disabled}>
             {children}
           </button>
-          <button data-testid="select-empty" type="button" onClick={() => context.onValueChange?.('')}>
+          <button
+            data-testid="select-empty"
+            type="button"
+            onClick={() => context.onValueChange?.('')}
+          >
             empty value
           </button>
-          <button data-testid="select-invalid" type="button" onClick={() => context.onValueChange?.('__missing__')}>
+          <button
+            data-testid="select-invalid"
+            type="button"
+            onClick={() => context.onValueChange?.('__missing__')}
+          >
             invalid value
           </button>
         </div>
       )
     },
     SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
+    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
       const context = React.useContext(SelectContext)
       return (
-        <button type="button" role="option" aria-selected={false} onClick={() => context.onValueChange?.(value)}>
+        <button
+          type="button"
+          role="option"
+          aria-selected={false}
+          onClick={() => context.onValueChange?.(value)}
+        >
           {children}
         </button>
       )
@@ -68,14 +81,35 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     userProfile: mockUserProfile,
-    mutateUserProfile: mockMutateUserProfile,
-  }),
-}))
-
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+    refreshUserProfile: mockMutateUserProfile,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
+    refreshUserProfile: mockMutateUserProfile,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
+    refreshUserProfile: mockMutateUserProfile,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: mockUserProfile,
+    refreshUserProfile: mockMutateUserProfile,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => ({
     userProfile: mockUserProfile,
@@ -84,7 +118,8 @@ vi.mock('@/context/app-context-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -102,7 +137,9 @@ vi.mock('@/i18n-config', () => ({
 
 const updateUserProfileMock = vi.mocked(updateUserProfile)
 
-const createUserProfile = (overrides: Partial<GetAccountProfileResponse> = {}): GetAccountProfileResponse => ({
+const createUserProfile = (
+  overrides: Partial<GetAccountProfileResponse> = {},
+): GetAccountProfileResponse => ({
   id: 'user-id',
   name: 'Test User',
   email: 'test@example.com',
@@ -126,8 +163,7 @@ const renderPage = () => {
 const getSectionByLabel = (sectionLabel: string) => {
   const label = screen.getByText(sectionLabel)
   const section = label.closest('div')?.parentElement
-  if (!section)
-    throw new Error(`Missing select section: ${sectionLabel}`)
+  if (!section) throw new Error(`Missing select section: ${sectionLabel}`)
   return section
 }
 
@@ -142,16 +178,14 @@ const selectOption = async (sectionLabel: string, optionName: string) => {
 }
 
 const getLanguageOption = (value: string) => {
-  const option = languages.find(item => item.value === value)
-  if (!option)
-    throw new Error(`Missing language option: ${value}`)
+  const option = languages.find((item) => item.value === value)
+  if (!option) throw new Error(`Missing language option: ${value}`)
   return option
 }
 
 const getTimezoneOption = (value: string) => {
-  const option = timezones.find(item => item.value === value)
-  if (!option)
-    throw new Error(`Missing timezone option: ${value}`)
+  const option = timezones.find((item) => item.value === value)
+  if (!option) throw new Error(`Missing timezone option: ${value}`)
   return option
 }
 

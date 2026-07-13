@@ -4,7 +4,10 @@ import type { DatasetConfigs } from '@/models/debug'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useContext } from 'use-context-selector'
-import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import {
+  ComparisonOperator,
+  LogicalOperator,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { DatasetPermission, DataSourceType } from '@/models/datasets'
 import { AppModeEnum, ModelModeType, RETRIEVE_TYPE } from '@/types/app'
@@ -37,16 +40,39 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   })),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((fn: any) => fn({
-    userProfile: {
-      id: 'user-123',
-    },
-    workspacePermissionKeys: [],
-  })),
-}))
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-123' },
+    workspacePermissionKeys: [],
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-123' },
+    workspacePermissionKeys: [],
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-123' },
+    workspacePermissionKeys: [],
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-123' },
+    workspacePermissionKeys: [],
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateAtomMock(importOriginal, () => ({
@@ -56,7 +82,8 @@ vi.mock('@/context/app-context-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateJotaiMock(importOriginal)
 })
@@ -90,19 +117,15 @@ vi.mock('es-toolkit/compat', () => ({
   intersectionBy: vi.fn((...arrays) => {
     // Mock realistic intersection behavior based on metadata name
     const validArrays = arrays.filter(Array.isArray)
-    if (validArrays.length === 0)
-      return []
+    if (validArrays.length === 0) return []
 
     // Start with first array and filter down
     return validArrays[0]!.filter((item: any) => {
-      if (!item || !item.name)
-        return false
+      if (!item || !item.name) return false
 
       // Only return items that exist in all arrays
-      return validArrays.every(array =>
-        array.some((otherItem: any) =>
-          otherItem && otherItem.name === item.name,
-        ),
+      return validArrays.every((array) =>
+        array.some((otherItem: any) => otherItem && otherItem.name === item.name),
       )
     })
   }),
@@ -126,67 +149,73 @@ vi.mock('../card-item', () => ({
 vi.mock('../params-config', () => ({
   default: ({ disabled, selectedDatasets }: any) => (
     <button data-testid="params-config" disabled={disabled}>
-      Params (
-      {selectedDatasets.length}
-      )
+      Params ({selectedDatasets.length})
     </button>
   ),
 }))
 
 vi.mock('../context-var', () => ({
   default: ({ value, options, onChange }: any) => (
-    <select data-testid="context-var" value={value} onChange={e => onChange(e.target.value)}>
+    <select data-testid="context-var" value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">Select context variable</option>
       {options.map((opt: any) => (
-        <option key={opt.value} value={opt.value}>{opt.name}</option>
+        <option key={opt.value} value={opt.value}>
+          {opt.name}
+        </option>
       ))}
     </select>
   ),
 }))
 
-vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter', () => ({
-  default: ({
-    metadataList,
-    metadataFilterMode,
-    handleMetadataFilterModeChange,
-    handleAddCondition,
-    handleRemoveCondition,
-    handleUpdateCondition,
-    handleToggleConditionLogicalOperator,
-    handleMetadataModelChange,
-    handleMetadataCompletionParamsChange,
-  }: any) => (
-    <div data-testid="metadata-filter">
-      <span data-testid="metadata-list-count">{metadataList.length}</span>
-      <select value={metadataFilterMode} onChange={e => handleMetadataFilterModeChange(e.target.value)}>
-        <option value="disabled">Disabled</option>
-        <option value="automatic">Automatic</option>
-        <option value="manual">Manual</option>
-      </select>
-      <button onClick={() => handleAddCondition({ name: 'test', type: 'string' })}>
-        Add Condition
-      </button>
-      <button onClick={() => handleAddCondition({ id: 'priority', name: 'priority', type: 'number' })}>
-        Add Number Condition
-      </button>
-      <button onClick={() => handleRemoveCondition('condition-id')}>
-        Remove Condition
-      </button>
-      <button onClick={() => handleUpdateCondition('condition-id', { name: 'updated' })}>
-        Update Condition
-      </button>
-      <button onClick={handleToggleConditionLogicalOperator}>
-        Toggle Operator
-      </button>
-      <button onClick={() => handleMetadataModelChange({ provider: 'openai', modelId: 'gpt-4o-mini' })}>
-        Change Metadata Model
-      </button>
-      <button onClick={() => handleMetadataCompletionParamsChange({ temperature: 0.3 })}>
-        Change Metadata Params
-      </button>
-    </div>
-  ),
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter',
+  () => ({
+    default: ({
+      metadataList,
+      metadataFilterMode,
+      handleMetadataFilterModeChange,
+      handleAddCondition,
+      handleRemoveCondition,
+      handleUpdateCondition,
+      handleToggleConditionLogicalOperator,
+      handleMetadataModelChange,
+      handleMetadataCompletionParamsChange,
+    }: any) => (
+      <div data-testid="metadata-filter">
+        <span data-testid="metadata-list-count">{metadataList.length}</span>
+        <select
+          value={metadataFilterMode}
+          onChange={(e) => handleMetadataFilterModeChange(e.target.value)}
+        >
+          <option value="disabled">Disabled</option>
+          <option value="automatic">Automatic</option>
+          <option value="manual">Manual</option>
+        </select>
+        <button onClick={() => handleAddCondition({ name: 'test', type: 'string' })}>
+          Add Condition
+        </button>
+        <button
+          onClick={() => handleAddCondition({ id: 'priority', name: 'priority', type: 'number' })}
+        >
+          Add Number Condition
+        </button>
+        <button onClick={() => handleRemoveCondition('condition-id')}>Remove Condition</button>
+        <button onClick={() => handleUpdateCondition('condition-id', { name: 'updated' })}>
+          Update Condition
+        </button>
+        <button onClick={handleToggleConditionLogicalOperator}>Toggle Operator</button>
+        <button
+          onClick={() => handleMetadataModelChange({ provider: 'openai', modelId: 'gpt-4o-mini' })}
+        >
+          Change Metadata Model
+        </button>
+        <button onClick={() => handleMetadataCompletionParamsChange({ temperature: 0.3 })}>
+          Change Metadata Params
+        </button>
+      </div>
+    ),
+  }),
+)
 
 // Mock context
 const mockConfigContext: any = {
@@ -239,11 +268,7 @@ const mockConfigContext: any = {
 }
 
 vi.mock('@/context/debug-configuration', () => ({
-  default: ({ children }: any) => (
-    <div data-testid="config-context-provider">
-      {children}
-    </div>
-  ),
+  default: ({ children }: any) => <div data-testid="config-context-provider">{children}</div>,
 }))
 
 vi.mock('use-context-selector', () => ({
@@ -511,10 +536,13 @@ describe('DatasetConfig', () => {
 
       expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
       expect(screen.queryByText('Edit')).not.toBeInTheDocument()
-      expect(getDatasetACLCapabilities).toHaveBeenCalledWith(dataset.permission_keys, expect.objectContaining({
-        currentUserId: 'user-123',
-        resourceMaintainer: dataset.maintainer,
-      }))
+      expect(getDatasetACLCapabilities).toHaveBeenCalledWith(
+        dataset.permission_keys,
+        expect.objectContaining({
+          currentUserId: 'user-123',
+          resourceMaintainer: dataset.maintainer,
+        }),
+      )
     })
   })
 
@@ -664,12 +692,14 @@ describe('DatasetConfig', () => {
           ...mockConfigContext.datasetConfigs,
           metadata_filtering_conditions: {
             logical_operator: LogicalOperator.and,
-            conditions: [{
-              id: 'condition-id',
-              metadata_id: 'category',
-              name: 'category',
-              comparison_operator: ComparisonOperator.is,
-            }],
+            conditions: [
+              {
+                id: 'condition-id',
+                metadata_id: 'category',
+                name: 'category',
+                comparison_operator: ComparisonOperator.is,
+              },
+            ],
           },
         },
         datasetConfigsRef: {
@@ -677,18 +707,22 @@ describe('DatasetConfig', () => {
             ...mockConfigContext.datasetConfigsRef.current,
             metadata_filtering_conditions: {
               logical_operator: LogicalOperator.and,
-              conditions: [{
-                id: 'condition-id',
-                metadata_id: 'category',
-                name: 'category',
-                comparison_operator: ComparisonOperator.is,
-              }],
+              conditions: [
+                {
+                  id: 'condition-id',
+                  metadata_id: 'category',
+                  name: 'category',
+                  comparison_operator: ComparisonOperator.is,
+                },
+              ],
             },
           },
         },
       })
 
-      await userEvent.click(within(screen.getByTestId('metadata-filter')).getByText('Add Number Condition'))
+      await userEvent.click(
+        within(screen.getByTestId('metadata-filter')).getByText('Add Number Condition'),
+      )
 
       expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -726,7 +760,9 @@ describe('DatasetConfig', () => {
       // Update ref to match datasetConfigs
       mockConfigContext.datasetConfigsRef.current = datasetConfigsWithConditions
 
-      const removeButton = within(screen.getByTestId('metadata-filter')).getByText('Remove Condition')
+      const removeButton = within(screen.getByTestId('metadata-filter')).getByText(
+        'Remove Condition',
+      )
       await user.click(removeButton)
 
       expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
@@ -759,7 +795,9 @@ describe('DatasetConfig', () => {
 
       mockConfigContext.datasetConfigsRef.current = datasetConfigsWithConditions
 
-      const updateButton = within(screen.getByTestId('metadata-filter')).getByText('Update Condition')
+      const updateButton = within(screen.getByTestId('metadata-filter')).getByText(
+        'Update Condition',
+      )
       await user.click(updateButton)
 
       expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
@@ -796,7 +834,9 @@ describe('DatasetConfig', () => {
 
       mockConfigContext.datasetConfigsRef.current = datasetConfigsWithConditions
 
-      const toggleButton = within(screen.getByTestId('metadata-filter')).getByText('Toggle Operator')
+      const toggleButton = within(screen.getByTestId('metadata-filter')).getByText(
+        'Toggle Operator',
+      )
       await user.click(toggleButton)
 
       expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
@@ -902,10 +942,7 @@ describe('DatasetConfig', () => {
     })
 
     it('should integrate with params config component', () => {
-      const datasets = [
-        createMockDataset(),
-        createMockDataset({ id: 'ds2' }),
-      ]
+      const datasets = [createMockDataset(), createMockDataset({ id: 'ds2' })]
 
       renderDatasetConfig({
         dataSets: datasets,
@@ -968,14 +1005,16 @@ describe('DatasetConfig', () => {
 
       fireEvent.click(within(metadataFilter).getByText('Change Metadata Model'))
 
-      expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(expect.objectContaining({
-        metadata_model_config: {
-          provider: 'openai',
-          name: 'gpt-4o-mini',
-          mode: AppModeEnum.CHAT,
-          completion_params: { temperature: 0.7 },
-        },
-      }))
+      expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata_model_config: {
+            provider: 'openai',
+            name: 'gpt-4o-mini',
+            mode: AppModeEnum.CHAT,
+            completion_params: { temperature: 0.7 },
+          },
+        }),
+      )
     })
 
     it('should handle metadata completion params change', () => {
@@ -999,11 +1038,13 @@ describe('DatasetConfig', () => {
 
       fireEvent.click(within(metadataFilter).getByText('Change Metadata Params'))
 
-      expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(expect.objectContaining({
-        metadata_model_config: {
-          completion_params: { temperature: 0.3 },
-        },
-      }))
+      expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata_model_config: {
+            completion_params: { temperature: 0.3 },
+          },
+        }),
+      )
     })
   })
 
@@ -1116,7 +1157,8 @@ describe('DatasetConfig', () => {
             { name: 'category', type: 'string' } as any,
             { name: 'priority', type: 'number' } as any,
           ],
-        }))
+        }),
+      )
 
       renderDatasetConfig({
         dataSets: manyDatasets,

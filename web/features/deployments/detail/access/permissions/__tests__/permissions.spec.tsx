@@ -1,4 +1,8 @@
-import type { AccessPolicy, Environment, EnvironmentAccessPolicy } from '@dify/contracts/enterprise/types.gen'
+import type {
+  AccessPolicy,
+  Environment,
+  EnvironmentAccessPolicy,
+} from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
 import { AccessMode, AccessSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -65,11 +69,7 @@ vi.mock('@/service/client', () => ({
 }))
 
 function renderWithAtomStore(children: ReactNode) {
-  return render(
-    <JotaiProvider store={createStore()}>
-      {children}
-    </JotaiProvider>,
-  )
+  return render(<JotaiProvider store={createStore()}>{children}</JotaiProvider>)
 }
 
 function createEnvironment(overrides: Partial<Environment> = {}): Environment {
@@ -121,8 +121,7 @@ describe('EnvironmentPermissionRow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseAtomValue.mockImplementation((atom) => {
-      if (atom === deploymentRouteAppInstanceIdAtom)
-        return 'app-instance-1'
+      if (atom === deploymentRouteAppInstanceIdAtom) return 'app-instance-1'
       return undefined
     })
     mockMutate.mockImplementation((_variables: unknown, options?: { onError?: () => void }) => {
@@ -138,8 +137,12 @@ describe('EnvironmentPermissionRow', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }))
-    fireEvent.click(screen.getByRole('radio', { name: 'app.accessControlDialog.accessItems.anyone' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'app.accessControlDialog.accessItems.anyone' }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockMutate).toHaveBeenCalled()
@@ -158,8 +161,12 @@ describe('EnvironmentPermissionRow', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }))
-    fireEvent.click(screen.getByRole('radio', { name: 'app.accessControlDialog.accessItems.anyone' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'app.accessControlDialog.accessItems.anyone' }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockMutate).toHaveBeenCalledWith(
@@ -195,7 +202,9 @@ describe('EnvironmentPermissionRow', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockMutate).toHaveBeenCalledWith(
@@ -235,7 +244,9 @@ describe('EnvironmentPermissionRow', () => {
       />,
     )
 
-    const editButton = screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ })
+    const editButton = screen.getByRole('button', {
+      name: /deployments\.access\.permissions\.editAriaLabel/,
+    })
 
     expect(editButton).toHaveTextContent('deployments.access.permission.specific')
     expect(editButton).toHaveTextContent('deployments.access.members.groupCount:{"count":1}')
@@ -248,17 +259,14 @@ describe('AccessPermissionsSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseAtomValue.mockImplementation((atom) => {
-      if (atom === deploymentRouteAppInstanceIdAtom)
-        return 'app-instance-1'
+      if (atom === deploymentRouteAppInstanceIdAtom) return 'app-instance-1'
       if (atom === accessSettingsAtom) {
         return {
           environmentPolicies: [createEnvironmentAccessPolicy()],
         }
       }
-      if (atom === accessSettingsIsLoadingAtom)
-        return false
-      if (atom === accessSettingsIsErrorAtom)
-        return false
+      if (atom === accessSettingsIsLoadingAtom) return false
+      if (atom === accessSettingsIsErrorAtom) return false
       return undefined
     })
   })
@@ -267,7 +275,11 @@ describe('AccessPermissionsSection', () => {
     renderWithAtomStore(<AccessPermissionsSection />)
 
     expect(screen.getByText('Production')).toBeInTheDocument()
-    expect(screen.queryByText('deployments.access.permissions.col.environment')).not.toBeInTheDocument()
-    expect(screen.queryByText('deployments.access.permissions.col.permission')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('deployments.access.permissions.col.environment'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('deployments.access.permissions.col.permission'),
+    ).not.toBeInTheDocument()
   })
 })

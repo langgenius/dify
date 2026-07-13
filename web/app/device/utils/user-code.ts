@@ -17,13 +17,10 @@ const USER_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXY3456789' // excludes 0 O 1 I 
 export function normaliseUserCodeInput(raw: string): string {
   const cleaned: string[] = []
   for (const ch of raw.toUpperCase()) {
-    if (USER_CODE_ALPHABET.includes(ch))
-      cleaned.push(ch)
-    if (cleaned.length === 8)
-      break
+    if (USER_CODE_ALPHABET.includes(ch)) cleaned.push(ch)
+    if (cleaned.length === 8) break
   }
-  if (cleaned.length <= 4)
-    return cleaned.join('')
+  if (cleaned.length <= 4) return cleaned.join('')
   return `${cleaned.slice(0, 4).join('')}-${cleaned.slice(4).join('')}`
 }
 
@@ -32,6 +29,8 @@ export function normaliseUserCodeInput(raw: string): string {
  * token suitable for submission to /openapi/v1/oauth/device/lookup.
  */
 export function isValidUserCode(normalised: string): boolean {
-  return /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(normalised)
-    && [...normalised.replace('-', '')].every(c => USER_CODE_ALPHABET.includes(c))
+  return (
+    /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(normalised) &&
+    [...normalised.replace('-', '')].every((c) => USER_CODE_ALPHABET.includes(c))
+  )
 }

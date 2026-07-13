@@ -148,6 +148,7 @@
   "maxActiveRequestsTip": "앱당 최대 동시 활성 요청 수(무제한은 0)",
   "mermaid.classic": "클래식",
   "mermaid.handDrawn": "손그림",
+  "mermaid.waitForCompletion": "다이어그램 코드가 완성되기를 기다리는 중...",
   "newApp.Cancel": "취소",
   "newApp.Confirm": "확인",
   "newApp.Create": "만들기",

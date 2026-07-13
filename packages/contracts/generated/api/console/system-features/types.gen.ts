@@ -70,11 +70,11 @@ export type LicenseLimitationModel = {
   size: number
 }
 
-export type PluginInstallationScope
-  = | 'all'
-    | 'none'
-    | 'official_and_specific_partners'
-    | 'official_only'
+export type PluginInstallationScope =
+  | 'all'
+  | 'none'
+  | 'official_and_specific_partners'
+  | 'official_only'
 
 export type WebAppAuthSsoModel = {
   protocol: string

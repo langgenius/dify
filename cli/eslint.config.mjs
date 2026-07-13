@@ -6,13 +6,31 @@ import markdownPreferences from 'eslint-plugin-markdown-preferences'
 
 export default antfu(
   {
-    ignores: original => [
-      'context/**',
-      'docs/**',
-      'dist/**',
-      'coverage/**',
-      ...original,
-    ],
+    stylistic: false,
+    perfectionist: {
+      overrides: {
+        'perfectionist/sort-imports': 'off',
+      },
+    },
+    jsonc: {
+      overrides: {
+        'jsonc/space-unary-ops': 'off',
+      },
+    },
+    yaml: {
+      overrides: {
+        'yaml/block-mapping': 'off',
+        'yaml/block-sequence': 'off',
+        'yaml/plain-scalar': 'off',
+      },
+    },
+    toml: {
+      overrides: {
+        'toml/comma-style': 'off',
+        'toml/no-space-dots': 'off',
+      },
+    },
+    ignores: (original) => ['context/**', 'docs/**', 'dist/**', 'coverage/**', ...original],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
@@ -26,36 +44,30 @@ export default antfu(
         'test/prefer-lowercase-title': 'off',
       },
     },
-    stylistic: {
-      overrides: {
-        'antfu/top-level-function': 'off',
-      },
-    },
     e18e: false,
   },
-  markdownPreferences.configs.standard,
   {
     files: [GLOB_MARKDOWN],
-    plugins: { md },
+    plugins: {
+      md,
+      'markdown-preferences': markdownPreferences,
+    },
     rules: {
       'md/no-url-trailing-slash': 'error',
+      'markdown-preferences/definitions-last': 'error',
       'markdown-preferences/prefer-link-reference-definitions': [
         'error',
         {
           minLinks: 1,
         },
       ],
-      'markdown-preferences/ordered-list-marker-sequence': [
-        'error',
-        { increment: 'never' },
-      ],
-      'markdown-preferences/definitions-last': 'error',
       'markdown-preferences/sort-definitions': 'error',
     },
   },
   {
     rules: {
       'node/prefer-global/process': 'off',
+      'unicorn/number-literal-case': 'off',
     },
   },
   {
@@ -67,14 +79,22 @@ export default antfu(
   {
     files: ['src/**/*.ts'],
     rules: {
-      'no-restricted-imports': ['error', {
-        patterns: [
-          {
-            group: ['../**', './*/**', '..'],
-            message: 'Use the @/ (or @test/) alias for parent-directory or nested relative imports; keep ./ only for same-folder siblings.',
-          },
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../**', './*/**', '..'],
+              message:
+                'Use the @/ (or @test/) alias for parent-directory or nested relative imports; keep ./ only for same-folder siblings.',
+            },
+          ],
+        },
+      ],
     },
   },
-)
+).override('antfu/sort/package-json', {
+  rules: {
+    'jsonc/sort-keys': 'off',
+  },
+})

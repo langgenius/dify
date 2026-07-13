@@ -1,9 +1,8 @@
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ICurrentWorkspace } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import { useAppContext } from '@/context/app-context'
 import { updateWorkspaceInfo } from '@/service/common'
 import EditWorkspaceModal from '../index'
 
@@ -11,18 +10,35 @@ const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
 }))
 const mockAppContextState = vi.hoisted(() => ({
-  current: {} as Partial<AppContextValue>,
+  current: {} as Partial<AppContextStateMockState>,
 }))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
 const getSaveButton = () => screen.getByRole('button', { name: /operation\.(save|saving)/i })
 
-vi.mock('@/context/app-context')
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
 })
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 vi.mock('@/service/common')
@@ -48,20 +64,21 @@ describe('EditWorkspaceModal', () => {
     const appContextValue = {
       currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: true,
-    } as unknown as AppContextValue
+    } as unknown as AppContextStateMockState
     mockAppContextState.current = appContextValue
-    vi.mocked(useAppContext).mockReturnValue(appContextValue)
+    mockUseAppContext.mockReturnValue(appContextValue)
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  const renderModal = () => render(
-    <>
-      <EditWorkspaceModal onCancel={mockOnCancel} />
-    </>,
-  )
+  const renderModal = () =>
+    render(
+      <>
+        <EditWorkspaceModal onCancel={mockOnCancel} />
+      </>,
+    )
 
   it('should show current workspace name in the input', async () => {
     renderModal()
@@ -90,7 +107,11 @@ describe('EditWorkspaceModal', () => {
   it('should submit update when confirming as owner', async () => {
     const user = userEvent.setup()
     const mockAssign = vi.fn()
-    vi.stubGlobal('location', { ...window.location, assign: mockAssign, origin: 'http://localhost' })
+    vi.stubGlobal('location', {
+      ...window.location,
+      assign: mockAssign,
+      origin: 'http://localhost',
+    })
     vi.mocked(updateWorkspaceInfo).mockResolvedValue({} as ICurrentWorkspace)
 
     renderModal()
@@ -124,9 +145,11 @@ describe('EditWorkspaceModal', () => {
     await user.click(getSaveButton())
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-      }))
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+        }),
+      )
     })
   })
 
@@ -165,10 +188,10 @@ describe('EditWorkspaceModal', () => {
   })
 
   it('should disable confirm button for non-owners', async () => {
-    vi.mocked(useAppContext).mockReturnValue({
+    mockUseAppContext.mockReturnValue({
       currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
-    } as unknown as AppContextValue)
+    } as unknown as AppContextStateMockState)
 
     renderModal()
 

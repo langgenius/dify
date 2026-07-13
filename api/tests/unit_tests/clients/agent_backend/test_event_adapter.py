@@ -15,6 +15,7 @@ from dify_agent.protocol import (
 from pydantic_ai.messages import FinalResultEvent
 
 from clients.agent_backend import (
+    AgentBackendAgentMessageDeltaInternalEvent,
     AgentBackendDeferredToolCallInternalEvent,
     AgentBackendInternalEventType,
     AgentBackendRunCancelledInternalEvent,
@@ -52,6 +53,25 @@ def test_event_adapter_maps_pydantic_ai_stream_event():
     assert event.type == AgentBackendInternalEventType.STREAM_EVENT
     assert event.event_kind == "final_result"
     assert event.data["event_kind"] == "final_result"
+
+
+def test_event_adapter_maps_pydantic_ai_stream_event_agent_message_delta_annotation():
+    adapted = AgentBackendRunEventAdapter().adapt(
+        PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id="run-1",
+            data=FinalResultEvent(tool_name=None, tool_call_id=None),
+            agent_message_delta="hello",
+        )
+    )
+
+    assert adapted == [
+        AgentBackendAgentMessageDeltaInternalEvent(
+            run_id="run-1",
+            source_event_id="2-0",
+            delta="hello",
+        )
+    ]
 
 
 def test_event_adapter_maps_run_succeeded_to_final_output():

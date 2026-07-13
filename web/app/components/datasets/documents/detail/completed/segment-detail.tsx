@@ -1,11 +1,7 @@
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentDetailModel } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiCloseLine,
-  RiCollapseDiagonalLine,
-  RiExpandDiagonalLine,
-} from '@remixicon/react'
+import { RiCloseLine, RiCollapseDiagonalLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
@@ -50,36 +46,40 @@ export function SegmentDetail({
   docForm,
 }: ISegmentDetailProps) {
   const { t } = useTranslation()
-  const [question, setQuestion] = useState(isEditMode ? segInfo?.content || '' : segInfo?.sign_content || '')
+  const [question, setQuestion] = useState(
+    isEditMode ? segInfo?.content || '' : segInfo?.sign_content || '',
+  )
   const [answer, setAnswer] = useState(segInfo?.answer || '')
   const [summary, setSummary] = useState(segInfo?.summary || '')
   const [attachments, setAttachments] = useState<FileEntity[]>(() => {
-    return segInfo?.attachments?.map(item => ({
-      id: uuid4(),
-      name: item.name,
-      size: item.size,
-      mimeType: item.mime_type,
-      extension: item.extension,
-      sourceUrl: item.source_url,
-      uploadedId: item.id,
-      progress: 100,
-    })) || []
+    return (
+      segInfo?.attachments?.map((item) => ({
+        id: uuid4(),
+        name: item.name,
+        size: item.size,
+        mimeType: item.mime_type,
+        extension: item.extension,
+        sourceUrl: item.source_url,
+        uploadedId: item.id,
+        progress: 100,
+      })) || []
+    )
   })
   const [keywords, setKeywords] = useState<string[]>(segInfo?.keywords || [])
   const { eventEmitter } = useEventEmitterContextContext()
   const [loading, setLoading] = useState(false)
   const [showRegenerationModal, setShowRegenerationModal] = useState(false)
-  const fullScreen = useSegmentListContext(s => s.fullScreen)
-  const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
-  const parentMode = useDocumentContext(s => s.parentMode)
-  const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
-  const runtimeMode = useDatasetDetailContextWithSelector(s => s.dataset?.runtime_mode)
+  const fullScreen = useSegmentListContext((s) => s.fullScreen)
+  const toggleFullScreen = useSegmentListContext((s) => s.toggleFullScreen)
+  const parentMode = useDocumentContext((s) => s.parentMode)
+  const indexingTechnique = useDatasetDetailContextWithSelector(
+    (s) => s.dataset?.indexing_technique,
+  )
+  const runtimeMode = useDatasetDetailContextWithSelector((s) => s.dataset?.runtime_mode)
 
   eventEmitter?.useSubscription((v) => {
-    if (v === 'update-segment')
-      setLoading(true)
-    if (v === 'update-segment-done')
-      setLoading(false)
+    if (v === 'update-segment') setLoading(true)
+    if (v === 'update-segment-done') setLoading(false)
   })
 
   const handleCancel = useCallback(() => {
@@ -112,28 +112,39 @@ export function SegmentDetail({
   }, [])
 
   const wordCountText = useMemo(() => {
-    const contentLength = docForm === ChunkingMode.qa ? (question.length + answer.length) : question.length
-    const total = formatNumber(isEditMode ? contentLength : segInfo!.word_count as number)
-    const count = isEditMode ? contentLength : segInfo!.word_count as number
-    return `${total} ${t('segment.characters', { ns: 'datasetDocuments', count })}`
+    const contentLength =
+      docForm === ChunkingMode.qa ? question.length + answer.length : question.length
+    const total = formatNumber(isEditMode ? contentLength : (segInfo!.word_count as number))
+    const count = isEditMode ? contentLength : (segInfo!.word_count as number)
+    return `${total} ${t(($) => $['segment.characters'], { ns: 'datasetDocuments', count })}`
   }, [isEditMode, question.length, answer.length, docForm, segInfo, t])
 
   const isFullDocMode = docForm === ChunkingMode.parentChild && parentMode === 'full-doc'
-  const titleText = isEditMode ? t('segment.editChunk', { ns: 'datasetDocuments' }) : t('segment.chunkDetail', { ns: 'datasetDocuments' })
-  const labelPrefix = docForm === ChunkingMode.parentChild ? t('segment.parentChunk', { ns: 'datasetDocuments' }) : t('segment.chunk', { ns: 'datasetDocuments' })
+  const titleText = isEditMode
+    ? t(($) => $['segment.editChunk'], { ns: 'datasetDocuments' })
+    : t(($) => $['segment.chunkDetail'], { ns: 'datasetDocuments' })
+  const labelPrefix =
+    docForm === ChunkingMode.parentChild
+      ? t(($) => $['segment.parentChunk'], { ns: 'datasetDocuments' })
+      : t(($) => $['segment.chunk'], { ns: 'datasetDocuments' })
   const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
 
   return (
     <div className="flex h-full flex-col">
-      <div className={cn(
-        'flex shrink-0 items-center justify-between',
-        fullScreen ? 'border border-divider-subtle py-3 pr-4 pl-6' : 'pt-3 pr-3 pl-4',
-      )}
+      <div
+        className={cn(
+          'flex shrink-0 items-center justify-between',
+          fullScreen ? 'border border-divider-subtle py-3 pr-4 pl-6' : 'pt-3 pr-3 pl-4',
+        )}
       >
         <div className="flex flex-col">
           <div className="system-xl-semibold text-text-primary">{titleText}</div>
           <div className="flex items-center gap-x-2">
-            <SegmentIndexTag positionId={segInfo?.position || ''} label={isFullDocMode ? labelPrefix : ''} labelPrefix={labelPrefix} />
+            <SegmentIndexTag
+              positionId={segInfo?.position || ''}
+              label={isFullDocMode ? labelPrefix : ''}
+              labelPrefix={labelPrefix}
+            />
             <Dot />
             <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
           </div>
@@ -153,19 +164,21 @@ export function SegmentDetail({
           )}
           <button
             type="button"
-            aria-label={t(fullScreen ? 'operation.zoomOut' : 'operation.zoomIn', { ns: 'common' })}
+            aria-label={t(($) => $[fullScreen ? 'operation.zoomOut' : 'operation.zoomIn'], {
+              ns: 'common',
+            })}
             className="mr-1 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={toggleFullScreen}
           >
-            {
-              fullScreen
-                ? <RiCollapseDiagonalLine className="size-4 text-text-tertiary" aria-hidden="true" />
-                : <RiExpandDiagonalLine className="size-4 text-text-tertiary" aria-hidden="true" />
-            }
+            {fullScreen ? (
+              <RiCollapseDiagonalLine className="size-4 text-text-tertiary" aria-hidden="true" />
+            ) : (
+              <RiExpandDiagonalLine className="size-4 text-text-tertiary" aria-hidden="true" />
+            )}
           </button>
           <button
             type="button"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             className="flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={onCancel}
           >
@@ -173,28 +186,37 @@ export function SegmentDetail({
           </button>
         </div>
       </div>
-      <div className={cn(
-        'flex h-0 grow',
-        fullScreen ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6' : 'flex-col gap-y-1 px-4 py-3',
-        !isEditMode && 'pb-0',
-      )}
-      >
-        <div className={cn(
-          isEditMode ? 'overflow-hidden break-all whitespace-pre-line' : 'overflow-y-auto',
-          fullScreen ? 'w-1/2' : 'h-0 grow',
+      <div
+        className={cn(
+          'flex h-0 grow',
+          fullScreen
+            ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6'
+            : 'flex-col gap-y-1 px-4 py-3',
+          !isEditMode && 'pb-0',
         )}
+      >
+        <div
+          className={cn(
+            isEditMode ? 'overflow-hidden break-all whitespace-pre-line' : 'overflow-y-auto',
+            fullScreen ? 'w-1/2' : 'h-0 grow',
+          )}
         >
           <ChunkContent
             docForm={docForm}
             question={question}
             answer={answer}
-            onQuestionChange={question => setQuestion(question)}
-            onAnswerChange={answer => setAnswer(answer)}
+            onQuestionChange={(question) => setQuestion(question)}
+            onAnswerChange={(answer) => setAnswer(answer)}
             isEditMode={isEditMode}
           />
         </div>
 
-        <div className={cn('flex shrink-0 flex-col', fullScreen ? 'w-[320px] gap-y-2' : 'w-full gap-y-1')}>
+        <div
+          className={cn(
+            'flex shrink-0 flex-col',
+            fullScreen ? 'w-[320px] gap-y-2' : 'w-full gap-y-1',
+          )}
+        >
           <ImageUploaderInChunk
             disabled={!isEditMode}
             value={attachments}
@@ -202,7 +224,7 @@ export function SegmentDetail({
           />
           <SummaryText
             value={summary}
-            onChange={summary => setSummary(summary)}
+            onChange={(summary) => setSummary(summary)}
             disabled={!isEditMode}
           />
           {isECOIndexing && (
@@ -212,7 +234,7 @@ export function SegmentDetail({
               segInfo={segInfo}
               keywords={keywords}
               isEditMode={isEditMode}
-              onKeywordsChange={keywords => setKeywords(keywords)}
+              onKeywordsChange={(keywords) => setKeywords(keywords)}
             />
           )}
         </div>
@@ -228,16 +250,14 @@ export function SegmentDetail({
           />
         </div>
       )}
-      {
-        showRegenerationModal && (
-          <RegenerationModal
-            isShow={showRegenerationModal}
-            onConfirm={onConfirmRegeneration}
-            onCancel={onCancelRegeneration}
-            onClose={onCloseAfterRegeneration}
-          />
-        )
-      }
+      {showRegenerationModal && (
+        <RegenerationModal
+          isShow={showRegenerationModal}
+          onConfirm={onConfirmRegeneration}
+          onCancel={onCancelRegeneration}
+          onClose={onCloseAfterRegeneration}
+        />
+      )}
     </div>
   )
 }

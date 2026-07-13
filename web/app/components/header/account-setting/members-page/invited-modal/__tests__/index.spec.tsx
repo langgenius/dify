@@ -14,7 +14,11 @@ describe('InvitedModal', () => {
   const mockOnCancel = vi.fn()
   const results: InvitationResult[] = [
     { email: 'success@example.com', status: 'success', url: 'http://invite.com/1' },
-    { email: 'member@example.com', status: 'already_member', message: 'Account already in workspace.' },
+    {
+      email: 'member@example.com',
+      status: 'already_member',
+      message: 'Account already in workspace.',
+    },
     { email: 'failed@example.com', status: 'failed', message: 'Error msg' },
   ]
 
@@ -103,9 +107,7 @@ describe('InvitedModal (non-CE edition)', () => {
   })
 
   it('should show already-member details when IS_CE_EDITION is false', () => {
-    const results: InvitationResult[] = [
-      { email: 'member@example.com', status: 'already_member' },
-    ]
+    const results: InvitationResult[] = [{ email: 'member@example.com', status: 'already_member' }]
 
     render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
 

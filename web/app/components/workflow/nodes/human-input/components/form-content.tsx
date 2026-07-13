@@ -54,48 +54,40 @@ const FormContent: FC<FormContentProps> = ({
     value: string
     formInputs: FormInputItem[]
   } | null>(null)
-  const handleInsertHITLNode = useCallback((onInsert: ShortcutPopupInsertHandler) => {
-    return (payload: FormInputItem) => {
-      if (formInputs.some(input => input.output_variable_name === payload.output_variable_name))
-        return
+  const handleInsertHITLNode = useCallback(
+    (onInsert: ShortcutPopupInsertHandler) => {
+      return (payload: FormInputItem) => {
+        if (formInputs.some((input) => input.output_variable_name === payload.output_variable_name))
+          return
 
-      const newFormInputs = [...(formInputs || []), payload]
-      pendingFormInputsRef.current = {
-        value,
-        formInputs: newFormInputs,
+        const newFormInputs = [...(formInputs || []), payload]
+        pendingFormInputsRef.current = {
+          value,
+          formInputs: newFormInputs,
+        }
+        onInsert(INSERT_HITL_INPUT_BLOCK_COMMAND, {
+          variableName: payload.output_variable_name,
+          nodeId,
+          formInputs: newFormInputs,
+          onFormInputsChange,
+          onFormInputItemRename,
+          onFormInputItemRemove,
+        })
       }
-      onInsert(INSERT_HITL_INPUT_BLOCK_COMMAND, {
-        variableName: payload.output_variable_name,
-        nodeId,
-        formInputs: newFormInputs,
-        onFormInputsChange,
-        onFormInputItemRename,
-        onFormInputItemRemove,
-      })
-    }
-  }, [
-    formInputs,
-    nodeId,
-    onFormInputsChange,
-    onFormInputItemRemove,
-    onFormInputItemRename,
-    value,
-  ])
+    },
+    [formInputs, nodeId, onFormInputsChange, onFormInputItemRemove, onFormInputItemRename, value],
+  )
 
   // avoid update formInputs would overwrite the value just inserted
   useEffect(() => {
     const pendingFormInputs = pendingFormInputsRef.current
-    if (!pendingFormInputs || pendingFormInputs.value === value)
-      return
+    if (!pendingFormInputs || pendingFormInputs.value === value) return
 
     onFormInputsChange(pendingFormInputs.formInputs)
     pendingFormInputsRef.current = null
   }, [onFormInputsChange, value])
 
-  const [isFocus, {
-    setTrue: setFocus,
-    setFalse: setBlur,
-  }] = useBoolean(false)
+  const [isFocus, { setTrue: setFocus, setFalse: setBlur }] = useBoolean(false)
 
   const workflowNodesMap = availableNodes.reduce<WorkflowNodesMap>((acc, node) => {
     acc[node.id] = {
@@ -107,14 +99,14 @@ const FormContent: FC<FormContentProps> = ({
     }
     if (node.data.type === BlockEnum.Start) {
       acc.sys = {
-        title: t('blocks.start', { ns: 'workflow' }),
+        title: t(($) => $['blocks.start'], { ns: 'workflow' }),
         type: BlockEnum.Start,
       }
     }
     return acc
   }, {})
   const unavailableVariableNames = useMemo(() => {
-    return formInputs.map(input => input.output_variable_name)
+    return formInputs.map((input) => input.output_variable_name)
   }, [formInputs])
   const addInputFieldConfigRef = useRef({
     nodeId,
@@ -127,34 +119,35 @@ const FormContent: FC<FormContentProps> = ({
     handleInsertHITLNode,
   }
   const shortcutPopups = useMemo(() => {
-    if (readonly)
-      return []
+    if (readonly) return []
 
-    return [{
-      hotkey: ['mod', '/'],
-      displayMode: 'workflow-panel-adjacent-center' as const,
-      // Keep this component type stable while the popup is open; it reads fresh props from a ref.
-      // eslint-disable-next-line react/no-nested-component-definitions
-      Popup: ({ onClose, onInsert }: {
-        onClose: () => void
-        onInsert: ShortcutPopupInsertHandler
-      }) => {
-        const {
-          nodeId,
-          unavailableVariableNames,
-          handleInsertHITLNode,
-        } = addInputFieldConfigRef.current
+    return [
+      {
+        hotkey: ['mod', '/'],
+        displayMode: 'workflow-panel-adjacent-center' as const,
+        // Keep this component type stable while the popup is open; it reads fresh props from a ref.
+        // eslint-disable-next-line react/no-nested-component-definitions
+        Popup: ({
+          onClose,
+          onInsert,
+        }: {
+          onClose: () => void
+          onInsert: ShortcutPopupInsertHandler
+        }) => {
+          const { nodeId, unavailableVariableNames, handleInsertHITLNode } =
+            addInputFieldConfigRef.current
 
-        return (
-          <AddInputField
-            nodeId={nodeId}
-            unavailableVariableNames={unavailableVariableNames}
-            onSave={handleInsertHITLNode(onInsert)}
-            onCancel={onClose}
-          />
-        )
+          return (
+            <AddInputField
+              nodeId={nodeId}
+              unavailableVariableNames={unavailableVariableNames}
+              onSave={handleInsertHITLNode(onInsert)}
+              onCancel={onClose}
+            />
+          )
+        },
       },
-    }]
+    ]
   }, [readonly])
 
   return (
@@ -174,7 +167,7 @@ const FormContent: FC<FormContentProps> = ({
           className={cn('min-h-[80px]', isExpand && 'h-full')}
           onFocus={setFocus}
           onBlur={setBlur}
-          placeholder={t('nodes.humanInput.formContent.placeholder', { ns: 'workflow' })}
+          placeholder={t(($) => $['nodes.humanInput.formContent.placeholder'], { ns: 'workflow' })}
           hitlInputBlock={{
             show: true,
             formInputs,
@@ -200,14 +193,14 @@ const FormContent: FC<FormContentProps> = ({
       {isFocus && (
         <div className="flex h-8 shrink-0 items-center px-3 system-xs-regular text-components-input-text-placeholder">
           <Trans
-            i18nKey="nodes.humanInput.formContent.hotkeyTip"
+            i18nKey={($) => $['nodes.humanInput.formContent.hotkeyTip']}
             ns="workflow"
-            components={
-              {
-                Key: <Kbd className="mx-0.5 text-text-placeholder">/</Kbd>,
-                CtrlKey: <Kbd className="mx-0.5 text-text-placeholder">{formatForDisplay('Mod')}</Kbd>,
-              }
-            }
+            components={{
+              Key: <Kbd className="mx-0.5 text-text-placeholder">/</Kbd>,
+              CtrlKey: (
+                <Kbd className="mx-0.5 text-text-placeholder">{formatForDisplay('Mod')}</Kbd>
+              ),
+            }}
           />
         </div>
       )}

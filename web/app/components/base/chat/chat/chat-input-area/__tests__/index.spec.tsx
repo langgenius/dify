@@ -30,7 +30,9 @@ vi.mock('js-audio-recorder', () => ({
     stop = vi.fn()
     getWAVBlob = vi.fn().mockReturnValue(new Blob([''], { type: 'audio/wav' }))
     getRecordAnalyseData = vi.fn().mockReturnValue(new Uint8Array(128))
-    getChannelData = vi.fn().mockReturnValue({ left: new Float32Array(0), right: new Float32Array(0) })
+    getChannelData = vi
+      .fn()
+      .mockReturnValue({ left: new Float32Array(0), right: new Float32Array(0) })
     getWAV = vi.fn().mockReturnValue(new ArrayBuffer(0))
     destroy = vi.fn()
   },
@@ -82,7 +84,9 @@ vi.mock('@/app/components/base/voice-input', () => {
   }
 })
 
-vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => setTimeout(() => cb(Date.now()), 16))
+vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+  setTimeout(() => cb(Date.now()), 16),
+)
 vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id))
 vi.stubGlobal('devicePixelRatio', 1)
 
@@ -168,8 +172,7 @@ vi.mock('@/app/components/base/file-uploader/hooks', () => ({
 // ---------------------------------------------------------------------------
 
 vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (s: typeof mockFeaturesState) => unknown) =>
-    selector(mockFeaturesState),
+  useFeatures: (selector: (s: typeof mockFeaturesState) => unknown) => selector(mockFeaturesState),
 }))
 
 // ---------------------------------------------------------------------------
@@ -250,24 +253,24 @@ const mockVisionConfig: FileUpload = {
   },
 }
 
-const makeFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
-  id: 'file-1',
-  name: 'photo.png',
-  type: 'image/png',
-  size: 1024,
-  progress: 100,
-  transferMethod: TransferMethod.local_file,
-  uploadedId: 'uploaded-ok',
-  ...overrides,
-} as FileEntity)
+const makeFile = (overrides: Partial<FileEntity> = {}): FileEntity =>
+  ({
+    id: 'file-1',
+    name: 'photo.png',
+    type: 'image/png',
+    size: 1024,
+    progress: 100,
+    transferMethod: TransferMethod.local_file,
+    uploadedId: 'uploaded-ok',
+    ...overrides,
+  }) as FileEntity
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-const getTextarea = () => (
-  screen.queryByPlaceholderText(/inputPlaceholder/i)
-  || screen.queryByPlaceholderText(/inputDisabledPlaceholder/i)
-) as HTMLTextAreaElement | null
+const getTextarea = () =>
+  (screen.queryByPlaceholderText(/inputPlaceholder/i) ||
+    screen.queryByPlaceholderText(/inputDisabledPlaceholder/i)) as HTMLTextAreaElement | null
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -300,12 +303,20 @@ describe('ChatInputArea', () => {
     })
 
     it('should render the custom placeholder when provided', () => {
-      render(<ChatInputArea visionConfig={mockVisionConfig} customPlaceholder="Ask the assistant" />)
+      render(
+        <ChatInputArea visionConfig={mockVisionConfig} customPlaceholder="Ask the assistant" />,
+      )
       expect(screen.getByPlaceholderText('Ask the assistant')).toBeInTheDocument()
     })
 
     it('should fall back to the readonly placeholder when readonly has a custom placeholder', () => {
-      render(<ChatInputArea visionConfig={mockVisionConfig} customPlaceholder="Ask the assistant" readonly />)
+      render(
+        <ChatInputArea
+          visionConfig={mockVisionConfig}
+          customPlaceholder="Ask the assistant"
+          readonly
+        />,
+      )
       expect(screen.getByPlaceholderText(/inputDisabledPlaceholder/i)).toBeInTheDocument()
     })
 
@@ -338,7 +349,9 @@ describe('ChatInputArea', () => {
     it('should render a custom send button label when provided', () => {
       render(<ChatInputArea visionConfig={mockVisionConfig} sendButtonLabel="Start build" />)
       expect(screen.getByRole('button', { name: 'Start build' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'common.operation.send' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.send' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render the send button loading state when provided', async () => {
@@ -420,7 +433,11 @@ describe('ChatInputArea', () => {
       const textarea = getTextarea()!
 
       await user.type(textarea, 'Hello world')
-      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', nativeEvent: { isComposing: false } })
+      fireEvent.keyDown(textarea, {
+        key: 'Enter',
+        code: 'Enter',
+        nativeEvent: { isComposing: false },
+      })
 
       expect(onSend).toHaveBeenCalledWith('Hello world', [])
       expect(textarea).toHaveValue('')
@@ -520,13 +537,17 @@ describe('ChatInputArea', () => {
   // -------------------------------------------------------------------------
   describe('Voice Input', () => {
     it('should render the voice input button when enabled', () => {
-      render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
+      render(
+        <ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />,
+      )
       expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeTruthy()
     })
 
     it('should handle stop recording in VoiceInput', async () => {
       const user = userEvent.setup({ delay: null })
-      render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
+      render(
+        <ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />,
+      )
 
       await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
       // Wait for VoiceInput to show speaking
@@ -544,7 +565,9 @@ describe('ChatInputArea', () => {
 
     it('should handle cancel in VoiceInput', async () => {
       const user = userEvent.setup({ delay: null })
-      render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
+      render(
+        <ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />,
+      )
 
       await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
       await screen.findByText(/voiceInput.speaking/i)
@@ -564,15 +587,15 @@ describe('ChatInputArea', () => {
       const user = userEvent.setup({ delay: null })
       mockGetPermissionConfig.shouldReject = true
 
-      render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
+      render(
+        <ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />,
+      )
 
       await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
 
       // Permission denied should trigger error toast
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'error' }),
-        )
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
       })
 
       mockGetPermissionConfig.shouldReject = false
@@ -584,7 +607,9 @@ describe('ChatInputArea', () => {
       const { audioToText } = await import('@/service/share')
       vi.mocked(audioToText).mockResolvedValueOnce({ text: '' })
 
-      render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
+      render(
+        <ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />,
+      )
 
       await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
       await screen.findByText(/voiceInput.speaking/i)
@@ -713,7 +738,11 @@ describe('ChatInputArea', () => {
 
       fireEvent.compositionStart(textarea)
       fireEvent.change(textarea, { target: { value: 'Composing' } })
-      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', nativeEvent: { isComposing: true } })
+      fireEvent.keyDown(textarea, {
+        key: 'Enter',
+        code: 'Enter',
+        nativeEvent: { isComposing: true },
+      })
 
       expect(onSend).not.toHaveBeenCalled()
 
@@ -721,7 +750,11 @@ describe('ChatInputArea', () => {
       // Wait for the 50ms delay in handleCompositionEnd
       vi.advanceTimersByTime(60)
 
-      fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', nativeEvent: { isComposing: false } })
+      fireEvent.keyDown(textarea, {
+        key: 'Enter',
+        code: 'Enter',
+        nativeEvent: { isComposing: false },
+      })
 
       expect(onSend).toHaveBeenCalled()
       vi.useRealTimers()
@@ -731,7 +764,9 @@ describe('ChatInputArea', () => {
   // -------------------------------------------------------------------------
   describe('Layout & Styles', () => {
     it('should toggle opacity class based on disabled prop', () => {
-      const { container, rerender } = render(<ChatInputArea visionConfig={mockVisionConfig} disabled={false} />)
+      const { container, rerender } = render(
+        <ChatInputArea visionConfig={mockVisionConfig} disabled={false} />,
+      )
       expect(container.firstChild).not.toHaveClass('opacity-50')
 
       rerender(<ChatInputArea visionConfig={mockVisionConfig} disabled={true} />)
@@ -756,16 +791,24 @@ describe('ChatInputArea', () => {
 
   // -------------------------------------------------------------------------
   describe('Feature Bar', () => {
-    it('should render footer notice with tooltip when provided', async () => {
+    it('should render footer notice with an accessible infotip', async () => {
       const user = userEvent.setup({ delay: null })
       const footerNotice = 'Agent runs in a Linux sandbox.'
-      const footerNoticeTooltip = 'For Dify Community Edition, each of your agents runs in a Linux 7.0.0-10060-aws sandbox environment within your docker. Your edits to the environment via Build Chats are persistent.'
-      render(<ChatInputArea visionConfig={mockVisionConfig} footerNotice={footerNotice} footerNoticeTooltip={footerNoticeTooltip} />)
+      const footerNoticeTooltip =
+        'For Dify Community Edition, each of your agents runs in a Linux 7.0.0-10060-aws sandbox environment within your docker. Your edits to the environment via Build Chats are persistent.'
+      const accessibleName = `common.operation.learnMore: ${footerNotice}`
+      render(
+        <ChatInputArea
+          visionConfig={mockVisionConfig}
+          footerNotice={footerNotice}
+          footerNoticeTooltip={footerNoticeTooltip}
+        />,
+      )
 
       expect(screen.getByText(footerNotice)).toBeInTheDocument()
       expect(screen.queryByText(footerNoticeTooltip)).not.toBeInTheDocument()
 
-      await user.hover(screen.getByRole('button', { name: footerNoticeTooltip }))
+      await user.click(screen.getByRole('button', { name: accessibleName }))
 
       expect(await screen.findByText(footerNoticeTooltip)).toBeInTheDocument()
     })

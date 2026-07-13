@@ -148,6 +148,7 @@
   "maxActiveRequestsTip": "当前应用的最大活跃请求数（0 表示不限制）",
   "mermaid.classic": "经典",
   "mermaid.handDrawn": "手绘",
+  "mermaid.waitForCompletion": "正在等待图表代码生成完成...",
   "newApp.Cancel": "取消",
   "newApp.Confirm": "确认",
   "newApp.Create": "创建",

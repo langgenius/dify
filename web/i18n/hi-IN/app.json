@@ -148,6 +148,7 @@
   "maxActiveRequestsTip": "प्रति ऐप सक्रिय अनुरोधों की अधिकतम संख्या (असीमित के लिए 0)",
   "mermaid.classic": "क्लासिक",
   "mermaid.handDrawn": "हाथ खींचा",
+  "mermaid.waitForCompletion": "आरेख कोड के पूरा होने की प्रतीक्षा की जा रही है...",
   "newApp.Cancel": "रद्द करें",
   "newApp.Confirm": "सुदृढ़ करना",
   "newApp.Create": "बनाएँ",

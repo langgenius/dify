@@ -17,16 +17,14 @@ type RunModeProps = {
   text?: string
 }
 
-const RunMode = ({
-  text,
-}: RunModeProps) => {
+const RunMode = ({ text }: RunModeProps) => {
   const { t } = useTranslation()
   const { handleWorkflowStartRunInWorkflow } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
   const workflowStore = useWorkflowStore()
-  const workflowRunningData = useStore(s => s.workflowRunningData)
-  const isPreparingDataSource = useStore(s => s.isPreparingDataSource)
-  const canRun = useHooksStore(s => s.accessControl.canRun)
+  const workflowRunningData = useStore((s) => s.workflowRunningData)
+  const isPreparingDataSource = useStore((s) => s.isPreparingDataSource)
+  const canRun = useHooksStore((s) => s.accessControl.canRun)
 
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
   const isDisabled = isPreparingDataSource || isRunning || !canRun
@@ -43,12 +41,10 @@ const RunMode = ({
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
-    if (v.type === EVENT_WORKFLOW_STOP)
-      handleStop()
+    if (v.type === EVENT_WORKFLOW_STOP) handleStop()
   })
 
-  if (!canRun)
-    return null
+  if (!canRun) return null
 
   return (
     <div className="flex items-center gap-x-px">
@@ -60,38 +56,37 @@ const RunMode = ({
           isDisabled ? 'rounded-l-md' : 'rounded-md',
         )}
         onClick={() => {
-          if (canRun)
-            handleWorkflowStartRunInWorkflow()
+          if (canRun) handleWorkflowStartRunInWorkflow()
         }}
         disabled={isDisabled}
       >
         {!isDisabled && (
           <>
             <RiPlayLargeLine className="mr-1 size-4" />
-            {workflowRunningData ? t('common.reRun', { ns: 'pipeline' }) : (text ?? t('common.testRun', { ns: 'pipeline' }))}
+            {workflowRunningData
+              ? t(($) => $['common.reRun'], { ns: 'pipeline' })
+              : (text ?? t(($) => $['common.testRun'], { ns: 'pipeline' }))}
           </>
         )}
         {isRunning && (
           <>
             <RiLoader2Line className="mr-1 size-4 animate-spin" />
-            {t('common.processing', { ns: 'pipeline' })}
+            {t(($) => $['common.processing'], { ns: 'pipeline' })}
           </>
         )}
         {isPreparingDataSource && (
           <>
             <RiDatabase2Line className="mr-1 size-4" />
-            {t('common.preparingDataSource', { ns: 'pipeline' })}
+            {t(($) => $['common.preparingDataSource'], { ns: 'pipeline' })}
           </>
         )}
-        {
-          !isDisabled && (
-            <KbdGroup>
-              {['Alt', 'R'].map(key => (
-                <Kbd key={key}>{formatForDisplay(key)}</Kbd>
-              ))}
-            </KbdGroup>
-          )
-        }
+        {!isDisabled && (
+          <KbdGroup>
+            {['Alt', 'R'].map((key) => (
+              <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+            ))}
+          </KbdGroup>
+        )}
       </button>
       {isRunning && (
         <button

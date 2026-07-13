@@ -18,8 +18,6 @@ import { AccessMode } from '@/models/access-control'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
-let mockIsCurrentWorkspaceEditor = true
-let mockIsCurrentWorkspaceDatasetOperator = false
 let mockIsLoadingCurrentWorkspace = false
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 let mockSystemFeatures = {
@@ -47,21 +45,51 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
-    isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
     isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateAtomMock(importOriginal, () => ({
@@ -74,7 +102,8 @@ vi.mock('@/context/app-context-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateJotaiMock(importOriginal)
 })
@@ -162,12 +191,13 @@ vi.mock('ahooks', async () => {
 vi.mock('@/next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
     let Component: React.ComponentType<Record<string, unknown>> | null = null
-    loader().then((mod) => {
-      Component = mod.default as React.ComponentType<Record<string, unknown>>
-    }).catch(() => {})
+    loader()
+      .then((mod) => {
+        Component = mod.default as React.ComponentType<Record<string, unknown>>
+      })
+      .catch(() => {})
     const Wrapper = (props: Record<string, unknown>) => {
-      if (Component)
-        return <Component {...props} />
+      if (Component) return <Component {...props} />
       return null
     }
     Wrapper.displayName = 'DynamicWrapper'
@@ -177,15 +207,20 @@ vi.mock('@/next/dynamic', () => ({
 
 vi.mock('@/app/components/app/create-app-modal', () => ({
   default: ({ show, onClose, onSuccess, onCreateFromTemplate }: Record<string, unknown>) => {
-    if (!show)
-      return null
+    if (!show) return null
     return (
       <div data-testid="create-app-modal">
-        <button data-testid="create-blank-confirm" onClick={onSuccess as () => void}>Create Blank</button>
+        <button data-testid="create-blank-confirm" onClick={onSuccess as () => void}>
+          Create Blank
+        </button>
         {!!onCreateFromTemplate && (
-          <button data-testid="switch-to-template" onClick={onCreateFromTemplate as () => void}>From Template</button>
+          <button data-testid="switch-to-template" onClick={onCreateFromTemplate as () => void}>
+            From Template
+          </button>
         )}
-        <button data-testid="create-blank-cancel" onClick={onClose as () => void}>Cancel</button>
+        <button data-testid="create-blank-cancel" onClick={onClose as () => void}>
+          Cancel
+        </button>
       </div>
     )
   },
@@ -193,15 +228,20 @@ vi.mock('@/app/components/app/create-app-modal', () => ({
 
 vi.mock('@/app/components/app/create-app-dialog', () => ({
   default: ({ show, onClose, onSuccess, onCreateFromBlank }: Record<string, unknown>) => {
-    if (!show)
-      return null
+    if (!show) return null
     return (
       <div data-testid="template-dialog">
-        <button data-testid="template-confirm" onClick={onSuccess as () => void}>Create from Template</button>
+        <button data-testid="template-confirm" onClick={onSuccess as () => void}>
+          Create from Template
+        </button>
         {!!onCreateFromBlank && (
-          <button data-testid="switch-to-blank" onClick={onCreateFromBlank as () => void}>From Blank</button>
+          <button data-testid="switch-to-blank" onClick={onCreateFromBlank as () => void}>
+            From Blank
+          </button>
         )}
-        <button data-testid="template-cancel" onClick={onClose as () => void}>Cancel</button>
+        <button data-testid="template-cancel" onClick={onClose as () => void}>
+          Cancel
+        </button>
       </div>
     )
   },
@@ -209,12 +249,15 @@ vi.mock('@/app/components/app/create-app-dialog', () => ({
 
 vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
   default: ({ show, onClose, onSuccess }: Record<string, unknown>) => {
-    if (!show)
-      return null
+    if (!show) return null
     return (
       <div data-testid="create-from-dsl-modal">
-        <button data-testid="dsl-import-confirm" onClick={onSuccess as () => void}>Import DSL</button>
-        <button data-testid="dsl-import-cancel" onClick={onClose as () => void}>Cancel</button>
+        <button data-testid="dsl-import-confirm" onClick={onSuccess as () => void}>
+          Import DSL
+        </button>
+        <button data-testid="dsl-import-cancel" onClick={onClose as () => void}>
+          Cancel
+        </button>
       </div>
     )
   },
@@ -240,11 +283,11 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   api_rpm: overrides.api_rpm ?? 60,
   api_rph: overrides.api_rph ?? 3600,
   is_demo: overrides.is_demo ?? false,
-  model_config: overrides.model_config ?? {} as App['model_config'],
-  app_model_config: overrides.app_model_config ?? {} as App['app_model_config'],
+  model_config: overrides.model_config ?? ({} as App['model_config']),
+  app_model_config: overrides.app_model_config ?? ({} as App['app_model_config']),
   created_at: overrides.created_at ?? 1700000000,
   updated_at: overrides.updated_at ?? 1700001000,
-  site: overrides.site ?? {} as App['site'],
+  site: overrides.site ?? ({} as App['site']),
   api_base_url: overrides.api_base_url ?? 'https://api.example.com',
   tags: overrides.tags ?? [],
   access_mode: overrides.access_mode ?? AccessMode.PUBLIC,
@@ -284,8 +327,6 @@ const clickCreateMenuItem = (label: string) => {
 describe('Create App Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceEditor = true
-    mockIsCurrentWorkspaceDatasetOperator = false
     mockIsLoadingCurrentWorkspace = false
     mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSystemFeatures = {
@@ -310,11 +351,12 @@ describe('Create App Flow', () => {
     })
 
     it('should render disabled the create menu when user lacks app creation permission', () => {
-      mockIsCurrentWorkspaceEditor = false
       mockWorkspacePermissionKeys = []
       renderList()
 
-      expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.create' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should keep the create menu available while workspace state is loading', () => {
@@ -489,8 +531,7 @@ describe('Create App Flow', () => {
 
         await waitFor(() => {
           const modal = screen.queryByTestId('create-from-dsl-modal')
-          if (modal)
-            expect(modal).toBeInTheDocument()
+          if (modal) expect(modal).toBeInTheDocument()
         })
       }
     })
@@ -517,9 +558,10 @@ describe('Create App Flow', () => {
 
       // Should not crash, and some modal should be present
       await waitFor(() => {
-        const anyModal = screen.queryByTestId('create-app-modal')
-          || screen.queryByTestId('template-dialog')
-          || screen.queryByTestId('create-from-dsl-modal')
+        const anyModal =
+          screen.queryByTestId('create-app-modal') ||
+          screen.queryByTestId('template-dialog') ||
+          screen.queryByTestId('create-from-dsl-modal')
         expect(anyModal).toBeTruthy()
       })
     })

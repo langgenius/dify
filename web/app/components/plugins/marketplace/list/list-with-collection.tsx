@@ -20,15 +20,13 @@ import {
 const BECOME_PARTNER_URL = 'https://share-na2.hsforms.com/1NiS4r9lsSqGcuNBB77DeEQ40s9fk'
 const PARTNERS_COLLECTION_NAMES = new Set(['partners', 'partner-template', 'Partner Template'])
 
-const getViewportWidth = () => typeof window === 'undefined' ? CAROUSEL_BREAKPOINTS.xl : window.innerWidth
+const getViewportWidth = () =>
+  typeof window === 'undefined' ? CAROUSEL_BREAKPOINTS.xl : window.innerWidth
 
 const getCarouselItemsPerPage = (viewportWidth: number) => {
-  if (viewportWidth >= CAROUSEL_BREAKPOINTS.xl)
-    return CAROUSEL_PAGE_SIZE.xl
-  if (viewportWidth >= CAROUSEL_BREAKPOINTS.lg)
-    return CAROUSEL_PAGE_SIZE.lg
-  if (viewportWidth >= CAROUSEL_BREAKPOINTS.sm)
-    return CAROUSEL_PAGE_SIZE.sm
+  if (viewportWidth >= CAROUSEL_BREAKPOINTS.xl) return CAROUSEL_PAGE_SIZE.xl
+  if (viewportWidth >= CAROUSEL_BREAKPOINTS.lg) return CAROUSEL_PAGE_SIZE.lg
+  if (viewportWidth >= CAROUSEL_BREAKPOINTS.sm) return CAROUSEL_PAGE_SIZE.sm
 
   return CAROUSEL_PAGE_SIZE.base
 }
@@ -48,20 +46,10 @@ type PluginCardProps = {
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
 }
 
-const PluginCard = ({
-  plugin,
-  showInstallButton,
-  cardRender,
-}: PluginCardProps) => {
-  if (cardRender)
-    return cardRender(plugin)
+const PluginCard = ({ plugin, showInstallButton, cardRender }: PluginCardProps) => {
+  if (cardRender) return cardRender(plugin)
 
-  return (
-    <CardWrapper
-      plugin={plugin}
-      showInstallButton={showInstallButton}
-    />
-  )
+  return <CardWrapper plugin={plugin} showInstallButton={showInstallButton} />
 }
 
 const ListWithCollection = ({
@@ -89,23 +77,23 @@ const ListWithCollection = ({
 
   return (
     <>
-      {
-        marketplaceCollections.filter((collection) => {
+      {marketplaceCollections
+        .filter((collection) => {
           return marketplaceCollectionPluginsMap[collection.name]?.length
-        }).map((collection) => {
+        })
+        .map((collection) => {
           const plugins = marketplaceCollectionPluginsMap[collection.name]!
           const pages = buildCarouselPages(plugins, itemsPerPage)
           const hasMultiplePages = pages.length > 1
           const isPartnersCollection = PARTNERS_COLLECTION_NAMES.has(collection.name)
 
           return (
-            <div
-              key={collection.name}
-              className="py-3"
-            >
+            <div key={collection.name} className="py-3">
               <div className="flex items-end justify-between">
                 <div>
-                  <div className="title-xl-semi-bold text-text-primary">{collection.label[getLanguage(locale)]}</div>
+                  <div className="title-xl-semi-bold text-text-primary">
+                    {collection.label[getLanguage(locale)]}
+                  </div>
                   <div className="flex items-center gap-x-2 system-xs-regular text-text-tertiary">
                     {collection.description[getLanguage(locale)]}
                     {isPartnersCollection && (
@@ -117,74 +105,66 @@ const ListWithCollection = ({
                           rel="noopener noreferrer"
                           className="flex items-center gap-x-0.5 text-text-accent hover:underline"
                         >
-                          <span>{t('marketplace.becomePartner', { ns: 'plugin' })}</span>
+                          <span>{t(($) => $['marketplace.becomePartner'], { ns: 'plugin' })}</span>
                           <span aria-hidden className="i-ri-external-link-line size-3" />
                         </a>
                       </>
                     )}
                   </div>
                 </div>
-                {
-                  collection.searchable && !hasMultiplePages && (
-                    <div
-                      className="flex cursor-pointer items-center system-xs-medium text-text-accent"
-                      onClick={() => handleMoreClick(collection.search_params)}
-                    >
-                      {t('marketplace.viewMore', { ns: 'plugin' })}
-                      <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
-                    </div>
-                  )
-                }
+                {collection.searchable && !hasMultiplePages && (
+                  <div
+                    className="flex cursor-pointer items-center system-xs-medium text-text-accent"
+                    onClick={() => handleMoreClick(collection.search_params)}
+                  >
+                    {t(($) => $['marketplace.viewMore'], { ns: 'plugin' })}
+                    <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
+                  </div>
+                )}
               </div>
-              {hasMultiplePages
-                ? (
-                    <Carousel
-                      className="mt-2"
-                      showNavigation
-                      showPagination
-                      autoPlay
-                      autoPlayInterval={5000}
+              {hasMultiplePages ? (
+                <Carousel
+                  className="mt-2"
+                  showNavigation
+                  showPagination
+                  autoPlay
+                  autoPlayInterval={5000}
+                >
+                  {pages.map((pageItems) => (
+                    <div
+                      key={pageItems.map((plugin) => plugin.plugin_id).join('-')}
+                      className={CAROUSEL_PAGE_CLASS}
+                      style={{ scrollSnapAlign: 'start' }}
                     >
-                      {pages.map(pageItems => (
-                        <div
-                          key={pageItems.map(plugin => plugin.plugin_id).join('-')}
-                          className={CAROUSEL_PAGE_CLASS}
-                          style={{ scrollSnapAlign: 'start' }}
-                        >
-                          <div className={cn(GRID_CLASS, cardContainerClassName)}>
-                            {pageItems.map(plugin => (
-                              <div
-                                key={plugin.plugin_id}
-                                className="min-w-0 [&>*]:w-full"
-                              >
-                                <PluginCard
-                                  plugin={plugin}
-                                  showInstallButton={showInstallButton}
-                                  cardRender={cardRender}
-                                />
-                              </div>
-                            ))}
+                      <div className={cn(GRID_CLASS, cardContainerClassName)}>
+                        {pageItems.map((plugin) => (
+                          <div key={plugin.plugin_id} className="min-w-0 [&>*]:w-full">
+                            <PluginCard
+                              plugin={plugin}
+                              showInstallButton={showInstallButton}
+                              cardRender={cardRender}
+                            />
                           </div>
-                        </div>
-                      ))}
-                    </Carousel>
-                  )
-                : (
-                    <div className={cn('mt-2', GRID_CLASS, cardContainerClassName)}>
-                      {plugins.map(plugin => (
-                        <PluginCard
-                          key={plugin.plugin_id}
-                          plugin={plugin}
-                          showInstallButton={showInstallButton}
-                          cardRender={cardRender}
-                        />
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  )}
+                  ))}
+                </Carousel>
+              ) : (
+                <div className={cn('mt-2', GRID_CLASS, cardContainerClassName)}>
+                  {plugins.map((plugin) => (
+                    <PluginCard
+                      key={plugin.plugin_id}
+                      plugin={plugin}
+                      showInstallButton={showInstallButton}
+                      cardRender={cardRender}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )
-        })
-      }
+        })}
     </>
   )
 }

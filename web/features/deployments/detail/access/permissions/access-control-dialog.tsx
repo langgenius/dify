@@ -45,11 +45,11 @@ export function DeploymentAccessControlDialog({
 }) {
   const draftKey = [
     initialKind,
-    initialSubjects.map(subject => `${subject.subjectType}:${subject.id}`).join(','),
+    initialSubjects.map((subject) => `${subject.subjectType}:${subject.id}`).join(','),
   ].join(':')
 
   return (
-    <Dialog open={open} disablePointerDismissal onOpenChange={open => !open && onClose()}>
+    <Dialog open={open} disablePointerDismissal onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         className={cn(
           'h-auto max-h-[calc(100dvh-2rem)] min-h-[323px] w-[600px] max-w-none overflow-y-auto rounded-2xl border-none bg-components-panel-bg p-0 shadow-xl transition-shadow',
@@ -97,14 +97,11 @@ function DeploymentAccessControlDialogBody({
   const confirmDisabled = saving || (specificSelected && specificEmpty)
 
   const handleConfirm = () => {
-    if (confirmDisabled)
-      return
+    if (confirmDisabled) return
 
     onSubmit(
       appAccessModeToPermissionKey(currentMenu),
-      specificSelected
-        ? subjectsFromAccessControlSelection(specificSelection)
-        : [],
+      specificSelected ? subjectsFromAccessControlSelection(specificSelection) : [],
     )
   }
 
@@ -112,10 +109,10 @@ function DeploymentAccessControlDialogBody({
     <div className="flex flex-col gap-y-3">
       <div className="pt-6 pr-14 pb-3 pl-6">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t('access.permissions.editTitle')}
+          {t(($) => $['access.permissions.editTitle'])}
         </DialogTitle>
         <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
-          {t('access.permissions.editDescription')}
+          {t(($) => $['access.permissions.editDescription'])}
         </DialogDescription>
       </div>
       <RadioGroup<AppAccessMode>
@@ -127,7 +124,7 @@ function DeploymentAccessControlDialogBody({
       >
         <div className="leading-6">
           <p id="access-control-options-label" className="system-sm-medium text-text-tertiary">
-            {t('accessControlDialog.accessLabel', { ns: 'app' })}
+            {t(($) => $['accessControlDialog.accessLabel'], { ns: 'app' })}
           </p>
         </div>
         <AccessControlItem type={AppAccessMode.ORGANIZATION}>
@@ -135,7 +132,7 @@ function DeploymentAccessControlDialogBody({
             <div className="flex grow items-center gap-x-2">
               <span className="i-ri-building-line size-4 text-text-primary" aria-hidden="true" />
               <p className="system-sm-medium text-text-primary">
-                {t('accessControlDialog.accessItems.organization', { ns: 'app' })}
+                {t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })}
               </p>
             </div>
           </div>
@@ -151,30 +148,41 @@ function DeploymentAccessControlDialogBody({
           <div className="flex items-center gap-x-2 p-3">
             <span className="i-ri-global-line size-4 text-text-primary" aria-hidden="true" />
             <p className="system-sm-medium text-text-primary">
-              {t('accessControlDialog.accessItems.anyone', { ns: 'app' })}
+              {t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })}
             </p>
             {publicAccessDisabled && (
               <Infotip
-                aria-label={t('accessControlDialog.webAppPublicAccessDisabledTip', { ns: 'app' })}
-                iconClassName="size-3.5 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+                aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], { ns: 'app' })}
+                className="size-3.5 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
               >
-                {t('accessControlDialog.webAppPublicAccessDisabledTip', { ns: 'app' })}
+                {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], { ns: 'app' })}
               </Infotip>
             )}
           </div>
         </AccessControlItem>
       </RadioGroup>
       <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
-        <Button disabled={saving} onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-        <Button disabled={confirmDisabled || saving} loading={saving} variant="primary" onClick={handleConfirm}>
-          {t('operation.confirm', { ns: 'common' })}
+        <Button disabled={saving} onClick={onClose}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </Button>
+        <Button
+          disabled={confirmDisabled || saving}
+          loading={saving}
+          variant="primary"
+          onClick={handleConfirm}
+        >
+          {t(($) => $['operation.confirm'], { ns: 'common' })}
         </Button>
       </div>
     </div>
   )
 }
 
-function AccessControlItem({ type, children, disabled }: PropsWithChildren<{
+function AccessControlItem({
+  type,
+  children,
+  disabled,
+}: PropsWithChildren<{
   type: AppAccessMode
   disabled?: boolean
 }>) {
@@ -212,7 +220,9 @@ function SpecificGroupsOrMembersOption({
       <div className="flex items-center p-3">
         <div className="flex grow items-center gap-x-2">
           <span className="i-ri-lock-line size-4 text-text-primary" aria-hidden="true" />
-          <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
+          <p className="system-sm-medium text-text-primary">
+            {t(($) => $['accessControlDialog.accessItems.specific'], { ns: 'app' })}
+          </p>
         </div>
       </div>
     )
@@ -223,7 +233,9 @@ function SpecificGroupsOrMembersOption({
       <div className="flex items-center gap-x-1 p-3">
         <div className="flex grow items-center gap-x-1">
           <span className="i-ri-lock-line size-4 text-text-primary" aria-hidden="true" />
-          <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
+          <p className="system-sm-medium text-text-primary">
+            {t(($) => $['accessControlDialog.accessItems.specific'], { ns: 'app' })}
+          </p>
         </div>
         <div className="flex items-center gap-x-1">
           <AccessSubjectAddButton

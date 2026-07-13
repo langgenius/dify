@@ -30,29 +30,21 @@ describe('PlanBadge', () => {
   })
 
   it('should return null if isFetchedPlan is false', () => {
-    mockUseProviderContext.mockReturnValue(
-      createMockProviderContextValue({ isFetchedPlan: false }),
-    )
+    mockUseProviderContext.mockReturnValue(createMockProviderContextValue({ isFetchedPlan: false }))
     const { container } = render(<PlanBadge plan={Plan.sandbox} />)
     expect(container.firstChild).toBeNull()
   })
 
   it('should render upgrade badge when plan is sandbox and sandboxAsUpgrade is true', () => {
-    mockUseProviderContext.mockReturnValue(
-      createMockProviderContextValue({ isFetchedPlan: true }),
-    )
+    mockUseProviderContext.mockReturnValue(createMockProviderContextValue({ isFetchedPlan: true }))
     render(<PlanBadge plan={Plan.sandbox} sandboxAsUpgrade={true} />)
-    expect(
-      screen.getByText('billing.upgradeBtn.encourageShort'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('billing.upgradeBtn.encourageShort')).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('should render upgrade action as a button when onClick is provided', () => {
     const handleClick = vi.fn()
-    mockUseProviderContext.mockReturnValue(
-      createMockProviderContextValue({ isFetchedPlan: true }),
-    )
+    mockUseProviderContext.mockReturnValue(createMockProviderContextValue({ isFetchedPlan: true }))
 
     render(<PlanBadge plan={Plan.sandbox} sandboxAsUpgrade={true} onClick={handleClick} />)
 
@@ -63,9 +55,7 @@ describe('PlanBadge', () => {
 
   it('should render sandbox badge instead of upgrade badge in self-hosted edition', () => {
     mockConfig.isCloudEdition = false
-    mockUseProviderContext.mockReturnValue(
-      createMockProviderContextValue({ isFetchedPlan: true }),
-    )
+    mockUseProviderContext.mockReturnValue(createMockProviderContextValue({ isFetchedPlan: true }))
 
     render(<PlanBadge plan={Plan.sandbox} sandboxAsUpgrade={true} />)
 
@@ -75,18 +65,14 @@ describe('PlanBadge', () => {
   })
 
   it('should render sandbox badge when plan is sandbox and sandboxAsUpgrade is false', () => {
-    mockUseProviderContext.mockReturnValue(
-      createMockProviderContextValue({ isFetchedPlan: true }),
-    )
+    mockUseProviderContext.mockReturnValue(createMockProviderContextValue({ isFetchedPlan: true }))
     render(<PlanBadge plan={Plan.sandbox} sandboxAsUpgrade={false} />)
     expect(screen.getByText(Plan.sandbox)).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('should render professional badge when plan is professional', () => {
-    mockUseProviderContext.mockReturnValue(
-      createMockProviderContextValue({ isFetchedPlan: true }),
-    )
+    mockUseProviderContext.mockReturnValue(createMockProviderContextValue({ isFetchedPlan: true }))
     render(<PlanBadge plan={Plan.professional} />)
     expect(screen.getByText('pro')).toBeInTheDocument()
   })
@@ -105,38 +91,28 @@ describe('PlanBadge', () => {
   })
 
   it('should render team badge when plan is team', () => {
-    mockUseProviderContext.mockReturnValue(
-      createMockProviderContextValue({ isFetchedPlan: true }),
-    )
+    mockUseProviderContext.mockReturnValue(createMockProviderContextValue({ isFetchedPlan: true }))
     render(<PlanBadge plan={Plan.team} />)
     expect(screen.getByText(Plan.team)).toBeInTheDocument()
   })
 
   it('should return null when plan is enterprise', () => {
-    mockUseProviderContext.mockReturnValue(
-      createMockProviderContextValue({ isFetchedPlan: true }),
-    )
+    mockUseProviderContext.mockReturnValue(createMockProviderContextValue({ isFetchedPlan: true }))
     const { container } = render(<PlanBadge plan={Plan.enterprise} />)
     expect(container.firstChild).toBeNull()
   })
 
   it('should trigger onClick when clicked', () => {
     const handleClick = vi.fn()
-    mockUseProviderContext.mockReturnValue(
-      createMockProviderContextValue({ isFetchedPlan: true }),
-    )
+    mockUseProviderContext.mockReturnValue(createMockProviderContextValue({ isFetchedPlan: true }))
     render(<PlanBadge plan={Plan.team} onClick={handleClick} />)
     fireEvent.click(screen.getByRole('button', { name: Plan.team }))
     expect(handleClick).toHaveBeenCalledTimes(1)
   })
 
   it('should handle allowHover prop', () => {
-    mockUseProviderContext.mockReturnValue(
-      createMockProviderContextValue({ isFetchedPlan: true }),
-    )
-    const { container } = render(
-      <PlanBadge plan={Plan.team} allowHover={true} />,
-    )
+    mockUseProviderContext.mockReturnValue(createMockProviderContextValue({ isFetchedPlan: true }))
+    const { container } = render(<PlanBadge plan={Plan.team} allowHover={true} />)
 
     expect(container.firstChild).not.toBeNull()
   })

@@ -148,6 +148,7 @@
   "maxActiveRequestsTip": "Maximum number of concurrent active requests per app (0 for unlimited)",
   "mermaid.classic": "Classic",
   "mermaid.handDrawn": "Hand Drawn",
+  "mermaid.waitForCompletion": "Wachten tot de diagramcode is voltooid...",
   "newApp.Cancel": "Cancel",
   "newApp.Confirm": "Confirm",
   "newApp.Create": "Create",

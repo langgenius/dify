@@ -2,11 +2,7 @@ import type { SortableItem } from './types'
 import type { InputVar } from '@/models/pipeline'
 import { cn } from '@langgenius/dify-ui/cn'
 import { isEqual } from 'es-toolkit/predicate'
-import {
-  memo,
-  useCallback,
-  useMemo,
-} from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import { ReactSortable } from 'react-sortablejs'
 import FieldItem from './field-item'
 
@@ -28,20 +24,22 @@ const FieldListContainer = ({
 }: FieldListContainerProps) => {
   const list = useMemo(() => {
     return inputFields.map((content) => {
-      return ({
+      return {
         id: content.variable,
         chosen: false,
         selected: false,
         ...content,
-      })
+      }
     })
   }, [inputFields])
 
-  const handleListSortChange = useCallback((newList: SortableItem[]) => {
-    if (isEqual(newList, list))
-      return
-    onListSortChange(newList)
-  }, [list, onListSortChange])
+  const handleListSortChange = useCallback(
+    (newList: SortableItem[]) => {
+      if (isEqual(newList, list)) return
+      onListSortChange(newList)
+    },
+    [list, onListSortChange],
+  )
 
   return (
     <ReactSortable<SortableItem>

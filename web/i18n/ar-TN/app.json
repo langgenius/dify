@@ -148,6 +148,7 @@
   "maxActiveRequestsTip": "الحد الأقصى لعدد الطلبات النشطة المتزامنة لكل تطبيق (0 لغير محدود)",
   "mermaid.classic": "كلاسيكي",
   "mermaid.handDrawn": "رسم يدوي",
+  "mermaid.waitForCompletion": "جارٍ انتظار اكتمال رمز المخطط...",
   "newApp.Cancel": "إلغاء",
   "newApp.Confirm": "تأكيد",
   "newApp.Create": "إنشاء",

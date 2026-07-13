@@ -1,10 +1,8 @@
 import type { NoteNodeType } from '../note-node/types'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
-import { userProfileAtom } from '@/context/app-context-state'
-import {
-  CUSTOM_NOTE_NODE,
-} from '../note-node/constants'
+import { userProfileAtom } from '@/context/account-state'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { NoteTheme } from '../note-node/types'
 import { useWorkflowNoteShowAuthorValue } from '../persistence/local-storage-options'
 import { useWorkflowStore } from '../store'

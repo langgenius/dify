@@ -6,7 +6,9 @@ vi.mock('../authorized', () => ({ default: 'Authorized' }))
 vi.mock('../config-model', () => ({ default: 'ConfigModel' }))
 vi.mock('../credential-selector', () => ({ default: 'CredentialSelector' }))
 vi.mock('../manage-custom-model-credentials', () => ({ default: 'ManageCustomModelCredentials' }))
-vi.mock('../switch-credential-in-load-balancing', () => ({ default: 'SwitchCredentialInLoadBalancing' }))
+vi.mock('../switch-credential-in-load-balancing', () => ({
+  default: 'SwitchCredentialInLoadBalancing',
+}))
 
 describe('model-auth index exports', () => {
   it('should re-export the model auth entry points', () => {

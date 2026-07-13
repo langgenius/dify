@@ -35,10 +35,7 @@ const isLegacyRoleKey = (value: string): value is LegacyRoleKey =>
   Object.prototype.hasOwnProperty.call(LEGACY_ROLE_DESCRIPTION_KEY_MAP, value)
 
 const getLegacyRoleDescriptionKey = (role: Role) => {
-  const candidateKeys = [
-    normalizeLegacyRoleKey(role.name),
-    normalizeLegacyRoleKey(role.id),
-  ]
+  const candidateKeys = [normalizeLegacyRoleKey(role.name), normalizeLegacyRoleKey(role.id)]
 
   return candidateKeys.find(isLegacyRoleKey)
 }
@@ -69,41 +66,49 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
     const hasMore = hasNextPage ?? true
     let observer: IntersectionObserver | undefined
 
-    if (error || !open)
-      return
+    if (error || !open) return
 
     if (anchorRef.current && containerRef.current) {
       const containerHeight = containerRef.current.clientHeight
       const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200))
 
-      observer = new IntersectionObserver((entries) => {
-        if (entries[0]!.isIntersecting && !rolesLoading && !isFetchingNextPage && !error && hasMore)
-          fetchNextPage()
-      }, {
-        root: containerRef.current,
-        rootMargin: `${dynamicMargin}px`,
-      })
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (
+            entries[0]!.isIntersecting &&
+            !rolesLoading &&
+            !isFetchingNextPage &&
+            !error &&
+            hasMore
+          )
+            fetchNextPage()
+        },
+        {
+          root: containerRef.current,
+          rootMargin: `${dynamicMargin}px`,
+        },
+      )
       observer.observe(anchorRef.current)
     }
 
     return () => observer?.disconnect()
   }, [rolesLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, open, observerReadyKey])
 
-  const roles = useMemo(() => rolesData?.pages.flatMap(page => page.data) ?? [], [rolesData])
-  const selectedRole = roles.find(role => role.id === value)
+  const roles = useMemo(() => rolesData?.pages.flatMap((page) => page.data) ?? [], [rolesData])
+  const selectedRole = roles.find((role) => role.id === value)
   const selectedRoleName = selectedRole?.name || value
   const triggerLabel = selectedRoleName
-    ? t('members.invitedAsRole', { ns: 'common', role: selectedRoleName })
-    : t('members.selectRole', { ns: 'common' })
+    ? t(($) => $['members.invitedAsRole'], { ns: 'common', role: selectedRoleName })
+    : t(($) => $['members.selectRole'], { ns: 'common' })
 
   const setContainerElement = useCallback((node: HTMLDivElement | null) => {
     containerRef.current = node
-    setObserverReadyKey(key => key + 1)
+    setObserverReadyKey((key) => key + 1)
   }, [])
 
   const setAnchorElement = useCallback((node: HTMLDivElement | null) => {
     anchorRef.current = node
-    setObserverReadyKey(key => key + 1)
+    setObserverReadyKey((key) => key + 1)
   }, [])
 
   const handleRoleChange = (roleId: string) => {
@@ -112,31 +117,26 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
   }
 
   const getRoleDescription = (role: Role) => {
-    if (role.description)
-      return role.description
+    if (role.description) return role.description
 
     const legacyRoleDescriptionKey = getLegacyRoleDescriptionKey(role)
 
     switch (legacyRoleDescriptionKey) {
       case 'admin':
-        return t('members.adminTip', { ns: 'common' })
+        return t(($) => $['members.adminTip'], { ns: 'common' })
       case 'editor':
-        return t('members.editorTip', { ns: 'common' })
+        return t(($) => $['members.editorTip'], { ns: 'common' })
       case 'normal':
-        return t('members.normalTip', { ns: 'common' })
+        return t(($) => $['members.normalTip'], { ns: 'common' })
       case 'dataset_operator':
-        return t('members.datasetOperatorTip', { ns: 'common' })
+        return t(($) => $['members.datasetOperatorTip'], { ns: 'common' })
     }
 
-    return t('role.noDescription', { ns: 'permission' })
+    return t(($) => $['role.noDescription'], { ns: 'permission' })
   }
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-      modal={false}
-    >
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger
         data-testid="role-selector-trigger"
         className={cn(
@@ -145,7 +145,12 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
         )}
       >
         <div className="mr-2 grow text-sm/5 text-text-primary">{triggerLabel}</div>
-        <div className={cn('size-4 shrink-0 text-text-secondary', open ? 'i-ri-arrow-up-s-line' : 'i-ri-arrow-down-s-line')} />
+        <div
+          className={cn(
+            'size-4 shrink-0 text-text-secondary',
+            open ? 'i-ri-arrow-up-s-line' : 'i-ri-arrow-down-s-line',
+          )}
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-start"
@@ -154,50 +159,46 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
       >
         <ScrollArea
           ref={setContainerElement}
-          className="h-70"
-          slotClassNames={{ viewport: 'overscroll-contain' }}
+          slotClassNames={{ viewport: 'overscroll-contain max-h-70' }}
         >
           <div className="p-1">
-            {rolesLoading
-              ? (
-                  <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                    {t('loading', { ns: 'common' })}
-                  </div>
-                )
-              : roles.length === 0
-                ? (
-                    <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-                      {t('dynamicSelect.noData', { ns: 'common' })}
-                    </div>
-                  )
-                : (
-                    <>
-                      <DropdownMenuRadioGroup
-                        value={value}
-                        onValueChange={handleRoleChange}
-                      >
-                        {roles.map(role => (
-                          <DropdownMenuRadioItem
-                            key={role.id}
-                            value={role.id}
-                            className="mx-0 h-auto w-full cursor-pointer items-start gap-0 rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover data-highlighted:bg-state-base-hover"
-                          >
-                            <div className="relative min-w-0 pl-5">
-                              <div className="truncate text-sm leading-5 text-text-secondary">{role.name}</div>
-                              <div className="line-clamp-2 text-xs leading-4.5 text-text-tertiary">{getRoleDescription(role)}</div>
-                              {value === role.id && (
-                                <div
-                                  aria-hidden="true"
-                                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
-                                />
-                              )}
-                            </div>
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                      <div ref={setAnchorElement} className="h-0" />
-                    </>
-                  )}
+            {rolesLoading ? (
+              <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
+                {t(($) => $.loading, { ns: 'common' })}
+              </div>
+            ) : roles.length === 0 ? (
+              <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
+                {t(($) => $['dynamicSelect.noData'], { ns: 'common' })}
+              </div>
+            ) : (
+              <>
+                <DropdownMenuRadioGroup value={value} onValueChange={handleRoleChange}>
+                  {roles.map((role) => (
+                    <DropdownMenuRadioItem
+                      key={role.id}
+                      value={role.id}
+                      className="mx-0 h-auto w-full cursor-pointer items-start gap-0 rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover data-highlighted:bg-state-base-hover"
+                    >
+                      <div className="relative min-w-0 pl-5">
+                        <div className="truncate text-sm leading-5 text-text-secondary">
+                          {role.name}
+                        </div>
+                        <div className="line-clamp-2 text-xs leading-4.5 text-text-tertiary">
+                          {getRoleDescription(role)}
+                        </div>
+                        {value === role.id && (
+                          <div
+                            aria-hidden="true"
+                            className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
+                          />
+                        )}
+                      </div>
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+                <div ref={setAnchorElement} className="h-0" />
+              </>
+            )}
           </div>
         </ScrollArea>
       </DropdownMenuContent>

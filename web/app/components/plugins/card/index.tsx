@@ -4,12 +4,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from '#i18n'
-import { currentWorkspaceIdAtom } from '@/context/app-context-state'
 import { useGetLanguage } from '@/context/i18n'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import useTheme from '@/hooks/use-theme'
-import {
-  renderI18nObject,
-} from '@/i18n-config'
+import { renderI18nObject } from '@/i18n-config'
 import { Theme } from '@/types/app'
 import { formatNumber } from '@/utils/format'
 import Partner from '../base/badges/partner'
@@ -24,8 +22,8 @@ import Placeholder from './base/placeholder'
 import Title from './base/title'
 
 export type CardPayload = Omit<Plugin, 'icon' | 'icon_dark'> & {
-  icon: string | { content: string, background: string }
-  icon_dark?: string | { content: string, background: string }
+  icon: string | { content: string; background: string }
+  icon_dark?: string | { content: string; background: string }
 }
 
 type Props = Readonly<{
@@ -81,16 +79,12 @@ const Card = ({
   const wrapClassName = cn(
     // eslint-disable-next-line tailwindcss/no-unknown-classes -- Used by page feedback tooling to identify plugin cards.
     'hover-bg-components-panel-on-panel-item-bg relative overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs',
-    isMarketplaceVariant && 'h-[148px] transition-all group-hover:bg-components-panel-on-panel-item-bg-hover group-hover:shadow-md',
+    isMarketplaceVariant &&
+      'h-[148px] transition-all group-hover:bg-components-panel-on-panel-item-bg-hover group-hover:shadow-md',
     className,
   )
   if (isLoading) {
-    return (
-      <Placeholder
-        wrapClassName={wrapClassName}
-        loadingFileName={loadingFileName!}
-      />
-    )
+    return <Placeholder wrapClassName={wrapClassName} loadingFileName={loadingFileName!} />
   }
 
   if (isMarketplaceVariant) {
@@ -105,21 +99,38 @@ const Card = ({
                 <div className="truncate system-md-medium text-text-primary">
                   {getLocalizedText(label)}
                 </div>
-                {isPartner && <Partner className="ml-0.5 size-4" text={t('marketplace.partnerTip', { ns: 'plugin' })} />}
-                {verified && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+                {isPartner && (
+                  <Partner
+                    className="ml-0.5 size-4"
+                    text={t(($) => $['marketplace.partnerTip'], { ns: 'plugin' })}
+                  />
+                )}
+                {verified && (
+                  <Verified
+                    className="ml-0.5 size-4"
+                    text={t(($) => $['marketplace.verifiedTip'], { ns: 'plugin' })}
+                  />
+                )}
                 {titleLeft}
               </div>
               <div className="flex h-4 min-w-0 items-center gap-2 system-xs-regular text-text-tertiary">
                 {org && (
                   <div className="flex min-w-0 items-center gap-1">
-                    <span className="shrink-0 lowercase">{t('author', { ns: 'tools' })}</span>
+                    <span className="shrink-0 lowercase">
+                      {t(($) => $.author, { ns: 'tools' })}
+                    </span>
                     <span className="truncate">{org}</span>
                   </div>
                 )}
-                {org && payload.install_count !== undefined && <span className="shrink-0 text-text-quaternary">·</span>}
+                {org && payload.install_count !== undefined && (
+                  <span className="shrink-0 text-text-quaternary">·</span>
+                )}
                 {payload.install_count !== undefined && (
                   <span className="shrink-0">
-                    {t('install', { ns: 'plugin', num: formatNumber(payload.install_count) })}
+                    {t(($) => $.install, {
+                      ns: 'plugin',
+                      num: formatNumber(payload.install_count),
+                    })}
                   </span>
                 )}
               </div>
@@ -146,17 +157,21 @@ const Card = ({
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={getLocalizedText(label)} />
-              {isPartner && <Partner className="ml-0.5 size-4" text={t('marketplace.partnerTip', { ns: 'plugin' })} />}
-              {verified && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
-              {titleLeft}
-              {' '}
-              {/* This can be version badge */}
+              {isPartner && (
+                <Partner
+                  className="ml-0.5 size-4"
+                  text={t(($) => $['marketplace.partnerTip'], { ns: 'plugin' })}
+                />
+              )}
+              {verified && (
+                <Verified
+                  className="ml-0.5 size-4"
+                  text={t(($) => $['marketplace.verifiedTip'], { ns: 'plugin' })}
+                />
+              )}
+              {titleLeft} {/* This can be version badge */}
             </div>
-            <OrgInfo
-              className="mt-0.5"
-              orgName={org}
-              packageName={name}
-            />
+            <OrgInfo className="mt-0.5" orgName={org} packageName={name} />
           </div>
         </div>
         <Description
@@ -166,15 +181,17 @@ const Card = ({
         />
         {!!footer && <div>{footer}</div>}
       </div>
-      {limitedInstall
-        && (
-          <div className="relative flex h-8 items-center gap-x-2 px-3 after:absolute after:inset-0 after:bg-toast-warning-bg after:opacity-40">
-            <span aria-hidden className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary" />
-            <p className="z-10 grow system-xs-regular text-text-secondary">
-              {t('installModal.installWarning', { ns: 'plugin' })}
-            </p>
-          </div>
-        )}
+      {limitedInstall && (
+        <div className="relative flex h-8 items-center gap-x-2 px-3 after:absolute after:inset-0 after:bg-toast-warning-bg after:opacity-40">
+          <span
+            aria-hidden
+            className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary"
+          />
+          <p className="z-10 grow system-xs-regular text-text-secondary">
+            {t(($) => $['installModal.installWarning'], { ns: 'plugin' })}
+          </p>
+        </div>
+      )}
     </div>
   )
 }

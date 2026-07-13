@@ -5,60 +5,74 @@ import { Plan } from '@/app/components/billing/type'
 import AccountDropdown from '@/app/components/header/account-dropdown'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
-const {
-  mockAppContextState,
-  mockPush,
-  mockLogout,
-  mockResetUser,
-  mockSetShowAccountSettingModal,
-} = vi.hoisted(() => ({
-  mockAppContextState: {
-    userProfile: {
-      id: 'user-1',
-      name: 'Ada Lovelace',
-      email: 'ada@example.com',
-      avatar: '',
-      avatar_url: '',
-      is_password_set: true,
-    },
-    langGeniusVersionInfo: {
-      current_env: 'CLOUD',
-      current_version: '1.0.0',
-      latest_version: '1.1.0',
-      release_date: '',
-      release_notes: 'https://example.com/releases/1.1.0',
-      version: '1.0.0',
-      can_auto_update: false,
-    },
-    isCurrentWorkspaceOwner: false,
-  },
-  mockPush: vi.fn(),
-  mockLogout: vi.fn(),
-  mockResetUser: vi.fn(),
-  mockSetShowAccountSettingModal: vi.fn(),
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string, version?: string }) => {
-      if (options?.version)
-        return `${options.ns}.${key}:${options.version}`
-      return options?.ns ? `${options.ns}.${key}` : key
+const { mockAppContextState, mockPush, mockLogout, mockResetUser, mockSetShowAccountSettingModal } =
+  vi.hoisted(() => ({
+    mockAppContextState: {
+      userProfile: {
+        id: 'user-1',
+        name: 'Ada Lovelace',
+        email: 'ada@example.com',
+        avatar: '',
+        avatar_url: '',
+        is_password_set: true,
+      },
+      langGeniusVersionInfo: {
+        current_env: 'CLOUD',
+        current_version: '1.0.0',
+        latest_version: '1.1.0',
+        release_date: '',
+        release_notes: 'https://example.com/releases/1.1.0',
+        version: '1.0.0',
+        can_auto_update: false,
+      },
+      isCurrentWorkspaceOwner: false,
     },
-  }),
-}))
+    mockPush: vi.fn(),
+    mockLogout: vi.fn(),
+    mockResetUser: vi.fn(),
+    mockSetShowAccountSettingModal: vi.fn(),
+  }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockAppContextState,
-}))
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return {
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string; version?: string }) => {
+        if (options?.version) return `${options.ns}.${key}:${options.version}`
+        return options?.ns ? `${options.ns}.${key}` : key
+      }),
+    }),
+  }
+})
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -77,12 +91,8 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
-
-vi.mock('@/service/use-common', async importOriginal => ({
-  ...await importOriginal<typeof import('@/service/use-common')>(),
+vi.mock('@/service/use-common', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-common')>()),
   useLogout: () => ({
     mutateAsync: mockLogout,
   }),
@@ -127,12 +137,17 @@ const renderAccountDropdown = () => {
 describe('Header Account Dropdown Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
-      repo: { stars: 123456 },
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          repo: { stars: 123456 },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
     localStorage.clear()
   })
 

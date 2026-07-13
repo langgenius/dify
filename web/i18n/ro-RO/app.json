@@ -148,6 +148,7 @@
   "maxActiveRequestsTip": "Numărul maxim de cereri active concurente pe aplicație (0 pentru nelimitat)",
   "mermaid.classic": "Clasic",
   "mermaid.handDrawn": "Desenat de mână",
+  "mermaid.waitForCompletion": "Se așteaptă finalizarea codului diagramei...",
   "newApp.Cancel": "Anulează",
   "newApp.Confirm": "Confirma",
   "newApp.Create": "Creează",

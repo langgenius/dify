@@ -70,9 +70,7 @@ vi.mock('../../rename-modal', () => ({
 
 vi.mock('../dataset-card', () => ({
   default: ({ dataset }: { dataset: DataSet }) => (
-    <article data-testid={`dataset-card-${dataset.id}`}>
-      {dataset.name}
-    </article>
+    <article data-testid={`dataset-card-${dataset.id}`}>{dataset.name}</article>
   ),
 }))
 
@@ -142,16 +140,17 @@ describe('Datasets', () => {
         ],
       },
     ],
-  ) => ({
-    pages: pages.map((page, index) => ({
-      has_more: false,
-      limit: page.data.length,
-      page: index + 1,
-      total: page.data.length,
-      ...page,
-    })),
-    pageParams: pages.map((_, index) => index + 1),
-  }) as unknown as ReturnType<typeof useDatasetList>['data']
+  ) =>
+    ({
+      pages: pages.map((page, index) => ({
+        has_more: false,
+        limit: page.data.length,
+        page: index + 1,
+        total: page.data.length,
+        ...page,
+      })),
+      pageParams: pages.map((_, index) => index + 1),
+    }) as unknown as ReturnType<typeof useDatasetList>['data']
 
   const defaultProps = {
     datasetList: createDatasetListData(),
@@ -223,12 +222,7 @@ describe('Datasets', () => {
   describe('Loading States', () => {
     it('should show dataset card skeletons while initial dataset list is loading', () => {
       render(
-        <Datasets
-          {...defaultProps}
-          datasetList={undefined}
-          isFetching={true}
-          isLoading={true}
-        />,
+        <Datasets {...defaultProps} datasetList={undefined} isFetching={true} isLoading={true} />,
       )
 
       expect(screen.getByRole('status', { name: /common\.loading/ })).toBeInTheDocument()
@@ -265,7 +259,9 @@ describe('Datasets', () => {
       render(
         <Datasets
           {...defaultProps}
-          datasetList={createDatasetListData([{ data: [createMockDataset({ id: 'dataset-1', name: 'Dataset 1' })] }])}
+          datasetList={createDatasetListData([
+            { data: [createMockDataset({ id: 'dataset-1', name: 'Dataset 1' })] },
+          ])}
           isFetching={true}
           isPlaceholderData={true}
         />,
@@ -388,7 +384,16 @@ describe('Datasets', () => {
     it('should have correct grid styling', () => {
       render(<Datasets {...defaultProps} />)
       const nav = screen.getByRole('navigation')
-      expect(nav).toHaveClass('relative', 'grid', 'grow', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'content-start', 'gap-3', 'px-8', 'pt-2')
+      expect(nav).toHaveClass(
+        'relative',
+        'grid',
+        'grow',
+        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+        'content-start',
+        'gap-3',
+        'px-8',
+        'pt-2',
+      )
     })
   })
 

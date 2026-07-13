@@ -148,6 +148,7 @@
   "maxActiveRequestsTip": "Jumlah maksimum permintaan aktif bersamaan per aplikasi (0 untuk tidak terbatas)",
   "mermaid.classic": "Klasik",
   "mermaid.handDrawn": "Digambar Tangan",
+  "mermaid.waitForCompletion": "Menunggu kode diagram selesai...",
   "newApp.Cancel": "Batal",
   "newApp.Confirm": "Konfirmasi",
   "newApp.Create": "Buat",

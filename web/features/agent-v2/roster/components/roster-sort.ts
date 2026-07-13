@@ -12,7 +12,10 @@ export const ROSTER_SORT_BY_VALUES = [
 
 export const rosterSortOptions: Array<{
   value: RosterSortBy
-  labelKey: 'roster.sort.lastModified' | 'roster.sort.recentlyCreated' | 'roster.sort.earliestCreated'
+  labelKey:
+    | 'roster.sort.lastModified'
+    | 'roster.sort.recentlyCreated'
+    | 'roster.sort.earliestCreated'
 }> = [
   { value: 'last_modified', labelKey: 'roster.sort.lastModified' },
   { value: 'recently_created', labelKey: 'roster.sort.recentlyCreated' },

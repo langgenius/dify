@@ -1,7 +1,13 @@
 // @ts-check
 
 import path from 'node:path'
-import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
+import antfu, {
+  GLOB_MARKDOWN,
+  GLOB_MARKDOWN_CODE,
+  GLOB_TESTS,
+  GLOB_TS,
+  GLOB_TSX,
+} from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
@@ -9,7 +15,6 @@ import hyoban from 'eslint-plugin-hyoban'
 import jsxA11y from 'eslint-plugin-jsx-a11y'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
 import noBarrelFiles from 'eslint-plugin-no-barrel-files'
-import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import {
   GENERATED_IGNORES,
@@ -23,6 +28,30 @@ import dify from './plugins/eslint/index.js'
 
 export default antfu(
   {
+    stylistic: false,
+    perfectionist: {
+      overrides: {
+        'perfectionist/sort-imports': 'off',
+      },
+    },
+    jsonc: {
+      overrides: {
+        'jsonc/space-unary-ops': 'off',
+      },
+    },
+    yaml: {
+      overrides: {
+        'yaml/block-mapping': 'off',
+        'yaml/block-sequence': 'off',
+        'yaml/plain-scalar': 'off',
+      },
+    },
+    toml: {
+      overrides: {
+        'toml/comma-style': 'off',
+        'toml/no-space-dots': 'off',
+      },
+    },
     react: {
       overrides: {
         'react/set-state-in-effect': 'error',
@@ -41,11 +70,6 @@ export default antfu(
     test: {
       overrides: {
         'test/prefer-lowercase-title': 'off',
-      },
-    },
-    stylistic: {
-      overrides: {
-        'antfu/top-level-function': 'off',
       },
     },
     e18e: false,
@@ -70,29 +94,28 @@ export default antfu(
       'no-barrel-files/no-barrel-files': 'error',
     },
   },
-  markdownPreferences.configs.standard,
   {
     files: [GLOB_MARKDOWN],
-    plugins: { md },
+    plugins: {
+      md,
+      'markdown-preferences': markdownPreferences,
+    },
     rules: {
       'md/no-url-trailing-slash': 'error',
+      'markdown-preferences/definitions-last': 'error',
       'markdown-preferences/prefer-link-reference-definitions': [
         'error',
         {
           minLinks: 1,
         },
       ],
-      'markdown-preferences/ordered-list-marker-sequence': [
-        'error',
-        { increment: 'never' },
-      ],
-      'markdown-preferences/definitions-last': 'error',
       'markdown-preferences/sort-definitions': 'error',
     },
   },
   {
     rules: {
       'node/prefer-global/process': 'off',
+      'unicorn/number-literal-case': 'off',
     },
   },
   {
@@ -105,16 +128,6 @@ export default antfu(
   },
   storybook.configs['flat/recommended'],
   ...pluginQuery.configs['flat/recommended'],
-  // sonar
-  {
-    rules: {
-      // Manually pick rules that are actually useful and not slow.
-      // Or we can just drop the plugin entirely.
-    },
-    plugins: {
-      sonarjs: sonar,
-    },
-  },
   {
     files: [GLOB_TS, GLOB_TSX],
     ignores: GLOB_TESTS,
@@ -122,9 +135,7 @@ export default antfu(
       tailwindcss,
     },
     rules: {
-      'tailwindcss/enforce-consistent-class-order': 'error',
       'tailwindcss/no-duplicate-classes': 'error',
-      'tailwindcss/no-unnecessary-whitespace': 'error',
       'tailwindcss/no-unknown-classes': 'warn',
     },
     settings: {
@@ -150,9 +161,8 @@ export default antfu(
   {
     files: ['i18n/**/*.json'],
     rules: {
-      'sonarjs/max-lines': 'off',
-      'max-lines': 'off',
       'jsonc/sort-keys': 'error',
+      'max-lines': 'off',
 
       'hyoban/i18n-flat-key': 'error',
       'dify/no-extra-keys': 'error',
@@ -164,40 +174,43 @@ export default antfu(
     files: [GLOB_TS, GLOB_TSX],
     ignores: ['next/**'],
     rules: {
-      'no-restricted-imports': ['error', {
-        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-        patterns: WEB_RESTRICTED_IMPORT_PATTERNS,
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+          patterns: WEB_RESTRICTED_IMPORT_PATTERNS,
+        },
+      ],
     },
   },
   {
     name: 'dify/service-base-restricted-imports',
     files: ['service/**/*.ts', 'service/**/*.tsx'],
     rules: {
-      'no-restricted-imports': ['error', {
-        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-        patterns: [
-          ...WEB_RESTRICTED_IMPORT_PATTERNS,
-          ...WEB_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS,
-          ...WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS,
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+          patterns: [
+            ...WEB_RESTRICTED_IMPORT_PATTERNS,
+            ...WEB_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS,
+            ...WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS,
+          ],
+        },
+      ],
     },
   },
   {
     name: 'dify/restricted-local-storage-access',
     files: [GLOB_TS, GLOB_TSX],
-    ignores: [
-      ...GLOB_TESTS,
-      'vitest.setup.ts',
-      'instrumentation-client.ts',
-    ],
+    ignores: [...GLOB_TESTS, 'vitest.setup.ts', 'instrumentation-client.ts'],
     rules: {
       'no-restricted-globals': [
         'error',
         {
           name: 'localStorage',
-          message: 'Do not use localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
+          message:
+            'Do not use localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
         },
       ],
       'no-restricted-properties': [
@@ -205,21 +218,28 @@ export default antfu(
         {
           object: 'window',
           property: 'localStorage',
-          message: 'Do not use window.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
+          message:
+            'Do not use window.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
         },
         {
           object: 'globalThis',
           property: 'localStorage',
-          message: 'Do not use globalThis.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
+          message:
+            'Do not use globalThis.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
         },
       ],
       'no-restricted-syntax': [
         'error',
         {
-          selector: 'ImportDeclaration[source.value="ahooks"] ImportSpecifier[imported.name="useLocalStorageState"]',
+          selector:
+            'ImportDeclaration[source.value="ahooks"] ImportSpecifier[imported.name="useLocalStorageState"]',
           message: 'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
         },
       ],
     },
   },
-)
+).override('antfu/sort/package-json', {
+  rules: {
+    'jsonc/sort-keys': 'off',
+  },
+})

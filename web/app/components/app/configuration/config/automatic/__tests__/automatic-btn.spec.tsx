@@ -1,12 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import AutomaticBtn from '../automatic-btn'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('AutomaticBtn', () => {
   const mockOnClick = vi.fn()
 
@@ -18,7 +12,7 @@ describe('AutomaticBtn', () => {
     it('should render the button with correct text', () => {
       render(<AutomaticBtn onClick={mockOnClick} />)
 
-      expect(screen.getByText('operation.automatic')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)operation\.automatic(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should render the sparkling icon', () => {

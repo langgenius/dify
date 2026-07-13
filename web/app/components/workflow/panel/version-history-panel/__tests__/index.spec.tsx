@@ -53,7 +53,10 @@ const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionH
 
 let mockCurrentVersion: VersionHistory | null = null
 
-type MockVersionStoreState = Pick<Shape, 'currentVersion' | 'setCurrentVersion' | 'setShowWorkflowVersionHistoryPanel'>
+type MockVersionStoreState = Pick<
+  Shape,
+  'currentVersion' | 'setCurrentVersion' | 'setShowWorkflowVersionHistoryPanel'
+>
 type MockRestoreConfirmModalProps = {
   isOpen: boolean
   versionInfo: VersionHistory
@@ -65,17 +68,30 @@ type MockVersionHistoryItemProps = {
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
 }
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => mockAppContextState.userProfile,
-}))
-
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -169,8 +185,7 @@ vi.mock('../restore-confirm-modal', () => ({
     const MockRestoreConfirmModal = () => {
       const { isOpen, versionInfo, onRestore } = props
 
-      if (!isOpen)
-        return null
+      if (!isOpen) return null
 
       return <button onClick={() => onRestore(versionInfo)}>confirm restore</button>
     }
@@ -201,10 +216,16 @@ vi.mock('../version-history-item', () => ({
           <button onClick={() => onClick(item)}>{item.marked_name || item.version}</button>
           {item.version !== WorkflowVersion.Draft && (
             <>
-              <button onClick={() => handleClickActionMenuItem(VersionHistoryContextMenuOptions.restore)}>
+              <button
+                onClick={() => handleClickActionMenuItem(VersionHistoryContextMenuOptions.restore)}
+              >
                 {`restore-${item.id}`}
               </button>
-              <button onClick={() => handleClickActionMenuItem(VersionHistoryContextMenuOptions.exportDSL)}>
+              <button
+                onClick={() =>
+                  handleClickActionMenuItem(VersionHistoryContextMenuOptions.exportDSL)
+                }
+              >
                 {`export-${item.id}`}
               </button>
             </>
@@ -233,7 +254,7 @@ describe('VersionHistoryPanel', () => {
       render(
         <VersionHistoryPanel
           latestVersionId="published-version-id"
-          restoreVersionUrl={versionId => `/apps/app-1/workflows/${versionId}/restore`}
+          restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
         />,
       )
 
@@ -247,7 +268,7 @@ describe('VersionHistoryPanel', () => {
       render(
         <VersionHistoryPanel
           latestVersionId="published-version-id"
-          restoreVersionUrl={versionId => `/apps/app-1/workflows/${versionId}/restore`}
+          restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
         />,
       )
 
@@ -266,7 +287,7 @@ describe('VersionHistoryPanel', () => {
     render(
       <VersionHistoryPanel
         latestVersionId="published-version-id"
-        restoreVersionUrl={versionId => `/apps/app-1/workflows/${versionId}/restore`}
+        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
       />,
     )
 
@@ -279,10 +300,14 @@ describe('VersionHistoryPanel', () => {
     fireEvent.click(screen.getByText('confirm restore'))
 
     await waitFor(() => {
-      expect(mockSetCurrentVersion).toHaveBeenCalledWith(expect.objectContaining({
-        id: 'published-version-id',
-      }))
-      expect(mockRestoreWorkflow).toHaveBeenCalledWith('/apps/app-1/workflows/published-version-id/restore')
+      expect(mockSetCurrentVersion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'published-version-id',
+        }),
+      )
+      expect(mockRestoreWorkflow).toHaveBeenCalledWith(
+        '/apps/app-1/workflows/published-version-id/restore',
+      )
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isRestoring: false })
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ backupDraft: undefined })
       expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalled()
@@ -296,7 +321,7 @@ describe('VersionHistoryPanel', () => {
     render(
       <VersionHistoryPanel
         latestVersionId="published-version-id"
-        restoreVersionUrl={versionId => `/apps/app-1/workflows/${versionId}/restore`}
+        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
       />,
     )
 
@@ -316,7 +341,7 @@ describe('VersionHistoryPanel', () => {
     render(
       <VersionHistoryPanel
         latestVersionId="published-version-id"
-        restoreVersionUrl={versionId => `/apps/app-1/workflows/${versionId}/restore`}
+        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
       />,
     )
 
@@ -338,7 +363,7 @@ describe('VersionHistoryPanel', () => {
     render(
       <VersionHistoryPanel
         latestVersionId="published-version-id"
-        restoreVersionUrl={versionId => `/apps/app-1/workflows/${versionId}/restore`}
+        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
       />,
     )
 
@@ -349,7 +374,9 @@ describe('VersionHistoryPanel', () => {
     fireEvent.click(screen.getByText('confirm restore'))
 
     await waitFor(() => {
-      expect(mockRestoreWorkflow).toHaveBeenCalledWith('/apps/app-1/workflows/published-version-id/restore')
+      expect(mockRestoreWorkflow).toHaveBeenCalledWith(
+        '/apps/app-1/workflows/published-version-id/restore',
+      )
     })
 
     expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith({ isRestoring: false })

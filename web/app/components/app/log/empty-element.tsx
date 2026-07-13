@@ -5,7 +5,8 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { AppModeEnum } from '@/types/app'
@@ -14,8 +15,21 @@ import { basePath } from '@/utils/var'
 
 const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
-      <path d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className ?? ''}
+    >
+      <path
+        d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
@@ -37,12 +51,12 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
     <div className="flex h-full items-center justify-center">
       <div className="box-border h-fit w-[560px] rounded-2xl bg-background-section-burn px-5 py-4">
         <span className="system-md-semibold text-text-secondary">
-          {t('table.empty.element.title', { ns: 'appLog' })}
+          {t(($) => $['table.empty.element.title'], { ns: 'appLog' })}
           <ThreeDotsIcon className="relative -top-3 -left-1.5 inline text-text-secondary" />
         </span>
         <div className="mt-2 system-sm-regular text-text-tertiary">
           <Trans
-            i18nKey="table.empty.element.content"
+            i18nKey={($) => $['table.empty.element.content']}
             ns="appLog"
             components={{
               shareLink: (

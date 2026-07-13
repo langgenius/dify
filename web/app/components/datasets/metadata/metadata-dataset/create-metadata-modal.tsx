@@ -9,7 +9,8 @@ type Props = Readonly<{
   setOpen: (open: boolean) => void
   trigger: React.ReactNode
   popupLeft?: number
-}> & CreateContentProps
+}> &
+  CreateContentProps
 
 export function CreateMetadataModal({
   open,
@@ -18,15 +19,14 @@ export function CreateMetadataModal({
   popupLeft = 20,
   ...createContentProps
 }: Props) {
-  const triggerElement = React.isValidElement(trigger)
-    ? trigger
-    : <button type="button">{trigger}</button>
+  const triggerElement = React.isValidElement(trigger) ? (
+    trigger
+  ) : (
+    <button type="button">{trigger}</button>
+  )
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger render={triggerElement as React.ReactElement} />
       <PopoverContent
         placement="left-start"
@@ -34,9 +34,12 @@ export function CreateMetadataModal({
         alignOffset={-38}
         popupClassName="w-[320px]"
       >
-        <CreateContent {...createContentProps} onClose={() => setOpen(false)} onBack={() => setOpen(false)} />
+        <CreateContent
+          {...createContentProps}
+          onClose={() => setOpen(false)}
+          onBack={() => setOpen(false)}
+        />
       </PopoverContent>
     </Popover>
-
   )
 }

@@ -148,6 +148,7 @@
   "maxActiveRequestsTip": "จำนวนการร้องขอที่ใช้งานพร้อมกันสูงสุดต่อแอป (0 หมายถึงไม่จำกัด)",
   "mermaid.classic": "คลาสสิก",
   "mermaid.handDrawn": "วาดด้วยมือ",
+  "mermaid.waitForCompletion": "กำลังรอให้โค้ดไดอะแกรมเสร็จสมบูรณ์...",
   "newApp.Cancel": "ยกเลิก",
   "newApp.Confirm": "ยืนยัน",
   "newApp.Create": "สร้าง",

@@ -2,10 +2,7 @@ import type { DifyWorld } from '../../support/world'
 import type { AccessSurfaceName } from './access-point-helpers'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import {
-  setAgentApiAccess,
-  setAgentSiteAccessAndGetURL,
-} from '../../agent-v2/support/access-point'
+import { setAgentApiAccess, setAgentSiteAccessAndGetURL } from '../../agent-v2/support/access-point'
 import { getAgentAccessPath, publishAgentWithPublishableDraft } from '../../agent-v2/support/agent'
 import {
   getAccessRegion,
@@ -44,11 +41,11 @@ When(
     const page = this.getPage()
     const agent = getPreseededResource(this, agentName, 'agent')
 
-    await page.goto('/roster')
+    await page.goto('/agents')
     await page.getByRole('link', { name: agentName }).click()
-    await expect(page).toHaveURL(new RegExp(`/roster/agent/${agent.id}/configure(?:\\?.*)?$`))
+    await expect(page).toHaveURL(new RegExp(`/agents/${agent.id}/configure(?:\\?.*)?$`))
     await page.getByRole('link', { name: 'Access Point' }).click()
-    await expect(page).toHaveURL(new RegExp(`/roster/agent/${agent.id}/access(?:\\?.*)?$`))
+    await expect(page).toHaveURL(new RegExp(`/agents/${agent.id}/access(?:\\?.*)?$`))
     await expect(page.getByRole('region', { name: 'Access Point' })).toBeVisible({
       timeout: 30_000,
     })
@@ -60,7 +57,7 @@ When('I switch to the Agent v2 Access Point section', async function (this: Dify
   const agentId = getCurrentAgentId(this)
 
   await page.getByRole('link', { name: 'Access Point' }).click()
-  await expect(page).toHaveURL(new RegExp(`/roster/agent/${agentId}/access(?:\\?.*)?$`))
+  await expect(page).toHaveURL(new RegExp(`/agents/${agentId}/access(?:\\?.*)?$`))
   await expect(page.getByRole('region', { name: 'Access Point' })).toBeVisible()
 })
 
@@ -75,8 +72,8 @@ Then('I should see the Agent v2 Access Point overview', async function (this: Di
   await expect(accessRegion.getByLabel('Toggle Web app access')).toBeVisible()
   await expect(accessRegion.getByRole('link', { name: 'Launch' })).toBeVisible()
   await expect(accessRegion.getByRole('button', { name: 'Embedded' })).toBeVisible()
-  await expect(accessRegion.getByRole('button', { name: 'Customize' })).toBeVisible()
-  await expect(accessRegion.getByRole('button', { name: 'Settings' })).toBeVisible()
+  await expect(accessRegion.getByRole('button', { name: 'Custom Frontend' })).toBeVisible()
+  await expect(accessRegion.getByRole('button', { name: 'Branding' })).toBeVisible()
   await expect(accessRegion.getByRole('heading', { name: 'Backend service API' })).toBeVisible()
   await expect(accessRegion.getByText('Service API Endpoint')).toBeVisible()
   await expect(accessRegion.getByLabel('Copy service API endpoint')).toBeVisible()
@@ -101,8 +98,7 @@ When(
     if (surface === 'Web app') {
       const launchLink = accessSurfaceCard.getByRole('link', { name: 'Launch' })
       const href = await launchLink.getAttribute('href')
-      if (!href)
-        throw new Error('Agent v2 Web app Launch link does not expose an href.')
+      if (!href) throw new Error('Agent v2 Web app Launch link does not expose an href.')
 
       this.agentBuilder.accessPoint.webAppURL = href
     }

@@ -1,4 +1,11 @@
-import { ALL_PLANS, contactSalesUrl, defaultPlan, getStartedWithCommunityUrl, getWithPremiumUrl, NUM_INFINITE } from '../config'
+import {
+  ALL_PLANS,
+  contactSalesUrl,
+  defaultPlan,
+  getStartedWithCommunityUrl,
+  getWithPremiumUrl,
+  NUM_INFINITE,
+} from '../config'
 import { Priority } from '../type'
 
 describe('Billing Config', () => {
@@ -34,11 +41,13 @@ describe('Billing Config', () => {
       'logHistory',
     ]
 
-    it.each(['sandbox', 'professional', 'team'] as const)('should have all required fields for %s plan', (planKey) => {
-      const plan = ALL_PLANS[planKey]
-      for (const field of requiredFields)
-        expect(plan[field]).toBeDefined()
-    })
+    it.each(['sandbox', 'professional', 'team'] as const)(
+      'should have all required fields for %s plan',
+      (planKey) => {
+        const plan = ALL_PLANS[planKey]
+        for (const field of requiredFields) expect(plan[field]).toBeDefined()
+      },
+    )
 
     it('should have ascending plan levels: sandbox < professional < team', () => {
       expect(ALL_PLANS.sandbox.level).toBeLessThan(ALL_PLANS.professional.level)
@@ -127,7 +136,9 @@ describe('Billing Config', () => {
       expect(defaultPlan.usage.vectorSpace).toBeLessThanOrEqual(defaultPlan.total.vectorSpace)
       expect(defaultPlan.usage.buildApps).toBeLessThanOrEqual(defaultPlan.total.buildApps)
       expect(defaultPlan.usage.teamMembers).toBeLessThanOrEqual(defaultPlan.total.teamMembers)
-      expect(defaultPlan.usage.annotatedResponse).toBeLessThanOrEqual(defaultPlan.total.annotatedResponse)
+      expect(defaultPlan.usage.annotatedResponse).toBeLessThanOrEqual(
+        defaultPlan.total.annotatedResponse,
+      )
     })
   })
 })

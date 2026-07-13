@@ -26,84 +26,134 @@ vi.mock('@/next/dynamic', async () => {
   const { useState } = await import('react')
 
   return {
-    default: () => function MockChat(props: {
-      onSend: (message: string) => unknown
-      onStopResponding: () => void
-      sendButtonLabel?: string
-      sendButtonLoading?: boolean
-      showPromptLog?: boolean
-      footerNotice?: string
-      chatNode?: ReactNode
-    }) {
-      const [sent, setSent] = useState(false)
+    default: () =>
+      function MockChat(props: {
+        onSend: (message: string) => unknown
+        onStopResponding: () => void
+        sendButtonLabel?: string
+        sendButtonLoading?: boolean
+        showPromptLog?: boolean
+        footerNotice?: string
+        chatNode?: ReactNode
+      }) {
+        const [sent, setSent] = useState(false)
 
-      return (
-        <div
-          data-testid="mock-chat"
-          data-send-button-label={props.sendButtonLabel ?? ''}
-          data-send-button-loading={String(!!props.sendButtonLoading)}
-          data-show-prompt-log={String(!!props.showPromptLog)}
-          data-footer-notice={props.footerNotice ?? ''}
-        >
-          {props.chatNode}
-          <span>{`sessionSent:${sent ? 'yes' : 'no'}`}</span>
-          <button
-            type="button"
-            onClick={() => {
-              setSent(true)
-              sendResultRef.current = props.onSend('hello')
-            }}
+        return (
+          <div
+            data-testid="mock-chat"
+            data-send-button-label={props.sendButtonLabel ?? ''}
+            data-send-button-loading={String(!!props.sendButtonLoading)}
+            data-show-prompt-log={String(!!props.showPromptLog)}
+            data-footer-notice={props.footerNotice ?? ''}
           >
-            send
-          </button>
-          <button type="button" onClick={props.onStopResponding}>
-            stop
-          </button>
-        </div>
-      )
-    },
+            {props.chatNode}
+            <span>{`sessionSent:${sent ? 'yes' : 'no'}`}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setSent(true)
+                sendResultRef.current = props.onSend('hello')
+              }}
+            >
+              send
+            </button>
+            <button type="button" onClick={props.onStopResponding}>
+              stop
+            </button>
+          </div>
+        )
+      },
   }
 })
 
 vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
   default: ({ footerNotice }: { footerNotice?: ReactNode }) => (
-    <div data-testid="agent-preview-chat-input">
-      {footerNotice}
-    </div>
+    <div data-testid="agent-preview-chat-input">{footerNotice}</div>
   ),
 }))
 
 vi.mock('@/app/components/base/chat/chat/hooks', () => ({
-  useChat: useChatMock.mockImplementation((
-    _config: unknown,
-    _formSettings: unknown,
-    chatList: unknown[],
-    stopCallback: (taskId: string) => void,
-  ) => {
-    stopCallbackRef.current = stopCallback
+  useChat: useChatMock.mockImplementation(
+    (
+      _config: unknown,
+      _formSettings: unknown,
+      chatList: unknown[],
+      stopCallback: (taskId: string) => void,
+    ) => {
+      stopCallbackRef.current = stopCallback
 
-    return {
-      chatList,
-      setTargetMessageId: vi.fn(),
-      isResponding: false,
-      handleSend: handleSendMock,
-      suggestedQuestions: [],
-      handleStop: () => stopCallback('task-1'),
-      handleAnnotationAdded: vi.fn(),
-      handleAnnotationEdited: vi.fn(),
-      handleAnnotationRemoved: vi.fn(),
-    }
-  }),
+      return {
+        chatList,
+        setTargetMessageId: vi.fn(),
+        isResponding: false,
+        handleSend: handleSendMock,
+        suggestedQuestions: [],
+        handleStop: () => stopCallback('task-1'),
+        handleAnnotationAdded: vi.fn(),
+        handleAnnotationEdited: vi.fn(),
+        handleAnnotationRemoved: vi.fn(),
+      }
+    },
+  ),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     userProfile: {
       avatar_url: '',
       name: 'User',
     },
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      avatar_url: '',
+      name: 'User',
+    },
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      avatar_url: '',
+      name: 'User',
+    },
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      avatar_url: '',
+      name: 'User',
+    },
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    userProfile: {
+      avatar_url: '',
+      name: 'User',
+    },
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
@@ -213,11 +263,7 @@ function RuntimeConversationHarness() {
   )
 }
 
-function RuntimeClearCommandHarness({
-  inputPlaceholder,
-}: {
-  inputPlaceholder: string
-}) {
+function RuntimeClearCommandHarness({ inputPlaceholder }: { inputPlaceholder: string }) {
   const [clearChatList, setClearChatList] = useState(true)
 
   return (
@@ -350,6 +396,7 @@ describe('AgentPreviewChat', () => {
       false,
       expect.any(Function),
       'debug-conversation-1',
+      { isNewAgent: true },
     )
   })
 
@@ -363,7 +410,9 @@ describe('AgentPreviewChat', () => {
 
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
     expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1)
-    expect(saveDraftBeforeRun.mock.invocationCallOrder[0]).toBeLessThan(handleSendMock.mock.invocationCallOrder[0]!)
+    expect(saveDraftBeforeRun.mock.invocationCallOrder[0]).toBeLessThan(
+      handleSendMock.mock.invocationCallOrder[0]!,
+    )
     expect(handleSendMock).toHaveBeenCalledWith(
       'agent/agent-1/chat-messages',
       expect.not.objectContaining({
@@ -415,29 +464,36 @@ describe('AgentPreviewChat', () => {
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
     const callbacks = handleSendMock.mock.calls.at(0)?.[2]
 
-    expect(callbacks.onUnhandledEvent({
-      event: 'error',
-      conversation_id: 'conversation-1',
-      message_id: 'message-1',
-      code: 'agent_run_failed',
-      message: 'Agent execution failed',
-    })).toEqual({
+    expect(
+      callbacks.onUnhandledEvent({
+        event: 'error',
+        conversation_id: 'conversation-1',
+        message_id: 'message-1',
+        code: 'agent_run_failed',
+        message: 'Agent execution failed',
+      }),
+    ).toEqual({
       conversationId: 'conversation-1',
       messageId: 'message-1',
       errorCode: 'agent_run_failed',
       errorMessage: 'Agent execution failed',
     })
-    expect(callbacks.onUnhandledEvent({
-      event: 'unknown',
-      message: 'Ignored',
-    })).toBeUndefined()
+    expect(
+      callbacks.onUnhandledEvent({
+        event: 'unknown',
+        message: 'Ignored',
+      }),
+    ).toBeUndefined()
   })
 
   it('should show the send button loading state while preparing a build run', async () => {
     let resolveSaveDraftBeforeRun: () => void = () => {}
-    const saveDraftBeforeRun = vi.fn(() => new Promise<void>((resolve) => {
-      resolveSaveDraftBeforeRun = resolve
-    }))
+    const saveDraftBeforeRun = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSaveDraftBeforeRun = resolve
+        }),
+    )
     renderPreviewChat({
       sendButtonLabel: 'Start build',
       renderEmptyState: ({ inputNode }) => <div>{inputNode}</div>,
@@ -476,26 +532,28 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should not show the send button loading state while an icon send button is responding', async () => {
-    useChatMock.mockImplementationOnce((
-      _config: unknown,
-      _formSettings: unknown,
-      chatList: unknown[],
-      stopCallback: (taskId: string) => void,
-    ) => {
-      stopCallbackRef.current = stopCallback
+    useChatMock.mockImplementationOnce(
+      (
+        _config: unknown,
+        _formSettings: unknown,
+        chatList: unknown[],
+        stopCallback: (taskId: string) => void,
+      ) => {
+        stopCallbackRef.current = stopCallback
 
-      return {
-        chatList,
-        setTargetMessageId: vi.fn(),
-        isResponding: true,
-        handleSend: handleSendMock,
-        suggestedQuestions: [],
-        handleStop: () => stopCallback('task-1'),
-        handleAnnotationAdded: vi.fn(),
-        handleAnnotationEdited: vi.fn(),
-        handleAnnotationRemoved: vi.fn(),
-      }
-    })
+        return {
+          chatList,
+          setTargetMessageId: vi.fn(),
+          isResponding: true,
+          handleSend: handleSendMock,
+          suggestedQuestions: [],
+          handleStop: () => stopCallback('task-1'),
+          handleAnnotationAdded: vi.fn(),
+          handleAnnotationEdited: vi.fn(),
+          handleAnnotationRemoved: vi.fn(),
+        }
+      },
+    )
 
     renderPreviewChat()
 
@@ -505,37 +563,39 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should use the default send button after the first build message', async () => {
-    useChatMock.mockImplementationOnce((
-      _config: unknown,
-      _formSettings: unknown,
-      _chatList: unknown[],
-      stopCallback: (taskId: string) => void,
-    ) => {
-      stopCallbackRef.current = stopCallback
+    useChatMock.mockImplementationOnce(
+      (
+        _config: unknown,
+        _formSettings: unknown,
+        _chatList: unknown[],
+        stopCallback: (taskId: string) => void,
+      ) => {
+        stopCallbackRef.current = stopCallback
 
-      return {
-        chatList: [
-          {
-            id: 'question-1',
-            content: 'Build an agent',
-            isAnswer: false,
-          },
-          {
-            id: 'answer-1',
-            content: 'Done',
-            isAnswer: true,
-          },
-        ],
-        setTargetMessageId: vi.fn(),
-        isResponding: false,
-        handleSend: handleSendMock,
-        suggestedQuestions: [],
-        handleStop: () => stopCallback('task-1'),
-        handleAnnotationAdded: vi.fn(),
-        handleAnnotationEdited: vi.fn(),
-        handleAnnotationRemoved: vi.fn(),
-      }
-    })
+        return {
+          chatList: [
+            {
+              id: 'question-1',
+              content: 'Build an agent',
+              isAnswer: false,
+            },
+            {
+              id: 'answer-1',
+              content: 'Done',
+              isAnswer: true,
+            },
+          ],
+          setTargetMessageId: vi.fn(),
+          isResponding: false,
+          handleSend: handleSendMock,
+          suggestedQuestions: [],
+          handleStop: () => stopCallback('task-1'),
+          handleAnnotationAdded: vi.fn(),
+          handleAnnotationEdited: vi.fn(),
+          handleAnnotationRemoved: vi.fn(),
+        }
+      },
+    )
     renderPreviewChat({
       sendButtonLabel: 'Start build',
     })
@@ -554,7 +614,18 @@ describe('AgentPreviewChat', () => {
           inputs: {},
           message: [],
           message_files: [],
-          agent_thoughts: [],
+          agent_thoughts: [
+            {
+              id: 'thought-with-answer',
+              message_id: 'message-after-send',
+              thought: '',
+              answer: 'history thought answer',
+              tool: '',
+              tool_input: '',
+              observation: '',
+              position: 1,
+            },
+          ],
           feedbacks: [],
           answer_tokens: 1,
           message_tokens: 1,
@@ -574,16 +645,69 @@ describe('AgentPreviewChat', () => {
 
     await callbacks.onGetConversationMessages('conversation-1')
 
-    expect(queryClient.getQueryData(consoleQuery.agent.byAgentId.chatMessages.get.queryKey({
-      input: {
-        params: {
-          agent_id: 'agent-1',
-        },
-        query: {
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.agent.byAgentId.chatMessages.get.queryKey({
+          input: {
+            params: {
+              agent_id: 'agent-1',
+            },
+            query: {
+              conversation_id: 'conversation-1',
+            },
+          },
+        }),
+      ),
+    ).toBe(conversationMessagesResponse)
+  })
+
+  it('should preserve historical agent thought answer when formatting chat history', async () => {
+    chatMessagesGetMock.mockResolvedValue({
+      data: [
+        {
+          id: 'message-with-thought-answer',
           conversation_id: 'conversation-1',
+          query: 'hello',
+          answer: '',
+          inputs: {},
+          message: [],
+          message_files: [],
+          agent_thoughts: [
+            {
+              id: 'thought-with-answer',
+              message_id: 'message-with-thought-answer',
+              thought: '',
+              answer: 'history thought answer',
+              tool: '',
+              tool_input: '',
+              observation: '',
+              position: 1,
+            },
+          ],
+          feedbacks: [],
+          status: 'success',
+          from_source: 'console',
         },
-      },
-    }))).toBe(conversationMessagesResponse)
+      ],
+    })
+
+    renderPreviewChat({
+      conversationId: 'conversation-1',
+    })
+
+    await waitFor(() => {
+      const formattedTree = useChatMock.mock.calls.find((call) => {
+        const chatTree = call[2]
+        return JSON.stringify(chatTree).includes('history thought answer')
+      })?.[2]
+
+      expect(formattedTree?.[0]?.children?.[0]?.agent_thoughts?.[0]).toEqual(
+        expect.objectContaining({
+          id: 'thought-with-answer',
+          answer: 'history thought answer',
+        }),
+      )
+    })
   })
 
   it('should notify the owner when a send settles with an error', async () => {
@@ -685,12 +809,16 @@ describe('AgentPreviewChat', () => {
       renderEmptyState: ({ inputNode }) => <div>{inputNode}</div>,
     })
 
-    expect(screen.getByText('agentV2.agentDetail.configure.preview.sandboxNotice')).toBeInTheDocument()
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.preview.sandboxNotice'),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'send' }))
 
     await waitFor(() => {
-      expect(screen.queryByText('agentV2.agentDetail.configure.preview.sandboxNotice')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('agentV2.agentDetail.configure.preview.sandboxNotice'),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -786,10 +914,12 @@ describe('AgentPreviewChat', () => {
     await waitFor(() => expect(useChatMock).toHaveBeenCalled())
 
     const config = useChatMock.mock.calls.at(-1)?.[0]
-    expect(config.file_upload).toEqual(expect.objectContaining({
-      enabled: false,
-      allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-    }))
+    expect(config.file_upload).toEqual(
+      expect.objectContaining({
+        enabled: false,
+        allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+      }),
+    )
   })
 
   it('should enable build chat file upload when chat features file upload is enabled', async () => {
@@ -806,16 +936,20 @@ describe('AgentPreviewChat', () => {
     await waitFor(() => expect(useChatMock).toHaveBeenCalled())
 
     const config = useChatMock.mock.calls.at(-1)?.[0]
-    expect(config.file_upload).toEqual(expect.objectContaining({
-      enabled: true,
-      allowed_file_types: [SupportUploadFileTypes.image],
-      allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-      number_limits: 3,
-    }))
-    expect(config.file_upload.image).toEqual(expect.objectContaining({
-      enabled: true,
-      transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-      number_limits: 3,
-    }))
+    expect(config.file_upload).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        allowed_file_types: [SupportUploadFileTypes.image],
+        allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+        number_limits: 3,
+      }),
+    )
+    expect(config.file_upload.image).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+        number_limits: 3,
+      }),
+    )
   })
 })

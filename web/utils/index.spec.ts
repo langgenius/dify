@@ -349,10 +349,8 @@ describe('fetchWithRetry extended', () => {
     let attempts = 0
     const eventuallySucceed = new Promise((resolve, reject) => {
       attempts++
-      if (attempts < 2)
-        reject(new Error('not yet'))
-      else
-        resolve('success')
+      if (attempts < 2) reject(new Error('not yet'))
+      else resolve('success')
     })
 
     const [error] = await fetchWithRetry(eventuallySucceed, 3)
@@ -408,7 +406,9 @@ describe('correctToolProvider extended', () => {
   it('should handle special tool providers', () => {
     expect(correctToolProvider('stepfun', false)).toBe('langgenius/stepfun_tool/stepfun')
     expect(correctToolProvider('jina', false)).toBe('langgenius/jina_tool/jina')
-    expect(correctToolProvider('siliconflow', false)).toBe('langgenius/siliconflow_tool/siliconflow')
+    expect(correctToolProvider('siliconflow', false)).toBe(
+      'langgenius/siliconflow_tool/siliconflow',
+    )
     expect(correctToolProvider('gitee_ai', false)).toBe('langgenius/gitee_ai_tool/gitee_ai')
   })
 

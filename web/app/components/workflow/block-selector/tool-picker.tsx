@@ -6,11 +6,7 @@ import type { ToolDefaultValue, ToolValue } from './types'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
@@ -21,9 +17,7 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import {
-  createCustomCollection,
-} from '@/service/tools'
+import { createCustomCollection } from '@/service/tools'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import {
   useAllBuiltInTools,
@@ -43,7 +37,8 @@ type Props = Readonly<{
   offset?: OffsetOptions
   isShow: boolean
   onShowChange: (isShow: boolean) => void
-}> & ToolPickerContentProps
+}> &
+  ToolPickerContentProps
 
 export type ToolPickerContentProps = Readonly<{
   focusSearchOnMount?: boolean
@@ -71,7 +66,7 @@ export function ToolPickerContent({
 
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
+    select: (s) => s.enable_marketplace,
   })
   const { data: buildInTools } = useAllBuiltInTools()
   const shouldFetchCustomTools = scope !== 'plugins' && scope !== 'workflow'
@@ -84,10 +79,8 @@ export function ToolPickerContent({
   const invalidateWorkflowTools = useInvalidateAllWorkflowTools()
   const invalidateMcpTools = useInvalidateAllMCPTools()
 
-  const {
-    plugins: featuredPlugins = [],
-    isLoading: isFeaturedLoading,
-  } = useFeaturedToolsRecommendations(enable_marketplace)
+  const { plugins: featuredPlugins = [], isLoading: isFeaturedLoading } =
+    useFeaturedToolsRecommendations(enable_marketplace)
 
   const { builtinToolList, customToolList, workflowToolList } = useMemo(() => {
     if (scope === 'plugins') {
@@ -128,17 +121,16 @@ export function ToolPickerContent({
     onSelectMultiple(tools)
   }
 
-  const [isShowEditCollectionToolModal, {
-    setFalse: hideEditCustomCollectionModal,
-    setTrue: showEditCustomCollectionModal,
-  }] = useBoolean(false)
+  const [
+    isShowEditCollectionToolModal,
+    { setFalse: hideEditCustomCollectionModal, setTrue: showEditCustomCollectionModal },
+  ] = useBoolean(false)
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
-    if (!canManageTools)
-      return
+    if (!canManageTools) return
 
     await createCustomCollection(data)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     hideEditCustomCollectionModal()
     handleAddedCustomTool()
   }
@@ -155,14 +147,19 @@ export function ToolPickerContent({
   }
 
   return (
-    <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs', panelClassName)}>
+    <div
+      className={cn(
+        'relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs',
+        panelClassName,
+      )}
+    >
       <div className="p-2 pb-1">
         <SearchBox
           search={searchText}
           onSearchChange={setSearchText}
           tags={tags}
           onTagsChange={setTags}
-          placeholder={t('searchTools', { ns: 'plugin' })!}
+          placeholder={t(($) => $.searchTools, { ns: 'plugin' })!}
           supportAddCustomTool={supportAddCustomTool && canManageTools}
           onAddedCustomTool={handleAddedCustomTool}
           onShowAddCustomCollectionModal={showEditCustomCollectionModal}
@@ -209,24 +206,19 @@ function ToolPicker({
   onShowChange,
   ...contentProps
 }: Props) {
-  const sideOffset = typeof offset === 'number' ? offset : (typeof offset === 'function' ? 0 : (offset?.mainAxis ?? 0))
-  const alignOffset = typeof offset === 'number' ? 0 : (typeof offset === 'function' ? 0 : (offset?.crossAxis ?? 0))
+  const sideOffset =
+    typeof offset === 'number' ? offset : typeof offset === 'function' ? 0 : (offset?.mainAxis ?? 0)
+  const alignOffset =
+    typeof offset === 'number' ? 0 : typeof offset === 'function' ? 0 : (offset?.crossAxis ?? 0)
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen && disabled)
-      return
+    if (nextOpen && disabled) return
     onShowChange(nextOpen)
   }
 
   return (
-    <Popover
-      open={isShow}
-      onOpenChange={handleOpenChange}
-    >
-      <PopoverTrigger
-        nativeButton={false}
-        render={<div className="inline-block" />}
-      >
+    <Popover open={isShow} onOpenChange={handleOpenChange}>
+      <PopoverTrigger nativeButton={false} render={<div className="inline-block" />}>
         {trigger}
       </PopoverTrigger>
 

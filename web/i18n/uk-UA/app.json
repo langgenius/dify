@@ -148,6 +148,7 @@
   "maxActiveRequestsTip": "Максимальна кількість одночасних активних запитів на додаток (0 для необмеженої кількості)",
   "mermaid.classic": "Класичний",
   "mermaid.handDrawn": "Намальовані від руки",
+  "mermaid.waitForCompletion": "Очікування завершення коду діаграми...",
   "newApp.Cancel": "Скасувати",
   "newApp.Confirm": "Підтвердити",
   "newApp.Create": "Створити",

@@ -9,7 +9,12 @@ import type { DatasetConfigs, ModelConfig } from '@/models/debug'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createRef } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { ConfigurationMethodEnum, ModelFeatureEnum, ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  ConfigurationMethodEnum,
+  ModelFeatureEnum,
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
 import { PromptMode } from '@/models/debug'
 import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
@@ -29,9 +34,7 @@ function createMockModelConfig(overrides: Partial<ModelConfig> = {}): ModelConfi
     mode: ModelModeType.chat,
     configs: {
       prompt_template: 'Test template',
-      prompt_variables: [
-        { key: 'var1', name: 'Variable 1', type: 'text', required: false },
-      ],
+      prompt_variables: [{ key: 'var1', name: 'Variable 1', type: 'text', required: false }],
     },
     chat_prompt_config: {
       prompt: [],
@@ -76,19 +79,24 @@ function createMockModelConfig(overrides: Partial<ModelConfig> = {}): ModelConfi
  * Factory function for creating mock Collection list
  */
 function createMockCollections(collections: Partial<Collection>[] = []): Collection[] {
-  return collections.map((collection, index) => ({
-    id: `collection-${index}`,
-    name: `Collection ${index}`,
-    icon: 'icon-url',
-    type: 'tool',
-    ...collection,
-  } as Collection))
+  return collections.map(
+    (collection, index) =>
+      ({
+        id: `collection-${index}`,
+        name: `Collection ${index}`,
+        icon: 'icon-url',
+        type: 'tool',
+        ...collection,
+      }) as Collection,
+  )
 }
 
 /**
  * Factory function for creating mock Provider Context
  */
-function createMockProviderContext(overrides: Partial<ProviderContextState> = {}): ProviderContextState {
+function createMockProviderContext(
+  overrides: Partial<ProviderContextState> = {},
+): ProviderContextState {
   return {
     textGenerationModelList: [
       {
@@ -144,7 +152,11 @@ vi.mock('@/service/fetch', () => ({
   fetch: vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({}) })),
 }))
 
-const { mockFetchConversationMessages, mockFetchSuggestedQuestions, mockStopChatMessageResponding } = vi.hoisted(() => ({
+const {
+  mockFetchConversationMessages,
+  mockFetchSuggestedQuestions,
+  mockStopChatMessageResponding,
+} = vi.hoisted(() => ({
   mockFetchConversationMessages: vi.fn(),
   mockFetchSuggestedQuestions: vi.fn(),
   mockStopChatMessageResponding: vi.fn(),
@@ -211,7 +223,12 @@ const mockDebugConfigContext = {
   citationConfig: { enabled: false },
   setCitationConfig: vi.fn(),
   moderationConfig: { enabled: false },
-  annotationConfig: { id: '', enabled: false, score_threshold: 0.7, embedding_model: { embedding_model_name: '', embedding_provider_name: '' } },
+  annotationConfig: {
+    id: '',
+    enabled: false,
+    score_threshold: 0.7,
+    embedding_model: { embedding_model_name: '', embedding_provider_name: '' },
+  },
   setAnnotationConfig: vi.fn(),
   setModerationConfig: vi.fn(),
   externalDataToolsConfig: [],
@@ -228,15 +245,17 @@ const mockDebugConfigContext = {
     agentConfig: {
       enabled: false,
       max_iteration: 5,
-      tools: [{
-        tool_name: 'test-tool',
-        provider_id: 'test-provider',
-        provider_type: CollectionType.builtIn,
-        provider_name: 'test-provider',
-        tool_label: 'Test Tool',
-        tool_parameters: {},
-        enabled: true,
-      }],
+      tools: [
+        {
+          tool_name: 'test-tool',
+          provider_id: 'test-provider',
+          provider_type: CollectionType.builtIn,
+          provider_name: 'test-provider',
+          tool_label: 'Test Tool',
+          tool_parameters: {},
+          enabled: true,
+        },
+      ],
       strategy: AgentStrategy.react,
     },
   }),
@@ -307,13 +326,9 @@ const { mockUseAppContext } = vi.hoisted(() => ({
 
 mockUseAppContext.mockReturnValue(mockAppContext)
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: mockUseAppContext,
-}))
-
 type FeatureState = {
   moreLikeThis: { enabled: boolean }
-  opening: { enabled: boolean, opening_statement: string, suggested_questions: string[] }
+  opening: { enabled: boolean; opening_statement: string; suggested_questions: string[] }
   moderation: { enabled: boolean }
   speech2text: { enabled: boolean }
   text2speech: { enabled: boolean }
@@ -411,12 +426,21 @@ type MockChatProps = {
   chatList?: ChatItem[]
   isResponding?: boolean
   onSend?: (message: string, files?: FileEntity[]) => void
-  onRegenerate?: (chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => void
+  onRegenerate?: (
+    chatItem: ChatItem,
+    editedQuestion?: { message: string; files?: FileEntity[] },
+  ) => void
   onStopResponding?: () => void
   suggestedQuestions?: string[]
   questionIcon?: ReactNode
   answerIcon?: ReactNode
-  onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string, index: number) => void
+  onAnnotationAdded?: (
+    annotationId: string,
+    authorName: string,
+    question: string,
+    answer: string,
+    index: number,
+  ) => void
   onAnnotationEdited?: (question: string, answer: string, index: number) => void
   onAnnotationRemoved?: (index: number) => void
   switchSibling?: (siblingMessageId: string) => void
@@ -511,22 +535,21 @@ vi.mock('@/app/components/base/chat/chat', () => ({
         {onRegenerate && (
           <button
             data-testid="regenerate-button"
-            onClick={() => onRegenerate({
-              id: 'msg-1',
-              content: 'Question',
-              isAnswer: false,
-              message_files: [],
-              parentMessageId: 'msg-0',
-            })}
+            onClick={() =>
+              onRegenerate({
+                id: 'msg-1',
+                content: 'Question',
+                isAnswer: false,
+                message_files: [],
+                parentMessageId: 'msg-0',
+              })
+            }
           >
             Regenerate
           </button>
         )}
         {switchSibling && (
-          <button
-            data-testid="switch-sibling-button"
-            onClick={() => switchSibling('sibling-1')}
-          >
+          <button data-testid="switch-sibling-button" onClick={() => switchSibling('sibling-1')}>
             Switch
           </button>
         )}
@@ -556,10 +579,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
           </button>
         )}
         {onAnnotationRemoved && (
-          <button
-            data-testid="remove-annotation-button"
-            onClick={() => onAnnotationRemoved(0)}
-          >
+          <button data-testid="remove-annotation-button" onClick={() => onAnnotationRemoved(0)}>
             Remove Annotation
           </button>
         )}
@@ -587,8 +607,7 @@ describe('DebugWithSingleModel', () => {
     mockUseFormattingChangedSubscription.mockReturnValue(undefined)
     mockFeaturesState = { ...defaultFeatures }
     mockUseFeatures.mockImplementation((selector?: FeatureSelector) => {
-      if (typeof selector === 'function')
-        return selector({ features: mockFeaturesState })
+      if (typeof selector === 'function') return selector({ features: mockFeaturesState })
       return mockFeaturesState
     })
 
@@ -613,7 +632,12 @@ describe('DebugWithSingleModel', () => {
     it('should render with custom checkCanSend prop', () => {
       const checkCanSend = vi.fn(() => true)
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} checkCanSend={checkCanSend} />)
+      render(
+        <DebugWithSingleModel
+          ref={ref as RefObject<DebugWithSingleModelRefType>}
+          checkCanSend={checkCanSend}
+        />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -624,7 +648,12 @@ describe('DebugWithSingleModel', () => {
     it('should respect checkCanSend returning true', async () => {
       const checkCanSend = vi.fn(() => true)
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} checkCanSend={checkCanSend} />)
+      render(
+        <DebugWithSingleModel
+          ref={ref as RefObject<DebugWithSingleModelRefType>}
+          checkCanSend={checkCanSend}
+        />,
+      )
 
       const sendButton = screen.getByTestId('send-button')
       fireEvent.click(sendButton)
@@ -640,7 +669,12 @@ describe('DebugWithSingleModel', () => {
     it('should prevent send when checkCanSend returns false', async () => {
       const checkCanSend = vi.fn(() => false)
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} checkCanSend={checkCanSend} />)
+      render(
+        <DebugWithSingleModel
+          ref={ref as RefObject<DebugWithSingleModelRefType>}
+          checkCanSend={checkCanSend}
+        />,
+      )
 
       const sendButton = screen.getByTestId('send-button')
       fireEvent.click(sendButton)
@@ -728,7 +762,11 @@ describe('DebugWithSingleModel', () => {
     it('should omit opening statement when feature is disabled', async () => {
       mockFeaturesState = {
         ...defaultFeatures,
-        opening: { enabled: false, opening_statement: 'Should not appear', suggested_questions: ['Q1'] },
+        opening: {
+          enabled: false,
+          opening_statement: 'Should not appear',
+          suggested_questions: ['Q1'],
+        },
       }
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
@@ -745,29 +783,31 @@ describe('DebugWithSingleModel', () => {
     })
 
     it('should handle model without vision support', () => {
-      mockUseProviderContext.mockReturnValue(createMockProviderContext({
-        textGenerationModelList: [
-          {
-            provider: 'openai',
-            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-            icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-            status: ModelStatusEnum.active,
-            models: [
-              {
-                model: 'gpt-3.5-turbo',
-                label: { en_US: 'GPT-3.5', zh_Hans: 'GPT-3.5' },
-                model_type: ModelTypeEnum.textGeneration,
-                features: [], // No vision support
-                fetch_from: ConfigurationMethodEnum.predefinedModel,
-                model_properties: {},
-                deprecated: false,
-                status: ModelStatusEnum.active,
-                load_balancing_enabled: false,
-              },
-            ],
-          },
-        ],
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createMockProviderContext({
+          textGenerationModelList: [
+            {
+              provider: 'openai',
+              label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+              icon_small: { en_US: 'icon', zh_Hans: 'icon' },
+              status: ModelStatusEnum.active,
+              models: [
+                {
+                  model: 'gpt-3.5-turbo',
+                  label: { en_US: 'GPT-3.5', zh_Hans: 'GPT-3.5' },
+                  model_type: ModelTypeEnum.textGeneration,
+                  features: [], // No vision support
+                  fetch_from: ConfigurationMethodEnum.predefinedModel,
+                  model_properties: {},
+                  deprecated: false,
+                  status: ModelStatusEnum.active,
+                  load_balancing_enabled: false,
+                },
+              ],
+            },
+          ],
+        }),
+      )
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
@@ -775,17 +815,19 @@ describe('DebugWithSingleModel', () => {
     })
 
     it('should handle missing model in provider list', () => {
-      mockUseProviderContext.mockReturnValue(createMockProviderContext({
-        textGenerationModelList: [
-          {
-            provider: 'different-provider',
-            label: { en_US: 'Different Provider', zh_Hans: '不同提供商' },
-            icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-            status: ModelStatusEnum.active,
-            models: [],
-          },
-        ],
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createMockProviderContext({
+          textGenerationModelList: [
+            {
+              provider: 'different-provider',
+              label: { en_US: 'Different Provider', zh_Hans: '不同提供商' },
+              icon_small: { en_US: 'icon', zh_Hans: 'icon' },
+              status: ModelStatusEnum.active,
+              models: [],
+            },
+          ],
+        }),
+      )
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
@@ -867,15 +909,17 @@ describe('DebugWithSingleModel', () => {
           agentConfig: {
             enabled: false,
             max_iteration: 5,
-            tools: [{
-              tool_name: 'unknown-tool',
-              provider_id: 'unknown-provider',
-              provider_type: CollectionType.builtIn,
-              provider_name: 'unknown-provider',
-              tool_label: 'Unknown Tool',
-              tool_parameters: {},
-              enabled: true,
-            }],
+            tools: [
+              {
+                tool_name: 'unknown-tool',
+                provider_id: 'unknown-provider',
+                provider_type: CollectionType.builtIn,
+                provider_name: 'unknown-provider',
+                tool_label: 'Unknown Tool',
+                tool_parameters: {},
+                enabled: true,
+              },
+            ],
             strategy: AgentStrategy.react,
           },
         }),
@@ -958,29 +1002,31 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      mockUseProviderContext.mockReturnValue(createMockProviderContext({
-        textGenerationModelList: [
-          {
-            provider: 'openai',
-            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-            icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-            status: ModelStatusEnum.active,
-            models: [
-              {
-                model: 'gpt-3.5-turbo',
-                label: { en_US: 'GPT-3.5', zh_Hans: 'GPT-3.5' },
-                model_type: ModelTypeEnum.textGeneration,
-                features: [], // No vision
-                fetch_from: ConfigurationMethodEnum.predefinedModel,
-                model_properties: {},
-                deprecated: false,
-                status: ModelStatusEnum.active,
-                load_balancing_enabled: false,
-              },
-            ],
-          },
-        ],
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createMockProviderContext({
+          textGenerationModelList: [
+            {
+              provider: 'openai',
+              label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+              icon_small: { en_US: 'icon', zh_Hans: 'icon' },
+              status: ModelStatusEnum.active,
+              models: [
+                {
+                  model: 'gpt-3.5-turbo',
+                  label: { en_US: 'GPT-3.5', zh_Hans: 'GPT-3.5' },
+                  model_type: ModelTypeEnum.textGeneration,
+                  features: [], // No vision
+                  fetch_from: ConfigurationMethodEnum.predefinedModel,
+                  model_properties: {},
+                  deprecated: false,
+                  status: ModelStatusEnum.active,
+                  load_balancing_enabled: false,
+                },
+              ],
+            },
+          ],
+        }),
+      )
 
       mockFeaturesState = {
         ...defaultFeatures,
@@ -1007,29 +1053,31 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      mockUseProviderContext.mockReturnValue(createMockProviderContext({
-        textGenerationModelList: [
-          {
-            provider: 'openai',
-            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-            icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-            status: ModelStatusEnum.active,
-            models: [
-              {
-                model: 'gpt-4-vision',
-                label: { en_US: 'GPT-4 Vision', zh_Hans: 'GPT-4 Vision' },
-                model_type: ModelTypeEnum.textGeneration,
-                features: [ModelFeatureEnum.vision],
-                fetch_from: ConfigurationMethodEnum.predefinedModel,
-                model_properties: {},
-                deprecated: false,
-                status: ModelStatusEnum.active,
-                load_balancing_enabled: false,
-              },
-            ],
-          },
-        ],
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createMockProviderContext({
+          textGenerationModelList: [
+            {
+              provider: 'openai',
+              label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+              icon_small: { en_US: 'icon', zh_Hans: 'icon' },
+              status: ModelStatusEnum.active,
+              models: [
+                {
+                  model: 'gpt-4-vision',
+                  label: { en_US: 'GPT-4 Vision', zh_Hans: 'GPT-4 Vision' },
+                  model_type: ModelTypeEnum.textGeneration,
+                  features: [ModelFeatureEnum.vision],
+                  fetch_from: ConfigurationMethodEnum.predefinedModel,
+                  model_properties: {},
+                  deprecated: false,
+                  status: ModelStatusEnum.active,
+                  load_balancing_enabled: false,
+                },
+              ],
+            },
+          ],
+        }),
+      )
 
       mockFeaturesState = {
         ...defaultFeatures,

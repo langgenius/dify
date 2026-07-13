@@ -1,11 +1,11 @@
 import type { ElkNode, LayoutOptions } from 'elkjs/lib/elk-api'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { CaseItem, IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
-import type { QuestionClassifierNodeType, Topic } from '@/app/components/workflow/nodes/question-classifier/types'
 import type {
-  Edge,
-  Node,
-} from '@/app/components/workflow/types'
+  QuestionClassifierNodeType,
+  Topic,
+} from '@/app/components/workflow/nodes/question-classifier/types'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import { cloneDeep } from 'es-toolkit/object'
 import {
   CUSTOM_NODE,
@@ -14,9 +14,7 @@ import {
 } from '@/app/components/workflow/constants'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import {
-  BlockEnum,
-} from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 let elk: import('elkjs/lib/elk-api').ELK | undefined
 
@@ -255,8 +253,7 @@ const collectLayout = (graph: ElkNode, predicate: (id: string) => boolean): Layo
         maxY = Math.max(maxY, y + height)
       }
 
-      if (child.children?.length)
-        visit(child)
+      if (child.children?.length) visit(child)
     })
   }
 
@@ -287,16 +284,13 @@ const sortIfElseOutEdges = (ifElseNode: Node, outEdges: Edge[]): Edge[] => {
 
     if (handleA && handleB) {
       const cases = (ifElseNode.data as IfElseNodeType).cases || []
-      if (handleA === 'false')
-        return 1
-      if (handleB === 'false')
-        return -1
+      if (handleA === 'false') return 1
+      if (handleB === 'false') return -1
 
       const indexA = cases.findIndex((c: CaseItem) => c.case_id === handleA)
       const indexB = cases.findIndex((c: CaseItem) => c.case_id === handleB)
 
-      if (indexA !== -1 && indexB !== -1)
-        return indexA - indexB
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB
     }
 
     return 0
@@ -313,8 +307,7 @@ const sortQuestionClassifierOutEdges = (classifierNode: Node, outEdges: Edge[]):
       const indexA = classes.findIndex((t: Topic) => t.id === handleA)
       const indexB = classes.findIndex((t: Topic) => t.id === handleB)
 
-      if (indexA !== -1 && indexB !== -1)
-        return indexA - indexB
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB
     }
 
     return 0
@@ -328,16 +321,13 @@ const sortHumanInputOutEdges = (humanInputNode: Node, outEdges: Edge[]): Edge[] 
 
     if (handleA && handleB) {
       const userActions = (humanInputNode.data as HumanInputNodeType).user_actions || []
-      if (handleA === '__timeout')
-        return 1
-      if (handleB === '__timeout')
-        return -1
+      if (handleA === '__timeout') return 1
+      if (handleB === '__timeout') return -1
 
-      const indexA = userActions.findIndex(action => action.id === handleA)
-      const indexB = userActions.findIndex(action => action.id === handleB)
+      const indexA = userActions.findIndex((action) => action.id === handleA)
+      const indexB = userActions.findIndex((action) => action.id === handleB)
 
-      if (indexA !== -1 && indexB !== -1)
-        return indexA - indexB
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB
     }
 
     return 0
@@ -345,13 +335,9 @@ const sortHumanInputOutEdges = (humanInputNode: Node, outEdges: Edge[]): Edge[] 
 }
 
 const normaliseBounds = (layout: LayoutResult): LayoutResult => {
-  const {
-    nodes,
-    bounds,
-  } = layout
+  const { nodes, bounds } = layout
 
-  if (nodes.size === 0)
-    return layout
+  if (nodes.size === 0) return layout
 
   const offsetX = bounds.minX
   const offsetY = bounds.minY
@@ -383,8 +369,7 @@ const normaliseBounds = (layout: LayoutResult): LayoutResult => {
 const buildPortAwareGraph = (nodes: Node[], edges: Edge[]) => {
   const outEdgesByNode = new Map<string, Edge[]>()
   edges.forEach((edge) => {
-    if (!outEdgesByNode.has(edge.source))
-      outEdgesByNode.set(edge.source, [])
+    if (!outEdgesByNode.has(edge.source)) outEdgesByNode.set(edge.source, [])
     outEdgesByNode.get(edge.source)!.push(edge)
   })
 
@@ -396,8 +381,7 @@ const buildPortAwareGraph = (nodes: Node[], edges: Edge[]) => {
   nodes.forEach((node) => {
     let outEdges = outEdgesByNode.get(node.id) || []
 
-    if (node.data.type === BlockEnum.IfElse)
-      outEdges = sortIfElseOutEdges(node, outEdges)
+    if (node.data.type === BlockEnum.IfElse) outEdges = sortIfElseOutEdges(node, outEdges)
     else if (node.data.type === BlockEnum.QuestionClassifier)
       outEdges = sortQuestionClassifierOutEdges(node, outEdges)
     else if (node.data.type === BlockEnum.HumanInput)
@@ -430,24 +414,22 @@ const buildPortAwareGraph = (nodes: Node[], edges: Edge[]) => {
 
   // DFS in port order to determine the definitive vertical ordering of nodes.
   // forceNodeModelOrder makes ELK respect the children-array order within each layer.
-  const nodeIdSet = new Set(nodes.map(n => n.id))
+  const nodeIdSet = new Set(nodes.map((n) => n.id))
   const visited = new Set<string>()
   const orderedIds: string[] = []
 
   const dfs = (id: string) => {
-    if (visited.has(id) || !nodeIdSet.has(id))
-      return
+    if (visited.has(id) || !nodeIdSet.has(id)) return
     visited.add(id)
     orderedIds.push(id)
     const outEdges = sortedOutEdgesByNode.get(id) || []
-    outEdges.forEach(e => dfs(e.target))
+    outEdges.forEach((e) => dfs(e.target))
   }
 
   nodes.forEach((n) => {
-    if (!edges.some(e => e.target === n.id))
-      dfs(n.id)
+    if (!edges.some((e) => e.target === n.id)) dfs(n.id)
   })
-  nodes.forEach(n => dfs(n.id))
+  nodes.forEach((n) => dfs(n.id))
 
   const nodeOrder = new Map(orderedIds.map((id, i) => [id, i]))
   elkNodes.sort((a, b) => (nodeOrder.get(a.id) ?? 0) - (nodeOrder.get(b.id) ?? 0))
@@ -455,21 +437,22 @@ const buildPortAwareGraph = (nodes: Node[], edges: Edge[]) => {
   orderedIds.forEach((id) => {
     const outEdges = sortedOutEdgesByNode.get(id) || []
     outEdges.forEach((edge) => {
-      elkEdges.push(createEdge(
-        edge.source,
-        edge.target,
-        sourcePortMap.get(edge.id),
-      ))
+      elkEdges.push(createEdge(edge.source, edge.target, sourcePortMap.get(edge.id)))
     })
   })
 
   return { elkNodes, elkEdges }
 }
 
-export const getLayoutByELK = async (originNodes: Node[], originEdges: Edge[]): Promise<LayoutResult> => {
+export const getLayoutByELK = async (
+  originNodes: Node[],
+  originEdges: Edge[],
+): Promise<LayoutResult> => {
   edgeCounter = 0
-  const nodes = cloneDeep(originNodes).filter(node => !node.parentId && node.type === CUSTOM_NODE)
-  const edges = cloneDeep(originEdges).filter(edge => (!edge.data?.isInIteration && !edge.data?.isInLoop))
+  const nodes = cloneDeep(originNodes).filter((node) => !node.parentId && node.type === CUSTOM_NODE)
+  const edges = cloneDeep(originEdges).filter(
+    (edge) => !edge.data?.isInIteration && !edge.data?.isInLoop,
+  )
 
   const { elkNodes, elkEdges } = buildPortAwareGraph(nodes, edges)
 
@@ -485,21 +468,19 @@ export const getLayoutByELK = async (originNodes: Node[], originEdges: Edge[]): 
   return normaliseBounds(layout)
 }
 
-const normaliseChildLayout = (
-  layout: LayoutResult,
-  nodes: Node[],
-): LayoutResult => {
+const normaliseChildLayout = (layout: LayoutResult, nodes: Node[]): LayoutResult => {
   const result = new Map<string, LayoutInfo>()
   layout.nodes.forEach((info, id) => {
     result.set(id, info)
   })
 
   // Ensure iteration / loop start nodes do not collapse into the children.
-  const startNode = nodes.find(node =>
-    node.type === CUSTOM_ITERATION_START_NODE
-    || node.type === CUSTOM_LOOP_START_NODE
-    || node.data?.type === BlockEnum.LoopStart
-    || node.data?.type === BlockEnum.IterationStart,
+  const startNode = nodes.find(
+    (node) =>
+      node.type === CUSTOM_ITERATION_START_NODE ||
+      node.type === CUSTOM_LOOP_START_NODE ||
+      node.data?.type === BlockEnum.LoopStart ||
+      node.data?.type === BlockEnum.IterationStart,
   )
 
   if (startNode) {
@@ -540,8 +521,7 @@ const normaliseChildLayout = (
     maxY = Math.max(maxY, value.y + value.height)
   })
 
-  if (!Number.isFinite(minX) || !Number.isFinite(minY))
-    return layout
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) return layout
 
   return normaliseBounds({
     nodes: result,
@@ -560,13 +540,13 @@ export const getLayoutForChildNodes = async (
   originEdges: Edge[],
 ): Promise<LayoutResult | null> => {
   edgeCounter = 0
-  const nodes = cloneDeep(originNodes).filter(node => node.parentId === parentNodeId)
-  if (!nodes.length)
-    return null
+  const nodes = cloneDeep(originNodes).filter((node) => node.parentId === parentNodeId)
+  if (!nodes.length) return null
 
-  const edges = cloneDeep(originEdges).filter(edge =>
-    (edge.data?.isInIteration && edge.data?.iteration_id === parentNodeId)
-    || (edge.data?.isInLoop && edge.data?.loop_id === parentNodeId),
+  const edges = cloneDeep(originEdges).filter(
+    (edge) =>
+      (edge.data?.isInIteration && edge.data?.iteration_id === parentNodeId) ||
+      (edge.data?.isInLoop && edge.data?.loop_id === parentNodeId),
   )
 
   const { elkNodes, elkEdges } = buildPortAwareGraph(nodes, edges)

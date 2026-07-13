@@ -26,11 +26,13 @@ vi.mock('@/service/client', () => ({
 
 describe('useTrialCredits', () => {
   const mockTrialCreditsQuery = (
-    data: {
-      trial_credits?: number
-      trial_credits_used?: number
-      next_credit_reset_date?: number
-    } | undefined,
+    data:
+      | {
+          trial_credits?: number
+          trial_credits_used?: number
+          next_credit_reset_date?: number
+        }
+      | undefined,
     isPending = false,
   ) => {
     mockUseQuery.mockImplementation((options: { select?: (value: typeof data) => unknown }) => ({
@@ -62,11 +64,14 @@ describe('useTrialCredits', () => {
     })
 
     it('should keep the hook out of loading state during a background refetch', () => {
-      mockTrialCreditsQuery({
-        trial_credits: 80,
-        trial_credits_used: 20,
-        next_credit_reset_date: 1777593600,
-      }, true)
+      mockTrialCreditsQuery(
+        {
+          trial_credits: 80,
+          trial_credits_used: 20,
+          next_credit_reset_date: 1777593600,
+        },
+        true,
+      )
 
       const { result } = renderHook(() => useTrialCredits())
 

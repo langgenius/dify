@@ -1,30 +1,41 @@
-import type { AppContextValue } from '@/context/app-context'
+import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import { render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
-import { useAppContext } from '@/context/app-context'
 import EnvNav from '../index'
 
 const mockAppContextState = vi.hoisted(() => ({
-  current: {} as Partial<AppContextValue>,
+  current: {} as Partial<AppContextStateMockState>,
 }))
+const mockUseAppContext = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
-
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
 describe('EnvNav', () => {
-  const mockUseAppContext = vi.mocked(useAppContext)
-
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -34,7 +45,7 @@ describe('EnvNav', () => {
       langGeniusVersionInfo: {
         current_env: 'PRODUCTION',
       },
-    } as unknown as AppContextValue
+    } as unknown as AppContextStateMockState
     mockAppContextState.current = appContextValue
     mockUseAppContext.mockReturnValue(appContextValue)
 
@@ -47,7 +58,7 @@ describe('EnvNav', () => {
       langGeniusVersionInfo: {
         current_env: 'TESTING',
       },
-    } as unknown as AppContextValue
+    } as unknown as AppContextStateMockState
     mockAppContextState.current = appContextValue
     mockUseAppContext.mockReturnValue(appContextValue)
 
@@ -60,13 +71,11 @@ describe('EnvNav', () => {
       langGeniusVersionInfo: {
         current_env: 'DEVELOPMENT',
       },
-    } as unknown as AppContextValue
+    } as unknown as AppContextStateMockState
     mockAppContextState.current = appContextValue
     mockUseAppContext.mockReturnValue(appContextValue)
 
     render(<EnvNav />)
-    expect(
-      screen.getByText('common.environment.development'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('common.environment.development')).toBeInTheDocument()
   })
 })
