@@ -16,7 +16,7 @@
     "lint:oxlint:fix": "vp lint --fix",
     "lint:oxlint:quiet": "vp lint --quiet",
     "lint:eslint": "eslint --concurrency=auto",
-    "lint:eslint:fix": "eslint --fix --prune-suppressions --concurrency=auto",
+    "lint:eslint:fix": "eslint --fix --concurrency=auto",
     "lint:eslint:quiet": "eslint --quiet --concurrency=auto"
   },
   "devDependencies": {
