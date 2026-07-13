@@ -126,7 +126,6 @@ catalog:
   '@types/react': 19.2.17
   '@types/react-dom': 19.2.3
   '@types/sortablejs': 1.15.9
-  '@typescript-eslint/eslint-plugin': 8.63.0
   '@typescript-eslint/parser': 8.63.0
   '@typescript/native': npm:typescript@7.0.2
   '@vitejs/plugin-react': 6.0.3
@@ -165,7 +164,6 @@ catalog:
   eslint-plugin-command: 3.5.2
   eslint-plugin-erasable-syntax-only: 0.4.2
   eslint-plugin-hyoban: 0.14.1
-  eslint-plugin-import-lite: 0.6.0
   eslint-plugin-jsdoc: 63.0.10
   eslint-plugin-jsonc: 3.3.0
   eslint-plugin-jsx-a11y: 6.10.2
@@ -178,7 +176,6 @@ catalog:
   eslint-plugin-storybook: 10.4.6
   eslint-plugin-toml: 1.4.0
   eslint-plugin-unicorn: 68.0.0
-  eslint-plugin-unused-imports: 4.4.1
   eslint-plugin-yml: 3.6.0
   eventsource-parser: 3.1.0
   fast-deep-equal: 3.1.3

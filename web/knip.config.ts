@@ -35,7 +35,6 @@ const config: KnipConfig = {
     'features/agent-v2/agent-detail/configure/components/orchestrate/prompt-editor/option-menu.tsx',
     'i18n-config/locale-resources/*.ts',
   ],
-  ignoreBinaries: ['pbcopy', 'which'],
   ignoreDependencies: ['@iconify-json/*', '@storybook/addon-onboarding', 'eslint'],
   /// keep-sorted
   rules: {

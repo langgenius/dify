@@ -58,8 +58,8 @@ pnpm dev <command> [args...]                   # run CLI from source (no -- sepa
 pnpm test                                      # vitest
 pnpm test:coverage                             # with coverage
 pnpm type-check                                # tsc, no emit
-pnpm lint                                      # Oxlint plus the ESLint fallback
-pnpm lint:fix                                  # Oxlint and ESLint semantic fixes
+pnpm lint                                      # Oxlint
+pnpm lint:fix                                  # Oxlint semantic fixes
 vp fmt                                         # format with Oxfmt
 pnpm build                                     # production bundle (vp pack)
 pnpm tree:gen                                  # regenerate src/commands/tree.ts (registry)

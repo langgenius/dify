@@ -47,7 +47,7 @@ const formatterUnstableInputs = ['web/app/components/develop/template/*.mdx']
 export default defineConfig({
   lint: lintConfig,
   staged: {
-    [lintFiles]: [lintFix, eslintFix, format],
+    [lintFiles]: [lintFix, format],
     [eslintFiles]: [eslintFix, format],
     [formatOnlyFiles]: format,
   },
