@@ -62,7 +62,11 @@ describe('InvitedModal', () => {
 
   it('should show already-member message without invitation copy when every email is already a member', () => {
     const alreadyMembers: InvitationResult[] = [
-      { email: 'member@example.com', status: 'already_member' },
+      {
+        email: 'member@example.com',
+        status: 'already_member',
+        message: 'Account already in workspace.',
+      },
     ]
 
     render(<InvitedModal invitationResults={alreadyMembers} onCancel={mockOnCancel} />)
@@ -107,7 +111,13 @@ describe('InvitedModal (non-CE edition)', () => {
   })
 
   it('should show already-member details when IS_CE_EDITION is false', () => {
-    const results: InvitationResult[] = [{ email: 'member@example.com', status: 'already_member' }]
+    const results: InvitationResult[] = [
+      {
+        email: 'member@example.com',
+        status: 'already_member',
+        message: 'Account already in workspace.',
+      },
+    ]
 
     render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
 

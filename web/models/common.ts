@@ -1,4 +1,5 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from './access-control'
 import type { I18nText } from '@/i18n-config/language'
 import type { Model } from '@/types/app'
@@ -130,22 +131,7 @@ export type FileUploadConfigResponse = {
   file_upload_limit: number // default is 5
 }
 
-export type InvitationResult =
-  | {
-      status: 'success'
-      email: string
-      url: string
-    }
-  | {
-      status: 'already_member'
-      email: string
-      message?: string
-    }
-  | {
-      status: 'failed'
-      email: string
-      message: string
-    }
+export type InvitationResult = MemberInviteResponse['invitation_results'][number]
 
 export type CodeBasedExtensionForm = {
   type: string
