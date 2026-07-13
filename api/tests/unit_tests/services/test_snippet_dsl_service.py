@@ -202,7 +202,7 @@ def test_import_snippet_rejects_invalid_yaml_shapes(yaml_content, expected_error
 
 
 def test_import_snippet_returns_failed_for_invalid_version_type() -> None:
-    service = SnippetDslService(session=SimpleNamespace())
+    service = SnippetDslService(session=SimpleNamespace(rollback=Mock()))
 
     result = service.import_snippet(
         account=SimpleNamespace(current_tenant_id="tenant-1"),
@@ -339,6 +339,22 @@ workflow:
     assert dependencies[0].value.plugin_unique_identifier == "langgenius/openai:0.0.1"
 
 
+def test_import_snippet_rolls_back_when_create_or_update_raises(monkeypatch):
+    session = SimpleNamespace(scalar=Mock(return_value=None), rollback=Mock())
+    service = SnippetDslService(session=session)
+    monkeypatch.setattr(service, "_create_or_update_snippet", Mock(side_effect=RuntimeError("boom")))
+
+    result = service.import_snippet(
+        account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1"),
+        import_mode=ImportMode.YAML_CONTENT.value,
+        yaml_content="version: 0.1.0\nkind: snippet\nsnippet:\n  name: Bad\n",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "boom"
+    session.rollback.assert_called_once()
+
+
 def test_confirm_import_returns_failed_when_pending_data_missing(monkeypatch):
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=None))
@@ -417,7 +433,8 @@ def test_confirm_import_returns_failed_for_non_mapping_yaml(monkeypatch):
 
 
 def test_confirm_import_returns_failed_when_create_or_update_raises(monkeypatch):
-    service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None)))
+    session = SimpleNamespace(scalar=Mock(return_value=None), rollback=Mock())
+    service = SnippetDslService(session=session)
     pending = SnippetPendingData(
         import_mode="yaml-content",
         yaml_content="version: 0.1.0\nkind: snippet\nsnippet:\n  name: Bad\n",
@@ -433,6 +450,7 @@ def test_confirm_import_returns_failed_when_create_or_update_raises(monkeypatch)
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "boom"
+    session.rollback.assert_called_once()
 
 
 def test_check_dependencies_returns_empty_without_draft_workflow(monkeypatch):

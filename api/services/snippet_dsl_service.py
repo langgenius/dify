@@ -280,6 +280,7 @@ class SnippetDslService:
             )
 
         except Exception as e:
+            self._session.rollback()
             logger.exception("Failed to import snippet")
             return SnippetImportInfo(
                 id=import_id,
@@ -348,6 +349,7 @@ class SnippetDslService:
             )
 
         except Exception as e:
+            self._session.rollback()
             logger.exception("Failed to confirm import")
             return SnippetImportInfo(
                 id=import_id,

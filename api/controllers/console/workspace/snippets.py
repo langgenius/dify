@@ -14,6 +14,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
+from controllers.console.app.wraps import with_session
 from controllers.console.snippets.payloads import (
     CreateSnippetPayload,
     IncludeSecretQuery,
@@ -347,25 +348,21 @@ class CustomizedSnippetImportApi(Resource):
         RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
     )
     @with_current_user
-    def post(self, current_user: Account):
+    @with_session
+    def post(self, session: Session, current_user: Account):
         """Import snippet from DSL."""
         payload = SnippetImportPayload.model_validate(console_ns.payload or {})
 
-        with Session(db.engine) as session:
-            import_service = SnippetDslService(session)
-            result = import_service.import_snippet(
-                account=current_user,
-                import_mode=payload.mode,
-                yaml_content=payload.yaml_content,
-                yaml_url=payload.yaml_url,
-                snippet_id=payload.snippet_id,
-                name=payload.name,
-                description=payload.description,
-            )
-            if result.status in {ImportStatus.FAILED, ImportStatus.PENDING}:
-                session.rollback()
-            else:
-                session.commit()
+        import_service = SnippetDslService(session)
+        result = import_service.import_snippet(
+            account=current_user,
+            import_mode=payload.mode,
+            yaml_content=payload.yaml_content,
+            yaml_url=payload.yaml_url,
+            snippet_id=payload.snippet_id,
+            name=payload.name,
+            description=payload.description,
+        )
 
         # Return appropriate status code based on result
         status = result.status
@@ -391,15 +388,11 @@ class CustomizedSnippetImportConfirmApi(Resource):
         RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
     )
     @with_current_user
-    def post(self, current_user: Account, import_id: str):
+    @with_session
+    def post(self, session: Session, current_user: Account, import_id: str):
         """Confirm a pending snippet import."""
-        with Session(db.engine) as session:
-            import_service = SnippetDslService(session)
-            result = import_service.confirm_import(import_id=import_id, account=current_user)
-            if result.status == ImportStatus.FAILED:
-                session.rollback()
-            else:
-                session.commit()
+        import_service = SnippetDslService(session)
+        result = import_service.confirm_import(import_id=import_id, account=current_user)
 
         if result.status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400

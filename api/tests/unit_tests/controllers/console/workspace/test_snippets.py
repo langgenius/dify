@@ -386,12 +386,12 @@ def test_import_snippet_returns_202_for_pending_confirmation(app: Flask, monkeyp
         method="POST",
         json={"mode": "yaml-content", "yaml_content": "kind: snippet"},
     ):
-        response, status_code = handler(api, user)
+        response, status_code = handler(api, session, user)
 
     assert status_code == 202
     assert response["status"] == ImportStatus.PENDING.value
     import_snippet.assert_called_once()
-    session.rollback.assert_called_once()
+    session.rollback.assert_not_called()
     session.commit.assert_not_called()
 
 
@@ -421,11 +421,11 @@ def test_import_snippet_returns_400_for_failed_import(app: Flask, monkeypatch: p
         method="POST",
         json={"mode": "yaml-content", "yaml_content": "kind: snippet"},
     ):
-        response, status_code = handler(api, user)
+        response, status_code = handler(api, session, user)
 
     assert status_code == 400
     assert response["error"] == "Invalid DSL"
-    session.rollback.assert_called_once()
+    session.rollback.assert_not_called()
     session.commit.assert_not_called()
 
 
@@ -454,12 +454,12 @@ def test_import_confirm_returns_200_for_completed_import(app: Flask, monkeypatch
         "/workspaces/current/customized-snippets/imports/import-1/confirm",
         method="POST",
     ):
-        response, status_code = handler(api, user, import_id="import-1")
+        response, status_code = handler(api, session, user, import_id="import-1")
 
     assert status_code == 200
     assert response["snippet_id"] == "snippet-1"
     confirm_import.assert_called_once_with(import_id="import-1", account=user)
-    session.commit.assert_called_once()
+    session.commit.assert_not_called()
 
 
 def test_check_dependencies_raises_when_snippet_missing(app: Flask, monkeypatch: pytest.MonkeyPatch):
