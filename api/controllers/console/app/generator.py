@@ -606,10 +606,11 @@ class WorkflowGenerateStreamApi(Resource):
                 ):
                     body = {"event": event_name, **payload}
                     if event_name == "plan":
-                        event = WorkflowGeneratePlanEventResponse.model_validate(body)
+                        plan_event = WorkflowGeneratePlanEventResponse.model_validate(body)
+                        yield f"data: {json.dumps(plan_event.model_dump(mode='json'))}\n\n"
                     else:
-                        event = WorkflowGenerateResultEventResponse.model_validate(body)
-                    yield f"data: {json.dumps(event.model_dump(mode='json'))}\n\n"
+                        result_event = WorkflowGenerateResultEventResponse.model_validate(body)
+                        yield f"data: {json.dumps(result_event.model_dump(mode='json'))}\n\n"
             except (ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError, InvokeError) as e:
                 # The model instance is resolved inside the service (lazily, on
                 # first iteration), so a provider / init error surfaces here.
@@ -623,7 +624,7 @@ class WorkflowGenerateStreamApi(Resource):
                     "error": detail,
                     "errors": [{"code": WorkflowGenerateErrorCode.MODEL_ERROR, "detail": detail}],
                 }
-                event = WorkflowGenerateResultEventResponse.model_validate(error_body)
-                yield f"data: {json.dumps(event.model_dump(mode='json'))}\n\n"
+                error_event = WorkflowGenerateResultEventResponse.model_validate(error_body)
+                yield f"data: {json.dumps(error_event.model_dump(mode='json'))}\n\n"
 
         return compact_generate_response(generate())
