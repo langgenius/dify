@@ -10,25 +10,13 @@
     }
   },
   "cli/test/e2e/suites/output/json-yaml-output.e2e.ts": {
-    "no-unused-vars": {
-      "count": 1
-    },
-    "perfectionist/sort-named-imports": {
-      "count": 1
-    },
     "prefer-const": {
       "count": 1
     }
   },
   "cli/test/e2e/suites/output/table-output.e2e.ts": {
-    "perfectionist/sort-named-imports": {
-      "count": 1
-    },
     "regexp/control-character-escape": {
       "count": 4
-    },
-    "unicorn/escape-case": {
-      "count": 2
     }
   },
   "e2e/support/web-server.ts": {
