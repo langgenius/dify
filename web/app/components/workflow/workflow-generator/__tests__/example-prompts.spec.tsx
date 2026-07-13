@@ -45,7 +45,9 @@ describe('ExamplePrompts', () => {
 
       expect(await screen.findByRole('button', { name: 'Build a triage bot' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Summarize PDFs' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i }),
+      ).not.toBeInTheDocument()
     })
 
     // Empty generation (no default model / quota) must silently fall back to the
@@ -54,10 +56,20 @@ describe('ExamplePrompts', () => {
       mockFetch.mockResolvedValue({ suggestions: [] })
       render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
 
-      expect(await screen.findByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.translate/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.rag/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.classify/i })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('button', {
+          name: /workflowGenerator\.examples\.workflow\.summarize/i,
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.translate/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.rag/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.classify/i }),
+      ).toBeInTheDocument()
     })
 
     // Advanced-chat mode falls back to a different curated set with no workflow leakage.
@@ -65,8 +77,14 @@ describe('ExamplePrompts', () => {
       mockFetch.mockResolvedValue({ suggestions: [] })
       render(<ExamplePrompts mode="advanced-chat" onSelect={vi.fn()} />)
 
-      expect(await screen.findByRole('button', { name: /workflowGenerator\.examples\.chatflow\.support/i })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i })).not.toBeInTheDocument()
+      expect(
+        await screen.findByRole('button', {
+          name: /workflowGenerator\.examples\.chatflow\.support/i,
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i }),
+      ).not.toBeInTheDocument()
     })
 
     // A failed request must not toast or blow up — it degrades to the static list.
@@ -74,7 +92,11 @@ describe('ExamplePrompts', () => {
       mockFetch.mockRejectedValue(new Error('boom'))
       render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
 
-      expect(await screen.findByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('button', {
+          name: /workflowGenerator\.examples\.workflow\.summarize/i,
+        }),
+      ).toBeInTheDocument()
     })
 
     it('should silently ignore AbortError when unmounted or refreshed', async () => {
@@ -102,7 +124,10 @@ describe('ExamplePrompts', () => {
 
     it('should not fetch on mount if suggestions are already cached', async () => {
       // Simulate already having cached suggestions
-      sessionStorage.setItem('workflow-gen-suggestions-workflow', JSON.stringify(['cached suggestion']))
+      sessionStorage.setItem(
+        'workflow-gen-suggestions-workflow',
+        JSON.stringify(['cached suggestion']),
+      )
 
       render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
 
@@ -116,7 +141,11 @@ describe('ExamplePrompts', () => {
       mockFetch.mockResolvedValue({} as any)
       render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
 
-      expect(await screen.findByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('button', {
+          name: /workflowGenerator\.examples\.workflow\.summarize/i,
+        }),
+      ).toBeInTheDocument()
     })
 
     it('does not double-fetch on re-renders (simulating React Strict Mode)', async () => {
@@ -153,7 +182,7 @@ describe('ExamplePrompts', () => {
   describe('selection', () => {
     // Clicking a chip hands its text back to the parent verbatim to populate
     // the instruction textarea.
-    it('should forward the clicked chip\'s text to onSelect', async () => {
+    it("should forward the clicked chip's text to onSelect", async () => {
       mockFetch.mockResolvedValue({ suggestions: ['Build a triage bot'] })
       const user = userEvent.setup()
       const onSelect = vi.fn()

@@ -23,37 +23,38 @@ type Props = {
   readonly iterDurationMap?: IterationDurationMap
 }
 
-const IterationResultPanel: FC<Props> = ({
-  list,
-  onBack,
-  iterDurationMap,
-}) => {
+const IterationResultPanel: FC<Props> = ({ list, onBack, iterDurationMap }) => {
   const { t } = useTranslation()
   const [expandedIterations, setExpandedIterations] = useState<Record<number, boolean>>({})
 
   const toggleIteration = useCallback((index: number) => {
-    setExpandedIterations(prev => ({
+    setExpandedIterations((prev) => ({
       ...prev,
       [index]: !prev[index],
     }))
   }, [])
-  const countIterDuration = (iteration: NodeTracing[], iterDurationMap: IterationDurationMap): string => {
+  const countIterDuration = (
+    iteration: NodeTracing[],
+    iterDurationMap: IterationDurationMap,
+  ): string => {
     const IterRunIndex = iteration[0]?.execution_metadata?.iteration_index as number
     const iterRunId = iteration[0]?.execution_metadata?.parallel_mode_run_id
     const iterItem = iterDurationMap[iterRunId || IterRunIndex]
     const duration = iterItem
-    return `${(duration && duration > 0.01) ? duration.toFixed(2) : 0.01}s`
+    return `${duration && duration > 0.01 ? duration.toFixed(2) : 0.01}s`
   }
-  const iterationStatusShow = (index: number, iteration: NodeTracing[], iterDurationMap?: IterationDurationMap) => {
-    const hasFailed = iteration.some(item => item.status === NodeRunningStatus.Failed)
-    const isRunning = iteration.some(item => item.status === NodeRunningStatus.Running)
+  const iterationStatusShow = (
+    index: number,
+    iteration: NodeTracing[],
+    iterDurationMap?: IterationDurationMap,
+  ) => {
+    const hasFailed = iteration.some((item) => item.status === NodeRunningStatus.Failed)
+    const isRunning = iteration.some((item) => item.status === NodeRunningStatus.Running)
     const hasDurationMap = iterDurationMap && Object.keys(iterDurationMap).length !== 0
 
-    if (hasFailed)
-      return <RiErrorWarningLine className="size-4 text-text-destructive" />
+    if (hasFailed) return <RiErrorWarningLine className="size-4 text-text-destructive" />
 
-    if (isRunning)
-      return <RiLoader2Line className="size-3.5 animate-spin text-primary-600" />
+    if (isRunning) return <RiLoader2Line className="size-3.5 animate-spin text-primary-600" />
 
     return (
       <>
@@ -83,12 +84,17 @@ const IterationResultPanel: FC<Props> = ({
         }}
       >
         <RiArrowLeftLine className="mr-1 size-4" />
-        <div className="system-sm-medium">{t($ => $[`${i18nPrefix}.back`], { ns: 'workflow' })}</div>
+        <div className="system-sm-medium">
+          {t(($) => $[`${i18nPrefix}.back`], { ns: 'workflow' })}
+        </div>
       </div>
       {/* List */}
       <div className="bg-components-panel-bg p-2">
         {list.map((iteration, index) => (
-          <div key={index} className={cn('mb-1 overflow-hidden rounded-xl border-none bg-background-section-burn')}>
+          <div
+            key={index}
+            className={cn('mb-1 overflow-hidden rounded-xl border-none bg-background-section-burn')}
+          >
             <div
               className={cn(
                 'flex w-full cursor-pointer items-center justify-between px-3',
@@ -102,30 +108,19 @@ const IterationResultPanel: FC<Props> = ({
                   <Iteration className="size-3 text-text-primary-on-surface" />
                 </div>
                 <span className="grow system-sm-semibold-uppercase text-text-primary">
-                  {t($ => $[`${i18nPrefix}.iteration`], { ns: 'workflow' })}
-                  {' '}
-                  {index + 1}
+                  {t(($) => $[`${i18nPrefix}.iteration`], { ns: 'workflow' })} {index + 1}
                 </span>
                 {iterationStatusShow(index, iteration, iterDurationMap)}
               </div>
             </div>
-            {expandedIterations[index] && (
-              <div
-                className="h-px grow bg-divider-subtle"
-              >
-              </div>
-            )}
-            <div className={cn(
-              'transition-all duration-200',
-              expandedIterations[index]
-                ? 'opacity-100'
-                : 'max-h-0 overflow-hidden opacity-0',
-            )}
+            {expandedIterations[index] && <div className="h-px grow bg-divider-subtle"></div>}
+            <div
+              className={cn(
+                'transition-all duration-200',
+                expandedIterations[index] ? 'opacity-100' : 'max-h-0 overflow-hidden opacity-0',
+              )}
             >
-              <TracingPanel
-                list={iteration}
-                className="bg-background-section-burn"
-              />
+              <TracingPanel list={iteration} className="bg-background-section-burn" />
             </div>
           </div>
         ))}

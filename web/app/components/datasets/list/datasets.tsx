@@ -30,7 +30,7 @@ const Datasets = ({
   isLoading,
   isPlaceholderData,
   emptyElement,
-  onOpenTagManagement = () => { },
+  onOpenTagManagement = () => {},
 }: Props) => {
   const { t } = useTranslation()
   const invalidDatasetList = useInvalidDatasetList()
@@ -38,35 +38,48 @@ const Datasets = ({
   const observerRef = useRef<IntersectionObserver>(null)
   const pages = datasetList?.pages ?? []
   const datasets = pages.flatMap(({ data }) => data)
-  const showDatasetSkeleton = !isFetchingNextPage && (isLoading || (isPlaceholderData && isFetching && datasets.length === 0))
+  const showDatasetSkeleton =
+    !isFetchingNextPage && (isLoading || (isPlaceholderData && isFetching && datasets.length === 0))
 
   useEffect(() => {
-    document.title = `${t($ => $.knowledge, { ns: 'dataset' })} - Dify`
+    document.title = `${t(($) => $.knowledge, { ns: 'dataset' })} - Dify`
   }, [t])
 
   useEffect(() => {
     if (anchorRef.current) {
-      observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0]!.isIntersecting && hasNextPage && !isFetching && !isPlaceholderData)
-          fetchNextPage()
-      }, {
-        rootMargin: '100px',
-      })
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]!.isIntersecting && hasNextPage && !isFetching && !isPlaceholderData)
+            fetchNextPage()
+        },
+        {
+          rootMargin: '100px',
+        },
+      )
       observerRef.current.observe(anchorRef.current)
     }
     return () => observerRef.current?.disconnect()
   }, [anchorRef, hasNextPage, isFetching, isPlaceholderData, fetchNextPage])
 
-  const hasAnyDataset = (datasetList?.pages[0]?.total ?? 0) > 0 || !!datasetList?.pages.some(({ data }) => data.length > 0)
+  const hasAnyDataset =
+    (datasetList?.pages[0]?.total ?? 0) > 0 ||
+    !!datasetList?.pages.some(({ data }) => data.length > 0)
 
   return (
     <>
       <nav className="relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3 px-8 pt-2">
-        {showDatasetSkeleton
-          ? <DatasetCardSkeleton label={t($ => $.loading, { ns: 'common' })} />
-          : datasets.map(dataset => (
-              <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} onOpenTagManagement={onOpenTagManagement} />),
-            )}
+        {showDatasetSkeleton ? (
+          <DatasetCardSkeleton label={t(($) => $.loading, { ns: 'common' })} />
+        ) : (
+          datasets.map((dataset) => (
+            <DatasetCard
+              key={dataset.id}
+              dataset={dataset}
+              onSuccess={invalidDatasetList}
+              onOpenTagManagement={onOpenTagManagement}
+            />
+          ))
+        )}
         {!showDatasetSkeleton && !hasAnyDataset && emptyElement}
         {isFetchingNextPage && <Loading />}
         <div ref={anchorRef} className="h-0" />

@@ -1,5 +1,5 @@
 'use client'
-import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { ParentMode, SimpleDocumentDetail } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -43,16 +43,13 @@ function isSameDocument(item: SimpleDocumentDetail, value: SimpleDocumentDetail)
 }
 
 function getDocumentExtension(document?: SimpleDocumentDetail | null) {
-  if (!document)
-    return ''
+  if (!document) return ''
 
   const detailExtension = document.data_source_detail_dict?.upload_file?.extension
-  if (detailExtension)
-    return detailExtension
+  if (detailExtension) return detailExtension
 
   const dataSourceInfo = document.data_source_info
-  if (dataSourceInfo && 'upload_file' in dataSourceInfo)
-    return dataSourceInfo.upload_file.extension
+  if (dataSourceInfo && 'upload_file' in dataSourceInfo) return dataSourceInfo.upload_file.extension
 
   return ''
 }
@@ -71,9 +68,10 @@ function DocumentPickerTriggerValue({
   const TypeIcon = isParentChild ? ParentChildChunk : GeneralChunk
   const ArrowIcon = RiArrowDownSLine
   const parentModeLabel = (() => {
-    if (!parentMode)
-      return '--'
-    return parentMode === 'paragraph' ? t($ => $['parentMode.paragraph'], { ns: 'dataset' }) : t($ => $['parentMode.fullDoc'], { ns: 'dataset' })
+    if (!parentMode) return '--'
+    return parentMode === 'paragraph'
+      ? t(($) => $['parentMode.paragraph'], { ns: 'dataset' })
+      : t(($) => $['parentMode.fullDoc'], { ns: 'dataset' })
   })()
 
   return (
@@ -89,9 +87,10 @@ function DocumentPickerTriggerValue({
         <span className="flex h-3 max-w-[300px] items-center gap-0.5 text-text-tertiary">
           <TypeIcon className="size-3 shrink-0" />
           <span className={cn('truncate system-2xs-medium-uppercase', isParentChild && 'mt-0.5')}>
-            {isGeneralMode && t($ => $['chunkingMode.general'], { ns: 'dataset' })}
-            {isQAMode && t($ => $['chunkingMode.qa'], { ns: 'dataset' })}
-            {isParentChild && `${t($ => $['chunkingMode.parentChild'], { ns: 'dataset' })} · ${parentModeLabel}`}
+            {isGeneralMode && t(($) => $['chunkingMode.general'], { ns: 'dataset' })}
+            {isQAMode && t(($) => $['chunkingMode.qa'], { ns: 'dataset' })}
+            {isParentChild &&
+              `${t(($) => $['chunkingMode.parentChild'], { ns: 'dataset' })} · ${parentModeLabel}`}
           </span>
         </span>
       </span>
@@ -99,12 +98,7 @@ function DocumentPickerTriggerValue({
   )
 }
 
-export function DocumentPicker({
-  datasetId,
-  value,
-  parentMode,
-  onChange,
-}: Props) {
+export function DocumentPicker({ datasetId, value, parentMode, onChange }: Props) {
   const { t } = useTranslation()
   const [searchValue, setSearchValue] = useState('')
   const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
@@ -119,19 +113,16 @@ export function DocumentPicker({
   })
   const documentsList = data?.data ?? []
 
-  const handleInputValueChange = (inputValue: string, details: ComboboxRootChangeEventDetails) => {
-    if (details.reason !== 'item-press')
-      setSearchValue(inputValue)
+  const handleInputValueChange = (inputValue: string, details: ComboboxChangeEventDetails) => {
+    if (details.reason !== 'item-press') setSearchValue(inputValue)
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen)
-      setSearchValue('')
+    if (!nextOpen) setSearchValue('')
   }
 
   const handleDocumentChange = (document: SimpleDocumentDetail | null) => {
-    if (!document)
-      return
+    if (!document) return
 
     onChange(document)
     setSearchValue('')
@@ -151,7 +142,7 @@ export function DocumentPicker({
       filter={null}
     >
       <ComboboxTrigger
-        aria-label={value?.name || t($ => $['operation.search'], { ns: 'common' })}
+        aria-label={value?.name || t(($) => $['operation.search'], { ns: 'common' })}
         icon={false}
         className={cn(
           'ml-1 flex size-auto rounded-lg border-0 bg-transparent px-2 py-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active data-popup-open:bg-state-base-hover',
@@ -169,29 +160,28 @@ export function DocumentPicker({
         popupClassName="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg backdrop-blur-[5px]"
       >
         <ComboboxInputGroup className="h-8 min-h-8 px-2">
-          <span className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+          <span
+            className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary"
+            aria-hidden="true"
+          />
           <ComboboxInput
-            aria-label={t($ => $['operation.search'], { ns: 'common' })}
-            placeholder={t($ => $['operation.search'], { ns: 'common' })}
+            aria-label={t(($) => $['operation.search'], { ns: 'common' })}
+            placeholder={t(($) => $['operation.search'], { ns: 'common' })}
             className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
           />
         </ComboboxInputGroup>
-        <DocumentList
-          className="mt-2 data-empty:mt-0"
-        />
-        {data
-          ? (
-              <ComboboxEmpty className="p-0">
-                <div className="mt-2 flex h-[100px] w-full items-center justify-center px-3 py-2 system-sm-regular text-text-tertiary">
-                  {t($ => $.noData, { ns: 'common' })}
-                </div>
-              </ComboboxEmpty>
-            )
-          : (
-              <ComboboxStatus className="mt-2 flex h-[100px] w-full items-center justify-center">
-                <Loading />
-              </ComboboxStatus>
-            )}
+        <DocumentList className="mt-2 data-empty:mt-0" />
+        {data ? (
+          <ComboboxEmpty className="p-0">
+            <div className="mt-2 flex h-[100px] w-full items-center justify-center px-3 py-2 system-sm-regular text-text-tertiary">
+              {t(($) => $.noData, { ns: 'common' })}
+            </div>
+          </ComboboxEmpty>
+        ) : (
+          <ComboboxStatus className="mt-2 flex h-[100px] w-full items-center justify-center">
+            <Loading />
+          </ComboboxStatus>
+        )}
       </ComboboxContent>
     </Combobox>
   )

@@ -22,12 +22,7 @@ export function ExploreRecommendations({
   return (
     <>
       <ContinueWork apps={continueWorkApps} />
-      <LearnDify
-        canCreate={canCreate}
-        className="pb-0"
-        onCreate={onCreate}
-        onTry={onTry}
-      />
+      <LearnDify canCreate={canCreate} className="pb-0" onCreate={onCreate} onTry={onTry} />
     </>
   )
 }

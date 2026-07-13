@@ -69,9 +69,11 @@ const RoleSelectorWrapper = ({ initialRole = 'normal' }: WrapperProps) => {
   return <RoleSelector value={role} onChange={setRole} />
 }
 
-const getTrigger = () => screen.getByRole('button', { name: /members\.(invitedAsRole|selectRole)/i })
+const getTrigger = () =>
+  screen.getByRole('button', { name: /members\.(invitedAsRole|selectRole)/i })
 const getRoleMenu = () => screen.getByRole('menu')
-const getRoleOption = (role: string) => within(getRoleMenu()).getByRole('menuitemradio', { name: new RegExp(role, 'i') })
+const getRoleOption = (role: string) =>
+  within(getRoleMenu()).getByRole('menuitemradio', { name: new RegExp(role, 'i') })
 
 describe('RoleSelector', () => {
   beforeEach(() => {
@@ -118,20 +120,22 @@ describe('RoleSelector', () => {
     const user = userEvent.setup()
 
     mockUseWorkspaceRoleList({
-      pages: [{
-        data: [
-          createRole({ id: 'admin', name: 'admin', description: '' }),
-          createRole({ id: 'editor', name: 'editor', description: '' }),
-          createRole({ id: 'normal', name: 'normal', description: '' }),
-          createRole({ id: 'dataset_operator', name: 'dataset_operator', description: '' }),
-        ],
-        pagination: {
-          total_count: 4,
-          per_page: 20,
-          current_page: 1,
-          total_pages: 1,
+      pages: [
+        {
+          data: [
+            createRole({ id: 'admin', name: 'admin', description: '' }),
+            createRole({ id: 'editor', name: 'editor', description: '' }),
+            createRole({ id: 'normal', name: 'normal', description: '' }),
+            createRole({ id: 'dataset_operator', name: 'dataset_operator', description: '' }),
+          ],
+          pagination: {
+            total_count: 4,
+            per_page: 20,
+            current_page: 1,
+            total_pages: 1,
+          },
         },
-      }],
+      ],
     })
 
     render(<RoleSelectorWrapper initialRole="" />)
@@ -178,10 +182,18 @@ describe('RoleSelector', () => {
         callbacks.push(callback)
       }
 
-      observe() { /* noop */ }
-      unobserve() { /* noop */ }
-      disconnect() { /* noop */ }
-      takeRecords(): IntersectionObserverEntry[] { return [] }
+      observe() {
+        /* noop */
+      }
+      unobserve() {
+        /* noop */
+      }
+      disconnect() {
+        /* noop */
+      }
+      takeRecords(): IntersectionObserverEntry[] {
+        return []
+      }
     }
 
     mockUseWorkspaceRoleList({ hasNextPage: true, fetchNextPage })
@@ -194,7 +206,10 @@ describe('RoleSelector', () => {
     })
 
     await act(async () => {
-      callbacks[0]!([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+      callbacks[0]!(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
     })
 
     expect(fetchNextPage).toHaveBeenCalledTimes(1)
@@ -205,15 +220,17 @@ describe('RoleSelector', () => {
   it('should render an empty state when there are no roles', async () => {
     const user = userEvent.setup()
     mockUseWorkspaceRoleList({
-      pages: [{
-        data: [],
-        pagination: {
-          total_count: 0,
-          per_page: 20,
-          current_page: 1,
-          total_pages: 0,
+      pages: [
+        {
+          data: [],
+          pagination: {
+            total_count: 0,
+            per_page: 20,
+            current_page: 1,
+            total_pages: 0,
+          },
         },
-      }],
+      ],
     })
 
     render(<RoleSelectorWrapper initialRole="" />)

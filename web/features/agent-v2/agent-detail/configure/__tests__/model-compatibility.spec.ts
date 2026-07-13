@@ -1,4 +1,7 @@
-import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  Model,
+  ModelItem,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
@@ -25,10 +28,15 @@ const createModelItem = (model: string, overrides: Partial<ModelItem> = {}): Mod
   ...overrides,
 })
 
-const createModelItemWithLabel = (model: string, label: string, overrides: Partial<ModelItem> = {}): ModelItem => createModelItem(model, {
-  label: { en_US: label, zh_Hans: label },
-  ...overrides,
-})
+const createModelItemWithLabel = (
+  model: string,
+  label: string,
+  overrides: Partial<ModelItem> = {},
+): ModelItem =>
+  createModelItem(model, {
+    label: { en_US: label, zh_Hans: label },
+    ...overrides,
+  })
 
 describe('isAgentCompatibleModel', () => {
   it('should reject configured GPT models below the Agent-compatible baseline', () => {
@@ -60,20 +68,28 @@ describe('isAgentCompatibleModel', () => {
   })
 
   it('should allow models that are not in the blacklist', () => {
-    expect(isAgentCompatibleModel(createModel('any-provider'), createModelItem('gpt-5.5'))).toBe(true)
-    expect(isAgentCompatibleModel(createModel('any-provider'), createModelItem('other-model'))).toBe(true)
+    expect(isAgentCompatibleModel(createModel('any-provider'), createModelItem('gpt-5.5'))).toBe(
+      true,
+    )
+    expect(
+      isAgentCompatibleModel(createModel('any-provider'), createModelItem('other-model')),
+    ).toBe(true)
   })
 
   it('should reject specifically configured models that do not meet the Agent baseline', () => {
     const provider = createModel('any-provider')
 
     expect(isAgentCompatibleModel(provider, createModelItem('claude-3-haiku-20240307'))).toBe(false)
-    expect(isAgentCompatibleModel(provider, createModelItem('claude-3.5-sonnet-20241022'))).toBe(false)
+    expect(isAgentCompatibleModel(provider, createModelItem('claude-3.5-sonnet-20241022'))).toBe(
+      false,
+    )
     expect(isAgentCompatibleModel(provider, createModelItem('gemini-2.5-flash-lite'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('Gemini 2.5 Flash'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('Gemini 2.0 Flash'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('gemini-2.5-pro-preview'))).toBe(false)
-    expect(isAgentCompatibleModel(provider, createModelItem('Gemini 3.1 Flash-Lite Preview'))).toBe(false)
+    expect(isAgentCompatibleModel(provider, createModelItem('Gemini 3.1 Flash-Lite Preview'))).toBe(
+      false,
+    )
     expect(isAgentCompatibleModel(provider, createModelItem('gemini-1.5-flash-8b'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('Nano Banana Pro'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('grok-code-fast'))).toBe(false)
@@ -86,7 +102,9 @@ describe('isAgentCompatibleModel', () => {
     expect(isAgentCompatibleModel(provider, createModelItem('deepseek-reasoner'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('deepseek-chat-v3'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('deepseek-R1'))).toBe(false)
-    expect(isAgentCompatibleModel(provider, createModelItem('DeepSeek-R1-Distill-Qwen-32B'))).toBe(false)
+    expect(isAgentCompatibleModel(provider, createModelItem('DeepSeek-R1-Distill-Qwen-32B'))).toBe(
+      false,
+    )
     expect(isAgentCompatibleModel(provider, createModelItem('deepseek-v3.1'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('abab6.5-chat'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('minimax-text-01'))).toBe(false)
@@ -99,7 +117,9 @@ describe('isAgentCompatibleModel', () => {
     expect(isAgentCompatibleModel(provider, createModelItem('qwq-plus'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('qwen-max'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('qwen2.5-72b-instruct'))).toBe(false)
-    expect(isAgentCompatibleModel(provider, createModelItem('qwen2.5-coder-32b-instruct'))).toBe(false)
+    expect(isAgentCompatibleModel(provider, createModelItem('qwen2.5-coder-32b-instruct'))).toBe(
+      false,
+    )
     expect(isAgentCompatibleModel(provider, createModelItem('qwen3-coder-plus'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('qwen3.5-max'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('qwen3.7-flash'))).toBe(false)
@@ -114,16 +134,29 @@ describe('isAgentCompatibleModel', () => {
   })
 
   it('should ignore provider when evaluating blacklist patterns', () => {
-    expect(isAgentCompatibleModel(createModel('custom-provider'), createModelItem('gpt-4o'))).toBe(false)
-    expect(isAgentCompatibleModel(createModel('custom-provider'), createModelItem('claude-3-haiku-20240307'))).toBe(false)
-    expect(isAgentCompatibleModel(createModel('openai'), createModelItem('claude-sonnet-4'))).toBe(true)
+    expect(isAgentCompatibleModel(createModel('custom-provider'), createModelItem('gpt-4o'))).toBe(
+      false,
+    )
+    expect(
+      isAgentCompatibleModel(
+        createModel('custom-provider'),
+        createModelItem('claude-3-haiku-20240307'),
+      ),
+    ).toBe(false)
+    expect(isAgentCompatibleModel(createModel('openai'), createModelItem('claude-sonnet-4'))).toBe(
+      true,
+    )
   })
 
   it('should evaluate blacklist patterns against the English model label', () => {
     const provider = createModel('any-provider')
 
-    expect(isAgentCompatibleModel(provider, createModelItemWithLabel('model-id', 'gpt-4o'))).toBe(false)
-    expect(isAgentCompatibleModel(provider, createModelItemWithLabel('gpt-4o', 'safe-model-label'))).toBe(true)
+    expect(isAgentCompatibleModel(provider, createModelItemWithLabel('model-id', 'gpt-4o'))).toBe(
+      false,
+    )
+    expect(
+      isAgentCompatibleModel(provider, createModelItemWithLabel('gpt-4o', 'safe-model-label')),
+    ).toBe(true)
   })
 
   it('should allow unconfigured models from providers with blacklisted model families', () => {
@@ -147,7 +180,9 @@ describe('isAgentSuggestedModel', () => {
     expect(isAgentSuggestedModel(provider, createModelItem('opus-4.7'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('Claude Sonnet 4.6'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('Gemini 3.1 Pro Preview'))).toBe(false)
-    expect(isAgentSuggestedModel(provider, createModelItem('Gemini 3.1 Pro Preview 001'))).toBe(false)
+    expect(isAgentSuggestedModel(provider, createModelItem('Gemini 3.1 Pro Preview 001'))).toBe(
+      false,
+    )
     expect(isAgentSuggestedModel(provider, createModelItem('grok-4.3'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('deepseek-v4-pro'))).toBe(true)
     expect(isAgentSuggestedModel(provider, createModelItem('kimi-k2.6'))).toBe(true)
@@ -161,7 +196,11 @@ describe('isAgentSuggestedModel', () => {
   it('should evaluate suggestions against the English model label', () => {
     const provider = createModel('any-provider')
 
-    expect(isAgentSuggestedModel(provider, createModelItemWithLabel('model-id', 'GPT 5.5 Pro'))).toBe(true)
-    expect(isAgentSuggestedModel(provider, createModelItemWithLabel('gpt-5.5', 'safe-model-label'))).toBe(false)
+    expect(
+      isAgentSuggestedModel(provider, createModelItemWithLabel('model-id', 'GPT 5.5 Pro')),
+    ).toBe(true)
+    expect(
+      isAgentSuggestedModel(provider, createModelItemWithLabel('gpt-5.5', 'safe-model-label')),
+    ).toBe(false)
   })
 })

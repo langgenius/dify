@@ -5,16 +5,6 @@ import SearchBoxWrapper from '../search-box-wrapper'
 const mockHandleSearchPluginTextChange = vi.fn()
 const mockHandleFilterPluginTagsChange = vi.fn()
 const mockSearchBox = vi.fn()
-
-vi.mock('#i18n', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key),
-    }),
-  })
-})
-
 vi.mock('../../atoms', () => ({
   useSearchPluginText: () => ['plugin search', mockHandleSearchPluginTextChange],
   useFilterPluginTags: () => [['agent', 'rag'], mockHandleFilterPluginTagsChange],
@@ -32,15 +22,17 @@ describe('SearchBoxWrapper', () => {
     render(<SearchBoxWrapper />)
 
     expect(screen.getByTestId('search-box')).toBeInTheDocument()
-    expect(mockSearchBox).toHaveBeenCalledWith(expect.objectContaining({
-      wrapperClassName: 'z-11 mx-auto w-[640px] shrink-0',
-      inputClassName: 'w-full',
-      search: 'plugin search',
-      onSearchChange: mockHandleSearchPluginTextChange,
-      tags: ['agent', 'rag'],
-      onTagsChange: mockHandleFilterPluginTagsChange,
-      placeholder: 'plugin.searchPlugins',
-      usedInMarketplace: true,
-    }))
+    expect(mockSearchBox).toHaveBeenCalledWith(
+      expect.objectContaining({
+        wrapperClassName: 'z-11 mx-auto w-[640px] shrink-0',
+        inputClassName: 'w-full',
+        search: 'plugin search',
+        onSearchChange: mockHandleSearchPluginTextChange,
+        tags: ['agent', 'rag'],
+        onTagsChange: mockHandleFilterPluginTagsChange,
+        placeholder: 'plugin.searchPlugins',
+        usedInMarketplace: true,
+      }),
+    )
   })
 })

@@ -6,15 +6,8 @@ type LayoutProps = {
   params: Promise<{ agentId: string }>
 }
 
-export default async function Layout({
-  children,
-  params,
-}: LayoutProps) {
+export default async function Layout({ children, params }: LayoutProps) {
   const { agentId } = await params
 
-  return (
-    <AgentDetailLayout agentId={agentId}>
-      {children}
-    </AgentDetailLayout>
-  )
+  return <AgentDetailLayout agentId={agentId}>{children}</AgentDetailLayout>
 }

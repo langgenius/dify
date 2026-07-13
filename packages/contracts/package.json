@@ -1,8 +1,8 @@
 {
   "name": "@dify/contracts",
-  "type": "module",
   "version": "0.0.0-private",
   "private": true,
+  "type": "module",
   "exports": {
     "./marketplace": {
       "types": "./marketplace.ts",
@@ -18,7 +18,7 @@
     }
   },
   "scripts": {
-    "gen-api-contract": "uv run --project ../../api ../../api/dev/generate_swagger_specs.py --output-dir openapi && uv run --project ../../api ../../api/dev/generate_fastopenapi_specs.py --output-dir openapi && node -e \"fs.rmSync('generated/api', { recursive: true, force: true })\" && openapi-ts -f openapi-ts.api.config.ts && vp fmt generated/api && eslint --fix generated/api",
+    "gen-api-contract": "uv run --project ../../api ../../api/dev/generate_swagger_specs.py --output-dir openapi && uv run --project ../../api ../../api/dev/generate_fastopenapi_specs.py --output-dir openapi && node -e \"fs.rmSync('generated/api', { recursive: true, force: true })\" && openapi-ts -f openapi-ts.api.config.ts && eslint --fix generated/api && vp fmt generated/api",
     "gen-enterprise-contract": "openapi-ts -f openapi-ts.enterprise.config.ts",
     "test": "vp test openapi-yaml.test.ts",
     "type-check": "tsc"

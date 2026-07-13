@@ -33,7 +33,7 @@ vi.mock('@/features/deployments/create-guide/state/primitives', async () => {
 
   return {
     dslFileAtom: atom<File | undefined>(undefined),
-    effectiveMethodAtom: atom(get => get(methodAtom)),
+    effectiveMethodAtom: atom((get) => get(methodAtom)),
     methodAtom,
     sourceSearchTextAtom: atom(''),
   }
@@ -47,7 +47,7 @@ vi.mock('@/features/deployments/create-guide/state/source', async () => {
     dslUnsupportedModeAtom: atom(false),
     effectiveSelectedAppAtom: atom(undefined),
     isReadingDslAtom: atom(false),
-    sourceAppsAtom: atom(() => mocks.sourceAppsQuery.data.pages.flatMap(page => page.data)),
+    sourceAppsAtom: atom(() => mocks.sourceAppsQuery.data.pages.flatMap((page) => page.data)),
     sourceAppsErrorAtom: atom(() => mocks.sourceAppsQuery.error),
     sourceAppsFetchNextPageAtom: atom(() => mocks.sourceAppsQuery.fetchNextPage),
     sourceAppsHasNextPageAtom: atom(() => mocks.sourceAppsQuery.hasNextPage),
@@ -104,19 +104,27 @@ describe('SourceStepContent', () => {
 
     expect(screen.getByText(/createGuide\.methods\.bindApp\.title/)).toBeInTheDocument()
     expect(screen.queryByText(/createGuide\.methods\.importDsl\.title/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/createGuide\.methods\.importDsl\.description/)).not.toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: /createGuide\.source\.sourceApp/ })).toBeInTheDocument()
+    expect(
+      screen.queryByText(/createGuide\.methods\.importDsl\.description/),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /createGuide\.source\.sourceApp/ }),
+    ).toBeInTheDocument()
   })
 
   it('should use infinite scroll to load more source apps', () => {
     Object.assign(mocks.sourceAppsQuery, {
       data: {
-        pages: [{
-          data: [{
-            id: 'app-1',
-            name: 'Workflow App',
-          }],
-        }],
+        pages: [
+          {
+            data: [
+              {
+                id: 'app-1',
+                name: 'Workflow App',
+              },
+            ],
+          },
+        ],
       },
       hasNextPage: true,
     })
@@ -136,6 +144,8 @@ describe('SourceStepContent', () => {
         threshold: 0.1,
       }),
     )
-    expect(screen.queryByRole('button', { name: /createModal\.loadMoreApps/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /createModal\.loadMoreApps/ }),
+    ).not.toBeInTheDocument()
   })
 })

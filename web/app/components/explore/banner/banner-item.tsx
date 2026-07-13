@@ -44,28 +44,30 @@ export function BannerItem({
     return { slides, totalSlides, nextIndex }
   }, [api, selectedIndex])
   const indicatorItems = useMemo(
-    () => slideInfo.slides.map((slide, index) => ({
-      id: slide.dataset?.bannerId ?? `${banner.id}-${index}`,
-      index,
-    })),
+    () =>
+      slideInfo.slides.map((slide, index) => ({
+        id: slide.dataset?.bannerId ?? `${banner.id}-${index}`,
+        index,
+      })),
     [banner.id, slideInfo.slides],
   )
 
   const indicatorsWidth = useMemo(() => {
     const count = slideInfo.totalSlides
-    if (count === 0)
-      return 0
+    if (count === 0) return 0
     // Calculate: indicator buttons + gaps + extra spacing (3 * 20px for divider and padding)
     return (count + 2) * INDICATOR_WIDTH + (count - 1) * INDICATOR_GAP
   }, [slideInfo.totalSlides])
 
   const viewMoreStyle = useMemo(() => {
-    if (!maxWidth)
-      return undefined
+    if (!maxWidth) return undefined
     const availableWidth = maxWidth - indicatorsWidth
     return {
       maxWidth: `${maxWidth}px`,
-      minWidth: indicatorsWidth && availableWidth > 0 ? `${Math.min(availableWidth, MIN_VIEW_MORE_WIDTH)}px` : undefined,
+      minWidth:
+        indicatorsWidth && availableWidth > 0
+          ? `${Math.min(availableWidth, MIN_VIEW_MORE_WIDTH)}px`
+          : undefined,
     }
   }, [maxWidth, indicatorsWidth])
 
@@ -74,15 +76,14 @@ export function BannerItem({
     [maxWidth],
   )
 
-  const incrementResetKey = useCallback(() => setResetKey(prev => prev + 1), [])
+  const incrementResetKey = useCallback(() => setResetKey((prev) => prev + 1), [])
 
   useEffect(() => {
     const updateMaxWidth = () => {
       if (window.innerWidth < RESPONSIVE_BREAKPOINT && textAreaRef.current) {
         const textAreaWidth = textAreaRef.current.offsetWidth
         setMaxWidth(Math.min(textAreaWidth, MAX_RESPONSIVE_WIDTH))
-      }
-      else {
+      } else {
         setMaxWidth(undefined)
       }
     }
@@ -90,8 +91,7 @@ export function BannerItem({
     updateMaxWidth()
 
     const resizeObserver = new ResizeObserver(updateMaxWidth)
-    if (textAreaRef.current)
-      resizeObserver.observe(textAreaRef.current)
+    if (textAreaRef.current) resizeObserver.observe(textAreaRef.current)
 
     window.addEventListener('resize', updateMaxWidth)
 
@@ -105,10 +105,13 @@ export function BannerItem({
     incrementResetKey()
   }, [selectedIndex, incrementResetKey])
 
-  const handleIndicatorClick = useCallback((index: number) => {
-    incrementResetKey()
-    api?.scrollTo(index)
-  }, [api, incrementResetKey])
+  const handleIndicatorClick = useCallback(
+    (index: number) => {
+      incrementResetKey()
+      api?.scrollTo(index)
+    },
+    [api, incrementResetKey],
+  )
 
   const handleBannerClick = useCallback(() => {
     incrementResetKey()
@@ -124,8 +127,7 @@ export function BannerItem({
       event_time: Date.now(),
     })
 
-    if (banner.link)
-      window.open(banner.link, '_blank', 'noopener,noreferrer')
+    if (banner.link) window.open(banner.link, '_blank', 'noopener,noreferrer')
   }, [accountId, banner, incrementResetKey, language, sort])
 
   return (
@@ -170,7 +172,7 @@ export function BannerItem({
                 <span className="i-ri-arrow-right-line h-3 w-3 text-text-primary-on-surface" />
               </div>
               <span className="system-sm-semibold-uppercase text-text-accent">
-                {t($ => $['banner.viewMore'], { ns: 'explore' })}
+                {t(($) => $['banner.viewMore'], { ns: 'explore' })}
               </span>
             </div>
 

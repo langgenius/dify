@@ -36,6 +36,7 @@ from models import Account
 from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
+from services.conversation_service import ConversationService
 from services.errors.llm import InvokeRateLimitError
 
 from .. import console_ns
@@ -188,6 +189,15 @@ class ChatApi(InstalledAppResource):
         db.session.commit()
 
         try:
+            # Eagerly validate conversation to avoid hanging on invalid conversation_id
+            if payload.conversation_id:
+                ConversationService.get_conversation(
+                    app_model=app_model,
+                    conversation_id=payload.conversation_id,
+                    user=current_user,
+                    session=db.session(),
+                )
+
             response = AppGenerateService.generate(
                 session=session,
                 app_model=app_model,

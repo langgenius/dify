@@ -12,12 +12,7 @@ type ContentProps = {
   chunkStructure: ChunkingMode
 }
 
-const Content = ({
-  name,
-  description,
-  iconInfo,
-  chunkStructure,
-}: ContentProps) => {
+const Content = ({ name, description, iconInfo, chunkStructure }: ContentProps) => {
   const { t } = useTranslation()
   const Icon = DOC_FORM_ICON_WITH_BG[chunkStructure] || General
 
@@ -37,14 +32,11 @@ const Content = ({
           </div>
         </div>
         <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
-          <div
-            className="truncate system-md-semibold text-text-secondary"
-            title={name}
-          >
+          <div className="truncate system-md-semibold text-text-secondary" title={name}>
             {name}
           </div>
           <div className="system-2xs-medium-uppercase text-text-tertiary">
-            {t($ => $[`chunkingMode.${DOC_FORM_TEXT[chunkStructure]}`], { ns: 'dataset' })}
+            {t(($) => $[`chunkingMode.${DOC_FORM_TEXT[chunkStructure]}`], { ns: 'dataset' })}
           </div>
         </div>
       </div>

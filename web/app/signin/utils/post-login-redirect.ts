@@ -10,22 +10,17 @@ const ALLOWED: Record<string, ReadonlySet<string>> = {
 }
 
 function validate(target: string): string | null {
-  if (typeof window === 'undefined')
-    return null
+  if (typeof window === 'undefined') return null
   try {
     const url = new URL(target, window.location.origin)
-    if (url.origin !== window.location.origin)
-      return null
+    if (url.origin !== window.location.origin) return null
     const allowedKeys = ALLOWED[url.pathname]
-    if (!allowedKeys)
-      return null
+    if (!allowedKeys) return null
     for (const key of url.searchParams.keys()) {
-      if (!allowedKeys.has(key))
-        return null
+      if (!allowedKeys.has(key)) return null
     }
     return url.pathname + (url.search || '')
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -35,46 +30,36 @@ function validate(target: string): string | null {
 // /device tabs don't clobber each other. 15-min TTL drops stale values.
 // Same-origin + exact-path whitelist prevents open-redirect.
 export const setPostLoginRedirect = (value: string | null) => {
-  if (typeof window === 'undefined')
-    return
+  if (typeof window === 'undefined') return
   if (value === null) {
     try {
       sessionStorage.removeItem(DEVICE_REDIRECT_KEY)
-    }
-    catch {}
+    } catch {}
     return
   }
   const safe = validate(value)
-  if (!safe)
-    return
+  if (!safe) return
   try {
     sessionStorage.setItem(DEVICE_REDIRECT_KEY, JSON.stringify({ target: safe, ts: Date.now() }))
-  }
-  catch {}
+  } catch {}
 }
 
 function getDeviceRedirect(): string | null {
-  if (typeof window === 'undefined')
-    return null
+  if (typeof window === 'undefined') return null
   let raw: string | null = null
   try {
     raw = sessionStorage.getItem(DEVICE_REDIRECT_KEY)
     sessionStorage.removeItem(DEVICE_REDIRECT_KEY)
-  }
-  catch {
+  } catch {
     return null
   }
-  if (!raw)
-    return null
+  if (!raw) return null
   try {
     const parsed = JSON.parse(raw)
-    if (typeof parsed?.target !== 'string' || typeof parsed?.ts !== 'number')
-      return null
-    if (Date.now() - parsed.ts > DEVICE_TTL_MS)
-      return null
+    if (typeof parsed?.target !== 'string' || typeof parsed?.ts !== 'number') return null
+    if (Date.now() - parsed.ts > DEVICE_TTL_MS) return null
     return validate(parsed.target)
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -85,14 +70,12 @@ export const resolvePostLoginRedirect = (searchParams?: ReadonlyURLSearchParams)
     if (redirectUrl) {
       try {
         return decodeURIComponent(redirectUrl)
-      }
-      catch {
+      } catch {
         return redirectUrl
       }
     }
   }
   const device = getDeviceRedirect()
-  if (device)
-    return device
+  if (device) return device
   return null
 }

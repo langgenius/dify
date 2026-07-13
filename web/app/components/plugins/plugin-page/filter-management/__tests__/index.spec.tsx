@@ -2,9 +2,7 @@ import type { FilterState } from '../index'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createContext, useContext } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 // ==================== Imports (after mocks) ====================
-
 import CategoriesFilter from '../category-filter'
 // Import real components
 import FilterManagement from '../index'
@@ -33,7 +31,7 @@ const mockCategories = [
   { name: 'agent', label: 'Agents' },
 ]
 
-const mockCategoriesMap: Record<string, { name: string, label: string }> = {
+const mockCategoriesMap: Record<string, { name: string; label: string }> = {
   model: { name: 'model', label: 'Models' },
   tool: { name: 'tool', label: 'Tools' },
   extension: { name: 'extension', label: 'Extensions' },
@@ -48,7 +46,7 @@ const mockTags = [
   { name: 'image', label: 'Image' },
 ]
 
-const mockTagsMap: Record<string, { name: string, label: string }> = {
+const mockTagsMap: Record<string, { name: string; label: string }> = {
   agent: { name: 'agent', label: 'Agent' },
   rag: { name: 'rag', label: 'RAG' },
   search: { name: 'search', label: 'Search' },
@@ -77,16 +75,26 @@ const MockPopoverContext = createContext<MockPopoverContextValue>({
 })
 
 vi.mock('@langgenius/dify-ui/popover', () => ({
-  Popover: ({ children, open, onOpenChange }: {
+  Popover: ({
+    children,
+    open,
+    onOpenChange,
+  }: {
     children: React.ReactNode
     open: boolean
     onOpenChange?: (open: boolean) => void
   }) => (
     <MockPopoverContext.Provider value={{ open, onOpenChange }}>
-      <div data-testid="portal-container" data-open={open}>{children}</div>
+      <div data-testid="portal-container" data-open={open}>
+        {children}
+      </div>
     </MockPopoverContext.Provider>
   ),
-  PopoverTrigger: ({ children, render, className }: {
+  PopoverTrigger: ({
+    children,
+    render,
+    className,
+  }: {
     children?: React.ReactNode
     render?: React.ReactNode
     className?: string
@@ -103,14 +111,14 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
       </button>
     )
   },
-  PopoverContent: ({ children, className }: {
-    children: React.ReactNode
-    className?: string
-  }) => {
+  PopoverContent: ({ children, className }: { children: React.ReactNode; className?: string }) => {
     const { open } = useContext(MockPopoverContext)
-    if (!open)
-      return null
-    return <div data-testid="portal-content" className={className}>{children}</div>
+    if (!open) return null
+    return (
+      <div data-testid="portal-content" className={className}>
+        {children}
+      </div>
+    )
   },
 }))
 
@@ -123,7 +131,10 @@ const createFilterState = (overrides: Partial<FilterState> = {}): FilterState =>
   ...overrides,
 })
 
-const renderFilterManagement = (onFilterChange = vi.fn(), props?: Partial<React.ComponentProps<typeof FilterManagement>>) => {
+const renderFilterManagement = (
+  onFilterChange = vi.fn(),
+  props?: Partial<React.ComponentProps<typeof FilterManagement>>,
+) => {
   const result = render(<FilterManagement onFilterChange={onFilterChange} {...props} />)
   return { ...result, onFilterChange }
 }
@@ -409,7 +420,9 @@ describe('CategoriesFilter Component', () => {
     it('should clear all selections when clear button is clicked', () => {
       // Arrange
       const handleChange = vi.fn()
-      const { container } = render(<CategoriesFilter value={['model', 'tool']} onChange={handleChange} />)
+      const { container } = render(
+        <CategoriesFilter value={['model', 'tool']} onChange={handleChange} />,
+      )
 
       // Act - Find and click the close icon
       const closeIcon = container.querySelector('.text-text-quaternary')
@@ -469,7 +482,10 @@ describe('CategoriesFilter Component', () => {
       fireEvent.click(screen.getByTestId('portal-trigger'))
 
       await waitFor(() => {
-        expect(screen.getByRole('checkbox', { name: 'Models' })).toHaveAttribute('aria-checked', 'true')
+        expect(screen.getByRole('checkbox', { name: 'Models' })).toHaveAttribute(
+          'aria-checked',
+          'true',
+        )
       })
     })
 
@@ -481,7 +497,10 @@ describe('CategoriesFilter Component', () => {
       fireEvent.click(screen.getByTestId('portal-trigger'))
 
       await waitFor(() => {
-        expect(screen.getByRole('checkbox', { name: 'Models' })).toHaveAttribute('aria-checked', 'false')
+        expect(screen.getByRole('checkbox', { name: 'Models' })).toHaveAttribute(
+          'aria-checked',
+          'false',
+        )
       })
     })
   })

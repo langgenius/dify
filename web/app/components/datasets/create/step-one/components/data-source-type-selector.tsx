@@ -3,7 +3,11 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
+import {
+  ENABLE_WEBSITE_FIRECRAWL,
+  ENABLE_WEBSITE_JINAREADER,
+  ENABLE_WEBSITE_WATERCRAWL,
+} from '@/config'
 import { DataSourceType } from '@/models/datasets'
 import s from '../index.module.css'
 
@@ -14,10 +18,10 @@ type DataSourceTypeSelectorProps = {
   onClearPreviews: (type: DataSourceType) => void
 }
 
-type DataSourceLabelKey
-  = | 'stepOne.dataSourceType.file'
-    | 'stepOne.dataSourceType.notion'
-    | 'stepOne.dataSourceType.web'
+type DataSourceLabelKey =
+  | 'stepOne.dataSourceType.file'
+  | 'stepOne.dataSourceType.notion'
+  | 'stepOne.dataSourceType.web'
 
 type DataSourceOption = {
   type: DataSourceType
@@ -53,24 +57,30 @@ function DataSourceTypeSelector({
 }: DataSourceTypeSelectorProps) {
   const { t } = useTranslation()
 
-  const isWebEnabled = ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL
+  const isWebEnabled =
+    ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL
 
-  const handleTypeChange = useCallback((type: DataSourceType) => {
-    if (disabled)
-      return
-    onChange(type)
-    onClearPreviews(type)
-  }, [disabled, onChange, onClearPreviews])
+  const handleTypeChange = useCallback(
+    (type: DataSourceType) => {
+      if (disabled) return
+      onChange(type)
+      onClearPreviews(type)
+    },
+    [disabled, onChange, onClearPreviews],
+  )
 
-  const visibleOptions = useMemo(() => DATA_SOURCE_OPTIONS.filter((option) => {
-    if (option.type === DataSourceType.WEB)
-      return isWebEnabled
-    return true
-  }), [isWebEnabled])
+  const visibleOptions = useMemo(
+    () =>
+      DATA_SOURCE_OPTIONS.filter((option) => {
+        if (option.type === DataSourceType.WEB) return isWebEnabled
+        return true
+      }),
+    [isWebEnabled],
+  )
 
   return (
     <div className="mb-8 grid grid-cols-3 gap-4">
-      {visibleOptions.map(option => (
+      {visibleOptions.map((option) => (
         <div
           key={option.type}
           className={cn(
@@ -83,10 +93,10 @@ function DataSourceTypeSelector({
         >
           <span className={cn(s.datasetIcon, option.iconClass)} />
           <span
-            title={t($ => $[option.labelKey], { ns: 'datasetCreation' }) || undefined}
+            title={t(($) => $[option.labelKey], { ns: 'datasetCreation' }) || undefined}
             className="truncate"
           >
-            {t($ => $[option.labelKey], { ns: 'datasetCreation' })}
+            {t(($) => $[option.labelKey], { ns: 'datasetCreation' })}
           </span>
         </div>
       ))}

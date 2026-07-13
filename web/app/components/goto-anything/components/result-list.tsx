@@ -16,14 +16,14 @@ const ResultList: FC<ResultListProps> = ({ groupedResults, onSelect }) => {
 
   const getGroupHeading = (type: string) => {
     const typeMap = {
-      'app': 'gotoAnything.groups.apps',
-      'plugin': 'gotoAnything.groups.plugins',
-      'knowledge': 'gotoAnything.groups.knowledgeBases',
+      app: 'gotoAnything.groups.apps',
+      plugin: 'gotoAnything.groups.plugins',
+      knowledge: 'gotoAnything.groups.knowledgeBases',
       'workflow-node': 'gotoAnything.groups.workflowNodes',
-      'command': 'gotoAnything.groups.commands',
-      'recent': 'gotoAnything.groups.recent',
+      command: 'gotoAnything.groups.commands',
+      recent: 'gotoAnything.groups.recent',
     } as const
-    return t($ => $[typeMap[type as keyof typeof typeMap] || `${type}s`], { ns: 'app' })
+    return t(($) => $[typeMap[type as keyof typeof typeMap] || `${type}s`], { ns: 'app' })
   }
 
   return (
@@ -34,7 +34,7 @@ const ResultList: FC<ResultListProps> = ({ groupedResults, onSelect }) => {
           heading={getGroupHeading(type)}
           className="p-2 text-text-secondary capitalize"
         >
-          {results.map(result => (
+          {results.map((result) => (
             <ResultItem
               key={`${result.type}-${result.id}`}
               result={result}

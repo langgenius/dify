@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any, style/jsx-one-expression-per-line */
+/* eslint-disable ts/no-explicit-any */
 import type { AssignerNodeOperation, AssignerNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -15,7 +15,13 @@ import useConfig from '../use-config'
 const mockHandleAddOperationItem = vi.fn()
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ title, operations, children }: any) => <div><div>{title}</div><div>{operations}</div>{children}</div>,
+  default: ({ title, operations, children }: any) => (
+    <div>
+      <div>{title}</div>
+      <div>{operations}</div>
+      {children}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/list-no-data-placeholder', () => ({
@@ -23,7 +29,15 @@ vi.mock('@/app/components/workflow/nodes/_base/components/list-no-data-placehold
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({ value, onChange, onOpen, placeholder, popupFor, valueTypePlaceHolder, filterVar }: any) => (
+  default: ({
+    value,
+    onChange,
+    onOpen,
+    placeholder,
+    popupFor,
+    valueTypePlaceHolder,
+    filterVar,
+  }: any) => (
     <div>
       <div>{Array.isArray(value) ? value.join('.') : String(value ?? '')}</div>
       {valueTypePlaceHolder && <div>{`type:${valueTypePlaceHolder}`}</div>}
@@ -48,7 +62,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
     <textarea
       aria-label="code-editor"
       value={value}
-      onChange={event => onChange(event.target.value)}
+      onChange={(event) => onChange(event.target.value)}
     />
   ),
 }))
@@ -81,7 +95,9 @@ vi.mock('../use-config', () => ({
 
 const mockUseConfig = vi.mocked(useConfig)
 
-const createOperation = (overrides: Partial<AssignerNodeOperation> = {}): AssignerNodeOperation => ({
+const createOperation = (
+  overrides: Partial<AssignerNodeOperation> = {},
+): AssignerNodeOperation => ({
   variable_selector: ['node-1', 'count'],
   input_type: AssignerNodeInputType.variable,
   operation: WriteMode.overwrite,
@@ -98,7 +114,9 @@ const createData = (overrides: Partial<AssignerNodeType> = {}): AssignerNodeType
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   handleOperationListChanges: vi.fn(),
@@ -126,7 +144,10 @@ const panelProps: PanelProps = {
 describe('assigner path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockHandleAddOperationItem.mockReturnValue([createOperation(), createOperation({ variable_selector: [] })])
+    mockHandleAddOperationItem.mockReturnValue([
+      createOperation(),
+      createOperation({ variable_selector: [] }),
+    ])
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 
@@ -152,7 +173,10 @@ describe('assigner path', () => {
       expect(screen.getByText('workflow.nodes.assigner.operations.+='))!.toBeInTheDocument()
 
       await user.click(screen.getByText('workflow.nodes.assigner.operations.+='))
-      expect(onSelect).toHaveBeenCalledWith({ value: WriteMode.increment, name: WriteMode.increment })
+      expect(onSelect).toHaveBeenCalledWith({
+        value: WriteMode.increment,
+        name: WriteMode.increment,
+      })
     })
 
     it('should not open a disabled operation selector', async () => {
@@ -177,12 +201,7 @@ describe('assigner path', () => {
       const onChange = vi.fn()
       const onOpen = vi.fn()
       const { rerender } = render(
-        <VarList
-          readonly={false}
-          nodeId="node-1"
-          list={[]}
-          onChange={onChange}
-        />,
+        <VarList readonly={false} nodeId="node-1" list={[]} onChange={onChange} />,
       )
 
       expect(screen.getByText('workflow.nodes.assigner.noVarTip'))!.toBeInTheDocument()
@@ -206,14 +225,17 @@ describe('assigner path', () => {
 
       await user.click(screen.getByText('workflow.nodes.assigner.selectAssignedVariable'))
       expect(onOpen).toHaveBeenCalledWith(0)
-      expect(onChange).toHaveBeenLastCalledWith([
-        {
-          variable_selector: ['node-1', 'count'],
-          operation: WriteMode.overwrite,
-          input_type: AssignerNodeInputType.variable,
-          value: undefined,
-        },
-      ], ['node-1', 'count'])
+      expect(onChange).toHaveBeenLastCalledWith(
+        [
+          {
+            variable_selector: ['node-1', 'count'],
+            operation: WriteMode.overwrite,
+            input_type: AssignerNodeInputType.variable,
+            value: undefined,
+          },
+        ],
+        ['node-1', 'count'],
+      )
 
       onChange.mockClear()
       rerender(
@@ -245,9 +267,10 @@ describe('assigner path', () => {
 
       onChange.mockClear()
       await user.click(screen.getByText('workflow.nodes.assigner.setParameter'))
-      expect(onChange).toHaveBeenLastCalledWith([
-        createOperation({ operation: WriteMode.overwrite, value: ['node-2', 'result'] }),
-      ], ['node-2', 'result'])
+      expect(onChange).toHaveBeenLastCalledWith(
+        [createOperation({ operation: WriteMode.overwrite, value: ['node-2', 'result'] })],
+        ['node-2', 'result'],
+      )
 
       onChange.mockClear()
       rerender(
@@ -267,9 +290,10 @@ describe('assigner path', () => {
       )
 
       fireEvent.change(screen.getByDisplayValue('hello'), { target: { value: 'updated text' } })
-      expect(onChange).toHaveBeenLastCalledWith([
-        createOperation({ operation: WriteMode.set, value: 'updated text' }),
-      ], 'updated text')
+      expect(onChange).toHaveBeenLastCalledWith(
+        [createOperation({ operation: WriteMode.set, value: 'updated text' })],
+        'updated text',
+      )
 
       onChange.mockClear()
       rerender(
@@ -289,9 +313,10 @@ describe('assigner path', () => {
       )
 
       fireEvent.change(screen.getByDisplayValue('3'), { target: { value: '5' } })
-      expect(onChange).toHaveBeenLastCalledWith([
-        createOperation({ operation: WriteMode.set, value: 5 }),
-      ], 5)
+      expect(onChange).toHaveBeenLastCalledWith(
+        [createOperation({ operation: WriteMode.set, value: 5 })],
+        5,
+      )
 
       onChange.mockClear()
       rerender(
@@ -311,9 +336,10 @@ describe('assigner path', () => {
       )
 
       await user.click(screen.getByRole('button', { name: 'bool:false' }))
-      expect(onChange).toHaveBeenLastCalledWith([
-        createOperation({ operation: WriteMode.set, value: true }),
-      ], true)
+      expect(onChange).toHaveBeenLastCalledWith(
+        [createOperation({ operation: WriteMode.set, value: true })],
+        true,
+      )
 
       onChange.mockClear()
       rerender(
@@ -333,9 +359,10 @@ describe('assigner path', () => {
       )
 
       fireEvent.change(screen.getByLabelText('code-editor'), { target: { value: '{"a":2}' } })
-      expect(onChange).toHaveBeenLastCalledWith([
-        createOperation({ operation: WriteMode.set, value: '{"a":2}' }),
-      ], '{"a":2}')
+      expect(onChange).toHaveBeenLastCalledWith(
+        [createOperation({ operation: WriteMode.set, value: '{"a":2}' })],
+        '{"a":2}',
+      )
 
       onChange.mockClear()
       rerender(
@@ -355,9 +382,10 @@ describe('assigner path', () => {
       )
 
       fireEvent.change(screen.getByDisplayValue('2'), { target: { value: '4' } })
-      expect(onChange).toHaveBeenLastCalledWith([
-        createOperation({ operation: WriteMode.increment, value: 4 }),
-      ], 4)
+      expect(onChange).toHaveBeenLastCalledWith(
+        [createOperation({ operation: WriteMode.increment, value: 4 })],
+        4,
+      )
 
       const buttons = screen.getAllByRole('button')
       await user.click(buttons.at(-1)!)
@@ -374,8 +402,16 @@ describe('assigner path', () => {
         />,
         {
           nodes: [
-            { id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Answer', type: BlockEnum.Answer } as any },
-            { id: 'start', position: { x: 0, y: 0 }, data: { title: 'Start', type: BlockEnum.Start } as any },
+            {
+              id: 'node-1',
+              position: { x: 0, y: 0 },
+              data: { title: 'Answer', type: BlockEnum.Answer } as any,
+            },
+            {
+              id: 'start',
+              position: { x: 0, y: 0 },
+              data: { title: 'Start', type: BlockEnum.Start } as any,
+            },
           ],
           edges: [],
         },
@@ -399,13 +435,15 @@ describe('assigner path', () => {
       rerender(
         <Node
           id="assigner-node"
-          data={{
-            title: 'Legacy Assigner',
-            desc: '',
-            type: BlockEnum.VariableAssigner,
-            assigned_variable_selector: ['sys', 'query'],
-            write_mode: WriteMode.append,
-          } as any}
+          data={
+            {
+              title: 'Legacy Assigner',
+              desc: '',
+              type: BlockEnum.VariableAssigner,
+              assigned_variable_selector: ['sys', 'query'],
+              write_mode: WriteMode.append,
+            } as any
+          }
         />,
       )
 
@@ -430,8 +468,16 @@ describe('assigner path', () => {
         />,
         {
           nodes: [
-            { id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Answer', type: BlockEnum.Answer } as any },
-            { id: 'start', position: { x: 0, y: 0 }, data: { title: 'Start', type: BlockEnum.Start } as any },
+            {
+              id: 'node-1',
+              position: { x: 0, y: 0 },
+              data: { title: 'Answer', type: BlockEnum.Answer } as any,
+            },
+            {
+              id: 'start',
+              position: { x: 0, y: 0 },
+              data: { title: 'Start', type: BlockEnum.Start } as any,
+            },
           ],
           edges: [],
         },
@@ -439,43 +485,59 @@ describe('assigner path', () => {
 
       expect(screen.getByText('Start'))!.toBeInTheDocument()
       expect(screen.getByText('sys.query'))!.toBeInTheDocument()
-      expect(screen.queryByText('workflow.nodes.assigner.operations.over-write')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('workflow.nodes.assigner.operations.over-write'),
+      ).not.toBeInTheDocument()
     })
 
     it('should return null for legacy nodes without assigned variables and resolve non-system legacy vars', () => {
       const { rerender } = renderWorkflowFlowComponent(
         <Node
           id="assigner-node"
-          data={{
-            title: 'Legacy Assigner',
-            desc: '',
-            type: BlockEnum.VariableAssigner,
-            assigned_variable_selector: [],
-            write_mode: WriteMode.append,
-          } as any}
+          data={
+            {
+              title: 'Legacy Assigner',
+              desc: '',
+              type: BlockEnum.VariableAssigner,
+              assigned_variable_selector: [],
+              write_mode: WriteMode.append,
+            } as any
+          }
         />,
         {
           nodes: [
-            { id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Answer', type: BlockEnum.Answer } as any },
-            { id: 'start', position: { x: 0, y: 0 }, data: { title: 'Start', type: BlockEnum.Start } as any },
+            {
+              id: 'node-1',
+              position: { x: 0, y: 0 },
+              data: { title: 'Answer', type: BlockEnum.Answer } as any,
+            },
+            {
+              id: 'start',
+              position: { x: 0, y: 0 },
+              data: { title: 'Start', type: BlockEnum.Start } as any,
+            },
           ],
           edges: [],
         },
       )
 
-      expect(screen.queryByText('workflow.nodes.assigner.operations.append')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('workflow.nodes.assigner.operations.append'),
+      ).not.toBeInTheDocument()
       expect(screen.queryByText('node-1.count')).not.toBeInTheDocument()
 
       rerender(
         <Node
           id="assigner-node"
-          data={{
-            title: 'Legacy Assigner',
-            desc: '',
-            type: BlockEnum.VariableAssigner,
-            assigned_variable_selector: ['node-1', 'count'],
-            write_mode: WriteMode.append,
-          } as any}
+          data={
+            {
+              title: 'Legacy Assigner',
+              desc: '',
+              type: BlockEnum.VariableAssigner,
+              assigned_variable_selector: ['node-1', 'count'],
+              write_mode: WriteMode.append,
+            } as any
+          }
         />,
       )
 
@@ -491,13 +553,7 @@ describe('assigner path', () => {
       })
       mockUseConfig.mockReturnValue(config)
 
-      render(
-        <Panel
-          id="assigner-node"
-          data={createData()}
-          panelProps={panelProps}
-        />,
-      )
+      render(<Panel id="assigner-node" data={createData()} panelProps={panelProps} />)
 
       await user.click(screen.getAllByRole('button')[0]!)
 

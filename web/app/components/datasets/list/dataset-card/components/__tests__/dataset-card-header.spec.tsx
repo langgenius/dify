@@ -8,8 +8,10 @@ import DatasetCardHeader from '../dataset-card-header'
 
 // Mock AppIcon component to avoid emoji-mart initialization issues
 vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ icon, className }: { icon?: string, className?: string }) => (
-    <div data-testid="app-icon" className={className}>{icon}</div>
+  default: ({ icon, className }: { icon?: string; className?: string }) => (
+    <div data-testid="app-icon" className={className}>
+      {icon}
+    </div>
   ),
 }))
 
@@ -27,10 +29,8 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 vi.mock('@/hooks/use-knowledge', () => ({
   useKnowledge: () => ({
     formatIndexingTechniqueAndMethod: (technique: string, _method: string) => {
-      if (technique === 'high_quality')
-        return 'High Quality'
-      if (technique === 'economy')
-        return 'Economy'
+      if (technique === 'high_quality') return 'High Quality'
+      if (technique === 'economy') return 'Economy'
       return ''
     },
   }),
@@ -38,16 +38,15 @@ vi.mock('@/hooks/use-knowledge', () => ({
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
+  return {
     useTranslation: () => ({
       t: withSelectorKey((key: string, options?: { ns?: string }) => {
-        if (key === 'cornerLabel.pipeline' && options?.ns === 'dataset')
-          return 'Pipeline'
+        if (key === 'cornerLabel.pipeline' && options?.ns === 'dataset') return 'Pipeline'
 
         return options?.ns ? `${options.ns}.${key}` : key
       }),
     }),
-  })
+  }
 })
 
 describe('DatasetCardHeader', () => {
@@ -214,7 +213,9 @@ describe('DatasetCardHeader', () => {
       const dataset = createMockDataset({
         doc_form: ChunkingMode.text,
         indexing_technique: IndexingType.QUALIFIED,
-        retrieval_model_dict: { search_method: RETRIEVE_METHOD.semantic } as DataSet['retrieval_model_dict'],
+        retrieval_model_dict: {
+          search_method: RETRIEVE_METHOD.semantic,
+        } as DataSet['retrieval_model_dict'],
         runtime_mode: 'general',
       })
       render(<DatasetCardHeader dataset={dataset} />)
@@ -235,7 +236,9 @@ describe('DatasetCardHeader', () => {
       const dataset = createMockDataset({
         doc_form: ChunkingMode.text,
         indexing_technique: IndexingType.QUALIFIED,
-        retrieval_model_dict: { search_method: RETRIEVE_METHOD.semantic } as DataSet['retrieval_model_dict'],
+        retrieval_model_dict: {
+          search_method: RETRIEVE_METHOD.semantic,
+        } as DataSet['retrieval_model_dict'],
         runtime_mode: 'rag_pipeline',
         is_published: true,
       })

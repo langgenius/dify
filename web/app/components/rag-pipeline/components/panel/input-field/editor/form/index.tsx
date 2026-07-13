@@ -14,7 +14,13 @@ import InitialFields from './initial-fields'
 import { createInputFieldSchema } from './schema'
 import ShowAllSettings from './show-all-settings'
 
-const InputFieldForm = ({ initialData, supportFile = false, onCancel, onSubmit, isEditMode = true }: InputFieldFormProps) => {
+const InputFieldForm = ({
+  initialData,
+  supportFile = false,
+  onCancel,
+  onSubmit,
+  isEditMode = true,
+}: InputFieldFormProps) => {
   const { t } = useTranslation()
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const { maxFileUploadLimit } = useFileSizeLimit(fileUploadConfigResponse)
@@ -73,12 +79,12 @@ const InputFieldForm = ({ initialData, supportFile = false, onCancel, onSubmit, 
       <div className="flex flex-col gap-4 px-4 py-2">
         <InitialFieldsComp form={inputFieldForm} />
         <Divider type="horizontal" />
-        {!showAllSettings && (<ShowAllSettingComp form={inputFieldForm} />)}
-        {showAllSettings && (<HiddenFieldsComp form={inputFieldForm} />)}
+        {!showAllSettings && <ShowAllSettingComp form={inputFieldForm} />}
+        {showAllSettings && <HiddenFieldsComp form={inputFieldForm} />}
       </div>
       <div className="flex items-center justify-end gap-x-2 p-4 pt-2">
         <Button variant="secondary" onClick={onCancel}>
-          {t($ => $['operation.cancel'], { ns: 'common' })}
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <inputFieldForm.AppForm>
           <inputFieldForm.Actions />

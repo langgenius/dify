@@ -12,23 +12,30 @@ const MANIFEST = JSON.stringify({
   channel: 'edge',
   version: '0.1.0-edge.2fd7b82',
   baseUrl: 'https://pub.example.r2.dev/difyctl/edge/0.1.0-edge.2fd7b82',
-  targets: { 'windows-x64': { asset: 'difyctl-v0.1.0-edge.2fd7b82-windows-x64.exe', sha256: 'deadbeef' } },
+  targets: {
+    'windows-x64': { asset: 'difyctl-v0.1.0-edge.2fd7b82-windows-x64.exe', sha256: 'deadbeef' },
+  },
 })
 
-function pwsh(program: string): { code: number, stdout: string, stderr: string } {
+function pwsh(program: string): { code: number; stdout: string; stderr: string } {
   const full = `. '${SCRIPT}'\n${program}`
   const r = spawnSync('pwsh', ['-NoProfile', '-Command', full], {
     encoding: 'utf8',
     env: { ...process.env, DIFYCTL_INSTALL_LIB: '1' },
   })
-  return { code: r.status ?? 1, stdout: (r.stdout ?? '').replace(/\r\n/g, '\n').trim(), stderr: r.stderr ?? '' }
+  return {
+    code: r.status ?? 1,
+    stdout: (r.stdout ?? '').replace(/\r\n/g, '\n').trim(),
+    stderr: r.stderr ?? '',
+  }
 }
 
 d('install-r2.ps1', () => {
   it('parses a target asset + sha from the manifest', () => {
-    const prog = `$m = ConvertFrom-Json @'\n${MANIFEST}\n'@\n`
-      + `Write-Output (Get-TargetField $m 'windows-x64' 'asset')\n`
-      + `Write-Output (Get-TargetField $m 'windows-x64' 'sha256')`
+    const prog =
+      `$m = ConvertFrom-Json @'\n${MANIFEST}\n'@\n` +
+      `Write-Output (Get-TargetField $m 'windows-x64' 'asset')\n` +
+      `Write-Output (Get-TargetField $m 'windows-x64' 'sha256')`
     const { stdout } = pwsh(prog)
     expect(stdout).toBe('difyctl-v0.1.0-edge.2fd7b82-windows-x64.exe\ndeadbeef')
   })

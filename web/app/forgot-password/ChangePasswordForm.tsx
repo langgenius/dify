@@ -19,10 +19,7 @@ const ChangePasswordForm = () => {
   const token = searchParams.get('token')
   const isTokenMissing = !token
 
-  const {
-    data: verifyTokenRes,
-    refetch: revalidateToken,
-  } = useVerifyForgotPasswordToken(token)
+  const { data: verifyTokenRes, refetch: revalidateToken } = useVerifyForgotPasswordToken(token)
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -34,15 +31,15 @@ const ChangePasswordForm = () => {
 
   const valid = useCallback(() => {
     if (!password.trim()) {
-      showErrorMessage(t($ => $['error.passwordEmpty'], { ns: 'login' }))
+      showErrorMessage(t(($) => $['error.passwordEmpty'], { ns: 'login' }))
       return false
     }
     if (!validPassword.test(password)) {
-      showErrorMessage(t($ => $['error.passwordInvalid'], { ns: 'login' }))
+      showErrorMessage(t(($) => $['error.passwordInvalid'], { ns: 'login' }))
       return false
     }
     if (password !== confirmPassword) {
-      showErrorMessage(t($ => $['account.notEqual'], { ns: 'common' }))
+      showErrorMessage(t(($) => $['account.notEqual'], { ns: 'common' }))
       return false
     }
     return true
@@ -51,8 +48,7 @@ const ChangePasswordForm = () => {
   const handleChangePassword = useCallback(async () => {
     const resetToken = verifyTokenRes?.token ?? ''
 
-    if (!valid())
-      return
+    if (!valid()) return
     try {
       await changePasswordWithToken({
         url: '/forgot-password/resets',
@@ -63,31 +59,33 @@ const ChangePasswordForm = () => {
         },
       })
       setShowSuccess(true)
-    }
-    catch {
+    } catch {
       await revalidateToken()
     }
   }, [confirmPassword, password, revalidateToken, verifyTokenRes?.token, valid])
 
   return (
-    <div className={
-      cn(
+    <div
+      className={cn(
         'flex w-full grow flex-col items-center justify-center',
         'px-6',
         'md:px-[108px]',
-      )
-    }
+      )}
     >
       {!isTokenMissing && !verifyTokenRes && <Loading />}
       {(isTokenMissing || (verifyTokenRes && !verifyTokenRes.is_valid)) && (
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
-            <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">🤷‍♂️</div>
-            <h2 className="text-[32px] font-bold text-text-primary">{t($ => $.invalid, { ns: 'login' })}</h2>
+            <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">
+              🤷‍♂️
+            </div>
+            <h2 className="text-[32px] font-bold text-text-primary">
+              {t(($) => $.invalid, { ns: 'login' })}
+            </h2>
           </div>
           <div className="mx-auto mt-6 w-full">
             <Button variant="primary" className="w-full text-sm!">
-              <a href="https://dify.ai">{t($ => $.explore, { ns: 'login' })}</a>
+              <a href="https://dify.ai">{t(($) => $.explore, { ns: 'login' })}</a>
             </Button>
           </div>
         </div>
@@ -96,10 +94,10 @@ const ChangePasswordForm = () => {
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <h2 className="text-[32px] font-bold text-text-primary">
-              {t($ => $.changePassword, { ns: 'login' })}
+              {t(($) => $.changePassword, { ns: 'login' })}
             </h2>
             <p className="mt-1 text-sm text-text-secondary">
-              {t($ => $.changePasswordTip, { ns: 'login' })}
+              {t(($) => $.changePasswordTip, { ns: 'login' })}
             </p>
           </div>
 
@@ -107,30 +105,38 @@ const ChangePasswordForm = () => {
             <div className="relative">
               {/* Password */}
               <div className="mb-5">
-                <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                  {t($ => $['account.newPassword'], { ns: 'common' })}
+                <label
+                  htmlFor="password"
+                  className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
+                >
+                  {t(($) => $['account.newPassword'], { ns: 'common' })}
                 </label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder={t($ => $.passwordPlaceholder, { ns: 'login' }) || ''}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
                   className="mt-1"
                 />
-                <div className="mt-1 text-xs text-text-secondary">{t($ => $['error.passwordInvalid'], { ns: 'login' })}</div>
+                <div className="mt-1 text-xs text-text-secondary">
+                  {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                </div>
               </div>
               {/* Confirm Password */}
               <div className="mb-5">
-                <label htmlFor="confirmPassword" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                  {t($ => $['account.confirmPassword'], { ns: 'common' })}
+                <label
+                  htmlFor="confirmPassword"
+                  className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
+                >
+                  {t(($) => $['account.confirmPassword'], { ns: 'common' })}
                 </label>
                 <Input
                   id="confirmPassword"
                   type="password"
                   value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder={t($ => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
                   className="mt-1"
                 />
               </div>
@@ -140,7 +146,7 @@ const ChangePasswordForm = () => {
                   className="w-full text-sm!"
                   onClick={handleChangePassword}
                 >
-                  {t($ => $['operation.reset'], { ns: 'common' })}
+                  {t(($) => $['operation.reset'], { ns: 'common' })}
                 </Button>
               </div>
             </div>
@@ -154,12 +160,12 @@ const ChangePasswordForm = () => {
               <CheckCircleIcon className="h-10 w-10 text-[#039855]" />
             </div>
             <h2 className="text-[32px] font-bold text-text-primary">
-              {t($ => $.passwordChangedTip, { ns: 'login' })}
+              {t(($) => $.passwordChangedTip, { ns: 'login' })}
             </h2>
           </div>
           <div className="mx-auto mt-6 w-full">
             <Button variant="primary" className="w-full">
-              <a href={`${basePath}/signin`}>{t($ => $.passwordChanged, { ns: 'login' })}</a>
+              <a href={`${basePath}/signin`}>{t(($) => $.passwordChanged, { ns: 'login' })}</a>
             </Button>
           </div>
         </div>

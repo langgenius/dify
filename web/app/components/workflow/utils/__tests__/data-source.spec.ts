@@ -6,14 +6,15 @@ import { getDataSourceCheckParams } from '../data-source'
 
 vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
   toolParametersToFormSchemas: vi.fn((params: Array<Record<string, unknown>>) =>
-    params.map(p => ({
+    params.map((p) => ({
       variable: p.name,
       label: p.label || { en_US: p.name },
       type: p.type || 'string',
       required: p.required ?? false,
       form: p.form ?? 'llm',
       hide: p.hide ?? false,
-    }))),
+    })),
+  ),
 }))
 
 function createDataSourceData(overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType {
@@ -39,7 +40,12 @@ function createDataSourceCollection(overrides: Partial<ToolWithProvider> = {}): 
       {
         name: 'mysql_query',
         parameters: [
-          { name: 'query', label: { en_US: 'SQL Query', zh_Hans: 'SQL 查询' }, type: 'string', required: true },
+          {
+            name: 'query',
+            label: { en_US: 'SQL Query', zh_Hans: 'SQL 查询' },
+            type: 'string',
+            required: true,
+          },
           { name: 'limit', label: { en_US: 'Limit' }, type: 'number', required: false, hide: true },
         ],
       },

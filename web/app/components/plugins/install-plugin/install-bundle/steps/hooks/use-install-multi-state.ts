@@ -1,6 +1,12 @@
 'use client'
 
-import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin, VersionInfo } from '@/app/components/plugins/types'
+import type {
+  Dependency,
+  GitHubItemAndMarketPlaceDependency,
+  PackageDependency,
+  Plugin,
+  VersionInfo,
+} from '@/app/components/plugins/types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
@@ -33,17 +39,14 @@ export function getPluginKey(plugin: Plugin | undefined): string {
 }
 
 function parseMarketplaceIdentifier(identifier?: string): MarketplacePluginInfo | null {
-  if (!identifier)
-    return null
+  if (!identifier) return null
 
   const withoutHash = identifier.split('@')[0]
   const [organization, nameAndVersionPart] = withoutHash!.split('/')
-  if (!organization || !nameAndVersionPart)
-    return null
+  if (!organization || !nameAndVersionPart) return null
 
   const [plugin, version] = nameAndVersionPart.split(':')
-  if (!plugin)
-    return null
+  if (!plugin) return null
 
   return { organization, plugin, version }
 }
@@ -54,11 +57,9 @@ function getMarketplacePluginInfo(
   const parsedInfo = parseMarketplaceIdentifier(
     value.marketplace_plugin_unique_identifier || value.plugin_unique_identifier,
   )
-  if (parsedInfo)
-    return parsedInfo
+  if (parsedInfo) return parsedInfo
 
-  if (!value.organization || !value.plugin)
-    return null
+  if (!value.organization || !value.plugin) return null
 
   return {
     organization: value.organization,
@@ -68,12 +69,10 @@ function getMarketplacePluginInfo(
 }
 
 function initPluginsFromDependencies(allPlugins: Dependency[]): (Plugin | undefined)[] {
-  if (!allPlugins.some(d => d.type === 'package'))
-    return []
+  if (!allPlugins.some((d) => d.type === 'package')) return []
 
   return allPlugins.map((d) => {
-    if (d.type !== 'package')
-      return undefined
+    if (d.type !== 'package') return undefined
     const { manifest, unique_identifier } = (d as PackageDependency).value
     return {
       ...manifest,
@@ -92,14 +91,14 @@ export function useInstallMultiState({
 
   // Marketplace plugins filtering and index mapping
   const marketplacePlugins = useMemo(
-    () => allPlugins.filter((d): d is GitHubItemAndMarketPlaceDependency => d.type === 'marketplace'),
+    () =>
+      allPlugins.filter((d): d is GitHubItemAndMarketPlaceDependency => d.type === 'marketplace'),
     [allPlugins],
   )
 
   const marketPlaceInDSLIndex = useMemo(() => {
     return allPlugins.reduce<number[]>((acc, d, index) => {
-      if (d.type === 'marketplace')
-        acc.push(index)
+      if (d.type === 'marketplace') acc.push(index)
       return acc
     }, [])
   }, [allPlugins])
@@ -108,22 +107,22 @@ export function useInstallMultiState({
     return marketplacePlugins.reduce<{
       marketplaceRequests: MarketplaceRequest[]
       invalidMarketplaceIndexes: number[]
-    }>((acc, dependency, marketplaceIndex) => {
-      const dslIndex = marketPlaceInDSLIndex[marketplaceIndex]
-      if (dslIndex === undefined)
+    }>(
+      (acc, dependency, marketplaceIndex) => {
+        const dslIndex = marketPlaceInDSLIndex[marketplaceIndex]
+        if (dslIndex === undefined) return acc
+
+        const marketplaceInfo = getMarketplacePluginInfo(dependency.value)
+        if (!marketplaceInfo) acc.invalidMarketplaceIndexes.push(dslIndex)
+        else acc.marketplaceRequests.push({ dslIndex, dependency, info: marketplaceInfo })
+
         return acc
-
-      const marketplaceInfo = getMarketplacePluginInfo(dependency.value)
-      if (!marketplaceInfo)
-        acc.invalidMarketplaceIndexes.push(dslIndex)
-      else
-        acc.marketplaceRequests.push({ dslIndex, dependency, info: marketplaceInfo })
-
-      return acc
-    }, {
-      marketplaceRequests: [],
-      invalidMarketplaceIndexes: [],
-    })
+      },
+      {
+        marketplaceRequests: [],
+        invalidMarketplaceIndexes: [],
+      },
+    )
   }, [marketPlaceInDSLIndex, marketplacePlugins])
 
   // Marketplace data fetching: by normalized marketplace info
@@ -131,9 +130,7 @@ export function useInstallMultiState({
     isLoading: isFetchingById,
     data: infoGetById,
     error: infoByIdError,
-  } = useFetchPluginsInMarketPlaceByInfo(
-    marketplaceRequests.map(request => request.info),
-  )
+  } = useFetchPluginsInMarketPlaceByInfo(marketplaceRequests.map((request) => request.info))
 
   // Derive marketplace plugin data and errors from API responses
   const { marketplacePluginMap, marketplaceErrorIndexes } = useMemo(() => {
@@ -143,34 +140,43 @@ export function useInstallMultiState({
     // Process "by ID" response
     if (!isFetchingById && infoGetById?.data.list) {
       const payloads = infoGetById.data.list
-      const pluginById = new Map(
-        payloads.map(item => [item.plugin.plugin_id, item.plugin]),
-      )
+      const pluginById = new Map(payloads.map((item) => [item.plugin.plugin_id, item.plugin]))
 
       marketplaceRequests.forEach((request, requestIndex) => {
         const pluginId = (
-          request.dependency.value.marketplace_plugin_unique_identifier
-          || request.dependency.value.plugin_unique_identifier
+          request.dependency.value.marketplace_plugin_unique_identifier ||
+          request.dependency.value.plugin_unique_identifier
         )?.split(':')[0]
-        const pluginInfo = (pluginId ? pluginById.get(pluginId) : undefined) || payloads[requestIndex]?.plugin
+        const pluginInfo =
+          (pluginId ? pluginById.get(pluginId) : undefined) || payloads[requestIndex]?.plugin
 
         if (pluginInfo) {
-          pluginMap.set(request.dslIndex, getFormattedPlugin({
-            ...pluginInfo,
-            from: request.dependency.type,
-            version: pluginInfo.version || pluginInfo.latest_version,
-          }))
+          pluginMap.set(
+            request.dslIndex,
+            getFormattedPlugin({
+              ...pluginInfo,
+              from: request.dependency.type,
+              version: pluginInfo.version || pluginInfo.latest_version,
+            }),
+          )
+        } else {
+          errorSet.add(request.dslIndex)
         }
-        else { errorSet.add(request.dslIndex) }
       })
     }
 
     // Mark all marketplace indexes as errors on fetch failure
-    if (infoByIdError)
-      marketPlaceInDSLIndex.forEach(index => errorSet.add(index))
+    if (infoByIdError) marketPlaceInDSLIndex.forEach((index) => errorSet.add(index))
 
     return { marketplacePluginMap: pluginMap, marketplaceErrorIndexes: errorSet }
-  }, [invalidMarketplaceIndexes, isFetchingById, infoGetById, infoByIdError, marketPlaceInDSLIndex, marketplaceRequests])
+  }, [
+    invalidMarketplaceIndexes,
+    isFetchingById,
+    infoGetById,
+    infoByIdError,
+    marketPlaceInDSLIndex,
+    marketplaceRequests,
+  ])
 
   // GitHub-fetched plugins and errors (imperative state from child callbacks)
   const [githubPluginMap, setGithubPluginMap] = useState<Map<number, Plugin>>(() => new Map())
@@ -195,59 +201,67 @@ export function useInstallMultiState({
   }, [marketplaceErrorIndexes, githubErrorIndexes])
 
   // Check installed status after all data is loaded
-  const isLoadedAllData = (plugins.filter(Boolean).length + errorIndexes.length) === allPlugins.length
+  const isLoadedAllData = plugins.filter(Boolean).length + errorIndexes.length === allPlugins.length
 
   const { installedInfo } = useCheckInstalled({
-    pluginIds: plugins.filter(Boolean).map(d => getPluginKey(d)) || [],
+    pluginIds: plugins.filter(Boolean).map((d) => getPluginKey(d)) || [],
     enabled: isLoadedAllData,
   })
 
   // Notify parent when all plugin data and install info is ready
   useEffect(() => {
-    if (isLoadedAllData && installedInfo)
-      onLoadedAllPlugin(installedInfo!)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (isLoadedAllData && installedInfo) onLoadedAllPlugin(installedInfo!)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoadedAllData, installedInfo])
 
   // Callback: handle GitHub plugin fetch success
   const handleGitHubPluginFetched = useCallback((index: number) => {
     return (p: Plugin) => {
-      setGithubPluginMap(prev => new Map(prev).set(index, p))
+      setGithubPluginMap((prev) => new Map(prev).set(index, p))
     }
   }, [])
 
   // Callback: handle GitHub plugin fetch error
   const handleGitHubPluginFetchError = useCallback((index: number) => {
     return () => {
-      setGithubErrorIndexes(prev => [...prev, index])
+      setGithubErrorIndexes((prev) => [...prev, index])
     }
   }, [])
 
   // Callback: get version info for a plugin by its key
-  const getVersionInfo = useCallback((pluginId: string) => {
-    const pluginDetail = installedInfo?.[pluginId]
-    return {
-      hasInstalled: !!pluginDetail,
-      installedVersion: pluginDetail?.installedVersion,
-      toInstallVersion: '',
-    }
-  }, [installedInfo])
+  const getVersionInfo = useCallback(
+    (pluginId: string) => {
+      const pluginDetail = installedInfo?.[pluginId]
+      return {
+        hasInstalled: !!pluginDetail,
+        installedVersion: pluginDetail?.installedVersion,
+        toInstallVersion: '',
+      }
+    },
+    [installedInfo],
+  )
 
   // Callback: handle plugin selection
-  const handleSelect = useCallback((index: number) => {
-    return () => {
-      const canSelectPlugins = plugins.filter((p) => {
-        const { canInstall } = pluginInstallLimit(p!, systemFeatures)
-        return canInstall
-      })
-      onSelect(plugins[index]!, index, canSelectPlugins.length)
-    }
-  }, [onSelect, plugins, systemFeatures])
+  const handleSelect = useCallback(
+    (index: number) => {
+      return () => {
+        const canSelectPlugins = plugins.filter((p) => {
+          const { canInstall } = pluginInstallLimit(p!, systemFeatures)
+          return canInstall
+        })
+        onSelect(plugins[index]!, index, canSelectPlugins.length)
+      }
+    },
+    [onSelect, plugins, systemFeatures],
+  )
 
   // Callback: check if a plugin at given index is selected
-  const isPluginSelected = useCallback((index: number) => {
-    return !!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)
-  }, [selectedPlugins, plugins])
+  const isPluginSelected = useCallback(
+    (index: number) => {
+      return !!selectedPlugins.find((p) => p.plugin_id === plugins[index]?.plugin_id)
+    },
+    [selectedPlugins, plugins],
+  )
 
   // Callback: get all installable plugins with their indexes
   const getInstallablePlugins = useCallback(() => {
@@ -255,8 +269,7 @@ export function useInstallMultiState({
     const installablePlugins: Plugin[] = []
     allPlugins.forEach((_d, index) => {
       const p = plugins[index]
-      if (!p)
-        return
+      if (!p) return
       const { canInstall } = pluginInstallLimit(p, systemFeatures)
       if (canInstall) {
         selectedIndexes.push(index)

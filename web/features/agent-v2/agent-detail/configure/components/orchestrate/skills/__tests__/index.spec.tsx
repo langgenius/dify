@@ -39,7 +39,10 @@ type ConfigSkillDownloadQueryOptionsInput = {
 }
 
 const mocks = vi.hoisted(() => ({
-  deleteSkillMutationFn: vi.fn(async (_input: unknown) => ({ removed_names: ['Tender Analyzer'], result: 'success' })),
+  deleteSkillMutationFn: vi.fn(async (_input: unknown) => ({
+    removed_names: ['Tender Analyzer'],
+    result: 'success',
+  })),
   uploadSkillMutationFn: vi.fn(async (_input: unknown) => ({
     config_version: { id: 'draft-1', kind: 'draft', writable: true },
     skill: {
@@ -163,11 +166,7 @@ function ConfigSnapshotProbe() {
   const draft = useAtomValue(agentComposerDraftAtom)
   const configSnapshot = formStateToAgentSoulConfig({ formState: draft })
 
-  return (
-    <pre data-testid="config-snapshot-probe">
-      {JSON.stringify(configSnapshot)}
-    </pre>
-  )
+  return <pre data-testid="config-snapshot-probe">{JSON.stringify(configSnapshot)}</pre>
 }
 
 function renderAgentSkills({
@@ -298,7 +297,9 @@ describe('AgentSkills', () => {
     const user = userEvent.setup()
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }))
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
 
     const input = await waitFor(() => {
       const element = document.querySelector('input[type="file"]')
@@ -307,7 +308,9 @@ describe('AgentSkills', () => {
     })
     const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
     await user.upload(input, file)
-    await user.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }))
+    await user.click(
+      screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }),
+    )
 
     await waitFor(() => {
       expect(mocks.uploadSkillMutationFn).toHaveBeenCalled()
@@ -345,7 +348,9 @@ describe('AgentSkills', () => {
     mocks.uploadSkillMutationFn.mockRejectedValueOnce(new Error('Backend upload error'))
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }))
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
 
     const input = await waitFor(() => {
       const element = document.querySelector('input[type="file"]')
@@ -354,13 +359,17 @@ describe('AgentSkills', () => {
     })
     const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
     await user.upload(input, file)
-    await user.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }))
+    await user.click(
+      screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }),
+    )
 
     await waitFor(() => {
       expect(mocks.uploadSkillMutationFn).toHaveBeenCalled()
     })
 
-    expect(toast.error).not.toHaveBeenCalledWith('agentV2.agentDetail.configure.skills.upload.failed')
+    expect(toast.error).not.toHaveBeenCalledWith(
+      'agentV2.agentDetail.configure.skills.upload.failed',
+    )
   })
 
   it('should use workflow config skill endpoints with node_id for uploads and skill member queries', async () => {
@@ -377,7 +386,9 @@ describe('AgentSkills', () => {
       },
     })
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }))
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
     const input = await waitFor(() => {
       const element = document.querySelector('input[type="file"]')
       expect(element).not.toBeNull()
@@ -385,7 +396,9 @@ describe('AgentSkills', () => {
     })
     const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
     await user.upload(input, file)
-    await user.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }))
+    await user.click(
+      screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }),
+    )
 
     await waitFor(() => {
       expect(mocks.uploadSkillMutationFn.mock.calls[0]?.[0]).toEqual({
@@ -406,19 +419,21 @@ describe('AgentSkills', () => {
     await user.click(screen.getByText('Tender Analyzer').closest('button')!)
 
     await waitFor(() => {
-      expect(mocks.inspectQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            app_id: 'app-1',
-            name: 'Tender Analyzer',
-          },
-          query: {
-            draft_type: 'draft',
-            node_id: 'node-1',
-            version_id: 'draft-1',
-          },
+      expect(mocks.inspectQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              app_id: 'app-1',
+              name: 'Tender Analyzer',
+            },
+            query: {
+              draft_type: 'draft',
+              node_id: 'node-1',
+              version_id: 'draft-1',
+            },
+          }),
         }),
-      }))
+      )
     })
   })
 
@@ -426,23 +441,27 @@ describe('AgentSkills', () => {
     const user = userEvent.setup()
     renderAgentSkills()
 
-    await user.click(screen.getByRole('button', {
-      name: /common\.operation\.download.*Tender Analyzer/,
-    }))
+    await user.click(
+      screen.getByRole('button', {
+        name: /common\.operation\.download.*Tender Analyzer/,
+      }),
+    )
 
     await waitFor(() => {
-      expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            agent_id: 'agent-1',
-            name: 'Tender Analyzer',
-          },
-          query: {
-            draft_type: 'draft',
-            version_id: undefined,
-          },
+      expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              agent_id: 'agent-1',
+              name: 'Tender Analyzer',
+            },
+            query: {
+              draft_type: 'draft',
+              version_id: undefined,
+            },
+          }),
         }),
-      }))
+      )
     })
     expect(mocks.downloadUrl).toHaveBeenCalledWith({
       url: 'https://example.com/Tender Analyzer.skill',
@@ -464,24 +483,28 @@ describe('AgentSkills', () => {
       },
     })
 
-    await user.click(screen.getByRole('button', {
-      name: /common\.operation\.download.*Tender Analyzer/,
-    }))
+    await user.click(
+      screen.getByRole('button', {
+        name: /common\.operation\.download.*Tender Analyzer/,
+      }),
+    )
 
     await waitFor(() => {
-      expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            app_id: 'app-1',
-            name: 'Tender Analyzer',
-          },
-          query: {
-            draft_type: 'draft',
-            node_id: 'node-1',
-            version_id: 'draft-1',
-          },
+      expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              app_id: 'app-1',
+              name: 'Tender Analyzer',
+            },
+            query: {
+              draft_type: 'draft',
+              node_id: 'node-1',
+              version_id: 'draft-1',
+            },
+          }),
         }),
-      }))
+      )
     })
   })
 
@@ -492,31 +515,35 @@ describe('AgentSkills', () => {
     await user.click(screen.getByText('Tender Analyzer').closest('button')!)
 
     await waitFor(() => {
-      expect(mocks.inspectQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            agent_id: 'agent-1',
-            name: 'Tender Analyzer',
-          },
+      expect(mocks.inspectQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              agent_id: 'agent-1',
+              name: 'Tender Analyzer',
+            },
+          }),
         }),
-      }))
+      )
     })
 
     await user.click(screen.getByText('references').closest('button')!)
     await user.click(screen.getByText('guide.md').closest('button')!)
 
     await waitFor(() => {
-      expect(mocks.previewQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            agent_id: 'agent-1',
-            name: 'Tender Analyzer',
-          },
-          query: expect.objectContaining({
-            path: 'references/guide.md',
+      expect(mocks.previewQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              agent_id: 'agent-1',
+              name: 'Tender Analyzer',
+            },
+            query: expect.objectContaining({
+              path: 'references/guide.md',
+            }),
           }),
         }),
-      }))
+      )
     })
   })
 
@@ -542,22 +569,26 @@ describe('AgentSkills', () => {
     await user.click(screen.getByText('Tender Analyzer').closest('button')!)
     await user.click(await screen.findByText('references'))
     await user.click(screen.getByText('guide.md').closest('button')!)
-    await user.click(screen.getByRole('button', {
-      name: /common\.operation\.download.*guide\.md/,
-    }))
+    await user.click(
+      screen.getByRole('button', {
+        name: /common\.operation\.download.*guide\.md/,
+      }),
+    )
 
     await waitFor(() => {
-      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-        input: expect.objectContaining({
-          params: {
-            agent_id: 'agent-1',
-            name: 'Tender Analyzer',
-          },
-          query: expect.objectContaining({
-            path: 'references/guide.md',
+      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              agent_id: 'agent-1',
+              name: 'Tender Analyzer',
+            },
+            query: expect.objectContaining({
+              path: 'references/guide.md',
+            }),
           }),
         }),
-      }))
+      )
     })
     expect(mocks.downloadUrl).toHaveBeenCalledWith({
       url: 'https://example.com/references/guide.md',
@@ -570,9 +601,11 @@ describe('AgentSkills', () => {
     renderAgentSkills()
 
     await user.click(screen.getByText('Tender Analyzer').closest('button')!)
-    await user.click(await screen.findByRole('button', {
-      name: /common\.operation\.download.*SKILL\.md/,
-    }))
+    await user.click(
+      await screen.findByRole('button', {
+        name: /common\.operation\.download.*SKILL\.md/,
+      }),
+    )
 
     expect(mocks.downloadBlob).toHaveBeenCalledWith({
       data: expect.any(Blob),
@@ -580,19 +613,23 @@ describe('AgentSkills', () => {
     })
     const blob = mocks.downloadBlob.mock.calls[0]?.[0].data as Blob
     await expect(blob.text()).resolves.toBe('# Skill\n')
-    expect(mocks.downloadQueryOptions).not.toHaveBeenCalledWith(expect.objectContaining({
-      input: expect.objectContaining({
-        query: expect.objectContaining({
-          path: 'SKILL.md',
+    expect(mocks.downloadQueryOptions).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          query: expect.objectContaining({
+            path: 'SKILL.md',
+          }),
         }),
       }),
-    }))
+    )
   })
 
   it('should disable add and remove actions when the section is read only', () => {
     const { container } = renderAgentSkills({ readOnly: true })
 
-    expect(screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    ).not.toBeInTheDocument()
     expect(container.querySelector('[data-agent-skill-remove-button]')).toBeNull()
   })
 })

@@ -21,7 +21,9 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 
 vi.mock('../context', () => ({
   useChatWithHistoryContext: vi.fn(),
-  ChatWithHistoryContext: { Provider: ({ children }: { children: React.ReactNode }) => <div>{children}</div> },
+  ChatWithHistoryContext: {
+    Provider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  },
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -46,17 +48,14 @@ vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip
 
 // Mock Dialog to avoid Base UI focus/portal behavior in tests
 vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) => {
-    if (!open)
-      return null
-    return (
-      <div data-testid="modal">
-        {children}
-      </div>
-    )
+  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) => {
+    if (!open) return null
+    return <div data-testid="modal">{children}</div>
   },
   DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div role="dialog" data-testid="modal-content">{children}</div>
+    <div role="dialog" data-testid="modal-content">
+      {children}
+    </div>
   ),
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
@@ -91,7 +90,9 @@ const defaultContextValue: ChatWithHistoryContextValue = {
   pinnedConversationList: [],
   conversationList: [],
   isInstalledApp: false,
-  currentChatInstanceRef: { current: { handleStop: vi.fn() } } as ChatWithHistoryContextValue['currentChatInstanceRef'],
+  currentChatInstanceRef: {
+    current: { handleStop: vi.fn() },
+  } as ChatWithHistoryContextValue['currentChatInstanceRef'],
   setIsResponding: vi.fn(),
   setClearChatList: vi.fn(),
   appParams: {
@@ -569,7 +570,7 @@ describe('HeaderInMobile', () => {
     const handleDelete = vi.fn()
     const useTranslationSpy = vi.spyOn(ReactI18next, 'useTranslation')
     useTranslationSpy.mockReturnValue({
-      t: withSelectorKey((key: string) => key === 'chat.deleteConversation.content' ? '' : key),
+      t: withSelectorKey((key: string) => (key === 'chat.deleteConversation.content' ? '' : key)),
       i18n: {} as unknown as i18n,
       ready: true,
       tReady: true,
@@ -588,11 +589,16 @@ describe('HeaderInMobile', () => {
       fireEvent.click(await screen.findByText('Conv 1'))
       fireEvent.click(await screen.findByText(/sidebar\.action\.delete/i))
 
-      expect(await screen.findByRole('button', { name: /common\.operation\.confirm|operation\.confirm/i }))!.toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.confirm|operation\.confirm/i }))
+      expect(
+        await screen.findByRole('button', {
+          name: /common\.operation\.confirm|operation\.confirm/i,
+        }),
+      )!.toBeInTheDocument()
+      fireEvent.click(
+        screen.getByRole('button', { name: /common\.operation\.confirm|operation\.confirm/i }),
+      )
       expect(handleDelete).toHaveBeenCalledWith('1', expect.any(Object))
-    }
-    finally {
+    } finally {
       useTranslationSpy.mockRestore()
     }
   })
@@ -608,9 +614,12 @@ describe('HeaderInMobile', () => {
     })
 
     const { container } = render(<HeaderInMobile />)
-    const operationTrigger = container.querySelector('.system-md-semibold')?.parentElement as HTMLElement
+    const operationTrigger = container.querySelector('.system-md-semibold')
+      ?.parentElement as HTMLElement
     fireEvent.click(operationTrigger)
-    fireEvent.click(await screen.findByText(/explore\.sidebar\.action\.rename|sidebar\.action\.rename/i))
+    fireEvent.click(
+      await screen.findByText(/explore\.sidebar\.action\.rename|sidebar\.action\.rename/i),
+    )
 
     const input = await screen.findByRole('textbox')
     expect(input)!.toHaveValue('')

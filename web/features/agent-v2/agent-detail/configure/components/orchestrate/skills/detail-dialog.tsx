@@ -36,7 +36,7 @@ export type AgentSkillDetail = {
   fileListTreeListClassName?: string
   fileListTitle?: string
   files: AgentSkillFileNode[]
-  folderOpenState?: (context: { file: AgentSkillFileNode, depth: number }) => boolean
+  folderOpenState?: (context: { file: AgentSkillFileNode; depth: number }) => boolean
   filePreview?: {
     binary?: boolean
     content?: string
@@ -49,11 +49,11 @@ export type AgentSkillDetail = {
     isImage?: boolean
     isLoading?: boolean
   }
-  onFolderOpenChange?: (context: { file: AgentSkillFileNode, depth: number, open: boolean }) => void
-  onFolderDoubleClick?: (context: { file: AgentSkillFileNode, depth: number }) => void
+  onFolderOpenChange?: (context: { file: AgentSkillFileNode; depth: number; open: boolean }) => void
+  onFolderDoubleClick?: (context: { file: AgentSkillFileNode; depth: number }) => void
   onDownloadFile?: (action: AgentSkillDetailDownloadAction) => void
   onSelectFile?: (file: AgentSkillFileNode) => void
-  renderFolderSuffix?: (context: { file: AgentSkillFileNode, depth: number }) => ReactNode
+  renderFolderSuffix?: (context: { file: AgentSkillFileNode; depth: number }) => ReactNode
   selectedFileId?: string
   sections: AgentSkillDetailSection[]
 }
@@ -93,8 +93,11 @@ function AgentSkillFileList({
     return (
       <div className={cn('flex h-full flex-col bg-background-section', fileListTreeClassName)}>
         {fileListHeader ?? (
-          <h3 id="agent-skill-detail-files-heading" className="px-4 pt-3.5 pb-3 system-xl-semibold text-text-primary">
-            {fileListTitle ?? t($ => $['agentDetail.configure.skills.detail.files'])}
+          <h3
+            id="agent-skill-detail-files-heading"
+            className="px-4 pt-3.5 pb-3 system-xl-semibold text-text-primary"
+          >
+            {fileListTitle ?? t(($) => $['agentDetail.configure.skills.detail.files'])}
           </h3>
         )}
         <div className="flex min-h-0 flex-1 items-center justify-center">
@@ -116,41 +119,42 @@ function AgentSkillFileList({
       folderOpenState={folderOpenState}
       onFolderOpenChange={onFolderOpenChange}
       onFolderDoubleClick={onFolderDoubleClick}
-      renderFile={onSelectFile
-        ? ({ depth, file, selected, children }) => (
-            <FileTreeFile level={depth} selected={selected} onClick={() => onSelectFile(file)}>
-              {children}
-            </FileTreeFile>
-          )
-        : undefined}
+      renderFile={
+        onSelectFile
+          ? ({ depth, file, selected, children }) => (
+              <FileTreeFile level={depth} selected={selected} onClick={() => onSelectFile(file)}>
+                {children}
+              </FileTreeFile>
+            )
+          : undefined
+      }
       renderFolderSuffix={renderFolderSuffix}
-      header={(
+      header={
         fileListHeader ?? (
-          <h3 id="agent-skill-detail-files-heading" className="px-4 pt-3.5 pb-3 system-xl-semibold text-text-primary">
-            {fileListTitle ?? t($ => $['agentDetail.configure.skills.detail.files'])}
+          <h3
+            id="agent-skill-detail-files-heading"
+            className="px-4 pt-3.5 pb-3 system-xl-semibold text-text-primary"
+          >
+            {fileListTitle ?? t(($) => $['agentDetail.configure.skills.detail.files'])}
           </h3>
         )
-      )}
+      }
     />
   )
 }
 
-function AgentSkillDetailSectionBlock({
-  section,
-}: {
-  section: AgentSkillDetailSection
-}) {
+function AgentSkillDetailSectionBlock({ section }: { section: AgentSkillDetailSection }) {
   return (
     <section className="clear-none">
       <h3 className="system-sm-semibold text-text-primary">{section.title}</h3>
-      {section.paragraphs?.map(paragraph => (
+      {section.paragraphs?.map((paragraph) => (
         <p key={paragraph} className="mt-1 system-xs-regular text-text-secondary">
           {paragraph}
         </p>
       ))}
       {!!section.items?.length && (
         <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-5 system-xs-regular text-text-secondary">
-          {section.items.map(item => (
+          {section.items.map((item) => (
             <li key={item} className="pl-0.5">
               {item}
             </li>
@@ -201,7 +205,7 @@ function AgentFilePreviewContent({
   if (isError || isDownloadError) {
     return (
       <p className="px-4 system-sm-regular text-text-tertiary">
-        {t($ => $['agentDetail.configure.files.preview.failed'])}
+        {t(($) => $['agentDetail.configure.files.preview.failed'])}
       </p>
     )
   }
@@ -222,7 +226,7 @@ function AgentFilePreviewContent({
     return (
       <div className="flex min-w-0 flex-wrap items-center gap-2 px-4">
         <span className="system-sm-regular text-text-tertiary">
-          {t($ => $['agentDetail.configure.files.preview.unsupported'])}
+          {t(($) => $['agentDetail.configure.files.preview.unsupported'])}
         </span>
         <a
           href={downloadUrl || '#'}
@@ -245,11 +249,15 @@ function AgentFilePreviewContent({
             aria-hidden
             className={cn(
               'size-4 shrink-0',
-              isPreviewDownloadLoading ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none' : 'i-ri-download-2-line',
+              isPreviewDownloadLoading
+                ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                : 'i-ri-download-2-line',
             )}
           />
           <span className="shrink-0">
-            {isPreviewDownloadLoading ? tCommon($ => $['operation.downloading']) : tCommon($ => $['operation.download'])}
+            {isPreviewDownloadLoading
+              ? tCommon(($) => $['operation.downloading'])
+              : tCommon(($) => $['operation.download'])}
           </span>
         </a>
       </div>
@@ -259,7 +267,7 @@ function AgentFilePreviewContent({
   if (!content) {
     return (
       <p className="px-4 system-sm-regular text-text-tertiary">
-        {t($ => $['agentDetail.configure.files.preview.empty'])}
+        {t(($) => $['agentDetail.configure.files.preview.empty'])}
       </p>
     )
   }
@@ -272,7 +280,7 @@ function AgentFilePreviewContent({
 
   return (
     <div className="min-h-0 flex-1 overflow-auto px-2 pb-4 font-mono text-[13px] leading-[22px]">
-      {lines.map(line => (
+      {lines.map((line) => (
         <div key={line.key} className="flex min-w-0 items-start">
           <span
             aria-hidden="true"
@@ -302,14 +310,19 @@ export function AgentSkillDetailDialog({
   const isHeaderDownloadLoading = detail.filePreview?.downloadActionLoadingTarget === 'header'
 
   return (
-    <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed" className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden rounded-2xl p-0">
-      <div className={cn('flex w-56 min-w-0 shrink-0 border-r-[0.5px] border-divider-subtle bg-background-section', detail.fileListPanelClassName)}>
-        <DialogDescription className="sr-only">
-          {detail.description}
-        </DialogDescription>
-        <DialogTitle className="sr-only">
-          {previewTitle || skillName}
-        </DialogTitle>
+    <DialogContent
+      backdropProps={{ forceRender: true }}
+      backdropClassName="fixed"
+      className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden rounded-2xl p-0"
+    >
+      <div
+        className={cn(
+          'flex w-56 min-w-0 shrink-0 border-r-[0.5px] border-divider-subtle bg-background-section',
+          detail.fileListPanelClassName,
+        )}
+      >
+        <DialogDescription className="sr-only">{detail.description}</DialogDescription>
+        <DialogTitle className="sr-only">{previewTitle || skillName}</DialogTitle>
         <div className="min-h-0 w-full">
           <AgentSkillFileList
             fileListHeader={detail.fileListHeader}
@@ -331,7 +344,10 @@ export function AgentSkillDetailDialog({
         <div className="flex shrink-0 items-start gap-2 px-4 pt-3.5 pb-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             {!!previewTitle && (
-              <h2 className="min-w-0 truncate system-xl-semibold text-text-primary" title={previewTitle}>
+              <h2
+                className="min-w-0 truncate system-xl-semibold text-text-primary"
+                title={previewTitle}
+              >
                 {previewTitle}
               </h2>
             )}
@@ -340,7 +356,7 @@ export function AgentSkillDetailDialog({
             {detail.onDownloadFile && previewTitle && (
               <button
                 type="button"
-                aria-label={`${isHeaderDownloadLoading ? tCommon($ => $['operation.downloading']) : tCommon($ => $['operation.download'])} ${previewTitle}`}
+                aria-label={`${isHeaderDownloadLoading ? tCommon(($) => $['operation.downloading']) : tCommon(($) => $['operation.download'])} ${previewTitle}`}
                 onClick={() => detail.onDownloadFile?.('header')}
                 disabled={isHeaderDownloadLoading}
                 className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
@@ -349,7 +365,9 @@ export function AgentSkillDetailDialog({
                   aria-hidden
                   className={cn(
                     'size-4',
-                    isHeaderDownloadLoading ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none' : 'i-ri-download-line',
+                    isHeaderDownloadLoading
+                      ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                      : 'i-ri-download-line',
                   )}
                 />
               </button>
@@ -359,7 +377,7 @@ export function AgentSkillDetailDialog({
         </div>
         <ScrollArea
           className="relative min-h-0 flex-1 overflow-hidden has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid"
-          label={t($ => $['agentDetail.configure.skills.detail.contentRegion'])}
+          label={t(($) => $['agentDetail.configure.skills.detail.contentRegion'])}
           slotClassNames={{
             viewport: 'overscroll-contain outline-none focus-visible:outline-none',
             content: 'flex min-h-full w-full max-w-full min-w-0 flex-col gap-2',
@@ -380,7 +398,7 @@ export function AgentSkillDetailDialog({
               onDownloadFile={detail.onDownloadFile}
             />
           )}
-          {detail.sections.map(section => (
+          {detail.sections.map((section) => (
             <div key={section.id} className="px-4">
               <AgentSkillDetailSectionBlock section={section} />
             </div>

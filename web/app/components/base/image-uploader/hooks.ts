@@ -13,14 +13,17 @@ export const useImageFiles = () => {
   const filesRef = useRef<ImageFile[]>([])
   const handleUpload = (imageFile: ImageFile) => {
     const files = filesRef.current
-    const index = files.findIndex(file => file._id === imageFile._id)
+    const index = files.findIndex((file) => file._id === imageFile._id)
     if (index > -1) {
       const currentFile = files[index]
-      const newFiles = [...files.slice(0, index), { ...currentFile, ...imageFile }, ...files.slice(index + 1)]
+      const newFiles = [
+        ...files.slice(0, index),
+        { ...currentFile, ...imageFile },
+        ...files.slice(index + 1),
+      ]
       setFiles(newFiles)
       filesRef.current = newFiles
-    }
-    else {
+    } else {
       const newFiles = [...files, imageFile]
       setFiles(newFiles)
       filesRef.current = newFiles
@@ -28,59 +31,90 @@ export const useImageFiles = () => {
   }
   const handleRemove = (imageFileId: string) => {
     const files = filesRef.current
-    const index = files.findIndex(file => file._id === imageFileId)
+    const index = files.findIndex((file) => file._id === imageFileId)
     if (index > -1) {
       const currentFile = files[index]!
-      const newFiles = [...files.slice(0, index), { ...currentFile, deleted: true }, ...files.slice(index + 1)]
+      const newFiles = [
+        ...files.slice(0, index),
+        { ...currentFile, deleted: true },
+        ...files.slice(index + 1),
+      ]
       setFiles(newFiles)
       filesRef.current = newFiles
     }
   }
   const handleImageLinkLoadError = (imageFileId: string) => {
     const files = filesRef.current
-    const index = files.findIndex(file => file._id === imageFileId)
+    const index = files.findIndex((file) => file._id === imageFileId)
     if (index > -1) {
       const currentFile = files[index]!
-      const newFiles = [...files.slice(0, index), { ...currentFile, progress: -1 }, ...files.slice(index + 1)]
+      const newFiles = [
+        ...files.slice(0, index),
+        { ...currentFile, progress: -1 },
+        ...files.slice(index + 1),
+      ]
       filesRef.current = newFiles
       setFiles(newFiles)
     }
   }
   const handleImageLinkLoadSuccess = (imageFileId: string) => {
     const files = filesRef.current
-    const index = files.findIndex(file => file._id === imageFileId)
+    const index = files.findIndex((file) => file._id === imageFileId)
     if (index > -1) {
       const currentImageFile = files[index]!
-      const newFiles = [...files.slice(0, index), { ...currentImageFile, progress: 100 }, ...files.slice(index + 1)]
+      const newFiles = [
+        ...files.slice(0, index),
+        { ...currentImageFile, progress: 100 },
+        ...files.slice(index + 1),
+      ]
       filesRef.current = newFiles
       setFiles(newFiles)
     }
   }
   const handleReUpload = (imageFileId: string) => {
     const files = filesRef.current
-    const index = files.findIndex(file => file._id === imageFileId)
+    const index = files.findIndex((file) => file._id === imageFileId)
     if (index > -1) {
       const currentImageFile = files[index]!
-      imageUpload({
-        file: currentImageFile!.file!,
-        onProgressCallback: (progress) => {
-          const newFiles = [...files.slice(0, index), { ...currentImageFile, progress }, ...files.slice(index + 1)]
-          filesRef.current = newFiles
-          setFiles(newFiles)
+      imageUpload(
+        {
+          file: currentImageFile!.file!,
+          onProgressCallback: (progress) => {
+            const newFiles = [
+              ...files.slice(0, index),
+              { ...currentImageFile, progress },
+              ...files.slice(index + 1),
+            ]
+            filesRef.current = newFiles
+            setFiles(newFiles)
+          },
+          onSuccessCallback: (res) => {
+            const newFiles = [
+              ...files.slice(0, index),
+              { ...currentImageFile, fileId: res.id, progress: 100 },
+              ...files.slice(index + 1),
+            ]
+            filesRef.current = newFiles
+            setFiles(newFiles)
+          },
+          onErrorCallback: (error?: any) => {
+            const errorMessage = getImageUploadErrorMessage(
+              error,
+              t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
+              t,
+            )
+            toast.error(errorMessage)
+            const newFiles = [
+              ...files.slice(0, index),
+              { ...currentImageFile, progress: -1 },
+              ...files.slice(index + 1),
+            ]
+            filesRef.current = newFiles
+            setFiles(newFiles)
+          },
         },
-        onSuccessCallback: (res) => {
-          const newFiles = [...files.slice(0, index), { ...currentImageFile, fileId: res.id, progress: 100 }, ...files.slice(index + 1)]
-          filesRef.current = newFiles
-          setFiles(newFiles)
-        },
-        onErrorCallback: (error?: any) => {
-          const errorMessage = getImageUploadErrorMessage(error, t($ => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }), t)
-          toast.error(errorMessage)
-          const newFiles = [...files.slice(0, index), { ...currentImageFile, progress: -1 }, ...files.slice(index + 1)]
-          filesRef.current = newFiles
-          setFiles(newFiles)
-        },
-      }, !!params?.token)
+        !!params?.token,
+      )
     }
   }
   const handleClear = () => {
@@ -88,7 +122,7 @@ export const useImageFiles = () => {
     filesRef.current = []
   }
   const filteredFiles = useMemo(() => {
-    return files.filter(file => !file.deleted)
+    return files.filter((file) => !file.deleted)
   }, [files])
   return {
     files: filteredFiles,
@@ -105,51 +139,74 @@ type useLocalUploaderProps = {
   limit?: number
   onUpload: (imageFile: ImageFile) => void
 }
-export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useLocalUploaderProps) => {
+export const useLocalFileUploader = ({
+  limit,
+  disabled = false,
+  onUpload,
+}: useLocalUploaderProps) => {
   const params = useParams()
   const { t } = useTranslation()
-  const handleLocalFileUpload = useCallback((file: File) => {
-    if (disabled) {
-      // TODO: leave some warnings?
-      return
-    }
-    if (!ALLOW_FILE_EXTENSIONS.includes(file.type.split('/')[1]!))
-      return
-    if (limit && file.size > limit * 1024 * 1024) {
-      toast.error(t($ => $['imageUploader.uploadFromComputerLimit'], { ns: 'common', size: limit }))
-      return
-    }
-    const reader = new FileReader()
-    reader.addEventListener('load', () => {
-      const imageFile = {
-        type: TransferMethod.local_file,
-        _id: `${Date.now()}`,
-        fileId: '',
-        file,
-        url: reader.result as string,
-        base64Url: reader.result as string,
-        progress: 0,
+  const handleLocalFileUpload = useCallback(
+    (file: File) => {
+      if (disabled) {
+        // TODO: leave some warnings?
+        return
       }
-      onUpload(imageFile)
-      imageUpload({
-        file: imageFile.file,
-        onProgressCallback: (progress) => {
-          onUpload({ ...imageFile, progress })
+      if (!ALLOW_FILE_EXTENSIONS.includes(file.type.split('/')[1]!)) return
+      if (limit && file.size > limit * 1024 * 1024) {
+        toast.error(
+          t(($) => $['imageUploader.uploadFromComputerLimit'], { ns: 'common', size: limit }),
+        )
+        return
+      }
+      const reader = new FileReader()
+      reader.addEventListener(
+        'load',
+        () => {
+          const imageFile = {
+            type: TransferMethod.local_file,
+            _id: `${Date.now()}`,
+            fileId: '',
+            file,
+            url: reader.result as string,
+            base64Url: reader.result as string,
+            progress: 0,
+          }
+          onUpload(imageFile)
+          imageUpload(
+            {
+              file: imageFile.file,
+              onProgressCallback: (progress) => {
+                onUpload({ ...imageFile, progress })
+              },
+              onSuccessCallback: (res) => {
+                onUpload({ ...imageFile, fileId: res.id, progress: 100 })
+              },
+              onErrorCallback: (error?: any) => {
+                const errorMessage = getImageUploadErrorMessage(
+                  error,
+                  t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
+                  t,
+                )
+                toast.error(errorMessage)
+                onUpload({ ...imageFile, progress: -1 })
+              },
+            },
+            !!params?.token,
+          )
         },
-        onSuccessCallback: (res) => {
-          onUpload({ ...imageFile, fileId: res.id, progress: 100 })
+        false,
+      )
+      reader.addEventListener(
+        'error',
+        () => {
+          toast.error(t(($) => $['imageUploader.uploadFromComputerReadError'], { ns: 'common' }))
         },
-        onErrorCallback: (error?: any) => {
-          const errorMessage = getImageUploadErrorMessage(error, t($ => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }), t)
-          toast.error(errorMessage)
-          onUpload({ ...imageFile, progress: -1 })
-        },
-      }, !!params?.token)
-    }, false)
-    reader.addEventListener('error', () => {
-      toast.error(t($ => $['imageUploader.uploadFromComputerReadError'], { ns: 'common' }))
-    }, false)
-    reader.readAsDataURL(file)
-  }, [disabled, limit, t, onUpload, params?.token])
+        false,
+      )
+      reader.readAsDataURL(file)
+    },
+    [disabled, limit, t, onUpload, params?.token],
+  )
   return { disabled, handleLocalFileUpload }
 }

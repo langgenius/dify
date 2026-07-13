@@ -14,10 +14,7 @@ type DialogBackdropProps = Omit<BaseDialog.Backdrop.Props, 'className'> & {
   className?: string
 }
 
-export function DialogBackdrop({
-  className,
-  ...props
-}: DialogBackdropProps) {
+export function DialogBackdrop({ className, ...props }: DialogBackdropProps) {
   return (
     <BaseDialog.Backdrop
       {...props}
@@ -34,26 +31,15 @@ type DialogViewportProps = Omit<BaseDialog.Viewport.Props, 'className'> & {
   className?: string
 }
 
-export function DialogViewport({
-  className,
-  ...props
-}: DialogViewportProps) {
-  return (
-    <BaseDialog.Viewport
-      className={cn('fixed inset-0 z-50', className)}
-      {...props}
-    />
-  )
+export function DialogViewport({ className, ...props }: DialogViewportProps) {
+  return <BaseDialog.Viewport className={cn('fixed inset-0 z-50', className)} {...props} />
 }
 
 type DialogPopupProps = Omit<BaseDialog.Popup.Props, 'className'> & {
   className?: string
 }
 
-export function DialogPopup({
-  className,
-  ...props
-}: DialogPopupProps) {
+export function DialogPopup({ className, ...props }: DialogPopupProps) {
   return (
     <BaseDialog.Popup
       className={cn(
@@ -78,7 +64,7 @@ export function DialogCloseButton({
       aria-label={ariaLabel}
       {...props}
       className={cn(
-        'absolute top-6 end-6 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-2xl hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+        'absolute inset-e-6 top-6 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-2xl hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
     >

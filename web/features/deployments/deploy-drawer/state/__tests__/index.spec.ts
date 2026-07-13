@@ -74,29 +74,31 @@ const mockRollbackMutation = vi.hoisted<{ current: MutationResult }>(() => ({
 }))
 
 vi.mock('jotai-tanstack-query', () => ({
-  atomWithQuery: (createOptions: (get: Getter) => QueryOptions) => atom((get) => {
-    const options = createOptions(get)
-    if (options.queryKey?.[0] === 'computeDeploymentOptions') {
+  atomWithQuery: (createOptions: (get: Getter) => QueryOptions) =>
+    atom((get) => {
+      const options = createOptions(get)
+      if (options.queryKey?.[0] === 'computeDeploymentOptions') {
+        return {
+          ...options,
+          ...mockDeploymentOptionsQuery.current,
+        }
+      }
+
       return {
         ...options,
-        ...mockDeploymentOptionsQuery.current,
+        data: undefined,
+        isLoading: false,
+        isFetching: false,
+        isError: false,
       }
-    }
-
-    return {
-      ...options,
-      data: undefined,
-      isLoading: false,
-      isFetching: false,
-      isError: false,
-    }
-  }),
-  atomWithMutation: (createOptions: () => MutationOptions) => atom(() => {
-    const options = createOptions()
-    return options.mutationKey?.[0] === 'rollback'
-      ? mockRollbackMutation.current
-      : mockPromoteMutation.current
-  }),
+    }),
+  atomWithMutation: (createOptions: () => MutationOptions) =>
+    atom(() => {
+      const options = createOptions()
+      return options.mutationKey?.[0] === 'rollback'
+        ? mockRollbackMutation.current
+        : mockPromoteMutation.current
+    }),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -104,14 +106,14 @@ vi.mock('@/service/client', () => ({
     enterprise: {
       releaseService: {
         computeReleaseDeploymentView: {
-          queryOptions: ({ enabled, input }: { enabled: boolean, input: unknown }) => ({
+          queryOptions: ({ enabled, input }: { enabled: boolean; input: unknown }) => ({
             enabled,
             input,
             queryKey: ['computeReleaseDeploymentView', input],
           }),
         },
         computeDeploymentOptions: {
-          queryOptions: ({ enabled, input }: { enabled: boolean, input: unknown }) => ({
+          queryOptions: ({ enabled, input }: { enabled: boolean; input: unknown }) => ({
             enabled,
             input,
             queryKey: ['computeDeploymentOptions', input],
@@ -337,7 +339,11 @@ describe('deploy drawer state', () => {
       envVarSlots: [envVarSlot()],
     })
 
-    store.set(state.selectDeployBindingAtom, 'langgenius/openai:PLUGIN_CATEGORY_MODEL', 'credential-1')
+    store.set(
+      state.selectDeployBindingAtom,
+      'langgenius/openai:PLUGIN_CATEGORY_MODEL',
+      'credential-1',
+    )
     store.set(state.setDeployEnvVarAtom, 'API_KEY', {
       value: 'secret',
       valueSource: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
@@ -437,9 +443,11 @@ describe('deploy drawer state', () => {
   it('should submit a promote deployment with selected credentials and env vars', async () => {
     const state = await loadState()
     const store = createStore()
-    mockPromoteMutate.mockImplementation((_variables: unknown, options?: { onSuccess?: () => void }) => {
-      options?.onSuccess?.()
-    })
+    mockPromoteMutate.mockImplementation(
+      (_variables: unknown, options?: { onSuccess?: () => void }) => {
+        options?.onSuccess?.()
+      },
+    )
     store.set(state.deployReadyFormConfigAtom, deployConfig())
     setQueryOptions({
       credentialSlots: [

@@ -5,6 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import Description from '../index'
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
 // ================================
 // Mock external dependencies
 // ================================
@@ -37,32 +41,24 @@ const commonTranslations: Record<string, string> = {
 // Mock i18n hooks
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
+  return {
     useLocale: vi.fn(() => mockDefaultLocale),
     useTranslation: vi.fn((ns: string) => ({
       t: withSelectorKey((key: string, options?: { ns?: string }) => {
         const namespace = options?.ns ?? ns
-        if (namespace === 'plugin')
-          return pluginTranslations[key] || key
-        if (namespace === 'common')
-          return commonTranslations[key] || key
+        if (namespace === 'plugin') return pluginTranslations[key] || key
+        if (namespace === 'common') return commonTranslations[key] || key
         return key
       }),
     })),
-  })
+  }
 })
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
 
 const createWrapper = (searchParams = '') => {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider>
-      <NuqsWrapper>
-        {children}
-      </NuqsWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
     </JotaiProvider>
   )
   return { Wrapper }
@@ -132,8 +128,12 @@ describe('Description', () => {
         { wrapper: Wrapper },
       )
 
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Discover. Extend. Build.')
-      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Use community-built plugins to power your AI development.')
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+        'Discover. Extend. Build.',
+      )
+      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+        'Use community-built plugins to power your AI development.',
+      )
       expect(screen.getByTestId('marketplace-nav')).toBeInTheDocument()
       expect(screen.getByText('All plugins')).toBeInTheDocument()
     })
@@ -146,7 +146,9 @@ describe('Description', () => {
       const navWrapper = container.querySelector('.relative.z-20.flex.w-full.flex-col.items-start')
       const heroContentWrapper = container.querySelector('.relative.z-10.mx-5')
       const titleWrapper = screen.getByRole('heading', { level: 1 }).parentElement?.parentElement
-      const tabs = screen.getByText('All plugins').closest('.flex.shrink-0.items-center.gap-1.overflow-x-auto')
+      const tabs = screen
+        .getByText('All plugins')
+        .closest('.flex.shrink-0.items-center.gap-1.overflow-x-auto')
       const tabsWrapper = tabs?.parentElement
 
       expect(hero).toHaveClass('px-3')
@@ -490,7 +492,9 @@ describe('Description', () => {
       const content = subheading.textContent || ''
 
       // Commas should exist between categories
-      expect(content).toMatch(/Models[^\n\r,\u2028\u2029]*,.*Tools[^\n\r,\u2028\u2029]*,.*Data Sources[^\n\r,\u2028\u2029]*,.*Triggers[^\n\r,\u2028\u2029]*,.*Agent Strategies[^\n\r,\u2028\u2029]*,.*Extensions/)
+      expect(content).toMatch(
+        /Models[^\n\r,\u2028\u2029]*,.*Tools[^\n\r,\u2028\u2029]*,.*Data Sources[^\n\r,\u2028\u2029]*,.*Triggers[^\n\r,\u2028\u2029]*,.*Agent Strategies[^\n\r,\u2028\u2029]*,.*Extensions/,
+      )
     })
 
     it('should have "and" before last category (Bundles)', () => {

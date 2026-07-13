@@ -32,12 +32,7 @@ describe('Operation', () => {
     it('should render file uploader when fileConfig.enabled is true', () => {
       const fileConfig: FileUpload = { enabled: true } as FileUpload
 
-      render(
-        <Operation
-          onSend={vi.fn()}
-          fileConfig={fileConfig}
-        />,
-      )
+      render(<Operation onSend={vi.fn()} fileConfig={fileConfig} />)
 
       expect(screen.getByTestId('file-uploader'))!.toBeInTheDocument()
     })
@@ -51,12 +46,7 @@ describe('Operation', () => {
     it('should render voice input button when speechToTextConfig.enabled is true', () => {
       const speechConfig: EnableType = { enabled: true }
 
-      render(
-        <Operation
-          onSend={vi.fn()}
-          speechToTextConfig={speechConfig}
-        />,
-      )
+      render(<Operation onSend={vi.fn()} speechToTextConfig={speechConfig} />)
 
       expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeInTheDocument()
@@ -67,28 +57,21 @@ describe('Operation', () => {
       const speechConfig: EnableType = { enabled: true }
 
       render(
-        <Operation
-          onSend={vi.fn()}
-          fileConfig={fileConfig}
-          speechToTextConfig={speechConfig}
-        />,
+        <Operation onSend={vi.fn()} fileConfig={fileConfig} speechToTextConfig={speechConfig} />,
       )
 
       const fileUploader = screen.getByTestId('file-uploader')
       const voiceButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
 
-      expect(fileUploader.compareDocumentPosition(voiceButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(
+        fileUploader.compareDocumentPosition(voiceButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
     })
 
     it('should not render voice input button when speechToTextConfig.enabled is false', () => {
       const speechConfig: EnableType = { enabled: false }
 
-      render(
-        <Operation
-          onSend={vi.fn()}
-          speechToTextConfig={speechConfig}
-        />,
-      )
+      render(<Operation onSend={vi.fn()} speechToTextConfig={speechConfig} />)
 
       expect(screen.getAllByRole('button')).toHaveLength(1)
     })
@@ -118,12 +101,7 @@ describe('Operation', () => {
     })
 
     it('should apply theme primaryColor as background style when theme is provided', () => {
-      render(
-        <Operation
-          onSend={vi.fn()}
-          theme={createMockTheme()}
-        />,
-      )
+      render(<Operation onSend={vi.fn()} theme={createMockTheme()} />)
 
       expect(screen.getByRole('button'))!.toHaveStyle({
         backgroundColor: 'rgb(255, 0, 0)',
@@ -131,12 +109,7 @@ describe('Operation', () => {
     })
 
     it('should not apply background style when theme is null', () => {
-      render(
-        <Operation
-          onSend={vi.fn()}
-          theme={null}
-        />,
-      )
+      render(<Operation onSend={vi.fn()} theme={null} />)
 
       expect(screen.getByRole('button').style.backgroundColor).toBe('')
     })

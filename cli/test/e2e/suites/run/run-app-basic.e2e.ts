@@ -56,7 +56,8 @@ describe('E2E / difyctl run app', () => {
       const result = await withRetry(() => fx.r(['run', 'app', E.chatAppId, 'hello']), {
         attempts: 3,
         delayMs: 2000,
-        shouldRetry: err => err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message),
+        shouldRetry: (err) =>
+          err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message),
       })
       assertExitCode(result, 0)
       assertStdoutContains(result, 'echo:hello')
@@ -97,7 +98,7 @@ describe('E2E / difyctl run app', () => {
       // Spec: -o json produces valid JSON
       const result = await fx.r(['run', 'app', E.chatAppId, 'json-test', '-o', 'json'])
       assertExitCode(result, 0)
-      const parsed = assertJson<{ answer: string, mode: string }>(result)
+      const parsed = assertJson<{ answer: string; mode: string }>(result)
       expect(parsed).toHaveProperty('answer')
       expect(parsed.mode).toMatch(/chat/)
     })
@@ -135,8 +136,20 @@ describe('E2E / difyctl run app', () => {
       // Spec: run app supports --inputs
       // withRetry: staging workflow execution may have transient 5xx
       const result = await withRetry(
-        () => fx.r(['run', 'app', E.workflowAppId, '--inputs', JSON.stringify({ x: 'workflow-val', num: 42, enum_var: 'A', paragraph: 'short text' })]),
-        { attempts: 3, delayMs: 2000, shouldRetry: err => err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message) },
+        () =>
+          fx.r([
+            'run',
+            'app',
+            E.workflowAppId,
+            '--inputs',
+            JSON.stringify({ x: 'workflow-val', num: 42, enum_var: 'A', paragraph: 'short text' }),
+          ]),
+        {
+          attempts: 3,
+          delayMs: 2000,
+          shouldRetry: (err) =>
+            err instanceof Error && /5\d{2}|ECONNRESET|timeout/i.test(err.message),
+        },
       )
       assertExitCode(result, 0)
       assertStdoutContains(result, 'workflow-val')
@@ -193,7 +206,10 @@ describe('E2E / difyctl run app', () => {
 
     it('[P0] --inputs-file reads JSON inputs from a file', async () => {
       const inputsFile = join(fx.configDir, 'wf-inputs.json')
-      await writeFile(inputsFile, JSON.stringify({ x: 'from-file', num: 42, enum_var: 'A', paragraph: 'short text' }))
+      await writeFile(
+        inputsFile,
+        JSON.stringify({ x: 'from-file', num: 42, enum_var: 'A', paragraph: 'short text' }),
+      )
       const result = await fx.r(['run', 'app', E.workflowAppId, '--inputs-file', inputsFile])
       assertExitCode(result, 0)
       assertStdoutContains(result, 'from-file')
@@ -304,7 +320,7 @@ describe('E2E / difyctl run app', () => {
     ])
     expect(result.exitCode).not.toBe(0)
     const envelope = JSON.parse(result.stderr.trim()) as {
-      error: { code: string, message: string, http_status?: number }
+      error: { code: string; message: string; http_status?: number }
     }
     expect(envelope.error.http_status, 'validation failure must return http_status 422').toBe(422)
   })
@@ -340,8 +356,7 @@ describe('E2E / difyctl run app', () => {
         })
         assertExitCode(result, 4)
         expect(result.stderr).toMatch(/not.?logged.?in|auth.?login/i)
-      }
-      finally {
+      } finally {
         await unauthTmp.cleanup()
       }
     })
@@ -368,14 +383,13 @@ describe('E2E / difyctl run app', () => {
           `    role: owner`,
         ].join('\n')}\n`
         await writeFile(join(networkTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
-        const result = await run(
-          ['run', 'app', E.chatAppId, 'hello'],
-          { configDir: networkTmp.configDir, timeout: 15_000 },
-        )
+        const result = await run(['run', 'app', E.chatAppId, 'hello'], {
+          configDir: networkTmp.configDir,
+          timeout: 15_000,
+        })
         expect(result.exitCode).not.toBe(0)
         expect(result.stderr.length).toBeGreaterThan(0)
-      }
-      finally {
+      } finally {
         await networkTmp.cleanup()
       }
     })
@@ -440,10 +454,9 @@ describe('E2E / difyctl run app', () => {
         await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
 
         // Run WITHOUT --workspace
-        const resultWithout = await run(
-          ['run', 'app', E.chatAppId, 'hello'],
-          { configDir: ssoTmp.configDir },
-        )
+        const resultWithout = await run(['run', 'app', E.chatAppId, 'hello'], {
+          configDir: ssoTmp.configDir,
+        })
 
         // Run WITH --workspace (should be ignored → same exit code)
         const resultWith = await run(
@@ -454,8 +467,7 @@ describe('E2E / difyctl run app', () => {
         // If --workspace were honoured for SSO users it would change behaviour;
         // identical exit codes confirm the parameter is silently ignored.
         expect(resultWith.exitCode).toBe(resultWithout.exitCode)
-      }
-      finally {
+      } finally {
         await ssoTmp.cleanup()
       }
     })
@@ -483,10 +495,13 @@ describe('E2E / difyctl run app', () => {
       const cacheEnv = { DIFY_CACHE_DIR: fx.configDir, DIFY_E2E_NO_KEYRING: '1' }
 
       // Step 1: prime the cache
-      const prime = await withRetry(() => fx.r(['run', 'app', E.chatAppId, 'cache-prime'], cacheEnv), {
-        attempts: 3,
-        delayMs: 2000,
-      })
+      const prime = await withRetry(
+        () => fx.r(['run', 'app', E.chatAppId, 'cache-prime'], cacheEnv),
+        {
+          attempts: 3,
+          delayMs: 2000,
+        },
+      )
       assertExitCode(prime, 0)
 
       // Step 2: cache file must have been written at {configDir}/app-info.yml
@@ -498,12 +513,17 @@ describe('E2E / difyctl run app', () => {
       await rm(cacheFile, { force: true })
 
       // Step 4: run again — cache miss must not cause failure
-      const result = await withRetry(() => fx.r(['run', 'app', E.chatAppId, 'cache-miss'], cacheEnv), {
-        attempts: 3,
-        delayMs: 2000,
-      })
+      const result = await withRetry(
+        () => fx.r(['run', 'app', E.chatAppId, 'cache-miss'], cacheEnv),
+        {
+          attempts: 3,
+          delayMs: 2000,
+        },
+      )
       assertExitCode(result, 0)
-      expect(result.stdout.length, 'stdout must be non-empty after cache re-fetch').toBeGreaterThan(0)
+      expect(result.stdout.length, 'stdout must be non-empty after cache re-fetch').toBeGreaterThan(
+        0,
+      )
     })
   })
 })
