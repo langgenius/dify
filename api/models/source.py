@@ -1,14 +1,16 @@
-import json
 from datetime import datetime
 from typing import Any, TypedDict
 from uuid import uuid4
 
 import sqlalchemy as sa
+from pydantic import TypeAdapter
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import TypeBase
 from .types import AdjustedJSON, LongText, StringUUID, adjusted_json_index
+
+_dict_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 class DataSourceOauthBinding(TypeBase):
@@ -83,7 +85,7 @@ class DataSourceApiKeyAuthBinding(TypeBase):
             "tenant_id": self.tenant_id,
             "category": self.category,
             "provider": self.provider,
-            "credentials": json.loads(self.credentials) if self.credentials else None,
+            "credentials": _dict_adapter.validate_json(self.credentials) if self.credentials else None,
             "created_at": self.created_at.timestamp(),
             "updated_at": self.updated_at.timestamp(),
             "disabled": self.disabled,
