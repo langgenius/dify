@@ -1,4 +1,5 @@
 'use client'
+import type { WorkflowGenerateErrorResponse } from '@dify/contracts/api/console/workflow-generate/types.gen'
 import type { SelectorParam, TFunction } from 'i18next'
 import type { GeneratedGraph } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -6,7 +7,7 @@ import type {
   GenerateWorkflowBody,
   GenerateWorkflowResponse as StreamResult,
   WorkflowGenPlan,
-} from '@/service/debug'
+} from '@/service/workflow-generator'
 import type { CompletionParams, ModelModeType } from '@/types/app'
 import {
   AlertDialog,
@@ -18,13 +19,12 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiErrorWarningLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
-import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionSelector from '@/app/components/app/configuration/config/automatic/version-selector'
@@ -34,8 +34,8 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { generateWorkflow, generateWorkflowStream } from '@/service/debug'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { generateWorkflow, generateWorkflowStream } from '@/service/workflow-generator'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import {
   applyToCurrentApp,
@@ -67,24 +67,8 @@ const MAX_INSTRUCTION_LENGTH = 10_000
 // A single structured generation error. Mirrors the backend ``errors[]`` entry
 // (stable ``code`` + human ``detail`` + optional ``node_id``) so the error panel
 // can localise the message and point at the offending node.
-type GenError = { code: string; detail: string; node_id?: string }
-
-type WorkflowGeneratorErrorCode =
-  | 'DANGLING_EDGE'
-  | 'DUPLICATE_NODE_ID'
-  | 'EMPTY_INSTRUCTION'
-  | 'EMPTY_PLAN'
-  | 'GRAPH_CYCLE'
-  | 'INSTRUCTION_TOO_LONG'
-  | 'INVALID_CONTAINER'
-  | 'INVALID_JSON'
-  | 'INVALID_SCHEMA'
-  | 'MISSING_START'
-  | 'MISSING_TERMINAL'
-  | 'MODEL_ERROR'
-  | 'UNKNOWN_NODE_REFERENCE'
-  | 'UNKNOWN_TOOL'
-  | 'UNRESOLVED_REFERENCE'
+type GenError = WorkflowGenerateErrorResponse
+type WorkflowGeneratorErrorCode = WorkflowGenerateErrorResponse['code']
 
 const workflowGeneratorErrorSelectors: Record<
   WorkflowGeneratorErrorCode,
@@ -107,20 +91,16 @@ const workflowGeneratorErrorSelectors: Record<
   UNRESOLVED_REFERENCE: ($) => $['workflowGenerator.errors.UNRESOLVED_REFERENCE'],
 }
 
-function isWorkflowGeneratorErrorCode(code: string): code is WorkflowGeneratorErrorCode {
-  return Object.hasOwn(workflowGeneratorErrorSelectors, code)
-}
-
 function getWorkflowGeneratorErrorMessage(error: GenError, t: TFunction<'workflow'>) {
-  if (isWorkflowGeneratorErrorCode(error.code))
-    return t(workflowGeneratorErrorSelectors[error.code])
-
-  return error.detail || t(($) => $['workflowGenerator.generateFailed'])
+  return t(workflowGeneratorErrorSelectors[error.code])
 }
 
 const renderPlaceholder = (label: string) => (
-  <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8">
-    <span className="i-custom-vender-other-generator size-8 text-text-quaternary" />
+  <div className="flex min-h-0 w-full grow flex-col items-center justify-center space-y-3 px-8 md:w-0">
+    <span
+      aria-hidden="true"
+      className="i-custom-vender-other-generator size-8 text-text-quaternary"
+    />
     <div className="text-center text-[13px] leading-5 font-normal text-text-tertiary">{label}</div>
   </div>
 )
@@ -172,7 +152,7 @@ const RecoveryDialog = ({
   </AlertDialog>
 )
 
-const WorkflowGeneratorModal: React.FC = () => {
+function WorkflowGeneratorModal() {
   const { t } = useTranslation('workflow')
   const router = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -336,12 +316,15 @@ const WorkflowGeneratorModal: React.FC = () => {
   const handleResult = useCallback(
     (res: StreamResult) => {
       if (res.errors?.length) {
-        setGenError(res.errors as GenError[])
+        setGenError(res.errors)
         return
       }
       if (!res.graph?.nodes?.length) {
         setGenError([
-          { code: 'EMPTY', detail: res.error || t(($) => $['workflowGenerator.generateFailed']) },
+          {
+            code: 'INVALID_SCHEMA',
+            detail: res.error || t(($) => $['workflowGenerator.generateFailed']),
+          },
         ])
         return
       }
@@ -393,8 +376,10 @@ const WorkflowGeneratorModal: React.FC = () => {
       // resolved concrete mode comes back on the result and drives apply.
       mode: autoMode ? 'auto' : mode,
       instruction,
-      model_config: model,
-      ...(currentGraph ? { current_graph: currentGraph } : {}),
+      model_config: { ...model, mode: model.mode || 'chat' },
+      ...(currentGraph
+        ? { current_graph: currentGraph as unknown as GenerateWorkflowBody['current_graph'] }
+        : {}),
     }
 
     const finish = () => {
@@ -582,26 +567,26 @@ const WorkflowGeneratorModal: React.FC = () => {
         }
       }}
     >
-      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[1140px] max-w-none! min-w-[1140px] overflow-hidden! border-none p-0! text-left align-middle">
-        <div className="flex h-full min-h-0 flex-wrap">
+      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[calc(100vw-2rem)] max-w-[1140px]! min-w-0 overflow-hidden! border-none p-0! text-left align-middle">
+        <div className="flex h-full min-h-0 flex-col md:flex-row">
           {/* Left pane: instructions + ideal output + model selector */}
-          <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
+          <div className="max-h-[55%] w-full shrink-0 overflow-y-auto border-b border-divider-regular p-6 md:h-full md:max-h-none md:w-1/2 md:border-r md:border-b-0 lg:w-[570px]">
             <div className="mb-5">
-              <div className="text-lg leading-[28px] font-bold text-text-primary">
+              <DialogTitle className="text-lg leading-[28px] font-bold text-text-primary">
                 {isRefine
                   ? t(($) => $['workflowGenerator.refineTitle'], { mode: modeLabel })
                   : t(($) => $['workflowGenerator.title'], { mode: modeLabel })}
-              </div>
-              <div className="mt-1 text-[13px] font-normal text-text-tertiary">
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-[13px] font-normal text-text-tertiary">
                 {isRefine
                   ? t(($) => $['workflowGenerator.refineDescription'])
                   : t(($) => $['workflowGenerator.description'])}
-              </div>
+              </DialogDescription>
             </div>
 
             <div>
               <ModelParameterModal
-                popupClassName="w-[520px]!"
+                popupClassName="w-[min(520px,calc(100vw-2rem))]!"
                 isAdvancedMode={true}
                 provider={model.provider}
                 completionParams={model.completion_params}
@@ -612,10 +597,10 @@ const WorkflowGeneratorModal: React.FC = () => {
               />
             </div>
 
-            <div className="mt-4">
-              <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">
+            <Field className="mt-4 gap-0" name="workflow-generator-instruction">
+              <FieldLabel className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">
                 {t(($) => $['workflowGenerator.instruction'])}
-              </div>
+              </FieldLabel>
               <Textarea
                 // Autofocus is appropriate here: the modal's sole purpose is to
                 // capture an instruction, so focusing it on open aids the flow.
@@ -638,6 +623,7 @@ const WorkflowGeneratorModal: React.FC = () => {
                   }
                 }}
                 maxLength={MAX_INSTRUCTION_LENGTH}
+                autoComplete="off"
               />
 
               {/* Example prompts are create-from-scratch starters ("Summarize a
@@ -668,22 +654,25 @@ const WorkflowGeneratorModal: React.FC = () => {
                     onClick={onGenerate}
                     disabled={!model.name}
                   >
-                    <span className="i-custom-vender-other-generator size-4" />
+                    <span aria-hidden="true" className="i-custom-vender-other-generator size-4" />
                     <span className="text-xs font-semibold">
                       {t(($) => $['workflowGenerator.generate'])}
                     </span>
                   </Button>
                 )}
               </div>
-            </div>
+            </Field>
           </div>
 
           {/* Right pane: planning → graph result / actionable error / empty placeholder */}
           {isLoading ? (
             <GenerationPlan plan={plan} />
           ) : genError?.length ? (
-            <div className="flex h-full w-0 grow flex-col items-center justify-center gap-4 px-8">
-              <RiErrorWarningLine className="size-8 text-text-quaternary" />
+            <div className="flex min-h-0 w-full grow flex-col items-center justify-center gap-4 px-8 md:w-0">
+              <span
+                aria-hidden="true"
+                className="i-ri-error-warning-line size-8 text-text-quaternary"
+              />
               <div className="text-center">
                 <div className="system-md-medium text-text-secondary">{genErrorMessage}</div>
                 {firstGenError?.node_id && (
@@ -713,12 +702,16 @@ const WorkflowGeneratorModal: React.FC = () => {
               </div>
             </div>
           ) : current?.graph?.nodes?.length ? (
-            <div className="flex h-full w-0 grow flex-col bg-background-default-subtle p-6">
+            <div className="flex min-h-0 w-full grow flex-col bg-background-default-subtle p-6 md:w-0">
               {/* Planner-picked identity — surfaces the app_name + icon the
                           UI used to discard so the user sees what they'll create. */}
               {(current.icon || current.app_name) && (
                 <div className="mb-2 flex items-center gap-2">
-                  {current.icon && <span className="text-lg leading-none">{current.icon}</span>}
+                  {current.icon && (
+                    <span aria-hidden="true" className="text-lg leading-none">
+                      {current.icon}
+                    </span>
+                  )}
                   {current.app_name && (
                     <span className="truncate text-sm font-semibold text-text-primary">
                       {current.app_name}
@@ -761,8 +754,8 @@ const WorkflowGeneratorModal: React.FC = () => {
               </div>
               <div className="relative w-full grow overflow-hidden rounded-2xl border border-divider-subtle bg-background-default">
                 <WorkflowPreview
-                  nodes={current.graph.nodes}
-                  edges={current.graph.edges}
+                  nodes={(current.graph as unknown as GeneratedGraph).nodes}
+                  edges={(current.graph as unknown as GeneratedGraph).edges}
                   viewport={current.graph.viewport}
                   miniMapToRight
                 />
@@ -817,4 +810,4 @@ const WorkflowGeneratorModal: React.FC = () => {
   )
 }
 
-export default React.memo(WorkflowGeneratorModal)
+export default WorkflowGeneratorModal

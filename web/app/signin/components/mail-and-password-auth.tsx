@@ -14,6 +14,8 @@ import { consoleQuery } from '@/service/client'
 import { login } from '@/service/common'
 import { setWebAppAccessToken } from '@/service/webapp-auth'
 import { encryptPassword } from '@/utils/encryption'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { basePath } from '@/utils/var'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 type MailAndPasswordAuthProps = {
@@ -88,8 +90,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         } else {
           await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
-          const redirectUrl = resolvePostLoginRedirect(searchParams)
-          router.replace(redirectUrl || '/')
+          replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       } else {
         toast.error(res.data)

@@ -3,10 +3,12 @@ import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -14,6 +16,9 @@ import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/co
 import { fetchAccessToken } from '@/service/share'
 import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 import { encryptVerificationCode } from '@/utils/encryption'
+import { getClientLoginFallback } from '@/utils/login-redirect'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { basePath } from '@/utils/var'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -21,25 +26,25 @@ export default function CheckCode() {
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
   const token = decodeURIComponent(searchParams.get('token') as string)
-  const [code, setVerifyCode] = useState('')
-  const [loading, setIsLoading] = useState(false)
+  const [code, setCode] = useState('')
+  const [loading, setLoading] = useState(false)
   const locale = useLocale()
   const codeInputRef = useRef<HTMLInputElement>(null)
   const redirectUrl = searchParams.get('redirect_url')
   const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)
 
-  const getAppCodeFromRedirectUrl = useCallback(() => {
-    if (!redirectUrl) return null
-    const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
-    const appCode = url.pathname.split('/').pop()
-    if (!appCode) return null
-
-    return appCode
-  }, [redirectUrl])
+  useEffect(() => {
+    if (!resolveWebAppLoginRedirect(redirectUrl, window.location.origin))
+      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+  }, [redirectUrl, router])
 
   const verify = async () => {
+    const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
+    if (!loginRedirect) {
+      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      return
+    }
     try {
-      const appCode = getAppCodeFromRedirectUrl()
       if (!code.trim()) {
         toast.error(t(($) => $['checkCode.emptyCode'], { ns: 'login' }))
         return
@@ -48,11 +53,7 @@ export default function CheckCode() {
         toast.error(t(($) => $['checkCode.invalidCode'], { ns: 'login' }))
         return
       }
-      if (!redirectUrl || !appCode) {
-        toast.error(t(($) => $['error.redirectUrlMissing'], { ns: 'login' }))
-        return
-      }
-      setIsLoading(true)
+      setLoading(true)
       const ret = await webAppEmailLoginWithCode({
         email,
         code: encryptVerificationCode(code),
@@ -63,16 +64,16 @@ export default function CheckCode() {
           setWebAppAccessToken(ret.data.access_token)
         }
         const { access_token } = await fetchAccessToken({
-          appCode: appCode!,
+          appCode: loginRedirect.appCode,
           userId: embeddedUserId || undefined,
         })
-        setWebAppPassport(appCode!, access_token)
-        router.replace(decodeURIComponent(redirectUrl))
+        setWebAppPassport(loginRedirect.appCode, access_token)
+        replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
       }
     } catch (error) {
       console.error(error)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -86,11 +87,17 @@ export default function CheckCode() {
   }, [])
 
   const resendCode = async () => {
+    const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
+    if (!loginRedirect) {
+      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      return
+    }
     try {
       const ret = await sendWebAppEMailLoginCode(email, locale)
       if (ret.result === 'success') {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(ret.data))
+        params.set('redirect_url', loginRedirect.target.href)
         router.replace(`/webapp-signin/check-code?${params.toString()}`)
       }
     } catch (error) {
@@ -125,7 +132,7 @@ export default function CheckCode() {
           ref={codeInputRef}
           id="code"
           value={code}
-          onChange={(e) => setVerifyCode(e.target.value)}
+          onChange={(e) => setCode(e.target.value)}
           maxLength={6}
           className="mt-1"
           placeholder={t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) || ''}
