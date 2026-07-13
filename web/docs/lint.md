@@ -1,50 +1,38 @@
-# Format and Lint Guide
+# Static Check Guide
 
-We use Vite+ Oxfmt for formatting, Vite+ Oxlint for code-quality linting, ESLint for non-code file types that Oxlint cannot parse, and TypeScript for type safety.
+Vite+ provides the primary static check through `vp check`, which combines Oxfmt formatting, Oxlint code-quality rules, and TypeScript diagnostics. The root command also runs ESLint for non-code file types that Oxlint cannot parse.
 
-## Format
+## Check
 
-Format the supported frontend and TypeScript workspace files from the repository root:
+Run the complete repository check from the root:
 
 ```sh
-vp fmt
+pnpm check
 ```
 
-Check formatting without writing changes:
+Apply safe fixes before running the same checks:
 
 ```sh
-vp fmt --check
+pnpm check:fix
 ```
 
-The shared formatter options and ignore boundaries live in the root `vite.config.ts`.
-Editor format-on-save must point Oxc at that file so local edits match the commit hook and CI.
+CI and local development use the same root `vite.config.ts` configuration.
 
-## Lint
-
-Run the repository lint from the root:
+For a smaller code scope, pass paths directly to Vite+:
 
 ```sh
-pnpm lint
+vp check web/app/components packages/dify-ui/src/button
+vp check --fix web/app/components packages/dify-ui/src/button
 ```
 
-Run the two lint paths separately when targeting a smaller scope:
+Run the ESLint fallback separately when targeting JSON, JSONC, JSON5, YAML, TOML, or Markdown:
 
 ```sh
-pnpm lint:oxlint web/app/components packages/dify-ui/src/button
 pnpm lint:eslint package.json pnpm-workspace.yaml web/docs
-```
-
-Apply safe fixes, then format the result:
-
-```sh
-pnpm lint:oxlint:fix web/app/components
 pnpm lint:eslint:fix package.json pnpm-workspace.yaml web/docs
-vp fmt web/app/components
 ```
 
-Use `pnpm lint:quiet` to hide warnings from both linters. Oxlint runs in parallel by default, and the root ESLint scripts enable automatic concurrency.
-
-The default and CI lint commands do not pass file lists on the command line. Oxlint's repository scope is defined by `lint.config.ts` `ignorePatterns`, and ESLint's scope is defined by `eslint.config.mjs` global ignores. The individual linter commands above accept explicit paths for ad hoc local subsets.
+Oxlint and Vite+ type-check scope is defined by `lint.config.ts` `ignorePatterns`, and ESLint's scope is defined by `eslint.config.mjs` global ignores.
 
 The primary rule baseline lives in `lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. Oxlint-native rules are preferred, and compatible ESLint rules can run through Oxlint's `jsPlugins` support. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
 
@@ -52,13 +40,13 @@ The non-code baseline and its repository-wide file scope live in `eslint.config.
 
 ### Auto-fix Workflow
 
-Configure the Oxc and ESLint editor extensions to apply their respective fixes on save. The commit hook runs `vp staged`: JavaScript and TypeScript pass through Oxlint and Oxfmt, while data and Markdown files pass through ESLint and Oxfmt. The autofix workflow also prunes resolved bulk suppressions.
+Configure the Oxc and ESLint editor extensions to apply their respective fixes on save. The commit hook runs `vp staged`, which delegates staged files to `vp check --fix` and adds the ESLint fallback for non-code files. The autofix workflow uses the same combined Vite+ check.
 
 Always review automatic fixes before committing. JS plugins are allowed to provide fixes, and their behavior is not necessarily identical to a native Oxlint rule.
 
 ### Type-aware Linting
 
-The root configuration enables `typeAware` without enabling Oxlint's full `typeCheck` diagnostics. This preserves the Node SDK's existing type-aware lint rules without making lint duplicate the repository type-check task.
+The root configuration enables both `typeAware` and `typeCheck`, so `vp check` runs type-aware rules and full TypeScript diagnostics through the TypeScript Go toolchain.
 
 The web package still runs its existing TSSLint rule separately:
 
@@ -66,10 +54,10 @@ The web package still runs its existing TSSLint rule separately:
 pnpm --dir web lint:tss
 ```
 
-Run the regular type check before committing or pushing:
+Run the complete static check before committing or pushing:
 
 ```sh
-pnpm type-check
+pnpm check
 ```
 
 ### Bulk Suppressions
@@ -99,8 +87,8 @@ ESLint is intentionally limited to non-code files. The remaining limitations and
 | Area                     | Current status                                                                                                                                                                                                   |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Code-only fallback rules | ESLint globally ignores all code files. Six core fallback rules, JS `dot-notation`, and other code-only ESLint checks are listed only in comments rather than executable configuration.                          |
-| Declaration files        | Oxlint excludes declaration files and ESLint no longer processes code. The former 223-rule declaration snapshot and CLI declaration import restriction are not enforced; TypeScript still checks these files.    |
-| Generated contracts      | Both linters ignore `packages/contracts/**`; Oxfmt remains the only staged quality step for the contracts package.                                                                                               |
+| Declaration files        | Oxlint excludes declaration files and ESLint no longer processes code. The former 223-rule declaration snapshot and CLI declaration import restriction are not enforced.                                         |
+| Generated contracts      | Both linters and Vite+ type checking ignore `packages/contracts/**`; Oxfmt remains the only staged quality step for the contracts package.                                                                       |
 | Non-JavaScript formats   | Oxlint plugins cannot provide custom parsers or file languages. ESLint covers JSON, JSONC, YAML, TOML, and Markdown semantic rules, while Oxfmt remains responsible for their formatting.                        |
 | Markdown code blocks     | ESLint validates the Markdown document, but fenced JavaScript and TypeScript blocks are not passed through the former overlapping preset. This remains deferred rather than duplicating the Oxlint rule set.     |
 | Override-scoped settings | The three Dify UI Tailwind rules are disabled with the rest of ESLint's code path. Oxlint still applies the web `react-x.additionalStateHooks` setting globally because it cannot scope settings to an override. |
@@ -114,14 +102,14 @@ Prefer a native Oxlint rule. If none exists, verify that the rule works through 
 
 For overlay import policy and composition rules, see [Overlay Guide].
 
-## Type Check
+## Type Checking
 
 You should be able to see suggestions from TypeScript in your editor for all open files.
 
-Run the repository type check from the root:
+Type checking is part of the repository check:
 
 ```sh
-pnpm type-check
+pnpm check
 ```
 
 Type checking is powered by [`tsgo`] (the native TypeScript 7 compiler), which is significantly faster than `tsc`.

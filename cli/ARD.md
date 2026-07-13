@@ -306,10 +306,8 @@ expect(JSON.parse(out).workspaces).toHaveLength(2)
 | `pnpm dev <cmd> [args]` | Run CLI from source during dev                 |
 | `pnpm test`             | Full vitest suite — run before every commit    |
 | `pnpm test:coverage`    | Coverage report                                |
-| `pnpm -w type-check`    | Repository-wide TypeScript type check          |
-| `pnpm -w lint`          | Repository-wide Oxlint and ESLint checks       |
-| `pnpm -w lint:fix`      | Repository-wide Oxlint and ESLint fixes        |
-| `vp fmt`                | Oxfmt formatting and import sorting            |
+| `pnpm -w check`         | Repository-wide static check                   |
+| `pnpm -w check:fix`     | Repository-wide static fixes                   |
 | `pnpm build`            | Production bundle (`vp pack`)                  |
 | `pnpm tree:gen`         | Regenerate `src/commands/tree.ts` (registry)   |
 | `pnpm tree:check`       | Verify `tree.ts` matches the filesystem        |
@@ -333,7 +331,7 @@ The repository runs Vite+ Oxlint as the primary code-quality linter, an explicit
 | `unicorn/no-new-array`             | Use `Array.from({ length: n })` not `new Array(n)` |
 | `noUncheckedIndexedAccess` (tsc)   | `arr[i]` is `T \| undefined`; guard before use     |
 
-Run `pnpm -w lint:fix` for Oxlint and ESLint fixes, then `vp fmt` so Oxfmt produces the final layout.
+Run `pnpm -w check:fix` for Oxlint, ESLint, TypeScript, and Oxfmt fixes and diagnostics.
 
 ---
 

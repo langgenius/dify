@@ -91,7 +91,7 @@ export const lintConfig = {
     reportUnusedDisableDirectives: 'warn',
     respectEslintDisableDirectives: false,
     typeAware: true,
-    typeCheck: false,
+    typeCheck: true,
   },
   settings: {
     'better-tailwindcss': {

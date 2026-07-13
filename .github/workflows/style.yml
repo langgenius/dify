@@ -176,17 +176,9 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-web
 
-      - name: Format check
+      - name: Static check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: vp fmt --check
-
-      - name: Style check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: pnpm -w lint:ci
-
-      - name: Type check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: pnpm -w type-check
+        run: pnpm -w check
 
   superlinter:
     name: SuperLinter

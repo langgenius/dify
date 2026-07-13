@@ -169,19 +169,13 @@ jobs:
         if: github.event_name != 'merge_group' && steps.frontend-contract-changes.outputs.any_changed == 'true'
         run: pnpm --dir packages/contracts gen-api-contract
 
-      - name: Oxlint autofix
-        if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
-        run: |
-          pnpm lint:oxlint:fix --prune-suppressions --quiet || true
-
       - name: ESLint fallback autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
-        run: |
-          pnpm lint:eslint:fix --quiet || true
+        run: pnpm lint:eslint:fix --quiet || true
 
-      - name: Format frontend files
+      - name: Vite+ static autofix
         if: github.event_name != 'merge_group' && (steps.web-changes.outputs.any_changed == 'true' || steps.frontend-contract-changes.outputs.any_changed == 'true')
-        run: vp fmt
+        run: vp check --fix || true
 
       - if: github.event_name != 'merge_group'
         uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1.3.4
