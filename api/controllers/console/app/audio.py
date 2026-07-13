@@ -115,6 +115,12 @@ _AGENT_AUDIO_TRANSCRIPT_PARAMS = {
         "required": False,
     },
 }
+_CONSOLE_AUDIO_TRANSCRIPT_APP_MODES = [
+    AppMode.CHAT,
+    AppMode.AGENT_CHAT,
+    AppMode.ADVANCED_CHAT,
+    AppMode.AGENT,
+]
 
 
 def _transcribe_audio_to_text(
@@ -186,7 +192,7 @@ class ChatMessageAudioApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=_CONSOLE_AUDIO_TRANSCRIPT_APP_MODES)
     def post(self, app_model: App):
         return _transcribe_audio_to_text(app_model=app_model, file=request.files.get("file"))
 

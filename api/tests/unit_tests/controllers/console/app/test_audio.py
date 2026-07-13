@@ -32,6 +32,7 @@ from controllers.console.app.error import (
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
+from models import AppMode
 from models.agent import AgentConfigDraftType
 from models.agent_config_entities import AgentSoulConfig
 from services.agent.composer_service import AgentComposerService
@@ -63,6 +64,10 @@ def test_console_audio_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) 
         response = handler(api, app_model=app_model)
 
     assert response == {"text": "ok"}
+
+
+def test_console_audio_api_accepts_published_agent_apps() -> None:
+    assert AppMode.AGENT in audio_module._CONSOLE_AUDIO_TRANSCRIPT_APP_MODES
 
 
 def test_agent_console_audio_api_uses_agent_draft(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
