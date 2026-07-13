@@ -172,7 +172,7 @@ jobs:
       - name: Oxlint autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
         run: |
-          pnpm lint:oxlint:scope:fix packages web e2e vite.config.ts lint.config.ts --prune-suppressions --quiet || true
+          pnpm lint:oxlint:fix --prune-suppressions --quiet || true
 
       - name: ESLint fallback autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'

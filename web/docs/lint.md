@@ -44,6 +44,8 @@ vp fmt web/app/components
 
 Use `pnpm lint:quiet` to hide warnings from both linters. Oxlint runs in parallel by default. The root ESLint scripts enable automatic concurrency, while scoped runs use ESLint's default for smaller file sets.
 
+The default and CI lint commands do not pass file lists on the command line. Oxlint's repository scope is defined by `lint.config.ts` `ignorePatterns`, and ESLint's scope is defined by `eslint.config.mjs` global ignores. The `:scope` commands above are only for explicit, ad hoc local subsets.
+
 The primary rule baseline lives in `lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. Oxlint-native rules are preferred, and compatible ESLint rules can run through Oxlint's `jsPlugins` support. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
 
 The non-code baseline and its repository-wide file scope live in `eslint.config.mjs`. ESLint checks JSON, JSONC, JSON5, YAML, TOML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
@@ -82,8 +84,8 @@ Each linter reports newly added errors beyond its recorded per-file rule baselin
 The bulk-suppression flags are available in the bundled Oxlint version but are currently hidden from `vp lint --help`. Run them from the repository root so every package uses the same baseline:
 
 ```sh
-pnpm lint:oxlint:scope packages web e2e cli sdks/nodejs-client eslint.config.mjs vite.config.ts lint.config.ts --suppress-all
-pnpm lint:oxlint:scope packages web e2e cli sdks/nodejs-client eslint.config.mjs vite.config.ts lint.config.ts --prune-suppressions
+pnpm lint:oxlint --suppress-all
+pnpm lint:oxlint --prune-suppressions
 pnpm lint:eslint:scope --suppress-all
 pnpm lint:eslint:scope --prune-suppressions
 ```
