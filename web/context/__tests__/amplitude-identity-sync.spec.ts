@@ -73,7 +73,9 @@ vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
   flushRegistrationSuccess: vi.fn(),
 }))
 
-function createProfileQueryData(overrides: Partial<GetAccountProfileResponse> = {}): ProfileQueryData {
+function createProfileQueryData(
+  overrides: Partial<GetAccountProfileResponse> = {},
+): ProfileQueryData {
   return {
     profile: {
       id: 'user-1',
@@ -209,7 +211,10 @@ describe('amplitudeIdentitySyncAtom', () => {
       await flushAsync()
       const settledCallCount = vi.mocked(setUserId).mock.calls.length
 
-      queryClient.setQueryData(['user-profile'], createProfileQueryData({ avatar: 'changed-avatar' }))
+      queryClient.setQueryData(
+        ['user-profile'],
+        createProfileQueryData({ avatar: 'changed-avatar' }),
+      )
       await flushAsync()
 
       expect(setUserId).toHaveBeenCalledTimes(settledCallCount)

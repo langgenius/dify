@@ -11,7 +11,9 @@ import { systemFeaturesOrNullAtom } from './system-features-state'
 const versionQueryAtom = atomWithQuery((get) => {
   const meta = get(accountProfileMetaOrNullAtom)
   const systemFeatures = get(systemFeaturesOrNullAtom)
-  const enabled = Boolean(meta?.currentVersion && systemFeatures && !systemFeatures.branding.enabled)
+  const enabled = Boolean(
+    meta?.currentVersion && systemFeatures && !systemFeatures.branding.enabled,
+  )
 
   return consoleQuery.version.get.queryOptions({
     input: {
