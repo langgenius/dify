@@ -57,9 +57,9 @@ pnpm install                                   # one-time
 pnpm dev <command> [args...]                   # run CLI from source (no -- separator)
 pnpm test                                      # vitest
 pnpm test:coverage                             # with coverage
-pnpm type-check                                # tsc, no emit
-pnpm lint                                      # Oxlint
-pnpm lint:fix                                  # Oxlint semantic fixes
+pnpm -w type-check                             # repository-wide type check
+pnpm -w lint                                   # repository-wide lint
+pnpm -w lint:fix                               # repository-wide lint fixes
 vp fmt                                         # format with Oxfmt
 pnpm build                                     # production bundle (vp pack)
 pnpm tree:gen                                  # regenerate src/commands/tree.ts (registry)
@@ -72,7 +72,7 @@ Release binaries (5 platform targets, Bun-compiled) are produced by `pnpm build:
 
 - Behavior tests run against real Hono mock at `test/fixtures/dify-mock/`. No `nock`, `msw`, or `fetchMock` — every test exercises real HTTP.
 - Test files co-located: `foo.test.ts` next to `foo.ts`.
-- Type-check, lint, full test suite must be green before any commit.
+- Repository-wide type-check and lint, plus the full test suite, must be green before any commit.
 
 ## Spec docs (`docs/specs/`)
 

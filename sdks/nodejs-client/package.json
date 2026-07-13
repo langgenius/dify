@@ -43,8 +43,6 @@
   },
   "scripts": {
     "build": "vp pack",
-    "lint": "pnpm -w lint:oxlint:scope sdks/nodejs-client",
-    "lint:fix": "pnpm -w lint:oxlint:scope:fix sdks/nodejs-client",
     "type-check": "tsc",
     "test": "vp test",
     "test:coverage": "vp test --coverage",

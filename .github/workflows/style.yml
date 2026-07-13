@@ -182,11 +182,11 @@ jobs:
 
       - name: Style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: vp run lint:ci
+        run: pnpm -w lint:ci
 
       - name: Type check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: vp run type-check
+        run: pnpm -w type-check
 
   superlinter:
     name: SuperLinter
