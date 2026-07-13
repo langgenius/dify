@@ -351,9 +351,6 @@ catalogs:
     eslint-plugin-jsonc:
       specifier: 3.3.0
       version: 3.3.0
-    eslint-plugin-jsx-a11y:
-      specifier: 6.10.2
-      version: 6.10.2
     eslint-plugin-markdown-preferences:
       specifier: 0.41.1
       version: 0.41.1
@@ -716,9 +713,6 @@ importers:
       eslint-plugin-jsonc:
         specifier: 'catalog:'
         version: 3.3.0(eslint@10.7.0(jiti@2.7.0))
-      eslint-plugin-jsx-a11y:
-        specifier: 'catalog:'
-        version: 6.10.2(eslint@10.7.0(jiti@2.7.0))
       eslint-plugin-markdown-preferences:
         specifier: 'catalog:'
         version: 0.41.1(@eslint/markdown@8.0.3)(eslint@10.7.0(jiti@2.7.0))
@@ -6433,12 +6427,6 @@ packages:
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
     peerDependencies:
       eslint: '>=9.38.0'
-
-  eslint-plugin-jsx-a11y@6.10.2:
-    resolution: {integrity: sha512-scB3nz4WmG75pV8+3eRUQOHZlNSUhFNq37xnpgRkCCELU3XMvXAxLk1eqWWyE22Ki4Q01Fnsw9BA3cJHDPgn2Q==}
-    engines: {node: '>=4.0'}
-    peerDependencies:
-      eslint: ^3 || ^4 || ^5 || ^6 || ^7 || ^8 || ^9
 
   eslint-plugin-markdown-preferences@0.41.1:
     resolution: {integrity: sha512-Xi4rlT7oBZ8PMGDl7J9khgO2vF9X0F/6ag05/25Vyq7r3llaK95x9D6DpzXidxC2Gagl/e8bp2Hw47r4I3wWSA==}
@@ -14788,25 +14776,6 @@ snapshots:
     transitivePeerDependencies:
       - '@eslint/json'
 
-  eslint-plugin-jsx-a11y@6.10.2(eslint@10.7.0(jiti@2.7.0)):
-    dependencies:
-      aria-query: 5.3.2
-      array-includes: 3.1.9
-      array.prototype.flatmap: 1.3.3
-      ast-types-flow: 0.0.8
-      axe-core: 4.12.1
-      axobject-query: 4.1.0
-      damerau-levenshtein: 1.0.8
-      emoji-regex: 9.2.2
-      eslint: 10.7.0(jiti@2.7.0)
-      hasown: 2.0.4
-      jsx-ast-utils: 3.3.5
-      language-tags: 1.0.9
-      minimatch: 3.1.5
-      object.fromentries: 2.0.8
-      safe-regex-test: 1.1.0
-      string.prototype.includes: 2.0.1
-
   eslint-plugin-markdown-preferences@0.41.1(@eslint/markdown@8.0.3)(eslint@10.7.0(jiti@2.7.0)):
     dependencies:
       '@eslint/markdown': 8.0.3
@@ -19311,7 +19280,6 @@ time:
   eslint-plugin-hyoban@0.14.1: '2026-03-08T02:51:00.805Z'
   eslint-plugin-jsdoc@63.0.13: '2026-07-10T02:14:18.206Z'
   eslint-plugin-jsonc@3.3.0: '2026-07-07T00:25:44.392Z'
-  eslint-plugin-jsx-a11y@6.10.2: '2024-10-26T04:45:18.067Z'
   eslint-plugin-markdown-preferences@0.41.1: '2026-04-09T23:28:41.552Z'
   eslint-plugin-n@18.2.2: '2026-07-11T01:32:26.873Z'
   eslint-plugin-no-barrel-files@1.3.1: '2026-04-12T18:28:18.653Z'
