@@ -20,7 +20,9 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { activateMember } from '@/service/common'
 import { useInvitationCheck } from '@/service/use-common'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone, timezones } from '@/utils/timezone'
+import { basePath } from '@/utils/var'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 type LanguageSelectOption = {
@@ -112,8 +114,7 @@ export default function InviteSettingsPage() {
         if (requiresAccountSetup)
           await setLocaleOnClient(language!, false)
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
-        const redirectUrl = resolvePostLoginRedirect(searchParams)
-        router.replace(redirectUrl || '/')
+        replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
       }
     }
     catch {

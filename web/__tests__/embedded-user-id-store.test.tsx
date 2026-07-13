@@ -107,6 +107,38 @@ describe('WebAppStoreProvider embedded user id handling', () => {
     expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith('redirected-app')
   })
 
+  it('does not derive a share code from an external redirect target', () => {
+    const params = new URLSearchParams()
+    params.set('redirect_url', 'https://evil.example/chatbot/evil-app')
+    navigationMocks.usePathname.mockReturnValue('/webapp-signin')
+    navigationMocks.useSearchParams.mockReturnValue(params)
+    mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
+
+    renderWithSystemFeatures(
+      <WebAppStoreProvider>
+        <TestConsumer />
+      </WebAppStoreProvider>,
+    )
+
+    expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith(null)
+  })
+
+  it.each(['/webapp-signin/check-code', '/console/webapp-signin/check-code'])(
+    'does not derive a share code from the sign-in route %s',
+    (pathname) => {
+      navigationMocks.usePathname.mockReturnValue(pathname)
+      mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
+
+      renderWithSystemFeatures(
+        <WebAppStoreProvider>
+          <TestConsumer />
+        </WebAppStoreProvider>,
+      )
+
+      expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith(null)
+    },
+  )
+
   it('hydrates embedded user and conversation ids from system variables', async () => {
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({
       user_id: 'iframe-user-123',

@@ -2,10 +2,11 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
-import { useCallback, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import Input from '@/app/components/base/input'
-import { emailRegex } from '@/config'
+import { emailRegex, IS_CLOUD_EDITION } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
 import Link from '@/next/link'
@@ -14,6 +15,9 @@ import { webAppLogin } from '@/service/common'
 import { fetchAccessToken } from '@/service/share'
 import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 import { encryptPassword } from '@/utils/encryption'
+import { getClientLoginFallback } from '@/utils/login-redirect'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { basePath } from '@/utils/var'
 
 type MailAndPasswordAuthProps = {
   isEmailSetup: boolean
@@ -33,18 +37,17 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   const redirectUrl = searchParams.get('redirect_url')
   const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
 
-  const getAppCodeFromRedirectUrl = useCallback(() => {
-    if (!redirectUrl)
-      return null
-    const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
-    const appCode = url.pathname.split('/').pop()
-    if (!appCode)
-      return null
+  useEffect(() => {
+    if (!resolveWebAppLoginRedirect(redirectUrl, window.location.origin))
+      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+  }, [redirectUrl, router])
 
-    return appCode
-  }, [redirectUrl])
-  const appCode = getAppCodeFromRedirectUrl()
   const handleEmailPasswordLogin = async () => {
+    const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
+    if (!loginRedirect) {
+      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      return
+    }
     if (!email) {
       toast.error(t('error.emailEmpty', { ns: 'login' }))
       return
@@ -58,13 +61,9 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       return
     }
 
-    if (!redirectUrl || !appCode) {
-      toast.error(t('error.redirectUrlMissing', { ns: 'login' }))
-      return
-    }
     try {
       setIsLoading(true)
-      const loginData: Record<string, any> = {
+      const loginData = {
         email,
         password: encryptPassword(password),
         language: locale,
@@ -81,21 +80,22 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         }
 
         const { access_token } = await fetchAccessToken({
-          appCode: appCode!,
+          appCode: loginRedirect.appCode,
           userId: embeddedUserId || undefined,
         })
-        setWebAppPassport(appCode!, access_token)
-        router.replace(decodeURIComponent(redirectUrl))
-      }
-      else {
+        setWebAppPassport(loginRedirect.appCode, access_token)
+        replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
+      } else {
         toast.error(res.data)
       }
-    }
-    catch (e: any) {
-      if (e.code === 'authentication_failed')
-        toast.error(e.message)
-    }
-    finally {
+    } catch (error: unknown) {
+      const authenticationError = error as { code?: unknown; message?: unknown }
+      if (
+        authenticationError.code === 'authentication_failed' &&
+        typeof authenticationError.message === 'string'
+      )
+        toast.error(authenticationError.message)
+    } finally {
       setIsLoading(false)
     }
   }
