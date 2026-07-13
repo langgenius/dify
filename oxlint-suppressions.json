@@ -16,7 +16,7 @@
   },
   "cli/test/e2e/suites/output/table-output.e2e.ts": {
     "regexp/control-character-escape": {
-      "count": 4
+      "count": 2
     }
   },
   "e2e/support/web-server.ts": {
