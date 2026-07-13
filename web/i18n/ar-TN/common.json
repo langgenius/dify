@@ -271,7 +271,7 @@
   "members.seatsRemaining_one": "{{count}} مقعد متبقٍ",
   "members.seatsRemaining_other": "{{count}} مقعد متبقٍ",
   "members.selectRole": "اختر دورًا",
-  "members.sendInvite": "إرسال دعوة",
+  "members.sendInvite": "إرسال الدعوات",
   "members.sendInviteCount_one": "إرسال {{count}} دعوة",
   "members.sendInviteCount_other": "إرسال {{count}} دعوة",
   "members.transferModal.codeLabel": "رمز التحقق",
