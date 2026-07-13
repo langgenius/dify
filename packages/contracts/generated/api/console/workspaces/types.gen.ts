@@ -161,14 +161,24 @@ export type EndpointUpdatePayload = {
 }
 
 export type MemberInvitePayload = {
-  emails?: Array<string>
+  emails: Array<string>
   language?: string | null
   role: string
 }
 
 export type MemberInviteResponse = {
-  invitation_results: Array<MemberInviteResultResponse>
-  result: string
+  invitation_results: Array<
+    | ({
+        status: 'success'
+      } & MemberInviteSuccessResponse)
+    | ({
+        status: 'already_member'
+      } & MemberInviteAlreadyMemberResponse)
+    | ({
+        status: 'failed'
+      } & MemberInviteFailedResponse)
+  >
+  result: 'success'
   tenant_id: string
 }
 
@@ -1128,11 +1138,22 @@ export type EndpointListItemResponse = {
   url: string
 }
 
-export type MemberInviteResultResponse = {
+export type MemberInviteSuccessResponse = {
   email: string
-  message?: string | null
-  status: string
-  url?: string | null
+  status: 'success'
+  url: string
+}
+
+export type MemberInviteAlreadyMemberResponse = {
+  email: string
+  message: string
+  status: 'already_member'
+}
+
+export type MemberInviteFailedResponse = {
+  email: string
+  message: string
+  status: 'failed'
 }
 
 export type ProviderResponse = {
