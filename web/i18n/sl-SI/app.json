@@ -147,6 +147,7 @@
   "maxActiveRequestsTip": "Največje število hkrati aktivnih zahtevkov na aplikacijo (0 za neomejeno)",
   "mermaid.classic": "Klasičen",
   "mermaid.handDrawn": "Ročno narisano",
+  "mermaid.waitForCompletion": "Čakanje na dokončanje kode diagrama...",
   "newApp.Cancel": "Prekliči",
   "newApp.Confirm": "Potrditi",
   "newApp.Create": "Ustvari",

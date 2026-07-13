@@ -37,7 +37,7 @@ vi.mock('@/service/client', () => ({
     agent: {
       byAgentId: {
         get: {
-          queryOptions: vi.fn(input => input),
+          queryOptions: vi.fn((input) => input),
         },
       },
     },
@@ -76,7 +76,7 @@ describe('AgentDetailLayout', () => {
     )
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/roster')
+      expect(mockReplace).toHaveBeenCalledWith('/agents')
     })
     expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
   })

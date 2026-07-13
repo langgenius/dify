@@ -1,7 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 // Import component after mocks
 import TTSParamsPanel from '../tts-params-panel'
 
@@ -49,8 +48,8 @@ vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
       className,
       'data-testid': testId,
     }: {
-      'children': React.ReactNode
-      'className'?: string
+      children: React.ReactNode
+      className?: string
       'data-testid'?: string
     }) => (
       <button data-testid={testId ?? 'select-trigger'} data-class={className}>
@@ -72,19 +71,10 @@ vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
         {children}
       </div>
     ),
-    SelectItem: ({
-      children,
-      value,
-    }: {
-      children: React.ReactNode
-      value: string
-    }) => {
+    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
       const { onValueChange } = React.useContext(MockSelectContext)
       return (
-        <button
-          data-testid={`select-item-${value}`}
-          onClick={() => onValueChange(value)}
-        >
+        <button data-testid={`select-item-${value}`} onClick={() => onValueChange(value)}>
           {children}
         </button>
       )
@@ -96,11 +86,9 @@ vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
       children: React.ReactNode
       className?: string
     }) => <span data-class={className}>{children}</span>,
-    SelectItemIndicator: ({
-      className,
-    }: {
-      className?: string
-    }) => <span data-testid="select-item-indicator" data-class={className} />,
+    SelectItemIndicator: ({ className }: { className?: string }) => (
+      <span data-testid="select-item-indicator" data-class={className} />
+    ),
   }
 })
 
@@ -109,7 +97,7 @@ vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
 /**
  * Factory function to create a voice item
  */
-const createVoiceItem = (overrides: Partial<{ mode: string, name: string }> = {}) => ({
+const createVoiceItem = (overrides: Partial<{ mode: string; name: string }> = {}) => ({
   mode: 'alloy',
   name: 'Alloy',
   ...overrides,
@@ -118,7 +106,7 @@ const createVoiceItem = (overrides: Partial<{ mode: string, name: string }> = {}
 /**
  * Factory function to create a currentModel with voices
  */
-const createCurrentModel = (voices: Array<{ mode: string, name: string }> = []) => ({
+const createCurrentModel = (voices: Array<{ mode: string; name: string }> = []) => ({
   model_properties: {
     voices,
   },
@@ -127,12 +115,14 @@ const createCurrentModel = (voices: Array<{ mode: string, name: string }> = []) 
 /**
  * Factory function to create default props
  */
-const createDefaultProps = (overrides: Partial<{
-  currentModel: { model_properties: { voices: Array<{ mode: string, name: string }> } } | null
-  language: string
-  voice: string
-  onChange: (language: string, voice: string) => void
-}> = {}) => ({
+const createDefaultProps = (
+  overrides: Partial<{
+    currentModel: { model_properties: { voices: Array<{ mode: string; name: string }> } } | null
+    language: string
+    voice: string
+    onChange: (language: string, voice: string) => void
+  }> = {},
+) => ({
   currentModel: createCurrentModel([
     createVoiceItem({ mode: 'alloy', name: 'Alloy' }),
     createVoiceItem({ mode: 'echo', name: 'Echo' }),
@@ -266,8 +256,14 @@ describe('TTSParamsPanel', () => {
 
       // Assert
       // Assert
-      expect(screen.getByTestId('tts-language-select-trigger'))!.toHaveAttribute('data-class', 'w-full')
-      expect(screen.getByTestId('tts-voice-select-trigger'))!.toHaveAttribute('data-class', 'w-full')
+      expect(screen.getByTestId('tts-language-select-trigger'))!.toHaveAttribute(
+        'data-class',
+        'w-full',
+      )
+      expect(screen.getByTestId('tts-voice-select-trigger'))!.toHaveAttribute(
+        'data-class',
+        'w-full',
+      )
     })
 
     it('should apply popup className to SelectContent', () => {
@@ -520,9 +516,7 @@ describe('TTSParamsPanel', () => {
     it('should handle currentModel with single voice', () => {
       // Arrange
       const props = createDefaultProps({
-        currentModel: createCurrentModel([
-          { mode: 'single-voice', name: 'Single Voice' },
-        ]),
+        currentModel: createCurrentModel([{ mode: 'single-voice', name: 'Single Voice' }]),
       })
 
       // Act
@@ -645,9 +639,7 @@ describe('TTSParamsPanel', () => {
 
     it('should update voice list when currentModel changes', () => {
       // Arrange
-      const initialModel = createCurrentModel([
-        { mode: 'alloy', name: 'Alloy' },
-      ])
+      const initialModel = createCurrentModel([{ mode: 'alloy', name: 'Alloy' }])
       const props = createDefaultProps({ currentModel: initialModel })
 
       // Act

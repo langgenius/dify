@@ -24,6 +24,13 @@ _CONFIG_MANIFEST_STDOUT_EXCLUDE = {
     "skills": {"items": {"__all__": {"hash"}}},
     "files": {"items": {"__all__": {"hash"}}},
 }
+_FILE_DOWNLOAD_TRANSFER_METHOD_HELP = (
+    "File mapping transfer_method: local_file, tool_file, datasource_file, or remote_url."
+)
+_FILE_DOWNLOAD_REFERENCE_OR_URL_HELP = (
+    "File mapping reference or URL. Use dify-file-ref:... with local_file, tool_file, or datasource_file; "
+    "use https://... with remote_url."
+)
 
 
 app = typer.Typer(
@@ -76,16 +83,18 @@ def upload(path: str = typer.Argument(..., metavar="PATH")) -> None:
 
 @file_app.command("download")
 def download(
-    transfer_method: str | None = typer.Argument(None, metavar="TRANSFER_METHOD"),
-    reference_or_url: str | None = typer.Argument(None, metavar="REFERENCE_OR_URL"),
-    mapping: str | None = typer.Option(None, "--mapping", help="Download one file from a mapping JSON object."),
+    transfer_method: str = typer.Argument(..., metavar="TRANSFER_METHOD", help=_FILE_DOWNLOAD_TRANSFER_METHOD_HELP),
+    reference_or_url: str = typer.Argument(
+        ...,
+        metavar="REFERENCE_OR_URL",
+        help=_FILE_DOWNLOAD_REFERENCE_OR_URL_HELP,
+    ),
     local_dir: str | None = typer.Option(None, "--to", help="Local directory for the downloaded file."),
 ) -> None:
     """Download one workflow file mapping into the local sandbox directory."""
     _run_file_download(
         transfer_method=transfer_method,
         reference_or_url=reference_or_url,
-        mapping=mapping,
         local_dir=local_dir,
     )
 
@@ -124,6 +133,26 @@ def config_skills_push(
 
     Pass a directory such as ./skills/researcher that contains SKILL.md. Other files in that directory are
     archived with the skill. Pushing a skill with an existing name replaces that config skill.
+
+    Skill directory requirements:
+
+    - Each PATH must be one skill directory; the directory basename is the config skill name.
+
+    - The directory must contain a top-level SKILL.md.
+
+    - SKILL.md must be non-empty UTF-8 Markdown.
+
+    - SKILL.md must start with YAML frontmatter matching this schema:
+
+    \b
+      ---
+      name: <non-empty string>
+      description: <string>
+      ---
+
+    - Symlinked files are rejected.
+
+    - Dependency/cache folders such as .git, __pycache__, .venv and node_modules should be manually cleared before push.
     """
     _run_config_skills_push(paths=paths)
 
@@ -361,9 +390,8 @@ def _run_file_upload(*, path: str) -> None:
 
 def _run_file_download(
     *,
-    transfer_method: str | None,
-    reference_or_url: str | None,
-    mapping: str | None,
+    transfer_method: str,
+    reference_or_url: str,
     local_dir: str | None,
 ) -> None:
     env_module = _env_module()
@@ -373,7 +401,6 @@ def _run_file_download(
         response = files_module.download_file_from_environment(
             transfer_method=transfer_method,
             reference_or_url=reference_or_url,
-            mapping=mapping,
             local_dir=local_dir,
         )
     except env_module.MissingAgentStubEnvironmentError as exc:

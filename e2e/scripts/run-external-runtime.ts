@@ -1,7 +1,8 @@
 import { e2eDir, isMainModule, runForegroundProcess } from './common'
 import './env-register'
 
-const defaultExternalRuntimeTags = '(@external-model or @external-tool) and not @feature-gated and not @skip and not @preview'
+const defaultExternalRuntimeTags =
+  '(@external-model or @external-tool) and not @feature-gated and not @skip and not @preview'
 
 const main = async () => {
   const tags = process.env.E2E_EXTERNAL_RUNTIME_TAGS?.trim() || defaultExternalRuntimeTags
@@ -13,5 +14,4 @@ const main = async () => {
   })
 }
 
-if (isMainModule(import.meta.url))
-  void main()
+if (isMainModule(import.meta.url)) void main()

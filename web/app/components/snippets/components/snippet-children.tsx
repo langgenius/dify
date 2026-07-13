@@ -33,10 +33,7 @@ const SnippetChildren = ({
         onPublish={onPublish}
       />
 
-      <SnippetWorkflowPanel
-        snippetId={snippetId}
-        fields={fields}
-      />
+      <SnippetWorkflowPanel snippetId={snippetId} fields={fields} />
     </>
   )
 }

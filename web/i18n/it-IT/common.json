@@ -288,7 +288,6 @@
   "menus.explore": "Esplora",
   "menus.exploreMarketplace": "Esplora il Marketplace",
   "menus.plugins": "Integrazione",
-  "menus.roster": "Elenco agenti",
   "menus.status": "beta",
   "menus.tools": "Strumenti",
   "model.capabilities": "Funzionalità multimodali",
@@ -444,6 +443,7 @@
   "operation.download": "Scarica",
   "operation.downloadFailed": "Download non riuscito. Per favore riprova più tardi.",
   "operation.downloadSuccess": "Download completato.",
+  "operation.downloading": "Download in corso...",
   "operation.duplicate": "Duplica",
   "operation.edit": "Modifica",
   "operation.exporting": "Esportazione in corso",
@@ -596,6 +596,8 @@
   "voiceInput.notAllow": "microfono non autorizzato",
   "voiceInput.speaking": "Parla ora...",
   "voiceInput.start": "Input vocale",
+  "voiceInput.starting": "Avvio del microfono...",
+  "voiceInput.stop": "Interrompi registrazione",
   "workflowAsToolPage.description": "Trasforma qualsiasi workflow pubblicato in uno strumento riutilizzabile. Usalo in più app per mantenere i build modulari ed evitare ripetizioni.",
   "you": "Tu"
 }

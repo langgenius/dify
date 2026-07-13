@@ -52,7 +52,9 @@ def _pipeline() -> Pipeline:
 def test_draft_rag_pipeline_workflow_get_serializes_response_model(monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = _make_workflow()
     monkeypatch.setattr(
-        module, "RagPipelineService", lambda: SimpleNamespace(get_draft_workflow=lambda **_kwargs: workflow)
+        module,
+        "RagPipelineService",
+        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=lambda **_kwargs: workflow),
     )
 
     api = module.DraftRagPipelineApi()
@@ -97,12 +99,12 @@ def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
             assert session_state["open"] is True
             return getattr(base_workflow, name)
 
-    monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(module, "db", SimpleNamespace(engine=object(), session=lambda: object()))
     monkeypatch.setattr(module, "sessionmaker", lambda *_args, **_kwargs: _SessionMaker())
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda: SimpleNamespace(get_all_published_workflow=lambda **_kwargs: ([_Workflow()], False)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_all_published_workflow=lambda **_kwargs: ([_Workflow()], False)),
     )
 
     with app.test_request_context(
@@ -132,12 +134,12 @@ def test_rag_pipeline_workflow_patch_serializes_response_model(app: Flask, monke
         def begin(self):
             return _SessionContext()
 
-    monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(module, "db", SimpleNamespace(engine=object(), session=lambda: object()))
     monkeypatch.setattr(module, "sessionmaker", lambda *_args, **_kwargs: _SessionMaker())
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda: SimpleNamespace(update_workflow=lambda **_kwargs: workflow),
+        lambda *_args, **_kwargs: SimpleNamespace(update_workflow=lambda **_kwargs: workflow),
     )
     payload: dict[str, object] = {"marked_name": "Updated release"}
 
@@ -165,7 +167,7 @@ def test_default_rag_pipeline_block_configs_serializes_root_response(monkeypatch
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda: SimpleNamespace(get_default_block_configs=lambda: block_configs),
+        lambda *_args, **_kwargs: SimpleNamespace(get_default_block_configs=lambda: block_configs),
     )
 
     api = module.DefaultRagPipelineBlockConfigsApi()
@@ -190,7 +192,7 @@ def test_draft_rag_pipeline_second_step_parameters_serializes_variables(app, mon
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda: SimpleNamespace(get_second_step_parameters=lambda **_kwargs: variables),
+        lambda *_args, **_kwargs: SimpleNamespace(get_second_step_parameters=lambda **_kwargs: variables),
     )
 
     api = module.DraftRagPipelineSecondStepApi()
@@ -210,7 +212,7 @@ def test_rag_pipeline_recommended_plugins_serializes_known_envelope(app, monkeyp
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda: SimpleNamespace(get_recommended_plugins=lambda *_args: recommended_plugins),
+        lambda *_args, **_kwargs: SimpleNamespace(get_recommended_plugins=lambda *_args: recommended_plugins),
     )
 
     api = module.RagPipelineRecommendedPluginApi()

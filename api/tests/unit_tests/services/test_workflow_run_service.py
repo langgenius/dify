@@ -34,6 +34,13 @@ def _end_user(**kwargs: Any) -> EndUser:
     return cast(EndUser, SimpleNamespace(**kwargs))
 
 
+def _fake_session_returning_messages(messages: list[Any]) -> SimpleNamespace:
+    """A stand-in db session whose scalars(...).all() returns the given messages."""
+    scalars_result = MagicMock()
+    scalars_result.all.return_value = messages
+    return SimpleNamespace(scalars=MagicMock(return_value=scalars_result))
+
+
 class TestWorkflowRunServiceInitialization:
     def test___init___should_create_sessionmaker_from_db_engine_when_session_factory_missing(
         self,
@@ -120,14 +127,14 @@ class TestWorkflowRunServiceQueries:
     ) -> None:
         service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
         app_model = _app_model(tenant_id="tenant-1", id="app-1")
-        run_with_message = SimpleNamespace(
-            id="run-1",
-            status="running",
-            message=SimpleNamespace(id="msg-1", conversation_id="conv-1"),
-        )
-        run_without_message = SimpleNamespace(id="run-2", status="succeeded", message=None)
+        run_with_message = SimpleNamespace(id="run-1", status="running")
+        run_without_message = SimpleNamespace(id="run-2", status="succeeded")
         pagination = SimpleNamespace(data=[run_with_message, run_without_message])
         monkeypatch.setattr(service, "get_paginate_workflow_runs", MagicMock(return_value=pagination))
+
+        message = SimpleNamespace(id="msg-1", conversation_id="conv-1", workflow_run_id="run-1")
+        fake_session = _fake_session_returning_messages([message])
+        monkeypatch.setattr(service_module, "db", SimpleNamespace(session=fake_session))
 
         result = service.get_paginate_advanced_chat_workflow_runs(app_model=app_model, args={"limit": "2"})
 
@@ -138,6 +145,32 @@ class TestWorkflowRunServiceQueries:
         assert result.data[0].status == "running"
         assert not hasattr(result.data[1], "message_id")
         assert result.data[1].id == "run-2"
+        # Messages are batch-loaded in a single query, not one per run.
+        fake_session.scalars.assert_called_once()
+
+    def test_get_paginate_advanced_chat_workflow_runs_batch_loads_messages_without_n_plus_one(
+        self,
+        repository_factory_mocks: tuple[MagicMock, MagicMock, Any],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Messages must load with a constant query count regardless of run count.
+
+        Previously the deprecated WorkflowRun.message property issued one query per
+        run (N+1); they are now batch-loaded in a single query.
+        """
+        service = WorkflowRunService(session_factory=MagicMock(name="session_factory"))
+        app_model = _app_model(tenant_id="tenant-1", id="app-1")
+        runs = [SimpleNamespace(id=f"run-{i}", status="succeeded") for i in range(5)]
+        pagination = SimpleNamespace(data=runs)
+        monkeypatch.setattr(service, "get_paginate_workflow_runs", MagicMock(return_value=pagination))
+
+        fake_session = _fake_session_returning_messages([])
+        monkeypatch.setattr(service_module, "db", SimpleNamespace(session=fake_session))
+
+        service.get_paginate_advanced_chat_workflow_runs(app_model=app_model, args={})
+
+        # Exactly one message query for the whole page, independent of run count.
+        assert fake_session.scalars.call_count == 1
 
     def test_get_workflow_run_should_delegate_to_repository_by_tenant_and_app(
         self,

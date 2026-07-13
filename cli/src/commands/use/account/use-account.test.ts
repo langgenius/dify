@@ -17,25 +17,31 @@ describe('runUseAccount', () => {
   })
 
   it('switches current_account when email valid + token present', async () => {
-    await runUseAccount({ io: bufferStreams(), email: 'b@x', store: new MemStore({ 'h1 b@x': 'dfoa_b' }) })
+    await runUseAccount({
+      io: bufferStreams(),
+      email: 'b@x',
+      store: new MemStore({ 'h1 b@x': 'dfoa_b' }),
+    })
     expect((await Registry.load()).hosts.h1?.current_account).toBe('b@x')
   })
 
   it('errors when the account has no stored token', async () => {
-    await expect(runUseAccount({ io: bufferStreams(), email: 'b@x', store: new MemStore({}) }))
-      .rejects
-      .toThrow(/log in|no credential/i)
+    await expect(
+      runUseAccount({ io: bufferStreams(), email: 'b@x', store: new MemStore({}) }),
+    ).rejects.toThrow(/log in|no credential/i)
   })
 
   it('errors when the email is unknown on the current host', async () => {
-    await expect(runUseAccount({ io: bufferStreams(), email: 'z@x', store: new MemStore({ 'h1 z@x': 'x' }) }))
-      .rejects
-      .toThrow(/unknown account|no account/i)
+    await expect(
+      runUseAccount({ io: bufferStreams(), email: 'z@x', store: new MemStore({ 'h1 z@x': 'x' }) }),
+    ).rejects.toThrow(/unknown account|no account/i)
   })
 
   it('errors in non-TTY when email omitted', async () => {
     const io = bufferStreams()
     ;(io as { isErrTTY: boolean }).isErrTTY = false
-    await expect(runUseAccount({ io, email: undefined, store: new MemStore({}) })).rejects.toThrow(/--email/i)
+    await expect(runUseAccount({ io, email: undefined, store: new MemStore({}) })).rejects.toThrow(
+      /--email/i,
+    )
   })
 })

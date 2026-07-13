@@ -394,7 +394,7 @@ def test_embedded_scripts_allow_parent_relative_paths(tmp_path: Path) -> None:
                 "import sys",
                 'if sys.argv[1:] != ["file", "upload", "../shared/notes.txt"]:',
                 '    raise SystemExit(f"unexpected args: {sys.argv[1:]!r}")',
-                'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref"}))',
+                'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref", "download_url": "https://files.example.com/notes.txt"}))',
             ]
         )
         + "\n",
@@ -424,7 +424,11 @@ def test_embedded_scripts_allow_parent_relative_paths(tmp_path: Path) -> None:
     }
     assert upload_payload == {
         "path": "../shared/notes.txt",
-        "file": {"transfer_method": "tool_file", "reference": "file-ref"},
+        "file": {
+            "transfer_method": "tool_file",
+            "reference": "file-ref",
+            "download_url": "https://files.example.com/notes.txt",
+        },
     }
 
 
@@ -448,7 +452,7 @@ def test_embedded_scripts_expand_home_relative_paths(tmp_path: Path) -> None:
                 "import sys",
                 'if sys.argv[1:] != ["file", "upload", "~/shared/notes.txt"]:',
                 '    raise SystemExit(f"unexpected args: {sys.argv[1:]!r}")',
-                'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref"}))',
+                'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref", "download_url": "https://files.example.com/notes.txt"}))',
             ]
         )
         + "\n",
@@ -474,7 +478,11 @@ def test_embedded_scripts_expand_home_relative_paths(tmp_path: Path) -> None:
     }
     assert upload_payload == {
         "path": "~/shared/notes.txt",
-        "file": {"transfer_method": "tool_file", "reference": "file-ref"},
+        "file": {
+            "transfer_method": "tool_file",
+            "reference": "file-ref",
+            "download_url": "https://files.example.com/notes.txt",
+        },
     }
 
 
@@ -508,7 +516,11 @@ def test_upload_injects_agent_stub_env_and_returns_mapping() -> None:
             output=_wrap(
                 {
                     "path": "report.txt",
-                    "file": {"transfer_method": "tool_file", "reference": "file-ref"},
+                    "file": {
+                        "transfer_method": "tool_file",
+                        "reference": "file-ref",
+                        "download_url": "https://files.example.com/report.txt",
+                    },
                 },
                 noise=True,
             ),
@@ -519,6 +531,7 @@ def test_upload_injects_agent_stub_env_and_returns_mapping() -> None:
 
     assert result.file.transfer_method == "tool_file"
     assert result.file.reference == "file-ref"
+    assert result.file.download_url == "https://files.example.com/report.txt"
     script_call = _sandbox_python_run_call(client)
     assert script_call.cwd == "/home/agent-1/workspace/abc12ff"
     assert script_call.env == {
@@ -527,6 +540,26 @@ def test_upload_injects_agent_stub_env_and_returns_mapping() -> None:
         AGENT_STUB_AUTH_JWE_ENV_VAR: "token-for:tenant-1:abc12ff",
         AGENT_STUB_DRIVE_BASE_ENV_VAR: "/mnt/drive/agent-1",
     }
+
+
+def test_upload_rejects_missing_download_url_in_shell_payload() -> None:
+    service, _client = _service(
+        lambda script, cwd, env, timeout: _Job(
+            job_id="sandbox-job",
+            output=_wrap(
+                {
+                    "path": "report.txt",
+                    "file": {
+                        "transfer_method": "tool_file",
+                        "reference": "file-ref",
+                    },
+                }
+            ),
+        )
+    )
+
+    with pytest.raises(SandboxFileError, match="sandbox command returned invalid payload"):
+        _ = asyncio.run(service.upload_file(SandboxUploadRequest(locator=_locator(), path="report.txt")))
 
 
 def test_shell_result_details_include_output_metadata_and_tail() -> None:
@@ -572,7 +605,14 @@ def test_read_and_upload_allow_relative_paths(
             output=_wrap(
                 {"path": expected_path, "size": 5, "truncated": False, "binary": False, "text": "hello"}
                 if isinstance(sandbox_request, SandboxReadRequest)
-                else {"path": expected_path, "file": {"transfer_method": "tool_file", "reference": "file-ref"}}
+                else {
+                    "path": expected_path,
+                    "file": {
+                        "transfer_method": "tool_file",
+                        "reference": "file-ref",
+                        "download_url": "https://files.example.com/report.txt",
+                    },
+                }
             ),
         )
     )
@@ -583,5 +623,6 @@ def test_read_and_upload_allow_relative_paths(
     else:
         result = asyncio.run(service.upload_file(sandbox_request))
         assert result.path == expected_path
+        assert result.file.download_url == "https://files.example.com/report.txt"
 
     assert expected_command in _sandbox_python_run_call(client).script

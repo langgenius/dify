@@ -288,7 +288,6 @@
   "menus.explore": "کاوش",
   "menus.exploreMarketplace": "بازار را کاوش کنید",
   "menus.plugins": "یکپارچه‌سازی‌ها",
-  "menus.roster": "فهرست عامل‌ها",
   "menus.status": "بتا",
   "menus.tools": "ابزارها",
   "model.capabilities": "قابلیت های چند وجهی",
@@ -444,6 +443,7 @@
   "operation.download": "دانلود",
   "operation.downloadFailed": "دانلود ناموفق بود. لطفاً بعداً دوباره تلاش کنید.",
   "operation.downloadSuccess": "دانلود کامل شد.",
+  "operation.downloading": "در حال دانلود...",
   "operation.duplicate": "تکرار",
   "operation.edit": "ویرایش",
   "operation.exporting": "در حال خروجی گرفتن",
@@ -596,6 +596,8 @@
   "voiceInput.notAllow": "میکروفون مجاز نیست",
   "voiceInput.speaking": "اکنون صحبت کنید...",
   "voiceInput.start": "ورودی صوتی",
+  "voiceInput.starting": "در حال راه‌اندازی میکروفون...",
+  "voiceInput.stop": "توقف ضبط",
   "workflowAsToolPage.description": "هر workflow منتشرشده را به ابزاری قابل استفاده مجدد تبدیل کنید. از آن در چندین برنامه استفاده کنید تا ساختار ماژولار بماند و از تکرار جلوگیری شود.",
   "you": "تو"
 }

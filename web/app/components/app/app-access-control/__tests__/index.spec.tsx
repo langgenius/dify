@@ -14,9 +14,10 @@ let mockWebappAuth = {
   allow_email_code_login: false,
 }
 
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: { webapp_auth: mockWebappAuth },
-})
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: { webapp_auth: mockWebappAuth },
+  })
 
 const mockMutateAsync = vi.fn()
 const mockUseUpdateAccessMode = vi.fn(() => ({
@@ -28,7 +29,8 @@ const mockUseSearchForWhiteListCandidates = vi.fn()
 
 vi.mock('@/service/access-control', () => ({
   useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
-  useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
+  useSearchForWhiteListCandidates: (...args: unknown[]) =>
+    mockUseSearchForWhiteListCandidates(...args),
   useUpdateAccessMode: () => mockUseUpdateAccessMode(),
 }))
 
@@ -73,13 +75,7 @@ describe('AccessControl', () => {
       access_mode: AccessMode.PUBLIC,
     } as App
 
-    render(
-      <AccessControl
-        app={app}
-        onClose={onClose}
-        onConfirm={onConfirm}
-      />,
-    )
+    render(<AccessControl app={app} onClose={onClose} onConfirm={onConfirm} />)
 
     await waitFor(() => {
       expect(useAccessControlStore.getState().appId).toBe(app.id)

@@ -26,9 +26,8 @@ vi.mock('@/config', () => ({
 }))
 
 // Import real functions (not mocked)
-const { convertToInputFieldFormData, convertFormDataToINputField } = await import(
-  '@/app/components/rag-pipeline/components/panel/input-field/editor/utils',
-)
+const { convertToInputFieldFormData, convertFormDataToINputField } =
+  await import('@/app/components/rag-pipeline/components/panel/input-field/editor/utils')
 
 describe('Input Field Editor Data Flow', () => {
   describe('convertToInputFieldFormData', () => {

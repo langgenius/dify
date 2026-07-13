@@ -288,7 +288,6 @@
   "menus.explore": "สํารวจ",
   "menus.exploreMarketplace": "สํารวจ Marketplace",
   "menus.plugins": "การผสานรวม",
-  "menus.roster": "รายชื่อตัวแทน",
   "menus.status": "Beta",
   "menus.tools": "เครื่อง มือ",
   "model.capabilities": "ความสามารถหลายรูปแบบ",
@@ -444,6 +443,7 @@
   "operation.download": "ดาวน์โหลด",
   "operation.downloadFailed": "ดาวน์โหลดล้มเหลว กรุณาลองอีกครั้งในภายหลัง.",
   "operation.downloadSuccess": "ดาวน์โหลดเสร็จสิ้นแล้ว.",
+  "operation.downloading": "กำลังดาวน์โหลด...",
   "operation.duplicate": "สำเนา",
   "operation.edit": "แก้ไข",
   "operation.exporting": "กำลังส่งออก",
@@ -596,6 +596,8 @@
   "voiceInput.notAllow": "ไม่ได้รับอนุญาตไมโครโฟน",
   "voiceInput.speaking": "พูดเดี๋ยวนี้...",
   "voiceInput.start": "ป้อนข้อมูลด้วยเสียง",
+  "voiceInput.starting": "กำลังเริ่มไมโครโฟน...",
+  "voiceInput.stop": "หยุดการบันทึก",
   "workflowAsToolPage.description": "เปลี่ยน workflow ที่เผยแพร่แล้วให้เป็นเครื่องมือที่ใช้ซ้ำได้ ใช้ได้ในหลายแอปเพื่อให้การสร้างงานเป็นโมดูลและหลีกเลี่ยงการทำซ้ำ",
   "you": "คุณ"
 }
