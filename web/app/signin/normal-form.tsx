@@ -11,6 +11,8 @@ import { LicenseStatus } from '@/features/system-features/constants'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { basePath } from '@/utils/var'
 import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
@@ -89,8 +91,7 @@ function NormalForm() {
       return
     }
 
-    const redirectUrl = resolvePostLoginRedirect(searchParams)
-    router.replace(redirectUrl || '/')
+    replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
   }, [isInviteLink, isLoggedIn, router, searchParams])
 
   useEffect(() => {
