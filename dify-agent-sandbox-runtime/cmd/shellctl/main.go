@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/langgenius/dify/shellctl-go/internal/server"
+	"github.com/langgenius/dify/dify-agent-sandbox-runtime/internal/server"
 )
 
 func main() {

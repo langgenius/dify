@@ -1,4 +1,4 @@
-module github.com/langgenius/dify/shellctl-go
+module github.com/langgenius/dify/dify-agent-sandbox-runtime
 
 go 1.26
 

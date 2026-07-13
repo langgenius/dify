@@ -78,15 +78,15 @@ jobs:
           - service_name: "build-agent-local-sandbox-amd64"
             image_name_env: "DIFY_AGENT_LOCAL_SANDBOX_IMAGE_NAME"
             artifact_context: "local-sandbox"
-            build_context: "{{defaultContext}}:dify-agent"
-            file: "docker/local-sandbox/Dockerfile"
+            build_context: "{{defaultContext}}:dify-agent-sandbox-runtime"
+            file: "docker/Dockerfile"
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
           - service_name: "build-agent-local-sandbox-arm64"
             image_name_env: "DIFY_AGENT_LOCAL_SANDBOX_IMAGE_NAME"
             artifact_context: "local-sandbox"
-            build_context: "{{defaultContext}}:dify-agent"
-            file: "docker/local-sandbox/Dockerfile"
+            build_context: "{{defaultContext}}:dify-agent-sandbox-runtime"
+            file: "docker/Dockerfile"
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
 
@@ -120,6 +120,7 @@ jobs:
           file: ${{ matrix.file }}
           platforms: ${{ matrix.platform }}
           build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+          build-contexts: ${{ matrix.build_contexts }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env[matrix.image_name_env] }},push-by-digest=true,name-canonical=true,push=true
 
@@ -155,8 +156,8 @@ jobs:
             build_context: "{{defaultContext}}"
             file: "dify-agent/Dockerfile"
           - service_name: "validate-agent-local-sandbox-amd64"
-            build_context: "{{defaultContext}}:dify-agent"
-            file: "docker/local-sandbox/Dockerfile"
+            build_context: "{{defaultContext}}:dify-agent-sandbox-runtime"
+            file: "docker/Dockerfile"
     steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
@@ -167,6 +168,7 @@ jobs:
           push: false
           context: ${{ matrix.build_context }}
           file: ${{ matrix.file }}
+          build-contexts: ${{ matrix.build_contexts }}
           platforms: linux/amd64
 
   create-manifest:

@@ -23,7 +23,6 @@ import (
 )
 
 var (
-	pythonURL = envOrDefault("SHELLCTL_PYTHON_URL", "http://localhost:15004")
 	goURL     = envOrDefault("SHELLCTL_GO_URL", "http://localhost:15005")
 	authToken = envOrDefault("SHELLCTL_TEST_TOKEN", "test-token-123")
 
@@ -38,7 +37,6 @@ type target struct {
 
 func targets() []target {
 	return []target{
-		{name: "python", baseURL: pythonURL},
 		{name: "go", baseURL: goURL},
 	}
 }
@@ -51,8 +49,7 @@ func TestMain(m *testing.M) {
 			os.Exit(1)
 		}
 	}
-	// Warmup job: the Python server's first job can be very slow (tmux server
-	// bootstrap, lazy imports). Send a throwaway job to prime it before real tests.
+
 	for _, tgt := range targets() {
 		warmupJob(tgt)
 	}
