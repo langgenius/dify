@@ -152,7 +152,9 @@ function DeploymentAccessControlDialogBody({
             </p>
             {publicAccessDisabled && (
               <Infotip
-                aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], { ns: 'app' })}
+                aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
+                  ns: 'app',
+                })}
                 className="size-3.5 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
               >
                 {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], { ns: 'app' })}

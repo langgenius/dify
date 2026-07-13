@@ -125,9 +125,13 @@ describe('AccessControl', () => {
         />,
       )
 
-      const publicOption = screen.getByText('app.accessControlDialog.accessItems.anyone').closest('div[aria-disabled]')
+      const publicOption = screen
+        .getByText('app.accessControlDialog.accessItems.anyone')
+        .closest('div[aria-disabled]')
       expect(publicOption).toHaveAttribute('aria-disabled', 'false')
-      expect(screen.queryByLabelText('app.accessControlDialog.webAppPublicAccessDisabledTip')).not.toBeInTheDocument()
+      expect(
+        screen.queryByLabelText('app.accessControlDialog.webAppPublicAccessDisabledTip'),
+      ).not.toBeInTheDocument()
     })
 
     it('should render the public option disabled with a tooltip when public access is disabled', () => {
@@ -146,9 +150,13 @@ describe('AccessControl', () => {
         />,
       )
 
-      const publicOption = screen.getByText('app.accessControlDialog.accessItems.anyone').closest('div[aria-disabled]')
+      const publicOption = screen
+        .getByText('app.accessControlDialog.accessItems.anyone')
+        .closest('div[aria-disabled]')
       expect(publicOption).toHaveAttribute('aria-disabled', 'true')
-      expect(screen.getByLabelText('app.accessControlDialog.webAppPublicAccessDisabledTip')).toBeInTheDocument()
+      expect(
+        screen.getByLabelText('app.accessControlDialog.webAppPublicAccessDisabledTip'),
+      ).toBeInTheDocument()
     })
   })
 })

@@ -117,7 +117,9 @@ export default function AccessControl(props: AccessControlProps) {
               </p>
               {publicAccessDisabled && (
                 <Infotip
-                  aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], { ns: 'app' })}
+                  aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
+                    ns: 'app',
+                  })}
                   className="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
                 >
                   {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], { ns: 'app' })}

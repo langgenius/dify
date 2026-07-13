@@ -11,9 +11,10 @@ vi.mock('@/service/access-control/use-access-subjects', () => ({
   useSearchAccessSubjects: (...args: unknown[]) => mockUseSearchAccessSubjects(...args),
 }))
 
-const render = (ui: ReactElement, allowPublicAccess = true) => renderWithSystemFeatures(ui, {
-  systemFeatures: { webapp_auth: { allow_public_access: allowPublicAccess } },
-})
+const render = (ui: ReactElement, allowPublicAccess = true) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: { webapp_auth: { allow_public_access: allowPublicAccess } },
+  })
 
 describe('DeploymentAccessControlDialog', () => {
   beforeEach(() => {
@@ -83,7 +84,9 @@ describe('DeploymentAccessControlDialog', () => {
         true,
       )
 
-      const publicOption = screen.getByRole('radio', { name: 'app.accessControlDialog.accessItems.anyone' })
+      const publicOption = screen.getByRole('radio', {
+        name: 'app.accessControlDialog.accessItems.anyone',
+      })
       expect(publicOption).not.toHaveAttribute('data-disabled')
 
       fireEvent.click(publicOption)
@@ -106,9 +109,15 @@ describe('DeploymentAccessControlDialog', () => {
         false,
       )
 
-      const publicOption = screen.getByRole('radio', { name: 'app.accessControlDialog.accessItems.anyone' })
+      const publicOption = screen.getByRole('radio', {
+        name: 'app.accessControlDialog.accessItems.anyone',
+      })
       expect(publicOption).toHaveAttribute('data-disabled')
-      expect(screen.getByRole('button', { name: 'app.accessControlDialog.webAppPublicAccessDisabledTip' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'app.accessControlDialog.webAppPublicAccessDisabledTip',
+        }),
+      ).toBeInTheDocument()
 
       fireEvent.click(publicOption)
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
