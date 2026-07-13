@@ -13,7 +13,8 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go build -o /bin/shellctl ./cmd/shellctl && \
     CGO_ENABLED=0 go build -o /bin/shellctl-sanitize-pty ./cmd/sanitize-pty && \
-    CGO_ENABLED=0 go build -o /bin/shellctl-runner-exit ./cmd/runner-exit
+    CGO_ENABLED=0 go build -o /bin/shellctl-runner-exit ./cmd/runner-exit && \
+    CGO_ENABLED=0 go build -o /bin/dify-agent ./cmd/dify-agent-cli
 
 # ── Runtime stage ────────────────────────────────────────────────────────────
 FROM python:3.12-slim-bookworm AS production
@@ -60,10 +61,11 @@ RUN apt-get update \
 
 RUN python -m pip install --no-cache-dir "uv==${UV_VERSION}"
 
-# Go shellctl binaries
+# Go binaries
 COPY --from=go-builder /bin/shellctl /usr/local/bin/shellctl
 COPY --from=go-builder /bin/shellctl-sanitize-pty /usr/local/bin/shellctl-sanitize-pty
 COPY --from=go-builder /bin/shellctl-runner-exit /usr/local/bin/shellctl-runner-exit
+COPY --from=go-builder /bin/dify-agent /usr/local/bin/dify-agent
 
 RUN useradd --create-home --shell /bin/sh dify \
     && mkdir -p /mnt/drive \
