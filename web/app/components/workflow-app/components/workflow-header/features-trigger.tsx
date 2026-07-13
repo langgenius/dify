@@ -174,6 +174,8 @@ const FeaturesTrigger = () => {
         })
         if (res) {
           toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+          if (res.warning)
+            toast.warning(res.warning)
           updatePublishedWorkflow(appID!)
           updateAppDetail()
           invalidateAppTriggers(appID!)

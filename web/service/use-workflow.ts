@@ -128,7 +128,7 @@ export const usePublishWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'publish'],
     mutationFn: (params: PublishWorkflowParams) =>
-      post<CommonResponse & { created_at: number }>(params.url, {
+      post<CommonResponse & { created_at: number, warning?: string | null }>(params.url, {
         body: {
           marked_name: params.title,
           marked_comment: params.releaseNotes,
