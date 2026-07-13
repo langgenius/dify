@@ -478,6 +478,29 @@ describe('InviteModal', () => {
     await waitFor(() => expect(inviteMember).toHaveBeenCalled())
   })
 
+  it('counts a manually typed recipient list before it is committed', async () => {
+    const user = userEvent.setup()
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: 9, limit: 10 } },
+        refreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
+    renderModal()
+
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await user.type(input, 'one@example.com,two@example.com')
+
+    expect(
+      screen.getByRole('button', { name: /members\.sendInviteCount.*"count":2/i }),
+    ).toBeEnabled()
+    expect(screen.getByText(/members\.recipientCountExceedsSeats/i)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('list', { name: /members\.emailRecipients/i }),
+    ).not.toBeInTheDocument()
+    expect(input).toHaveValue('one@example.com,two@example.com')
+  })
+
   it.each([
     ['limit_exceeded', /members\.inviteLimitExceeded/i, 'emails', 'textbox'],
     ['invalid-role', /members\.invalidRole/i, 'role', 'combobox'],

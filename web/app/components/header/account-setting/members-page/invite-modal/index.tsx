@@ -61,7 +61,8 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   const currentSize = licenseLimit.workspace_members.size ?? 0
   const memberLimit = licenseLimit.workspace_members.limit
   const remainingSeats = memberLimit > 0 ? Math.max(memberLimit - currentSize, 0) : null
-  const validRecipientCount = recipients.filter(({ isValid }) => isValid).length
+  const effectiveRecipients = mergeEmailRecipients(recipients, draft)
+  const validRecipientCount = effectiveRecipients.filter(({ isValid }) => isValid).length
   const exceedsRemainingSeats = remainingSeats !== null && validRecipientCount > remainingSeats
   const formErrors = {
     ...(emailServerError ? { emails: emailServerError } : {}),
@@ -87,12 +88,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
     event.preventDefault()
     if (isPending) return
 
-    const submittedDraft = new FormData(event.currentTarget).get('emails')
-    const draftValue = typeof submittedDraft === 'string' ? submittedDraft : draft
-
-    const nextRecipients = mergeEmailRecipients(recipients, draftValue)
-
-    setRecipients(nextRecipients)
+    setRecipients(effectiveRecipients)
     setDraft('')
 
     if (!role) return
@@ -101,7 +97,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
     try {
       const response = await mutateAsync({
         body: {
-          emails: nextRecipients.map(({ value }) => value),
+          emails: effectiveRecipients.map(({ value }) => value),
           role: role.id,
           language: locale,
         },
