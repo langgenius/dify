@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "एक .zip या .skill फ़ाइल अपलोड करें।",
   "agentDetail.configure.skills.upload.success": "कौशल अपलोड हो गया।",
   "agentDetail.configure.skills.upload.title": "कौशल अपलोड करें",
+  "agentDetail.configure.skills.upload.warning.files": "यदि आपको केवल Markdown फ़ाइलों का उपयोग करना है, तो उन्हें फ़ाइलें में अपलोड करें और अपने प्रॉम्प्ट में उनका संदर्भ दें।",
+  "agentDetail.configure.skills.upload.warning.specification": "अपलोड किए गए कौशल को <specificationLink>Agent Skills विनिर्देश</specificationLink> का पालन करना चाहिए।",
   "agentDetail.configure.title": "कॉन्फ़िगर करें",
   "agentDetail.configure.tools.add": "उपकरण जोड़ें",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "डेवलपर्स के लिए",

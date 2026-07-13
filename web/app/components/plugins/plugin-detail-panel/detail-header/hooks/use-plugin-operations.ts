@@ -106,8 +106,6 @@ export const usePluginOperations = ({
       meta,
       author,
       name,
-      fetchReleases,
-      checkForUpdates,
       setShowUpdatePluginModal,
       detail,
       handlePluginUpdated,

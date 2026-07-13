@@ -241,7 +241,7 @@ describe('run() catch routing', () => {
   it('wraps a non-Error throw via String() coercion into unknown form', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
-        // eslint-disable-next-line no-throw-literal
+        // oxlint-disable-next-line no-throw-literal
         throw 'plain string'
       }
     }

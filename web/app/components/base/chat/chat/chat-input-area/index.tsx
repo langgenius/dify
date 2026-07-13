@@ -309,8 +309,10 @@ const ChatInputArea = ({
           disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none',
         )}
       >
-        <div className="relative max-h-[158px] overflow-x-hidden overflow-y-auto px-[9px] pt-[9px]">
+        <div className="px-[9px] pt-[9px]">
           <FileListInChatInput fileConfig={visionConfig!} />
+        </div>
+        <div className="relative max-h-[158px] overflow-x-hidden overflow-y-auto px-[9px]">
           <div ref={wrapperRef} className="flex items-center justify-between">
             <div className="relative flex w-full grow items-center">
               <div
@@ -338,7 +340,7 @@ const ChatInputArea = ({
                       )
                 }
                 // Existing chat behavior focuses the composer as soon as it opens.
-                // eslint-disable-next-line jsx-a11y/no-autofocus
+                // oxlint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus={autoFocus}
                 minRows={1}
                 value={query}
@@ -356,7 +358,9 @@ const ChatInputArea = ({
             </div>
             {!isMultipleLine && operation}
           </div>
-          {showVoiceInput && speechToTextTarget && (
+        </div>
+        {showVoiceInput && speechToTextTarget && (
+          <div className="px-[9px]">
             <VoiceInput
               ref={voiceInputRef}
               target={speechToTextTarget}
@@ -366,8 +370,8 @@ const ChatInputArea = ({
               onError={handleVoiceInputError}
               onStartError={handleVoiceInputStartError}
             />
-          )}
-        </div>
+          </div>
+        )}
         {isMultipleLine && <div className="px-[9px]">{operation}</div>}
       </div>
       {shouldShowFooterNotice && (

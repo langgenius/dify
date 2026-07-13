@@ -31,7 +31,7 @@ The codebase is split into:
 ## Language Style
 
 - **Python**: Keep type hints on functions and attributes, and implement relevant special methods (e.g., `__repr__`, `__str__`). Prefer `TypedDict` over `dict` or `Mapping` for type safety and better code documentation.
-- **TypeScript**: Use the strict config, format with `vp fmt`, run ESLint for code-quality checks and fixes, run `pnpm type-check`, and avoid `any` types.
+- **TypeScript**: Use the strict config, run `pnpm check` for formatting, Oxlint, ESLint non-code checks, and type checking, and avoid `any` types.
 
 ## General Practices
 

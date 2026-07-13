@@ -38,7 +38,7 @@ const useSingleRunFormParams = ({
     const vars: ValueSelector[] = []
     if (caseItem.conditions && caseItem.conditions.length) {
       caseItem.conditions.forEach((condition) => {
-        // eslint-disable-next-line ts/no-use-before-define
+        // oxlint-disable-next-line typescript/no-use-before-define
         const conditionVars = getVarSelectorsFromCondition(condition)
         vars.push(...conditionVars)
       })
@@ -59,7 +59,7 @@ const useSingleRunFormParams = ({
     const vars: InputVar[] = []
     if (caseItem.conditions && caseItem.conditions.length) {
       caseItem.conditions.forEach((condition) => {
-        // eslint-disable-next-line ts/no-use-before-define
+        // oxlint-disable-next-line typescript/no-use-before-define
         const conditionVars = getInputVarsFromConditionValue(condition)
         vars.push(...conditionVars)
       })
@@ -114,7 +114,7 @@ const useSingleRunFormParams = ({
     const vars: ValueSelector[] = []
     if (caseItem.conditions && caseItem.conditions.length) {
       caseItem.conditions.forEach((condition) => {
-        // eslint-disable-next-line ts/no-use-before-define
+        // oxlint-disable-next-line typescript/no-use-before-define
         const conditionVars = getVarFromCondition(condition)
         vars.push(...conditionVars)
       })

@@ -825,7 +825,7 @@ function AgentPreviewChatSession({
         customPlaceholder={inputPlaceholder}
         disabled={isResponding}
         // Build chat opts out so it does not steal focus from the configure editor.
-        // eslint-disable-next-line jsx-a11y/no-autofocus
+        // oxlint-disable-next-line jsx-a11y/no-autofocus
         autoFocus={inputAutoFocus}
         sendButtonLoading={sendButtonLoading}
         showFileUpload={false}

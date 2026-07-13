@@ -1,7 +1,7 @@
-// eslint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports
 import type { NextRequest } from 'next/server'
 import { Buffer } from 'node:buffer'
-// eslint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports
 import { NextResponse } from 'next/server'
 import { env } from '@/env'
 

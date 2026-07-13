@@ -2360,12 +2360,12 @@ export const zEventParameterType = z.enum([
  */
 export const zPriceConfigResponse = z.object({
   currency: z.string(),
-  input: z.string().regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/),
+  input: z.string().regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/),
   output: z
     .string()
-    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
     .nullish(),
-  unit: z.string().regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/),
+  unit: z.string().regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/),
 })
 
 /**
@@ -2870,12 +2870,12 @@ export const zToolProviderEntity = z.object({
  */
 export const zPriceConfig = z.object({
   currency: z.string(),
-  input: z.string().regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/),
+  input: z.string().regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/),
   output: z
     .string()
-    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
     .nullish(),
-  unit: z.string().regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/),
+  unit: z.string().regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/),
 })
 
 /**
@@ -3244,7 +3244,7 @@ export const zPluginDeclaration = z.object({
   agent_strategy: zAgentStrategyProviderEntity.nullish(),
   author: z
     .string()
-    .regex(/^[\w-]{1,64}$/)
+    .regex(/^[a-zA-Z0-9_-]{1,64}$/)
     .nullable(),
   category: zPluginCategory,
   created_at: z.iso.datetime(),

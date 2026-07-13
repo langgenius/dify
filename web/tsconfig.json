@@ -13,6 +13,8 @@
   },
   "include": [
     "next-env.d.ts",
+    ".storybook/**/*.ts",
+    ".storybook/**/*.tsx",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",

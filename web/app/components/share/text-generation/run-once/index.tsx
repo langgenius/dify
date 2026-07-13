@@ -242,7 +242,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                             }}
                             fileConfig={{
                               ...item.config,
-                              // eslint-disable-next-line ts/no-explicit-any
+                              // oxlint-disable-next-line typescript/no-explicit-any
                               fileUploadConfig: (visionConfig as any).fileUploadConfig,
                             }}
                           />

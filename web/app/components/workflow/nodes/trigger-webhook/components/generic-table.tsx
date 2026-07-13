@@ -325,7 +325,7 @@ const GenericTable: FC<GenericTableProps> = ({
                       className="p-1"
                       aria-label="Delete row"
                     >
-                      {/* eslint-disable-next-line hyoban/prefer-tailwind-icons */}
+                      {/* oxlint-disable-next-line hyoban/prefer-tailwind-icons */}
                       <RiDeleteBinLine className="size-3.5 text-text-destructive" />
                     </button>
                   </div>

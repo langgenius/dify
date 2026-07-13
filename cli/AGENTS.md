@@ -1,6 +1,6 @@
 # AGENTS.md — difyctl (TypeScript CLI)
 
-TypeScript port of difyctl. Stack: custom CLI framework (`src/framework/`), Node 22+, ESM, ky for HTTP, Vitest, Vite+ formatting, and ESLint via `@antfu/eslint-config`.
+TypeScript port of difyctl. Stack: custom CLI framework (`src/framework/`), Node 22+, ESM, ky for HTTP, Vitest, and Vite+ formatting and linting.
 
 > Architecture patterns, scaffolding recipe, printer chain, strategy pattern, testing conventions, anti-patterns: see **[`ARD.md`]**.
 
@@ -57,10 +57,8 @@ pnpm install                                   # one-time
 pnpm dev <command> [args...]                   # run CLI from source (no -- separator)
 pnpm test                                      # vitest
 pnpm test:coverage                             # with coverage
-pnpm type-check                                # tsc, no emit
-pnpm lint                                      # eslint
-pnpm lint:fix                                  # eslint semantic fixes
-vp fmt                                         # format with Oxfmt
+pnpm -w check                                  # repository-wide static check
+pnpm -w check:fix                              # repository-wide static fixes
 pnpm build                                     # production bundle (vp pack)
 pnpm tree:gen                                  # regenerate src/commands/tree.ts (registry)
 pnpm tree:check                                # verify tree.ts is up-to-date with the fs
@@ -72,7 +70,7 @@ Release binaries (5 platform targets, Bun-compiled) are produced by `pnpm build:
 
 - Behavior tests run against real Hono mock at `test/fixtures/dify-mock/`. No `nock`, `msw`, or `fetchMock` — every test exercises real HTTP.
 - Test files co-located: `foo.test.ts` next to `foo.ts`.
-- Type-check, lint, full test suite must be green before any commit.
+- The repository-wide static check and full test suite must be green before any commit.
 
 ## Spec docs (`docs/specs/`)
 
@@ -91,7 +89,7 @@ Behavior contracts. Living tree — amended in place, no version subfolders.
 Do not modify in passing:
 
 - `test/fixtures/dify-mock/` public surface (endpoints, JSON shapes, status codes, scenario names) — that's the dify-api contract.
-- `bin/`, `scripts/`, `Makefile`, `eslint.config.js`, `tsconfig*.json`, `package.json` (unless the change is required by the task).
+- `bin/`, `scripts/`, `Makefile`, `lint.config.ts`, `tsconfig*.json`, `package.json` (unless the change is required by the task).
 
 ## Commits
 

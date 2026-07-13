@@ -603,7 +603,7 @@ const FuzzyHighlight = ({ text, query }: { text: string; query: string }) => {
     <React.Fragment>
       {parts.map((part, index) =>
         part.toLowerCase() === query.trim().toLowerCase() ? (
-          // eslint-disable-next-line react/no-array-index-key -- Repeated text fragments have no stable identity and never preserve state.
+          // oxlint-disable-next-line react/no-array-index-key -- Repeated text fragments have no stable identity and never preserve state.
           <mark key={`${part}-${index}`} className="bg-transparent text-text-accent">
             {part}
           </mark>
