@@ -2,7 +2,7 @@
 name = "dify-trace-mlflow"
 version = "0.0.1"
 dependencies = [
-    "mlflow-skinny>=3.11.1,<4.0.0",
+    "mlflow-skinny>=3.14.0,<4.0.0",
 ]
 description = "Dify ops tracing provider (MLflow / Databricks)."
 
