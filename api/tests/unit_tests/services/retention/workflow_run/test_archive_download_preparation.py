@@ -5,6 +5,7 @@ import json
 import zipfile
 from types import SimpleNamespace
 from typing import cast
+from unittest.mock import MagicMock
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -68,32 +69,6 @@ class FakeTaskCache:
     def save(self, task: WorkflowRunArchiveDownloadTask) -> None:
         self.task = task
         self.saved_tasks.append(task)
-
-
-class FakeSessionContext:
-    bundles: list[WorkflowRunArchiveBundle]
-
-    def __init__(self, bundles: list[WorkflowRunArchiveBundle]) -> None:
-        self.bundles = bundles
-
-    def __enter__(self) -> "FakeSessionContext":
-        return self
-
-    def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
-        return None
-
-    def scalars(self, stmt: object) -> list[WorkflowRunArchiveBundle]:
-        return self.bundles
-
-
-class FakeSessionFactory:
-    bundles: list[WorkflowRunArchiveBundle]
-
-    def __init__(self, bundles: list[WorkflowRunArchiveBundle]) -> None:
-        self.bundles = bundles
-
-    def __call__(self) -> FakeSessionContext:
-        return FakeSessionContext(self.bundles)
 
 
 def _object_prefix(bundle_id: str = BUNDLE_ID) -> str:
@@ -162,7 +137,6 @@ def _manifest_bytes(table_payloads: dict[str, bytes], *, bundle_id: str = BUNDLE
 
 def _preparer(
     *,
-    task: WorkflowRunArchiveDownloadTask,
     storage: FakeArchiveStorage | None = None,
     archive_storage: FakeArchiveStorage | None = None,
     download_storage: FakeArchiveStorage | None = None,
@@ -173,11 +147,15 @@ def _preparer(
     target_storage = download_storage or storage
     assert source_storage is not None
     assert target_storage is not None
+    session = MagicMock()
+    session.scalars.return_value = bundles or [_bundle()]
+    session_factory = MagicMock()
+    session_factory.return_value.__enter__.return_value = session
     return WorkflowRunArchiveDownloadPreparer(
         archive_storage=cast(ArchiveStorage, source_storage),
         download_storage=cast(ArchiveStorage, target_storage),
         cache=cast(WorkflowRunArchiveDownloadTaskCache, cache),
-        session_factory=cast(sessionmaker[Session], FakeSessionFactory(bundles or [_bundle()])),
+        session_factory=cast(sessionmaker[Session], session_factory),
     )
 
 
@@ -221,7 +199,6 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready() 
     download_storage = FakeArchiveStorage({})
     cache = FakeTaskCache(task)
     preparer = _preparer(
-        task=task,
         archive_storage=archive_storage,
         download_storage=download_storage,
         cache=cache,
@@ -263,7 +240,7 @@ def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch
         }
     )
     cache = FakeTaskCache(task)
-    preparer = _preparer(task=task, storage=storage, cache=cache)
+    preparer = _preparer(storage=storage, cache=cache)
 
     result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
 

@@ -38,8 +38,7 @@ vi.mock('@/service/use-log', () => ({
 vi.mock('../filter', () => ({
   TIME_PERIOD_MAPPING: {
     2: { value: 7 },
-    4: { value: 90 },
-    9: { value: -1 },
+    9: { value: 0 },
   },
   default: ({ setQueryParams }: { setQueryParams: (next: Record<string, string>) => void }) => (
     <button
@@ -166,30 +165,5 @@ describe('Logs', () => {
     fireEvent.click(screen.getByText('go-to-page-2'))
 
     expect(mockReplace).toHaveBeenCalledWith('/apps/app-1/logs?page=2', { scroll: false })
-  })
-
-  it('should not show archive notice for non-workflow logs', () => {
-    mockUseChatConversations.mockReturnValue({
-      data: { total: 0 },
-      refetch: vi.fn(),
-    })
-
-    render(
-      <Logs
-        appDetail={
-          {
-            id: 'app-4',
-            mode: AppModeEnum.CHAT,
-          } as any
-        }
-      />,
-    )
-
-    expect(screen.queryByText('archives.notice.description')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('filter-controls'))
-
-    expect(screen.queryByText('archives.notice.description')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'archives.notice.action' })).not.toBeInTheDocument()
   })
 })

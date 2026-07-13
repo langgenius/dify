@@ -1,4 +1,3 @@
-import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { defaultPlan } from '@/app/components/billing/config'
@@ -8,18 +7,6 @@ import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ArchivedLogsNotice } from '../archived-logs-notice'
 
-const mockAppContextState = vi.hoisted(() => ({
-  current: null as AppContextStateMockState | null,
-}))
-
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock({
-    'appLog.archives.notice.description': 'archives.notice.description',
-    'appLog.archives.notice.action': 'archives.notice.action',
-  })
-})
-
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
@@ -28,16 +15,8 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
+vi.mock('@/context/workspace-state', () => ({ isCurrentWorkspaceManagerAtom: {} }))
+vi.mock('jotai', () => ({ useAtomValue: () => true }))
 
 vi.mock('@/context/provider-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/provider-context')>()
@@ -75,9 +54,6 @@ describe('ArchivedLogsNotice', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContextState.current = {
-      isCurrentWorkspaceManager: true,
-    }
     mockProviderPlan(Plan.professional)
     mockUseModalContextSelector.mockImplementation((selector) =>
       selector({
@@ -89,8 +65,8 @@ describe('ArchivedLogsNotice', () => {
   it('should show notice for paid workspace managers', () => {
     render(<ArchivedLogsNotice />)
 
-    expect(screen.getByText('archives.notice.description')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'archives.notice.action' }))
+    expect(screen.getByText('appLog.archives.notice.description')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'appLog.archives.notice.action' }))
     expect(setShowAccountSettingModal).toHaveBeenCalledWith({
       payload: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES,
     })
@@ -101,6 +77,6 @@ describe('ArchivedLogsNotice', () => {
 
     render(<ArchivedLogsNotice />)
 
-    expect(screen.queryByText('archives.notice.description')).not.toBeInTheDocument()
+    expect(screen.queryByText('appLog.archives.notice.description')).not.toBeInTheDocument()
   })
 })

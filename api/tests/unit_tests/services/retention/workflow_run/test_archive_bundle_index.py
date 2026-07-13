@@ -1,6 +1,5 @@
 import datetime
 import json
-from collections.abc import Iterator
 from typing import cast
 from unittest.mock import MagicMock
 
@@ -37,34 +36,6 @@ class FakeArchiveStorage:
 
     def get_object(self, key: str) -> bytes:
         return self.objects[key]
-
-
-class FakeSessionContext:
-    session: MagicMock
-
-    def __init__(self, session: MagicMock) -> None:
-        self.session = session
-
-    def __enter__(self) -> MagicMock:
-        return self.session
-
-    def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
-        return None
-
-
-class FakeSessionFactory:
-    session: MagicMock
-
-    def __init__(self, session: MagicMock) -> None:
-        self.session = session
-
-    def __call__(self) -> FakeSessionContext:
-        return FakeSessionContext(self.session)
-
-
-class FailingSessionFactory:
-    def __call__(self) -> Iterator[MagicMock]:
-        raise AssertionError("dry-run should not open a database session")
 
 
 def _manifest(*, object_prefix: str = OBJECT_PREFIX, month: int = 3) -> ArchiveBundleManifest:
@@ -155,9 +126,11 @@ def test_backfill_lists_tenant_month_prefix_and_upserts_bundle_index() -> None:
     storage = FakeArchiveStorage({MANIFEST_KEY: _manifest_bytes()})
     session = MagicMock()
     session.scalar.return_value = None
+    session_factory = MagicMock()
+    session_factory.return_value.__enter__.return_value = session
     backfill = WorkflowRunArchiveBundleIndexBackfill(
         storage=cast(MagicMock, storage),
-        session_factory=cast(MagicMock, FakeSessionFactory(session)),
+        session_factory=cast(MagicMock, session_factory),
     )
 
     summary = backfill.run(tenant_ids=[TENANT_ID], year=2025, month=3)
@@ -183,9 +156,10 @@ def test_backfill_dry_run_filters_by_year_month_without_database_write() -> None
             ),
         }
     )
+    session_factory = MagicMock()
     backfill = WorkflowRunArchiveBundleIndexBackfill(
         storage=cast(MagicMock, storage),
-        session_factory=cast(MagicMock, FailingSessionFactory()),
+        session_factory=cast(MagicMock, session_factory),
     )
 
     summary = backfill.run(tenant_prefixes=["1"], year=2025, month=3, dry_run=True)
@@ -195,3 +169,4 @@ def test_backfill_dry_run_filters_by_year_month_without_database_write() -> None
     assert summary.bundles_processed == 1
     assert summary.bundles_upserted == 0
     assert summary.archive_bytes > 0
+    session_factory.assert_not_called()
