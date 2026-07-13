@@ -101,12 +101,12 @@ describe('applyToNewApp', () => {
 
   // Instruction-only-of-punctuation must still produce a usable, non-empty
   // app name so create-app doesn't fail validation.
-  it('should fall back to "Generated Workflow" when the instruction is empty', async () => {
-    await applyToNewApp({ mode: 'workflow', graph: makeGraph(), instruction: '   ' })
+  it('should reject an empty instruction before creating an app', async () => {
+    await expect(
+      applyToNewApp({ mode: 'workflow', graph: makeGraph(), instruction: '   ' }),
+    ).rejects.toThrow('Cannot create a generated app without an instruction.')
 
-    expect(mockCreateApp).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Generated Workflow' }),
-    )
+    expect(mockCreateApp).not.toHaveBeenCalled()
   })
 
   // When the planner picks a name + emoji, those win over the

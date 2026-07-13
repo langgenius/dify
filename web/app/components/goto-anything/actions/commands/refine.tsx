@@ -51,7 +51,7 @@ export const refineCommand: SlashCommandHandler = {
   aliases: ['improve'],
   // Fallback only — the palette localises the root row via the slashKeyMap in
   // command-selector.tsx (gotoAnything.actions.refineCategoryDesc).
-  description: 'Refine the current workflow or chatflow graph',
+  description: getI18n().t(($) => $['gotoAnything.actions.refineCategoryDesc'], { ns: 'app' }),
   mode: 'direct',
 
   // Only surface inside a Workflow / Advanced-Chat Studio — elsewhere there's

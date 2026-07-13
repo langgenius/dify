@@ -3,7 +3,7 @@ from collections.abc import Generator, Sequence
 from typing import Any, Literal
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, ConfigDict, Field, RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -26,9 +26,10 @@ from core.helper.code_executor.python3.python3_code_provider import Python3CodeP
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
 from core.workflow.generator.types import WorkflowGenerateErrorCode
+from fields.base import ResponseModel
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.errors.invoke import InvokeError
-from libs.helper import compact_generate_response
+from libs.helper import compact_generate_response, dump_response
 from libs.login import login_required
 from models import App
 from services.workflow_generator_service import WorkflowGeneratorService
@@ -60,6 +61,48 @@ class InstructionTemplatePayload(BaseModel):
 _MAX_INSTRUCTION_LENGTH = 10_000
 
 
+class WorkflowGraphPosition(BaseModel):
+    x: float
+    y: float
+
+
+class WorkflowGraphViewport(WorkflowGraphPosition):
+    zoom: float
+
+
+class WorkflowGraphNode(BaseModel):
+    """React Flow node shape accepted and returned by the generator.
+
+    Node-specific configuration lives under ``data`` and wrapper metadata
+    differs for container children, so unknown wrapper fields must survive
+    request validation and response serialization.
+    """
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    id: str
+    type: str
+    position: WorkflowGraphPosition
+    data: dict[str, Any]
+
+
+class WorkflowGraphEdge(BaseModel):
+    """React Flow edge shape with extensible renderer metadata."""
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    id: str
+    source: str
+    target: str
+    type: str
+
+
+class WorkflowGraph(BaseModel):
+    nodes: list[WorkflowGraphNode]
+    edges: list[WorkflowGraphEdge]
+    viewport: WorkflowGraphViewport
+
+
 class WorkflowGeneratePayload(BaseModel):
     """Payload for the cmd+k `/create` and `/refine` workflow generator endpoint.
 
@@ -79,7 +122,7 @@ class WorkflowGeneratePayload(BaseModel):
         alias="model_config",
         description="Model configuration",
     )
-    current_graph: dict | None = Field(
+    current_graph: WorkflowGraph | None = Field(
         default=None,
         description="Existing draft graph to refine (cmd+k `/refine`); omit for create-from-scratch",
     )
@@ -98,6 +141,59 @@ class WorkflowInstructionSuggestionsPayload(BaseModel):
     count: int = Field(default=4, ge=1, le=6, description="Number of suggestions to return (1-6)")
 
 
+class WorkflowGenerateErrorResponse(ResponseModel):
+    code: WorkflowGenerateErrorCode
+    detail: str
+    node_id: str | None = None
+
+
+class WorkflowGenerateResponse(ResponseModel):
+    graph: WorkflowGraph
+    message: str = ""
+    app_name: str = ""
+    icon: str = ""
+    error: str = ""
+    errors: list[WorkflowGenerateErrorResponse] = Field(default_factory=list)
+    mode: Literal["workflow", "advanced-chat"] | None = None
+
+
+class WorkflowPlanNodeResponse(ResponseModel):
+    label: str
+    node_type: str
+    purpose: str = ""
+
+
+class WorkflowPlanStartInputResponse(ResponseModel):
+    variable: str
+    label: str = ""
+    type: str = ""
+
+
+class WorkflowGeneratePlanEventResponse(ResponseModel):
+    event: Literal["plan"] = "plan"
+    title: str = ""
+    description: str = ""
+    app_name: str = ""
+    icon: str = ""
+    mode: Literal["workflow", "advanced-chat"]
+    nodes: list[WorkflowPlanNodeResponse]
+    start_inputs: list[WorkflowPlanStartInputResponse] = Field(default_factory=list)
+
+
+class WorkflowGenerateResultEventResponse(WorkflowGenerateResponse):
+    event: Literal["result"] = "result"
+
+
+class WorkflowGenerateStreamEventResponse(
+    RootModel[WorkflowGeneratePlanEventResponse | WorkflowGenerateResultEventResponse]
+):
+    """Schema for each JSON object carried by an SSE ``data:`` frame."""
+
+
+class WorkflowInstructionSuggestionsResponse(ResponseModel):
+    suggestions: list[str]
+
+
 class GeneratorResponse(RootModel[Any]):
     root: Any
 
@@ -114,7 +210,16 @@ register_schema_models(
     WorkflowInstructionSuggestionsPayload,
     ModelConfig,
 )
-register_response_schema_models(console_ns, GeneratorResponse, SimpleDataResponse)
+register_response_schema_models(
+    console_ns,
+    GeneratorResponse,
+    SimpleDataResponse,
+    WorkflowGenerateResponse,
+    WorkflowGeneratePlanEventResponse,
+    WorkflowGenerateResultEventResponse,
+    WorkflowGenerateStreamEventResponse,
+    WorkflowInstructionSuggestionsResponse,
+)
 
 
 @console_ns.route("/rule-generate")
@@ -376,7 +481,11 @@ class WorkflowGenerateApi(Resource):
     @console_ns.doc("generate_workflow_graph")
     @console_ns.doc(description="Generate a Dify workflow graph from natural language")
     @console_ns.expect(console_ns.models[WorkflowGeneratePayload.__name__])
-    @console_ns.response(200, "Workflow graph generated successfully", console_ns.models[GeneratorResponse.__name__])
+    @console_ns.response(
+        200,
+        "Workflow graph generated successfully",
+        console_ns.models[WorkflowGenerateResponse.__name__],
+    )
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(402, "Provider quota exceeded")
     @setup_required
@@ -399,7 +508,9 @@ class WorkflowGenerateApi(Resource):
                 instruction=args.instruction,
                 model_config=args.model_config_data,
                 ideal_output=args.ideal_output,
-                current_graph=args.current_graph,
+                current_graph=args.current_graph.model_dump(by_alias=True, exclude_none=True)
+                if args.current_graph
+                else None,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -410,7 +521,7 @@ class WorkflowGenerateApi(Resource):
         except InvokeError as e:
             raise CompletionRequestError(e.description)
 
-        return result
+        return dump_response(WorkflowGenerateResponse, result)
 
 
 @console_ns.route("/workflow-generate/suggestions")
@@ -426,7 +537,11 @@ class WorkflowInstructionSuggestionsApi(Resource):
     @console_ns.doc("generate_workflow_instruction_suggestions")
     @console_ns.doc(description="Suggest example workflow-generator instructions for the tenant")
     @console_ns.expect(console_ns.models[WorkflowInstructionSuggestionsPayload.__name__])
-    @console_ns.response(200, "Suggestions generated successfully", console_ns.models[GeneratorResponse.__name__])
+    @console_ns.response(
+        200,
+        "Suggestions generated successfully",
+        console_ns.models[WorkflowInstructionSuggestionsResponse.__name__],
+    )
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
@@ -440,7 +555,7 @@ class WorkflowInstructionSuggestionsApi(Resource):
             language=args.language,
             count=args.count,
         )
-        return {"suggestions": suggestions}
+        return dump_response(WorkflowInstructionSuggestionsResponse, {"suggestions": suggestions})
 
 
 @console_ns.route("/workflow-generate/stream")
@@ -458,7 +573,11 @@ class WorkflowGenerateStreamApi(Resource):
     @console_ns.doc("generate_workflow_graph_stream")
     @console_ns.doc(description="Stream a Dify workflow graph (plan then result) via SSE")
     @console_ns.expect(console_ns.models[WorkflowGeneratePayload.__name__])
-    @console_ns.response(200, "Server-Sent Events stream of plan/result events")
+    @console_ns.response(
+        200,
+        "Server-Sent Events stream; each data frame matches this plan/result event schema",
+        console_ns.models[WorkflowGenerateStreamEventResponse.__name__],
+    )
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
@@ -481,10 +600,16 @@ class WorkflowGenerateStreamApi(Resource):
                     instruction=args.instruction,
                     model_config=args.model_config_data,
                     ideal_output=args.ideal_output,
-                    current_graph=args.current_graph,
+                    current_graph=(
+                        args.current_graph.model_dump(by_alias=True, exclude_none=True) if args.current_graph else None
+                    ),
                 ):
                     body = {"event": event_name, **payload}
-                    yield f"data: {json.dumps(body)}\n\n"
+                    if event_name == "plan":
+                        event = WorkflowGeneratePlanEventResponse.model_validate(body)
+                    else:
+                        event = WorkflowGenerateResultEventResponse.model_validate(body)
+                    yield f"data: {json.dumps(event.model_dump(mode='json'))}\n\n"
             except (ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError, InvokeError) as e:
                 # The model instance is resolved inside the service (lazily, on
                 # first iteration), so a provider / init error surfaces here.
@@ -498,6 +623,7 @@ class WorkflowGenerateStreamApi(Resource):
                     "error": detail,
                     "errors": [{"code": WorkflowGenerateErrorCode.MODEL_ERROR, "detail": detail}],
                 }
-                yield f"data: {json.dumps(error_body)}\n\n"
+                event = WorkflowGenerateResultEventResponse.model_validate(error_body)
+                yield f"data: {json.dumps(event.model_dump(mode='json'))}\n\n"
 
         return compact_generate_response(generate())
