@@ -137,7 +137,7 @@ jobs:
 
   ts-common-style:
     name: TS Common
-    runs-on: depot-ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     permissions:
       checks: write
       pull-requests: read
