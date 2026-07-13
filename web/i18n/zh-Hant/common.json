@@ -228,7 +228,7 @@
   "members.email": "郵箱",
   "members.emailInvalid": "郵箱格式無效",
   "members.emailNotSetup": "由於郵件伺服器未設置，無法發送邀請郵件。請將邀請後生成的邀請連結通知用戶。",
-  "members.emailPlaceholder": "輸入郵箱",
+  "members.emailPlaceholder": "輸入或貼上郵箱地址…",
   "members.emailRecipients": "郵箱地址",
   "members.emailRecipientsTip": "貼上郵箱列表，或按 Enter 逐個新增。",
   "members.emailRequired": "請至少新增一個郵箱地址。",
