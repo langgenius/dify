@@ -528,9 +528,6 @@ catalogs:
     react-i18next:
       specifier: 17.0.9
       version: 17.0.9
-    react-multi-email:
-      specifier: 1.0.25
-      version: 1.0.25
     react-papaparse:
       specifier: 4.4.0
       version: 4.4.0
@@ -1419,9 +1416,6 @@ importers:
       react-i18next:
         specifier: 'catalog:'
         version: 17.0.9(@typescript/typescript6@6.0.2)(i18next@26.3.6(@typescript/typescript6@6.0.2))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      react-multi-email:
-        specifier: 'catalog:'
-        version: 1.0.25(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react-papaparse:
         specifier: 'catalog:'
         version: 4.4.0
@@ -8467,12 +8461,6 @@ packages:
 
   react-is@17.0.2:
     resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
-
-  react-multi-email@1.0.25:
-    resolution: {integrity: sha512-Wmv28FvIk4nWgdpHzlIPonY4iSs7bPV35+fAiWYzSBhTo+vhXfglEhjY1WnjHQINW/Pibu2xlb/q1heVuytQHQ==}
-    peerDependencies:
-      react: ^18.2.0
-      react-dom: ^18.2.0
 
   react-papaparse@4.4.0:
     resolution: {integrity: sha512-xTEwHZYJ+1dh9mQDQjjwJXmWyX20DdZ52u+ddw75V+Xm5qsjXSvWmC7c8K82vRwMjKAOH2S9uFyGpHEyEztkUQ==}
@@ -17396,11 +17384,6 @@ snapshots:
 
   react-is@17.0.2: {}
 
-  react-multi-email@1.0.25(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
-    dependencies:
-      react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
-
   react-papaparse@4.4.0:
     dependencies:
       '@types/papaparse': 5.5.2
@@ -19403,7 +19386,6 @@ time:
   react-dom@19.2.7: '2026-06-01T18:01:02.438Z'
   react-easy-crop@6.2.2: '2026-07-08T08:37:49.604Z'
   react-i18next@17.0.9: '2026-07-09T13:42:03.224Z'
-  react-multi-email@1.0.25: '2024-07-18T04:31:06.176Z'
   react-papaparse@4.4.0: '2023-10-13T10:27:07.978Z'
   react-pdf-highlighter@8.0.0-rc.0: '2024-09-14T16:57:58.673Z'
   react-server-dom-webpack@19.2.7: '2026-06-01T18:01:09.215Z'

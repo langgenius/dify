@@ -22,7 +22,7 @@ import { useMembers } from '@/service/use-common'
 import { hasPermission } from '@/utils/permission'
 import EditWorkspaceModal from './edit-workspace-modal'
 import InviteButton from './invite-button'
-import InviteModal from './invite-modal'
+import { InviteModal } from './invite-modal'
 import InvitedModal from './invited-modal'
 import MemberDetailsModal from './member-details-modal'
 import MemberRow from './member-row'
@@ -158,7 +158,16 @@ const MembersPage = () => {
           {isMemberFull && <UpgradeBtn className="mr-2" loc="member-invite" />}
           <div className="shrink-0">
             {canManageMembers && (
-              <InviteButton disabled={isMemberFull} onClick={() => setInviteModalVisible(true)} />
+              <InviteModal
+                open={inviteModalVisible}
+                trigger={<InviteButton />}
+                isEmailSetup={systemFeatures.is_email_setup}
+                onOpenChange={setInviteModalVisible}
+                onSend={(invitationResults) => {
+                  setInvitedModalVisible(true)
+                  setInvitationResults(invitationResults)
+                }}
+              />
             )}
           </div>
         </div>
@@ -191,17 +200,6 @@ const MembersPage = () => {
           </div>
         </div>
       </div>
-      {inviteModalVisible && (
-        <InviteModal
-          isEmailSetup={systemFeatures.is_email_setup}
-          onCancel={() => setInviteModalVisible(false)}
-          onSend={(invitationResults) => {
-            setInvitedModalVisible(true)
-            setInvitationResults(invitationResults)
-            refetch()
-          }}
-        />
-      )}
       {invitedModalVisible && (
         <InvitedModal
           invitationResults={invitationResults}
