@@ -10,7 +10,7 @@ const systemFeaturesQueryAtom = atomWithResolvedSuspenseQuery(() => systemFeatur
 const systemFeaturesPendingQueryAtom = atomWithQuery(() => systemFeaturesQueryOptions())
 
 /** Render-path only — throws while pending; effects use `systemFeaturesOrNullAtom`. */
-export const systemFeaturesAtom = atom((get) => {
+const systemFeaturesAtom = atom((get) => {
   return get(systemFeaturesQueryAtom).data
 })
 
