@@ -798,6 +798,18 @@ class AgentRosterService:
             )
         )
 
+    def get_published_agent_soul_for_app(self, *, tenant_id: str, app_id: str) -> AgentSoulConfig | None:
+        """Return the active Agent Soul used by a published Agent App runtime."""
+        agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=app_id)
+        if agent is None:
+            return None
+        version = self._get_version(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            version_id=agent.active_config_snapshot_id,
+        )
+        return AgentSoulConfig.model_validate(version.config_snapshot_dict)
+
     def get_agent_app_model(self, *, tenant_id: str, agent_id: str) -> App:
         """Resolve the Agent App hidden behind an app-backed Agent id.
 

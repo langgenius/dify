@@ -383,10 +383,17 @@ export const fetchSuggestedQuestions = (
   )(getUrl(`/messages/${messageId}/suggested-questions`, appSourceType, installedAppId))
 }
 
-export const audioToText = (url: string, appSourceType: AppSourceType, body: FormData) => {
+export const audioToText = (
+  appSourceType: AppSourceType,
+  appId: string | undefined,
+  body: FormData,
+  signal?: AbortSignal,
+) => {
+  if (appSourceType !== AppSourceType.webApp && !appId)
+    throw new Error('An app ID is required for console speech-to-text requests.')
   return getAction('post', appSourceType)(
-    url,
-    { body },
+    getUrl('/audio-to-text', appSourceType, appId ?? ''),
+    { body, signal },
     { bodyStringify: false, deleteContentType: true },
   ) as Promise<{ text: string }>
 }

@@ -116,6 +116,25 @@ def test_agent_soul_has_model():
     assert agent_soul_has_model(AgentSoulConfig()) is False
 
 
+def test_get_published_agent_soul_for_app_uses_active_snapshot():
+    agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
+    agent = SimpleNamespace(id="agent-1", active_config_snapshot_id="version-1")
+    version = SimpleNamespace(config_snapshot_dict=agent_soul.model_dump(mode="json"))
+    service = AgentRosterService(FakeSession(scalar=[agent, version]))
+
+    result = service.get_published_agent_soul_for_app(tenant_id="tenant-1", app_id="app-1")
+
+    assert result == agent_soul
+
+
+def test_get_published_agent_soul_for_app_returns_none_without_backing_agent():
+    service = AgentRosterService(FakeSession(scalar=[None]))
+
+    result = service.get_published_agent_soul_for_app(tenant_id="tenant-1", app_id="legacy-app-1")
+
+    assert result is None
+
+
 def test_load_workflow_composer_returns_empty_state(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
@@ -632,7 +651,7 @@ def test_publish_agent_app_draft_rejects_missing_model(monkeypatch: pytest.Monke
         base_snapshot_id="version-1",
         config_snapshot=AgentSoulConfig(),
     )
-    fake_session = FakeSession(scalar=[agent, draft])
+    fake_session = FakeSession(scalar=[agent, draft, None])
 
     def fail_create_config_version(**_kwargs):
         raise AssertionError("config version must not be created when Agent Soul has no model")
@@ -775,6 +794,74 @@ def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(monkey
     assert agent.active_config_is_published is True
     assert fake_session.deleted == [build_draft]
     assert fake_session.commits == 1
+
+
+@pytest.mark.parametrize(
+    ("draft_type", "account_id"),
+    [
+        (AgentConfigDraftType.DRAFT, None),
+        (AgentConfigDraftType.DEBUG_BUILD, "account-1"),
+    ],
+)
+def test_load_agent_soul_for_debug_selects_requested_draft(
+    draft_type: AgentConfigDraftType,
+    account_id: str | None,
+):
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Iris",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+    agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
+    draft = AgentConfigDraft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=draft_type,
+        account_id=account_id,
+        draft_owner_key=account_id or "",
+        config_snapshot=agent_soul,
+    )
+    fake_session = FakeSession(
+        scalar=[draft] if draft_type == AgentConfigDraftType.DEBUG_BUILD else [agent, draft, None]
+    )
+
+    result = AgentComposerService.load_agent_soul_for_debug(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+        draft_type=draft_type,
+        session=fake_session,
+    )
+
+    assert result == agent_soul
+
+
+def test_load_agent_soul_for_debug_requires_existing_build_draft():
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Iris",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+    fake_session = FakeSession(scalar=[None])
+
+    with pytest.raises(AgentVersionNotFoundError):
+        AgentComposerService.load_agent_soul_for_debug(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            session=fake_session,
+        )
 
 
 def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(monkeypatch: pytest.MonkeyPatch):

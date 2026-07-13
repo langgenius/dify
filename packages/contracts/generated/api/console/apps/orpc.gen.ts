@@ -341,6 +341,7 @@ import {
   zPostAppsByAppIdApiEnableBody,
   zPostAppsByAppIdApiEnablePath,
   zPostAppsByAppIdApiEnableResponse,
+  zPostAppsByAppIdAudioToTextBody,
   zPostAppsByAppIdAudioToTextPath,
   zPostAppsByAppIdAudioToTextResponse,
   zPostAppsByAppIdChatMessagesByTaskIdStopPath,
@@ -1768,7 +1769,9 @@ export const post20 = oc
     path: '/apps/{app_id}/audio-to-text',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostAppsByAppIdAudioToTextPath }))
+  .input(
+    z.object({ body: zPostAppsByAppIdAudioToTextBody, params: zPostAppsByAppIdAudioToTextPath }),
+  )
   .output(zPostAppsByAppIdAudioToTextResponse)
 
 export const audioToText = {

@@ -18,6 +18,7 @@ import type {
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import type { Inputs } from '@/models/debug'
 import type { MessageRating } from '@/models/log'
@@ -476,6 +477,7 @@ export type AgentChatRuntimeProps = {
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onConversationIdChange?: (conversationId: string) => void
   onWorkflowRunIdChange?: (workflowRunId: string | null) => void
+  onBeforeSpeechToText?: () => Promise<unknown>
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
 }
@@ -498,6 +500,7 @@ export function AgentChatRuntime({
   onConversationComplete,
   onConversationIdChange,
   onWorkflowRunIdChange,
+  onBeforeSpeechToText,
   onSendInterrupted,
   onSaveDraftBeforeRun,
 }: AgentChatRuntimeProps) {
@@ -570,6 +573,7 @@ export function AgentChatRuntime({
       onConversationComplete={onConversationComplete}
       onConversationIdChange={onConversationIdChange}
       onCurrentSessionConversationIdChange={setCurrentSessionConversationId}
+      onBeforeSpeechToText={onBeforeSpeechToText}
       onSendInterrupted={onSendInterrupted}
       onSaveDraftBeforeRun={onSaveDraftBeforeRun}
     />
@@ -595,6 +599,7 @@ function AgentPreviewChatSession({
   onConversationComplete,
   onConversationIdChange,
   onCurrentSessionConversationIdChange,
+  onBeforeSpeechToText,
   onSendInterrupted,
   onSaveDraftBeforeRun,
 }: {
@@ -616,6 +621,7 @@ function AgentPreviewChatSession({
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onConversationIdChange?: (conversationId: string) => void
   onCurrentSessionConversationIdChange: (conversationId: string) => void
+  onBeforeSpeechToText?: () => Promise<unknown>
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
 }) {
@@ -807,6 +813,11 @@ function AgentPreviewChatSession({
   const sandboxNotice = t(($) => $['agentDetail.configure.preview.sandboxNotice'])
   const sandboxNoticeTooltip = t(($) => $['agentDetail.configure.preview.sandboxNoticeTooltip'])
   const showSandboxNotice = isEmptyChat && !isSendPending && !isResponding
+  const speechToTextTarget: SpeechToTextTarget = {
+    type: 'agent',
+    agentId,
+    draftType: draftType ?? 'draft',
+  }
   const emptyChatInputNode = (
     <div className="pointer-events-auto mt-5 w-full">
       <ChatInputArea
@@ -820,6 +831,8 @@ function AgentPreviewChatSession({
         showFileUpload={false}
         visionConfig={config.file_upload}
         speechToTextConfig={config.speech_to_text}
+        speechToTextTarget={speechToTextTarget}
+        onBeforeSpeechToText={onBeforeSpeechToText}
         onSend={doSend}
         inputs={inputs}
         inputsForm={inputsForm}
@@ -833,6 +846,8 @@ function AgentPreviewChatSession({
   return (
     <Chat
       config={config}
+      speechToTextTarget={speechToTextTarget}
+      onBeforeSpeechToText={onBeforeSpeechToText}
       chatList={chatList}
       isResponding={isResponding}
       sendButtonLoading={sendButtonLoading}

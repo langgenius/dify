@@ -596,6 +596,8 @@
   "voiceInput.notAllow": "mikrofon yetkilendirilmedi",
   "voiceInput.speaking": "Şimdi konuş...",
   "voiceInput.start": "Sesli giriş",
+  "voiceInput.starting": "Mikrofon başlatılıyor...",
+  "voiceInput.stop": "Kaydı durdur",
   "workflowAsToolPage.description": "Yayınlanmış herhangi bir workflowu yeniden kullanılabilir bir araca dönüştürün. Modüler kalmak ve tekrarı önlemek için birden çok uygulamada kullanın.",
   "you": "Sen"
 }

@@ -1,4 +1,5 @@
 import type { FileEntity } from '../../file-uploader/types'
+import type { SpeechToTextTarget } from '../../voice-input/types'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -414,12 +415,19 @@ const ChatWrapper = () => {
         imageUrl={appData.site.icon_url}
       />
     ) : null
+  const speechToTextTarget: SpeechToTextTarget | undefined =
+    appSourceType === AppSourceType.webApp
+      ? { type: 'app' as const, appSourceType: AppSourceType.webApp }
+      : appId
+        ? { type: 'app' as const, appId, appSourceType }
+        : undefined
 
   return (
     <div className="h-full overflow-hidden bg-chatbot-bg">
       <Chat
         appData={appData ?? undefined}
         config={appConfig}
+        speechToTextTarget={speechToTextTarget}
         chatList={messageList}
         isResponding={respondingState}
         chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[768px] ${isMobile && 'px-4'}`}

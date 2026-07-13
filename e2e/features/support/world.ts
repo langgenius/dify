@@ -36,12 +36,18 @@ export type AgentV2WorkflowOutputVariable = {
   name: string
   type: string
 }
+export type AgentBuilderSpeechToTextRequest = {
+  contentType: string
+  path: string
+  status: number
+}
 
 export const createAgentBuilderWorldState = () => ({
   preflight: {
     agentDecisionModel: undefined as AgentBuilderChatModel | undefined,
     brokenModel: undefined as AgentBuilderChatModel | undefined,
     preseededResources: {} as Record<string, AgentBuilderPreseededResource>,
+    speechToTextModel: undefined as AgentBuilderChatModel | undefined,
     stableModel: undefined as AgentBuilderChatModel | undefined,
   },
   accessPoint: {
@@ -56,6 +62,9 @@ export const createAgentBuilderWorldState = () => ({
   },
   configure: {
     concurrentPage: undefined as Page | undefined,
+  },
+  speechToText: {
+    request: undefined as AgentBuilderSpeechToTextRequest | undefined,
   },
   workflow: {
     agentConsolePage: undefined as Page | undefined,

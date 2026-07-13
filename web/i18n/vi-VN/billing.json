@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "Nâng cấp để tải lên nhiều tài liệu cùng lúc",
   "upgrade.workflowRestore.description": "Tính năng khôi phục phiên bản quy trình không khả dụng trong gói hiện tại của bạn.",
   "upgrade.workflowRestore.title": "Nâng cấp để khôi phục các phiên bản quy trình",
+  "upgrade.workflowVersionRun.description": "Gói hiện tại của bạn không hỗ trợ chạy một phiên bản quy trình cụ thể bằng ID quy trình.",
+  "upgrade.workflowVersionRun.title": "Nâng cấp để chạy các phiên bản quy trình cụ thể",
   "upgradeBtn.encourage": "Nâng cấp Ngay",
   "upgradeBtn.encourageShort": "Nâng cấp",
   "upgradeBtn.plain": "Nâng cấp Kế hoạch",
