@@ -114,9 +114,7 @@ async function flushAsync() {
   })
 }
 
-// Regression for langgenius/dify#38840: the effect used to read a
-// resolved-suspense atom, which throws while the profile query is pending
-// (cold cache when the server-side prefetch is skipped).
+// Regression for langgenius/dify#38840: reading a resolved-suspense atom throws while pending.
 describe('amplitudeIdentitySyncAtom', () => {
   beforeEach(() => {
     vi.clearAllMocks()

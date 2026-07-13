@@ -171,9 +171,7 @@ async function flushAsync() {
   })
 }
 
-// Regression for langgenius/dify#38840: the effect used to read
-// resolved-suspense atoms (profile directly, and meta/system-features via
-// langGeniusVersionInfoAtom), which throw while their queries are pending.
+// Regression for langgenius/dify#38840: reading resolved-suspense atoms throws while pending.
 describe('zendeskConversationSyncAtom', () => {
   beforeEach(() => {
     vi.clearAllMocks()

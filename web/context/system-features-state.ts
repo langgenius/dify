@@ -9,15 +9,11 @@ const systemFeaturesQueryAtom = atomWithResolvedSuspenseQuery(() => systemFeatur
 
 const systemFeaturesPendingQueryAtom = atomWithQuery(() => systemFeaturesQueryOptions())
 
-/**
- * Render-path only — throws while the system-features query is pending.
- * atomEffect / non-render readers must use `systemFeaturesOrNullAtom` instead.
- */
+/** Render-path only — throws while pending; effects use `systemFeaturesOrNullAtom`. */
 export const systemFeaturesAtom = atom((get) => {
   return get(systemFeaturesQueryAtom).data
 })
 
-/** Pending-safe: `null` until the system-features query resolves. For atomEffect / non-render readers. */
 export const systemFeaturesOrNullAtom = atom((get) => {
   return get(systemFeaturesPendingQueryAtom).data ?? null
 })

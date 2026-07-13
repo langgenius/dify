@@ -25,11 +25,7 @@ const versionQueryAtom = atomWithQuery((get) => {
   })
 })
 
-/**
- * Render-path only — reads the resolved-suspense profile meta and throws while
- * it is pending. atomEffect / non-render readers must use
- * `langGeniusVersionInfoOrDefaultAtom` instead.
- */
+/** Render-path only — throws while pending; effects use `langGeniusVersionInfoOrDefaultAtom`. */
 export const langGeniusVersionInfoAtom = atom((get) => {
   const meta = get(accountProfileMetaAtom)
   const versionData = get(versionQueryAtom).data
@@ -42,7 +38,6 @@ export const langGeniusVersionInfoAtom = atom((get) => {
   })
 })
 
-/** Pending-safe: `initialLangGeniusVersionInfo` until profile meta and version data resolve. For atomEffect / non-render readers. */
 export const langGeniusVersionInfoOrDefaultAtom = atom((get) => {
   const meta = get(accountProfileMetaOrNullAtom)
   const versionData = get(versionQueryAtom).data
