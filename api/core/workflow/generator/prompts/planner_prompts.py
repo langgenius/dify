@@ -51,6 +51,11 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
      "question-classifier" (semantic / intent routing)
    - "for each item in a list" → "iteration"
    - "keep going until condition" → "loop"
+   - synthesize multiple independent knowledge sources → one
+     "knowledge-retrieval" node per source, then one "template-transform"
+     node that combines every result, then one "llm" node that consumes the
+     template output as context; the retrievals are parallel inputs to the
+     template, not mutually exclusive branches
 5. PREFER "tool" over "http-request" or "code" whenever an installed tool from the
    "Available tools" section below covers the task (e.g. web search, time lookup,
    scraping, audio, translation, etc.). Only fall back to "http-request" for

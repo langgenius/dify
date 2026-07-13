@@ -13,6 +13,7 @@ from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
+from jinja2 import Template
 
 from core.workflow.generator.runner import WorkflowGenerator
 from core.workflow.generator.types import GraphDict
@@ -1509,6 +1510,126 @@ class TestWorkflowGeneratorVariableReferences:
         assert start["data"]["options"] == ["sys", "query"]
         expected_start_variables = [] if mode == "advanced-chat" else ["query"]
         assert [variable["variable"] for variable in start["data"]["variables"]] == expected_start_variables
+
+    def test_repairs_llm_that_uses_only_one_of_two_incoming_retrieval_results(self):
+        graph = cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "start",
+                            "title": "Start",
+                            "variables": [{"variable": "query", "type": "paragraph"}],
+                        },
+                    },
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "knowledge-retrieval",
+                            "title": "Knowledge A",
+                            "query_variable_selector": ["node1", "query"],
+                        },
+                    },
+                    {
+                        "id": "node3",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "knowledge-retrieval",
+                            "title": "Knowledge B",
+                            "query_variable_selector": ["node1", "query"],
+                        },
+                    },
+                    {
+                        "id": "node4",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "llm",
+                            "title": "Synthesize",
+                            "context": {"enabled": True, "variable_selector": ["node2", "result"]},
+                            "prompt_template": [
+                                {
+                                    "role": "user",
+                                    "text": "Answer using all retrieved knowledge.",
+                                }
+                            ],
+                        },
+                    },
+                    {
+                        "id": "node5",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "end",
+                            "title": "End",
+                            "outputs": [{"variable": "answer", "value_selector": ["node4", "text"]}],
+                        },
+                    },
+                ],
+                "edges": [
+                    {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "b", "source": "node1", "target": "node3", "type": "custom"},
+                    {"id": "c", "source": "node2", "target": "node4", "type": "custom"},
+                    {"id": "d", "source": "node3", "target": "node4", "type": "custom"},
+                    {"id": "e", "source": "node4", "target": "node5", "type": "custom"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            },
+        )
+
+        result = WorkflowGenerator._postprocess_graph(graph=graph, mode="workflow")
+
+        llm = next(node for node in result["nodes"] if node["id"] == "node4")
+        template = next(node for node in result["nodes"] if node["data"]["type"] == "template-transform")
+
+        template_refs: set[tuple[str, str]] = set()
+        WorkflowGenerator._collect_refs_in_data(template["data"], template_refs)
+        assert template_refs == {("node2", "result"), ("node3", "result")}
+        rendered_context = Template(template["data"]["template"]).render(
+            knowledge_1=[{"content": "Alpha result"}],
+            knowledge_2=[{"content": "Beta result"}],
+        )
+        assert "## Knowledge source 1\nAlpha result" in rendered_context
+        assert "## Knowledge source 2\nBeta result" in rendered_context
+        assert llm["data"]["context"] == {
+            "enabled": True,
+            "variable_selector": [template["id"], "output"],
+        }
+        assert llm["data"]["prompt_template"][0]["text"] == ("Answer using all retrieved knowledge.\n\n{{#context#}}")
+        assert {edge["source"] for edge in result["edges"] if edge["target"] == template["id"]} == {
+            "node2",
+            "node3",
+        }
+        assert {edge["source"] for edge in result["edges"] if edge["target"] == "node4"} == {template["id"]}
+        assert WorkflowGenerator._validate_structure(graph=result, mode="workflow") == []
+
+    def test_inserts_template_into_plan_with_two_retrievals_and_one_llm(self):
+        plan_nodes = [
+            {"label": "Start", "node_type": "start", "purpose": "Accept the query."},
+            {"label": "Knowledge A", "node_type": "knowledge-retrieval", "purpose": "Search source A."},
+            {"label": "Knowledge B", "node_type": "knowledge-retrieval", "purpose": "Search source B."},
+            {"label": "Synthesize", "node_type": "llm", "purpose": "Answer from both sources."},
+            {"label": "End", "node_type": "end", "purpose": "Return the answer."},
+        ]
+
+        WorkflowGenerator._insert_multi_retrieval_template_plan(plan_nodes)
+
+        assert [node["node_type"] for node in plan_nodes] == [
+            "start",
+            "knowledge-retrieval",
+            "knowledge-retrieval",
+            "template-transform",
+            "llm",
+            "end",
+        ]
+        assert plan_nodes[3]["label"] == "Combine Knowledge"
 
     def test_start_inputs_flow_into_builder_user_prompt(self):
         # The planner's ``start_inputs`` must be visible to the builder so

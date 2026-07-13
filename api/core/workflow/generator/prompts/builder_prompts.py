@@ -443,6 +443,23 @@ correct.
      ``sys.files`` without declaring them. In selector fields, spell these as
      exactly ``["sys", "query"]`` and ``["sys", "files"]`` — never as a
      one-item array such as ``["sys,query"]`` or ``["sys.query"]``.
+10. MULTIPLE KNOWLEDGE-RETRIEVAL INPUTS TO ONE LLM require a template fan-in.
+    ``context.variable_selector accepts only one selector`` and therefore
+    cannot carry two retrieval outputs. When an LLM must synthesize two or
+    more retrieval results:
+    - Run the retrieval nodes as parallel siblings from the same query input.
+    - Add one ``template-transform`` node after them. Give it one variable per
+      retrieval, such as ``value_selector: ["node2", "result"]`` and
+      ``value_selector: ["node3", "result"]``, and render every source's
+      content into one labelled text output.
+    - Add an edge from EACH retrieval node to the template, then one edge from
+      the template to the LLM. The LLM must NOT receive direct retrieval edges.
+    - Enable the LLM's context, set ``context.variable_selector`` to the
+      template's ``["<template-node-id>", "output"]``, and put
+      ``{{#context#}}`` in its prompt.
+    - Do not use ``variable-aggregator`` for this: it selects the first value
+      produced by mutually exclusive branches; it does not concatenate two
+      retrieval results that both ran.
 
 """
 

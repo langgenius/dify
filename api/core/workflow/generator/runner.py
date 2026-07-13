@@ -419,6 +419,11 @@ class WorkflowGenerator:
             yield "result", cast(dict[str, Any], empty_plan)
             return
 
+        # A single LLM cannot select multiple retrieval outputs as context.
+        # Make the required template fan-in explicit in the plan so the
+        # builder receives its schema and assigns stable sequential ids.
+        cls._insert_multi_retrieval_template_plan(plan_nodes)
+
         # Planner-supplied user-input declarations. The builder uses these to
         # populate ``start.data.variables`` so downstream ``{#start.<var>#}``
         # references resolve at run time. Optional field — older prompts may
@@ -651,6 +656,38 @@ class WorkflowGenerator:
         return cast(PlannerResultDict, parsed)
 
     # ------------------------------------------------------------------
+    # Plan normalization
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _insert_multi_retrieval_template_plan(plan_nodes: list[dict[str, Any]]) -> None:
+        """Insert the unambiguous multi-retrieval template step when omitted.
+
+        Multiple LLM nodes make ownership ambiguous, so that case remains in
+        the planner's hands. With exactly one LLM, every independent retrieval
+        result can safely fan into one template immediately before that LLM.
+        """
+        node_types = [str(node.get("node_type") or "") for node in plan_nodes]
+        if node_types.count(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL) < 2:
+            return
+        if node_types.count(BuiltinNodeTypes.LLM) != 1:
+            return
+        if BuiltinNodeTypes.TEMPLATE_TRANSFORM in node_types:
+            return
+
+        llm_index = node_types.index(BuiltinNodeTypes.LLM)
+        retrievals_before_llm = node_types[:llm_index].count(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL)
+        if retrievals_before_llm < 2:
+            return
+        plan_nodes.insert(
+            llm_index,
+            {
+                "label": "Combine Knowledge",
+                "node_type": BuiltinNodeTypes.TEMPLATE_TRANSFORM,
+                "purpose": "Combine every knowledge retrieval result into one labelled context for the LLM.",
+            },
+        )
+
+    # ------------------------------------------------------------------
     # Builder
     # ------------------------------------------------------------------
     @classmethod
@@ -736,6 +773,12 @@ class WorkflowGenerator:
         # ``{{#…#}}`` and ``["node-id", "var"]`` references) BEFORE the rest
         # of the postprocess pass touches them.
         cls._sanitize_node_ids(nodes=nodes, edges=edges)
+
+        # An LLM context accepts one selector. If the builder wires multiple
+        # retrieval nodes straight into an LLM but selects only one result,
+        # insert a template-transform fan-in that renders every result into
+        # one string and point the context at that output.
+        cls._insert_multi_retrieval_context_templates(nodes=nodes, edges=edges)
 
         # Container-child nodes carry their own relative positions inside the
         # parent and have a special ``type`` (custom-iteration-start /
@@ -1331,6 +1374,129 @@ class WorkflowGenerator:
         rest = m.group(2)
         new_id = id_map.get(node_id, node_id)
         return f"{{{{#{new_id}.{rest}#}}}}"
+
+    @classmethod
+    def _insert_multi_retrieval_context_templates(
+        cls,
+        *,
+        nodes: list[dict[str, Any]],
+        edges: list[dict[str, Any]],
+    ) -> None:
+        """Fan multiple retrieval inputs into an LLM through one template.
+
+        The repair is intentionally narrow: it applies only when at least two
+        knowledge-retrieval nodes have direct edges into the same LLM and that
+        LLM currently uses one of those results as its enabled context. This
+        is enough to repair the builder's lossy single-context output without
+        guessing about unrelated retrievals or mutually exclusive branches.
+        """
+        nodes_by_id: dict[str, dict[str, Any]] = {
+            node_id: node for node in nodes if isinstance(node_id := node.get("id"), str)
+        }
+        used_ids = set(nodes_by_id)
+        llm_nodes = [node for node in nodes if node.get("data", {}).get("type") == BuiltinNodeTypes.LLM]
+
+        for llm_node in llm_nodes:
+            llm_id = llm_node.get("id")
+            if not isinstance(llm_id, str):
+                continue
+
+            incoming_retrieval_edges: list[dict[str, Any]] = []
+            for edge in edges:
+                source_id = edge.get("source")
+                if edge.get("target") != llm_id or not isinstance(source_id, str):
+                    continue
+                source_node = nodes_by_id.get(source_id)
+                if source_node and source_node.get("data", {}).get("type") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
+                    incoming_retrieval_edges.append(edge)
+            retrieval_ids = list(
+                dict.fromkeys(
+                    edge["source"] for edge in incoming_retrieval_edges if isinstance(edge.get("source"), str)
+                )
+            )
+            if len(retrieval_ids) < 2:
+                continue
+
+            llm_data = llm_node.get("data")
+            if not isinstance(llm_data, dict):
+                continue
+            context = llm_data.get("context")
+            if not isinstance(context, dict) or not context.get("enabled"):
+                continue
+            selector = context.get("variable_selector")
+            if selector not in [[retrieval_id, "result"] for retrieval_id in retrieval_ids]:
+                continue
+
+            template_id = cls._next_generated_node_id(prefix="retrieval_context", used_ids=used_ids)
+            variables = [
+                {"variable": f"knowledge_{index}", "value_selector": [retrieval_id, "result"]}
+                for index, retrieval_id in enumerate(retrieval_ids, start=1)
+            ]
+            sections = [
+                (
+                    f"## Knowledge source {index}\n"
+                    f"{{% for item in knowledge_{index} %}}{{{{ item.content }}}}\n{{% endfor %}}"
+                )
+                for index in range(1, len(retrieval_ids) + 1)
+            ]
+            nodes.append(
+                {
+                    "id": template_id,
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": BuiltinNodeTypes.TEMPLATE_TRANSFORM,
+                        "title": "Combine Knowledge",
+                        "variables": variables,
+                        "template": "\n\n".join(sections),
+                    },
+                }
+            )
+
+            incoming_edge_objects = {id(edge) for edge in incoming_retrieval_edges}
+            edges[:] = [edge for edge in edges if id(edge) not in incoming_edge_objects]
+            edges.extend(
+                {"source": retrieval_id, "target": template_id, "type": "custom"} for retrieval_id in retrieval_ids
+            )
+            edges.append({"source": template_id, "target": llm_id, "type": "custom"})
+
+            context["variable_selector"] = [template_id, "output"]
+            cls._ensure_llm_context_placeholder(llm_data)
+            logger.info(
+                "Workflow generator: inserted template %s to combine retrieval inputs for LLM %s",
+                template_id,
+                llm_id,
+            )
+
+    @staticmethod
+    def _next_generated_node_id(*, prefix: str, used_ids: set[str]) -> str:
+        """Return a short runtime-safe node id and reserve it in ``used_ids``."""
+        suffix = 1
+        candidate = prefix
+        while candidate in used_ids:
+            suffix += 1
+            candidate = f"{prefix}_{suffix}"
+        used_ids.add(candidate)
+        return candidate
+
+    @staticmethod
+    def _ensure_llm_context_placeholder(llm_data: dict[str, Any]) -> None:
+        """Ensure an enabled LLM context is actually present in its prompt."""
+        prompt_template = llm_data.get("prompt_template")
+        if isinstance(prompt_template, list):
+            messages = [message for message in prompt_template if isinstance(message, dict)]
+            if any("{{#context#}}" in str(message.get("text") or "") for message in messages):
+                return
+            target = next((message for message in reversed(messages) if message.get("role") == "user"), None)
+            if target is None:
+                prompt_template.append({"role": "user", "text": "{{#context#}}"})
+                return
+            target["text"] = f"{target.get('text') or ''}\n\n{{{{#context#}}}}"
+            return
+        if isinstance(prompt_template, dict):
+            text = str(prompt_template.get("text") or "")
+            if "{{#context#}}" not in text:
+                prompt_template["text"] = f"{text}\n\n{{{{#context#}}}}"
 
     @classmethod
     def _repair_branch_edge_handles(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
