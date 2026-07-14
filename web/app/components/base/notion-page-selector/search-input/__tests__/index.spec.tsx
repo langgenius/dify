@@ -7,7 +7,9 @@ describe('SearchInput', () => {
   it('should render with placeholder', () => {
     render(<SearchInput value="" onChange={vi.fn()} />)
 
-    expect(screen.getByPlaceholderText('common.dataSource.notion.selector.searchPages')).toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText('common.dataSource.notion.selector.searchPages'),
+    ).toBeInTheDocument()
     expect(screen.getByTestId('notion-search-input-container')).toBeInTheDocument()
   })
 

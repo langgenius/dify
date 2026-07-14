@@ -14,7 +14,12 @@ vi.mock('@floating-ui/react', () => ({
     return {
       refs: { setReference: vi.fn(), setFloating: vi.fn() },
       floatingStyles: {},
-      context: { open: false, onOpenChange: vi.fn(), refs: { domReference: { current: null } }, nodeId: undefined },
+      context: {
+        open: false,
+        onOpenChange: vi.fn(),
+        refs: { domReference: { current: null } },
+        nodeId: undefined,
+      },
     }
   },
   useHover: () => ({}),
@@ -30,7 +35,7 @@ const { PreviewSlice } = await import('../preview-slice')
 
 // Helper to find divider span (zero-width space)
 const findDividerSpan = (container: HTMLElement) =>
-  Array.from(container.querySelectorAll('span')).find(s => s.textContent?.includes('\u200B'))
+  Array.from(container.querySelectorAll('span')).find((s) => s.textContent?.includes('\u200B'))
 
 describe('PreviewSlice', () => {
   const defaultProps = {
@@ -63,7 +68,9 @@ describe('PreviewSlice', () => {
 
   // ---- Class Name Tests ----
   it('should apply custom className', () => {
-    render(<PreviewSlice {...defaultProps} data-testid="preview-slice" className="preview-custom" />)
+    render(
+      <PreviewSlice {...defaultProps} data-testid="preview-slice" className="preview-custom" />,
+    )
     expect(screen.getByTestId('preview-slice')).toHaveClass('preview-custom')
   })
 

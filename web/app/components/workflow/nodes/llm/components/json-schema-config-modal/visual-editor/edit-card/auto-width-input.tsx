@@ -30,17 +30,14 @@ const AutoWidthInput: FC<AutoWidthInputProps> = ({
       textRef.current.textContent = value || placeholder
       const textWidth = textRef.current.offsetWidth
       const newWidth = Math.max(minWidth, Math.min(textWidth + 16, maxWidth))
-      if (width !== newWidth)
-        setWidth(newWidth)
+      if (width !== newWidth) setWidth(newWidth)
     }
   }, [value, placeholder, minWidth, maxWidth, width])
 
   // Handle Enter key
   const handleKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && e.currentTarget.blur)
-      e.currentTarget.blur()
-    if (props.onKeyUp)
-      props.onKeyUp(e)
+    if (e.key === 'Enter' && e.currentTarget.blur) e.currentTarget.blur()
+    if (props.onKeyUp) props.onKeyUp(e)
   }
 
   return (

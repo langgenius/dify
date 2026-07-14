@@ -15,6 +15,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import InternalServerError
 
@@ -28,6 +29,7 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -39,6 +41,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -170,20 +173,22 @@ class TestAudioServiceMockedBehavior:
         assert result["text"] == "Transcribed text"
 
     @patch.object(AudioService, "transcript_tts")
-    def test_transcript_tts_returns_response(self, mock_tts, mock_app):
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_transcript_tts_returns_response(self, mock_tts, mock_app, sqlite_session: Session):
         """Test TTS transcription returns response."""
         mock_response = {"audio": "base64_audio_data"}
         mock_tts.return_value = mock_response
 
         result = AudioService.transcript_tts(
             app_model=mock_app,
-            session=Mock(),
+            session=sqlite_session,
             text="Hello world",
             voice="nova",
             end_user="user_123",
         )
 
         assert result["audio"] == "base64_audio_data"
+        assert mock_tts.call_args.kwargs["session"] is sqlite_session
 
 
 class TestAudioApi:
@@ -207,6 +212,7 @@ class TestAudioApi:
             (AudioTooLargeServiceError("too big"), AudioTooLargeError),
             (UnsupportedAudioTypeServiceError(), UnsupportedAudioTypeError),
             (ProviderNotSupportSpeechToTextServiceError(), ProviderNotSupportSpeechToTextError),
+            (SpeechToTextDisabledServiceError(), SpeechToTextDisabledError),
             (ProviderTokenNotInitError("token"), ProviderNotInitializeError),
             (QuotaExceededError(), ProviderQuotaExceededError),
             (ModelCurrentlyNotSupportError(), ProviderModelCurrentlyNotSupportError),

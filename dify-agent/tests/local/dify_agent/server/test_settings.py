@@ -8,6 +8,8 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
+from dify_agent.adapters.shell.enterprise import EnterpriseShellProvider
+from dify_agent.adapters.shell.shellctl import ShellctlProvider
 from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
@@ -34,6 +36,31 @@ def test_server_settings_reads_shellctl_auth_token_from_env(monkeypatch: pytest.
     settings = ServerSettings()
 
     assert settings.shellctl_auth_token == "shell-secret"
+
+
+def test_server_settings_reads_shell_home_root_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIFY_AGENT_SHELL_HOME_ROOT", "/tmp/dify-agent-home/")
+
+    settings = ServerSettings()
+
+    assert settings.shell_home_root == "/tmp/dify-agent-home"
+
+
+def test_server_settings_rejects_relative_shell_home_root(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIFY_AGENT_SHELL_HOME_ROOT", "relative/path")
+
+    with pytest.raises(ValidationError, match="DIFY_AGENT_SHELL_HOME_ROOT must be an absolute path"):
+        ServerSettings()
+
+
+def test_server_settings_reads_enterprise_timeouts_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_TIMEOUT", "45")
+    monkeypatch.setenv("DIFY_AGENT_ENTERPRISE_SANDBOX_PROXY_TIMEOUT", "90")
+
+    settings = ServerSettings()
+
+    assert settings.enterprise_sandbox_gateway_timeout == 45
+    assert settings.enterprise_sandbox_proxy_timeout == 90
 
 
 def test_server_settings_defaults_shellctl_auth_token_to_none(
@@ -222,3 +249,60 @@ def test_server_settings_create_agent_stub_drive_request_handler_returns_handler
     assert timeout.read == 22
     assert timeout.write == 33
     assert timeout.pool == 44
+
+
+def test_build_shell_provider_returns_none_when_shellctl_entrypoint_is_unset(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("DIFY_AGENT_SHELLCTL_ENTRYPOINT", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    assert ServerSettings().build_shell_provider() is None
+
+
+def test_build_shell_provider_returns_shellctl_provider_when_configured() -> None:
+    settings = ServerSettings(
+        shell_provider="shellctl",
+        shellctl_entrypoint="http://shellctl.example",
+        shellctl_auth_token="shell-secret",
+    )
+
+    provider = settings.build_shell_provider()
+
+    assert isinstance(provider, ShellctlProvider)
+    assert provider.entrypoint == "http://shellctl.example"
+    assert provider.token == "shell-secret"
+
+
+def test_build_shell_provider_returns_enterprise_provider_when_selected() -> None:
+    settings = ServerSettings(
+        shell_provider="enterprise",
+        enterprise_sandbox_gateway_endpoint="https://gateway.example",
+        enterprise_sandbox_gateway_auth_token="gateway-secret",
+        enterprise_sandbox_gateway_timeout=45,
+        enterprise_sandbox_proxy_timeout=90,
+    )
+
+    provider = settings.build_shell_provider()
+
+    assert isinstance(provider, EnterpriseShellProvider)
+    assert provider.gateway_endpoint == "https://gateway.example"
+    assert provider.auth_token == "gateway-secret"
+    assert provider.gateway_timeout == 45
+    assert provider.proxy_timeout == 90
+
+
+def test_build_shell_provider_returns_none_when_enterprise_endpoint_is_unset(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_ENDPOINT", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    assert ServerSettings(shell_provider="enterprise").build_shell_provider() is None
+
+
+def test_build_shell_provider_rejects_blank_shellctl_entrypoint() -> None:
+    with pytest.raises(ValidationError, match="shellctl_entrypoint is required"):
+        _ = ServerSettings(shell_provider="shellctl", shellctl_entrypoint="   ").build_shell_provider()

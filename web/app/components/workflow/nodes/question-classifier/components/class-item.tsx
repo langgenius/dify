@@ -46,23 +46,28 @@ const ClassItem: FC<Props> = ({
   const instanceId = `${nodeId}-${reactId}`
 
   useEffect(() => {
-    if (isEditingLabel)
-      labelInputRef.current?.select()
+    if (isEditingLabel) labelInputRef.current?.select()
   }, [isEditingLabel])
 
-  const handleNameChange = useCallback((value: string) => {
-    onChange({ ...payload, name: value })
-  }, [onChange, payload])
+  const handleNameChange = useCallback(
+    (value: string) => {
+      onChange({ ...payload, name: value })
+    },
+    [onChange, payload],
+  )
 
-  const handleLabelSave = useCallback((nextValue: string) => {
-    const normalizedLabel = getCanonicalClassLabel(nextValue, index, t)
-    setIsEditingLabel(false)
-    setDraftLabel(normalizedLabel)
-    const shouldPersistLabel = normalizedLabel !== displayLabel
-      || (payload.label !== undefined && payload.label !== normalizedLabel)
-    if (shouldPersistLabel)
-      onChange({ ...payload, label: normalizedLabel })
-  }, [displayLabel, index, onChange, payload, t])
+  const handleLabelSave = useCallback(
+    (nextValue: string) => {
+      const normalizedLabel = getCanonicalClassLabel(nextValue, index, t)
+      setIsEditingLabel(false)
+      setDraftLabel(normalizedLabel)
+      const shouldPersistLabel =
+        normalizedLabel !== displayLabel ||
+        (payload.label !== undefined && payload.label !== normalizedLabel)
+      if (shouldPersistLabel) onChange({ ...payload, label: normalizedLabel })
+    },
+    [displayLabel, index, onChange, payload, t],
+  )
 
   const handleLabelCancel = useCallback(() => {
     setDraftLabel(displayLabel)
@@ -70,8 +75,7 @@ const ClassItem: FC<Props> = ({
   }, [displayLabel])
 
   const handleLabelEditStart = useCallback(() => {
-    if (readonly)
-      return
+    if (readonly) return
 
     setDraftLabel(displayLabel)
     setIsEditingLabel(true)
@@ -85,66 +89,62 @@ const ClassItem: FC<Props> = ({
     filterVar,
   })
 
-  const title = isEditingLabel
-    ? (
-        <input
-          ref={labelInputRef}
-          value={draftLabel}
-          aria-label={t(`${i18nPrefix}.labelEditorAriaLabel`, { ns: 'workflow' })}
-          className={cn(
-            'h-6 w-full rounded-md border border-divider-regular bg-components-input-bg-normal px-2 text-xs font-semibold text-text-secondary ring-0 outline-none',
-            'focus:border-components-input-border-active',
-          )}
-          onChange={event => setDraftLabel(event.target.value)}
-          onBlur={() => handleLabelSave(draftLabel)}
-          onClick={event => event.stopPropagation()}
-          onDoubleClick={event => event.stopPropagation()}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              handleLabelSave(draftLabel)
-            }
+  const title = isEditingLabel ? (
+    <input
+      ref={labelInputRef}
+      value={draftLabel}
+      aria-label={t(($) => $[`${i18nPrefix}.labelEditorAriaLabel`], { ns: 'workflow' })}
+      className={cn(
+        'h-6 w-full rounded-md border border-divider-regular bg-components-input-bg-normal px-2 text-xs font-semibold text-text-secondary ring-0 outline-none',
+        'focus:border-components-input-border-active',
+      )}
+      onChange={(event) => setDraftLabel(event.target.value)}
+      onBlur={() => handleLabelSave(draftLabel)}
+      onClick={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          handleLabelSave(draftLabel)
+        }
 
-            if (event.key === 'Escape') {
-              event.preventDefault()
-              handleLabelCancel()
-            }
-          }}
-          autoFocus
-        />
-      )
-    : readonly
-      ? (
-          <div className="-ml-1 px-1 py-0.5 text-left text-xs/4 font-semibold text-text-secondary">
-            {displayLabel}
-          </div>
-        )
-      : (
-          <button
-            type="button"
-            aria-label={displayLabel}
-            className={cn(
-              '-ml-1 rounded px-1 py-0.5 text-left text-xs/4 font-semibold text-text-secondary transition-colors',
-              'cursor-text hover:bg-state-base-hover',
-            )}
-            onDoubleClick={handleLabelEditStart}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                handleLabelEditStart()
-              }
-            }}
-          >
-            {displayLabel}
-          </button>
-        )
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          handleLabelCancel()
+        }
+      }}
+      autoFocus
+    />
+  ) : readonly ? (
+    <div className="-ml-1 px-1 py-0.5 text-left text-xs/4 font-semibold text-text-secondary">
+      {displayLabel}
+    </div>
+  ) : (
+    <button
+      type="button"
+      aria-label={displayLabel}
+      className={cn(
+        '-ml-1 rounded px-1 py-0.5 text-left text-xs/4 font-semibold text-text-secondary transition-colors',
+        'cursor-text hover:bg-state-base-hover',
+      )}
+      onDoubleClick={handleLabelEditStart}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          handleLabelEditStart()
+        }
+      }}
+    >
+      {displayLabel}
+    </button>
+  )
 
   return (
     <Editor
       className={className}
       headerClassName={headerClassName}
       title={title}
-      placeholder={t(`${i18nPrefix}.topicPlaceholder`, { ns: 'workflow' })!}
+      placeholder={t(($) => $[`${i18nPrefix}.topicPlaceholder`], { ns: 'workflow' })!}
       value={payload.name}
       onChange={handleNameChange}
       showRemove

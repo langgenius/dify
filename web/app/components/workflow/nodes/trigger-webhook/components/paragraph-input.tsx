@@ -40,7 +40,7 @@ const ParagraphInput: FC<ParagraphInputProps> = ({
         <textarea
           ref={textareaRef}
           value={value}
-          onChange={e => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
           className="w-full resize-none border-0 bg-transparent pl-6 font-mono text-xs leading-[20px] text-text-secondary outline-hidden placeholder:text-text-quaternary"

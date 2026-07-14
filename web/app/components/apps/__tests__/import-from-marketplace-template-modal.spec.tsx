@@ -17,7 +17,8 @@ describe('ImportFromMarketplaceTemplateModal', () => {
         data: {
           id: 'human-input-writing',
           template_name: 'Human Input: Writing Assistant',
-          overview: 'Send your creative brief, get a high-quality draft, and review before publishing.',
+          overview:
+            'Send your creative brief, get a high-quality draft, and review before publishing.',
           icon: 'technologist',
           icon_background: '#D1FAE5',
           icon_file_key: '',

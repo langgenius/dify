@@ -29,13 +29,16 @@ When a run includes `dify.shell`, the Dify Agent server must construct its layer
 providers with a non-empty shellctl entrypoint:
 
 ```python
+from dify_agent.adapters.shell.shellctl import ShellctlProvider
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 
 layer_providers = create_default_layer_providers(
     plugin_daemon_url="http://localhost:5002",
     plugin_daemon_api_key="replace-with-plugin-daemon-key",
-    shellctl_entrypoint="http://127.0.0.1:5004",
-    shellctl_auth_token="replace-with-shellctl-token",  # optional; defaults to no token
+    shell_provider=ShellctlProvider(
+        entrypoint="http://127.0.0.1:5004",
+        token="replace-with-shellctl-token",  # optional; defaults to empty string
+    ),
 )
 ```
 
@@ -45,11 +48,17 @@ In the FastAPI server, these values are read from environment-backed
 ```env
 DIFY_AGENT_SHELLCTL_ENTRYPOINT=http://127.0.0.1:5004
 DIFY_AGENT_SHELLCTL_AUTH_TOKEN=replace-with-shellctl-token
+DIFY_AGENT_SHELL_HOME_ROOT=/tmp/dify-agent-home
 ```
 
 `DIFY_AGENT_SHELLCTL_AUTH_TOKEN` defaults to `None`/empty, which keeps the shell
 client on the no-token path. Set it only when the shellctl server is started with
 bearer authentication.
+
+`DIFY_AGENT_SHELL_HOME_ROOT` defaults to `/home`, matching Linux and container
+deployments. For local macOS development, set it to a writable directory such as
+`/tmp/dify-agent-home`; the shell layer creates per-Agent home directories under
+that root.
 
 To let commands inside user-visible shell jobs call back to the Dify Agent server
 with `dify-agent ...`, also enable the Agent Stub:

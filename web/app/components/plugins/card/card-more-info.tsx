@@ -8,16 +8,12 @@ type Props = Readonly<{
   variant?: 'default' | 'marketplace'
 }>
 
-const CardMoreInfoComponent = ({
-  downloadCount,
-  tags,
-  variant = 'default',
-}: Props) => {
+const CardMoreInfoComponent = ({ downloadCount, tags, variant = 'default' }: Props) => {
   if (variant === 'marketplace') {
     return (
       <div className="flex min-h-7 items-center py-1">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 overflow-hidden">
-          {tags.map(tag => (
+          {tags.map((tag) => (
             <div
               key={tag}
               className={cn(
@@ -38,11 +34,13 @@ const CardMoreInfoComponent = ({
   return (
     <div className="flex h-5 items-center">
       {downloadCount !== undefined && <DownloadCount downloadCount={downloadCount} />}
-      {downloadCount !== undefined && tags && tags.length > 0 && <div className="mx-2 system-xs-regular text-text-quaternary">·</div>}
+      {downloadCount !== undefined && tags && tags.length > 0 && (
+        <div className="mx-2 system-xs-regular text-text-quaternary">·</div>
+      )}
       {tags && tags.length > 0 && (
         <>
           <div className="flex h-4 flex-wrap space-x-2 overflow-hidden">
-            {tags.map(tag => (
+            {tags.map((tag) => (
               <div
                 key={tag}
                 className="flex max-w-[120px] space-x-1 overflow-hidden system-xs-regular"

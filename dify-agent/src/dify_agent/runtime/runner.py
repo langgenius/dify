@@ -49,6 +49,7 @@ from dify_agent.layers.ask_human.layer import get_ask_human_layer, validate_ask_
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
+from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
@@ -60,6 +61,7 @@ from dify_agent.protocol.schemas import (
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_runtime_error
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_providers
+from dify_agent.adapters.shell.protocols import SandboxExpiredError
 from dify_agent.runtime.event_sink import (
     RunEventSink,
     emit_pydantic_ai_event,
@@ -110,6 +112,9 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, str | None]:
     message = str(exc) or type(exc).__name__
     reason: str | None = None
 
+    if isinstance(exc, SandboxExpiredError):
+        return message, "sandbox_expired"
+
     if isinstance(exc, ModelHTTPError):
         body = exc.body
         if isinstance(body, Mapping):
@@ -123,6 +128,9 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, str | None]:
 
         if reason is None and exc.status_code == 429:
             reason = "InvokeRateLimitError"
+
+    if isinstance(exc, DifyKnowledgeBaseClientError):
+        reason = exc.error_code or "DifyKnowledgeBaseClientError"
 
     return message, reason
 

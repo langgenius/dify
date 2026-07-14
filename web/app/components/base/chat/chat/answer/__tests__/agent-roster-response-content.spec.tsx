@@ -43,7 +43,9 @@ describe('AgentRosterResponseContent', () => {
     fireEvent.click(screen.getByRole('button', { name: /workFinished/i }))
 
     await waitFor(() => {
-      expect(screen.getByTestId('agent-roster-response-content')).toHaveTextContent('history answer')
+      expect(screen.getByTestId('agent-roster-response-content')).toHaveTextContent(
+        'history answer',
+      )
     })
 
     expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()

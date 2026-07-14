@@ -1,4 +1,10 @@
-import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin, VersionInfo } from '../../../../types'
+import type {
+  Dependency,
+  GitHubItemAndMarketPlaceDependency,
+  PackageDependency,
+  Plugin,
+  VersionInfo,
+} from '../../../../types'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -64,99 +70,110 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit'
 
 // Mock child components
 vi.mock('../../item/github-item', () => ({
-  default: vi.fn().mockImplementation(({
-    checked,
-    onCheckedChange,
-    dependency,
-    onFetchedPayload,
-  }: {
-    checked: boolean
-    onCheckedChange: () => void
-    dependency: GitHubItemAndMarketPlaceDependency
-    onFetchedPayload: (plugin: Plugin) => void
-  }) => {
-    // Simulate successful fetch - use ref to avoid dependency
-    const fetchedRef = React.useRef(false)
-    React.useEffect(() => {
-      if (fetchedRef.current)
-        return
-      fetchedRef.current = true
-      const mockPlugin: Plugin = {
-        type: 'plugin',
-        org: 'test-org',
-        name: 'GitHub Plugin',
-        plugin_id: 'github-plugin-id',
-        version: '1.0.0',
-        latest_version: '1.0.0',
-        latest_package_identifier: 'github-pkg-id',
-        icon: 'icon.png',
-        verified: true,
-        label: { 'en-US': 'GitHub Plugin' },
-        brief: { 'en-US': 'Brief' },
-        description: { 'en-US': 'Description' },
-        introduction: 'Intro',
-        repository: 'https://github.com/test/plugin',
-        category: PluginCategoryEnum.tool,
-        install_count: 100,
-        endpoint: { settings: [] },
-        tags: [],
-        badges: [],
-        verification: { authorized_category: 'community' },
-        from: 'github',
-      }
-      onFetchedPayload(mockPlugin)
-    }, [onFetchedPayload])
+  default: vi
+    .fn()
+    .mockImplementation(
+      ({
+        checked,
+        onCheckedChange,
+        dependency,
+        onFetchedPayload,
+      }: {
+        checked: boolean
+        onCheckedChange: () => void
+        dependency: GitHubItemAndMarketPlaceDependency
+        onFetchedPayload: (plugin: Plugin) => void
+      }) => {
+        // Simulate successful fetch - use ref to avoid dependency
+        const fetchedRef = React.useRef(false)
+        React.useEffect(() => {
+          if (fetchedRef.current) return
+          fetchedRef.current = true
+          const mockPlugin: Plugin = {
+            type: 'plugin',
+            org: 'test-org',
+            name: 'GitHub Plugin',
+            plugin_id: 'github-plugin-id',
+            version: '1.0.0',
+            latest_version: '1.0.0',
+            latest_package_identifier: 'github-pkg-id',
+            icon: 'icon.png',
+            verified: true,
+            label: { 'en-US': 'GitHub Plugin' },
+            brief: { 'en-US': 'Brief' },
+            description: { 'en-US': 'Description' },
+            introduction: 'Intro',
+            repository: 'https://github.com/test/plugin',
+            category: PluginCategoryEnum.tool,
+            install_count: 100,
+            endpoint: { settings: [] },
+            tags: [],
+            badges: [],
+            verification: { authorized_category: 'community' },
+            from: 'github',
+          }
+          onFetchedPayload(mockPlugin)
+        }, [onFetchedPayload])
 
-    return (
-      <div data-testid="github-item" onClick={onCheckedChange}>
-        <span data-testid="github-item-checked">{checked ? 'checked' : 'unchecked'}</span>
-        <span data-testid="github-item-repo">{dependency.value.repo}</span>
-      </div>
-    )
-  }),
+        return (
+          <div data-testid="github-item" onClick={onCheckedChange}>
+            <span data-testid="github-item-checked">{checked ? 'checked' : 'unchecked'}</span>
+            <span data-testid="github-item-repo">{dependency.value.repo}</span>
+          </div>
+        )
+      },
+    ),
 }))
 
 vi.mock('../../item/marketplace-item', () => ({
-  default: vi.fn().mockImplementation(({
-    checked,
-    onCheckedChange,
-    payload,
-    version,
-    _versionInfo,
-  }: {
-    checked: boolean
-    onCheckedChange: () => void
-    payload: Plugin
-    version: string
-    _versionInfo: VersionInfo
-  }) => (
-    <div data-testid="marketplace-item" onClick={onCheckedChange}>
-      <span data-testid="marketplace-item-checked">{checked ? 'checked' : 'unchecked'}</span>
-      <span data-testid="marketplace-item-name">{payload?.name || 'Loading'}</span>
-      <span data-testid="marketplace-item-version">{version}</span>
-    </div>
-  )),
+  default: vi
+    .fn()
+    .mockImplementation(
+      ({
+        checked,
+        onCheckedChange,
+        payload,
+        version,
+        _versionInfo,
+      }: {
+        checked: boolean
+        onCheckedChange: () => void
+        payload: Plugin
+        version: string
+        _versionInfo: VersionInfo
+      }) => (
+        <div data-testid="marketplace-item" onClick={onCheckedChange}>
+          <span data-testid="marketplace-item-checked">{checked ? 'checked' : 'unchecked'}</span>
+          <span data-testid="marketplace-item-name">{payload?.name || 'Loading'}</span>
+          <span data-testid="marketplace-item-version">{version}</span>
+        </div>
+      ),
+    ),
 }))
 
 vi.mock('../../item/package-item', () => ({
-  default: vi.fn().mockImplementation(({
-    checked,
-    onCheckedChange,
-    payload,
-    _isFromMarketPlace,
-    _versionInfo,
-  }: {
-    checked: boolean
-    onCheckedChange: () => void
-    payload: PackageDependency
-    _isFromMarketPlace: boolean
-    _versionInfo: VersionInfo
-  }) => (
-    <div data-testid="package-item" onClick={onCheckedChange}>
-      <span data-testid="package-item-checked">{checked ? 'checked' : 'unchecked'}</span>
-      <span data-testid="package-item-name">{payload.value.manifest.name}</span>
-    </div>
-  )),
+  default: vi
+    .fn()
+    .mockImplementation(
+      ({
+        checked,
+        onCheckedChange,
+        payload,
+        _isFromMarketPlace,
+        _versionInfo,
+      }: {
+        checked: boolean
+        onCheckedChange: () => void
+        payload: PackageDependency
+        _isFromMarketPlace: boolean
+        _versionInfo: VersionInfo
+      }) => (
+        <div data-testid="package-item" onClick={onCheckedChange}>
+          <span data-testid="package-item-checked">{checked ? 'checked' : 'unchecked'}</span>
+          <span data-testid="package-item-name">{payload.value.manifest.name}</span>
+        </div>
+      ),
+    ),
 }))
 
 vi.mock('../../../base/loading-error', () => ({
@@ -208,32 +225,33 @@ const createGitHubDependency = (index: number): GitHubItemAndMarketPlaceDependen
   },
 })
 
-const createPackageDependency = (index: number) => ({
-  type: 'package',
-  value: {
-    unique_identifier: `package-plugin-${index}-uid`,
-    manifest: {
-      plugin_unique_identifier: `package-plugin-${index}-uid`,
-      version: '1.0.0',
-      author: 'test-author',
-      icon: 'icon.png',
-      name: `Package Plugin ${index}`,
-      category: PluginCategoryEnum.tool,
-      label: { 'en-US': `Package Plugin ${index}` },
-      description: { 'en-US': 'Test package plugin' },
-      created_at: '2024-01-01',
-      resource: {},
-      plugins: [],
-      verified: true,
-      endpoint: { settings: [], endpoints: [] },
-      model: null,
-      tags: [],
-      agent_strategy: null,
-      meta: { version: '1.0.0' },
-      trigger: {},
+const createPackageDependency = (index: number) =>
+  ({
+    type: 'package',
+    value: {
+      unique_identifier: `package-plugin-${index}-uid`,
+      manifest: {
+        plugin_unique_identifier: `package-plugin-${index}-uid`,
+        version: '1.0.0',
+        author: 'test-author',
+        icon: 'icon.png',
+        name: `Package Plugin ${index}`,
+        category: PluginCategoryEnum.tool,
+        label: { 'en-US': `Package Plugin ${index}` },
+        description: { 'en-US': 'Test package plugin' },
+        created_at: '2024-01-01',
+        resource: {},
+        plugins: [],
+        verified: true,
+        endpoint: { settings: [], endpoints: [] },
+        model: null,
+        tags: [],
+        agent_strategy: null,
+        meta: { version: '1.0.0' },
+        trigger: {},
+      },
     },
-  },
-} as unknown as PackageDependency)
+  }) as unknown as PackageDependency
 
 // ==================== InstallMulti Component Tests ====================
 describe('InstallMulti Component', () => {
@@ -296,10 +314,7 @@ describe('InstallMulti Component', () => {
     it('should render multiple items for mixed dependency types', async () => {
       const mixedProps = {
         ...defaultProps,
-        allPlugins: [
-          createPackageDependency(0),
-          createGitHubDependency(1),
-        ] as Dependency[],
+        allPlugins: [createPackageDependency(0), createGitHubDependency(1)] as Dependency[],
       }
 
       render(<InstallMulti {...mixedProps} />)
@@ -364,7 +379,9 @@ describe('InstallMulti Component', () => {
   // ==================== useImperativeHandle Tests ====================
   describe('Imperative Handle', () => {
     it('should expose selectAllPlugins function', async () => {
-      const ref: { current: { selectAllPlugins: () => void, deSelectAllPlugins: () => void } | null } = { current: null }
+      const ref: {
+        current: { selectAllPlugins: () => void; deSelectAllPlugins: () => void } | null
+      } = { current: null }
 
       render(<InstallMulti {...defaultProps} ref={ref} />)
 
@@ -380,7 +397,9 @@ describe('InstallMulti Component', () => {
     })
 
     it('should expose deSelectAllPlugins function', async () => {
-      const ref: { current: { selectAllPlugins: () => void, deSelectAllPlugins: () => void } | null } = { current: null }
+      const ref: {
+        current: { selectAllPlugins: () => void; deSelectAllPlugins: () => void } | null
+      } = { current: null }
 
       render(<InstallMulti {...defaultProps} ref={ref} />)
 
@@ -565,7 +584,9 @@ describe('InstallMulti Component', () => {
 
       // Component should render
       await waitFor(() => {
-        expect(screen.queryByTestId('marketplace-item') || screen.queryByTestId('loading-error')).toBeTruthy()
+        expect(
+          screen.queryByTestId('marketplace-item') || screen.queryByTestId('loading-error'),
+        ).toBeTruthy()
       })
     })
   })
@@ -573,15 +594,14 @@ describe('InstallMulti Component', () => {
   // ==================== selectAllPlugins Edge Cases ====================
   describe('selectAllPlugins Edge Cases', () => {
     it('should skip plugins that are not loaded', async () => {
-      const ref: { current: { selectAllPlugins: () => void, deSelectAllPlugins: () => void } | null } = { current: null }
+      const ref: {
+        current: { selectAllPlugins: () => void; deSelectAllPlugins: () => void } | null
+      } = { current: null }
 
       // Use mixed plugins where some might not be loaded
       const mixedProps = {
         ...defaultProps,
-        allPlugins: [
-          createPackageDependency(0),
-          createMarketplaceDependency(1),
-        ] as Dependency[],
+        allPlugins: [createPackageDependency(0), createMarketplaceDependency(1)] as Dependency[],
       }
 
       render(<InstallMulti {...mixedProps} ref={ref} />)
@@ -664,8 +684,7 @@ describe('InstallMulti Component', () => {
       await waitFor(() => {
         // Either loading error or marketplace item should be present
         expect(
-          screen.queryByTestId('loading-error')
-          || screen.queryByTestId('marketplace-item'),
+          screen.queryByTestId('loading-error') || screen.queryByTestId('marketplace-item'),
         ).toBeTruthy()
       })
     })
@@ -684,8 +703,7 @@ describe('InstallMulti Component', () => {
       // Component should handle error gracefully
       await waitFor(() => {
         expect(
-          screen.queryByTestId('loading-error')
-          || screen.queryByTestId('marketplace-item'),
+          screen.queryByTestId('loading-error') || screen.queryByTestId('marketplace-item'),
         ).toBeTruthy()
       })
     })
@@ -697,7 +715,10 @@ describe('InstallMulti Component', () => {
 
       const marketplaceProps = {
         ...defaultProps,
-        allPlugins: [createMarketplaceDependency(0), createMarketplaceDependency(1)] as Dependency[],
+        allPlugins: [
+          createMarketplaceDependency(0),
+          createMarketplaceDependency(1),
+        ] as Dependency[],
       }
 
       render(<InstallMulti {...marketplaceProps} />)
@@ -780,7 +801,9 @@ describe('InstallMulti Component', () => {
   // ==================== Plugin Not Loaded Scenario ====================
   describe('Plugin Not Loaded', () => {
     it('should skip undefined plugins in selectAllPlugins', async () => {
-      const ref: { current: { selectAllPlugins: () => void, deSelectAllPlugins: () => void } | null } = { current: null }
+      const ref: {
+        current: { selectAllPlugins: () => void; deSelectAllPlugins: () => void } | null
+      } = { current: null }
 
       // Create a scenario where some plugins might not be loaded
       const mixedProps = {
@@ -812,10 +835,7 @@ describe('InstallMulti Component', () => {
     it('should filter plugins based on canInstall when selecting', async () => {
       const mixedProps = {
         ...defaultProps,
-        allPlugins: [
-          createPackageDependency(0),
-          createPackageDependency(1),
-        ] as Dependency[],
+        allPlugins: [createPackageDependency(0), createPackageDependency(1)] as Dependency[],
       }
 
       render(<InstallMulti {...mixedProps} />)
@@ -900,10 +920,7 @@ describe('InstallMulti Component', () => {
     it('should handle multiple GitHub plugin fetches', async () => {
       const multiGithub = {
         ...defaultProps,
-        allPlugins: [
-          createGitHubDependency(0),
-          createGitHubDependency(1),
-        ] as Dependency[],
+        allPlugins: [createGitHubDependency(0), createGitHubDependency(1)] as Dependency[],
       }
 
       render(<InstallMulti {...multiGithub} />)
@@ -918,7 +935,9 @@ describe('InstallMulti Component', () => {
   // ==================== canInstall false scenario ====================
   describe('canInstall False Scenario', () => {
     it('should skip plugins that cannot be installed in selectAllPlugins', async () => {
-      const ref: { current: { selectAllPlugins: () => void, deSelectAllPlugins: () => void } | null } = { current: null }
+      const ref: {
+        current: { selectAllPlugins: () => void; deSelectAllPlugins: () => void } | null
+      } = { current: null }
 
       const multiplePlugins = {
         ...defaultProps,

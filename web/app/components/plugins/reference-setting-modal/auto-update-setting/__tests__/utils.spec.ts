@@ -9,6 +9,11 @@ describe('convertLocalSecondsToUTCDaySeconds', () => {
 
   it('should convert local seconds to UTC day seconds for a specific time', () => {
     const localTimezone = 'Asia/Shanghai'
-    expect(convertUTCDaySecondsToLocalSeconds(convertLocalSecondsToUTCDaySeconds(0, localTimezone), localTimezone)).toBe(0)
+    expect(
+      convertUTCDaySecondsToLocalSeconds(
+        convertLocalSecondsToUTCDaySeconds(0, localTimezone),
+        localTimezone,
+      ),
+    ).toBe(0)
   })
 })

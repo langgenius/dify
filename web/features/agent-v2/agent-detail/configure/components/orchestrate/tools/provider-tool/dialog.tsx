@@ -19,32 +19,33 @@ const localize = (value: string) => ({
   zh_Hans: value,
 })
 
-const createFallbackToolCollection = (tool: AgentProviderTool): ToolWithProvider => ({
-  id: tool.id,
-  name: tool.id,
-  author: tool.name,
-  description: localize(`${tool.name} tools`),
-  icon: tool.icon ?? '',
-  icon_dark: tool.iconDark,
-  label: localize(tool.displayName ?? tool.name),
-  type: (tool.providerType as CollectionType | undefined) ?? CollectionType.builtIn,
-  team_credentials: {},
-  is_team_authorization: true,
-  allow_delete: tool.allowDelete ?? false,
-  labels: [],
-  meta: {
-    version: '0.0.0',
-  },
-  tools: tool.actions.map<Tool>(action => ({
-    name: action.toolName,
+const createFallbackToolCollection = (tool: AgentProviderTool): ToolWithProvider =>
+  ({
+    id: tool.id,
+    name: tool.id,
     author: tool.name,
-    label: localize(action.name),
-    description: localize(action.description),
-    parameters: [],
+    description: localize(`${tool.name} tools`),
+    icon: tool.icon ?? '',
+    icon_dark: tool.iconDark,
+    label: localize(tool.displayName ?? tool.name),
+    type: (tool.providerType as CollectionType | undefined) ?? CollectionType.builtIn,
+    team_credentials: {},
+    is_team_authorization: true,
+    allow_delete: tool.allowDelete ?? false,
     labels: [],
-    output_schema: {},
-  })),
-}) as ToolWithProvider
+    meta: {
+      version: '0.0.0',
+    },
+    tools: tool.actions.map<Tool>((action) => ({
+      name: action.toolName,
+      author: tool.name,
+      label: localize(action.name),
+      description: localize(action.description),
+      parameters: [],
+      labels: [],
+      output_schema: {},
+    })),
+  }) as ToolWithProvider
 
 export function ProviderToolSettingsDialog({
   settingTarget,
@@ -59,38 +60,35 @@ export function ProviderToolSettingsDialog({
   const toolSettings = useAtomValue(agentComposerToolSettingsAtom)
   const saveProviderToolActionSettings = useSetAtom(saveProviderToolActionSettingsAtom)
   const currentTarget = useMemo(() => {
-    if (!settingTarget)
-      return null
+    if (!settingTarget) return null
 
-    const tool = tools.find(tool => tool.kind === 'provider' && tool.id === settingTarget.toolId)
-    if (tool?.kind !== 'provider')
-      return null
+    const tool = tools.find((tool) => tool.kind === 'provider' && tool.id === settingTarget.toolId)
+    if (tool?.kind !== 'provider') return null
 
-    const action = tool.actions.find(action => action.id === settingTarget.actionId)
-    if (!action)
-      return null
+    const action = tool.actions.find((action) => action.id === settingTarget.actionId)
+    if (!action) return null
 
     return { action, tool }
   }, [settingTarget, tools])
   const toolCollection = useMemo(() => {
-    if (!currentTarget)
-      return null
+    if (!currentTarget) return null
 
     return collection ?? createFallbackToolCollection(currentTarget.tool)
   }, [collection, currentTarget])
-  const handleSave = useCallback((value: Record<string, unknown>) => {
-    if (!currentTarget)
-      return
+  const handleSave = useCallback(
+    (value: Record<string, unknown>) => {
+      if (!currentTarget) return
 
-    saveProviderToolActionSettings({
-      actionId: currentTarget.action.id,
-      value,
-    })
-    onClose()
-  }, [currentTarget, onClose, saveProviderToolActionSettings])
+      saveProviderToolActionSettings({
+        actionId: currentTarget.action.id,
+        value,
+      })
+      onClose()
+    },
+    [currentTarget, onClose, saveProviderToolActionSettings],
+  )
 
-  if (!currentTarget || !toolCollection)
-    return null
+  if (!currentTarget || !toolCollection) return null
 
   return (
     <SettingBuiltInTool

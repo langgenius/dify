@@ -8,14 +8,12 @@ type AccessControlItemProps = PropsWithChildren<{
 }>
 
 const AccessControlItem: FC<AccessControlItemProps> = ({ type, children }) => {
-  const currentMenu = useAccessControlStore(s => s.currentMenu)
-  const setCurrentMenu = useAccessControlStore(s => s.setCurrentMenu)
+  const currentMenu = useAccessControlStore((s) => s.currentMenu)
+  const setCurrentMenu = useAccessControlStore((s) => s.setCurrentMenu)
   if (currentMenu !== type) {
     return (
       <div
-        className="cursor-pointer rounded-[10px] border
-      border-components-option-card-option-border bg-components-option-card-option-bg
-      hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover"
+        className="cursor-pointer rounded-[10px] border border-components-option-card-option-border bg-components-option-card-option-bg hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover"
         onClick={() => setCurrentMenu(type)}
       >
         {children}
@@ -24,9 +22,7 @@ const AccessControlItem: FC<AccessControlItemProps> = ({ type, children }) => {
   }
 
   return (
-    <div className="rounded-[10px] border-[1.5px]
-  border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-sm"
-    >
+    <div className="rounded-[10px] border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-sm">
       {children}
     </div>
   )

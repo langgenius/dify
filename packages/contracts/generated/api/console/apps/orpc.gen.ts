@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteAppsByAppIdAgentConfigFilesByNamePath,
   zDeleteAppsByAppIdAgentConfigFilesByNameQuery,
@@ -342,6 +341,7 @@ import {
   zPostAppsByAppIdApiEnableBody,
   zPostAppsByAppIdApiEnablePath,
   zPostAppsByAppIdApiEnableResponse,
+  zPostAppsByAppIdAudioToTextBody,
   zPostAppsByAppIdAudioToTextPath,
   zPostAppsByAppIdAudioToTextResponse,
   zPostAppsByAppIdChatMessagesByTaskIdStopPath,
@@ -1301,7 +1301,7 @@ export const post11 = oc
     operationId: 'postAppsByAppIdAgentFiles',
     path: '/apps/{app_id}/agent/files',
     successStatus: 201,
-    summary: 'ADD FILE: commit one uploaded file into the bound agent\'s drive',
+    summary: "ADD FILE: commit one uploaded file into the bound agent's drive",
     tags: ['console'],
   })
   .input(
@@ -1378,7 +1378,7 @@ export const upload2 = {
 export const post13 = oc
   .route({
     description:
-      'Infer CLI tool + ENV suggestions from a standardized skill\'s SKILL.md (draft only, ENG-371)\nSaving still goes through composer validation.',
+      "Infer CLI tool + ENV suggestions from a standardized skill's SKILL.md (draft only, ENG-371)\nSaving still goes through composer validation.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdAgentSkillsBySlugInferTools',
@@ -1769,7 +1769,9 @@ export const post20 = oc
     path: '/apps/{app_id}/audio-to-text',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostAppsByAppIdAudioToTextPath }))
+  .input(
+    z.object({ body: zPostAppsByAppIdAudioToTextBody, params: zPostAppsByAppIdAudioToTextPath }),
+  )
   .output(zPostAppsByAppIdAudioToTextResponse)
 
 export const audioToText = {
@@ -2379,7 +2381,7 @@ export const siteEnable = {
  */
 export const delete9 = oc
   .route({
-    description: 'Remove the current account\'s star from an application',
+    description: "Remove the current account's star from an application",
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdStar',
@@ -4142,7 +4144,7 @@ export const byOutputName = {
  */
 export const get77 = oc
   .route({
-    description: 'One node\'s declared outputs for a draft workflow run.',
+    description: "One node's declared outputs for a draft workflow run.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeId',
@@ -4162,7 +4164,7 @@ export const byNodeId9 = {
  */
 export const get78 = oc
   .route({
-    description: 'Snapshot of every node\'s declared outputs for a draft workflow run.',
+    description: "Snapshot of every node's declared outputs for a draft workflow run.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputs',
@@ -4542,7 +4544,7 @@ export const byOutputName2 = {
  */
 export const get86 = oc
   .route({
-    description: 'One node\'s declared outputs for a published workflow run.',
+    description: "One node's declared outputs for a published workflow run.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeId',
@@ -4562,7 +4564,7 @@ export const byNodeId10 = {
  */
 export const get87 = oc
   .route({
-    description: 'Snapshot of every node\'s declared outputs for a published workflow run.',
+    description: "Snapshot of every node's declared outputs for a published workflow run.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputs',

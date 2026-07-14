@@ -20,27 +20,28 @@ export function useToolMarketplacePanel({
 
   const showMarketplacePanel = useCallback(() => {
     containerRef.current?.scrollTo({
-      top: toolListTailRef.current
-        ? toolListTailRef.current.offsetTop - 80
-        : 0,
+      top: toolListTailRef.current ? toolListTailRef.current.offsetTop - 80 : 0,
       behavior: 'smooth',
     })
   }, [containerRef])
 
-  const onContainerScroll = useCallback((e: Event) => {
-    handleScroll(e)
-    if (containerRef.current && toolListTailRef.current)
-      setIsMarketplaceArrowVisible(containerRef.current.scrollTop < (toolListTailRef.current.offsetTop - 80))
-  }, [containerRef, handleScroll])
+  const onContainerScroll = useCallback(
+    (e: Event) => {
+      handleScroll(e)
+      if (containerRef.current && toolListTailRef.current)
+        setIsMarketplaceArrowVisible(
+          containerRef.current.scrollTop < toolListTailRef.current.offsetTop - 80,
+        )
+    },
+    [containerRef, handleScroll],
+  )
 
   useEffect(() => {
     const container = containerRef.current
-    if (container)
-      container.addEventListener('scroll', onContainerScroll)
+    if (container) container.addEventListener('scroll', onContainerScroll)
 
     return () => {
-      if (container)
-        container.removeEventListener('scroll', onContainerScroll)
+      if (container) container.removeEventListener('scroll', onContainerScroll)
     }
   }, [onContainerScroll])
 

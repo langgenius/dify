@@ -37,7 +37,7 @@ const edges: Edge[] = [
 
 const ContextConsumer = () => {
   const { store } = useWorkflowHistoryStore()
-  const datasetCount = useDatasetsDetailStore(state => Object.keys(state.datasetsDetail).length)
+  const datasetCount = useDatasetsDetailStore((state) => Object.keys(state.datasetsDetail).length)
   const reactFlowStore = useStoreApi()
 
   return (
@@ -53,17 +53,12 @@ describe('WorkflowWithDefaultContext', () => {
   it('wires the ReactFlow, workflow history, and datasets detail providers around its children', () => {
     render(
       <WorkflowContextProvider>
-        <WorkflowWithDefaultContext
-          nodes={nodes}
-          edges={edges}
-        >
+        <WorkflowWithDefaultContext nodes={nodes} edges={edges}>
           <ContextConsumer />
         </WorkflowWithDefaultContext>
       </WorkflowContextProvider>,
     )
 
-    expect(
-      screen.getByText('history:1 datasets:0 reactflow:true'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('history:1 datasets:0 reactflow:true')).toBeInTheDocument()
   })
 })

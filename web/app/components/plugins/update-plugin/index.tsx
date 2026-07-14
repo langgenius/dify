@@ -14,20 +14,8 @@ const UpdatePlugin: FC<UpdatePluginModalType> = ({
   onSave,
 }) => {
   if (type === PluginSource.github) {
-    return (
-      <UpdateFromGitHub
-        payload={github!}
-        onSave={onSave}
-        onCancel={onCancel}
-      />
-    )
+    return <UpdateFromGitHub payload={github!} onSave={onSave} onCancel={onCancel} />
   }
-  return (
-    <UpdateFromMarketplace
-      payload={marketPlace!}
-      onSave={onSave}
-      onCancel={onCancel}
-    />
-  )
+  return <UpdateFromMarketplace payload={marketPlace!} onSave={onSave} onCancel={onCancel} />
 }
 export default React.memo(UpdatePlugin)

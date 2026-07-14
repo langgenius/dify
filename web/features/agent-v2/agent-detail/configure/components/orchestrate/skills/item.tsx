@@ -3,9 +3,7 @@
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Dialog,
-} from '@langgenius/dify-ui/dialog'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,35 +32,39 @@ export function AgentSkillItem({
   }, [onRemove, skill.id])
   const handleDownload = useCallback(async () => {
     if (apiContext.workflow) {
-      const result = await queryClient.fetchQuery(consoleQuery.apps.byAppId.agent.config.skills.byName.download.get.queryOptions({
-        input: {
-          params: {
-            app_id: apiContext.workflow.appId,
-            name: skill.name,
+      const result = await queryClient.fetchQuery(
+        consoleQuery.apps.byAppId.agent.config.skills.byName.download.get.queryOptions({
+          input: {
+            params: {
+              app_id: apiContext.workflow.appId,
+              name: skill.name,
+            },
+            query: {
+              node_id: apiContext.workflow.nodeId,
+              draft_type: apiContext.draftType,
+              version_id: apiContext.versionId,
+            },
           },
-          query: {
-            node_id: apiContext.workflow.nodeId,
-            draft_type: apiContext.draftType,
-            version_id: apiContext.versionId,
-          },
-        },
-      }))
+        }),
+      )
       downloadUrl({ url: result.url, fileName: skill.name })
       return
     }
 
-    const result = await queryClient.fetchQuery(consoleQuery.agent.byAgentId.config.skills.byName.download.get.queryOptions({
-      input: {
-        params: {
-          agent_id: apiContext.agentId,
-          name: skill.name,
+    const result = await queryClient.fetchQuery(
+      consoleQuery.agent.byAgentId.config.skills.byName.download.get.queryOptions({
+        input: {
+          params: {
+            agent_id: apiContext.agentId,
+            name: skill.name,
+          },
+          query: {
+            draft_type: apiContext.draftType,
+            version_id: apiContext.versionId,
+          },
         },
-        query: {
-          draft_type: apiContext.draftType,
-          version_id: apiContext.versionId,
-        },
-      },
-    }))
+      }),
+    )
     downloadUrl({ url: result.url, fileName: skill.name })
   }, [apiContext, queryClient, skill.name])
   const handleOpenPreview = useCallback(() => {
@@ -70,7 +72,7 @@ export function AgentSkillItem({
   }, [])
   const detail = useAgentSkillDetail({
     apiContext,
-    description: skill.description ?? t('agentDetail.configure.skills.tip'),
+    description: skill.description ?? t(($) => $['agentDetail.configure.skills.tip']),
     isOpen: isPreviewOpen,
     skill,
   })
@@ -94,12 +96,12 @@ export function AgentSkillItem({
               'group-focus-within:opacity-0 group-hover:opacity-0',
             )}
           >
-            {t('agentDetail.configure.skills.itemType')}
+            {t(($) => $['agentDetail.configure.skills.itemType'])}
           </span>
         </button>
         <button
           type="button"
-          aria-label={`${tCommon('operation.download')} ${skill.name}`}
+          aria-label={`${tCommon(($) => $['operation.download'])} ${skill.name}`}
           onClick={handleDownload}
           className={cn(
             'pointer-events-none absolute top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
@@ -112,7 +114,7 @@ export function AgentSkillItem({
           <button
             type="button"
             data-agent-skill-remove-button
-            aria-label={t('agentDetail.configure.skills.remove', { name: skill.name })}
+            aria-label={t(($) => $['agentDetail.configure.skills.remove'], { name: skill.name })}
             onClick={handleRemove}
             className="pointer-events-none absolute top-1/2 right-1 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
@@ -120,12 +122,7 @@ export function AgentSkillItem({
           </button>
         )}
       </div>
-      {isPreviewOpen && (
-        <AgentSkillDetailDialog
-          skillName={skill.name}
-          detail={detail}
-        />
-      )}
+      {isPreviewOpen && <AgentSkillDetailDialog skillName={skill.name} detail={detail} />}
     </Dialog>
   )
 }

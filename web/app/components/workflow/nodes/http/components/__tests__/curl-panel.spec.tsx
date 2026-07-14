@@ -5,10 +5,7 @@ import { BodyPayloadValueType, BodyType } from '../../types'
 import CurlPanel from '../curl-panel'
 import * as curlParser from '../curl-parser'
 
-const {
-  mockHandleNodeSelect,
-  mockToastError,
-} = vi.hoisted(() => ({
+const { mockHandleNodeSelect, mockToastError } = vi.hoisted(() => ({
   mockHandleNodeSelect: vi.fn(),
   mockToastError: vi.fn(),
 }))
@@ -32,7 +29,9 @@ describe('curl-panel', () => {
 
   describe('parseCurl', () => {
     it('should parse method, headers, json body, and query params from a valid curl command', () => {
-      const { node, error } = curlParser.parseCurl('curl -X POST -H "Authorization: Bearer token" --json "{"name":"openai"}" https://example.com/users?page=1&size=2')
+      const { node, error } = curlParser.parseCurl(
+        'curl -X POST -H "Authorization: Bearer token" --json "{"name":"openai"}" https://example.com/users?page=1&size=2',
+      )
 
       expect(error).toBeNull()
       expect(node).toMatchObject({
@@ -44,11 +43,15 @@ describe('curl-panel', () => {
     })
 
     it('should return an error for invalid curl input', () => {
-      expect(curlParser.parseCurl('fetch https://example.com').error).toContain('Invalid cURL command')
+      expect(curlParser.parseCurl('fetch https://example.com').error).toContain(
+        'Invalid cURL command',
+      )
     })
 
     it('should parse form data and attach typed content headers', () => {
-      const { node, error } = curlParser.parseCurl('curl --request POST --form "file=@report.txt;type=text/plain" --form "name=openai" https://example.com/upload')
+      const { node, error } = curlParser.parseCurl(
+        'curl --request POST --form "file=@report.txt;type=text/plain" --form "name=openai" https://example.com/upload',
+      )
 
       expect(error).toBeNull()
       expect(node).toMatchObject({
@@ -63,15 +66,19 @@ describe('curl-panel', () => {
     })
 
     it('should parse raw payloads and preserve equals signs in the body value', () => {
-      const { node, error } = curlParser.parseCurl('curl --data-binary "token=abc=123" https://example.com/raw')
+      const { node, error } = curlParser.parseCurl(
+        'curl --data-binary "token=abc=123" https://example.com/raw',
+      )
 
       expect(error).toBeNull()
       expect(node?.body).toEqual({
         type: BodyType.rawText,
-        data: [{
-          type: BodyPayloadValueType.text,
-          value: 'token=abc=123',
-        }],
+        data: [
+          {
+            type: BodyPayloadValueType.text,
+            value: 'token=abc=123',
+          },
+        ],
       })
     })
 
@@ -98,41 +105,33 @@ describe('curl-panel', () => {
       const handleCurlImport = vi.fn()
 
       render(
-        <CurlPanel
-          nodeId="node-1"
-          isShow
-          onHide={onHide}
-          handleCurlImport={handleCurlImport}
-        />,
+        <CurlPanel nodeId="node-1" isShow onHide={onHide} handleCurlImport={handleCurlImport} />,
       )
 
       await user.type(screen.getByRole('textbox'), 'curl https://example.com')
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(onHide).toHaveBeenCalledTimes(1)
-      expect(handleCurlImport).toHaveBeenCalledWith(expect.objectContaining({
-        method: 'get',
-        url: 'https://example.com',
-      }))
+      expect(handleCurlImport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'get',
+          url: 'https://example.com',
+        }),
+      )
       expect(mockHandleNodeSelect).toHaveBeenNthCalledWith(1, 'node-1', true)
     })
 
     it('should notify the user when the curl command is invalid', async () => {
       const user = userEvent.setup()
 
-      render(
-        <CurlPanel
-          nodeId="node-1"
-          isShow
-          onHide={vi.fn()}
-          handleCurlImport={vi.fn()}
-        />,
-      )
+      render(<CurlPanel nodeId="node-1" isShow onHide={vi.fn()} handleCurlImport={vi.fn()} />)
 
       await user.type(screen.getByRole('textbox'), 'invalid')
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-      expect(vi.mocked(toast.error)).toHaveBeenCalledWith(expect.stringContaining('Invalid cURL command'))
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid cURL command'),
+      )
     })
 
     it('should keep the panel open when parsing returns no node and no error', async () => {
@@ -145,12 +144,7 @@ describe('curl-panel', () => {
       })
 
       render(
-        <CurlPanel
-          nodeId="node-1"
-          isShow
-          onHide={onHide}
-          handleCurlImport={handleCurlImport}
-        />,
+        <CurlPanel nodeId="node-1" isShow onHide={onHide} handleCurlImport={handleCurlImport} />,
       )
 
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))

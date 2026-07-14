@@ -16,8 +16,10 @@ plugin/knowledge business-layer family:
 
 Public DTOs provide Dify context plus plugin/model/tool data, while server-only
 plugin daemon settings and Dify API inner settings are injected through provider
-factories. Optional shellctl entrypoint/auth token and Agent Stub URL/token
-factory are injected for ``DifyShellLayer``. The resulting ``Compositor``
+factories. An already-selected shell provider (shellctl or enterprise, built at
+the runtime boundary) and the Agent Stub URL/token factory are injected for
+``DifyShellLayer``; a ``None`` shell provider leaves the shell layer disabled.
+The resulting ``Compositor``
 remains Agenton state-only at the snapshot boundary: live resources such as
 HTTP clients are injected by runtime-owned providers, may be held on active
 layer instances inside ``resource_context()``, and never enter session
@@ -27,7 +29,10 @@ snapshots.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from dify_agent.adapters.shell.protocols import ShellProviderProtocol
 
 from pydantic_ai.messages import UserContent
 
@@ -62,32 +67,12 @@ def create_default_layer_providers(
     plugin_daemon_api_key: str = "",
     inner_api_url: str = "http://localhost:5001",
     inner_api_key: str = "",
-    shellctl_entrypoint: str | None = None,
-    shellctl_auth_token: str | None = None,
+    shell_provider: ShellProviderProtocol | None = None,
+    shell_home_root: str = "/home",
     agent_stub_api_base_url: str | None = None,
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
 ) -> tuple[DifyAgentLayerProvider, ...]:
-    """Return the server provider set of safe config-constructible layers.
-
-    ``shellctl_auth_token`` defaults to no token. An explicit empty string
-    prevents ``ShellctlClient`` from falling back to the Dify Agent process's
-    ``SHELLCTL_AUTH_TOKEN`` environment variable; deployments that enable
-    shellctl bearer auth must set the Dify Agent server setting explicitly.
-    """
-    from dify_agent.adapters.shell.config import ShellAdapterSettings
-    from dify_agent.adapters.shell.factory import create_shell_provider
-
-    shell_provider = (
-        create_shell_provider(
-            ShellAdapterSettings(
-                shell_provider="shellctl",
-                shellctl_entrypoint=shellctl_entrypoint,
-                shellctl_auth_token=shellctl_auth_token,
-            )
-        )
-        if shellctl_entrypoint
-        else None
-    )
+    """Return the server provider set of safe config-constructible layers."""
     return (
         LayerProvider.from_layer_type(PromptLayer),
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
@@ -108,6 +93,7 @@ def create_default_layer_providers(
             create=lambda config: DifyShellLayer.from_config_with_settings(
                 DifyShellLayerConfig.model_validate(config),
                 shell_provider=shell_provider,
+                shell_home_root=shell_home_root,
                 agent_stub_api_base_url=agent_stub_api_base_url,
                 agent_stub_token_factory=agent_stub_token_factory,
             ),

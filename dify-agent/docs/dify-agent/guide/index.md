@@ -40,6 +40,7 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_INNER_API_KEY` | empty | API key sent to Dify API inner plugin endpoints. Set this to Dify API `INNER_API_KEY_FOR_PLUGIN` (Docker: `PLUGIN_DIFY_INNER_API_KEY`). |
 | `DIFY_AGENT_SHELLCTL_ENTRYPOINT` | empty | Base URL for the shellctl server used by `dify.shell`; required when runs include the shell layer. |
 | `DIFY_AGENT_SHELLCTL_AUTH_TOKEN` | empty | Optional bearer token sent to the shellctl server. |
+| `DIFY_AGENT_SHELL_HOME_ROOT` | `/home` | Root for per-Agent shell HOME directories. Set this to a writable path such as `/tmp/dify-agent-home` for local macOS development. |
 | `DIFY_AGENT_STUB_API_BASE_URL` | empty | Public Agent Stub API base URL reachable from shellctl-managed remote machines. HTTP may be the service root or `/agent-stub`; gRPC must be `grpc://host:port`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
 | `DIFY_AGENT_STUB_GRPC_BIND_ADDRESS` | empty | Optional `host:port` bind override used only when `DIFY_AGENT_STUB_API_BASE_URL` uses `grpc://`. |
 | `DIFY_AGENT_SERVER_SECRET_KEY` | empty | Security-sensitive server-wide root secret used to derive the JWE encryption key for Agent Stub bearer tokens; required when `DIFY_AGENT_STUB_API_BASE_URL` is set. The supplied default config uses a development value; set a unique unpadded base64url 32-byte secret in production. |
@@ -64,6 +65,7 @@ DIFY_AGENT_INNER_API_URL=http://localhost:5001
 DIFY_AGENT_INNER_API_KEY=replace-with-dify-inner-api-key-for-plugin
 DIFY_AGENT_SHELLCTL_ENTRYPOINT=http://127.0.0.1:5004
 DIFY_AGENT_SHELLCTL_AUTH_TOKEN=replace-with-shellctl-token
+DIFY_AGENT_SHELL_HOME_ROOT=/tmp/dify-agent-home
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
 # This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
 # Replace this development default in production.

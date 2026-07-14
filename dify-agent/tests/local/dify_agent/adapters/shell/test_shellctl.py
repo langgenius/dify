@@ -10,6 +10,7 @@ from typing import cast
 
 import httpx2 as httpx
 import pytest
+from pydantic import ValidationError
 
 from dify_agent.adapters.shell import shellctl
 from dify_agent.adapters.shell.config import ShellAdapterSettings
@@ -141,15 +142,13 @@ def _client_protocol(client: FakeShellctlClient) -> ShellctlClientProtocol:
 
 
 def test_factory_unknown_provider_raises() -> None:
-    settings = ShellAdapterSettings(shell_provider="nope")
-    with pytest.raises(ValueError, match="Unknown shell provider"):
-        create_shell_provider(settings)
+    with pytest.raises(ValidationError):
+        ShellAdapterSettings(shell_provider="nope")  # type: ignore[arg-type]
 
 
 def test_factory_shellctl_requires_entrypoint() -> None:
-    settings = ShellAdapterSettings(shell_provider="shellctl", shellctl_entrypoint=None)
-    with pytest.raises(ValueError, match="DIFY_AGENT_SHELLCTL_ENTRYPOINT"):
-        create_shell_provider(settings)
+    with pytest.raises(ValidationError, match="shellctl_entrypoint is required"):
+        ShellAdapterSettings(shell_provider="shellctl", shellctl_entrypoint=None)
 
 
 def test_factory_builds_shellctl_provider_from_settings() -> None:
@@ -160,13 +159,13 @@ def test_factory_builds_shellctl_provider_from_settings() -> None:
     assert provider.token == ""
 
 
-def test_provider_create_opens_only_live_resource_and_close_closes_client() -> None:
+def test_provider_create_opens_only_live_resource_and_suspend_closes_client() -> None:
     client = FakeShellctlClient()
 
     async def scenario() -> None:
         resource = await _provider(client).create()
         assert client.run_calls == []
-        await resource.close()
+        await resource.suspend()
 
     asyncio.run(scenario())
     assert client.closed is True
@@ -232,7 +231,7 @@ def test_commands_forward_parameters_and_map_metadata() -> None:
         interrupt_result = await resource.commands.interrupt("run-job", grace_seconds=1.5)
         tail_result = await resource.commands.tail("run-job")
         await resource.commands.delete("run-job", force=True, grace_seconds=2.0)
-        await resource.close()
+        await resource.suspend()
 
         assert run_result == ShellCommandResult(
             job_id="run-job",
