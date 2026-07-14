@@ -315,6 +315,7 @@ describe('GotoAnything', () => {
       await user.click(result)
 
       expect(routerPush).toHaveBeenCalledWith('/apps/1')
+      expect(routerPush).toHaveBeenCalledTimes(1)
     })
 
     it('should navigate the highlighted result with ArrowDown and Enter', async () => {
@@ -339,6 +340,53 @@ describe('GotoAnything', () => {
       await user.keyboard('{ArrowDown}{Enter}')
 
       expect(routerPush).toHaveBeenCalledWith('/apps/keyboard')
+      expect(routerPush).toHaveBeenCalledTimes(1)
+    })
+
+    it('should loop from the last command to the first with ArrowDown', async () => {
+      const user = userEvent.setup()
+      mockAvailableCommands = [
+        { name: 'theme', description: 'Change theme' },
+        { name: 'language', description: 'Change language' },
+      ]
+
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+
+      await user.type(input, '/')
+      const options = screen.getAllByRole('option')
+      expect(options).toHaveLength(2)
+      const [firstOption, secondOption] = options
+      if (!firstOption || !secondOption) throw new Error('Expected two command options')
+
+      await user.keyboard('{ArrowDown}')
+      expect(input).toHaveAttribute('aria-activedescendant', secondOption.id)
+
+      await user.keyboard('{ArrowDown}')
+      expect(input).toHaveAttribute('aria-activedescendant', firstOption.id)
+    })
+
+    it('should announce the displayed command count', async () => {
+      const user = userEvent.setup()
+      mockAvailableCommands = [
+        { name: 'theme', description: 'Change theme' },
+        { name: 'language', description: 'Change language' },
+      ]
+
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+
+      await user.type(input, '/')
+
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'app.gotoAnything.resultCount:{"count":2}',
+      )
     })
 
     it('should clear selection when typing without prefix', async () => {
@@ -613,7 +661,7 @@ describe('GotoAnything', () => {
       await user.type(input, '/theme')
       await user.keyboard('{Enter}')
 
-      expect(executeMock).toHaveBeenCalled()
+      expect(executeMock).toHaveBeenCalledTimes(1)
     })
 
     it('should NOT execute unavailable slash command', async () => {

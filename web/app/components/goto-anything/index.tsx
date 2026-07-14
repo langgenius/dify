@@ -1,7 +1,6 @@
 'use client'
 
 import type { AutocompleteChangeEventDetails } from '@langgenius/dify-ui/autocomplete'
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { Plugin } from '../plugins/types'
 import type { ActionItem, RecentSearchResult, SearchResult } from './actions/types'
 import {
@@ -202,7 +201,6 @@ function GotoAnythingDialog() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activePlugin, setActivePlugin] = useState<Plugin>()
   const inputRef = useRef<HTMLInputElement>(null)
-  const highlightedOptionRef = useRef<GotoAnythingOption | undefined>(undefined)
   const actions = useMemo(
     () => createActions(isWorkflowPage, isRagPipelinePage),
     [isWorkflowPage, isRagPipelinePage],
@@ -346,34 +344,40 @@ function GotoAnythingDialog() {
     if (!nextOpen && eventDetails.reason === 'escape-key') gotoAnythingDialogHandle.close()
   }
 
+  function handleAutocompleteValueChange(
+    nextValue: string,
+    eventDetails: AutocompleteChangeEventDetails,
+  ) {
+    if (eventDetails.reason !== 'item-press') setSearchQuery(nextValue)
+  }
+
   function selectOption(option: GotoAnythingOption) {
     if (isCommandOption(option)) handleCommandSelect(option.shortcut)
     else handleNavigate(option)
   }
 
-  function handleAutocompleteKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
-    if (event.key !== 'Enter' || !highlightedOptionRef.current) return
-
-    event.preventDefault()
-    selectOption(highlightedOptionRef.current)
-  }
-
-  function handleAutocompleteHighlight(option: GotoAnythingOption | undefined) {
-    highlightedOptionRef.current = option
-  }
-
-  const commandOptions = useMemo(
-    () => getCommandOptions(actions, searchQuery),
-    [actions, searchQuery],
-  )
+  const commandOptions = getCommandOptions(actions, searchQuery)
   const autocompleteOptions: GotoAnythingOption[] = isCommandsMode ? commandOptions : dedupedResults
+  const visibleOptions = isLoading || isError ? [] : autocompleteOptions
+  const autocompleteResultCount = visibleOptions.length
   const isSlashMode = searchQuery.trim().startsWith('/')
+
+  let autocompleteStatus: string | null = null
+  if (isLoading) autocompleteStatus = t(($) => $['gotoAnything.searching'], { ns: 'app' })
+  else if (isError) autocompleteStatus = t(($) => $['gotoAnything.searchFailed'], { ns: 'app' })
+  else if (hasUnavailableServices)
+    autocompleteStatus = t(($) => $['gotoAnything.someServicesUnavailable'], { ns: 'app' })
+  else if (trimmedSearchQuery)
+    autocompleteStatus = t(($) => $['gotoAnything.resultCount'], {
+      ns: 'app',
+      count: autocompleteResultCount,
+    })
 
   let emptyStateVariant: 'loading' | 'error' | 'default' | 'no-results' | null = null
   if (isLoading) emptyStateVariant = 'loading'
   else if (isError) emptyStateVariant = 'error'
-  else if (!searchQuery.trim() && dedupedResults.length === 0) emptyStateVariant = 'default'
-  else if (dedupedResults.length === 0 && !isCommandsMode) emptyStateVariant = 'no-results'
+  else if (!trimmedSearchQuery && autocompleteResultCount === 0) emptyStateVariant = 'default'
+  else if (autocompleteResultCount === 0 && !isCommandsMode) emptyStateVariant = 'no-results'
 
   return (
     <>
@@ -389,17 +393,17 @@ function GotoAnythingDialog() {
               {t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
             </DialogTitle>
             <Autocomplete<GotoAnythingOption>
-              items={isLoading || isError ? [] : autocompleteOptions}
+              items={visibleOptions}
               value={searchQuery}
-              onValueChange={setSearchQuery}
+              onValueChange={handleAutocompleteValueChange}
               onOpenChange={handleAutocompleteOpenChange}
-              onItemHighlighted={handleAutocompleteHighlight}
               itemToStringValue={optionToInputValue}
               filter={null}
               open
               inline
               autoHighlight="always"
               keepHighlight
+              loopFocus
             >
               <AutocompleteInputGroup
                 size="medium"
@@ -413,7 +417,6 @@ function GotoAnythingDialog() {
                     aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
                     placeholder={t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' })}
                     className="px-0"
-                    onKeyDownCapture={handleAutocompleteKeyDown}
                   />
                   {searchMode !== 'general' && (
                     <div className="flex items-center gap-1 rounded-sm bg-gray-100 px-2 py-[2px] text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
@@ -428,20 +431,7 @@ function GotoAnythingDialog() {
                 </KbdGroup>
               </AutocompleteInputGroup>
 
-              <AutocompleteStatus className="sr-only">
-                {trimmedSearchQuery
-                  ? isLoading
-                    ? t(($) => $['gotoAnything.searching'], { ns: 'app' })
-                    : isError
-                      ? t(($) => $['gotoAnything.searchFailed'], { ns: 'app' })
-                      : hasUnavailableServices
-                        ? t(($) => $['gotoAnything.someServicesUnavailable'], { ns: 'app' })
-                        : t(($) => $['gotoAnything.resultCount'], {
-                            ns: 'app',
-                            count: dedupedResults.length,
-                          })
-                  : null}
-              </AutocompleteStatus>
+              <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
 
               <div aria-busy={isLoading || undefined}>
                 {emptyStateVariant === 'loading' && (
@@ -456,7 +446,7 @@ function GotoAnythingDialog() {
                   </div>
                 )}
 
-                {!isLoading && !isError && isCommandsMode && commandOptions.length === 0 && (
+                {!isLoading && !isError && isCommandsMode && autocompleteResultCount === 0 && (
                   <div className="h-[240px] overflow-y-auto">
                     <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
                       <div>
@@ -471,7 +461,7 @@ function GotoAnythingDialog() {
                   </div>
                 )}
 
-                {!isLoading && !isError && isCommandsMode && commandOptions.length > 0 && (
+                {!isLoading && !isError && isCommandsMode && autocompleteResultCount > 0 && (
                   <AutocompleteList className="h-[240px] max-h-none p-0">
                     <AutocompleteGroup items={commandOptions}>
                       <AutocompleteGroupLabel className="px-4 pt-3 pb-2 text-left text-sm font-medium text-text-secondary">
@@ -530,7 +520,7 @@ function GotoAnythingDialog() {
                   !isError &&
                   !isCommandsMode &&
                   !emptyStateVariant &&
-                  dedupedResults.length > 0 && (
+                  autocompleteResultCount > 0 && (
                     <AutocompleteList className="h-[240px] max-h-none p-0">
                       {Object.entries(groupedResults).map(([type, results]) => (
                         <AutocompleteGroup key={type} items={results}>
@@ -573,7 +563,7 @@ function GotoAnythingDialog() {
               </div>
 
               <Footer
-                resultCount={dedupedResults.length}
+                resultCount={autocompleteResultCount}
                 searchMode={searchMode}
                 isLoading={isLoading}
                 hasUnavailableServices={hasUnavailableServices}
