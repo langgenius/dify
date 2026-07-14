@@ -24,7 +24,8 @@ vi.mock('../edit-dialog', async () => {
 
 vi.mock('../delete-dialog', async () => {
   const { useAtomValue } = await import('jotai')
-  const { deleteDeploymentDialogOpenAtom, deploymentActionAppInstanceAtom } = await import('../state')
+  const { deleteDeploymentDialogOpenAtom, deploymentActionAppInstanceAtom } =
+    await import('../state')
 
   return {
     DeleteDeploymentDialog: () => {
@@ -37,7 +38,9 @@ vi.mock('../delete-dialog', async () => {
   }
 })
 
-function createAppInstance(overrides: Partial<DeploymentActionAppInstance> = {}): DeploymentActionAppInstance {
+function createAppInstance(
+  overrides: Partial<DeploymentActionAppInstance> = {},
+): DeploymentActionAppInstance {
   return {
     id: 'app-instance-1',
     displayName: 'Deployment 1',
@@ -72,18 +75,15 @@ describe('DeploymentActionsMenu', () => {
   it('opens edit and delete dialogs from menu items', async () => {
     const user = userEvent.setup()
 
-    render(
-      <DeploymentActionsMenu
-        appInstance={createAppInstance()}
-        placement="bottom-end"
-      />,
-    )
+    render(<DeploymentActionsMenu appInstance={createAppInstance()} placement="bottom-end" />)
 
     expect(screen.getByTestId('edit-dialog')).toHaveAttribute('data-open', 'false')
     expect(screen.getByTestId('delete-dialog')).toHaveAttribute('data-open', 'false')
 
     await user.click(screen.getByRole('button', { name: 'deployments.card.moreActions' }))
-    await user.click(await screen.findByRole('menuitem', { name: 'deployments.card.menu.editInfo' }))
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'deployments.card.menu.editInfo' }),
+    )
 
     expect(screen.getByTestId('edit-dialog')).toHaveAttribute('data-open', 'true')
     expect(screen.getByTestId('delete-dialog')).toHaveAttribute('data-open', 'false')
@@ -93,7 +93,13 @@ describe('DeploymentActionsMenu', () => {
 
     expect(screen.getByTestId('edit-dialog')).toHaveAttribute('data-open', 'false')
     expect(screen.getByTestId('delete-dialog')).toHaveAttribute('data-open', 'true')
-    expect(editDialogMock).toHaveBeenLastCalledWith({ appInstanceId: 'app-instance-1', open: false })
-    expect(deleteDialogMock).toHaveBeenLastCalledWith({ appInstanceId: 'app-instance-1', open: true })
+    expect(editDialogMock).toHaveBeenLastCalledWith({
+      appInstanceId: 'app-instance-1',
+      open: false,
+    })
+    expect(deleteDialogMock).toHaveBeenLastCalledWith({
+      appInstanceId: 'app-instance-1',
+      open: true,
+    })
   })
 })

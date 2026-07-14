@@ -75,18 +75,23 @@ function AppCard({
   const queryClient = useQueryClient()
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appInfo.permission_keys, {
-    currentUserId,
-    resourceMaintainer: appInfo.maintainer,
-    workspacePermissionKeys,
-  }), [appInfo.maintainer, appInfo.permission_keys, currentUserId, workspacePermissionKeys])
+  const appACLCapabilities = useMemo(
+    () =>
+      getAppACLCapabilities(appInfo.permission_keys, {
+        currentUserId,
+        resourceMaintainer: appInfo.maintainer,
+        workspacePermissionKeys,
+      }),
+    [appInfo.maintainer, appInfo.permission_keys, currentUserId, workspacePermissionKeys],
+  )
   const canEditApp = appACLCapabilities.canEdit
   const canManageWebAppAccessControl = appACLCapabilities.canReleaseAndVersion
-  const shouldFetchWorkflow = appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT
+  const shouldFetchWorkflow =
+    appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT
   const { data: currentWorkflow } = useAppWorkflow(shouldFetchWorkflow ? appInfo.id : '')
   const docLink = useDocLink()
-  const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
+  const appDetail = useAppStore((state) => state.appDetail)
+  const setAppDetail = useAppStore((state) => state.setAppDetail)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
@@ -94,12 +99,16 @@ function AppCard({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showAccessControl, setShowAccessControl] = useState(false)
   const [showWorkflowLaunchDialog, setShowWorkflowLaunchDialog] = useState(false)
-  const [workflowLaunchValues, setWorkflowLaunchValues] = useState<Record<string, WorkflowLaunchInputValue>>({})
+  const [workflowLaunchValues, setWorkflowLaunchValues] = useState<
+    Record<string, WorkflowLaunchInputValue>
+  >({})
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appAccessSubjects } = useAppWhiteListSubjects(
     appDetail?.id,
-    systemFeatures.webapp_auth.enabled && canManageWebAppAccessControl && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
+    systemFeatures.webapp_auth.enabled &&
+      canManageWebAppAccessControl &&
+      appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
   )
 
   const cardState = getAppCardDisplayState({
@@ -113,18 +122,19 @@ function AppCard({
 
   const isApp = cardState.isApp
   const basicName = isApp
-    ? t($ => $['overview.appInfo.title'], { ns: 'appOverview' })
-    : t($ => $['overview.apiInfo.title'], { ns: 'appOverview' })
+    ? t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })
+    : t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' })
 
   const isAppAccessSet = useMemo(
     () => isAppAccessConfigured(appDetail, appAccessSubjects),
     [appAccessSubjects, appDetail],
   )
   const hiddenLaunchVariables = useMemo(
-    () => getAppHiddenLaunchVariables({
-      appInfo,
-      currentWorkflow,
-    }) || [],
+    () =>
+      getAppHiddenLaunchVariables({
+        appInfo,
+        currentWorkflow,
+      }) || [],
     [appInfo, currentWorkflow],
   )
   const supportedWorkflowLaunchVariables = useMemo(
@@ -132,7 +142,7 @@ function AppCard({
     [hiddenLaunchVariables],
   )
   const unsupportedWorkflowLaunchVariables = useMemo(
-    () => hiddenLaunchVariables.filter(variable => !isWorkflowLaunchInputSupported(variable)),
+    () => hiddenLaunchVariables.filter((variable) => !isWorkflowLaunchInputSupported(variable)),
     [hiddenLaunchVariables],
   )
   const initialWorkflowLaunchValues = useMemo(
@@ -141,8 +151,7 @@ function AppCard({
   )
 
   const onGenCode = async () => {
-    if (!onGenerateCode)
-      return
+    if (!onGenerateCode) return
 
     setGenLoading(true)
     await asyncRunSafe(onGenerateCode())
@@ -150,32 +159,33 @@ function AppCard({
   }
 
   const handleClickAccessControl = useCallback(() => {
-    if (!appDetail || !canManageWebAppAccessControl)
-      return
+    if (!appDetail || !canManageWebAppAccessControl) return
 
     setShowAccessControl(true)
   }, [appDetail, canManageWebAppAccessControl])
 
   const handleAccessControlUpdate = useCallback(async () => {
-    if (!appDetail)
-      return
+    if (!appDetail) return
 
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
       queryClient.setQueryData([...appDetailQueryKeyPrefix, appDetail.id], res)
       setAppDetail({ ...res })
       setShowAccessControl(false)
-    }
-    catch (error) {
+    } catch (error) {
       console.error('Failed to fetch app detail:', error)
     }
   }, [appDetail, queryClient, setAppDetail])
 
-  const operationKeys = useMemo(() => getAppCardOperationKeys({
-    cardType,
-    appMode: cardState.appMode,
-    canManageSettings: canEditApp,
-  }), [canEditApp, cardState.appMode, cardType])
+  const operationKeys = useMemo(
+    () =>
+      getAppCardOperationKeys({
+        cardType,
+        appMode: cardState.appMode,
+        canManageSettings: canEditApp,
+      }),
+    [canEditApp, cardState.appMode, cardType],
+  )
 
   const handleLaunch = useCallback(() => {
     window.open(cardState.accessibleUrl, '_blank')
@@ -186,25 +196,31 @@ function AppCard({
     setShowWorkflowLaunchDialog(true)
   }, [initialWorkflowLaunchValues])
 
-  const handleWorkflowLaunchValueChange = useCallback((variable: string, value: WorkflowLaunchInputValue) => {
-    setWorkflowLaunchValues(prev => ({
-      ...prev,
-      [variable]: value,
-    }))
-  }, [])
+  const handleWorkflowLaunchValueChange = useCallback(
+    (variable: string, value: WorkflowLaunchInputValue) => {
+      setWorkflowLaunchValues((prev) => ({
+        ...prev,
+        [variable]: value,
+      }))
+    },
+    [],
+  )
 
-  const handleWorkflowLaunchConfirm = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const handleWorkflowLaunchConfirm = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault()
 
-    const targetUrl = await buildWorkflowLaunchUrl({
-      accessibleUrl: cardState.accessibleUrl,
-      variables: supportedWorkflowLaunchVariables,
-      values: workflowLaunchValues,
-    })
+      const targetUrl = await buildWorkflowLaunchUrl({
+        accessibleUrl: cardState.accessibleUrl,
+        variables: supportedWorkflowLaunchVariables,
+        values: workflowLaunchValues,
+      })
 
-    window.open(targetUrl, '_blank')
-    setShowWorkflowLaunchDialog(false)
-  }, [cardState.accessibleUrl, supportedWorkflowLaunchVariables, workflowLaunchValues])
+      window.open(targetUrl, '_blank')
+      setShowWorkflowLaunchDialog(false)
+    },
+    [cardState.accessibleUrl, supportedWorkflowLaunchVariables, workflowLaunchValues],
+  )
 
   const handleOpenCustomize = useCallback(() => {
     setShowCustomizeModal(true)
@@ -224,78 +240,92 @@ function AppCard({
     router.push(`${pathSegments.join('/')}/develop`)
   }, [pathname, router])
 
-  const operations = useMemo(() => createAppCardOperations({
-    operationKeys,
-    t,
-    runningStatus: cardState.runningStatus,
-    triggerModeDisabled,
-    onLaunch: handleLaunch,
-    onEmbedded: handleOpenEmbedded,
-    onCustomize: handleOpenCustomize,
-    onSettings: handleOpenSettings,
-    onDevelop: handleOpenDevelop,
-  }), [
-    cardState.runningStatus,
-    handleLaunch,
-    handleOpenCustomize,
-    handleOpenDevelop,
-    handleOpenEmbedded,
-    handleOpenSettings,
-    operationKeys,
-    t,
-    triggerModeDisabled,
-  ])
+  const operations = useMemo(
+    () =>
+      createAppCardOperations({
+        operationKeys,
+        t,
+        runningStatus: cardState.runningStatus,
+        triggerModeDisabled,
+        onLaunch: handleLaunch,
+        onEmbedded: handleOpenEmbedded,
+        onCustomize: handleOpenCustomize,
+        onSettings: handleOpenSettings,
+        onDevelop: handleOpenDevelop,
+      }),
+    [
+      cardState.runningStatus,
+      handleLaunch,
+      handleOpenCustomize,
+      handleOpenDevelop,
+      handleOpenEmbedded,
+      handleOpenSettings,
+      operationKeys,
+      t,
+      triggerModeDisabled,
+    ],
+  )
 
-  const missingStartNodeContent = cardState.appUnpublished || cardState.missingStartNode
-    ? (
-        <>
-          <div className="mb-1 text-xs font-normal text-text-secondary">
-            {t($ => $['overview.appInfo.enableTooltip.description'], { ns: 'appOverview' })}
-          </div>
-          <button
-            type="button"
-            className="cursor-pointer rounded-sm text-xs font-normal text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
-            onClick={() => window.open(docLink('/use-dify/nodes/user-input'), '_blank')}
-          >
-            {t($ => $['overview.appInfo.enableTooltip.learnMore'], { ns: 'appOverview' })}
-          </button>
-        </>
-      )
-    : ''
+  const missingStartNodeContent =
+    cardState.appUnpublished || cardState.missingStartNode ? (
+      <>
+        <div className="mb-1 text-xs font-normal text-text-secondary">
+          {t(($) => $['overview.appInfo.enableTooltip.description'], { ns: 'appOverview' })}
+        </div>
+        <button
+          type="button"
+          className="cursor-pointer rounded-sm text-xs font-normal text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+          onClick={() => window.open(docLink('/use-dify/nodes/user-input'), '_blank')}
+        >
+          {t(($) => $['overview.appInfo.enableTooltip.learnMore'], { ns: 'appOverview' })}
+        </button>
+      </>
+    ) : (
+      ''
+    )
 
   const statusPopoverContent = cardState.toggleDisabled
-    ? (
-        triggerModeDisabled && triggerModeMessage
-          ? triggerModeMessage
-          : missingStartNodeContent
-      )
+    ? triggerModeDisabled && triggerModeMessage
+      ? triggerModeMessage
+      : missingStartNodeContent
     : ''
 
   return (
     <div
       className={`${isInPanel ? 'border-t border-l-[0.5px]' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${cardState.isMinimalState ? 'h-12' : ''}`}
     >
-      <div className={`${customBgColor ?? 'bg-background-default'} relative rounded-xl ${triggerModeDisabled ? 'opacity-60' : ''}`}>
-        {triggerModeDisabled && (
-          triggerModeMessage
-            ? (
-                <Popover>
-                  <PopoverTrigger
-                    openOnHover
-                    aria-label={typeof triggerModeMessage === 'string' ? triggerModeMessage : basicName}
-                    render={<button type="button" className="absolute inset-0 z-10 cursor-not-allowed rounded-xl outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover" />}
+      <div
+        className={`${customBgColor ?? 'bg-background-default'} relative rounded-xl ${triggerModeDisabled ? 'opacity-60' : ''}`}
+      >
+        {triggerModeDisabled &&
+          (triggerModeMessage ? (
+            <Popover>
+              <PopoverTrigger
+                openOnHover
+                aria-label={typeof triggerModeMessage === 'string' ? triggerModeMessage : basicName}
+                render={
+                  <button
+                    type="button"
+                    className="absolute inset-0 z-10 cursor-not-allowed rounded-xl outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                   />
-                  <PopoverContent
-                    placement="right"
-                    popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
-                  >
-                    {triggerModeMessage}
-                  </PopoverContent>
-                </Popover>
-              )
-            : <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true" />
-        )}
-        <div className={`flex w-full flex-col items-start justify-center gap-3 self-stretch p-3 ${cardState.isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle'}`}>
+                }
+              />
+              <PopoverContent
+                placement="right"
+                popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
+              >
+                {triggerModeMessage}
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <div
+              className="absolute inset-0 z-10 cursor-not-allowed rounded-xl"
+              aria-hidden="true"
+            />
+          ))}
+        <div
+          className={`flex w-full flex-col items-start justify-center gap-3 self-stretch p-3 ${cardState.isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle'}`}
+        >
           <div className="flex w-full items-center gap-3 self-stretch">
             <AppBasic
               iconType={cardType}
@@ -305,43 +335,57 @@ function AppCard({
               hideType
               type={
                 isApp
-                  ? t($ => $['overview.appInfo.explanation'], { ns: 'appOverview' })
-                  : t($ => $['overview.apiInfo.explanation'], { ns: 'appOverview' })
+                  ? t(($) => $['overview.appInfo.explanation'], { ns: 'appOverview' })
+                  : t(($) => $['overview.apiInfo.explanation'], { ns: 'appOverview' })
               }
             />
             <div className="flex shrink-0 items-center gap-1">
               <StatusDot status={cardState.runningStatus ? 'success' : 'warning'} />
-              <div className={`${cardState.runningStatus ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
+              <div
+                className={`${cardState.runningStatus ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}
+              >
                 {cardState.runningStatus
-                  ? t($ => $['overview.status.running'], { ns: 'appOverview' })
-                  : t($ => $['overview.status.disable'], { ns: 'appOverview' })}
+                  ? t(($) => $['overview.status.running'], { ns: 'appOverview' })
+                  : t(($) => $['overview.status.disable'], { ns: 'appOverview' })}
               </div>
             </div>
-            {cardState.toggleDisabled && statusPopoverContent
-              ? (
-                  <Popover>
-                    <PopoverTrigger
-                      openOnHover
-                      nativeButton={false}
-                      aria-label={typeof statusPopoverContent === 'string' ? statusPopoverContent : t($ => $['overview.appInfo.enableTooltip.description'], { ns: 'appOverview' })}
-                      render={(
-                        <div>
-                          <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />
-                        </div>
-                      )}
-                    />
-                    <PopoverContent
-                      placement="right"
-                      sideOffset={24}
-                      popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
-                    >
-                      {statusPopoverContent}
-                    </PopoverContent>
-                  </Popover>
-                )
-              : (
-                  <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />
-                )}
+            {cardState.toggleDisabled && statusPopoverContent ? (
+              <Popover>
+                <PopoverTrigger
+                  openOnHover
+                  nativeButton={false}
+                  aria-label={
+                    typeof statusPopoverContent === 'string'
+                      ? statusPopoverContent
+                      : t(($) => $['overview.appInfo.enableTooltip.description'], {
+                          ns: 'appOverview',
+                        })
+                  }
+                  render={
+                    <div>
+                      <Switch
+                        checked={cardState.runningStatus}
+                        onCheckedChange={onChangeStatus}
+                        disabled={cardState.toggleDisabled}
+                      />
+                    </div>
+                  }
+                />
+                <PopoverContent
+                  placement="right"
+                  sideOffset={24}
+                  popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
+                >
+                  {statusPopoverContent}
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Switch
+                checked={cardState.runningStatus}
+                onCheckedChange={onChangeStatus}
+                disabled={cardState.toggleDisabled}
+              />
+            )}
           </div>
           {!cardState.isMinimalState && (
             <AppCardUrlSection
@@ -359,14 +403,18 @@ function AppCard({
               onHideRegenerateConfirm={() => setShowConfirmDelete(false)}
             />
           )}
-          {!cardState.isMinimalState && isApp && systemFeatures.webapp_auth.enabled && canManageWebAppAccessControl && appDetail && (
-            <AppCardAccessControlSection
-              t={t}
-              appDetail={appDetail}
-              isAppAccessSet={isAppAccessSet}
-              onClick={handleClickAccessControl}
-            />
-          )}
+          {!cardState.isMinimalState &&
+            isApp &&
+            systemFeatures.webapp_auth.enabled &&
+            canManageWebAppAccessControl &&
+            appDetail && (
+              <AppCardAccessControlSection
+                t={t}
+                appDetail={appDetail}
+                isAppAccessSet={isAppAccessSet}
+                onClick={handleClickAccessControl}
+              />
+            )}
         </div>
         {!cardState.isMinimalState && (
           <div className="flex items-center gap-1 self-stretch p-3">
@@ -374,13 +422,15 @@ function AppCard({
             <AppCardOperations
               t={t}
               operations={operations}
-              launchConfigAction={hiddenLaunchVariables.length > 0
-                ? {
-                    label: t($ => $['operation.config'], { ns: 'common' }),
-                    disabled: triggerModeDisabled || !cardState.runningStatus,
-                    onClick: handleOpenWorkflowLaunchDialog,
-                  }
-                : undefined}
+              launchConfigAction={
+                hiddenLaunchVariables.length > 0
+                  ? {
+                      label: t(($) => $['operation.config'], { ns: 'common' }),
+                      disabled: triggerModeDisabled || !cardState.runningStatus,
+                      onClick: handleOpenWorkflowLaunchDialog,
+                    }
+                  : undefined
+              }
             />
           </div>
         )}

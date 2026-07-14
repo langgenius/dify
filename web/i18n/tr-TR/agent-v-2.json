@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "Bir .zip veya .skill dosyası yükleyin.",
   "agentDetail.configure.skills.upload.success": "Beceri yüklendi.",
   "agentDetail.configure.skills.upload.title": "Beceri yükle",
+  "agentDetail.configure.skills.upload.warning.files": "Yalnızca Markdown dosyalarını kullanmanız gerekiyorsa bunları Dosyalar bölümüne yükleyin ve isteminizde referans verin.",
+  "agentDetail.configure.skills.upload.warning.specification": "Yüklenen beceriler <specificationLink>Agent Skills spesifikasyonuna</specificationLink> uygun olmalıdır.",
   "agentDetail.configure.title": "Yapılandır",
   "agentDetail.configure.tools.add": "Araç ekle",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Geliştiriciler için",

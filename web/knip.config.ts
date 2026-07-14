@@ -12,6 +12,7 @@ const config: KnipConfig = {
     'bin/**/*.{js,ts,mjs}',
     'tsslint.config.ts',
     'dev-proxy.config.ts',
+    'plugins/eslint/index.js',
   ],
   project: [
     '**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts,css,mdx}!',
@@ -22,38 +23,23 @@ const config: KnipConfig = {
     '!**/*.stories.{js,jsx,ts,tsx,mdx}!',
     '!.storybook/**!',
     '!context/provider-context-mock.tsx!',
-    '!eslint.constants.mjs!',
     '!plugins/**!',
     '!test/**!',
     '!**/test-helpers.{ts,tsx}!',
     '!**/test-utils.{ts,tsx}!',
     '!vitest.setup.ts!',
   ],
-  ignore: [
-    'public/**',
-  ],
+  ignore: ['public/**'],
   ignoreFiles: [
     'features/agent-v2/agent-detail/configure/components/orchestrate/memory.tsx',
     'features/agent-v2/agent-detail/configure/components/orchestrate/prompt-editor/option-menu.tsx',
     'i18n-config/locale-resources/*.ts',
   ],
-  ignoreBinaries: [
-    'pbcopy',
-    'which',
-  ],
-  ignoreDependencies: [
-    '@iconify-json/*',
-    '@storybook/addon-onboarding',
-  ],
+  ignoreDependencies: ['@iconify-json/*', '@storybook/addon-onboarding', 'eslint'],
   /// keep-sorted
   rules: {
     // TODO: fix these warnings
-    // Unused devDependencies (3)
-    // @eslint-react/eslint-plugin  package.json:160:6
-    // @next/eslint-plugin-next     package.json:168:6
-    // eslint-plugin-react-refresh  package.json:211:6
-    // Unlisted binaries (2)
-    // eslint  package.json
+    // Unlisted binaries (1)
     // vp      package.json
     binaries: 'warn',
     catalog: 'error',

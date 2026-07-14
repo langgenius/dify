@@ -16,76 +16,96 @@ describe('variable-modal helpers', () => {
   it('should build object items from a conversation variable value', () => {
     expect(buildObjectValueItems()).toHaveLength(1)
 
-    expect(buildObjectValueItems({
-      id: 'var-1',
-      name: 'config',
-      description: '',
-      value_type: ChatVarType.Object,
-      value: { apiKey: 'secret', timeout: 30 },
-    })).toEqual([
+    expect(
+      buildObjectValueItems({
+        id: 'var-1',
+        name: 'config',
+        description: '',
+        value_type: ChatVarType.Object,
+        value: { apiKey: 'secret', timeout: 30 },
+      }),
+    ).toEqual([
       { key: 'apiKey', type: ChatVarType.String, value: 'secret' },
       { key: 'timeout', type: ChatVarType.Number, value: 30 },
     ])
   })
 
   it('should format object and array values for saving', () => {
-    expect(formatObjectValueFromList([
-      { key: 'apiKey', type: ChatVarType.String, value: 'secret' },
-      { key: '', type: ChatVarType.Number, value: 1 },
-    ])).toEqual({ apiKey: 'secret' })
+    expect(
+      formatObjectValueFromList([
+        { key: 'apiKey', type: ChatVarType.String, value: 'secret' },
+        { key: '', type: ChatVarType.Number, value: 1 },
+      ]),
+    ).toEqual({ apiKey: 'secret' })
 
-    expect(formatObjectValueFromList([
-      { key: 'count', type: ChatVarType.Number, value: 0 },
-      { key: 'label', type: ChatVarType.String, value: '' },
-    ])).toEqual({ count: 0, label: null })
-    expect(formatChatVariableValue({
-      editInJSON: false,
-      objectValue: [{ key: 'enabled', type: ChatVarType.String, value: 'true' }],
-      type: ChatVarType.Object,
-      value: undefined,
-    })).toEqual({ enabled: 'true' })
+    expect(
+      formatObjectValueFromList([
+        { key: 'count', type: ChatVarType.Number, value: 0 },
+        { key: 'label', type: ChatVarType.String, value: '' },
+      ]),
+    ).toEqual({ count: 0, label: null })
+    expect(
+      formatChatVariableValue({
+        editInJSON: false,
+        objectValue: [{ key: 'enabled', type: ChatVarType.String, value: 'true' }],
+        type: ChatVarType.Object,
+        value: undefined,
+      }),
+    ).toEqual({ enabled: 'true' })
 
-    expect(formatChatVariableValue({
-      editInJSON: true,
-      objectValue: [],
-      type: ChatVarType.Object,
-      value: { count: 1 },
-    })).toEqual({ count: 1 })
+    expect(
+      formatChatVariableValue({
+        editInJSON: true,
+        objectValue: [],
+        type: ChatVarType.Object,
+        value: { count: 1 },
+      }),
+    ).toEqual({ count: 1 })
 
-    expect(formatChatVariableValue({
-      editInJSON: false,
-      objectValue: [],
-      type: ChatVarType.ArrayString,
-      value: ['a', '', 'b'],
-    })).toEqual(['a', 'b'])
+    expect(
+      formatChatVariableValue({
+        editInJSON: false,
+        objectValue: [],
+        type: ChatVarType.ArrayString,
+        value: ['a', '', 'b'],
+      }),
+    ).toEqual(['a', 'b'])
 
-    expect(formatChatVariableValue({
-      editInJSON: false,
-      objectValue: [],
-      type: ChatVarType.ArrayNumber,
-      value: [0, 1, undefined, null, ''] as unknown as Array<number | undefined>,
-    })).toEqual([0, 1])
+    expect(
+      formatChatVariableValue({
+        editInJSON: false,
+        objectValue: [],
+        type: ChatVarType.ArrayNumber,
+        value: [0, 1, undefined, null, ''] as unknown as Array<number | undefined>,
+      }),
+    ).toEqual([0, 1])
 
-    expect(formatChatVariableValue({
-      editInJSON: false,
-      objectValue: [],
-      type: ChatVarType.Number,
-      value: undefined,
-    })).toBe(0)
+    expect(
+      formatChatVariableValue({
+        editInJSON: false,
+        objectValue: [],
+        type: ChatVarType.Number,
+        value: undefined,
+      }),
+    ).toBe(0)
 
-    expect(formatChatVariableValue({
-      editInJSON: false,
-      objectValue: [],
-      type: ChatVarType.Boolean,
-      value: undefined,
-    })).toBe(true)
+    expect(
+      formatChatVariableValue({
+        editInJSON: false,
+        objectValue: [],
+        type: ChatVarType.Boolean,
+        value: undefined,
+      }),
+    ).toBe(true)
 
-    expect(formatChatVariableValue({
-      editInJSON: false,
-      objectValue: [],
-      type: ChatVarType.ArrayBoolean,
-      value: undefined,
-    })).toEqual([])
+    expect(
+      formatChatVariableValue({
+        editInJSON: false,
+        objectValue: [],
+        type: ChatVarType.ArrayBoolean,
+        value: undefined,
+      }),
+    ).toEqual([])
   })
 
   it('should derive placeholders, editor defaults, and editor toggle labels', () => {
@@ -97,43 +117,57 @@ describe('variable-modal helpers', () => {
     expect(getTypeChangeState(ChatVarType.Object).objectValue).toHaveLength(1)
     expect(getTypeChangeState(ChatVarType.ArrayObject).editInJSON).toBe(true)
     expect(getEditorToggleLabelKey(ChatVarType.Object, true)).toBe('chatVariable.modal.editInForm')
-    expect(getEditorToggleLabelKey(ChatVarType.ArrayString, false)).toBe('chatVariable.modal.editInJSON')
+    expect(getEditorToggleLabelKey(ChatVarType.ArrayString, false)).toBe(
+      'chatVariable.modal.editInJSON',
+    )
   })
 
   it('should parse boolean arrays from JSON editor content', () => {
-    expect(parseEditorContent({
-      content: '["True","false",true,false,"invalid"]',
-      type: ChatVarType.ArrayBoolean,
-    })).toEqual([true, false, true, false])
+    expect(
+      parseEditorContent({
+        content: '["True","false",true,false,"invalid"]',
+        type: ChatVarType.ArrayBoolean,
+      }),
+    ).toEqual([true, false, true, false])
 
-    expect(() => parseEditorContent({
-      content: '{"enabled":true}',
-      type: ChatVarType.ArrayBoolean,
-    })).toThrow('JSON array')
-    expect(parseEditorContent({
-      content: '{"enabled":true}',
-      type: ChatVarType.Object,
-    })).toEqual({ enabled: true })
+    expect(() =>
+      parseEditorContent({
+        content: '{"enabled":true}',
+        type: ChatVarType.ArrayBoolean,
+      }),
+    ).toThrow('JSON array')
+    expect(
+      parseEditorContent({
+        content: '{"enabled":true}',
+        type: ChatVarType.Object,
+      }),
+    ).toEqual({ enabled: true })
   })
 
   it('should validate variable names and notify when invalid', () => {
     const notify = vi.fn()
     const t = withSelectorKey((key: string) => key)
 
-    expect(validateVariableName({
-      name: 'valid_name',
-      notify,
-      t,
-    })).toBe(true)
+    expect(
+      validateVariableName({
+        name: 'valid_name',
+        notify,
+        t,
+      }),
+    ).toBe(true)
 
-    expect(validateVariableName({
-      name: '1invalid',
-      notify,
-      t,
-    })).toBe(false)
+    expect(
+      validateVariableName({
+        name: '1invalid',
+        notify,
+        t,
+      }),
+    ).toBe(false)
 
-    expect(notify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-    }))
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+      }),
+    )
   })
 })

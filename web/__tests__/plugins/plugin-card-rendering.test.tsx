@@ -10,19 +10,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 let mockTheme = 'light'
 
-vi.mock('#i18n', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: mockTheme }),
 }))
@@ -36,7 +23,7 @@ vi.mock('@/types/app', async () => {
 })
 
 vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: unknown[]) => args.filter(a => typeof a === 'string' && a).join(' '),
+  cn: (...args: unknown[]) => args.filter((a) => typeof a === 'string' && a).join(' '),
 }))
 
 vi.mock('@/app/components/plugins/hooks', () => ({
@@ -58,7 +45,15 @@ vi.mock('@/app/components/plugins/base/badges/verified', () => ({
 }))
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
-  default: ({ src, installed, installFailed }: { src: string | object, installed?: boolean, installFailed?: boolean }) => (
+  default: ({
+    src,
+    installed,
+    installFailed,
+  }: {
+    src: string | object
+    installed?: boolean
+    installFailed?: boolean
+  }) => (
     <div data-testid="card-icon" data-installed={installed} data-install-failed={installFailed}>
       {typeof src === 'string' ? src : 'emoji-icon'}
     </div>
@@ -66,37 +61,31 @@ vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
 }))
 
 vi.mock('@/app/components/plugins/card/base/corner-mark', () => ({
-  default: ({ text }: { text: string }) => (
-    <div data-testid="corner-mark">{text}</div>
-  ),
+  default: ({ text }: { text: string }) => <div data-testid="corner-mark">{text}</div>,
 }))
 
 vi.mock('@/app/components/plugins/card/base/description', () => ({
-  default: ({ text, descriptionLineRows }: { text: string, descriptionLineRows?: number }) => (
-    <div data-testid="description" data-rows={descriptionLineRows}>{text}</div>
+  default: ({ text, descriptionLineRows }: { text: string; descriptionLineRows?: number }) => (
+    <div data-testid="description" data-rows={descriptionLineRows}>
+      {text}
+    </div>
   ),
 }))
 
 vi.mock('@/app/components/plugins/card/base/org-info', () => ({
-  default: ({ orgName, packageName }: { orgName: string, packageName: string }) => (
+  default: ({ orgName, packageName }: { orgName: string; packageName: string }) => (
     <div data-testid="org-info">
-      {orgName}
-      /
-      {packageName}
+      {orgName}/{packageName}
     </div>
   ),
 }))
 
 vi.mock('@/app/components/plugins/card/base/placeholder', () => ({
-  default: ({ text }: { text: string }) => (
-    <div data-testid="placeholder">{text}</div>
-  ),
+  default: ({ text }: { text: string }) => <div data-testid="placeholder">{text}</div>,
 }))
 
 vi.mock('@/app/components/plugins/card/base/title', () => ({
-  default: ({ title }: { title: string }) => (
-    <div data-testid="title">{title}</div>
-  ),
+  default: ({ title }: { title: string }) => <div data-testid="title">{title}</div>,
 }))
 
 const { default: Card } = await import('@/app/components/plugins/card/index')
@@ -108,18 +97,19 @@ describe('Plugin Card Rendering Integration', () => {
     mockTheme = 'light'
   })
 
-  const makePayload = (overrides = {}) => ({
-    category: 'tool',
-    type: 'plugin',
-    name: 'google-search',
-    org: 'langgenius',
-    label: { en_US: 'Google Search', zh_Hans: 'Google搜索' },
-    brief: { en_US: 'Search the web using Google', zh_Hans: '使用Google搜索网页' },
-    icon: 'https://example.com/icon.png',
-    verified: true,
-    badges: [] as string[],
-    ...overrides,
-  }) as CardPayload
+  const makePayload = (overrides = {}) =>
+    ({
+      category: 'tool',
+      type: 'plugin',
+      name: 'google-search',
+      org: 'langgenius',
+      label: { en_US: 'Google Search', zh_Hans: 'Google搜索' },
+      brief: { en_US: 'Search the web using Google', zh_Hans: '使用Google搜索网页' },
+      icon: 'https://example.com/icon.png',
+      verified: true,
+      badges: [] as string[],
+      ...overrides,
+    }) as CardPayload
 
   it('renders a complete plugin card with all subcomponents', () => {
     const payload = makePayload()
@@ -177,24 +167,14 @@ describe('Plugin Card Rendering Integration', () => {
 
   it('renders footer content when provided', () => {
     const payload = makePayload()
-    render(
-      <Card
-        payload={payload}
-        footer={<div data-testid="custom-footer">Custom footer</div>}
-      />,
-    )
+    render(<Card payload={payload} footer={<div data-testid="custom-footer">Custom footer</div>} />)
 
     expect(screen.getByTestId('custom-footer')).toBeInTheDocument()
   })
 
   it('renders titleLeft content when provided', () => {
     const payload = makePayload()
-    render(
-      <Card
-        payload={payload}
-        titleLeft={<span data-testid="title-left-content">New</span>}
-      />,
-    )
+    render(<Card payload={payload} titleLeft={<span data-testid="title-left-content">New</span>} />)
 
     expect(screen.getByTestId('title-left-content')).toBeInTheDocument()
   })

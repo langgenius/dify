@@ -1,19 +1,10 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Var } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
-import {
-  BlockEnum,
-  InputVarType,
-} from '@/app/components/workflow/types'
-import {
-  createLexicalTestEditor,
-  expectInlineWrapperDom,
-} from '../../test-helpers'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { createLexicalTestEditor, expectInlineWrapperDom } from '../../test-helpers'
 import HITLInputBlockComponent from '../component'
-import {
-  $createHITLInputNode,
-  HITLInputNode,
-} from '../node'
+import { $createHITLInputNode, HITLInputNode } from '../node'
 
 const createFormInput = (): FormInputItem => ({
   type: InputVarType.paragraph,

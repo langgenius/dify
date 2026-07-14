@@ -553,10 +553,11 @@ describe('Dropdown', () => {
 
       // Rerender with different callback
       rerender(
-        <Dropdown {...createDefaultProps({
-          breadcrumbs: ['folder'],
-          onBreadcrumbClick: mockOnBreadcrumbClick2,
-        })}
+        <Dropdown
+          {...createDefaultProps({
+            breadcrumbs: ['folder'],
+            onBreadcrumbClick: mockOnBreadcrumbClick2,
+          })}
         />,
       )
 
@@ -700,23 +701,26 @@ describe('Dropdown', () => {
       { startIndex: 1, breadcrumbs: ['a'], expectedIndex: 1 },
       { startIndex: 5, breadcrumbs: ['a'], expectedIndex: 5 },
       { startIndex: 10, breadcrumbs: ['a', 'b'], expectedIndex: 10 },
-    ])('should handle startIndex=$startIndex correctly', async ({ startIndex, breadcrumbs, expectedIndex }) => {
-      const mockOnBreadcrumbClick = vi.fn()
-      const props = createDefaultProps({
-        startIndex,
-        breadcrumbs,
-        onBreadcrumbClick: mockOnBreadcrumbClick,
-      })
-      render(<Dropdown {...props} />)
+    ])(
+      'should handle startIndex=$startIndex correctly',
+      async ({ startIndex, breadcrumbs, expectedIndex }) => {
+        const mockOnBreadcrumbClick = vi.fn()
+        const props = createDefaultProps({
+          startIndex,
+          breadcrumbs,
+          onBreadcrumbClick: mockOnBreadcrumbClick,
+        })
+        render(<Dropdown {...props} />)
 
-      fireEvent.click(screen.getByRole('button'))
-      await waitFor(() => {
-        expect(screen.getByText(breadcrumbs[0]!))!.toBeInTheDocument()
-      })
-      fireEvent.click(screen.getByText(breadcrumbs[0]!))
+        fireEvent.click(screen.getByRole('button'))
+        await waitFor(() => {
+          expect(screen.getByText(breadcrumbs[0]!))!.toBeInTheDocument()
+        })
+        fireEvent.click(screen.getByText(breadcrumbs[0]!))
 
-      expect(mockOnBreadcrumbClick).toHaveBeenCalledWith(expectedIndex)
-    })
+        expect(mockOnBreadcrumbClick).toHaveBeenCalledWith(expectedIndex)
+      },
+    )
 
     it.each([
       { breadcrumbs: [], description: 'empty array' },
@@ -731,8 +735,7 @@ describe('Dropdown', () => {
 
       // Assert - Should render without errors
       await waitFor(() => {
-        if (breadcrumbs.length > 0)
-          expect(screen.getByText(breadcrumbs[0]!))!.toBeInTheDocument()
+        if (breadcrumbs.length > 0) expect(screen.getByText(breadcrumbs[0]!))!.toBeInTheDocument()
       })
     })
   })

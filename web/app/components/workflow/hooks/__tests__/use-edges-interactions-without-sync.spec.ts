@@ -44,13 +44,16 @@ const createFlowEdges = () => [
 ]
 
 const renderEdgesInteractionsHook = () =>
-  renderWorkflowFlowHook(() => ({
-    ...useEdgesInteractionsWithoutSync(),
-    edges: useEdges(),
-  }), {
-    nodes: createFlowNodes(),
-    edges: createFlowEdges(),
-  })
+  renderWorkflowFlowHook(
+    () => ({
+      ...useEdgesInteractionsWithoutSync(),
+      edges: useEdges(),
+    }),
+    {
+      nodes: createFlowNodes(),
+      edges: createFlowEdges(),
+    },
+  )
 
 describe('useEdgesInteractionsWithoutSync', () => {
   it('clears running status and waitingRun on all edges', () => {
@@ -73,18 +76,23 @@ describe('useEdgesInteractionsWithoutSync', () => {
   it('does not mutate the original edges array', () => {
     const edges = createFlowEdges()
     const originalData = { ...getEdgeRuntimeState(edges[0]) }
-    const { result } = renderWorkflowFlowHook(() => ({
-      ...useEdgesInteractionsWithoutSync(),
-      edges: useEdges(),
-    }), {
-      nodes: createFlowNodes(),
-      edges,
-    })
+    const { result } = renderWorkflowFlowHook(
+      () => ({
+        ...useEdgesInteractionsWithoutSync(),
+        edges: useEdges(),
+      }),
+      {
+        nodes: createFlowNodes(),
+        edges,
+      },
+    )
 
     act(() => {
       result.current.handleEdgeCancelRunningStatus()
     })
 
-    expect(getEdgeRuntimeState(edges[0])._sourceRunningStatus).toBe(originalData._sourceRunningStatus)
+    expect(getEdgeRuntimeState(edges[0])._sourceRunningStatus).toBe(
+      originalData._sourceRunningStatus,
+    )
   })
 })

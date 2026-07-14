@@ -25,8 +25,7 @@ const getLoopRunKey = (loop: NodeTracing[], fallbackIndex: number) => {
   if (executionMetadata?.parallel_mode_run_id !== undefined)
     return executionMetadata.parallel_mode_run_id
 
-  if (executionMetadata?.loop_index !== undefined)
-    return String(executionMetadata.loop_index)
+  if (executionMetadata?.loop_index !== undefined) return String(executionMetadata.loop_index)
 
   return String(fallbackIndex)
 }
@@ -38,38 +37,39 @@ type Props = {
   readonly loopVariableMap?: LoopVariableMap
 }
 
-const LoopResultPanel: FC<Props> = ({
-  list,
-  onBack,
-  loopDurationMap,
-  loopVariableMap,
-}) => {
+const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariableMap }) => {
   const { t } = useTranslation()
   const [expandedLoops, setExpandedLoops] = useState<Record<number, boolean>>({})
 
   const toggleLoop = useCallback((index: number) => {
-    setExpandedLoops(prev => ({
+    setExpandedLoops((prev) => ({
       ...prev,
       [index]: !prev[index],
     }))
   }, [])
 
-  const countLoopDuration = (loop: NodeTracing[], index: number, loopDurationMap: LoopDurationMap): string => {
+  const countLoopDuration = (
+    loop: NodeTracing[],
+    index: number,
+    loopDurationMap: LoopDurationMap,
+  ): string => {
     const loopItem = loopDurationMap[getLoopRunKey(loop, index)]
     const duration = loopItem
-    return `${(duration && duration > 0.01) ? duration.toFixed(2) : 0.01}s`
+    return `${duration && duration > 0.01 ? duration.toFixed(2) : 0.01}s`
   }
 
-  const loopStatusShow = (index: number, loop: NodeTracing[], loopDurationMap?: LoopDurationMap) => {
-    const hasFailed = loop.some(item => item.status === NodeRunningStatus.Failed)
-    const isRunning = loop.some(item => item.status === NodeRunningStatus.Running)
+  const loopStatusShow = (
+    index: number,
+    loop: NodeTracing[],
+    loopDurationMap?: LoopDurationMap,
+  ) => {
+    const hasFailed = loop.some((item) => item.status === NodeRunningStatus.Failed)
+    const isRunning = loop.some((item) => item.status === NodeRunningStatus.Running)
     const hasDurationMap = loopDurationMap && Object.keys(loopDurationMap).length !== 0
 
-    if (hasFailed)
-      return <RiErrorWarningLine className="size-4 text-text-destructive" />
+    if (hasFailed) return <RiErrorWarningLine className="size-4 text-text-destructive" />
 
-    if (isRunning)
-      return <RiLoader2Line className="size-3.5 animate-spin text-primary-600" />
+    if (isRunning) return <RiLoader2Line className="size-3.5 animate-spin text-primary-600" />
 
     return (
       <>
@@ -99,12 +99,17 @@ const LoopResultPanel: FC<Props> = ({
         }}
       >
         <RiArrowLeftLine className="mr-1 size-4" />
-        <div className="system-sm-medium">{t($ => $[`${i18nPrefix}.back`], { ns: 'workflow' })}</div>
+        <div className="system-sm-medium">
+          {t(($) => $[`${i18nPrefix}.back`], { ns: 'workflow' })}
+        </div>
       </div>
       {/* List */}
       <div className="bg-components-panel-bg p-2">
         {list.map((loop, index) => (
-          <div key={index} className={cn('mb-1 overflow-hidden rounded-xl border-none bg-background-section-burn')}>
+          <div
+            key={index}
+            className={cn('mb-1 overflow-hidden rounded-xl border-none bg-background-section-burn')}
+          >
             <div
               className={cn(
                 'flex w-full cursor-pointer items-center justify-between px-3',
@@ -118,44 +123,37 @@ const LoopResultPanel: FC<Props> = ({
                   <Loop className="size-3 text-text-primary-on-surface" />
                 </div>
                 <span className="grow system-sm-semibold-uppercase text-text-primary">
-                  {t($ => $[`${i18nPrefix}.loop`], { ns: 'workflow' })}
-                  {' '}
-                  {index + 1}
+                  {t(($) => $[`${i18nPrefix}.loop`], { ns: 'workflow' })} {index + 1}
                 </span>
                 {loopStatusShow(index, loop, loopDurationMap)}
               </div>
             </div>
-            {expandedLoops[index] && (
-              <div
-                className="h-px grow bg-divider-subtle"
-              >
-              </div>
-            )}
-            <div className={cn(
-              'transition-all duration-200',
-              expandedLoops[index]
-                ? 'opacity-100'
-                : 'max-h-0 overflow-hidden opacity-0',
-            )}
+            {expandedLoops[index] && <div className="h-px grow bg-divider-subtle"></div>}
+            <div
+              className={cn(
+                'transition-all duration-200',
+                expandedLoops[index] ? 'opacity-100' : 'max-h-0 overflow-hidden opacity-0',
+              )}
             >
-              {
-                loopVariableMap?.[getLoopRunKey(loop, index)] && (
-                  <div className="p-2 pb-0">
-                    <CodeEditor
-                      readOnly
-                      title={<div>{t($ => $['nodes.loop.loopVariables'], { ns: 'workflow' }).toLocaleUpperCase()}</div>}
-                      language={CodeLanguage.json}
-                      height={112}
-                      value={loopVariableMap[getLoopRunKey(loop, index)]}
-                      isJSONStringifyBeauty
-                    />
-                  </div>
-                )
-              }
-              <TracingPanel
-                list={loop}
-                className="bg-background-section-burn"
-              />
+              {loopVariableMap?.[getLoopRunKey(loop, index)] && (
+                <div className="p-2 pb-0">
+                  <CodeEditor
+                    readOnly
+                    title={
+                      <div>
+                        {t(($) => $['nodes.loop.loopVariables'], {
+                          ns: 'workflow',
+                        }).toLocaleUpperCase()}
+                      </div>
+                    }
+                    language={CodeLanguage.json}
+                    height={112}
+                    value={loopVariableMap[getLoopRunKey(loop, index)]}
+                    isJSONStringifyBeauty
+                  />
+                </div>
+              )}
+              <TracingPanel list={loop} className="bg-background-section-burn" />
             </div>
           </div>
         ))}

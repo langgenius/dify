@@ -35,21 +35,12 @@ const renderWithQueryClient = (ui: React.ReactElement) =>
       },
     },
   })
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => key),
-    }),
-  })
-})
-
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: mockAppDetail,
-    setAppDetail: mockSetAppDetail,
-  }),
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: mockAppDetail,
+      setAppDetail: mockSetAppDetail,
+    }),
 }))
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
@@ -92,15 +83,12 @@ vi.mock('@/app/components/base/amplitude', () => ({
 }))
 
 vi.mock('@/app/components/app/overview/embedded', () => ({
-  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (
-    isShow
-      ? (
-          <div data-testid="embedded-modal">
-            <button onClick={onClose}>close-embedded</button>
-          </div>
-        )
-      : null
-  ),
+  default: ({ isShow, onClose }: { isShow: boolean; onClose: () => void }) =>
+    isShow ? (
+      <div data-testid="embedded-modal">
+        <button onClick={onClose}>close-embedded</button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
@@ -150,56 +138,52 @@ describe('App Publisher Flow', () => {
       id: 'app-1',
       access_mode: AccessMode.PUBLIC,
     })
-    mockOpenAsyncWindow.mockImplementation(async (
-      resolver: () => Promise<string>,
-      options?: { onError?: (error: Error) => void },
-    ) => {
-      try {
-        return await resolver()
-      }
-      catch (error) {
-        options?.onError?.(error as Error)
-      }
-    })
+    mockOpenAsyncWindow.mockImplementation(
+      async (resolver: () => Promise<string>, options?: { onError?: (error: Error) => void }) => {
+        try {
+          return await resolver()
+        } catch (error) {
+          options?.onError?.(error as Error)
+        }
+      },
+    )
   })
 
   it('publishes from the summary panel and tracks the publish event', async () => {
     const onPublish = vi.fn().mockResolvedValue(undefined)
 
-    renderWithQueryClient(
-      <AppPublisher
-        publishedAt={1700000000}
-        onPublish={onPublish}
-      />,
-    )
+    renderWithQueryClient(<AppPublisher publishedAt={1700000000} onPublish={onPublish} />)
 
-    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
 
-    expect(screen.getByText('common.latestPublished')).toBeInTheDocument()
-    expect(screen.getByText('common.publishUpdate')).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)common\.latestPublished(?=$|:)/)).toBeInTheDocument()
+    expect(screen.getByText(/(?:^|\.)common\.publishUpdate(?=$|:)/)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('common.publishUpdate'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publishUpdate(?=$|:)/))
 
     await waitFor(() => {
       expect(onPublish).toHaveBeenCalledTimes(1)
-      expect(mockTrackEvent).toHaveBeenCalledWith('app_published_time', expect.objectContaining({
-        action_mode: 'app',
-        app_id: 'app-1',
-        app_name: 'Demo App',
-      }))
+      expect(mockTrackEvent).toHaveBeenCalledWith(
+        'app_published_time',
+        expect.objectContaining({
+          action_mode: 'app',
+          app_id: 'app-1',
+          app_name: 'Demo App',
+        }),
+      )
     })
   })
 
   it('opens embedded modal and resolves the installed explore target', async () => {
     renderWithQueryClient(<AppPublisher publishedAt={1700000000} />)
 
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('common.embedIntoSite'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.embedIntoSite(?=$|:)/))
 
     expect(screen.getByTestId('embedded-modal')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('common.openInExplore'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.openInExplore(?=$|:)/))
 
     await waitFor(() => {
       expect(mockFetchInstalledAppList).toHaveBeenCalledWith('app-1')
@@ -214,11 +198,13 @@ describe('App Publisher Flow', () => {
 
     renderWithQueryClient(<AppPublisher publishedAt={1700000000} />)
 
-    fireEvent.click(screen.getByText('common.publish'))
-    fireEvent.click(screen.getByText('common.openInExplore'))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.openInExplore(?=$|:)/))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('notPublishedYet')
+      expect(mockToastError).toHaveBeenCalledWith(
+        expect.stringMatching(/(?:^|\.)notPublishedYet(?=$|:)/),
+      )
     })
   })
 })

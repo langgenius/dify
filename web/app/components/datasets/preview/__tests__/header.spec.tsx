@@ -49,7 +49,14 @@ describe('PreviewHeader', () => {
     })
 
     it('should pass rest props to the outer div', () => {
-      render(<PreviewHeader title="Title" data-testid="header" id="header-1" aria-label="preview header" />)
+      render(
+        <PreviewHeader
+          title="Title"
+          data-testid="header"
+          id="header-1"
+          aria-label="preview header"
+        />,
+      )
 
       const el = screen.getByTestId('header')
       expect(el).toHaveAttribute('id', 'header-1')
@@ -101,7 +108,7 @@ describe('PreviewHeader', () => {
     it('should handle special characters in title', () => {
       render(<PreviewHeader title="Test & <Special> 'Characters'" />)
 
-      expect(screen.getByText('Test & <Special> \'Characters\'')).toBeInTheDocument()
+      expect(screen.getByText("Test & <Special> 'Characters'")).toBeInTheDocument()
     })
 
     it('should handle long titles', () => {

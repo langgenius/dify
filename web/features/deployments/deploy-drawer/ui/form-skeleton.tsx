@@ -16,7 +16,7 @@ export function DeployFormSkeleton() {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
         <div className="flex flex-col gap-5">
-          {DEPLOY_FORM_FIELD_SKELETON_KEYS.map(key => (
+          {DEPLOY_FORM_FIELD_SKELETON_KEYS.map((key) => (
             <SkeletonContainer key={key} className="gap-2">
               <SkeletonRectangle className="h-3 w-24 animate-pulse" />
               <SkeletonRectangle className="my-0 h-9 w-full animate-pulse rounded-lg" />

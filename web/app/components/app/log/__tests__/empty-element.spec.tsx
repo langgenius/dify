@@ -6,22 +6,30 @@ import EmptyElement from '../empty-element'
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
-  return ({
+  return {
     useTranslation: () => ({
       t: withSelectorKey((key: string) => key),
     }),
-    Trans: withSelectorKeyProps(({ i18nKey, components }: { i18nKey: string, components: Record<string, React.ReactNode> }) => (
-      <span>
-        {i18nKey}
-        {components.shareLink}
-        {components.testLink}
-      </span>
-    )),
-  })
+    Trans: withSelectorKeyProps(
+      ({
+        i18nKey,
+        components,
+      }: {
+        i18nKey: string
+        components: Record<string, React.ReactNode>
+      }) => (
+        <span>
+          {i18nKey}
+          {components.shareLink}
+          {components.testLink}
+        </span>
+      ),
+    ),
+  }
 })
 
 vi.mock('@/utils/app-redirection', () => ({
-  getRedirectionPath: (isTest: boolean, _app: App) => isTest ? '/test-path' : '/prod-path',
+  getRedirectionPath: (isTest: boolean, _app: App) => (isTest ? '/test-path' : '/prod-path'),
 }))
 
 vi.mock('@/utils/var', () => ({
@@ -29,22 +37,23 @@ vi.mock('@/utils/var', () => ({
 }))
 
 describe('EmptyElement', () => {
-  const createMockAppDetail = (mode: AppModeEnum) => ({
-    id: 'test-app-id',
-    name: 'Test App',
-    description: 'Test description',
-    mode,
-    icon_type: 'emoji',
-    icon: 'test-icon',
-    icon_background: '#ffffff',
-    enable_site: true,
-    enable_api: true,
-    created_at: Date.now(),
-    site: {
-      access_token: 'test-token',
-      app_base_url: 'https://app.example.com',
-    },
-  }) as unknown as App
+  const createMockAppDetail = (mode: AppModeEnum) =>
+    ({
+      id: 'test-app-id',
+      name: 'Test App',
+      description: 'Test description',
+      mode,
+      icon_type: 'emoji',
+      icon: 'test-icon',
+      icon_background: '#ffffff',
+      enable_site: true,
+      enable_api: true,
+      created_at: Date.now(),
+      site: {
+        access_token: 'test-token',
+        app_base_url: 'https://app.example.com',
+      },
+    }) as unknown as App
 
   describe('Rendering', () => {
     it('should render empty element with title', () => {

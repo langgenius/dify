@@ -37,32 +37,35 @@ const NotionPageRow = ({
 }: NotionPageRowProps) => {
   const { t } = useTranslation()
   const pageId = row.page.page_id
-  const breadcrumbs = row.ancestors.length ? [...row.ancestors, row.page.page_name] : [row.page.page_name]
+  const breadcrumbs = row.ancestors.length
+    ? [...row.ancestors, row.page.page_name]
+    : [row.page.page_name]
 
   return (
     <div
-      className={cn('group flex cursor-pointer items-center rounded-md pr-[2px] pl-2 hover:bg-state-base-hover', isPreviewed && 'bg-state-base-hover')}
+      className={cn(
+        'group flex cursor-pointer items-center rounded-md pr-[2px] pl-2 hover:bg-state-base-hover',
+        isPreviewed && 'bg-state-base-hover',
+      )}
       style={style}
       data-testid={`notion-page-row-${pageId}`}
     >
-      {selectionMode === 'multiple'
-        ? (
-            <Checkbox
-              className="mr-2 shrink-0"
-              checked={checked}
-              disabled={disabled}
-              aria-label={row.page.page_name}
-              onCheckedChange={() => onSelect(pageId)}
-            />
-          )
-        : (
-            <Radio
-              className="mr-2 shrink-0"
-              value={pageId}
-              disabled={disabled}
-              aria-label={row.page.page_name}
-            />
-          )}
+      {selectionMode === 'multiple' ? (
+        <Checkbox
+          className="mr-2 shrink-0"
+          checked={checked}
+          disabled={disabled}
+          aria-label={row.page.page_name}
+          onCheckedChange={() => onSelect(pageId)}
+        />
+      ) : (
+        <Radio
+          className="mr-2 shrink-0"
+          value={pageId}
+          disabled={disabled}
+          aria-label={row.page.page_name}
+        />
+      )}
       {!searchValue && row.hasChild && (
         <div
           className="mr-1 flex size-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
@@ -70,19 +73,17 @@ const NotionPageRow = ({
           onClick={() => onToggle(pageId)}
           data-testid={`notion-page-toggle-${pageId}`}
         >
-          {row.expand
-            ? <RiArrowDownSLine className="size-4 text-text-tertiary" />
-            : <RiArrowRightSLine className="size-4 text-text-tertiary" />}
+          {row.expand ? (
+            <RiArrowDownSLine className="size-4 text-text-tertiary" />
+          ) : (
+            <RiArrowRightSLine className="size-4 text-text-tertiary" />
+          )}
         </div>
       )}
       {!searchValue && !row.hasChild && row.parentExists && (
         <div className="mr-1 size-5 shrink-0" style={{ marginLeft: row.depth * 8 }} />
       )}
-      <NotionIcon
-        className="mr-1 shrink-0"
-        type="page"
-        src={row.page.page_icon}
-      />
+      <NotionIcon className="mr-1 shrink-0" type="page" src={row.page.page_icon} />
       <div
         className="grow truncate text-[13px] leading-4 font-medium text-text-secondary"
         title={row.page.page_name}
@@ -92,13 +93,11 @@ const NotionPageRow = ({
       </div>
       {showPreview && (
         <div
-          className="ml-1 hidden h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-xs
-          leading-4 font-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]
-          group-hover:flex hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover"
+          className="ml-1 hidden h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-xs leading-4 font-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px] group-hover:flex hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover"
           onClick={() => onPreview(pageId)}
           data-testid={`notion-page-preview-${pageId}`}
         >
-          {t($ => $['dataSource.notion.selector.preview'], { ns: 'common' })}
+          {t(($) => $['dataSource.notion.selector.preview'], { ns: 'common' })}
         </div>
       )}
       {searchValue && (

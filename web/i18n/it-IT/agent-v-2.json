@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "Carica un file .zip o .skill.",
   "agentDetail.configure.skills.upload.success": "Abilità caricata.",
   "agentDetail.configure.skills.upload.title": "Carica abilità",
+  "agentDetail.configure.skills.upload.warning.files": "Se devi usare solo file Markdown, caricali in File e richiamali nel tuo prompt.",
+  "agentDetail.configure.skills.upload.warning.specification": "Le abilità caricate devono rispettare la <specificationLink>specifica Agent Skills</specificationLink>.",
   "agentDetail.configure.title": "Configura",
   "agentDetail.configure.tools.add": "Aggiungi strumento",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Per sviluppatori",

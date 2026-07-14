@@ -8,9 +8,11 @@ type BaseUIAnimationGlobal = typeof globalThis & {
 }
 
 const dispatchToastMouseOver = (element: HTMLElement | SVGElement) => {
-  element.dispatchEvent(new MouseEvent('mouseover', {
-    bubbles: true,
-  }))
+  element.dispatchEvent(
+    new MouseEvent('mouseover', {
+      bubbles: true,
+    }),
+  )
 }
 
 describe('@langgenius/dify-ui/toast', () => {
@@ -62,8 +64,10 @@ describe('@langgenius/dify-ui/toast', () => {
 
   it('should wrap long unbroken toast content within the card width', async () => {
     const screen = await render(<ToastHost />)
-    const longTitle = 'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
-    const longDescription = 'Put "https://plugin/assets/1bd032bb73218a5d141b80cab7111?x-id=PutObject": dial tcp 192.168.0.200:19000: connect: connection refused, icon small en_US failed to remap assets failed to store plugin asset'
+    const longTitle =
+      'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
+    const longDescription =
+      'Put "https://plugin/assets/1bd032bb73218a5d141b80cab7111?x-id=PutObject": dial tcp 192.168.0.200:19000: connect: connection refused, icon small en_US failed to remap assets failed to store plugin asset'
 
     toast.error(longTitle, {
       description: longDescription,
@@ -116,7 +120,9 @@ describe('@langgenius/dify-ui/toast', () => {
     const viewport = screen.getByRole('region', { name: 'Notifications' }).element()
     dispatchToastMouseOver(viewport)
 
-    await expect.element(screen.getByRole('button', { name: 'Close notification' })).toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('button', { name: 'Close notification' }))
+      .toBeInTheDocument()
     asHTMLElement(screen.getByRole('button', { name: 'Close notification' }).element()).click()
 
     await vi.waitFor(() => {
@@ -178,30 +184,37 @@ describe('@langgenius/dify-ui/toast', () => {
       const viewport = screen.getByRole('region', { name: 'Notifications' }).element()
       dispatchToastMouseOver(viewport)
 
-      await expect.element(screen.getByRole('button', { name: 'Close notification' })).toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('button', { name: 'Close notification' }))
+        .toBeInTheDocument()
       asHTMLElement(screen.getByRole('button', { name: 'Close notification' }).element()).click()
 
       await vi.waitFor(() => {
-        expect(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).toHaveAttribute('data-ending-style')
+        expect(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).toHaveAttribute(
+          'data-ending-style',
+        )
       })
 
       asHTMLElement(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).click()
 
-      const underlyingAction = asHTMLElement(screen.getByRole('button', { name: 'Underlying action' }).element())
+      const underlyingAction = asHTMLElement(
+        screen.getByRole('button', { name: 'Underlying action' }).element(),
+      )
       const rect = underlyingAction.getBoundingClientRect()
       const x = rect.left + rect.width / 2
       const y = rect.top + rect.height / 2
 
-      document.elementFromPoint(x, y)?.dispatchEvent(new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-        clientX: x,
-        clientY: y,
-      }))
+      document.elementFromPoint(x, y)?.dispatchEvent(
+        new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+        }),
+      )
 
       expect(onClick).toHaveBeenCalledTimes(1)
-    }
-    finally {
+    } finally {
       baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = animationState
     }
   })
@@ -303,7 +316,7 @@ describe('@langgenius/dify-ui/toast', () => {
 
     void toast.promise(promise, {
       loading: 'Saving…',
-      success: result => ({
+      success: (result) => ({
         title: 'Saved',
         description: result,
         type: 'success',

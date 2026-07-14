@@ -26,11 +26,7 @@ const TestWrapper = ({ children }: { children: ReactNode }) => {
 
 // Create a wrapper component with event emitter context
 const createWrapper = () => {
-  return ({ children }: { children: ReactNode }) => (
-    <TestWrapper>
-      {children}
-    </TestWrapper>
-  )
+  return ({ children }: { children: ReactNode }) => <TestWrapper>{children}</TestWrapper>
 }
 
 describe('RegenerationModal', () => {
@@ -81,7 +77,9 @@ describe('RegenerationModal', () => {
   describe('User Interactions', () => {
     it('should call onCancel when cancel button is clicked', () => {
       const mockOnCancel = vi.fn()
-      render(<RegenerationModal {...defaultProps} onCancel={mockOnCancel} />, { wrapper: createWrapper() })
+      render(<RegenerationModal {...defaultProps} onCancel={mockOnCancel} />, {
+        wrapper: createWrapper(),
+      })
 
       fireEvent.click(screen.getByText(/operation\.cancel/i))
 
@@ -90,7 +88,9 @@ describe('RegenerationModal', () => {
 
     it('should call onConfirm when regenerate button is clicked', () => {
       const mockOnConfirm = vi.fn()
-      render(<RegenerationModal {...defaultProps} onConfirm={mockOnConfirm} />, { wrapper: createWrapper() })
+      render(<RegenerationModal {...defaultProps} onConfirm={mockOnConfirm} />, {
+        wrapper: createWrapper(),
+      })
 
       fireEvent.click(screen.getByText(/operation\.regenerate/i))
 
@@ -110,10 +110,9 @@ describe('RegenerationModal', () => {
 
   describe('Edge Cases', () => {
     it('should handle toggling isShow prop', () => {
-      const { rerender } = render(
-        <RegenerationModal {...defaultProps} isShow={true} />,
-        { wrapper: createWrapper() },
-      )
+      const { rerender } = render(<RegenerationModal {...defaultProps} isShow={true} />, {
+        wrapper: createWrapper(),
+      })
       expect(screen.getByText(/segment\.regenerationConfirmTitle/i)).toBeInTheDocument()
 
       rerender(
@@ -148,8 +147,7 @@ describe('RegenerationModal', () => {
       render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
 
       act(() => {
-        if (emitFunction)
-          emitFunction('update-segment')
+        if (emitFunction) emitFunction('update-segment')
       })
 
       await waitFor(() => {
@@ -161,8 +159,7 @@ describe('RegenerationModal', () => {
       render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
 
       act(() => {
-        if (emitFunction)
-          emitFunction('update-segment')
+        if (emitFunction) emitFunction('update-segment')
       })
 
       await waitFor(() => {
@@ -174,8 +171,7 @@ describe('RegenerationModal', () => {
       render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
 
       act(() => {
-        if (emitFunction)
-          emitFunction('update-segment')
+        if (emitFunction) emitFunction('update-segment')
       })
 
       await waitFor(() => {
@@ -238,7 +234,9 @@ describe('RegenerationModal', () => {
 
     it('should call onClose when close button is clicked in success state', async () => {
       const mockOnClose = vi.fn()
-      render(<RegenerationModal {...defaultProps} onClose={mockOnClose} />, { wrapper: createWrapper() })
+      render(<RegenerationModal {...defaultProps} onClose={mockOnClose} />, {
+        wrapper: createWrapper(),
+      })
 
       act(() => {
         if (emitFunction) {

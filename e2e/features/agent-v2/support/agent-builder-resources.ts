@@ -1,5 +1,6 @@
 export const agentBuilderPreseededResources = {
   stableChatModel: 'E2E Stable Chat Model',
+  speechToTextModel: 'Workspace default Speech-to-Text model',
   summarySkill: 'e2e-summary-skill',
   jsonReplaceTool: 'JSON Process / JSON Replace',
   tavilySearchTool: 'Tavily / Tavily Search',
@@ -25,7 +26,8 @@ export const agentBuilderFixedInputs = {
   missingToolSearch: 'E2E_NOT_EXIST_TOOL',
   missingToolSearchWithSuffix: 'E2E_NOT_EXIST_TOOL_12345',
   customKnowledgeQuery: 'Dify Agent E2E knowledge marker',
-  knowledgeRuntimeQuery: 'Use the connected knowledge source to find the Dify Agent E2E knowledge marker.',
+  knowledgeRuntimeQuery:
+    'Use the connected knowledge source to find the Dify Agent E2E knowledge marker.',
   envPlainKey: 'E2E_AGENT_FLAG',
   envPlainValue: 'enabled',
   envModeKey: 'E2E_AGENT_MODE',

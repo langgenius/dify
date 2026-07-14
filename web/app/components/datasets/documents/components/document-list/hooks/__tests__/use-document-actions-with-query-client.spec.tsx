@@ -16,19 +16,18 @@ const mockUseDocumentDelete = vi.mocked(useDocument.useDocumentDelete)
 const mockUseDocumentBatchRetryIndex = vi.mocked(useDocument.useDocumentBatchRetryIndex)
 const mockUseDocumentDownloadZip = vi.mocked(useDocument.useDocumentDownloadZip)
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false },
-    mutations: { retry: false },
-  },
-})
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
 
 const createWrapper = () => {
   const queryClient = createTestQueryClient()
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 }
 
@@ -38,7 +37,6 @@ describe('useDocumentActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    // Setup all mocks with default values
     const createMockMutation = () => ({
       mutateAsync: mockMutateAsync,
       isPending: false,
@@ -57,12 +55,24 @@ describe('useDocumentActions', () => {
       submittedAt: 0,
     })
 
-    mockUseDocumentArchive.mockReturnValue(createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentArchive>)
-    mockUseDocumentSummary.mockReturnValue(createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentSummary>)
-    mockUseDocumentEnable.mockReturnValue(createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentEnable>)
-    mockUseDocumentDisable.mockReturnValue(createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentDisable>)
-    mockUseDocumentDelete.mockReturnValue(createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentDelete>)
-    mockUseDocumentBatchRetryIndex.mockReturnValue(createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentBatchRetryIndex>)
+    mockUseDocumentArchive.mockReturnValue(
+      createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentArchive>,
+    )
+    mockUseDocumentSummary.mockReturnValue(
+      createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentSummary>,
+    )
+    mockUseDocumentEnable.mockReturnValue(
+      createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentEnable>,
+    )
+    mockUseDocumentDisable.mockReturnValue(
+      createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentDisable>,
+    )
+    mockUseDocumentDelete.mockReturnValue(
+      createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentDelete>,
+    )
+    mockUseDocumentBatchRetryIndex.mockReturnValue(
+      createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentBatchRetryIndex>,
+    )
     mockUseDocumentDownloadZip.mockReturnValue({
       ...createMockMutation(),
       isPending: false,
@@ -76,13 +86,14 @@ describe('useDocumentActions', () => {
       const onClearSelection = vi.fn()
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: ['doc1'],
-          downloadableSelectedIds: [],
-          onUpdate,
-          onClearSelection,
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1'],
+            downloadableSelectedIds: [],
+            onUpdate,
+            onClearSelection,
+          }),
         { wrapper: createWrapper() },
       )
 
@@ -102,13 +113,14 @@ describe('useDocumentActions', () => {
       const onClearSelection = vi.fn()
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: ['doc1'],
-          downloadableSelectedIds: [],
-          onUpdate,
-          onClearSelection,
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1'],
+            downloadableSelectedIds: [],
+            onUpdate,
+            onClearSelection,
+          }),
         { wrapper: createWrapper() },
       )
 
@@ -127,13 +139,14 @@ describe('useDocumentActions', () => {
       const onClearSelection = vi.fn()
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: ['doc1'],
-          downloadableSelectedIds: [],
-          onUpdate,
-          onClearSelection,
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1'],
+            downloadableSelectedIds: [],
+            onUpdate,
+            onClearSelection,
+          }),
         { wrapper: createWrapper() },
       )
 
@@ -154,13 +167,14 @@ describe('useDocumentActions', () => {
       const onClearSelection = vi.fn()
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: ['doc1', 'doc2'],
-          downloadableSelectedIds: [],
-          onUpdate,
-          onClearSelection,
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1', 'doc2'],
+            downloadableSelectedIds: [],
+            onUpdate,
+            onClearSelection,
+          }),
         { wrapper: createWrapper() },
       )
 
@@ -180,13 +194,14 @@ describe('useDocumentActions', () => {
       const onClearSelection = vi.fn()
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: ['doc1'],
-          downloadableSelectedIds: [],
-          onUpdate,
-          onClearSelection,
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1'],
+            downloadableSelectedIds: [],
+            onUpdate,
+            onClearSelection,
+          }),
         { wrapper: createWrapper() },
       )
 
@@ -209,13 +224,14 @@ describe('useDocumentActions', () => {
       } as unknown as ReturnType<typeof useDocument.useDocumentDownloadZip>)
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: ['doc1'],
-          downloadableSelectedIds: ['doc1'],
-          onUpdate: vi.fn(),
-          onClearSelection: vi.fn(),
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1'],
+            downloadableSelectedIds: ['doc1'],
+            onUpdate: vi.fn(),
+            onClearSelection: vi.fn(),
+          }),
         { wrapper: createWrapper() },
       )
 
@@ -236,13 +252,14 @@ describe('useDocumentActions', () => {
       } as unknown as ReturnType<typeof useDocument.useDocumentDownloadZip>)
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: ['doc1', 'doc2'],
-          downloadableSelectedIds: ['doc1'],
-          onUpdate: vi.fn(),
-          onClearSelection: vi.fn(),
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1', 'doc2'],
+            downloadableSelectedIds: ['doc1'],
+            onUpdate: vi.fn(),
+            onClearSelection: vi.fn(),
+          }),
         { wrapper: createWrapper() },
       )
 
@@ -265,13 +282,14 @@ describe('useDocumentActions', () => {
       } as unknown as ReturnType<typeof useDocument.useDocumentDownloadZip>)
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: [],
-          downloadableSelectedIds: [],
-          onUpdate: vi.fn(),
-          onClearSelection: vi.fn(),
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: [],
+            downloadableSelectedIds: [],
+            onUpdate: vi.fn(),
+            onClearSelection: vi.fn(),
+          }),
         { wrapper: createWrapper() },
       )
 
@@ -286,13 +304,14 @@ describe('useDocumentActions', () => {
       const onClearSelection = vi.fn()
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: ['doc1'],
-          downloadableSelectedIds: [],
-          onUpdate,
-          onClearSelection,
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1'],
+            downloadableSelectedIds: [],
+            onUpdate,
+            onClearSelection,
+          }),
         { wrapper: createWrapper() },
       )
 
@@ -310,13 +329,14 @@ describe('useDocumentActions', () => {
       const onClearSelection = vi.fn()
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: ['doc1'],
-          downloadableSelectedIds: [],
-          onUpdate,
-          onClearSelection,
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1'],
+            downloadableSelectedIds: [],
+            onUpdate,
+            onClearSelection,
+          }),
         { wrapper: createWrapper() },
       )
 
@@ -338,13 +358,14 @@ describe('useDocumentActions', () => {
       } as unknown as ReturnType<typeof useDocument.useDocumentDownloadZip>)
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: ['doc1'],
-          downloadableSelectedIds: ['doc1'],
-          onUpdate: vi.fn(),
-          onClearSelection: vi.fn(),
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1'],
+            downloadableSelectedIds: ['doc1'],
+            onUpdate: vi.fn(),
+            onClearSelection: vi.fn(),
+          }),
         { wrapper: createWrapper() },
       )
 
@@ -365,13 +386,14 @@ describe('useDocumentActions', () => {
       } as unknown as ReturnType<typeof useDocument.useDocumentDownloadZip>)
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: ['doc1'],
-          downloadableSelectedIds: ['doc1'],
-          onUpdate: vi.fn(),
-          onClearSelection: vi.fn(),
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1'],
+            downloadableSelectedIds: ['doc1'],
+            onUpdate: vi.fn(),
+            onClearSelection: vi.fn(),
+          }),
         { wrapper: createWrapper() },
       )
 
@@ -390,13 +412,14 @@ describe('useDocumentActions', () => {
       const onUpdate = vi.fn()
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: ['doc1'],
-          downloadableSelectedIds: [],
-          onUpdate,
-          onClearSelection: vi.fn(),
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1'],
+            downloadableSelectedIds: [],
+            onUpdate,
+            onClearSelection: vi.fn(),
+          }),
         { wrapper: createWrapper() },
       )
 
@@ -415,13 +438,14 @@ describe('useDocumentActions', () => {
       const onUpdate = vi.fn()
 
       const { result } = renderHook(
-        () => useDocumentActions({
-          datasetId: 'ds1',
-          selectedIds: ['doc1'],
-          downloadableSelectedIds: [],
-          onUpdate,
-          onClearSelection: vi.fn(),
-        }),
+        () =>
+          useDocumentActions({
+            datasetId: 'ds1',
+            selectedIds: ['doc1'],
+            downloadableSelectedIds: [],
+            onUpdate,
+            onClearSelection: vi.fn(),
+          }),
         { wrapper: createWrapper() },
       )
 

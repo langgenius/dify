@@ -17,7 +17,9 @@ const FullDocListSkeleton = () => {
   return (
     <div className="relative z-10 flex w-full grow flex-col gap-y-3 overflow-y-hidden">
       <div className="absolute top-0 bottom-14 left-0 z-20 size-full bg-dataset-chunk-list-mask-bg" />
-      {Array.from({ length: 15 }).map((_, index) => <Slice key={index} />)}
+      {Array.from({ length: 15 }).map((_, index) => (
+        <Slice key={index} />
+      ))}
     </div>
   )
 }

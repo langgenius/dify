@@ -1,10 +1,12 @@
 import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 
-export function currentReleaseIdForEnvironment(rows: EnvironmentDeployment[], targetEnvironmentId?: string) {
-  if (!targetEnvironmentId)
-    return undefined
+export function currentReleaseIdForEnvironment(
+  rows: EnvironmentDeployment[],
+  targetEnvironmentId?: string,
+) {
+  if (!targetEnvironmentId) return undefined
 
-  return rows.find(row => row.environment.id === targetEnvironmentId)?.currentRelease?.id
+  return rows.find((row) => row.environment.id === targetEnvironmentId)?.currentRelease?.id
 }
 
 export function selectableDeployReleases({
@@ -18,8 +20,7 @@ export function selectableDeployReleases({
   currentReleaseId?: string
   presetReleaseId?: string
 }) {
-  if (!lockedEnvId || presetReleaseId || !currentReleaseId)
-    return releases
+  if (!lockedEnvId || presetReleaseId || !currentReleaseId) return releases
 
-  return releases.filter(release => release.id !== currentReleaseId)
+  return releases.filter((release) => release.id !== currentReleaseId)
 }

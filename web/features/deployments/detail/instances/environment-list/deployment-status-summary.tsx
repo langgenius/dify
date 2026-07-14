@@ -3,14 +3,10 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { useTranslation } from 'react-i18next'
-import {
-  isUndeployedDeploymentRow,
-} from '../../../shared/domain/runtime-status'
+import { isUndeployedDeploymentRow } from '../../../shared/domain/runtime-status'
 import { DeploymentStatusBadge } from '../../../shared/ui/deployment-status-badge'
 
-export function DeploymentStatusSummary({ row }: {
-  row: EnvironmentDeployment
-}) {
+export function DeploymentStatusSummary({ row }: { row: EnvironmentDeployment }) {
   const { t } = useTranslation('deployments')
   const status = row.status
 
@@ -18,7 +14,7 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={t($ => $[`status.${status}`])}
+        label={t(($) => $[`status.${status}`])}
         variant="status-dot"
       />
     )
@@ -28,7 +24,7 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED}
-        label={t($ => $[`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED}`])}
+        label={t(($) => $[`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYED}`])}
         variant="status-dot"
       />
     )
@@ -40,7 +36,7 @@ export function DeploymentStatusSummary({ row }: {
       return (
         <DeploymentStatusBadge
           status={RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING}
-          label={t($ => $[`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING}`])}
+          label={t(($) => $[`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_UNDEPLOYING}`])}
           variant="status-dot"
         />
       )
@@ -49,7 +45,9 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={t($ => $['deployTab.status.deployingRelease'], { release: targetRelease.displayName })}
+        label={t(($) => $['deployTab.status.deployingRelease'], {
+          release: targetRelease.displayName,
+        })}
         variant="status-dot"
       />
     )
@@ -60,7 +58,14 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={t($ => $[hasRunningRelease ? 'deployTab.status.runningWithFailed' : 'deployTab.status.deployFailed'])}
+        label={t(
+          ($) =>
+            $[
+              hasRunningRelease
+                ? 'deployTab.status.runningWithFailed'
+                : 'deployTab.status.deployFailed'
+            ],
+        )}
         variant="status-dot"
       />
     )
@@ -71,9 +76,11 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={hasRunningRelease
-          ? t($ => $['deployTab.status.runningOutOfSync'])
-          : t($ => $['status.RUNTIME_INSTANCE_STATUS_DRIFTED'])}
+        label={
+          hasRunningRelease
+            ? t(($) => $['deployTab.status.runningOutOfSync'])
+            : t(($) => $['status.RUNTIME_INSTANCE_STATUS_DRIFTED'])
+        }
         variant="status-dot"
       />
     )
@@ -83,7 +90,7 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={t($ => $[`status.${status}`])}
+        label={t(($) => $[`status.${status}`])}
         variant="status-dot"
       />
     )
@@ -93,7 +100,7 @@ export function DeploymentStatusSummary({ row }: {
     return (
       <DeploymentStatusBadge
         status={status}
-        label={t($ => $[`status.${status}`])}
+        label={t(($) => $[`status.${status}`])}
         variant="status-dot"
       />
     )
@@ -102,7 +109,7 @@ export function DeploymentStatusSummary({ row }: {
   return (
     <DeploymentStatusBadge
       status={RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY}
-      label={t($ => $[`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY}`])}
+      label={t(($) => $[`status.${RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY}`])}
       variant="status-dot"
     />
   )

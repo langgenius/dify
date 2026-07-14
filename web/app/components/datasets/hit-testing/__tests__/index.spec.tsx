@@ -14,12 +14,32 @@ import HitTestingPage from '../index'
 
 // Mock RetrievalSettings to allow triggering onChange
 vi.mock('@/app/components/datasets/external-knowledge-base/create/RetrievalSettings', () => ({
-  default: ({ onChange }: { onChange: (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => void }) => {
+  default: ({
+    onChange,
+  }: {
+    onChange: (data: {
+      top_k?: number
+      score_threshold?: number
+      score_threshold_enabled?: boolean
+    }) => void
+  }) => {
     return (
       <div data-testid="retrieval-settings-mock">
-        <button data-testid="change-top-k" onClick={() => onChange({ top_k: 8 })}>Change Top K</button>
-        <button data-testid="change-score-threshold" onClick={() => onChange({ score_threshold: 0.9 })}>Change Score Threshold</button>
-        <button data-testid="change-score-enabled" onClick={() => onChange({ score_threshold_enabled: true })}>Change Score Enabled</button>
+        <button data-testid="change-top-k" onClick={() => onChange({ top_k: 8 })}>
+          Change Top K
+        </button>
+        <button
+          data-testid="change-score-threshold"
+          onClick={() => onChange({ score_threshold: 0.9 })}
+        >
+          Change Score Threshold
+        </button>
+        <button
+          data-testid="change-score-enabled"
+          onClick={() => onChange({ score_threshold_enabled: true })}
+        >
+          Change Score Enabled
+        </button>
       </div>
     )
   },
@@ -74,33 +94,39 @@ vi.mock('use-context-selector', () => ({
 vi.mock('@/context/dataset-detail', () => ({
   default: {},
   useDatasetDetailContext: vi.fn(() => ({ dataset: mockDataset })),
-  useDatasetDetailContextWithSelector: vi.fn((selector: (v: { dataset?: typeof mockDataset }) => unknown) =>
-    selector({ dataset: mockDataset as DataSet }),
+  useDatasetDetailContextWithSelector: vi.fn(
+    (selector: (v: { dataset?: typeof mockDataset }) => unknown) =>
+      selector({ dataset: mockDataset as DataSet }),
   ),
 }))
 
 vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
   return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
 })
 vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
   return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
 })
 vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
   return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
 })
 vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
   return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
 })
 vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+  const { createDatasetAccessAtomMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
   return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
 })
@@ -124,7 +150,8 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 }))
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+  const { createDatasetAccessJotaiMock } =
+    await import('@/app/components/datasets/__tests__/mock-dataset-access')
 
   return createDatasetAccessJotaiMock(importOriginal)
 })
@@ -152,7 +179,9 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 // Mock timestamp hook
 vi.mock('@/hooks/use-timestamp', () => ({
   default: vi.fn(() => ({
-    formatTime: vi.fn((timestamp: number, _format: string) => new Date(timestamp * 1000).toISOString()),
+    formatTime: vi.fn((timestamp: number, _format: string) =>
+      new Date(timestamp * 1000).toISOString(),
+    ),
   })),
 }))
 
@@ -169,39 +198,68 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 // Store ref to ImageUploader onChange for testing
-let _mockImageUploaderOnChange: ((files: Array<{ sourceUrl?: string, uploadedId?: string, mimeType: string, name: string, size: number, extension: string }>) => void) | null = null
+let _mockImageUploaderOnChange:
+  | ((
+      files: Array<{
+        sourceUrl?: string
+        uploadedId?: string
+        mimeType: string
+        name: string
+        size: number
+        extension: string
+      }>,
+    ) => void)
+  | null = null
 
 // Mock ImageUploaderInRetrievalTesting to capture onChange
-vi.mock('@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing', () => ({
-  default: ({ textArea, actionButton, onChange }: {
-    textArea: React.ReactNode
-    actionButton: React.ReactNode
-    onChange: (files: Array<{ sourceUrl?: string, uploadedId?: string, mimeType: string, name: string, size: number, extension: string }>) => void
-  }) => {
-    _mockImageUploaderOnChange = onChange
-    return (
-      <div data-testid="image-uploader-mock">
-        {textArea}
-        {actionButton}
-        <button
-          data-testid="trigger-image-change"
-          onClick={() => onChange([
-            {
-              sourceUrl: 'http://example.com/new-image.png',
-              uploadedId: 'new-uploaded-id',
-              mimeType: 'image/png',
-              name: 'new-image.png',
-              size: 2000,
-              extension: 'png',
-            },
-          ])}
-        >
-          Add Image
-        </button>
-      </div>
-    )
-  },
-}))
+vi.mock(
+  '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing',
+  () => ({
+    default: ({
+      textArea,
+      actionButton,
+      onChange,
+    }: {
+      textArea: React.ReactNode
+      actionButton: React.ReactNode
+      onChange: (
+        files: Array<{
+          sourceUrl?: string
+          uploadedId?: string
+          mimeType: string
+          name: string
+          size: number
+          extension: string
+        }>,
+      ) => void
+    }) => {
+      _mockImageUploaderOnChange = onChange
+      return (
+        <div data-testid="image-uploader-mock">
+          {textArea}
+          {actionButton}
+          <button
+            data-testid="trigger-image-change"
+            onClick={() =>
+              onChange([
+                {
+                  sourceUrl: 'http://example.com/new-image.png',
+                  uploadedId: 'new-uploaded-id',
+                  mimeType: 'image/png',
+                  name: 'new-image.png',
+                  size: 2000,
+                  extension: 'png',
+                },
+              ])
+            }
+          >
+            Add Image
+          </button>
+        </div>
+      )
+    },
+  }),
+)
 
 // Mock docLink hook
 vi.mock('@/context/i18n', () => ({
@@ -211,11 +269,7 @@ vi.mock('@/context/i18n', () => ({
 // Mock provider context for retrieval method config
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(() => ({
-    supportRetrievalMethods: [
-      'semantic_search',
-      'full_text_search',
-      'hybrid_search',
-    ],
+    supportRetrievalMethods: ['semantic_search', 'full_text_search', 'hybrid_search'],
   })),
 }))
 
@@ -246,25 +300,22 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 // Test Wrapper with QueryClientProvider
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-      gcTime: 0,
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        gcTime: 0,
+      },
+      mutations: {
+        retry: false,
+      },
     },
-    mutations: {
-      retry: false,
-    },
-  },
-})
+  })
 
 const TestWrapper = ({ children }: { children: ReactNode }) => {
   const queryClient = createTestQueryClient()
-  return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
-  )
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 const renderWithProviders = (ui: React.ReactElement) => {
@@ -310,26 +361,25 @@ const createMockRecord = (overrides = {}): HitTestingRecord => ({
   created_by_role: 'account',
   created_by: 'user-1',
   created_at: 1609459200,
-  queries: [
-    { content: 'Test query', content_type: 'text_query', file_info: null },
-  ],
+  queries: [{ content: 'Test query', content_type: 'text_query', file_info: null }],
   ...overrides,
 })
 
-const _createMockRetrievalConfig = (overrides = {}): RetrievalConfig => ({
-  search_method: RETRIEVE_METHOD.semantic,
-  reranking_enable: false,
-  reranking_mode: undefined,
-  reranking_model: {
-    reranking_provider_name: '',
-    reranking_model_name: '',
-  },
-  weights: undefined,
-  top_k: 10,
-  score_threshold_enabled: false,
-  score_threshold: 0.5,
-  ...overrides,
-} as RetrievalConfig)
+const _createMockRetrievalConfig = (overrides = {}): RetrievalConfig =>
+  ({
+    search_method: RETRIEVE_METHOD.semantic,
+    reranking_enable: false,
+    reranking_mode: undefined,
+    reranking_model: {
+      reranking_provider_name: '',
+      reranking_model_name: '',
+    },
+    weights: undefined,
+    top_k: 10,
+    score_threshold_enabled: false,
+    score_threshold: 0.5,
+    ...overrides,
+  }) as RetrievalConfig
 
 // HitTestingPage Component Tests
 // NOTE: Child component unit tests (Score, Mask, EmptyRecords, ResultItemMeta,
@@ -381,7 +431,11 @@ describe('HitTestingPage', () => {
       renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-      expect(vi.mocked(useDatasetTestingRecords)).toHaveBeenCalledWith('dataset-1', { limit: 10, page: 1 }, { enabled: false })
+      expect(vi.mocked(useDatasetTestingRecords)).toHaveBeenCalledWith(
+        'dataset-1',
+        { limit: 10, page: 1 },
+        { enabled: false },
+      )
     })
   })
 
@@ -396,7 +450,8 @@ describe('HitTestingPage', () => {
 
       const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
       // Loading component should be visible - look for the loading animation
-      const loadingElement = container.querySelector('[class*="animate"]') || container.querySelector('.flex-1')
+      const loadingElement =
+        container.querySelector('[class*="animate"]') || container.querySelector('.flex-1')
       expect(loadingElement)!.toBeInTheDocument()
     })
   })
@@ -448,7 +503,8 @@ describe('HitTestingPage', () => {
 
       const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
       // Pagination should be visible - look for pagination controls
-      const paginationElement = container.querySelector('[class*="pagination"]') || container.querySelector('nav')
+      const paginationElement =
+        container.querySelector('[class*="pagination"]') || container.querySelector('nav')
       expect(paginationElement || screen.getAllByText('Test query').length > 0).toBeTruthy()
     })
   })
@@ -468,13 +524,14 @@ describe('HitTestingPage', () => {
 
       // Find the method selector (cursor-pointer div with the retrieval method)
       const methodSelectors = container.querySelectorAll('.cursor-pointer')
-      const methodSelector = Array.from(methodSelectors).find(el => !el.closest('button') && !el.closest('tr'))
+      const methodSelector = Array.from(methodSelectors).find(
+        (el) => !el.closest('button') && !el.closest('tr'),
+      )
 
       // Verify we found a method selector to click
       expect(methodSelector).toBeTruthy()
 
-      if (methodSelector)
-        fireEvent.click(methodSelector)
+      if (methodSelector) fireEvent.click(methodSelector)
 
       // The component should still be functional after the click
       // The component should still be functional after the click
@@ -544,9 +601,7 @@ describe('HitTestingPage', () => {
   describe('Record Interaction', () => {
     it('should update queries when a record is clicked', async () => {
       const mockRecord = createMockRecord({
-        queries: [
-          { content: 'Record query text', content_type: 'text_query', file_info: null },
-        ],
+        queries: [{ content: 'Record query text', content_type: 'text_query', file_info: null }],
       })
 
       const { useDatasetTestingRecords } = await import('@/service/knowledge/use-dataset')
@@ -567,8 +622,7 @@ describe('HitTestingPage', () => {
       // Find and click the record row
       const recordText = screen.getByText('Record query text')
       const row = recordText.closest('tr')
-      if (row)
-        fireEvent.click(row)
+      if (row) fireEvent.click(row)
 
       // The query input should be updated - this causes re-render with new key
       // The query input should be updated - this causes re-render with new key
@@ -604,7 +658,9 @@ describe('HitTestingPage', () => {
     it('should handle mobile breakpoint', async () => {
       // Mock mobile breakpoint
       const useBreakpoints = await import('@/hooks/use-breakpoints')
-      vi.mocked(useBreakpoints.default).mockReturnValue('mobile' as unknown as ReturnType<typeof useBreakpoints.default>)
+      vi.mocked(useBreakpoints.default).mockReturnValue(
+        'mobile' as unknown as ReturnType<typeof useBreakpoints.default>,
+      )
 
       const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
@@ -619,17 +675,23 @@ describe('HitTestingPage', () => {
       const useBreakpoints = await import('@/hooks/use-breakpoints')
 
       // First render with desktop
-      vi.mocked(useBreakpoints.default).mockReturnValue('pc' as unknown as ReturnType<typeof useBreakpoints.default>)
+      vi.mocked(useBreakpoints.default).mockReturnValue(
+        'pc' as unknown as ReturnType<typeof useBreakpoints.default>,
+      )
 
       const { rerender, container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
       expect(container.firstChild)!.toBeInTheDocument()
 
       // Re-render with mobile
-      vi.mocked(useBreakpoints.default).mockReturnValue('mobile' as unknown as ReturnType<typeof useBreakpoints.default>)
+      vi.mocked(useBreakpoints.default).mockReturnValue(
+        'mobile' as unknown as ReturnType<typeof useBreakpoints.default>,
+      )
 
       rerender(
-        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
           <HitTestingPage datasetId="dataset-1" />
         </QueryClientProvider>,
       )
@@ -646,7 +708,8 @@ describe('Integration: Hit Testing Flow', () => {
     mockHitTestingMutateAsync.mockReset()
     mockExternalHitTestingMutateAsync.mockReset()
 
-    const { useHitTesting, useExternalKnowledgeBaseHitTesting } = await import('@/service/knowledge/use-hit-testing')
+    const { useHitTesting, useExternalKnowledgeBaseHitTesting } =
+      await import('@/service/knowledge/use-hit-testing')
     vi.mocked(useHitTesting).mockReturnValue({
       mutateAsync: mockHitTestingMutateAsync,
       isPending: false,
@@ -671,17 +734,14 @@ describe('Integration: Hit Testing Flow', () => {
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
     // Wait for textbox with timeout for CI
-    const textarea = await waitFor(
-      () => screen.getByRole('textbox'),
-      { timeout: 3000 },
-    )
+    const textarea = await waitFor(() => screen.getByRole('textbox'), { timeout: 3000 })
 
     // Type query
     fireEvent.change(textarea, { target: { value: 'Test query' } })
 
     // Find submit button by class
     const buttons = screen.getAllByRole('button')
-    const submitButton = buttons.find(btn => btn.classList.contains('w-[88px]'))
+    const submitButton = buttons.find((btn) => btn.classList.contains('w-[88px]'))
     expect(submitButton).not.toBeDisabled()
   })
 
@@ -691,10 +751,7 @@ describe('Integration: Hit Testing Flow', () => {
     const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
     // Wait for textbox with timeout for CI
-    const textarea = await waitFor(
-      () => screen.getByRole('textbox'),
-      { timeout: 3000 },
-    )
+    const textarea = await waitFor(() => screen.getByRole('textbox'), { timeout: 3000 })
 
     // Type query
     fireEvent.change(textarea, { target: { value: 'Test query' } })
@@ -713,8 +770,7 @@ describe('Integration: Hit Testing Flow', () => {
 
     mockHitTestingMutateAsync.mockImplementation(async (_params, options) => {
       // Call onSuccess synchronously to ensure state is updated
-      if (options?.onSuccess)
-        options.onSuccess(mockResponse)
+      if (options?.onSuccess) options.onSuccess(mockResponse)
       return mockResponse
     })
 
@@ -734,18 +790,14 @@ describe('Integration: Hit Testing Flow', () => {
     const { container: _container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
     // Wait for textbox to be rendered with timeout for CI environment
-    const textarea = await waitFor(
-      () => screen.getByRole('textbox'),
-      { timeout: 3000 },
-    )
+    const textarea = await waitFor(() => screen.getByRole('textbox'), { timeout: 3000 })
 
     // Type query
     fireEvent.change(textarea, { target: { value: 'Test query' } })
 
     const buttons = screen.getAllByRole('button')
-    const submitButton = buttons.find(btn => btn.classList.contains('w-[88px]'))
-    if (submitButton)
-      fireEvent.click(submitButton)
+    const submitButton = buttons.find((btn) => btn.classList.contains('w-[88px]'))
+    if (submitButton) fireEvent.click(submitButton)
 
     // Wait for the mutation to complete
     await waitFor(
@@ -759,15 +811,11 @@ describe('Integration: Hit Testing Flow', () => {
   it('should render ResultItem components for non-external results', async () => {
     const mockResponse: HitTestingResponse = {
       query: { content: 'Test query', tsne_position: { x: 0, y: 0 } },
-      records: [
-        createMockHitTesting({ score: 0.95 }),
-        createMockHitTesting({ score: 0.85 }),
-      ],
+      records: [createMockHitTesting({ score: 0.95 }), createMockHitTesting({ score: 0.85 })],
     }
 
     mockHitTestingMutateAsync.mockImplementation(async (_params, options) => {
-      if (options?.onSuccess)
-        options.onSuccess(mockResponse)
+      if (options?.onSuccess) options.onSuccess(mockResponse)
       return mockResponse
     })
 
@@ -781,18 +829,14 @@ describe('Integration: Hit Testing Flow', () => {
     const { container: _container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
     // Wait for component to be fully rendered with longer timeout
-    const textarea = await waitFor(
-      () => screen.getByRole('textbox'),
-      { timeout: 3000 },
-    )
+    const textarea = await waitFor(() => screen.getByRole('textbox'), { timeout: 3000 })
 
     // Submit a query
     fireEvent.change(textarea, { target: { value: 'Test query' } })
 
     const buttons = screen.getAllByRole('button')
-    const submitButton = buttons.find(btn => btn.classList.contains('w-[88px]'))
-    if (submitButton)
-      fireEvent.click(submitButton)
+    const submitButton = buttons.find((btn) => btn.classList.contains('w-[88px]'))
+    if (submitButton) fireEvent.click(submitButton)
 
     // Wait for mutation to complete with longer timeout
     await waitFor(
@@ -817,8 +861,7 @@ describe('Integration: Hit Testing Flow', () => {
     }
 
     mockExternalHitTestingMutateAsync.mockImplementation(async (_params, options) => {
-      if (options?.onSuccess)
-        options.onSuccess(mockExternalResponse)
+      if (options?.onSuccess) options.onSuccess(mockExternalResponse)
       return mockExternalResponse
     })
 
@@ -829,18 +872,14 @@ describe('Integration: Hit Testing Flow', () => {
     expect(container.firstChild)!.toBeInTheDocument()
 
     // Wait for textbox with timeout for CI
-    const textarea = await waitFor(
-      () => screen.getByRole('textbox'),
-      { timeout: 3000 },
-    )
+    const textarea = await waitFor(() => screen.getByRole('textbox'), { timeout: 3000 })
 
     // Type in textarea to verify component is functional
     fireEvent.change(textarea, { target: { value: 'Test query' } })
 
     const buttons = screen.getAllByRole('button')
-    const submitButton = buttons.find(btn => btn.classList.contains('w-[88px]'))
-    if (submitButton)
-      fireEvent.click(submitButton)
+    const submitButton = buttons.find((btn) => btn.classList.contains('w-[88px]'))
+    if (submitButton) fireEvent.click(submitButton)
 
     // Verify component is still functional after submission
     await waitFor(
@@ -858,7 +897,8 @@ describe('Drawer and Modal Interactions', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
 
-    const { useHitTesting, useExternalKnowledgeBaseHitTesting } = await import('@/service/knowledge/use-hit-testing')
+    const { useHitTesting, useExternalKnowledgeBaseHitTesting } =
+      await import('@/service/knowledge/use-hit-testing')
     vi.mocked(useHitTesting).mockReturnValue({
       mutateAsync: mockHitTestingMutateAsync,
       isPending: false,
@@ -875,7 +915,7 @@ describe('Drawer and Modal Interactions', () => {
     // Find and click the retrieval method selector to open the drawer
     const methodSelectors = container.querySelectorAll('.cursor-pointer')
     const methodSelector = Array.from(methodSelectors).find(
-      el => !el.closest('button') && !el.closest('tr') && el.querySelector('.text-xs'),
+      (el) => !el.closest('button') && !el.closest('tr') && el.querySelector('.text-xs'),
     )
 
     if (methodSelector) {
@@ -899,7 +939,7 @@ describe('Drawer and Modal Interactions', () => {
     // Open the modal first
     const methodSelectors = container.querySelectorAll('.cursor-pointer')
     const methodSelector = Array.from(methodSelectors).find(
-      el => !el.closest('button') && !el.closest('tr') && el.querySelector('.text-xs'),
+      (el) => !el.closest('button') && !el.closest('tr') && el.querySelector('.text-xs'),
     )
 
     if (methodSelector) {
@@ -919,7 +959,8 @@ describe('renderHitResults Coverage', () => {
     vi.clearAllMocks()
     mockHitTestingMutateAsync.mockReset()
 
-    const { useHitTesting, useExternalKnowledgeBaseHitTesting } = await import('@/service/knowledge/use-hit-testing')
+    const { useHitTesting, useExternalKnowledgeBaseHitTesting } =
+      await import('@/service/knowledge/use-hit-testing')
     vi.mocked(useHitTesting).mockReturnValue({
       mutateAsync: mockHitTestingMutateAsync,
       isPending: false,
@@ -944,27 +985,22 @@ describe('renderHitResults Coverage', () => {
     mockHitTestingMutateAsync.mockImplementation(async (params, options) => {
       // Simulate async behavior
       await Promise.resolve()
-      if (options?.onSuccess)
-        options.onSuccess(mockResponse)
+      if (options?.onSuccess) options.onSuccess(mockResponse)
       return mockResponse
     })
 
     const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
     // Wait for textbox with timeout for CI
-    const textarea = await waitFor(
-      () => screen.getByRole('textbox'),
-      { timeout: 3000 },
-    )
+    const textarea = await waitFor(() => screen.getByRole('textbox'), { timeout: 3000 })
 
     // Enter query
     fireEvent.change(textarea, { target: { value: 'test query' } })
 
     const buttons = screen.getAllByRole('button')
-    const submitButton = buttons.find(btn => btn.classList.contains('w-[88px]'))
+    const submitButton = buttons.find((btn) => btn.classList.contains('w-[88px]'))
 
-    if (submitButton)
-      fireEvent.click(submitButton)
+    if (submitButton) fireEvent.click(submitButton)
 
     // Verify component is functional
     await waitFor(() => {
@@ -973,14 +1009,11 @@ describe('renderHitResults Coverage', () => {
   })
 
   it('should iterate through records and render ResultItem for each', async () => {
-    const mockRecords = [
-      createMockHitTesting({ score: 0.9 }),
-    ]
+    const mockRecords = [createMockHitTesting({ score: 0.9 })]
 
     mockHitTestingMutateAsync.mockImplementation(async (_params, options) => {
       const response = { query: { content: 'test' }, records: mockRecords }
-      if (options?.onSuccess)
-        options.onSuccess(response)
+      if (options?.onSuccess) options.onSuccess(response)
       return response
     })
 
@@ -990,9 +1023,8 @@ describe('renderHitResults Coverage', () => {
     fireEvent.change(textarea, { target: { value: 'test' } })
 
     const buttons = screen.getAllByRole('button')
-    const submitButton = buttons.find(btn => btn.classList.contains('w-[88px]'))
-    if (submitButton)
-      fireEvent.click(submitButton)
+    const submitButton = buttons.find((btn) => btn.classList.contains('w-[88px]'))
+    if (submitButton) fireEvent.click(submitButton)
 
     await waitFor(() => {
       expect(container.firstChild)!.toBeInTheDocument()
@@ -1013,7 +1045,7 @@ describe('ModifyRetrievalModal onSave Coverage', () => {
     // Open the drawer
     const methodSelectors = container.querySelectorAll('.cursor-pointer')
     const methodSelector = Array.from(methodSelectors).find(
-      el => !el.closest('button') && !el.closest('tr') && el.querySelector('.text-xs'),
+      (el) => !el.closest('button') && !el.closest('tr') && el.querySelector('.text-xs'),
     )
 
     if (methodSelector) {
@@ -1036,11 +1068,10 @@ describe('ModifyRetrievalModal onSave Coverage', () => {
     // Open the drawer
     const methodSelectors = container.querySelectorAll('.cursor-pointer')
     const methodSelector = Array.from(methodSelectors).find(
-      el => !el.closest('button') && !el.closest('tr') && el.querySelector('.text-xs'),
+      (el) => !el.closest('button') && !el.closest('tr') && el.querySelector('.text-xs'),
     )
 
-    if (methodSelector)
-      fireEvent.click(methodSelector)
+    if (methodSelector) fireEvent.click(methodSelector)
 
     // Component should still be rendered
     // Component should still be rendered
@@ -1056,7 +1087,8 @@ describe('HitTestingPage Internal Functions Coverage', () => {
     mockHitTestingMutateAsync.mockReset()
     mockExternalHitTestingMutateAsync.mockReset()
 
-    const { useHitTesting, useExternalKnowledgeBaseHitTesting } = await import('@/service/knowledge/use-hit-testing')
+    const { useHitTesting, useExternalKnowledgeBaseHitTesting } =
+      await import('@/service/knowledge/use-hit-testing')
     vi.mocked(useHitTesting).mockReturnValue({
       mutateAsync: mockHitTestingMutateAsync,
       isPending: false,
@@ -1082,33 +1114,32 @@ describe('HitTestingPage Internal Functions Coverage', () => {
     // Setup mutation to call onSuccess synchronously
     mockHitTestingMutateAsync.mockImplementation((_params, options) => {
       // Synchronously call onSuccess
-      if (options?.onSuccess)
-        options.onSuccess(mockResponse)
+      if (options?.onSuccess) options.onSuccess(mockResponse)
       return Promise.resolve(mockResponse)
     })
 
     const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
     // Wait for textbox with timeout for CI
-    const textarea = await waitFor(
-      () => screen.getByRole('textbox'),
-      { timeout: 3000 },
-    )
+    const textarea = await waitFor(() => screen.getByRole('textbox'), { timeout: 3000 })
 
     // Enter query and submit
     fireEvent.change(textarea, { target: { value: 'test query' } })
 
     const buttons = screen.getAllByRole('button')
-    const submitButton = buttons.find(btn => btn.classList.contains('w-[88px]'))
+    const submitButton = buttons.find((btn) => btn.classList.contains('w-[88px]'))
 
     if (submitButton) {
       fireEvent.click(submitButton)
     }
 
     // Wait for state updates
-    await waitFor(() => {
-      expect(container.firstChild)!.toBeInTheDocument()
-    }, { timeout: 3000 })
+    await waitFor(
+      () => {
+        expect(container.firstChild)!.toBeInTheDocument()
+      },
+      { timeout: 3000 },
+    )
 
     // Verify mutation was called
     expect(mockHitTestingMutateAsync).toHaveBeenCalled()
@@ -1120,7 +1151,7 @@ describe('HitTestingPage Internal Functions Coverage', () => {
     // Find and click retrieval method to open drawer
     const methodSelectors = container.querySelectorAll('.cursor-pointer')
     const methodSelector = Array.from(methodSelectors).find(
-      el => !el.closest('button') && !el.closest('tr') && el.querySelector('.text-xs'),
+      (el) => !el.closest('button') && !el.closest('tr') && el.querySelector('.text-xs'),
     )
 
     if (methodSelector) {
@@ -1155,23 +1186,22 @@ describe('HitTestingPage Internal Functions Coverage', () => {
     const { container } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
     // Wait for textbox with timeout for CI
-    const textarea = await waitFor(
-      () => screen.getByRole('textbox'),
-      { timeout: 3000 },
-    )
+    const textarea = await waitFor(() => screen.getByRole('textbox'), { timeout: 3000 })
 
     // Submit a query
     fireEvent.change(textarea, { target: { value: 'test' } })
 
     const buttons = screen.getAllByRole('button')
-    const submitButton = buttons.find(btn => btn.classList.contains('w-[88px]'))
+    const submitButton = buttons.find((btn) => btn.classList.contains('w-[88px]'))
 
-    if (submitButton)
-      fireEvent.click(submitButton)
+    if (submitButton) fireEvent.click(submitButton)
 
     // Verify the component renders
-    await waitFor(() => {
-      expect(container.firstChild)!.toBeInTheDocument()
-    }, { timeout: 3000 })
+    await waitFor(
+      () => {
+        expect(container.firstChild)!.toBeInTheDocument()
+      },
+      { timeout: 3000 },
+    )
   })
 })

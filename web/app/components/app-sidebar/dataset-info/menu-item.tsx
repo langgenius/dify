@@ -7,11 +7,7 @@ type MenuItemProps = {
   handleClick?: () => void
 }
 
-const MenuItem = ({
-  Icon,
-  name,
-  handleClick,
-}: MenuItemProps) => {
+const MenuItem = ({ Icon, name, handleClick }: MenuItemProps) => {
   return (
     <div
       className="flex items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"

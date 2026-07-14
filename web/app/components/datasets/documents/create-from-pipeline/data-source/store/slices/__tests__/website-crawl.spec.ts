@@ -5,7 +5,8 @@ import { createStore } from 'zustand'
 import { CrawlStep } from '@/models/datasets'
 import { createWebsiteCrawlSlice } from '../website-crawl'
 
-const createTestStore = () => createStore<WebsiteCrawlSliceShape>((...args) => createWebsiteCrawlSlice(...args))
+const createTestStore = () =>
+  createStore<WebsiteCrawlSliceShape>((...args) => createWebsiteCrawlSlice(...args))
 
 describe('createWebsiteCrawlSlice', () => {
   it('should initialize with default values', () => {

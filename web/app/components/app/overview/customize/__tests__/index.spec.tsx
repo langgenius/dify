@@ -51,7 +51,9 @@ describe('CustomizeModal', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.queryByText('appOverview.overview.appInfo.customize.title')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('appOverview.overview.appInfo.customize.title'),
+        ).not.toBeInTheDocument()
       })
     })
 
@@ -64,7 +66,9 @@ describe('CustomizeModal', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByText('appOverview.overview.appInfo.customize.explanation')).toBeInTheDocument()
+        expect(
+          screen.getByText('appOverview.overview.appInfo.customize.explanation'),
+        ).toBeInTheDocument()
       })
     })
 
@@ -106,9 +110,15 @@ describe('CustomizeModal', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByText('appOverview.overview.appInfo.customize.way1.step1')).toBeInTheDocument()
-        expect(screen.getByText('appOverview.overview.appInfo.customize.way1.step2')).toBeInTheDocument()
-        expect(screen.getByText('appOverview.overview.appInfo.customize.way1.step3')).toBeInTheDocument()
+        expect(
+          screen.getByText('appOverview.overview.appInfo.customize.way1.step1'),
+        ).toBeInTheDocument()
+        expect(
+          screen.getByText('appOverview.overview.appInfo.customize.way1.step2'),
+        ).toBeInTheDocument()
+        expect(
+          screen.getByText('appOverview.overview.appInfo.customize.way1.step3'),
+        ).toBeInTheDocument()
       })
     })
 
@@ -123,8 +133,8 @@ describe('CustomizeModal', () => {
       await waitFor(() => {
         const preElement = screen.getByText(/NEXT_PUBLIC_APP_ID/i).closest('pre')
         expect(preElement).toBeInTheDocument()
-        expect(preElement?.textContent).toContain('NEXT_PUBLIC_APP_ID=\'test-app-id-123\'')
-        expect(preElement?.textContent).toContain('NEXT_PUBLIC_API_URL=\'https://api.example.com\'')
+        expect(preElement?.textContent).toContain("NEXT_PUBLIC_APP_ID='test-app-id-123'")
+        expect(preElement?.textContent).toContain("NEXT_PUBLIC_API_URL='https://api.example.com'")
       })
     })
 
@@ -189,7 +199,10 @@ describe('CustomizeModal', () => {
       // Assert
       await waitFor(() => {
         const githubLink = getAnchorButton(/step1Operation/i)
-        expect(githubLink).toHaveAttribute('href', 'https://github.com/langgenius/webapp-conversation')
+        expect(githubLink).toHaveAttribute(
+          'href',
+          'https://github.com/langgenius/webapp-conversation',
+        )
       })
     })
 
@@ -203,7 +216,10 @@ describe('CustomizeModal', () => {
       // Assert
       await waitFor(() => {
         const githubLink = getAnchorButton(/step1Operation/i)
-        expect(githubLink).toHaveAttribute('href', 'https://github.com/langgenius/webapp-conversation')
+        expect(githubLink).toHaveAttribute(
+          'href',
+          'https://github.com/langgenius/webapp-conversation',
+        )
       })
     })
 
@@ -217,7 +233,10 @@ describe('CustomizeModal', () => {
       // Assert
       await waitFor(() => {
         const githubLink = getAnchorButton(/step1Operation/i)
-        expect(githubLink).toHaveAttribute('href', 'https://github.com/langgenius/webapp-text-generator')
+        expect(githubLink).toHaveAttribute(
+          'href',
+          'https://github.com/langgenius/webapp-text-generator',
+        )
       })
     })
 
@@ -231,7 +250,10 @@ describe('CustomizeModal', () => {
       // Assert
       await waitFor(() => {
         const githubLink = getAnchorButton(/step1Operation/i)
-        expect(githubLink).toHaveAttribute('href', 'https://github.com/langgenius/webapp-text-generator')
+        expect(githubLink).toHaveAttribute(
+          'href',
+          'https://github.com/langgenius/webapp-text-generator',
+        )
       })
     })
 
@@ -245,7 +267,10 @@ describe('CustomizeModal', () => {
       // Assert
       await waitFor(() => {
         const githubLink = getAnchorButton(/step1Operation/i)
-        expect(githubLink).toHaveAttribute('href', 'https://github.com/langgenius/webapp-text-generator')
+        expect(githubLink).toHaveAttribute(
+          'href',
+          'https://github.com/langgenius/webapp-text-generator',
+        )
       })
     })
   })
@@ -277,7 +302,10 @@ describe('CustomizeModal', () => {
       // Assert
       await waitFor(() => {
         const vercelLink = getAnchorButton(/step2Operation/i)
-        expect(vercelLink).toHaveAttribute('href', 'https://vercel.com/docs/concepts/deployments/git/vercel-for-github')
+        expect(vercelLink).toHaveAttribute(
+          'href',
+          'https://vercel.com/docs/concepts/deployments/git/vercel-for-github',
+        )
         expect(vercelLink).toHaveAttribute('target', '_blank')
         expect(vercelLink).toHaveAttribute('rel', 'noopener noreferrer')
       })
@@ -294,11 +322,16 @@ describe('CustomizeModal', () => {
       render(<CustomizeModal {...props} />)
 
       await waitFor(() => {
-        expect(screen.getByText('appOverview.overview.appInfo.customize.way2.operation')).toBeInTheDocument()
+        expect(
+          screen.getByText('appOverview.overview.appInfo.customize.way2.operation'),
+        ).toBeInTheDocument()
       })
 
       const way2Link = getAnchorButton(/way2\.operation/i)
-      expect(way2Link).toHaveAttribute('href', expect.stringContaining('/api-reference/guides/get-started'))
+      expect(way2Link).toHaveAttribute(
+        'href',
+        expect.stringContaining('/api-reference/guides/get-started'),
+      )
       expect(way2Link).toHaveAttribute('target', '_blank')
       expect(way2Link).toHaveAttribute('rel', 'noopener noreferrer')
     })
@@ -334,7 +367,7 @@ describe('CustomizeModal', () => {
       // Assert
       await waitFor(() => {
         const preElement = screen.getByText(/NEXT_PUBLIC_APP_ID/i).closest('pre')
-        expect(preElement?.textContent).toContain('NEXT_PUBLIC_APP_ID=\'\'')
+        expect(preElement?.textContent).toContain("NEXT_PUBLIC_APP_ID=''")
       })
     })
 
@@ -348,7 +381,7 @@ describe('CustomizeModal', () => {
       // Assert
       await waitFor(() => {
         const preElement = screen.getByText(/NEXT_PUBLIC_API_URL/i).closest('pre')
-        expect(preElement?.textContent).toContain('NEXT_PUBLIC_API_URL=\'\'')
+        expect(preElement?.textContent).toContain("NEXT_PUBLIC_API_URL=''")
       })
     })
 

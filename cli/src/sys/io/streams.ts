@@ -42,9 +42,7 @@ export function bufferStreams(stdin = ''): BufferStreams {
       cb()
     },
   }) as unknown as NodeJS.WritableStream
-  const inStream: NodeJS.ReadableStream = stdin === ''
-    ? new PassThrough()
-    : Readable.from([stdin])
+  const inStream: NodeJS.ReadableStream = stdin === '' ? new PassThrough() : Readable.from([stdin])
   return {
     out,
     err,

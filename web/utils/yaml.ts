@@ -10,7 +10,14 @@ import {
   YAMLException,
 } from 'js-yaml'
 
-const YAML_LOAD_SCHEMA = CORE_SCHEMA.withTags(binaryTag, mergeTag, omapTag, pairsTag, setTag, timestampTag)
+const YAML_LOAD_SCHEMA = CORE_SCHEMA.withTags(
+  binaryTag,
+  mergeTag,
+  omapTag,
+  pairsTag,
+  setTag,
+  timestampTag,
+)
 
 export function loadYaml(input: string) {
   const documents = loadAll(input, { schema: YAML_LOAD_SCHEMA })
