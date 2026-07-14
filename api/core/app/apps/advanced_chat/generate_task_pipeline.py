@@ -807,10 +807,13 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
             )
 
-        # Save message unless it has already been persisted on pause.
-        if not self._message_saved_on_pause:
-            with self._database_session() as session:
-                self._save_message(session=session, graph_runtime_state=resolved_state)
+        # Always save the final message state, even if it was already persisted on pause.
+        # The message may have been saved with PAUSED status and empty answer during a
+        # previous pause event — on completion, _save_message transitions PAUSED→NORMAL
+        # and writes the final answer. _save_message is idempotent (SELECT + UPDATE by
+        # message_id), so calling it multiple times is safe.
+        with self._database_session() as session:
+            self._save_message(session=session, graph_runtime_state=resolved_state)
 
         yield self._message_end_to_stream_response()
 
