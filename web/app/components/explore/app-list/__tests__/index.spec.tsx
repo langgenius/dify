@@ -51,6 +51,7 @@ let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
+const mockTrackEvent = vi.hoisted(() => vi.fn())
 const mockStepByStepTour = vi.hoisted(() => {
   const stateQueryKey = ['console', 'onboarding', 'step-by-step-tour', 'state'] as const
   const createState = (
@@ -209,6 +210,10 @@ vi.mock('@/service/explore', () => ({
   fetchAppDetail: vi.fn(),
   fetchAppList: vi.fn(),
   fetchBanners: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: mockTrackEvent,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -1151,6 +1156,14 @@ describe('AppList', () => {
         expect(state?.completedTaskIds).toEqual(['home'])
         expect(state?.minimized).toBe(false)
       })
+      expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
+        action: 'task_completed',
+        completed_task_count: 1,
+        home_outcome: 'lesson_opened',
+        permission_variant: 'no_create',
+        task_id: 'home',
+        task_total: 4,
+      })
     })
 
     it('should complete the Learn Dify tour only after the app is created from details', async () => {
@@ -1190,6 +1203,14 @@ describe('AppList', () => {
         expect(state?.activeGuideIndex).toBeUndefined()
         expect(state?.activeGuideIndexes).toBeUndefined()
         expect(state?.completedTaskIds).toEqual(['home'])
+      })
+      expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
+        action: 'task_completed',
+        completed_task_count: 1,
+        home_outcome: 'lesson_app_created',
+        permission_variant: 'full',
+        task_id: 'home',
+        task_total: 4,
       })
       expect(mockHandleImportDSL).toHaveBeenCalledWith(
         expect.any(Object),

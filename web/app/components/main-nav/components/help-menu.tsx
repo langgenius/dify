@@ -1,7 +1,6 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { StepByStepTourPersistentState } from '@/app/components/step-by-step-tour/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -29,11 +28,7 @@ import {
   MenuItemContent,
 } from '@/app/components/header/account-dropdown/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
-import {
-  buildStepByStepTourScopedWorkspaceProperties,
-  STEP_BY_STEP_TOUR_ANALYTICS_EVENTS,
-  trackStepByStepTourEvent,
-} from '@/app/components/step-by-step-tour/analytics'
+import { trackStepByStepTourEvent } from '@/app/components/step-by-step-tour/analytics'
 import {
   useSetStepByStepTourSkipRecoveryVisible,
   useStepByStepTourSkipRecoveryVisible,
@@ -121,18 +116,8 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
     if (!canToggleStepByStepTour) return
 
     setSkipRecoveryVisible(false)
-    const wasSkipped = stepByStepTourAccountState.skipped
-    const trackVisibilityToggled = (state: StepByStepTourPersistentState) => {
-      trackStepByStepTourEvent(STEP_BY_STEP_TOUR_ANALYTICS_EVENTS.visibilityToggled, {
-        ...buildStepByStepTourScopedWorkspaceProperties({
-          accountState: state,
-          currentWorkspaceId,
-        }),
-        source: 'help_menu',
-        to_state: checked ? 'on' : 'off',
-        was_skipped: wasSkipped,
-      })
-    }
+    const trackVisibilityToggled = () =>
+      trackStepByStepTourEvent({ action: checked ? 'tour_enabled' : 'tour_disabled' })
 
     if (checked) {
       setStepByStepTourShellMode('expanded')

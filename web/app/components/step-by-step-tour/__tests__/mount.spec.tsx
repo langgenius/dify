@@ -22,6 +22,7 @@ import { StepByStepTourTestStateObserver, StepByStepTourTestUiStateHydrator } fr
 type WorkspaceRole = ICurrentWorkspace['role']
 
 const mockRouterPush = vi.fn()
+const mockTrackEvent = vi.hoisted(() => vi.fn())
 let mockPathname = '/apps'
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: [
@@ -426,6 +427,10 @@ vi.mock('@/context/workspace-state', async (importOriginal) => {
 
   return createAppContextStateAtomMock(importOriginal, getMockAppContextState)
 })
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: mockTrackEvent,
+}))
 
 vi.mock('jotai', async (importOriginal) => {
   const { createAppContextStateJotaiMock } =
@@ -894,6 +899,11 @@ describe('StepByStepTourMount', () => {
       expect(state.minimized).toBe(true)
     })
     expect(mockRouterPush).toHaveBeenCalledWith('/integrations/model-provider')
+    expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
+      action: 'task_started',
+      permission_variant: 'full',
+      task_id: 'integration',
+    })
   })
 
   it('uses limited access integration guides when the workspace cannot manage integrations', async () => {
@@ -1119,6 +1129,11 @@ describe('StepByStepTourMount', () => {
     expect(
       screen.getByRole('button', { name: 'Mark Knowledge needs permission complete' }),
     ).toBeDisabled()
+    expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
+      action: 'permission_fallback_shown',
+      permission_variant: 'no_knowledge_permission',
+      task_id: 'knowledge',
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
 
@@ -1681,11 +1696,21 @@ describe('StepByStepTourMount', () => {
       expect(document.body.querySelectorAll('[data-step-by-step-tour-blocker]')).toHaveLength(0)
       expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
+      expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
+        action: 'guide_shown',
+        guide_id: 'integration.model_provider',
+        task_id: 'integration',
+      })
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
       expect(await screen.findByRole('region', { name: 'Tool Plugin' })).toBeInTheDocument()
       expect(screen.getByText('2 of 6')).toBeInTheDocument()
       expect(mockRouterPush).toHaveBeenLastCalledWith('/integrations/tools/built-in')
+      expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
+        action: 'guide_completed',
+        guide_id: 'integration.model_provider',
+        task_id: 'integration',
+      })
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
       expect(await screen.findByRole('region', { name: 'MCP' })).toBeInTheDocument()
@@ -2619,6 +2644,11 @@ describe('StepByStepTourMount', () => {
       expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
+      expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
+        action: 'guide_shown',
+        guide_id: 'integration.tool_plugin',
+        task_id: 'integration',
+      })
 
       fireEvent.click(screen.getByRole('button', { name: 'Skip tour' }))
 
@@ -2636,6 +2666,11 @@ describe('StepByStepTourMount', () => {
       expect(
         screen.queryByRole('region', { name: 'Step-by-step Tour recovery tip' }),
       ).not.toBeInTheDocument()
+      expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
+        action: 'guide_skipped',
+        guide_id: 'integration.tool_plugin',
+        task_id: 'integration',
+      })
     } finally {
       target.remove()
     }

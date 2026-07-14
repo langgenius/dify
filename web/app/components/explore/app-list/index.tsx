@@ -23,10 +23,7 @@ import AppCard from '@/app/components/explore/app-card'
 import { Banner } from '@/app/components/explore/banner/banner'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import {
-  buildStepByStepTourScopedWorkspaceProperties,
-  buildStepByStepTourWorkspaceProperties,
   getStepByStepTourPermissionVariant,
-  STEP_BY_STEP_TOUR_ANALYTICS_EVENTS,
   trackStepByStepTourEvent,
 } from '@/app/components/step-by-step-tour/analytics'
 import { STEP_BY_STEP_TOUR_TASKS } from '@/app/components/step-by-step-tour/constants'
@@ -38,7 +35,6 @@ import {
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
@@ -120,7 +116,6 @@ function getDisabledBannersQueryOptions() {
 const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const homeQueries = useQueries({
@@ -151,12 +146,12 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   // eslint-disable-next-line react/use-state -- Step-by-step tour state actions are not React useState calls.
   const stepByStepTourActions = useStepByStepTourStateActions()
   const trackHomeTourCompleted = useCallback(
-    (state: StepByStepTourPersistentState) => {
-      trackStepByStepTourEvent(STEP_BY_STEP_TOUR_ANALYTICS_EVENTS.taskCompleted, {
-        ...buildStepByStepTourWorkspaceProperties({ currentWorkspaceId }),
+    (state: StepByStepTourPersistentState, homeOutcome: 'lesson_app_created' | 'lesson_opened') => {
+      trackStepByStepTourEvent({
+        action: 'task_completed',
         task_id: HOME_STEP_BY_STEP_TOUR_TASK_ID,
         completed_task_count: state.completedTaskIds.length,
-        completion_source: 'external_action',
+        home_outcome: homeOutcome,
         permission_variant: getStepByStepTourPermissionVariant({
           canCreateApp,
           hasIntegrationWalkthroughPermissions: true,
@@ -167,17 +162,14 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       })
 
       if (STEP_BY_STEP_TOUR_TASKS.every((task) => state.completedTaskIds.includes(task.id))) {
-        trackStepByStepTourEvent(STEP_BY_STEP_TOUR_ANALYTICS_EVENTS.completed, {
-          ...buildStepByStepTourScopedWorkspaceProperties({
-            accountState: state,
-            currentWorkspaceId,
-          }),
-          completed_task_ids: state.completedTaskIds,
+        trackStepByStepTourEvent({
+          action: 'tour_completed',
+          completed_task_count: state.completedTaskIds.length,
           task_total: STEP_BY_STEP_TOUR_TASKS.length,
         })
       }
     },
-    [canCreateApp, currentWorkspaceId],
+    [canCreateApp],
   )
 
   const [keywords, setKeywords] = useState('')
@@ -281,7 +273,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       minimized: false,
     })
     stepByStepTourActions.completeTask(HOME_STEP_BY_STEP_TOUR_TASK_ID, {
-      onSuccess: trackHomeTourCompleted,
+      onSuccess: (state) => trackHomeTourCompleted(state, 'lesson_app_created'),
     })
     isCurrentTryAppFromLearnDifyRef.current = false
     shouldCompleteHomeTourOnCreateRef.current = false
@@ -311,7 +303,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       minimized: false,
     })
     stepByStepTourActions.completeTask(HOME_STEP_BY_STEP_TOUR_TASK_ID, {
-      onSuccess: trackHomeTourCompleted,
+      onSuccess: (state) => trackHomeTourCompleted(state, 'lesson_opened'),
     })
   }, [
     setStepByStepTourAccountState,
