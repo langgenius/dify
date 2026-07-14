@@ -66,7 +66,7 @@ type RemoteActionItem = ActionItemBase & {
   source: 'remote'
 }
 
-export type LocalActionItem = ActionItemBase & {
+type LocalActionItem = ActionItemBase & {
   source: 'local'
   search: (query: string, searchTerm: string, locale?: string) => SearchResult[]
 }
