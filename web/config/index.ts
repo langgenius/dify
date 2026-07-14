@@ -337,8 +337,9 @@ export const FIRST_TOKEN_TIMEOUT_PARAMETER_RULE: ModelParameterRule = {
   precision: 0,
   help: {
     en_US:
-      'Max milliseconds to wait for the first streamed token. On timeout the node fails; combine with node retry to re-run it automatically.',
-    zh_Hans: '等待首个流式 Token 的最长毫秒数。超时后节点失败，可配合节点重试自动重跑。',
+      'Max milliseconds to wait for the first streamed token; the same window also bounds each gap between tokens. On timeout the node fails; combine with node retry to re-run it automatically.',
+    zh_Hans:
+      '等待首个流式 Token 的最长毫秒数；同一窗口也约束后续每次 Token 间隔。超时后节点失败，可配合节点重试自动重跑。',
   },
   label: {
     en_US: 'First token timeout (ms)',

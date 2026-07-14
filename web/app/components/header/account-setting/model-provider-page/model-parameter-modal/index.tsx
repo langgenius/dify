@@ -40,6 +40,10 @@ export type ModelParameterModalProps = {
   renderTrigger?: (v: TriggerProps) => ReactNode
   readonly?: boolean
   isInWorkflow?: boolean
+  // Only LLM-compatible node panels (LLM / question classifier / parameter
+  // extractor) should pass this: the backend consumes the value solely on
+  // their model-config path, so rendering it elsewhere yields dead config.
+  supportFirstTokenTimeout?: boolean
   scope?: string
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
@@ -59,6 +63,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   renderTrigger,
   readonly,
   isInWorkflow,
+  supportFirstTokenTimeout,
   nodesOutputVars,
   availableNodes,
 }) => {
@@ -223,7 +228,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 [
                   ...parameterRules,
                   ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : []),
-                  ...(isAdvancedMode && isInWorkflow ? [FIRST_TOKEN_TIMEOUT_PARAMETER_RULE] : []),
+                  ...(isAdvancedMode && supportFirstTokenTimeout
+                    ? [FIRST_TOKEN_TIMEOUT_PARAMETER_RULE]
+                    : []),
                 ].map((parameter) => (
                   <ParameterItem
                     key={`${modelId}-${parameter.name}`}

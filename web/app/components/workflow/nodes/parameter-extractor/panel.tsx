@@ -61,6 +61,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => 
             popupClassName="w-[387px]!"
             isInWorkflow
             isAdvancedMode={true}
+            supportFirstTokenTimeout
             provider={model?.provider}
             completionParams={model?.completion_params}
             modelId={model?.name}

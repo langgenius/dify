@@ -117,6 +117,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
             popupClassName="w-[387px]!"
             isInWorkflow
             isAdvancedMode={true}
+            supportFirstTokenTimeout
             provider={model?.provider}
             completionParams={model?.completion_params}
             modelId={model?.name}

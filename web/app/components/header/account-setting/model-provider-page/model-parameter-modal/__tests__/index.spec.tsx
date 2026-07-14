@@ -388,16 +388,26 @@ describe('ModelParameterModal', () => {
     expect(screen.getByText(/debugAsSingleModel/i)).toBeInTheDocument()
   })
 
-  it('should append the first token timeout parameter only in workflow advanced mode', () => {
-    render(<ModelParameterModal {...defaultProps} isAdvancedMode isInWorkflow />)
+  it('should append the first token timeout parameter when the panel supports it', () => {
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        isAdvancedMode
+        isInWorkflow
+        supportFirstTokenTimeout
+      />,
+    )
 
     openSettings()
 
     expect(screen.getByTestId('param-first_token_timeout_ms')).toBeInTheDocument()
   })
 
-  it('should not append the first token timeout parameter outside workflow', () => {
-    render(<ModelParameterModal {...defaultProps} isAdvancedMode />)
+  it('should not append the first token timeout parameter for workflow panels that do not support it', () => {
+    // Being in a workflow is not enough: panels whose model config is not consumed
+    // by fetch_model_config (knowledge retrieval, tool/trigger model params) must
+    // not render a dead setting.
+    render(<ModelParameterModal {...defaultProps} isAdvancedMode isInWorkflow />)
 
     openSettings()
 
