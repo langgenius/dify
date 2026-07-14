@@ -52,6 +52,10 @@ export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & 
   readonly?: boolean
   modelSelectorReadonly?: boolean
   isInWorkflow?: boolean
+  // Only LLM-compatible node panels (LLM / question classifier / parameter
+  // extractor) should pass this: the backend consumes the value solely on
+  // their model-config path, so rendering it elsewhere yields dead config.
+  supportFirstTokenTimeout?: boolean
   scope?: string
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
@@ -79,6 +83,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   readonly,
   modelSelectorReadonly,
   isInWorkflow,
+  supportFirstTokenTimeout,
   nodesOutputVars,
   availableNodes,
   modelList,
@@ -245,7 +250,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 [
                   ...parameterRules,
                   ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : []),
-                  ...(isAdvancedMode && isInWorkflow ? [FIRST_TOKEN_TIMEOUT_PARAMETER_RULE] : []),
+                  ...(isAdvancedMode && supportFirstTokenTimeout
+                    ? [FIRST_TOKEN_TIMEOUT_PARAMETER_RULE]
+                    : []),
                 ].map((parameter) => (
                   <ParameterItem
                     key={`${modelId}-${parameter.name}`}
