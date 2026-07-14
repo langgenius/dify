@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.console.datasets.data_source import (
@@ -50,7 +51,8 @@ class TestDataSourceNotionPreviewApi:
 
 
 class TestDataSourceNotionIndexingEstimateApi:
-    def test_post_indexing_estimate_success(self, app: Flask) -> None:
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_post_indexing_estimate_success(self, app: Flask, sqlite_session: Session) -> None:
         api = DataSourceNotionIndexingEstimateApi()
         method = inspect.unwrap(api.post)
 
@@ -78,13 +80,14 @@ class TestDataSourceNotionIndexingEstimateApi:
                 return_value=MagicMock(model_dump=lambda: {"total_pages": 1}),
             ),
         ):
-            response, status = method(api, "tenant-1")
+            response, status = method(api, sqlite_session, "tenant-1")
 
         assert status == 200
 
 
 class TestDataSourceNotionDatasetSyncApi:
-    def test_get_success(self, app: Flask) -> None:
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_get_success(self, app: Flask, sqlite_session: Session) -> None:
         api = DataSourceNotionDatasetSyncApi()
         method = inspect.unwrap(api.get)
 
@@ -103,11 +106,12 @@ class TestDataSourceNotionDatasetSyncApi:
                 return_value=None,
             ),
         ):
-            response, status = method(api, "ds-1")
+            response, status = method(api, sqlite_session, "ds-1")
 
         assert status == 200
 
-    def test_get_dataset_not_found(self, app: Flask) -> None:
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_get_dataset_not_found(self, app: Flask, sqlite_session: Session) -> None:
         api = DataSourceNotionDatasetSyncApi()
         method = inspect.unwrap(api.get)
 
@@ -119,11 +123,12 @@ class TestDataSourceNotionDatasetSyncApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, "ds-1")
+                method(api, sqlite_session, "ds-1")
 
 
 class TestDataSourceNotionDocumentSyncApi:
-    def test_get_success(self, app: Flask) -> None:
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_get_success(self, app: Flask, sqlite_session: Session) -> None:
         api = DataSourceNotionDocumentSyncApi()
         method = inspect.unwrap(api.get)
 
@@ -142,11 +147,12 @@ class TestDataSourceNotionDocumentSyncApi:
                 return_value=None,
             ),
         ):
-            response, status = method(api, "ds-1", "doc-1")
+            response, status = method(api, sqlite_session, "ds-1", "doc-1")
 
         assert status == 200
 
-    def test_get_document_not_found(self, app: Flask) -> None:
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_get_document_not_found(self, app: Flask, sqlite_session: Session) -> None:
         api = DataSourceNotionDocumentSyncApi()
         method = inspect.unwrap(api.get)
 
@@ -162,4 +168,4 @@ class TestDataSourceNotionDocumentSyncApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, "ds-1", "doc-1")
+                method(api, sqlite_session, "ds-1", "doc-1")
