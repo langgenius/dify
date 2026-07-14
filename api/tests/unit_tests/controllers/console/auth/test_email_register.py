@@ -145,6 +145,7 @@ class TestEmailRegisterResetApi:
         mock_reset_login_rate.assert_called_once_with("invitee@example.com")
         mock_revoke_token.assert_called_once_with("token-123")
         mock_extract_ip.assert_called_once()
+
     @patch("controllers.console.auth.email_register.AccountService.reset_login_error_rate_limit")
     @patch("controllers.console.auth.email_register.AccountService.login")
     @patch("controllers.console.auth.email_register.EmailRegisterResetApi._create_new_account")
