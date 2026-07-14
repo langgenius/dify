@@ -294,8 +294,7 @@ function GotoAnythingDialog() {
       event.preventDefault()
       event.stopPropagation()
 
-      if (gotoAnythingDialogHandle.isOpen) gotoAnythingDialogHandle.close()
-      else gotoAnythingDialogHandle.open(null)
+      if (!gotoAnythingDialogHandle.isOpen) gotoAnythingDialogHandle.open(null)
     }
 
     window.addEventListener('keydown', handleKeyDown, { capture: true })

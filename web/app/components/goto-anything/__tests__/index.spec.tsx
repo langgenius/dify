@@ -237,22 +237,18 @@ describe('GotoAnything', () => {
       })
     })
 
-    it('should toggle modal when pressing Ctrl+K twice', async () => {
+    it('should keep the modal open when pressing Ctrl+K again', async () => {
+      const user = userEvent.setup()
       renderGotoAnything(<GotoAnything />)
 
       triggerSearchShortcut()
-      await waitFor(() => {
-        expect(
-          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
-        ).toBeInTheDocument()
-      })
+      const input = await screen.findByPlaceholderText('app.gotoAnything.searchPlaceholder')
+      await user.type(input, 'workflow')
 
       triggerSearchShortcut()
-      await waitFor(() => {
-        expect(
-          screen.queryByPlaceholderText('app.gotoAnything.searchPlaceholder'),
-        ).not.toBeInTheDocument()
-      })
+
+      expect(input).toHaveValue('workflow')
+      expect(input).toHaveFocus()
     })
 
     it('should reset search query when modal opens', async () => {
