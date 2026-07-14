@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"os"
 	"time"
 )
@@ -161,7 +162,10 @@ func (c *HTTPClient) uploadFile(uploadURL string, filePath string, filename stri
 
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
-	part, err := writer.CreateFormFile("file", filename)
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%s"`, filename))
+	h.Set("Content-Type", mimetype)
+	part, err := writer.CreatePart(h)
 	if err != nil {
 		return nil, fmt.Errorf("create form file: %w", err)
 	}

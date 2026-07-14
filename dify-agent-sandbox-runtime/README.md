@@ -40,6 +40,14 @@ docker build -f dify-agent-sandbox-runtime/docker/Dockerfile \
   dify-agent-sandbox-runtime/
 ```
 
+### Runing docker container
+
+```
+docker run -d --name dify-agent-sandbox-runtime \
+  -p 15004:5004 \
+  dify-agent-sandbox-runtime:latest
+```
+
 ## Testing
 
 ```bash
