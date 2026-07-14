@@ -44,6 +44,7 @@ class ServerSettings(BaseSettings):
     shell_provider: Literal["shellctl", "enterprise"] = "shellctl"
     shellctl_entrypoint: str | None = None
     shellctl_auth_token: str | None = None
+    shell_home_root: str = "/home"
     enterprise_sandbox_gateway_endpoint: str | None = None
     enterprise_sandbox_gateway_auth_token: str | None = None
     enterprise_sandbox_gateway_timeout: float = Field(default=30.0, gt=0)
@@ -124,6 +125,17 @@ class ServerSettings(BaseSettings):
             return None
         stripped = value.strip()
         return stripped or None
+
+    @field_validator("shell_home_root")
+    @classmethod
+    def normalize_shell_home_root(cls, value: str) -> str:
+        """Normalize the root used for per-Agent shell HOME directories."""
+        stripped = value.strip().rstrip("/")
+        if not stripped:
+            raise ValueError("DIFY_AGENT_SHELL_HOME_ROOT must not be empty")
+        if not stripped.startswith("/"):
+            raise ValueError("DIFY_AGENT_SHELL_HOME_ROOT must be an absolute path")
+        return stripped
 
     @model_validator(mode="after")
     def validate_agent_stub_requirements(self) -> "ServerSettings":

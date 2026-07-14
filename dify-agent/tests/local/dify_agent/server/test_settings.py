@@ -38,6 +38,21 @@ def test_server_settings_reads_shellctl_auth_token_from_env(monkeypatch: pytest.
     assert settings.shellctl_auth_token == "shell-secret"
 
 
+def test_server_settings_reads_shell_home_root_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIFY_AGENT_SHELL_HOME_ROOT", "/tmp/dify-agent-home/")
+
+    settings = ServerSettings()
+
+    assert settings.shell_home_root == "/tmp/dify-agent-home"
+
+
+def test_server_settings_rejects_relative_shell_home_root(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIFY_AGENT_SHELL_HOME_ROOT", "relative/path")
+
+    with pytest.raises(ValidationError, match="DIFY_AGENT_SHELL_HOME_ROOT must be an absolute path"):
+        ServerSettings()
+
+
 def test_server_settings_reads_enterprise_timeouts_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_TIMEOUT", "45")
     monkeypatch.setenv("DIFY_AGENT_ENTERPRISE_SANDBOX_PROXY_TIMEOUT", "90")
