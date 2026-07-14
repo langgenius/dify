@@ -1,4 +1,4 @@
-"""Testcontainers integration tests for controllers.web.forgot_password endpoints."""
+"""Unit tests for controllers.web.forgot_password endpoints."""
 
 from __future__ import annotations
 
@@ -8,12 +8,15 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
+from controllers.web import forgot_password as module
 from controllers.web.forgot_password import (
     ForgotPasswordCheckApi,
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
 )
+from models.account import Account
 
 
 @pytest.fixture(autouse=True)
@@ -29,10 +32,6 @@ def _patch_wraps():
 
 
 class TestForgotPasswordSendEmailApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
-
     @patch("controllers.web.forgot_password.AccountService.send_reset_password_email")
     @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.web.forgot_password.AccountService.is_email_send_ip_limit", return_value=False)
@@ -64,10 +63,6 @@ class TestForgotPasswordSendEmailApi:
 
 
 class TestForgotPasswordCheckApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
-
     @patch("controllers.web.forgot_password.AccountService.reset_forgot_password_error_rate_limit")
     @patch("controllers.web.forgot_password.AccountService.generate_reset_password_token")
     @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
@@ -142,28 +137,28 @@ class TestForgotPasswordCheckApi:
 
 
 class TestForgotPasswordResetApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
-
+    @pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
     @patch("controllers.web.forgot_password.ForgotPasswordResetApi._update_existing_account")
     @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.web.forgot_password.db")
     @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.web.forgot_password.AccountService.get_reset_password_data")
     def test_should_fetch_account_with_fallback(
         self,
         mock_get_reset_data,
         mock_revoke_token,
-        mock_db,
         mock_get_account,
         mock_update_account,
         app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "User@Example.com", "code": "1234"}
-        mock_account = MagicMock()
-        mock_get_account.return_value = mock_account
-        mock_db.session.merge.return_value = mock_account
+        account = Account(name="User", email="user@example.com")
+        sqlite_session.add(account)
+        sqlite_session.commit()
+        mock_get_account.return_value = account
+        database_session = scoped_session(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False))
+        monkeypatch.setattr(module, "db", SimpleNamespace(session=database_session))
 
         with app.test_request_context(
             "/web/forgot-password/resets",
@@ -181,9 +176,9 @@ class TestForgotPasswordResetApi:
         mock_update_account.assert_called_once()
         mock_revoke_token.assert_called_once_with("token-123")
 
+    @pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
     @patch("controllers.web.forgot_password.hash_password", return_value=b"hashed-value")
     @patch("controllers.web.forgot_password.secrets.token_bytes", return_value=b"0123456789abcdef")
-    @patch("controllers.web.forgot_password.db")
     @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.web.forgot_password.AccountService.get_reset_password_data")
     @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
@@ -192,15 +187,19 @@ class TestForgotPasswordResetApi:
         mock_get_account,
         mock_get_reset_data,
         mock_revoke_token,
-        mock_db,
         mock_token_bytes,
         mock_hash_password,
         app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "user@example.com"}
-        account = MagicMock()
+        account = Account(name="User", email="user@example.com")
+        sqlite_session.add(account)
+        sqlite_session.commit()
         mock_get_account.return_value = account
-        mock_db.session.merge.return_value = account
+        database_session = scoped_session(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False))
+        monkeypatch.setattr(module, "db", SimpleNamespace(session=database_session))
 
         with app.test_request_context(
             "/web/forgot-password/resets",
@@ -218,7 +217,10 @@ class TestForgotPasswordResetApi:
         mock_revoke_token.assert_called_once_with("reset-token")
         mock_token_bytes.assert_called_once_with(16)
         mock_hash_password.assert_called_once_with("StrongPass123!", b"0123456789abcdef")
+        sqlite_session.expire_all()
+        stored_account = sqlite_session.get(Account, account.id)
+        assert stored_account is not None
         expected_password = base64.b64encode(b"hashed-value").decode()
-        assert account.password == expected_password
+        assert stored_account.password == expected_password
         expected_salt = base64.b64encode(b"0123456789abcdef").decode()
-        assert account.password_salt == expected_salt
+        assert stored_account.password_salt == expected_salt
