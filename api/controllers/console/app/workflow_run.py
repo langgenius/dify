@@ -180,7 +180,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
 
         workflow_run_service = WorkflowRunService()
         result = workflow_run_service.get_paginate_advanced_chat_workflow_runs(
-            app_model=app_model, args=args, triggered_from=triggered_from, session=db.session
+            app_model=app_model, args=args, triggered_from=triggered_from, session=db.session()
         )
 
         return AdvancedChatWorkflowRunPaginationResponse.model_validate(result, from_attributes=True).model_dump(

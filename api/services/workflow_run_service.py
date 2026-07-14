@@ -1,6 +1,6 @@
 import threading
 from collections.abc import Sequence
-from typing import TypedDict
+from typing import Any, TypedDict, Union
 
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
@@ -51,7 +51,7 @@ class WorkflowRunService:
         self,
         app_model: App,
         args: WorkflowRunListArgs,
-        session: Session | scoped_session,
+        session: Union[Session, scoped_session, Any],
         triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
     ) -> InfiniteScrollPagination:
         """
