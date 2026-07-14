@@ -15,7 +15,7 @@ describe.each(templates)('%s advanced chat API template', (_language, templateFi
     )
 
     expect(source).toContain(
-      "import WorkflowVersionApiUpgradeNotice from '../workflow-version-api-upgrade-notice.tsx'",
+      "import { WorkflowVersionApiUpgradeNotice } from '../workflow-version-api-upgrade-notice.tsx'",
     )
     expect(source).toContain(
       "<Property name='workflow_id' type='string' key='workflow_id' nameAction={<WorkflowVersionApiUpgradeNotice />}>",
