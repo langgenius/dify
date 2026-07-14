@@ -9,16 +9,20 @@ from __future__ import annotations
 from datetime import datetime
 from inspect import unwrap as unwrap_all
 from types import SimpleNamespace
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
+from uuid import UUID
 
 import pytest
 from flask import Flask
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
+from services.errors.llm import InvokeRateLimitError
 
 
 def _make_workflow(**overrides):
@@ -220,3 +224,89 @@ def test_rag_pipeline_recommended_plugins_serializes_known_envelope(app, monkeyp
         response = handler(api, "tenant-1", _account())
 
     assert response == recommended_plugins
+
+
+def test_rag_pipeline_transform_rejects_read_only_member(app: Flask, sqlite_engine: Engine) -> None:
+    account = _account()
+    account.role = TenantAccountRole.NORMAL
+    api = module.RagPipelineTransformApi()
+    handler = unwrap_all(api.post)
+
+    with (
+        Session(sqlite_engine) as session,
+        app.test_request_context("/"),
+        pytest.raises(Forbidden),
+    ):
+        handler(api, session, account, UUID("44444444-4444-4444-4444-444444444444"))
+
+
+@pytest.mark.parametrize(
+    ("api_type", "payload"),
+    [
+        (
+            module.DraftRagPipelineRunApi,
+            {"inputs": {}, "datasource_type": "x", "datasource_info_list": [], "start_node_id": "node-1"},
+        ),
+        (
+            module.PublishedRagPipelineRunApi,
+            {
+                "inputs": {},
+                "datasource_type": "x",
+                "datasource_info_list": [],
+                "start_node_id": "node-1",
+                "response_mode": "blocking",
+            },
+        ),
+    ],
+)
+def test_rag_pipeline_run_uses_sqlite_session(
+    app: Flask,
+    sqlite_engine: Engine,
+    api_type: type,
+    payload: dict[str, object],
+) -> None:
+    api = api_type()
+    handler = unwrap_all(api.post)
+    pipeline = _pipeline()
+
+    with (
+        Session(sqlite_engine) as session,
+        app.test_request_context("/", json=payload),
+        patch.object(type(module.console_ns), "payload", payload),
+        patch.object(module, "load_rag_pipeline", return_value=pipeline) as load_pipeline,
+        patch.object(module.PipelineGenerateService, "generate", return_value=MagicMock()) as generate,
+        patch.object(module.helper, "compact_generate_response", return_value={"ok": True}),
+    ):
+        response = handler(api, session, _account(), pipeline.id)
+
+    assert response == {"ok": True}
+    load_pipeline.assert_called_once_with(session, pipeline.id)
+    assert generate.call_args.kwargs["session"] is session
+    assert session.get_bind() is sqlite_engine
+
+
+@pytest.mark.parametrize("api_type", [module.DraftRagPipelineRunApi, module.PublishedRagPipelineRunApi])
+def test_rag_pipeline_run_translates_rate_limit(
+    app: Flask,
+    sqlite_engine: Engine,
+    api_type: type,
+) -> None:
+    payload = {
+        "inputs": {},
+        "datasource_type": "x",
+        "datasource_info_list": [],
+        "start_node_id": "node-1",
+    }
+    api = api_type()
+    handler = unwrap_all(api.post)
+    pipeline = _pipeline()
+
+    with (
+        Session(sqlite_engine) as session,
+        app.test_request_context("/", json=payload),
+        patch.object(type(module.console_ns), "payload", payload),
+        patch.object(module, "load_rag_pipeline", return_value=pipeline),
+        patch.object(module.PipelineGenerateService, "generate", side_effect=InvokeRateLimitError("limit")),
+        pytest.raises(InvokeRateLimitHttpError),
+    ):
+        handler(api, session, _account(), pipeline.id)
