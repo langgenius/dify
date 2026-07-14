@@ -1,7 +1,7 @@
 """First-token timeout plumbing for LLM streaming through the plugin daemon.
 
-The timeout is configured per model in ``completion_params.first_token_timeout``
-(seconds). Dify pops it at the workflow model-config boundary
+The timeout is configured per model in ``completion_params.first_token_timeout_ms``
+(milliseconds). Dify pops it at the workflow model-config boundary
 (``core.app.llm.model_access._normalize_completion_params``) into
 ``ModelInstance.first_token_timeout``, and the workflow LLM adapter
 (``DifyPreparedLLM``) carries it down to the plugin-daemon transport through a
@@ -14,9 +14,11 @@ headers until the model emits its first token and sends no heartbeat in the mean
 the ``read`` timeout measures time-to-first-token directly; on expiry httpx raises
 ``httpx.ReadTimeout`` and the transport surfaces it as ``FirstTokenTimeoutError``.
 
-Units: this value is in **seconds** everywhere -- the web UI field, the value stored in
-``completion_params``, and the float that feeds straight into ``httpx.Timeout(read=...)``.
-There is no millisecond representation anywhere on this path; do not add a conversion.
+Units: the user-facing value (web UI field, ``completion_params``) is **milliseconds**;
+everything downstream of the pop point -- ``ModelInstance.first_token_timeout``, this
+ContextVar, and the float fed straight into ``httpx.Timeout(read=...)`` -- is **seconds**.
+The ms->s conversion happens exactly once, in ``_normalize_completion_params``; do not
+add another one.
 
 Threading: the ContextVar only reaches the transport when ``_stream_request`` runs in the same
 thread/context that ``_guarded_stream`` set it in. A future model-runtime layer that prefetches
