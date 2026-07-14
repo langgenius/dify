@@ -39,7 +39,11 @@ def test_oauth_login_passes_relative_redirect_url_through(app: Flask) -> None:
     assert response.headers["Location"] == "https://accounts.google.com/o/oauth2/v2/auth?state=..."
 
 
-def test_oauth_callback_redirects_to_relative_original_page(app: Flask) -> None:
+@pytest.mark.parametrize("oauth_new_user", [False, True])
+def test_oauth_callback_appends_new_user_flag_to_relative_original_page(
+    app: Flask,
+    oauth_new_user: bool,
+) -> None:
     oauth_provider = MagicMock()
     oauth_provider.get_access_token.return_value = "google-access-token"
     oauth_provider.get_user_info.return_value = OAuthUserInfo(
@@ -57,7 +61,7 @@ def test_oauth_callback_redirects_to_relative_original_page(app: Flask) -> None:
 
     with (
         patch("controllers.console.auth.oauth.get_oauth_providers", return_value={"google": oauth_provider}),
-        patch("controllers.console.auth.oauth._generate_account", return_value=(account, False)),
+        patch("controllers.console.auth.oauth._generate_account", return_value=(account, oauth_new_user)),
         patch("controllers.console.auth.oauth.TenantService.create_owner_tenant_if_not_exist"),
         patch("controllers.console.auth.oauth.AccountService.login", return_value=token_pair),
         patch("controllers.console.auth.oauth.set_access_token_to_cookie"),
@@ -68,4 +72,4 @@ def test_oauth_callback_redirects_to_relative_original_page(app: Flask) -> None:
         response = OAuthCallback().get("google")
 
     assert response.status_code == 302
-    assert response.headers["Location"] == REDIRECT_URL
+    assert response.headers["Location"] == f"{REDIRECT_URL}&oauth_new_user={str(oauth_new_user).lower()}"
