@@ -10,9 +10,10 @@ from typing import cast
 from unittest.mock import patch
 
 import pytest
-from flask import Flask, g
+from flask import Flask
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden
+from werkzeug.local import LocalProxy
 
 from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountRole
@@ -44,12 +45,20 @@ def tenant(controller_session: Session) -> Tenant:
 
 
 @pytest.fixture
-def account(controller_session: Session, tenant: Tenant) -> Account:
+def account(controller_session: Session, tenant: Tenant, monkeypatch: pytest.MonkeyPatch) -> Account:
     account = Account(name="Dataset Tag API User", email=f"dataset-tag-api-{uuid.uuid4()}@example.com")
     account.role = TenantAccountRole.OWNER
     account._current_tenant = tenant
     controller_session.add(account)
     controller_session.flush()
+
+    # The controller can receive the concrete account directly. The permission decorator
+    # still needs LocalProxy._get_current_object(), so point its proxy at that same account.
+    from controllers.service_api.dataset import dataset as dataset_module
+    from libs import login
+
+    monkeypatch.setattr(dataset_module, "current_user", account)
+    monkeypatch.setattr(login, "current_user", LocalProxy(lambda: account))
     return account
 
 
@@ -91,7 +100,6 @@ class TestDatasetTagsApiGet:
         mock_tag_svc.get_tags.return_value = [tag]
 
         with app.test_request_context("/datasets/tags", method="GET"):
-            g._login_user = account
             api = DatasetTagsApi()
             response, status = api.get(_=None)
 
@@ -122,7 +130,6 @@ class TestDatasetTagsApiPost:
             method="POST",
             json={"name": "New Tag"},
         ):
-            g._login_user = account
             api = DatasetTagsApi()
             response, status = api.post(_=None)
 
@@ -140,7 +147,6 @@ class TestDatasetTagsApiPost:
             method="POST",
             json={"name": "New Tag"},
         ):
-            g._login_user = account
             api = DatasetTagsApi()
             with pytest.raises(Forbidden):
                 api.post(_=None)
@@ -172,7 +178,6 @@ class TestDatasetTagsApiPatch:
             method="PATCH",
             json={"name": "Updated Tag", "tag_id": "tag-1"},
         ):
-            g._login_user = account
             api = DatasetTagsApi()
             response, status = api.patch(_=None)
 
@@ -194,7 +199,6 @@ class TestDatasetTagsApiPatch:
             method="PATCH",
             json={"name": "Updated Tag", "tag_id": "tag-1"},
         ):
-            g._login_user = account
             api = DatasetTagsApi()
             with pytest.raises(Forbidden):
                 api.patch(_=None)
@@ -223,7 +227,6 @@ class TestDatasetTagsApiDelete:
             method="DELETE",
             json={"tag_id": "tag-1"},
         ):
-            g._login_user = account
             api = DatasetTagsApi()
             result = api.delete(_=None)
 
@@ -240,7 +243,6 @@ class TestDatasetTagsApiDelete:
             method="DELETE",
             json={"tag_id": "tag-1"},
         ):
-            g._login_user = account
             api = DatasetTagsApi()
             with pytest.raises(Forbidden):
                 api.delete(_=None)
@@ -264,7 +266,6 @@ class TestDatasetTagsBindingStatusApi:
         mock_tag_svc.get_tags_by_target_id.return_value = [tag]
 
         with app.test_request_context("/", method="GET"):
-            g._login_user = account
             api = DatasetTagsBindingStatusApi()
             response, status_code = api.get(tenant.id, dataset_id="dataset_123")
 
@@ -296,7 +297,6 @@ class TestDatasetTagBindingApiPost:
             method="POST",
             json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
         ):
-            g._login_user = account
             api = DatasetTagBindingApi()
             result = api.post(_=None)
 
@@ -318,7 +318,6 @@ class TestDatasetTagBindingApiPost:
             method="POST",
             json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
         ):
-            g._login_user = account
             api = DatasetTagBindingApi()
             with pytest.raises(Forbidden):
                 api.post(_=None)
@@ -344,7 +343,6 @@ class TestDatasetTagUnbindingApiPost:
             method="POST",
             json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
         ):
-            g._login_user = account
             api = DatasetTagUnbindingApi()
             result = api.post(_=None)
 
@@ -373,7 +371,6 @@ class TestDatasetTagUnbindingApiPost:
             method="POST",
             json={"tag_id": "tag-1", "target_id": "ds-1"},
         ):
-            g._login_user = account
             api = DatasetTagUnbindingApi()
             result = api.post(_=None)
 
@@ -395,7 +392,6 @@ class TestDatasetTagUnbindingApiPost:
             method="POST",
             json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
         ):
-            g._login_user = account
             api = DatasetTagUnbindingApi()
             with pytest.raises(Forbidden):
                 api.post(_=None)

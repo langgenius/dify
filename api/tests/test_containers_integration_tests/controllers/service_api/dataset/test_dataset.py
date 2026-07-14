@@ -1,7 +1,7 @@
 """Container integration coverage for Service API dataset controllers."""
 
 import pytest
-from flask import Flask, g
+from flask import Flask
 from sqlalchemy.orm import Session
 
 from models.enums import TagType
@@ -21,6 +21,7 @@ class TestDatasetTagsApiGet:
         self,
         app: Flask,
         db_session_with_containers: Session,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         account, tenant = create_console_account_and_tenant(db_session_with_containers)
         tag = Tag(
@@ -32,10 +33,12 @@ class TestDatasetTagsApiGet:
         db_session_with_containers.add(tag)
         db_session_with_containers.commit()
 
+        from controllers.service_api.dataset import dataset as dataset_module
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
+        monkeypatch.setattr(dataset_module, "current_user", account)
+
         with app.test_request_context("/datasets/tags", method="GET"):
-            g._login_user = account
             response, status = DatasetTagsApi().get(_=None)
 
         assert status == 200

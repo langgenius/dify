@@ -13,7 +13,7 @@ from typing import cast
 from unittest.mock import patch
 
 import pytest
-from flask import Flask, g
+from flask import Flask
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -63,12 +63,17 @@ def tenant(controller_session: Session) -> Tenant:
 
 
 @pytest.fixture
-def account(controller_session: Session, tenant: Tenant) -> Account:
+def account(controller_session: Session, tenant: Tenant, monkeypatch: pytest.MonkeyPatch) -> Account:
     account = Account(name="Dataset API User", email=f"dataset-api-{uuid.uuid4()}@example.com")
     account.role = TenantAccountRole.OWNER
     account._current_tenant = tenant
     controller_session.add(account)
     controller_session.flush()
+
+    # Inject the concrete account at the controller boundary without relying on Flask-Login globals.
+    from controllers.service_api.dataset import dataset as dataset_module
+
+    monkeypatch.setattr(dataset_module, "current_user", account)
     return account
 
 
@@ -209,7 +214,6 @@ class TestDatasetListApiGet:
         mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = []
 
         with app.test_request_context("/datasets?page=1&limit=20", method="GET"):
-            g._login_user = account
             api = DatasetListApi()
             response, status = api.get(tenant_id=tenant.id)
 
@@ -239,13 +243,12 @@ class TestDatasetListApiGet:
         mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = []
 
         with app.test_request_context("/datasets?tag_ids=tag-a&tag_ids=tag-b", method="GET"):
-            g._login_user = account
             api = DatasetListApi()
             response, status = api.get(tenant_id=tenant.id)
             page, limit, session, tenant_id, user, keyword, tag_ids, include_all = (
                 mock_dataset_svc.get_datasets.call_args.args
             )
-            assert user._get_current_object() is account
+            assert user is account
 
         assert status == 200
         assert response["total"] == 1
@@ -283,7 +286,6 @@ class TestDatasetListApiPost:
             method="POST",
             json={"name": "New Dataset"},
         ):
-            g._login_user = account
             api = DatasetListApi()
             response, status = unwrap(api.post)(api, controller_session, tenant_id=tenant.id)
 
@@ -310,7 +312,6 @@ class TestDatasetListApiPost:
             method="POST",
             json={"name": "Existing Dataset"},
         ):
-            g._login_user = account
             api = DatasetListApi()
             with pytest.raises(DatasetNameDuplicateError):
                 unwrap(api.post)(api, controller_session, tenant_id=tenant.id)
@@ -346,7 +347,6 @@ class TestDatasetApiGet:
             f"/datasets/{dataset.id}",
             method="GET",
         ):
-            g._login_user = account
             api = DatasetApi()
             response, status = api.get(_=dataset.tenant_id, dataset_id=dataset.id)
 
@@ -379,7 +379,6 @@ class TestDatasetApiGet:
             f"/datasets/{dataset.id}",
             method="GET",
         ):
-            g._login_user = account
             api = DatasetApi()
             response, status = api.get(_=dataset.tenant_id, dataset_id=dataset.id)
 
@@ -407,7 +406,6 @@ class TestDatasetApiGet:
         mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = []
 
         with app.test_request_context(f"/datasets/{dataset.id}", method="GET"):
-            g._login_user = account
             api = DatasetApi()
             response, status = api.get(_=dataset.tenant_id, dataset_id=dataset.id)
 
@@ -450,7 +448,6 @@ class TestDatasetApiGet:
             f"/datasets/{dataset.id}",
             method="GET",
         ):
-            g._login_user = account
             api = DatasetApi()
             with pytest.raises(Forbidden):
                 api.get(_=dataset.tenant_id, dataset_id=dataset.id)
@@ -488,7 +485,6 @@ class TestDatasetApiPatch:
             method="PATCH",
             json=payload,
         ):
-            g._login_user = account
             api = DatasetApi()
             response, status = unwrap(api.patch)(
                 api,
@@ -536,7 +532,6 @@ class TestDatasetApiDelete:
             f"/datasets/{dataset.id}",
             method="DELETE",
         ):
-            g._login_user = account
             api = DatasetApi()
             result = unwrap(api.delete)(api, _=dataset.tenant_id, dataset_id=dataset.id)
 
@@ -558,7 +553,6 @@ class TestDatasetApiDelete:
             f"/datasets/{dataset.id}",
             method="DELETE",
         ):
-            g._login_user = account
             api = DatasetApi()
             with pytest.raises(NotFound):
                 unwrap(api.delete)(api, _=dataset.tenant_id, dataset_id=dataset.id)
@@ -579,7 +573,6 @@ class TestDatasetApiDelete:
             f"/datasets/{dataset.id}",
             method="DELETE",
         ):
-            g._login_user = account
             api = DatasetApi()
             with pytest.raises(DatasetInUseError):
                 unwrap(api.delete)(api, _=dataset.tenant_id, dataset_id=dataset.id)
@@ -616,7 +609,6 @@ class TestDocumentStatusApiPatch:
             method="PATCH",
             json={"document_ids": ["doc-1", "doc-2"]},
         ):
-            g._login_user = account
             api = DocumentStatusApi()
             response, status = api.patch(
                 tenant_id=tenant.id,
@@ -675,7 +667,6 @@ class TestDocumentStatusApiPatch:
             method="PATCH",
             json={"document_ids": ["doc-1"]},
         ):
-            g._login_user = account
             api = DocumentStatusApi()
             with pytest.raises(Forbidden):
                 api.patch(
@@ -707,7 +698,6 @@ class TestDocumentStatusApiPatch:
             method="PATCH",
             json={"document_ids": ["doc-1"]},
         ):
-            g._login_user = account
             api = DocumentStatusApi()
             with pytest.raises(InvalidActionError):
                 api.patch(
@@ -739,7 +729,6 @@ class TestDocumentStatusApiPatch:
             method="PATCH",
             json={"document_ids": ["doc-1"]},
         ):
-            g._login_user = account
             api = DocumentStatusApi()
             with pytest.raises(InvalidActionError):
                 api.patch(
