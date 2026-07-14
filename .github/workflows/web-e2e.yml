@@ -97,6 +97,11 @@ jobs:
             mv cucumber-report cucumber-report-non-external
           fi
 
+          if [[ -d .logs ]]; then
+            rm -rf .logs-non-external
+            mv .logs .logs-non-external
+          fi
+
           trap 'vp run e2e:middleware:down' EXIT
           vp run e2e:middleware:up
           vp run e2e:external:prepare
@@ -117,5 +122,8 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: e2e-logs
-          path: e2e/.logs
+          path: |
+            e2e/.logs/*.log
+            e2e/.logs-non-external/*.log
+          include-hidden-files: true
           retention-days: 7
