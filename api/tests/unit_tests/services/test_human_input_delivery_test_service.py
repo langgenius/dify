@@ -288,9 +288,7 @@ class TestEmailDeliveryTestHandler:
         assert handler._resolve_recipients(tenant_id=tenant_id, method=method) == ["member@example.com"]
 
     @pytest.mark.parametrize("sqlite_session", [(Account, TenantAccountJoin)], indirect=True)
-    def test_resolve_recipients_whole_workspace(
-        self, sqlite_engine: Engine, sqlite_session: Session
-    ) -> None:
+    def test_resolve_recipients_whole_workspace(self, sqlite_engine: Engine, sqlite_session: Session) -> None:
         tenant_id = str(uuid4())
         account1 = Account(name="User 1", email=f"u1-{uuid4()}@example.com")
         account2 = Account(name="User 2", email=f"u2-{uuid4()}@example.com")
