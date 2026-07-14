@@ -5,10 +5,10 @@ from json import loads as json_loads
 from json.decoder import JSONDecodeError
 from typing import Any, TypedDict
 
-import httpx
 from flask import request
 from yaml import YAMLError, safe_load
 
+from core.helper import ssrf_proxy
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolParameter
@@ -376,7 +376,7 @@ class ApiBasedToolSchemaParser:
             raise ToolNotSupportedError("Only openapi is supported now.")
 
         # get openapi yaml
-        response = httpx.get(
+        response = ssrf_proxy.get(
             api_url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "}, timeout=5
         )
 
