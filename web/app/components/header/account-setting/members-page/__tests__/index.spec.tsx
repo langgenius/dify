@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react'
 import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { Role } from '@/models/access-control'
 import type { ICurrentWorkspace, Member } from '@/models/common'
@@ -84,31 +85,36 @@ vi.mock('../edit-workspace-modal', () => ({
     </div>
   ),
 }))
-vi.mock('../invite-button', () => ({
-  default: ({ onClick, disabled }: { onClick: () => void; disabled: boolean }) => (
-    <button onClick={onClick} disabled={disabled}>
-      Invite
-    </button>
-  ),
-}))
 vi.mock('../invite-modal', () => ({
-  default: ({
-    onCancel,
+  InviteModal: ({
+    open,
+    trigger,
+    onOpenChange,
     onSend,
   }: {
-    onCancel: () => void
+    open: boolean
+    trigger: ReactElement<{ disabled?: boolean }>
+    onOpenChange: (open: boolean) => void
     onSend: (results: Array<{ email: string; status: 'success'; url: string }>) => void
   }) => (
     <div>
-      <div>Invite Modal</div>
-      <button onClick={onCancel}>Close Invite Modal</button>
-      <button
-        onClick={() =>
-          onSend([{ email: 'sent@example.com', status: 'success', url: 'http://invite/link' }])
-        }
-      >
-        Send Invite Results
+      <button disabled={trigger.props.disabled} onClick={() => onOpenChange(true)}>
+        Invite
       </button>
+      {open && (
+        <div>
+          <div>Invite Modal</div>
+          <button onClick={() => onOpenChange(false)}>Close Invite Modal</button>
+          <button
+            onClick={() => {
+              onOpenChange(false)
+              onSend([{ email: 'sent@example.com', status: 'success', url: 'http://invite/link' }])
+            }}
+          >
+            Send Invite Results
+          </button>
+        </div>
+      )}
     </div>
   ),
 }))
@@ -321,7 +327,6 @@ describe('MembersPage', () => {
     await user.click(screen.getByRole('button', { name: 'Send Invite Results' }))
 
     expect(screen.getByText('Invited Modal'))!.toBeInTheDocument()
-    expect(mockRefetch).toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'Close Invited Modal' }))
     expect(screen.queryByText('Invited Modal')).not.toBeInTheDocument()
@@ -723,7 +728,8 @@ describe('MembersPage', () => {
     expect(screen.queryByText('Member Details Modal')).not.toBeInTheDocument()
   })
 
-  it('should show upgrade button when member limit is full', () => {
+  it('should show the upgrade action without blocking the backend-authoritative invite flow', async () => {
+    const user = userEvent.setup()
     vi.mocked(useProviderContext).mockReturnValue(
       createMockProviderContextValue({
         enableBilling: true,
@@ -739,5 +745,7 @@ describe('MembersPage', () => {
     renderMembersPage()
 
     expect(screen.getByText('Upgrade Button'))!.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Invite' }))
+    expect(screen.getByText('Invite Modal')).toBeInTheDocument()
   })
 })

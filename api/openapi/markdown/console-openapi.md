@@ -18641,11 +18641,27 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | data | [ [AccessPolicyMemberBinding](#accesspolicymemberbinding) ] |  | No |
 
+#### MemberInviteAlreadyMemberResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| message | string |  | Yes |
+| status | string |  | Yes |
+
+#### MemberInviteFailedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| message | string |  | Yes |
+| status | string |  | Yes |
+
 #### MemberInvitePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| emails | [ string ] |  | No |
+| emails | [ string ] |  | Yes |
 | language | string |  | No |
 | role | string |  | Yes |
 
@@ -18653,18 +18669,17 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| invitation_results | [ [MemberInviteResultResponse](#memberinviteresultresponse) ] |  | Yes |
+| invitation_results | [ [MemberInviteSuccessResponse](#memberinvitesuccessresponse)<br>[MemberInviteAlreadyMemberResponse](#memberinvitealreadymemberresponse)<br>[MemberInviteFailedResponse](#memberinvitefailedresponse) ] |  | Yes |
 | result | string |  | Yes |
 | tenant_id | string |  | Yes |
 
-#### MemberInviteResultResponse
+#### MemberInviteSuccessResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
-| message | string |  | No |
 | status | string |  | Yes |
-| url | string |  | No |
+| url | string |  | Yes |
 
 #### MemberRoleUpdatePayload
 

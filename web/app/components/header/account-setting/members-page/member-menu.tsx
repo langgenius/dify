@@ -120,7 +120,7 @@ const MemberMenu = ({
           render={
             <ActionButton
               size="l"
-              className="data-popup-open:bg-state-base-hover"
+              className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
               aria-label={t(($) => $['members.memberActions'], {
                 ns: 'common',
                 defaultValue: 'Member actions',
@@ -133,7 +133,7 @@ const MemberMenu = ({
         <DropdownMenuContent
           placement="bottom-end"
           sideOffset={4}
-          popupClassName="min-w-[180px] rounded-xl p-1"
+          popupClassName="min-w-[180px] rounded-xl"
         >
           {canAssignRoles && (
             <DropdownMenuItem
