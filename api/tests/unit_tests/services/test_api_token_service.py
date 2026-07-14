@@ -2,34 +2,35 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import datetime
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.engine import Engine
+from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 import services.api_token_service as api_token_service_module
+from models.engine import db
 from models.model import ApiToken
 from services.api_token_service import ApiTokenCache, CachedApiToken
 
 
 @pytest.fixture
-def api_token_db(
-    sqlite_engine: Engine,
-    sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
-) -> Session:
-    """Route service-owned token queries to the SQLite seed database."""
+def api_token_db() -> Iterator[Session]:
+    """Provide the production database extension with an isolated SQLite token table."""
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
 
-    monkeypatch.setattr(api_token_service_module, "db", SimpleNamespace(engine=sqlite_engine))
-    return sqlite_session
+    with app.app_context():
+        ApiToken.__table__.create(db.engine)
+        with Session(db.engine, expire_on_commit=False) as session:
+            yield session
 
 
-@pytest.mark.parametrize("sqlite_session", [(ApiToken,)], indirect=True)
 class TestQueryTokenFromDb:
     def test_should_return_api_token_and_cache_when_token_exists(self, api_token_db: Session) -> None:
         tenant_id = str(uuid4())
