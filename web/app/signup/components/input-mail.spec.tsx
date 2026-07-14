@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useLocale } from '@/context/i18n'
+import { useSearchParams } from '@/next/navigation'
 import { useSendMail } from '@/service/use-common'
 import Form from './input-mail'
 
@@ -33,6 +34,10 @@ vi.mock('@/context/i18n', () => ({
   useLocale: vi.fn(),
 }))
 
+vi.mock('@/next/navigation', () => ({
+  useSearchParams: vi.fn(),
+}))
+
 vi.mock('@/service/use-common', () => ({
   useSendMail: vi.fn(),
 }))
@@ -40,6 +45,7 @@ vi.mock('@/service/use-common', () => ({
 type UseSendMailResult = ReturnType<typeof useSendMail>
 
 const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
+const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
 const mockUseSendMail = useSendMail as unknown as MockedFunction<typeof useSendMail>
 
 const renderForm = ({
@@ -62,6 +68,9 @@ const renderForm = ({
 describe('InputMail Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
+    )
     mockSubmitMail.mockResolvedValue({ result: 'success', data: 'token' })
   })
 
@@ -111,6 +120,24 @@ describe('InputMail Form', () => {
       await waitFor(() => {
         expect(mockOnSuccess).toHaveBeenCalledWith('test@example.com', 'token')
       })
+    })
+  })
+
+  // Navigation between registration and login keeps the original destination.
+  describe('Registration Navigation', () => {
+    it('should preserve the current query when navigating to sign in', () => {
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams(
+          'redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
+        ) as unknown as ReturnType<typeof useSearchParams>,
+      )
+
+      renderForm()
+
+      expect(screen.getByRole('link', { name: 'login.signup.signIn' })).toHaveAttribute(
+        'href',
+        '/signin?redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
+      )
     })
   })
 

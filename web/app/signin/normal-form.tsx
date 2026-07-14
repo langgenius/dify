@@ -27,6 +27,8 @@ function NormalForm() {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryString = searchParams.toString()
+  const signupHref = queryString ? `/signup?${queryString}` : '/signup'
   // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
   // other errors throw to error.tsx. jumpTo same-pathname guard in service/base.ts
   // prevents the redirect loop on 401.
@@ -270,7 +272,7 @@ function NormalForm() {
           {systemFeatures.is_allow_register && authType === 'password' && (
             <div className="mb-3 text-[13px] leading-4 font-medium text-text-secondary">
               <span>{t(($) => $['signup.noAccount'], { ns: 'login' })}</span>
-              <Link className="text-text-accent" href="/signup">
+              <Link className="text-text-accent" href={signupHref}>
                 {t(($) => $['signup.signUp'], { ns: 'login' })}
               </Link>
             </div>
