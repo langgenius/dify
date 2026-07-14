@@ -3,7 +3,7 @@
 import type { StepByStepTourTaskId } from './types'
 import { trackEvent } from '@/app/components/base/amplitude'
 
-export const STEP_BY_STEP_TOUR_ANALYTICS_EVENT = 'step_tour'
+const STEP_BY_STEP_TOUR_ANALYTICS_EVENT = 'step_tour'
 
 export type StepByStepTourPermissionVariant =
   | 'full'

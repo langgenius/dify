@@ -2,7 +2,7 @@ import type { DocPathWithoutLang } from '@/types/doc-paths'
 
 export type StepByStepTourTaskId = 'home' | 'studio' | 'knowledge' | 'integration'
 
-export type StepByStepTourTaskStatus = 'completed' | 'current' | 'pending' | 'disabled'
+type StepByStepTourTaskStatus = 'completed' | 'current' | 'pending' | 'disabled'
 
 export type StepByStepTourGuideGroup =
   | 'homeNoCreate'
