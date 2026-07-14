@@ -2,11 +2,11 @@ import json
 import logging
 from typing import Any, cast
 
-from httpx import get
 from sqlalchemy import select
 from typing_extensions import TypedDict
 
 from core.entities.provider_entities import ProviderConfig
+from core.helper import ssrf_proxy
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -197,7 +197,7 @@ class ApiToolManageService:
         }
 
         try:
-            response = get(url, headers=headers, timeout=10)
+            response = ssrf_proxy.get(url, headers=headers, timeout=10)
             if response.status_code != 200:
                 raise ValueError(f"Got status code {response.status_code}")
             schema = response.text
