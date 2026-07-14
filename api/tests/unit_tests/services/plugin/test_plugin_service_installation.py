@@ -367,9 +367,7 @@ class TestUninstall:
         [(Provider, ProviderCredential, TenantPreferredModelProvider)],
         indirect=True,
     )
-    def test_cleans_credentials_when_plugin_found(
-        self, mock_installer_cls: MagicMock, plugin_db: Session
-    ) -> None:
+    def test_cleans_credentials_when_plugin_found(self, mock_installer_cls: MagicMock, plugin_db: Session) -> None:
         tenant_id = str(uuid4())
         plugin_id = "org/myplugin"
         provider_name = f"{plugin_id}/model-provider"
