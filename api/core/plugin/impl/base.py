@@ -299,7 +299,12 @@ class BasePluginClient:
             if first_token_gate and not first_token_seen:
                 raise FirstTokenTimeoutError(f"The first token was not received within {first_token_timeout}s.") from e
             logger.exception("Stream request to Plugin Daemon Service failed")
-            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
+            message = "Request to Plugin Daemon Service failed"
+            if first_token_gate:
+                # The narrowed read window also bounds inter-token gaps; name the setting
+                # so a mid-stream stall is traceable to the user's configuration.
+                message += f" (stream stalled beyond the {first_token_timeout}s first-token timeout window)"
+            raise PluginDaemonInnerError(code=-500, message=message) from e
         except httpx.RequestError:
             logger.exception("Stream request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
