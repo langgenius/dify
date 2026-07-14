@@ -75,7 +75,9 @@ function SSOAuth({ protocol }: SSOAuthProps) {
   return (
     <Button
       tabIndex={0}
-      onClick={() => { handleSSOLogin() }}
+      onClick={() => {
+        handleSSOLogin()
+      }}
       disabled={isLoading}
       className="w-full"
     >

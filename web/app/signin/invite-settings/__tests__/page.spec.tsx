@@ -9,7 +9,8 @@ import { getBrowserTimezone } from '@/utils/timezone'
 import InviteSettingsPage from '../page'
 
 vi.mock('@tanstack/react-query', async () => {
-  const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
+  const actual =
+    await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
   return {
     ...actual,
     useQueryClient: vi.fn(() => ({
@@ -64,16 +65,24 @@ const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
 const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
 const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
 const mockActivateMember = activateMember as unknown as MockedFunction<typeof activateMember>
-const mockUseInvitationCheck = useInvitationCheck as unknown as MockedFunction<typeof useInvitationCheck>
-const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<typeof getBrowserTimezone>
+const mockUseInvitationCheck = useInvitationCheck as unknown as MockedFunction<
+  typeof useInvitationCheck
+>
+const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<
+  typeof getBrowserTimezone
+>
 
 describe('InviteSettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseLocale.mockReturnValue('zh-Hans')
-    mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<typeof useRouter>)
+    mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<
+      typeof useRouter
+    >)
     mockUseSearchParams.mockReturnValue(
-      new URLSearchParams('invite_token=invite-token') as unknown as ReturnType<typeof useSearchParams>,
+      new URLSearchParams('invite_token=invite-token') as unknown as ReturnType<
+        typeof useSearchParams
+      >,
     )
     mockUseInvitationCheck.mockReturnValue({
       data: {

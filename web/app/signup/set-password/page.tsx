@@ -9,6 +9,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import Input from '@/app/components/base/input'
+import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { validPassword } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -16,16 +17,16 @@ import { consoleQuery } from '@/service/client'
 import { useMailRegister } from '@/service/use-common'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
+import { basePath } from '@/utils/var'
 
 const parseUtmInfo = () => {
   const utmInfoStr = Cookies.get('utm_info')
-  if (!utmInfoStr)
-    return null
+  if (!utmInfoStr) return null
   try {
     return JSON.parse(utmInfoStr)
-  }
-  catch (e) {
+  } catch (e) {
     console.error('Failed to parse utm_info cookie:', e)
     return null
   }
@@ -64,8 +65,7 @@ const ChangePasswordForm = () => {
   }, [password, confirmPassword, showErrorMessage, t])
 
   const handleSubmit = useCallback(async () => {
-    if (!valid())
-      return
+    if (!valid()) return
     try {
       const res = await register({
         token,
@@ -91,22 +91,31 @@ const ChangePasswordForm = () => {
 
         toast.success(t('api.actionSuccess', { ns: 'common' }))
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
-        router.replace('/')
+        replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error(error)
     }
-  }, [password, token, valid, confirmPassword, register, locale, queryClient, router, t])
+  }, [
+    password,
+    token,
+    valid,
+    confirmPassword,
+    register,
+    locale,
+    queryClient,
+    router,
+    searchParams,
+    t,
+  ])
 
   return (
-    <div className={
-      cn(
+    <div
+      className={cn(
         'flex w-full grow flex-col items-center justify-center',
         'px-6',
         'md:px-[108px]',
-      )
-    }
+      )}
     >
       <div className="flex flex-col md:w-[400px]">
         <div className="mx-auto w-full">
@@ -130,16 +139,20 @@ const ChangePasswordForm = () => {
                   id="password"
                   type="password"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
                 />
-
               </div>
-              <div className="mt-1 body-xs-regular text-text-secondary">{t('error.passwordInvalid', { ns: 'login' })}</div>
+              <div className="mt-1 body-xs-regular text-text-secondary">
+                {t('error.passwordInvalid', { ns: 'login' })}
+              </div>
             </div>
             {/* Confirm Password */}
             <div className="mb-5">
-              <label htmlFor="confirmPassword" className="my-2 system-md-semibold text-text-secondary">
+              <label
+                htmlFor="confirmPassword"
+                className="my-2 system-md-semibold text-text-secondary"
+              >
                 {t('account.confirmPassword', { ns: 'common' })}
               </label>
               <div className="relative mt-1">
@@ -147,7 +160,7 @@ const ChangePasswordForm = () => {
                   id="confirmPassword"
                   type="password"
                   value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder={t('confirmPasswordPlaceholder', { ns: 'login' }) || ''}
                 />
               </div>

@@ -31,7 +31,7 @@ export default function CheckCode() {
   const locale = useLocale()
   const codeInputRef = useRef<HTMLInputElement>(null)
   const redirectUrl = searchParams.get('redirect_url')
-  const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
+  const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)
 
   useEffect(() => {
     if (!resolveWebAppLoginRedirect(redirectUrl, window.location.origin))
@@ -100,8 +100,9 @@ export default function CheckCode() {
         params.set('redirect_url', loginRedirect.target.href)
         router.replace(`/webapp-signin/check-code?${params.toString()}`)
       }
+    } catch (error) {
+      console.error(error)
     }
-    catch (error) { console.error(error) }
   }
 
   return (
@@ -110,7 +111,9 @@ export default function CheckCode() {
         <RiMailSendFill className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('checkCode.checkYourEmail', { ns: 'login' })}</h2>
+        <h2 className="title-4xl-semi-bold text-text-primary">
+          {t('checkCode.checkYourEmail', { ns: 'login' })}
+        </h2>
         <p className="mt-2 body-md-regular text-text-secondary">
           <span>
             {t('checkCode.tipsPrefix', { ns: 'login' })}
@@ -122,23 +125,36 @@ export default function CheckCode() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">{t('checkCode.verificationCode', { ns: 'login' })}</label>
+        <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">
+          {t('checkCode.verificationCode', { ns: 'login' })}
+        </label>
         <Input
           ref={codeInputRef}
           id="code"
           value={code}
-          onChange={e => setCode(e.target.value)}
+          onChange={(e) => setCode(e.target.value)}
           maxLength={6}
           className="mt-1"
           placeholder={t('checkCode.verificationCodePlaceholder', { ns: 'login' }) || ''}
         />
-        <Button type="submit" loading={loading} disabled={loading} className="my-3 w-full" variant="primary">{t('checkCode.verify', { ns: 'login' })}</Button>
+        <Button
+          type="submit"
+          loading={loading}
+          disabled={loading}
+          className="my-3 w-full"
+          variant="primary"
+        >
+          {t('checkCode.verify', { ns: 'login' })}
+        </Button>
         <Countdown onResend={resendCode} />
       </form>
       <div className="py-2">
         <div className="h-px bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
       </div>
-      <div onClick={() => router.back()} className="flex h-9 cursor-pointer items-center justify-center text-text-tertiary">
+      <div
+        onClick={() => router.back()}
+        className="flex h-9 cursor-pointer items-center justify-center text-text-tertiary"
+      >
         <div className="bg-background-default-dimm inline-block rounded-full p-1">
           <RiArrowLeftLine size={12} />
         </div>

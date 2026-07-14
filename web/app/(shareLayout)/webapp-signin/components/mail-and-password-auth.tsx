@@ -35,7 +35,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
 
   const [isLoading, setIsLoading] = useState(false)
   const redirectUrl = searchParams.get('redirect_url')
-  const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
+  const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)
 
   useEffect(() => {
     if (!resolveWebAppLoginRedirect(redirectUrl, window.location.origin))
@@ -109,7 +109,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         <div className="mt-1">
           <Input
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             id="email"
             type="email"
             autoComplete="email"
@@ -121,7 +121,9 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
 
       <div className="mb-3">
         <label htmlFor="password" className="my-2 flex items-center justify-between">
-          <span className="system-md-semibold text-text-secondary">{t('password', { ns: 'login' })}</span>
+          <span className="system-md-semibold text-text-secondary">
+            {t('password', { ns: 'login' })}
+          </span>
           <Link
             href={`/webapp-reset-password?${searchParams.toString()}`}
             className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
@@ -134,11 +136,10 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         <div className="relative mt-1">
           <Input
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             id="password"
             onKeyDown={(e) => {
-              if (e.key === 'Enter')
-                handleEmailPasswordLogin()
+              if (e.key === 'Enter') handleEmailPasswordLogin()
             }}
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
@@ -146,11 +147,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
             tabIndex={2}
           />
           <div className="absolute inset-y-0 right-0 flex items-center">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setShowPassword(!showPassword)}
-            >
+            <Button type="button" variant="ghost" onClick={() => setShowPassword(!showPassword)}>
               {showPassword ? '👀' : '😝'}
             </Button>
           </div>

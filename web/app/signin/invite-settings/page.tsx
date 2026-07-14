@@ -2,7 +2,14 @@
 import type { Locale } from '@/i18n-config'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiAccountCircleLine } from '@remixicon/react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
@@ -36,20 +43,19 @@ type TimezoneSelectOption = {
 }
 
 const LANGUAGE_OPTIONS: LanguageSelectOption[] = languages
-  .filter(item => item.supported)
-  .map(item => ({
+  .filter((item) => item.supported)
+  .map((item) => ({
     value: item.value,
     name: item.name,
   }))
 
-const TIMEZONE_OPTIONS: TimezoneSelectOption[] = timezones.map(item => ({
+const TIMEZONE_OPTIONS: TimezoneSelectOption[] = timezones.map((item) => ({
   value: String(item.value),
   name: item.name,
 }))
 
 const getInitialLanguage = (locale: Locale): Locale => {
-  if (LANGUAGE_OPTIONS.some(item => item.value === locale))
-    return locale
+  if (LANGUAGE_OPTIONS.some((item) => item.value === locale)) return locale
 
   return i18n.defaultLocale
 }
@@ -65,19 +71,17 @@ export default function InviteSettingsPage() {
   const [name, setName] = useState('')
   const [language, setLanguage] = useState(() => getInitialLanguage(locale))
   const [timezone, setTimezone] = useState(() => getBrowserTimezone() || 'America/Los_Angeles')
-  const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
-  const selectedTimezone = TIMEZONE_OPTIONS.find(item => item.value === timezone)
+  const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === language)
+  const selectedTimezone = TIMEZONE_OPTIONS.find((item) => item.value === timezone)
 
   const handleLanguageChange = (nextValue: string | null) => {
-    const nextLanguage = LANGUAGE_OPTIONS.find(item => item.value === nextValue)
-    if (nextLanguage)
-      setLanguage(nextLanguage.value)
+    const nextLanguage = LANGUAGE_OPTIONS.find((item) => item.value === nextValue)
+    if (nextLanguage) setLanguage(nextLanguage.value)
   }
 
   const handleTimezoneChange = (nextValue: string | null) => {
-    const nextTimezone = TIMEZONE_OPTIONS.find(item => item.value === nextValue)
-    if (nextTimezone)
-      setTimezone(nextTimezone.value)
+    const nextTimezone = TIMEZONE_OPTIONS.find((item) => item.value === nextValue)
+    if (nextTimezone) setTimezone(nextTimezone.value)
   }
 
   const checkParams = {
@@ -87,7 +91,8 @@ export default function InviteSettingsPage() {
     },
   }
   const { data: checkRes, refetch: recheck } = useInvitationCheck(checkParams.params, !!token)
-  const requiresAccountSetup = checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'
+  const requiresAccountSetup =
+    checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'
 
   const handleActivate = useCallback(async () => {
     try {
@@ -111,24 +116,34 @@ export default function InviteSettingsPage() {
       })
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
-        if (requiresAccountSetup)
-          await setLocaleOnClient(language!, false)
+        if (requiresAccountSetup) await setLocaleOnClient(language!, false)
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
         replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
       }
-    }
-    catch {
+    } catch {
       recheck()
     }
-  }, [language, name, queryClient, recheck, requiresAccountSetup, searchParams, timezone, token, router, t])
+  }, [
+    language,
+    name,
+    queryClient,
+    recheck,
+    requiresAccountSetup,
+    searchParams,
+    timezone,
+    token,
+    router,
+    t,
+  ])
 
-  if (!checkRes)
-    return <Loading />
+  if (!checkRes) return <Loading />
   if (!checkRes.is_valid) {
     return (
       <div className="flex flex-col md:w-[400px]">
         <div className="mx-auto w-full">
-          <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">🤷‍♂️</div>
+          <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">
+            🤷‍♂️
+          </div>
           <h2 className="title-4xl-semi-bold text-text-primary">{t('invalid', { ns: 'login' })}</h2>
         </div>
         <div className="mx-auto mt-6 w-full">
@@ -164,7 +179,7 @@ export default function InviteSettingsPage() {
                   id="name"
                   type="text"
                   value={name}
-                  onChange={e => setName(e.target.value)}
+                  onChange={(e) => setName(e.target.value)}
                   placeholder={t('namePlaceholder', { ns: 'login' }) || ''}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -177,7 +192,10 @@ export default function InviteSettingsPage() {
               </div>
             </div>
             <div className="mb-5">
-              <label htmlFor="interface_language" className="my-2 system-md-semibold text-text-secondary">
+              <label
+                htmlFor="interface_language"
+                className="my-2 system-md-semibold text-text-secondary"
+              >
                 {t('interfaceLanguage', { ns: 'login' })}
               </label>
               <div className="mt-1">
@@ -189,7 +207,7 @@ export default function InviteSettingsPage() {
                     {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
                   </SelectTrigger>
                   <SelectContent>
-                    {LANGUAGE_OPTIONS.map(item => (
+                    {LANGUAGE_OPTIONS.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
                         <SelectItemText>{item.name}</SelectItemText>
                         <SelectItemIndicator />
@@ -212,7 +230,7 @@ export default function InviteSettingsPage() {
                     {selectedTimezone?.name ?? t('placeholder.select', { ns: 'common' })}
                   </SelectTrigger>
                   <SelectContent>
-                    {TIMEZONE_OPTIONS.map(item => (
+                    {TIMEZONE_OPTIONS.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
                         <SelectItemText>{item.name}</SelectItemText>
                         <SelectItemIndicator />
@@ -225,11 +243,7 @@ export default function InviteSettingsPage() {
           </>
         )}
         <div>
-          <Button
-            variant="primary"
-            className="w-full"
-            onClick={handleActivate}
-          >
+          <Button variant="primary" className="w-full" onClick={handleActivate}>
             {`${t('join', { ns: 'login' })} ${checkRes?.data?.workspace_name}`}
           </Button>
         </div>
@@ -237,7 +251,7 @@ export default function InviteSettingsPage() {
       {!systemFeatures.branding.enabled && (
         <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
           {t('license.tip', { ns: 'login' })}
-      &nbsp;
+          &nbsp;
           <Link
             className="system-xs-medium text-text-accent-secondary"
             target="_blank"

@@ -32,10 +32,7 @@ type LoginRequestBody = {
 }
 
 function hasErrorCode(error: unknown, code: string) {
-  return typeof error === 'object'
-    && error !== null
-    && 'code' in error
-    && error.code === code
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === code
 }
 
 export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndPasswordAuthProps) {
@@ -91,22 +88,18 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
 
         if (isInvite) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
-        }
-        else {
+        } else {
           await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
-      }
-      else {
+      } else {
         toast.error(res.data)
       }
-    }
-    catch (error) {
+    } catch (error) {
       if (hasErrorCode(error, 'authentication_failed')) {
         toast.error(t('error.invalidEmailOrPassword', { ns: 'login' }))
       }
-    }
-    finally {
+    } finally {
       setIsLoading(false)
     }
   }
@@ -134,7 +127,9 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
 
       <FieldRoot name="password" className="mb-3">
         <div className="my-2 flex items-center justify-between">
-          <FieldLabel className="py-0 system-md-semibold text-text-secondary">{t('password', { ns: 'login' })}</FieldLabel>
+          <FieldLabel className="py-0 system-md-semibold text-text-secondary">
+            {t('password', { ns: 'login' })}
+          </FieldLabel>
           <Link
             href={`/reset-password?${searchParams.toString()}`}
             className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
@@ -163,9 +158,11 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
               className="mr-1 size-8 p-0 text-text-tertiary hover:text-text-secondary"
               onClick={() => setShowPassword(!showPassword)}
             >
-              {showPassword
-                ? <span className="i-ri-eye-off-line size-4" aria-hidden="true" />
-                : <span className="i-ri-eye-line size-4" aria-hidden="true" />}
+              {showPassword ? (
+                <span className="i-ri-eye-off-line size-4" aria-hidden="true" />
+              ) : (
+                <span className="i-ri-eye-line size-4" aria-hidden="true" />
+              )}
             </Button>
           </div>
         </div>
