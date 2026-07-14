@@ -770,7 +770,7 @@ class TestDatasetApiDelete:
             method="DELETE",
         ):
             api = DatasetApi()
-            result = unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+            result = unwrap(api.delete)(api, Mock(), _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
 
         assert result == ("", 204)
 
@@ -793,7 +793,7 @@ class TestDatasetApiDelete:
         ):
             api = DatasetApi()
             with pytest.raises(NotFound):
-                unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+                unwrap(api.delete)(api, Mock(), _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
 
     @patch("controllers.service_api.dataset.dataset.current_user")
     @patch("controllers.service_api.dataset.dataset.DatasetService")
@@ -814,7 +814,7 @@ class TestDatasetApiDelete:
         ):
             api = DatasetApi()
             with pytest.raises(DatasetInUseError):
-                unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+                unwrap(api.delete)(api, Mock(), _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
 
 
 # ---------------------------------------------------------------------------

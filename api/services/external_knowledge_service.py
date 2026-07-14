@@ -30,7 +30,7 @@ from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError
 class ExternalDatasetService:
     @staticmethod
     def get_external_knowledge_apis(
-        page, per_page, tenant_id, search=None
+        page, per_page, tenant_id, search=None, *, session: Session
     ) -> tuple[list[ExternalKnowledgeApis], int | None]:
         query = (
             select(ExternalKnowledgeApis)
@@ -43,7 +43,7 @@ class ExternalDatasetService:
             escaped_search = escape_like_pattern(search)
             query = query.where(ExternalKnowledgeApis.name.ilike(f"%{escaped_search}%", escape="\\"))
 
-        external_knowledge_apis = paginate_query(query, page=page, per_page=per_page, max_per_page=100)
+        external_knowledge_apis = paginate_query(query, session=session, page=page, per_page=per_page, max_per_page=100)
 
         return external_knowledge_apis.items, external_knowledge_apis.total
 
@@ -74,7 +74,7 @@ class ExternalDatasetService:
         )
 
         session.add(external_knowledge_api)
-        session.commit()
+        session.flush()
         return external_knowledge_api
 
     @staticmethod
@@ -142,7 +142,7 @@ class ExternalDatasetService:
         external_knowledge_api.settings = json.dumps(settings, ensure_ascii=False)
         external_knowledge_api.updated_by = user_id
         external_knowledge_api.updated_at = naive_utc_now()
-        session.commit()
+        session.flush()
 
         return external_knowledge_api
 
@@ -157,7 +157,7 @@ class ExternalDatasetService:
             raise ValueError("api template not found")
 
         session.delete(external_knowledge_api)
-        session.commit()
+        session.flush()
 
     @staticmethod
     def external_knowledge_api_use_check(
@@ -318,7 +318,7 @@ class ExternalDatasetService:
         )
         session.add(external_knowledge_binding)
 
-        session.commit()
+        session.flush()
 
         return dataset
 

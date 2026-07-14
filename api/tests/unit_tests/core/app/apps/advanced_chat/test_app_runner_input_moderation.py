@@ -200,7 +200,7 @@ def test_run_closes_scoped_session_before_workflow_run(build_runner):
     mock_session.scalar.return_value = MagicMock()
     session_context = MagicMock()
     session_context.__enter__.return_value = mock_session
-    session_context.__exit__.return_value = False
+    session_context.__exit__.side_effect = lambda exc_type, exc, tb: events.append("close") or False
 
     workflow_entry = MagicMock()
 
@@ -216,7 +216,6 @@ def test_run_closes_scoped_session_before_workflow_run(build_runner):
         patch.object(module, "RedisChannel"),
         patch.object(module, "redis_client"),
         patch.object(module, "WorkflowEntry", return_value=workflow_entry),
-        patch.object(module.db.session, "close", side_effect=lambda: events.append("close")),
         patch.object(
             runner,
             "handle_input_moderation",
@@ -228,4 +227,4 @@ def test_run_closes_scoped_session_before_workflow_run(build_runner):
     ):
         runner.run()
 
-    assert events == ["close", "run"]
+    assert events[-2:] == ["close", "run"]

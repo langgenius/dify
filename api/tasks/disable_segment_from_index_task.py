@@ -38,13 +38,13 @@ def disable_segment_from_index_task(segment_id: str):
         indexing_cache_key = f"segment_{segment.id}_indexing"
 
         try:
-            dataset = segment.dataset
+            dataset = segment.get_dataset(session=session)
 
             if not dataset:
                 logger.info(click.style(f"Segment {segment.id} has no dataset, pass.", fg="cyan"))
                 return
 
-            dataset_document = segment.document
+            dataset_document = segment.get_document(session=session)
 
             if not dataset_document:
                 logger.info(click.style(f"Segment {segment.id} has no document, pass.", fg="cyan"))
@@ -61,7 +61,7 @@ def disable_segment_from_index_task(segment_id: str):
             index_type = dataset_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
             assert segment.index_node_id
-            index_processor.clean(dataset, [segment.index_node_id])
+            index_processor.clean(dataset, [segment.index_node_id], session=session)
 
             # Disable summary index for this segment
             from services.summary_index_service import SummaryIndexService

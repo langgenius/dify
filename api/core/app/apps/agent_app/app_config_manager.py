@@ -43,11 +43,16 @@ class AgentAppConfigManager(BaseAppConfigManager):
         *,
         app_model: App,
         agent_soul: AgentSoulConfig,
+        annotation_reply: dict[str, Any] | None,
         app_model_config: AppModelConfig | None = None,
         conversation: Conversation | None = None,
     ) -> AgentAppConfig:
         """Build the Agent App config from the Agent Soul (+ optional feature flags)."""
-        config_dict = cls._synthesize_config_dict(agent_soul, app_model_config)
+        config_dict = cls._synthesize_config_dict(
+            agent_soul,
+            app_model_config,
+            annotation_reply=annotation_reply,
+        )
         # The synthesized dict is shaped like an app_model_config; the EasyUI
         # sub-managers type their param as AppModelConfigDict (a TypedDict).
         typed_config = cast(AppModelConfigDict, config_dict)
@@ -77,6 +82,8 @@ class AgentAppConfigManager(BaseAppConfigManager):
     def _synthesize_config_dict(
         agent_soul: AgentSoulConfig,
         app_model_config: AppModelConfig | None,
+        *,
+        annotation_reply: dict[str, Any] | None,
     ) -> dict[str, Any]:
         """Shape a Soul + feature flags into an ``app_model_config``-style dict.
 
@@ -84,7 +91,11 @@ class AgentAppConfigManager(BaseAppConfigManager):
         ``app_model_config`` when one exists; model + prompt always come from
         the Agent Soul (the single source of truth for those).
         """
-        base = merge_agent_app_features(agent_soul=agent_soul, app_model_config=app_model_config)
+        base = merge_agent_app_features(
+            agent_soul=agent_soul,
+            app_model_config=app_model_config,
+            annotation_reply=annotation_reply,
+        )
 
         model = agent_soul.model
         if model is not None:

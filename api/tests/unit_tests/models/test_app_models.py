@@ -153,13 +153,14 @@ class TestAppModelValidation:
             description="",
         )
 
-        # Mock app_model_config property
-        with patch.object(App, "app_model_config", new_callable=lambda: property(lambda self: None)):
+        session = MagicMock()
+        with patch.object(App, "app_model_config_with_session", return_value=None) as get_model_config:
             # Act
-            result = app.desc_or_prompt
+            result = app.desc_or_prompt_with_session(session=session)
 
             # Assert
             assert result == ""
+            get_model_config.assert_called_once_with(session=session)
 
     def test_app_is_agent_property_false(self):
         """Test is_agent property returns False when not configured as agent."""
@@ -173,13 +174,36 @@ class TestAppModelValidation:
             created_by=str(uuid4()),
         )
 
-        # Mock app_model_config to return None
-        with patch.object(App, "app_model_config", new_callable=lambda: property(lambda self: None)):
+        with patch("models.model.db") as mock_db:
             # Act
             result = app.is_agent
 
             # Assert
             assert result is False
+            mock_db.session.assert_called_once_with()
+
+    def test_app_is_agent_with_session_updates_legacy_agent_mode(self):
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Test App",
+            mode=AppMode.CHAT,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        app.app_model_config_id = "config-1"
+        app_model_config = MagicMock(spec=AppModelConfig)
+        app_model_config.agent_mode = "agent"
+        app_model_config.agent_mode_dict = {"enabled": True, "strategy": "react"}
+        session = MagicMock()
+        session.get.return_value = app_model_config
+
+        result = app.is_agent_with_session(session=session)
+
+        assert result is True
+        assert app.mode == AppMode.AGENT_CHAT
+        session.get.assert_called_once_with(AppModelConfig, "config-1")
+        session.commit.assert_called_once_with()
 
     def test_app_mode_compatible_with_agent(self):
         """Test mode_compatible_with_agent property."""
@@ -193,13 +217,14 @@ class TestAppModelValidation:
             created_by=str(uuid4()),
         )
 
-        # Mock is_agent to return False
-        with patch.object(App, "is_agent", new_callable=lambda: property(lambda self: False)):
+        session = MagicMock()
+        with patch.object(App, "is_agent_with_session", return_value=False) as is_agent:
             # Act
-            result = app.mode_compatible_with_agent
+            result = app.mode_compatible_with_agent_with_session(session=session)
 
             # Assert
             assert result == AppMode.CHAT
+            is_agent.assert_called_once_with(session=session)
 
     def test_deleted_tools_checks_plugin_builtin_providers_through_core_plugin_service(self):
         """Plugin-backed built-in tools are checked through core PluginService."""
@@ -230,22 +255,19 @@ class TestAppModelValidation:
                 }
             ),
         )
-        session_context = MagicMock()
-        session_context.__enter__.return_value = MagicMock()
-        session_factory = SimpleNamespace(begin=MagicMock(return_value=session_context))
+        session = MagicMock()
 
         # Act
         with (
-            patch.object(App, "app_model_config", new_callable=lambda: property(lambda self: app_model_config)),
-            patch("models.model.db", SimpleNamespace(engine=object())),
-            patch("models.model.sessionmaker", return_value=session_factory),
+            patch.object(App, "app_model_config_with_session", return_value=app_model_config) as get_model_config,
             patch("core.tools.tool_manager.ToolManager.get_hardcoded_provider", side_effect=Exception),
             patch("core.plugin.plugin_service.PluginService.check_tools_existence", return_value=[False]) as exists,
         ):
-            result = app.deleted_tools
+            result = app.deleted_tools_with_session(session=session)
 
         # Assert
         assert result == [{"type": "builtin", "tool_name": "chat", "provider_id": "langgenius/openai/openai"}]
+        get_model_config.assert_called_once_with(session=session)
         exists.assert_called_once()
         assert exists.call_args.args[0] == "tenant-1"
         assert [str(provider_id) for provider_id in exists.call_args.args[1]] == ["langgenius/openai/openai"]
@@ -510,12 +532,67 @@ class TestConversationModel:
         # Mock first_message to return a message with query
         mock_message = MagicMock()
         mock_message.query = "First message query"
-        with patch.object(Conversation, "first_message", new_callable=lambda: property(lambda self: mock_message)):
+        session = MagicMock()
+        with patch.object(Conversation, "first_message_with_session", return_value=mock_message) as get_first_message:
             # Act
-            result = conversation.summary_or_query
+            result = conversation.summary_or_query_with_session(session=session)
 
             # Assert
             assert result == "First message query"
+            get_first_message.assert_called_once_with(session=session)
+
+    def test_model_config_uses_caller_session_for_annotation_reply(self):
+        conversation = Conversation(
+            app_id="app-1",
+            app_model_config_id="config-1",
+            mode=AppMode.CHAT,
+            name="Test Conversation",
+            status="normal",
+            from_source=ConversationFromSource.API,
+            from_end_user_id=str(uuid4()),
+            model_id="model-1",
+            model_provider="provider-1",
+        )
+        app_model_config = MagicMock(spec=AppModelConfig)
+        app_model_config.app_id = "app-1"
+        app_model_config.to_dict.return_value = {}
+        session = MagicMock()
+        session.scalar.return_value = app_model_config
+        annotation_reply = {"enabled": False}
+
+        with patch("models.model.load_annotation_reply_config", return_value=annotation_reply) as load_config:
+            result = conversation.model_config_with_session(session=session)
+
+        load_config.assert_called_once_with(session, "app-1")
+        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        assert result["model_id"] == "model-1"
+        assert result["provider"] == "provider-1"
+
+    def test_override_model_config_uses_caller_session_for_annotation_reply(self):
+        conversation = Conversation(
+            app_id="app-1",
+            mode=AppMode.CHAT,
+            name="Test Conversation",
+            status="normal",
+            from_source=ConversationFromSource.API,
+            from_end_user_id=str(uuid4()),
+            override_model_configs=json.dumps({"model": {}}),
+        )
+        app_model_config = MagicMock(spec=AppModelConfig)
+        app_model_config.app_id = "app-1"
+        app_model_config.to_dict.return_value = {}
+        session = MagicMock()
+        annotation_reply = {"enabled": False}
+
+        with (
+            patch.object(AppModelConfig, "from_model_config_dict", return_value=app_model_config),
+            patch("models.model.load_annotation_reply_config", return_value=annotation_reply) as load_config,
+        ):
+            conversation.model_config_with_session(session=session)
+
+        load_config.assert_called_once_with(session, "app-1")
+        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        session.scalar.assert_not_called()
 
     def test_conversation_in_debug_mode(self):
         """Test in_debug_mode property."""

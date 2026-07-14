@@ -26,8 +26,9 @@ from libs.login import current_user
 from libs.pagination import PaginatedResult, paginate_query
 from models import Account, AppStar
 from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentIconType, AgentScope, AgentStatus
-from models.model import App, AppMode, AppModelConfig, IconType, Site
+from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
 from models.tools import ApiToolProvider
+from models.workflow import Workflow
 from services.agent.errors import AgentNameConflictError
 from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -75,6 +76,71 @@ class CreateAppParams(BaseModel):
     api_rph: int = 0
     api_rpm: int = 0
     max_active_requests: int | None = None
+
+
+class AppModelConfigResponseView:
+    """Expose AppModelConfig response properties through the request session."""
+
+    def __init__(self, app_model_config: AppModelConfig, *, session: Session) -> None:
+        self._app_model_config = app_model_config
+        self._session = session
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._app_model_config, name)
+
+    @property
+    def annotation_reply_dict(self) -> Any:
+        return load_annotation_reply_config(self._session, self._app_model_config.app_id)
+
+
+class AppResponseView:
+    """Expose App response properties through one caller-owned database session."""
+
+    def __init__(self, app: App, *, session: Session) -> None:
+        self._app = app
+        self._session = session
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._app, name)
+
+    @property
+    def desc_or_prompt(self) -> str:
+        return self._app.desc_or_prompt_with_session(session=self._session)
+
+    @property
+    def site(self) -> Site | None:
+        return self._app.site_with_session(session=self._session)
+
+    @property
+    def app_model_config(self) -> AppModelConfigResponseView | None:
+        app_model_config = self._app.app_model_config_with_session(session=self._session)
+        if app_model_config is None:
+            return None
+        return AppModelConfigResponseView(app_model_config, session=self._session)
+
+    @property
+    def workflow(self) -> Workflow | None:
+        return self._app.workflow_with_session(session=self._session)
+
+    @property
+    def bound_agent_id(self) -> str | None:
+        return self._app.bound_agent_id_with_session(session=self._session)
+
+    @property
+    def mode_compatible_with_agent(self) -> str:
+        return self._app.mode_compatible_with_agent_with_session(session=self._session)
+
+    @property
+    def deleted_tools(self) -> list[Any]:
+        return self._app.deleted_tools_with_session(session=self._session)
+
+    @property
+    def tags(self) -> Sequence[Any]:
+        return self._app.tags_with_session(session=self._session)
+
+    @property
+    def author_name(self) -> str | None:
+        return self._app.author_name_with_session(session=self._session)
 
 
 class AppService:
@@ -153,7 +219,13 @@ class AppService:
         }[sort_by]
 
     @staticmethod
-    def get_starred_app_ids(*, tenant_id: str, account_id: str, app_ids: Sequence[str], session: Session) -> set[str]:
+    def get_starred_app_ids(
+        session: Session,
+        *,
+        tenant_id: str,
+        account_id: str,
+        app_ids: Sequence[str],
+    ) -> set[str]:
         """Return app IDs starred by this account within the tenant."""
         if not app_ids:
             return set()
@@ -168,24 +240,38 @@ class AppService:
         return set(starred_app_ids)
 
     @staticmethod
-    def get_app_by_id(app_id: str, *, session: Session) -> App | None:
+    def get_app_by_id(
+        app_id: str,
+        session: Session,
+    ) -> App | None:
         return session.get(App, app_id)
 
     @staticmethod
-    def get_visible_app_by_id(app_id: str, *, session: Session) -> App | None:
+    def get_visible_app_by_id(
+        app_id: str,
+        session: Session,
+    ) -> App | None:
         app = session.get(App, app_id)
         if not app or app.status != "normal" or not is_openapi_visible(app):
             return None
         return app
 
     @staticmethod
-    def find_visible_apps_by_ids(app_ids: Sequence[str], *, session: Session) -> list[App]:
+    def find_visible_apps_by_ids(
+        app_ids: Sequence[str],
+        session: Session,
+    ) -> list[App]:
         if not app_ids:
             return []
         return list(session.execute(apply_openapi_gate(select(App).where(App.id.in_(list(app_ids))))).scalars().all())
 
     @staticmethod
-    def find_visible_apps_by_name(*, name: str, tenant_id: str, session: Session) -> list[App]:
+    def find_visible_apps_by_name(
+        session: Session,
+        *,
+        name: str,
+        tenant_id: str,
+    ) -> list[App]:
         return list(
             session.execute(
                 apply_openapi_gate(
@@ -199,7 +285,11 @@ class AppService:
         )
 
     def get_paginate_apps(
-        self, user_id: str, tenant_id: str, params: AppListParams, session: Session
+        self,
+        user_id: str,
+        tenant_id: str,
+        params: AppListParams,
+        session: Session,
     ) -> PaginatedResult | None:
         """
         Get app list with pagination, filters, and explicit sort order.
@@ -223,7 +313,10 @@ class AppService:
 
         app_ids = [str(app.id) for app in app_models.items]
         starred_app_ids = self.get_starred_app_ids(
-            tenant_id=tenant_id, account_id=user_id, app_ids=app_ids, session=session
+            session=session,
+            tenant_id=tenant_id,
+            account_id=user_id,
+            app_ids=app_ids,
         )
         for app in app_models.items:
             app.is_starred = str(app.id) in starred_app_ids
@@ -231,7 +324,11 @@ class AppService:
         return app_models
 
     def get_paginate_starred_apps(
-        self, user_id: str, tenant_id: str, params: StarredAppListParams, session: Session
+        self,
+        user_id: str,
+        tenant_id: str,
+        params: StarredAppListParams,
+        session: Session,
     ) -> PaginatedResult | None:
         """
         Get apps starred by the current account with pagination, filters, and explicit sort order.
@@ -422,9 +519,9 @@ class AppService:
                 icon_background=params.icon_background,
             )
 
-        session.commit()
+        session.flush()
 
-        app_was_created.send(app, account=account)
+        app_was_created.send(app, account=account, session=session)
         enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
             tenant_id,
             account.id,
@@ -441,15 +538,15 @@ class AppService:
 
         return app
 
-    def get_app(self, app: App) -> App:
+    def get_app(self, app: App, *, session: Session) -> App:
         """
         Get App
         """
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         # get original app model config
-        if app.mode == AppMode.AGENT_CHAT or app.is_agent:
-            model_config = app.app_model_config
+        if app.mode == AppMode.AGENT_CHAT or app.is_agent_with_session(session=session):
+            model_config = app.app_model_config_with_session(session=session)
             if not model_config:
                 return app
             agent_mode = model_config.agent_mode_dict
@@ -713,7 +810,7 @@ class AppService:
         app.enable_site = enable_site
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
-        session.commit()
+        session.flush()
 
         app_was_updated.send(app)
 
@@ -733,7 +830,7 @@ class AppService:
         app.enable_api = enable_api
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
-        session.commit()
+        session.flush()
 
         app_was_updated.send(app)
 
@@ -773,6 +870,7 @@ class AppService:
         """
         Get app meta info
         :param app_model: app model
+        :param session: database session
         :return:
         """
         app_mode = AppMode.value_of(app_model.mode)
@@ -780,7 +878,7 @@ class AppService:
         meta: dict[str, Any] = {"tool_icons": {}}
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app_model.workflow
+            workflow = session.get(Workflow, app_model.workflow_id) if app_model.workflow_id else None
             if workflow is None:
                 return meta
 
@@ -799,7 +897,9 @@ class AppService:
                         }
                     )
         else:
-            app_model_config: AppModelConfig | None = app_model.app_model_config
+            app_model_config = (
+                session.get(AppModelConfig, app_model.app_model_config_id) if app_model.app_model_config_id else None
+            )
 
             if not app_model_config:
                 return meta

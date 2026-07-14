@@ -1466,6 +1466,7 @@ class RagPipelineService:
         if not workflow:
             raise ValueError("Workflow not found")
         PipelineGenerator().generate(
+            session=self._session,
             pipeline=pipeline,
             workflow=workflow,
             user=user,

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 
@@ -356,7 +356,8 @@ def test__convert_to_answer_node() -> None:
 
 
 def test_convert_to_workflow_should_raise_when_app_model_config_is_missing(converter: WorkflowConverter) -> None:
-    app_model = _app_model(app_model_config=None)
+    app_model = _app_model(app_model_config_id=None)
+    session = MagicMock()
 
     with pytest.raises(ValueError, match="App model config is required"):
         converter.convert_to_workflow(
@@ -366,8 +367,10 @@ def test_convert_to_workflow_should_raise_when_app_model_config_is_missing(conve
             icon_type="emoji",
             icon="robot",
             icon_background="#fff",
-            session=MagicMock(),
+            session=session,
         )
+
+    session.get.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -391,7 +394,10 @@ def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
     monkeypatch.setattr(converter, "convert_app_model_config_to_workflow", MagicMock(return_value=workflow))
     monkeypatch.setattr(converter_module, "App", FakeApp)
 
-    db_session = SimpleNamespace(add=MagicMock(), flush=MagicMock(), commit=MagicMock())
+    app_model_config = _app_model_config(id="config-1")
+    db_session = SimpleNamespace(
+        add=MagicMock(), flush=MagicMock(), commit=MagicMock(), get=MagicMock(return_value=app_model_config)
+    )
 
     send_mock = MagicMock()
     monkeypatch.setattr(converter_module.app_was_created, "send", send_mock)
@@ -409,7 +415,7 @@ def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
         api_rpm=10,
         api_rph=100,
         is_public=False,
-        app_model_config=_app_model_config(id="config-1"),
+        app_model_config_id="config-1",
     )
 
     new_app = converter.convert_to_workflow(
@@ -432,7 +438,8 @@ def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
     db_session.add.assert_called_once()
     db_session.flush.assert_called_once()
     db_session.commit.assert_called_once()
-    send_mock.assert_called_once_with(new_app, account=account)
+    db_session.get.assert_called_once_with(AppModelConfig, "config-1")
+    send_mock.assert_called_once_with(new_app, account=account, session=db_session)
 
 
 def test_convert_app_model_config_to_workflow_should_build_advanced_chat_graph_and_features(
@@ -594,44 +601,68 @@ def test_convert_to_app_config_should_route_to_correct_manager(
     agent_result = SimpleNamespace(kind="agent")
     chat_result = SimpleNamespace(kind="chat")
     completion_result = SimpleNamespace(kind="completion")
-    monkeypatch.setattr(
-        converter_module.AgentChatAppConfigManager, "get_app_config", MagicMock(return_value=agent_result)
-    )
-    monkeypatch.setattr(converter_module.ChatAppConfigManager, "get_app_config", MagicMock(return_value=chat_result))
-    monkeypatch.setattr(
-        converter_module.CompletionAppConfigManager,
-        "get_app_config",
-        MagicMock(return_value=completion_result),
-    )
+    agent_get_app_config = MagicMock(return_value=agent_result)
+    chat_get_app_config = MagicMock(return_value=chat_result)
+    completion_get_app_config = MagicMock(return_value=completion_result)
+    load_annotation_reply = MagicMock(return_value={"enabled": False})
+    monkeypatch.setattr(converter_module.AgentChatAppConfigManager, "get_app_config", agent_get_app_config)
+    monkeypatch.setattr(converter_module.ChatAppConfigManager, "get_app_config", chat_get_app_config)
+    monkeypatch.setattr(converter_module.CompletionAppConfigManager, "get_app_config", completion_get_app_config)
+    monkeypatch.setattr(converter_module, "load_annotation_reply_config", load_annotation_reply)
+    session = MagicMock()
+    agent_mode_app = _app_model(mode=AppMode.AGENT_CHAT, is_agent_with_session=MagicMock(return_value=False))
+    agent_flag_app = _app_model(mode=AppMode.CHAT, is_agent_with_session=MagicMock(return_value=True))
+    chat_app = _app_model(mode=AppMode.CHAT, is_agent_with_session=MagicMock(return_value=False))
+    completion_app = _app_model(mode=AppMode.COMPLETION, is_agent_with_session=MagicMock(return_value=False))
+    agent_mode_config = _app_model_config(id="cfg-1", app_id="app-1")
+    agent_flag_config = _app_model_config(id="cfg-2", app_id="app-2")
+    chat_config = _app_model_config(id="cfg-3", app_id="app-3")
+    completion_config = _app_model_config(id="cfg-4", app_id="app-4")
 
     from_agent_mode = converter._convert_to_app_config(
-        app_model=_app_model(mode=AppMode.AGENT_CHAT, is_agent=False),
-        app_model_config=_app_model_config(id="cfg-1"),
+        app_model=agent_mode_app,
+        app_model_config=agent_mode_config,
+        session=session,
     )
     from_agent_flag = converter._convert_to_app_config(
-        app_model=_app_model(mode=AppMode.CHAT, is_agent=True),
-        app_model_config=_app_model_config(id="cfg-2"),
+        app_model=agent_flag_app,
+        app_model_config=agent_flag_config,
+        session=session,
     )
     from_chat_mode = converter._convert_to_app_config(
-        app_model=_app_model(mode=AppMode.CHAT, is_agent=False),
-        app_model_config=_app_model_config(id="cfg-3"),
+        app_model=chat_app,
+        app_model_config=chat_config,
+        session=session,
     )
     from_completion_mode = converter._convert_to_app_config(
-        app_model=_app_model(mode=AppMode.COMPLETION, is_agent=False),
-        app_model_config=_app_model_config(id="cfg-4"),
+        app_model=completion_app,
+        app_model_config=completion_config,
+        session=session,
     )
 
     assert from_agent_mode is agent_result
     assert from_agent_flag is agent_result
     assert from_chat_mode is chat_result
     assert from_completion_mode is completion_result
+    agent_flag_app.is_agent_with_session.assert_called_once_with(session=session)
+    load_annotation_reply.assert_has_calls(
+        [call(session, "app-1"), call(session, "app-2"), call(session, "app-3"), call(session, "app-4")]
+    )
+    assert all(
+        manager_call.kwargs["annotation_reply"] == {"enabled": False}
+        for manager in (agent_get_app_config, chat_get_app_config, completion_get_app_config)
+        for manager_call in manager.call_args_list
+    )
 
 
 def test_convert_to_app_config_should_raise_for_invalid_app_mode(converter: WorkflowConverter) -> None:
-    app_model = _app_model(mode=AppMode.WORKFLOW, is_agent=False)
+    app_model = _app_model(mode=AppMode.WORKFLOW, is_agent_with_session=MagicMock(return_value=False))
+    session = MagicMock()
 
     with pytest.raises(ValueError, match="Invalid app mode"):
-        converter._convert_to_app_config(app_model=app_model, app_model_config=_app_model_config(id="cfg"))
+        converter._convert_to_app_config(
+            app_model=app_model, app_model_config=_app_model_config(id="cfg"), session=session
+        )
 
 
 def test_convert_to_http_request_node_should_skip_non_api_and_missing_extension_id(

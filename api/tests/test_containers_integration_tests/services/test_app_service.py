@@ -191,7 +191,7 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            retrieved_app = app_service.get_app(created_app)
+            retrieved_app = app_service.get_app(created_app, session=db_session_with_containers)
 
         # Verify retrieved app matches created app
         assert retrieved_app.id == created_app.id

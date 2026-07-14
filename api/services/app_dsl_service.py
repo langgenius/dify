@@ -37,7 +37,7 @@ from graphon.nodes.question_classifier.entities import QuestionClassifierNodeDat
 from graphon.nodes.tool.entities import ToolNodeData
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
-from models.model import AppModelConfig, AppModelConfigDict, IconType
+from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService, AgentPackage
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
@@ -457,7 +457,7 @@ class AppDslService:
 
             self._session.add(app)
             self._session.flush()
-            app_was_created.send(app, account=account)
+            app_was_created.send(app, account=account, session=self._session)
 
         # save dependencies
         if dependencies:
@@ -537,7 +537,10 @@ class AppDslService:
                 if not model_config or not isinstance(model_config, dict):
                     raise ValueError("Missing model_config for chat/agent-chat/completion app")
                 # Initialize or update model config
-                if not app.app_model_config:
+                app_model_config = (
+                    self._session.get(AppModelConfig, app.app_model_config_id) if app.app_model_config_id else None
+                )
+                if not app_model_config:
                     app_model_config = AppModelConfig(
                         app_id=app.id, created_by=account.id, updated_by=account.id
                     ).from_model_config_dict(cast(AppModelConfigDict, model_config))
@@ -545,9 +548,13 @@ class AppDslService:
                     app.app_model_config_id = app_model_config.id
 
                     self._session.add(app_model_config)
-                    app_model_config_was_updated.send(app, app_model_config=app_model_config)
+                    app_model_config_was_updated.send(
+                        app,
+                        app_model_config=app_model_config,
+                        session=self._session,
+                    )
             case AppMode.AGENT:
-                if app.app_model_config is not None:
+                if app.app_model_config_with_session(session=self._session) is not None:
                     raise ValueError("Agent DSL import only supports creating a new Agent App")
                 agent_data = data.get("agent")
                 raw_agent_packages = data.get("agent_packages")
@@ -579,6 +586,7 @@ class AppDslService:
         """
         Export app
         :param app_model: App instance
+        :param session: Database session used to load export data
         :param include_secret: Whether include secret variable
         :return:
         """
@@ -621,7 +629,7 @@ class AppDslService:
                 )
             ]
         else:
-            cls._append_model_config_export_data(export_data, app_model)
+            cls._append_model_config_export_data(export_data, app_model, session=session)
 
         return yaml.dump(export_data, allow_unicode=True)
 
@@ -701,17 +709,21 @@ class AppDslService:
         return status
 
     @classmethod
-    def _append_model_config_export_data(cls, export_data: dict[str, Any], app_model: App):
+    def _append_model_config_export_data(cls, export_data: dict[str, Any], app_model: App, *, session: Session) -> None:
         """
         Append model config export data
         :param export_data: export data
         :param app_model: App instance
+        :param session: Database session used to load the model config and annotation reply
         """
-        app_model_config = app_model.app_model_config
+        app_model_config = (
+            session.get(AppModelConfig, app_model.app_model_config_id) if app_model.app_model_config_id else None
+        )
         if not app_model_config:
             raise ValueError("Missing app configuration, please check.")
 
-        model_config = app_model_config.to_dict()
+        annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
+        model_config = app_model_config.to_dict(annotation_reply=annotation_reply)
 
         # TODO: refactor: we need a better way to filter workspace related data from model config
         # filter credential id from model config
@@ -720,7 +732,7 @@ class AppDslService:
 
         export_data["model_config"] = model_config
 
-        dependencies = cls._extract_dependencies_from_model_config(app_model_config.to_dict())
+        dependencies = cls._extract_dependencies_from_model_config(model_config)
         export_data["dependencies"] = [
             jsonable_encoder(d.model_dump())
             for d in DependenciesAnalysisService.generate_dependencies(

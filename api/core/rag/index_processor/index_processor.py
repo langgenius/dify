@@ -7,8 +7,8 @@ from typing import Any
 
 from flask import current_app
 from sqlalchemy import delete, func, select, update
+from sqlalchemy.orm import Session
 
-from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
@@ -61,75 +61,77 @@ class IndexProcessor:
         chunks: Mapping[str, Any],
         batch: Any,
         summary_index_setting: SummaryIndexSettingDict | None = None,
+        *,
+        session: Session,
     ) -> IndexingResultDict:
-        with session_factory.create_session() as session:
-            document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
-            if not document:
-                raise KnowledgeIndexNodeError(f"Document {document_id} not found.")
+        document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
+        if not document:
+            raise KnowledgeIndexNodeError(f"Document {document_id} not found.")
 
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-            if not dataset:
-                raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+        if not dataset:
+            raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
 
-            dataset_name_value = dataset.name
-            document_name_value = document.name
-            created_at_value = document.created_at
-            if summary_index_setting is None:
-                summary_index_setting = dataset.summary_index_setting
-            index_node_ids = []
+        dataset_name_value = dataset.name
+        document_name_value = document.name
+        created_at_value = document.created_at
+        if summary_index_setting is None:
+            summary_index_setting = dataset.summary_index_setting
+        index_node_ids = []
 
-            index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
-            if original_document_id:
-                segments = session.scalars(
-                    select(DocumentSegment).where(DocumentSegment.document_id == original_document_id)
-                ).all()
-                if segments:
-                    index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+        index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
+        if original_document_id:
+            segments = session.scalars(
+                select(DocumentSegment).where(DocumentSegment.document_id == original_document_id)
+            ).all()
+            if segments:
+                index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
 
         indexing_start_at = time.perf_counter()
+        # The metadata reads above must not keep a transaction open across vector I/O.
+        session.commit()
         # delete from vector index
         if index_node_ids:
-            index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
+            index_processor.clean(
+                dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, session=session
+            )
+            session.commit()
+            segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == original_document_id)
+            session.execute(segment_delete_stmt)
+            session.commit()
 
-        with session_factory.create_session() as session, session.begin():
-            if index_node_ids:
-                segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == original_document_id)
-                session.execute(segment_delete_stmt)
-
-        index_processor.index(dataset, document, chunks)
+        index_processor.index(dataset, document, chunks, session)
+        session.commit()
         indexing_end_at = time.perf_counter()
 
-        with session_factory.create_session() as session, session.begin():
-            document.indexing_latency = indexing_end_at - indexing_start_at
-            document.indexing_status = "completed"
-            document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-            document.word_count = (
-                session.scalar(
-                    select(func.sum(DocumentSegment.word_count)).where(
-                        DocumentSegment.document_id == document_id,
-                        DocumentSegment.dataset_id == dataset_id,
-                    )
-                )
-            ) or 0
-            # Update need_summary based on dataset's summary_index_setting
-            if summary_index_setting and summary_index_setting.get("enable") is True:
-                document.need_summary = True
-            else:
-                document.need_summary = False
-            session.add(document)
-            # update document segment status
-            session.execute(
-                update(DocumentSegment)
-                .where(
+        document.indexing_latency = indexing_end_at - indexing_start_at
+        document.indexing_status = "completed"
+        document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        document.word_count = (
+            session.scalar(
+                select(func.sum(DocumentSegment.word_count)).where(
                     DocumentSegment.document_id == document_id,
                     DocumentSegment.dataset_id == dataset_id,
                 )
-                .values(
-                    status="completed",
-                    enabled=True,
-                    completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-                )
             )
+        ) or 0
+        # Update need_summary based on dataset's summary_index_setting
+        document.need_summary = bool(summary_index_setting and summary_index_setting.get("enable") is True)
+        session.add(document)
+        # update document segment status
+        session.execute(
+            update(DocumentSegment)
+            .where(
+                DocumentSegment.document_id == document_id,
+                DocumentSegment.dataset_id == dataset_id,
+            )
+            .values(
+                status="completed",
+                enabled=True,
+                completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+            )
+        )
+        session.flush()
 
         result: IndexingResultDict = {
             "dataset_id": dataset_id,
@@ -149,25 +151,26 @@ class IndexProcessor:
         document_id: str,
         chunk_structure: str,
         summary_index_setting: SummaryIndexSettingDict | None,
+        *,
+        session: Session,
     ) -> Preview:
         doc_language = None
-        with session_factory.create_session() as session:
-            if document_id:
-                document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
-            else:
-                document = None
+        if document_id:
+            document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
+        else:
+            document = None
 
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-            if not dataset:
-                raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+        if not dataset:
+            raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
 
-            if summary_index_setting is None:
-                summary_index_setting = dataset.summary_index_setting
+        if summary_index_setting is None:
+            summary_index_setting = dataset.summary_index_setting
 
-            if document:
-                doc_language = document.doc_language
-            indexing_technique = dataset.indexing_technique
-            tenant_id = dataset.tenant_id
+        if document:
+            doc_language = document.doc_language
+        indexing_technique = dataset.indexing_technique
+        tenant_id = dataset.tenant_id
 
         preview_output = self.format_preview(chunk_structure, chunks)
         if indexing_technique != IndexTechniqueType.HIGH_QUALITY:
@@ -201,6 +204,7 @@ class IndexProcessor:
                                 text=preview_item.content,
                                 summary_index_setting=summary_index_setting,
                                 document_language=doc_language,
+                                session=session,
                             )
                             if summary:
                                 preview_item.summary = summary
@@ -211,6 +215,7 @@ class IndexProcessor:
                                 text=preview_item.content if preview_item.content is not None else "",
                                 summary_index_setting=summary_index_setting,
                                 document_language=doc_language,
+                                session=session,
                             )
                             if summary:
                                 preview_item.summary = summary

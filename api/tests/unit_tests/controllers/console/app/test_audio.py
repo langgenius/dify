@@ -114,7 +114,7 @@ def test_agent_console_audio_api_uses_agent_draft(app: Flask, monkeypatch: pytes
         )
 
     assert response == {"text": "agent transcript"}
-    assert calls["resolver"] == {"tenant_id": "tenant-1", "agent_id": agent_id}
+    assert calls["resolver"] == {"session": session, "tenant_id": "tenant-1", "agent_id": agent_id}
     assert calls["rbac"] == {
         "tenant_id": "tenant-1",
         "account_id": "account-1",

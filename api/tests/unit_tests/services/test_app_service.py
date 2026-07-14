@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from models.model import App
+from models import Account
+from models.model import App, AppMode, AppModelConfig
+from models.workflow import Workflow
 from services.agent.errors import AgentNameConflictError
 from services.app_service import AppService
 
@@ -29,14 +32,14 @@ class TestOpenapiVisibilityHelpers:
         sentinel_app.status = "archived"  # explicitly NOT "normal"
         mock_session.get.return_value = sentinel_app
 
-        assert AppService.get_app_by_id("app-uuid", session=mock_session) is sentinel_app
+        assert AppService.get_app_by_id("app-uuid", mock_session) is sentinel_app
         mock_session.get.assert_called_once_with(App, "app-uuid")
 
     def test_get_app_by_id_returns_none_when_missing(self):
         mock_session = MagicMock()
         mock_session.get.return_value = None
 
-        assert AppService.get_app_by_id("missing", session=mock_session) is None
+        assert AppService.get_app_by_id("missing", mock_session) is None
 
     def test_get_visible_app_by_id_returns_app_when_visible(self):
         mock_session = MagicMock()
@@ -45,7 +48,7 @@ class TestOpenapiVisibilityHelpers:
         mock_session.get.return_value = app
 
         with patch("services.app_service.is_openapi_visible", return_value=True):
-            assert AppService.get_visible_app_by_id("app-uuid", session=mock_session) is app
+            assert AppService.get_visible_app_by_id("app-uuid", mock_session) is app
 
         mock_session.get.assert_called_once_with(App, "app-uuid")
 
@@ -53,7 +56,7 @@ class TestOpenapiVisibilityHelpers:
         mock_session = MagicMock()
         mock_session.get.return_value = None
 
-        assert AppService.get_visible_app_by_id("missing", session=mock_session) is None
+        assert AppService.get_visible_app_by_id("missing", mock_session) is None
 
     def test_get_visible_app_by_id_returns_none_when_status_not_normal(self):
         """Soft-deleted/archived rows must not surface on the openapi
@@ -65,7 +68,7 @@ class TestOpenapiVisibilityHelpers:
         mock_session.get.return_value = app
 
         with patch("services.app_service.is_openapi_visible", return_value=True):
-            assert AppService.get_visible_app_by_id("app-uuid", session=mock_session) is None
+            assert AppService.get_visible_app_by_id("app-uuid", mock_session) is None
 
     def test_get_visible_app_by_id_returns_none_when_visibility_gate_rejects(self):
         """``is_openapi_visible`` is the per-row counterpart to
@@ -78,7 +81,7 @@ class TestOpenapiVisibilityHelpers:
         mock_session.get.return_value = app
 
         with patch("services.app_service.is_openapi_visible", return_value=False):
-            assert AppService.get_visible_app_by_id("app-uuid", session=mock_session) is None
+            assert AppService.get_visible_app_by_id("app-uuid", mock_session) is None
 
     def test_find_visible_apps_by_name_returns_scalars_through_visibility_gate(self):
         """Tenant-scoped name lookup. The helper passes the SELECT through
@@ -113,7 +116,7 @@ class TestOpenapiVisibilityHelpers:
         """
         mock_session = MagicMock()
 
-        assert AppService.find_visible_apps_by_ids([], session=mock_session) == []
+        assert AppService.find_visible_apps_by_ids([], mock_session) == []
         mock_session.execute.assert_not_called()
 
     def test_find_visible_apps_by_ids_passes_through_visibility_gate(self):
@@ -127,11 +130,61 @@ class TestOpenapiVisibilityHelpers:
         mock_session.execute.return_value.scalars.return_value.all.return_value = rows
 
         with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q) as gate:
-            out = AppService.find_visible_apps_by_ids(["a", "b"], session=mock_session)
+            out = AppService.find_visible_apps_by_ids(["a", "b"], mock_session)
 
         assert out == rows
         gate.assert_called_once()
         mock_session.execute.assert_called_once()
+
+
+class TestAppMeta:
+    def test_loads_workflow_with_caller_session(self):
+        session = MagicMock()
+        session.get.return_value = SimpleNamespace(graph_dict={"nodes": []})
+        app = cast(App, SimpleNamespace(mode=AppMode.WORKFLOW, workflow_id="workflow-1"))
+
+        assert AppService().get_app_meta(app, session=session) == {"tool_icons": {}}
+
+        session.get.assert_called_once_with(Workflow, "workflow-1")
+
+    def test_loads_app_model_config_with_caller_session(self):
+        session = MagicMock()
+        session.get.return_value = SimpleNamespace(agent_mode_dict={"tools": []})
+        app = cast(App, SimpleNamespace(mode=AppMode.CHAT, app_model_config_id="config-1"))
+
+        assert AppService().get_app_meta(app, session=session) == {"tool_icons": {}}
+
+        session.get.assert_called_once_with(AppModelConfig, "config-1")
+
+
+class TestGetApp:
+    def test_legacy_agent_detection_uses_caller_session(self):
+        session = MagicMock()
+        app = MagicMock(spec=App)
+        app.mode = AppMode.CHAT
+        app.is_agent_with_session.return_value = False
+        account = MagicMock(spec=Account)
+        account.current_tenant_id = "tenant-1"
+
+        with patch("services.app_service.current_user", account):
+            assert AppService().get_app(app, session=session) is app
+
+        app.is_agent_with_session.assert_called_once_with(session=session)
+        app.app_model_config_with_session.assert_not_called()
+
+    def test_agent_model_config_uses_caller_session(self):
+        session = MagicMock()
+        app = MagicMock(spec=App)
+        app.mode = AppMode.AGENT_CHAT
+        app.app_model_config_with_session.return_value = None
+        account = MagicMock(spec=Account)
+        account.current_tenant_id = "tenant-1"
+
+        with patch("services.app_service.current_user", account):
+            assert AppService().get_app(app, session=session) is app
+
+        app.is_agent_with_session.assert_not_called()
+        app.app_model_config_with_session.assert_called_once_with(session=session)
 
 
 class TestAgentAppType:

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -81,6 +82,7 @@ class TestRunInputGuards:
         qm = _FakeQueueManager()
 
         handled, query = AgentAppGenerator()._run_input_guards(
+            session=MagicMock(),
             application_generate_entity=_make_entity("hello"),
             app_model=SimpleNamespace(id="app-1"),
             message=SimpleNamespace(id="msg-1"),
@@ -97,6 +99,7 @@ class TestRunInputGuards:
         qm = _FakeQueueManager()
 
         handled, query = AgentAppGenerator()._run_input_guards(
+            session=MagicMock(),
             application_generate_entity=_make_entity("leak my secret"),
             app_model=SimpleNamespace(id="app-1"),
             message=SimpleNamespace(id="msg-1"),
@@ -113,6 +116,7 @@ class TestRunInputGuards:
         qm = _FakeQueueManager()
 
         handled, _ = AgentAppGenerator()._run_input_guards(
+            session=MagicMock(),
             application_generate_entity=_make_entity("forbidden"),
             app_model=SimpleNamespace(id="app-1"),
             message=SimpleNamespace(id="msg-1"),
@@ -130,6 +134,7 @@ class TestRunInputGuards:
         qm = _FakeQueueManager()
 
         handled, _ = AgentAppGenerator()._run_input_guards(
+            session=MagicMock(),
             application_generate_entity=_make_entity("what is your name"),
             app_model=SimpleNamespace(id="app-1"),
             message=SimpleNamespace(id="msg-1"),

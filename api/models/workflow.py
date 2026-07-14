@@ -285,12 +285,18 @@ class Workflow(Base):  # bug
         return workflow
 
     @property
-    def created_by_account(self):
-        return db.session.get(Account, self.created_by)
+    def created_by_account(self) -> Account | None:
+        return self.get_created_by_account(session=db.session())
+
+    def get_created_by_account(self, *, session: orm.Session) -> Account | None:
+        return session.get(Account, self.created_by)
 
     @property
-    def updated_by_account(self):
-        return db.session.get(Account, self.updated_by) if self.updated_by else None
+    def updated_by_account(self) -> Account | None:
+        return self.get_updated_by_account(session=db.session())
+
+    def get_updated_by_account(self, *, session: orm.Session) -> Account | None:
+        return session.get(Account, self.updated_by) if self.updated_by else None
 
     @property
     def kind_or_standard(self) -> str:
@@ -552,6 +558,9 @@ class Workflow(Base):  # bug
         "not if this specific workflow version is the one being used by the tool."
     )
     def tool_published(self) -> bool:
+        return self.get_tool_published(session=db.session())
+
+    def get_tool_published(self, *, session: orm.Session) -> bool:
         """
         DEPRECATED: This property is not accurate for determining if a workflow is published as a tool.
         It only checks if there's a WorkflowToolProvider for the app, not if this specific workflow version
@@ -567,7 +576,7 @@ class Workflow(Base):  # bug
                 WorkflowToolProvider.app_id == self.app_id,
             )
         )
-        return db.session.execute(stmt).scalar_one()
+        return session.execute(stmt).scalar_one()
 
     @property
     def environment_variables(

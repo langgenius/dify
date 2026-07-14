@@ -3058,7 +3058,7 @@ Get message details by ID
 | 404 | Message not found |  |
 
 ### [POST] /apps/{app_id}/model-config
-**Modify app model config**
+**Modify the app model config and dataset joins in one request transaction**
 
 Update application model configuration
 

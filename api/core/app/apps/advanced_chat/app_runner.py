@@ -39,7 +39,6 @@ from core.workflow.system_variables import (
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
@@ -173,12 +172,16 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             )
 
             # annotation reply
-            if self.handle_annotation_reply(
-                app_record=self._app,
-                message=self.message,
-                query=new_query,
-                app_generate_entity=self.application_generate_entity,
-            ):
+            with create_session() as session:
+                should_stop = self.handle_annotation_reply(
+                    app_record=self._app,
+                    message=self.message,
+                    query=new_query,
+                    app_generate_entity=self.application_generate_entity,
+                    session=session,
+                )
+                session.commit()
+            if should_stop:
                 return
 
             # Initialize conversation variables
@@ -211,10 +214,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 root_node_id=root_node_id,
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
-
-        # Release the Flask scoped session before workflow execution so a checked-out DB connection
-        # is not held for the lifetime of the graph run.
-        db.session.close()
 
         # RUN WORKFLOW
         # Create Redis command channel for this workflow execution
@@ -300,7 +299,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         return False, new_inputs, new_query
 
     def handle_annotation_reply(
-        self, app_record: App, message: Message, query: str, app_generate_entity: AdvancedChatAppGenerateEntity
+        self,
+        app_record: App,
+        message: Message,
+        query: str,
+        app_generate_entity: AdvancedChatAppGenerateEntity,
+        session: Session,
     ) -> bool:
         annotation_reply = self.query_app_annotations_to_reply(
             app_record=app_record,
@@ -308,6 +312,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             query=query,
             user_id=app_generate_entity.user_id,
             invoke_from=app_generate_entity.invoke_from,
+            session=session,
         )
 
         if annotation_reply:
@@ -329,7 +334,13 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self._publish_event(QueueStopEvent(stopped_by=stopped_by))
 
     def query_app_annotations_to_reply(
-        self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
+        self,
+        app_record: App,
+        message: Message,
+        query: str,
+        user_id: str,
+        invoke_from: InvokeFrom,
+        session: Session,
     ) -> MessageAnnotation | None:
         """
         Query app annotations to reply
@@ -342,7 +353,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         """
         annotation_reply_feature = AnnotationReplyFeature()
         return annotation_reply_feature.query(
-            app_record=app_record, message=message, query=query, user_id=user_id, invoke_from=invoke_from
+            app_record=app_record,
+            message=message,
+            query=query,
+            user_id=user_id,
+            invoke_from=invoke_from,
+            session=session,
         )
 
     def moderation_for_inputs(
@@ -395,7 +411,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 existing_variables = self._create_all_conversation_variables(session)
             else:
                 # Check and add any missing variables from the workflow
-                existing_variables = self._sync_missing_conversation_variables(session, existing_variables)
+                existing_variables = self._sync_missing_conversation_variables(existing_variables, session)
 
             # Convert to Variable objects for use in the workflow
             conversation_variables = [var.to_variable() for var in existing_variables]
@@ -435,7 +451,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         return new_variables
 
     def _sync_missing_conversation_variables(
-        self, session: Session, existing_variables: list[ConversationVariable]
+        self, existing_variables: list[ConversationVariable], session: Session
     ) -> list[ConversationVariable]:
         """
         Sync missing conversation variables from the workflow definition.

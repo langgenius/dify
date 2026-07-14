@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import field_serializer
+from sqlalchemy.orm import Session
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
@@ -73,23 +74,36 @@ class SegmentResponse(ResponseModel):
 
 @dataclass(frozen=True)
 class SegmentWithSummary:
+    """Expose session-backed segment relations during response validation."""
+
     segment: Any
     summary: str | None
+    session: Session
+
+    @property
+    def child_chunks(self) -> Any:
+        return self.segment.get_child_chunks(session=self.session)
+
+    @property
+    def attachments(self) -> Any:
+        return self.segment.get_attachments(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.segment, name)
 
 
-def segment_response_with_summary(segment: Any, summary: str | None) -> SegmentResponse:
-    response_source = SegmentWithSummary(segment=segment, summary=summary)
+def segment_response_with_summary(segment: Any, summary: str | None, *, session: Session) -> SegmentResponse:
+    response_source = SegmentWithSummary(segment=segment, summary=summary, session=session)
     return SegmentResponse.model_validate(response_source, from_attributes=True)
 
 
 def segment_responses_with_summaries(
     segments: Iterable[Any],
     summaries: Mapping[str, str | None],
+    *,
+    session: Session,
 ) -> list[SegmentResponse]:
-    return [segment_response_with_summary(segment, summaries.get(segment.id)) for segment in segments]
+    return [segment_response_with_summary(segment, summaries.get(segment.id), session=session) for segment in segments]
 
 
 class SegmentDetailResponse(ResponseModel):

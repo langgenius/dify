@@ -2,8 +2,10 @@
 
 `with_session` is an HTTP controller helper: it opens one SQLAlchemy session
 for a Resource handler and injects it as the first argument after `self`.
-Handlers use a transaction by default so migrated write paths keep
-commit/rollback handling; pure read handlers may opt out with `write=False`.
+Write handlers commit on success and roll back on failure. They use a regular
+Session context so existing services may commit an intermediate unit and keep
+using the same Session through SQLAlchemy's autobegin behavior. Pure read
+handlers may opt out with `write=False`.
 """
 
 from collections.abc import Callable
@@ -38,14 +40,20 @@ def with_session[T, **P, R](
 ) -> (
     Callable[Concatenate[T, P], R] | Callable[[Callable[Concatenate[T, Session, P], R]], Callable[Concatenate[T, P], R]]
 ):
-    """Inject a request-scoped session, using a transaction only for write handlers."""
+    """Inject a request-scoped session and finalize write handlers."""
 
     def decorator(view: Callable[Concatenate[T, Session, P], R]) -> Callable[Concatenate[T, P], R]:
         @wraps(view)
         def wrapper(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
             if write:
-                with session_factory.get_session_maker().begin() as session:
-                    return view(self, session, *args, **kwargs)
+                with session_factory.create_session() as session:
+                    try:
+                        result = view(self, session, *args, **kwargs)
+                        session.commit()
+                        return result
+                    except Exception:
+                        session.rollback()
+                        raise
 
             with session_factory.create_session() as session:
                 return view(self, session, *args, **kwargs)

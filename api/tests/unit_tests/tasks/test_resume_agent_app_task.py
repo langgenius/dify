@@ -49,7 +49,7 @@ def test_resume_happy_path_account_user_sets_tenant_and_runs(mocker: MockerFixtu
     conversation = MagicMock(from_account_id="acct-1", from_end_user_id=None, invoke_from=InvokeFrom.WEB_APP)
     account = MagicMock()
     app = MagicMock(tenant_id="tenant-1")
-    _wire_db(mocker, form=_form(), app=app, conversation=conversation, account=account)
+    db = _wire_db(mocker, form=_form(), app=app, conversation=conversation, account=account)
     gen = mocker.patch(f"{MODULE}.AgentAppGenerator")
 
     mod.resume_agent_app_execution(conversation_id="conv-1", form_id="form-1")
@@ -61,6 +61,7 @@ def test_resume_happy_path_account_user_sets_tenant_and_runs(mocker: MockerFixtu
     assert kwargs["user"] is account
     assert kwargs["app_model"] is app
     assert kwargs["invoke_from"] == InvokeFrom.WEB_APP
+    assert kwargs["session"] is db.session.return_value
 
 
 def test_resume_end_user_path(mocker: MockerFixture):

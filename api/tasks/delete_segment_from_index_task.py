@@ -56,7 +56,8 @@ def delete_segment_from_index_task(
                 with_keywords=True,
                 delete_child_chunks=True,
                 precomputed_child_node_ids=child_node_ids,
-                delete_summaries=True,  # Actually delete summaries when segment is deleted
+                delete_summaries=True,  # Actually delete summaries when segment is deleted,
+                session=session,
             )
             if dataset.is_multimodal:
                 # delete segment attachment binding
@@ -65,7 +66,9 @@ def delete_segment_from_index_task(
                 ).all()
                 if segment_attachment_bindings:
                     attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
-                    index_processor.clean(dataset=dataset, node_ids=attachment_ids, with_keywords=False)
+                    index_processor.clean(
+                        session=session, dataset=dataset, node_ids=attachment_ids, with_keywords=False
+                    )
                     segment_attachment_bind_ids = [i.id for i in segment_attachment_bindings]
 
                     for i in range(0, len(segment_attachment_bind_ids), 1000):

@@ -393,13 +393,13 @@ class TestAppRunner:
             mime_type="image/png",
         )
 
-        db_session = SimpleNamespace(add=MagicMock(), commit=MagicMock(), refresh=MagicMock())
+        db_session = SimpleNamespace(add=MagicMock(), flush=MagicMock(), refresh=MagicMock())
         monkeypatch.setattr("core.app.apps.base_app_runner.ToolFileManager", lambda: MagicMock())
-        monkeypatch.setattr("core.app.apps.base_app_runner.db", SimpleNamespace(session=db_session))
 
         queue_manager = SimpleNamespace(invoke_from=InvokeFrom.SERVICE_API, publish=MagicMock())
 
         runner._handle_multimodal_image_content(
+            session=db_session,
             content=content,
             message_id="message-id",
             user_id="user-id",
@@ -471,7 +471,7 @@ class TestAppRunner:
         runner = AppRunner()
         monkeypatch.setattr(
             "core.app.apps.base_app_runner.AnnotationReplyFeature.query",
-            lambda self, app_record, message, query, user_id, invoke_from: "reply",
+            lambda self, app_record, message, query, user_id, invoke_from, session: "reply",
         )
 
         response = runner.query_app_annotations_to_reply(
@@ -480,6 +480,7 @@ class TestAppRunner:
             query="hello",
             user_id="user",
             invoke_from=InvokeFrom.WEB_APP,
+            session=MagicMock(),
         )
 
         assert response == "reply"

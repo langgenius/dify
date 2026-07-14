@@ -4,6 +4,7 @@ import flask_login
 from flask import make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 import services
@@ -16,6 +17,7 @@ from controllers.common.fields import (
     SimpleResultResponse,
 )
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -317,7 +319,7 @@ class EmailCodeLoginApi(Resource):
                 else:
                     new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session())
                     TenantService.create_tenant_member(new_tenant, account, db.session(), role="owner")
-                    account.current_tenant = new_tenant
+                    account.set_current_tenant_with_session(new_tenant, session=db.session())
                     tenant_was_created.send(new_tenant)
 
         if account is None:
@@ -356,7 +358,8 @@ class EmailCodeLoginApi(Resource):
 class RefreshTokenApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(401, "Unauthorized", console_ns.models[SimpleResultMessageResponse.__name__])
-    def post(self):
+    @with_session(write=False)
+    def post(self, session: Session):
         # Get refresh token from cookie instead of request body
         refresh_token = extract_refresh_token(request)
 
@@ -366,7 +369,7 @@ class RefreshTokenApi(Resource):
             ), 401
 
         try:
-            new_token_pair = AccountService.refresh_token(refresh_token, session=db.session())
+            new_token_pair = AccountService.refresh_token(refresh_token, session=session)
         except Unauthorized as exc:
             return SimpleResultMessageResponse(result="fail", message=exc.description or "Unauthorized.").model_dump(
                 mode="json"

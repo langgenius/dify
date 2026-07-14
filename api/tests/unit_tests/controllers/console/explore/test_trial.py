@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from inspect import getsource, signature
 from inspect import unwrap as inspect_unwrap
 from io import BytesIO
 from types import SimpleNamespace
@@ -121,6 +122,7 @@ def test_trial_dataset_list_preserves_slim_dataset_fields(app: Flask):
     api = module.DatasetListApi()
     method = unwrap(api.get)
     app_model = SimpleNamespace(tenant_id="tenant-1")
+    session = MagicMock()
 
     with (
         app.test_request_context("/?page=1&limit=20&ids=dataset-1"),
@@ -130,9 +132,9 @@ def test_trial_dataset_list_preserves_slim_dataset_fields(app: Flask):
             return_value=([DatasetListItem()], 1),
         ) as get_datasets,
     ):
-        result = method(api, app_model)
+        result = method(api, session, app_model)
 
-    get_datasets.assert_called_once_with(["dataset-1"], "tenant-1")
+    get_datasets.assert_called_once_with(["dataset-1"], "tenant-1", session=session)
     assert result == {
         "data": [
             {
@@ -152,6 +154,38 @@ def test_trial_dataset_list_preserves_slim_dataset_fields(app: Flask):
         "total": 1,
         "page": 1,
     }
+
+
+@pytest.mark.parametrize(
+    "api_type",
+    [module.TrialSitApi, module.TrialAppParameterApi, module.AppApi, module.AppWorkflowApi, module.DatasetListApi],
+)
+def test_trial_app_handlers_use_explicit_read_session(api_type: type) -> None:
+    source = getsource(api_type.get)
+
+    assert "@with_session(write=False)\n    @get_app_model_with_trial(None)" in source
+    assert tuple(signature(api_type.get).parameters)[:3] == ("self", "session", "app_model")
+
+
+def test_trial_app_detail_serializes_with_explicit_session(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    session = MagicMock()
+    app_model = MagicMock()
+    response_view = MagicMock()
+    get_app = MagicMock(return_value=app_model)
+    build_view = MagicMock(return_value=response_view)
+    validated = MagicMock()
+    validated.model_dump.return_value = {"id": "app-1"}
+    monkeypatch.setattr(module, "AppService", lambda: SimpleNamespace(get_app=get_app))
+    monkeypatch.setattr(module, "AppResponseView", build_view)
+    monkeypatch.setattr(module.TrialAppDetailResponse, "model_validate", MagicMock(return_value=validated))
+
+    with app.test_request_context("/"):
+        result = unwrap(module.AppApi.get)(module.AppApi(), session, app_model)
+
+    assert result == {"id": "app-1"}
+    get_app.assert_called_once_with(app_model, session=session)
+    build_view.assert_called_once_with(app_model, session=session)
+    module.TrialAppDetailResponse.model_validate.assert_called_once_with(response_view, from_attributes=True)
 
 
 class TestTrialAppWorkflowRunApi:
@@ -645,18 +679,23 @@ class TestTrialAppParameterApi:
         method = unwrap(api.get)
 
         with pytest.raises(AppUnavailableError):
-            method(api, None)
+            method(api, MagicMock(), None)
 
     def test_success_non_workflow(self, valid_parameters: dict[str, object]) -> None:
         api = module.TrialAppParameterApi()
         method = unwrap(api.get)
 
-        app_model = MagicMock(
-            mode=AppMode.CHAT,
-            app_model_config=MagicMock(to_dict=lambda: {"user_input_form": []}),
-        )
+        app_model = SimpleNamespace(mode=AppMode.CHAT, app_model_config_id="config-1")
+        app_model_config = MagicMock(app_id="app-1")
+        app_model_config.to_dict.return_value = {"user_input_form": []}
+        session = MagicMock()
+        session.get.return_value = app_model_config
+        annotation_reply = {"enabled": False}
 
         with (
+            patch.object(
+                module, "load_annotation_reply_config", return_value=annotation_reply
+            ) as load_annotation_reply,
             patch.object(
                 module,
                 "get_parameters_from_feature_dict",
@@ -668,9 +707,36 @@ class TestTrialAppParameterApi:
                 return_value=MagicMock(model_dump=lambda mode=None: {"ok": True}),
             ),
         ):
-            result = method(api, app_model)
+            result = method(api, session, app_model)
 
         assert result == {"ok": True}
+        session.get.assert_called_once_with(module.AppModelConfig, "config-1")
+        load_annotation_reply.assert_called_once_with(session, "app-1")
+        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+
+    def test_success_workflow(self, valid_parameters: dict[str, object]) -> None:
+        api = module.TrialAppParameterApi()
+        method = unwrap(api.get)
+
+        app_model = SimpleNamespace(mode=AppMode.WORKFLOW, workflow_id="workflow-1")
+        workflow = MagicMock(features_dict={})
+        workflow.user_input_form.return_value = []
+        session = MagicMock()
+        session.get.return_value = workflow
+
+        with (
+            patch.object(module, "get_parameters_from_feature_dict", return_value=valid_parameters),
+            patch.object(
+                module.ParametersResponse,
+                "model_validate",
+                return_value=MagicMock(model_dump=lambda mode=None: {"ok": True}),
+            ),
+        ):
+            result = method(api, session, app_model)
+
+        assert result == {"ok": True}
+        session.get.assert_called_once_with(module.Workflow, "workflow-1")
+        workflow.user_input_form.assert_called_once_with(to_old_structure=True)
 
 
 class TestTrialChatAudioApi:
@@ -1007,49 +1073,107 @@ class TestTrialSitApi:
         method = unwrap(api.get)
         app_model = MagicMock()
         app_model.id = "a1"
+        session = MagicMock()
+        session.scalar.return_value = None
 
-        with app.test_request_context("/"), patch.object(module.db.session, "scalar") as mock_scalar:
-            mock_scalar.return_value = None
+        with app.test_request_context("/"):
             with pytest.raises(Forbidden):
-                method(api, app_model)
+                method(api, session, app_model)
+
+        session.scalar.assert_called_once()
 
     def test_archived_tenant(self, app: Flask) -> None:
         api = module.TrialSitApi()
         method = unwrap(api.get)
 
         site = MagicMock()
-        app_model = MagicMock()
-        app_model.id = "a1"
-        app_model.tenant = MagicMock()
-        app_model.tenant.status = TenantStatus.ARCHIVE
+        app_model = SimpleNamespace(id="a1", tenant_id="tenant-1")
+        tenant = SimpleNamespace(status=TenantStatus.ARCHIVE)
+        session = MagicMock()
+        session.scalar.return_value = site
+        session.get.return_value = tenant
 
-        with app.test_request_context("/"), patch.object(module.db.session, "scalar") as mock_scalar:
-            mock_scalar.return_value = site
+        with app.test_request_context("/"):
             with pytest.raises(Forbidden):
-                method(api, app_model)
+                method(api, session, app_model)
+
+        session.scalar.assert_called_once()
+        session.get.assert_called_once_with(module.Tenant, "tenant-1")
 
     def test_success(self, app: Flask) -> None:
         api = module.TrialSitApi()
         method = unwrap(api.get)
 
         site = MagicMock()
-        app_model = MagicMock()
-        app_model.id = "a1"
-        app_model.tenant = MagicMock()
-        app_model.tenant.status = TenantStatus.NORMAL
+        app_model = SimpleNamespace(id="a1", tenant_id="tenant-1")
+        tenant = SimpleNamespace(status=TenantStatus.NORMAL)
+        session = MagicMock()
+        session.scalar.return_value = site
+        session.get.return_value = tenant
 
         with (
             app.test_request_context("/"),
-            patch.object(module.db.session, "scalar") as mock_scalar,
             patch.object(module.SiteResponse, "model_validate") as mock_validate,
         ):
-            mock_scalar.return_value = site
             mock_validate_result = MagicMock()
             mock_validate_result.model_dump.return_value = {"name": "test", "icon": "icon"}
             mock_validate.return_value = mock_validate_result
-            result = method(api, app_model)
+            result = method(api, session, app_model)
 
         assert result == {"name": "test", "icon": "icon"}
+        session.scalar.assert_called_once()
+        session.get.assert_called_once_with(module.Tenant, "tenant-1")
+
+
+class TestAppWorkflowApi:
+    def test_uses_injected_session(self) -> None:
+        api = module.AppWorkflowApi()
+        method = unwrap(api.get)
+        app_model = SimpleNamespace(workflow_id="workflow-1")
+        created_by = SimpleNamespace(id="account-1", name="Creator", email="creator@example.com")
+        workflow = SimpleNamespace(
+            id="workflow-1",
+            graph_dict={"nodes": []},
+            features_dict={},
+            unique_hash="workflow-hash",
+            version="draft",
+            marked_name="",
+            marked_comment="",
+            created_at=datetime(2024, 1, 1, tzinfo=UTC),
+            updated_at=datetime(2024, 1, 2, tzinfo=UTC),
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+            get_created_by_account=MagicMock(return_value=created_by),
+            get_updated_by_account=MagicMock(return_value=None),
+            get_tool_published=MagicMock(return_value=True),
+        )
+        session = MagicMock()
+        session.get.return_value = workflow
+
+        result = method(api, session, app_model)
+
+        assert result == {
+            "id": "workflow-1",
+            "graph": {"nodes": []},
+            "features": {},
+            "hash": "workflow-hash",
+            "version": "draft",
+            "marked_name": "",
+            "marked_comment": "",
+            "created_by": {"id": "account-1", "name": "Creator", "email": "creator@example.com"},
+            "created_at": 1704067200,
+            "updated_by": None,
+            "updated_at": 1704153600,
+            "tool_published": True,
+            "environment_variables": [],
+            "conversation_variables": [],
+            "rag_pipeline_variables": [],
+        }
+        session.get.assert_called_once_with(module.Workflow, "workflow-1")
+        workflow.get_created_by_account.assert_called_once_with(session=session)
+        workflow.get_updated_by_account.assert_called_once_with(session=session)
+        workflow.get_tool_published.assert_called_once_with(session=session)
 
 
 class TestTrialChatAudioApiExceptionHandlers:

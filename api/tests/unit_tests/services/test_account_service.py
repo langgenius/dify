@@ -468,13 +468,13 @@ class TestAccountService:
         sqlite_session.commit()
 
         with (
-            patch.object(Account, "set_tenant_id") as mock_set_tenant_id,
+            patch.object(Account, "set_tenant_id_with_session") as mock_set_tenant_id,
             patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active,
         ):
             result = AccountService.load_user(account.id, sqlite_session)
 
             assert result is account
-            mock_set_tenant_id.assert_called_once_with(tenant.id)
+            mock_set_tenant_id.assert_called_once_with(tenant.id, session=sqlite_session)
             mock_refresh_last_active.assert_called_once_with(account, sqlite_session)
 
     def test_load_user_not_found(self, sqlite_session: Session):
@@ -512,7 +512,7 @@ class TestAccountService:
         sqlite_session.commit()
 
         with (
-            patch.object(Account, "set_tenant_id") as mock_set_tenant_id,
+            patch.object(Account, "set_tenant_id_with_session") as mock_set_tenant_id,
             patch("services.account_service.naive_utc_now") as mock_naive_utc_now,
             patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active,
         ):
@@ -524,9 +524,33 @@ class TestAccountService:
             assert result is account
             assert available_tenant_join.current is True
             assert available_tenant_join.last_opened_at == mock_now
-            mock_set_tenant_id.assert_called_once_with(tenant.id)
+            mock_set_tenant_id.assert_called_once_with(tenant.id, session=sqlite_session)
 
             mock_refresh_last_active.assert_called_once_with(account, sqlite_session)
+
+    def test_load_user_keeps_tenant_accessible_with_expiring_session(self, sqlite_session: Session):
+        account = Account(name="Test User", email="test@example.com")
+        tenant = Tenant(name="Test Workspace")
+        sqlite_session.add_all([account, tenant])
+        sqlite_session.flush()
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.NORMAL,
+                current=False,
+            )
+        )
+        sqlite_session.commit()
+        account_id = account.id
+        tenant_id = tenant.id
+
+        with Session(sqlite_session.get_bind()) as expiring_session:
+            with patch.object(AccountService, "_refresh_account_last_active"):
+                result = AccountService.load_user(account_id, expiring_session)
+
+        assert result is not None
+        assert result.current_tenant_id == tenant_id
 
     def test_load_user_no_tenants(self, sqlite_session: Session):
         """Test user loading when user has no tenants at all."""
@@ -794,7 +818,7 @@ class TestTenantService:
         )
         assert tenant_account_join is not None
         assert tenant_account_join.role == TenantAccountRole.OWNER
-        assert mock_account.current_tenant == tenant
+        mock_account.set_current_tenant_with_session.assert_called_once_with(tenant, session=sqlite_session)
         mock_tenant_was_created.assert_called_once_with(tenant)
         mock_rsa_dependencies.assert_called_once_with(tenant.id)
 
@@ -940,7 +964,19 @@ class TestTenantService:
         assert tenant_join.current is True
         assert tenant_join.last_opened_at == mock_now
         assert other_tenant_join.current is False
-        mock_account.set_tenant_id.assert_called_once_with(tenant.id)
+        mock_account.set_tenant_id_with_session.assert_called_once_with(tenant.id, session=sqlite_session)
+
+    def test_switch_tenant_commits_changes(self):
+        account = TestAccountAssociatedDataFactory.create_account_mock()
+        tenant_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="user-123", current=False
+        )
+        session = MagicMock()
+        session.scalar.return_value = tenant_join
+
+        TenantService.switch_tenant(account, "tenant-456", session=session)
+
+        session.commit.assert_called_once_with()
 
     @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
     def test_switch_tenant_no_tenant_id(self, sqlite_session: Session):

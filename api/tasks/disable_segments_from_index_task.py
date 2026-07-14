@@ -64,7 +64,9 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
                 if segment_attachment_bindings:
                     attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
                     index_node_ids.extend(attachment_ids)
-            index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=False)
+            index_processor.clean(
+                dataset, index_node_ids, with_keywords=True, delete_child_chunks=False, session=session
+            )
 
             # Disable summary indexes for these segments
             from services.summary_index_service import SummaryIndexService

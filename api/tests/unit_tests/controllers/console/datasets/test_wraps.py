@@ -2,9 +2,10 @@ from unittest.mock import Mock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
 from controllers.console.datasets.error import PipelineNotFoundError
-from controllers.console.datasets.wraps import get_rag_pipeline
+from controllers.console.datasets.wraps import get_rag_pipeline, load_rag_pipeline
 from models.dataset import Pipeline
 
 
@@ -27,10 +28,8 @@ class TestGetRagPipeline:
             return_value=(Mock(), "tenant-1"),
         )
 
-        mocker.patch(
-            "controllers.console.datasets.wraps.db.session.scalar",
-            return_value=None,
-        )
+        session_factory = mocker.patch("controllers.console.datasets.wraps.db.session")
+        session_factory.return_value.scalar.return_value = None
 
         with pytest.raises(PipelineNotFoundError):
             dummy_view(pipeline_id="pipeline-1")
@@ -49,14 +48,27 @@ class TestGetRagPipeline:
             return_value=(Mock(), "tenant-1"),
         )
 
-        mocker.patch(
-            "controllers.console.datasets.wraps.db.session.scalar",
-            return_value=pipeline,
-        )
+        session_factory = mocker.patch("controllers.console.datasets.wraps.db.session")
+        session_factory.return_value.scalar.return_value = pipeline
 
         result = dummy_view(pipeline_id="pipeline-1")
 
         assert result is pipeline
+
+    def test_load_rag_pipeline_uses_provided_session(self, mocker: MockerFixture):
+        pipeline = Mock(spec=Pipeline)
+        session = Mock(spec=Session)
+        session.scalar.return_value = pipeline
+
+        mocker.patch(
+            "controllers.console.datasets.wraps.current_account_with_tenant",
+            return_value=(Mock(), "tenant-1"),
+        )
+
+        result = load_rag_pipeline(session, "pipeline-1")
+
+        assert result is pipeline
+        session.scalar.assert_called_once()
 
     def test_pipeline_id_removed_from_kwargs(self, mocker: MockerFixture):
         pipeline = Mock(spec=Pipeline)
@@ -71,10 +83,8 @@ class TestGetRagPipeline:
             return_value=(Mock(), "tenant-1"),
         )
 
-        mocker.patch(
-            "controllers.console.datasets.wraps.db.session.scalar",
-            return_value=pipeline,
-        )
+        session_factory = mocker.patch("controllers.console.datasets.wraps.db.session")
+        session_factory.return_value.scalar.return_value = pipeline
 
         result = dummy_view(pipeline_id="pipeline-1")
 
@@ -92,10 +102,9 @@ class TestGetRagPipeline:
             return_value=(Mock(), "tenant-1"),
         )
 
-        mock_scalar = mocker.patch(
-            "controllers.console.datasets.wraps.db.session.scalar",
-            return_value=pipeline,
-        )
+        session_factory = mocker.patch("controllers.console.datasets.wraps.db.session")
+        mock_scalar = session_factory.return_value.scalar
+        mock_scalar.return_value = pipeline
 
         result = dummy_view(pipeline_id=123)
 

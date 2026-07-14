@@ -1,8 +1,12 @@
+from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.orm import Session
 
+from models import App, AppMode
+from models.model import AppModelConfig, IconType
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import ImportStatus
 
@@ -63,3 +67,69 @@ def test_import_app_returns_decode_error_for_invalid_yaml_url_bytes(
     assert result.status == ImportStatus.FAILED
     assert "utf-8" in result.error
     assert not sqlite_session.in_transaction()
+
+
+def test_create_or_update_app_loads_existing_model_config_with_service_session() -> None:
+    session = Mock()
+    session.get.return_value = Mock()
+    service = AppDslService(session=session)
+    app = cast(
+        App,
+        SimpleNamespace(
+            id="app-1",
+            tenant_id="tenant-1",
+            app_model_config_id="config-1",
+            name="Existing app",
+            description="",
+            icon_type=IconType.EMOJI,
+            icon="robot",
+            icon_background="#FFFFFF",
+        ),
+    )
+
+    result = service._create_or_update_app(
+        app=app,
+        data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
+        account=Mock(id="account-1"),
+    )
+
+    assert result is app
+    session.get.assert_called_once_with(AppModelConfig, "config-1")
+
+
+def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model_config = {"model": {}, "agent_mode": {"tools": []}}
+    app_model_config = Mock(app_id="app-1")
+    app_model_config.to_dict.return_value = model_config
+    session = Mock()
+    session.get.return_value = app_model_config
+    annotation_reply = {"enabled": False}
+    load_annotation_reply_config = Mock(return_value=annotation_reply)
+    monkeypatch.setattr("services.app_dsl_service.load_annotation_reply_config", load_annotation_reply_config)
+    monkeypatch.setattr(
+        "services.app_dsl_service.DependenciesAnalysisService.generate_dependencies",
+        Mock(return_value=[]),
+    )
+    app = cast(
+        App,
+        SimpleNamespace(
+            id="app-1",
+            tenant_id="tenant-1",
+            app_model_config_id="config-1",
+            mode=AppMode.CHAT,
+            name="Chat app",
+            icon_type=IconType.EMOJI,
+            icon="robot",
+            icon_background="#FFFFFF",
+            description="",
+            use_icon_as_answer_icon=False,
+        ),
+    )
+
+    AppDslService.export_dsl(app, session=session)
+
+    session.get.assert_called_once_with(AppModelConfig, "config-1")
+    load_annotation_reply_config.assert_called_once_with(session, "app-1")
+    app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)

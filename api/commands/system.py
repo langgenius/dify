@@ -189,21 +189,22 @@ where sites.id is null limit 1000"""
                     continue
 
                 try:
-                    app = db.session.scalar(select(App).where(App.id == app_id))
+                    session = db.session()
+                    app = session.scalar(select(App).where(App.id == app_id))
                     if not app:
                         logger.info("App %s not found", app_id)
                         continue
 
-                    tenant = app.tenant
+                    tenant = session.get(Tenant, app.tenant_id)
                     if tenant:
-                        accounts = tenant.get_accounts()
+                        accounts = tenant.get_accounts(session=session)
                         if not accounts:
                             logger.info("Fix failed for app %s", app.id)
                             continue
 
                         account = accounts[0]
                         logger.info("Fixing missing site for app %s", app.id)
-                        app_was_created.send(app, account=account)
+                        app_was_created.send(app, account=account, session=session)
                 except Exception:
                     failed_app_ids.append(app_id)
                     click.echo(click.style(f"Failed to fix missing site for app {app_id}", fg="red"))
