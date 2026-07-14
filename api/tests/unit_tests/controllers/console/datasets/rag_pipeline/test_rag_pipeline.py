@@ -61,9 +61,7 @@ def _account() -> Account:
 
 
 class TestPipelineTemplateListApi:
-    def test_get_uses_query_defaults_and_serializes_nullable_fields(
-        self, app: Flask, sqlite_engine: Engine
-    ) -> None:
+    def test_get_uses_query_defaults_and_serializes_nullable_fields(self, app: Flask, sqlite_engine: Engine) -> None:
         api = PipelineTemplateListApi()
         method = unwrap(api.get)
         tenant_id = "tenant-1"
