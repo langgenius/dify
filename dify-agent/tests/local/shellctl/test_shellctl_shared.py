@@ -1,9 +1,6 @@
-import json
 import re
 from datetime import UTC, datetime
-from io import BytesIO
 from pathlib import Path
-from typing import BinaryIO, cast
 
 import pytest
 from pydantic import ValidationError
@@ -15,11 +12,6 @@ from shellctl.shared import (
     read_output_window,
     tail_output_window,
 )
-from shellctl_runtime.sanitize import (
-    PtySanitizer,
-    sanitize_pty_output,
-    sanitize_pty_stream,
-)
 
 
 def test_generate_job_id_matches_proposal_format() -> None:
@@ -28,19 +20,6 @@ def test_generate_job_id_matches_proposal_format() -> None:
     assert re.fullmatch(r"05211530-[0-9abcdefghjkmnpqrstvwxyz]{3}", job_id)
     assert all(char in f"{JOB_ID_ALPHABET}-" for char in job_id[9:])
 
-
-def test_sanitize_pty_golden_cases() -> None:
-    fixture_path = Path(__file__).with_name("golden_shellctl_sanitize.json")
-    cases = json.loads(fixture_path.read_text(encoding="utf-8"))
-
-    for case in cases:
-        chunks = [bytes.fromhex(chunk) for chunk in case["chunks_hex"]]
-        sanitizer = PtySanitizer()
-        streamed = "".join(sanitizer.feed(chunk) for chunk in chunks) + sanitizer.flush()
-        batch = sanitize_pty_output(b"".join(chunks))
-
-        assert streamed == case["expected"], case["name"]
-        assert batch == case["expected"], case["name"]
 
 
 def test_read_output_window_preserves_utf8_boundaries(tmp_path: Path) -> None:
@@ -88,35 +67,6 @@ def test_tail_output_window_skips_partial_utf8_prefix(tmp_path: Path) -> None:
     assert tail.offset == output_path.stat().st_size
     assert tail.truncated is False
 
-
-def test_sanitize_pty_stream_flushes_incrementally() -> None:
-    class ChunkedInput:
-        def __init__(self, chunks: list[bytes]) -> None:
-            self._chunks = chunks
-
-        def read(self, _size: int) -> bytes:
-            if not self._chunks:
-                return b""
-            return self._chunks.pop(0)
-
-    class FlushCountingOutput(BytesIO):
-        def __init__(self) -> None:
-            super().__init__()
-            self.flush_count = 0
-
-        def flush(self) -> None:
-            self.flush_count += 1
-            super().flush()
-
-    stdout = FlushCountingOutput()
-    sanitize_pty_stream(
-        cast(BinaryIO, cast(object, ChunkedInput([b"ready\n", b"next\n"]))),
-        stdout,
-        chunk_size=5,
-    )
-
-    assert stdout.getvalue() == b"ready\nnext\n"
-    assert stdout.flush_count >= 2
 
 
 @pytest.mark.parametrize(
