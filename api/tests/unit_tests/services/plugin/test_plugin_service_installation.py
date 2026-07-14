@@ -7,45 +7,53 @@ verification, marketplace upgrade flows, and uninstall with credential cleanup.
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy import select
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-import core.plugin.plugin_service as plugin_service_module
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginVerification
 from core.plugin.plugin_service import PluginService
 from models import ProviderType
+from models.engine import db
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from services.errors.plugin import PluginInstallationForbiddenError
-from services.feature_service import PluginInstallationScope
+from services.feature_service import (
+    PluginInstallationPermissionModel,
+    PluginInstallationScope,
+    SystemFeatureModel,
+)
 
 
 def _make_features(
     restrict_to_marketplace: bool = False,
     scope: PluginInstallationScope = PluginInstallationScope.ALL,
-) -> MagicMock:
-    features = MagicMock()
-    features.plugin_installation_permission.restrict_to_marketplace_only = restrict_to_marketplace
-    features.plugin_installation_permission.plugin_installation_scope = scope
-    return features
+) -> SystemFeatureModel:
+    return SystemFeatureModel(
+        plugin_installation_permission=PluginInstallationPermissionModel(
+            restrict_to_marketplace_only=restrict_to_marketplace,
+            plugin_installation_scope=scope,
+        )
+    )
 
 
 @pytest.fixture
-def plugin_db(
-    sqlite_engine: Engine,
-    sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
-) -> Session:
-    """Route service-owned credential cleanup transactions to SQLite."""
+def plugin_db() -> Iterator[Session]:
+    """Provide the production database extension with isolated SQLite plugin tables."""
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
 
-    monkeypatch.setattr(plugin_service_module, "db", SimpleNamespace(engine=sqlite_engine))
-    return sqlite_session
+    with app.app_context():
+        for model in (ProviderCredential, Provider, TenantPreferredModelProvider):
+            model.__table__.create(db.engine)
+        with Session(db.engine, expire_on_commit=False) as session:
+            yield session
 
 
 class TestFetchLatestPluginVersion:
@@ -362,11 +370,6 @@ class TestUninstall:
         installer.uninstall.assert_called_once_with("t1", "install-1")
 
     @patch("core.plugin.plugin_service.PluginInstaller")
-    @pytest.mark.parametrize(
-        "sqlite_session",
-        [(Provider, ProviderCredential, TenantPreferredModelProvider)],
-        indirect=True,
-    )
     def test_cleans_credentials_when_plugin_found(self, mock_installer_cls: MagicMock, plugin_db: Session) -> None:
         tenant_id = str(uuid4())
         plugin_id = "org/myplugin"
