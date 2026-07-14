@@ -41,8 +41,18 @@ def _patch_redis_clients_on_loaded_modules():
 
     import sys
 
-    for module in list(sys.modules.values()):
+    # Prefixes of modules that may legitimately hold a redis_client attribute.
+    # Restricting the scan avoids triggering __getattr__ on third-party packages
+    # (e.g. transformers 5.5+ lazily imports model sub-modules on attribute access,
+    # which can raise ModuleNotFoundError for torch when torch is not installed).
+    _disallowed_prefixes = (
+        "transformers"
+    )
+
+    for name, module in list(sys.modules.items()):
         if module is None:
+            continue
+        if name.startswith(_disallowed_prefixes):
             continue
         if hasattr(module, "redis_client"):
             module.redis_client = redis_mock
