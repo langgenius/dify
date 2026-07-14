@@ -95,9 +95,7 @@ class TestCompletionEndpoints:
         )
         assert payload.query == "hi"
 
-    def test_completion_api_success(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
-    ) -> None:
+    def test_completion_api_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
         api = completion_module.CompletionMessageApi()
         method = unwrap(api.post)
 
@@ -395,9 +393,7 @@ class TestWorkflowAppLogEndpoints:
         query = WorkflowAppLogQuery(detail="true")
         assert query.detail is True
 
-    def test_workflow_app_log_api_get(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
-    ) -> None:
+    def test_workflow_app_log_api_get(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
         api = workflow_app_log_module.WorkflowAppLogApi()
         method = unwrap(api.get)
         monkeypatch.setattr(workflow_app_log_module, "db", SimpleNamespace(engine=sqlite_engine))
