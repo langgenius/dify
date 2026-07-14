@@ -1,7 +1,7 @@
 # HITL Phase 2 PRD Review
 
 来源：<https://langgenius.feishu.cn/wiki/GMFdwe40Oi2rC9klP2HcNjnHnwd>  
-本次复读基于 `revision_id = 1918`（读取时间：2026-07-10，Asia/Shanghai）。
+本次复读基于 `revision_id = 1918`（读取时间：2026-07-10，Asia/Shanghai），并叠加 2026-07-13 / 2026-07-14 的已确认澄清。
 
 ## 直接结论
 
@@ -20,6 +20,21 @@
 - `Web 鉴权链路` 已收敛，但不同审批主体的失败路径和回退策略还不完整
 - `abuse guardrails` 仍未量化
 
+## 已追加确认（2026-07-13 / 2026-07-14）
+
+以下口径已经从“待确认”进入“已确认，应同步到评审材料”：
+
+- IM sync 由管理员手动触发；IM identity 只能从 sync 结果中搜索和选择，搜索至少支持 IM user ID。
+- 代码实现层面使用新节点 / 新 DSL，但产品 UI 不同时展示新旧节点，继续沿用 `Human Input` 命名；迁移策略按用户确认的 v1/v2 共存与升级方案执行。
+- `Human Input` 继续作为节点名称，本期不引入新的节点命名。
+- 最小 Contact 权限口径已明确：owner / admin 可编辑 Contact，workflow editor 不能直接创建 external contact，regular member 不能查看完整 Contact。
+- `Service API` 与 `CLI` 只是调用来源，审批主体仍只有 `workspace user` 与 `end_user` 两类；`Service API` 需要显式 `user` 并物化为 request-scoped `end_user`，`CLI` 只有在可解析为 `workspace user` / `end_user` 时 initiator 才可用。
+- `member` 通知中心接口、完整站内通知中心和 CLI 待办能力均不进入本期范围。
+- removed member 生命周期已明确：不自动转 external contact；新配置不可再选择；历史 workflow 引用与 task snapshot 保留；pending task 在打开页和提交时都要重新校验 membership 与审批资格，失去当前 workspace membership 后旧 task 不允许继续审批。
+- 通知入口已先收敛到渠道路由层：`Email` 用 `Message Template`；`IM` 在可完整映射为 IM 卡片时用 IM 卡片，否则回退到 `Message Template`；`Web` 始终提供完整表单详情入口。字段清单本身仍待补齐。
+- abuse guardrails 先收敛为“先做频率限制，阈值先以内置代码常量落地”，但具体常量与拒绝策略仍待确定。
+- 敏感信息边界已收敛：对 `raw dynamic Email`、`form snapshot`、`submission content`，本期保留原值，不做额外 HITL 级脱敏。产品运行记录面按现有权限原样展示；对应底层存储的直接查询同样可见原值；审计查询面也不额外做 HITL 级脱敏。
+
 下面按你要求的 10 个维度更新。
 
 ## 1. 显式需求
@@ -27,8 +42,8 @@
 - 系统已从 `Human Roster` 切换到 `Contact` 概念，且产品信息架构中明确将左侧模块拆为 `Agent` 与 `Contact` 两个独立模块。
   引用：§2 “提供 Contact，作为 HITL 可通知联系人的来源。”；§5 “Agent 与 Contact 模块拆分”；§5.3 “Workspace：Contact”
 
-- `Contact` 的产品类型本期收敛为三类：`Dify member`、`Organization contact`、`External contact`。
-  引用：§3.1 “本期 Contact 类型收敛为三类：Dify member、Organization contact、External contact。”
+- `Contact` 的产品类型本期收敛为三类：`workspace contact`、`Platform contact`、`External contact`。
+  引用：§3.1 Contact 类型；§18.1 联系人域模型与现有对象映射
 
 - `Organization` 在本期被定义为统一抽象：`CE / SaaS` 中当前 workspace 即 `Organization`，`EE` 中整个部署内所有 workspace 共同属于同一个 `Organization`。
   引用：§3.3 “本期用 Organization 统一 CE / SaaS / EE 的产品抽象：CE / SaaS 中，当前 workspace 即 Organization；EE 中，整个部署内所有 workspace 共同属于同一个 Organization。”
@@ -42,6 +57,9 @@
 - `Connection status` 已被明确扩展为 `Not configured / Configured / Connected / Permission issue / Callback error / Connection error`。
   引用：§6.2 “Connection status 需要从粗粒度 Error 拆成可排查的产品状态”；同节列出六个状态
 
+- `IM sync` 已明确为管理员手动触发；`IM identity` 一期通过 sync 结果搜索和选择，不再允许自由文本 IM user ID。
+  引用：§6.3 “配置 IM identity”；§6.4 “IM 成员同步”
+
 - `Dynamic Email` 本期只支持单个合法 email，不支持数组变量批量输入；并且命中现有 `Contact` 后要升级为 `Contact recipient` 而不是继续当作裸邮箱。
   引用：§8.3 “不再支持…通过数组变量一次传入多个 dynamic Email recipients。”；§8.3 “Dynamic Email 命中 Contact 后升级为 Contact recipient”
 
@@ -53,6 +71,9 @@
 
 - `Current initiator` 与 `allowed approver` 的关系已被明确为：`Current initiator` 是独立 allowlist 来源，但通知发送产生的审批主体仍以 `Contact` 为中心记录。
   引用：§8.5 “Current initiator 与 allowed approver”；§9.4 “提交主体”
+
+- `Service API` 与 `CLI` 只是调用来源，不产生第三种审批主体；审批主体仍然只有 `workspace user` 与 `end_user` 两类。
+  引用：§8.5 “Allow Current Initiator to Approve”；用户澄清 2026-07-14
 
 - `Web 独立页面审批` 与 `IM 卡片审批` 已被拆成两条鉴权链路：
   - `IM 卡片审批`：IM identity -> IM Binding -> Contact
@@ -67,6 +88,9 @@
 
 - `Success metrics / failure metrics` 已明确不在本期范围；`SaaS abuse guardrails` 单独成章，但仍待 SaaS 团队确认。
   引用：§18.11 “Success metrics和Failure metrics / 暂不考虑”；§19 “Saas Abuse guardrails / 由saas团队确认”
+
+- `member` 通知中心接口、完整站内通知中心和 CLI 待办能力不进入本期范围。
+  引用：§12.3 “通知中心”；用户澄清 2026-07-13
 
 ## 2. 隐藏假设
 
@@ -156,8 +180,8 @@
 - [BLOCKER] 外部邮箱审批已基本收敛到 `Email OTP`，但 `OTP` 的速率限制、次数限制、锁定规则、重发策略仍未定义。
   引用：§17.5 “Email OTP 规则”；§19 “Saas Abuse guardrails / 由saas团队确认”
 
-- [BLOCKER] `raw dynamic Email`、`form snapshot`、`submission content` 的可见范围与脱敏边界仍未收敛。
-  引用：§16.4 “敏感信息边界待定”；同节 “后续需要结合安全与研发方案单独确认”
+- [PRODUCT_DECISION] `raw dynamic Email`、`form snapshot`、`submission content` 的敏感信息边界已收敛为“保留原值，不做额外 HITL 级脱敏”；运行记录面按现有权限展示，底层直接查询与审计查询同样可见原值。
+  引用：用户澄清 2026-07-14
 
 - [BLOCKER] 审计可见性虽然开始收敛到 `enterprise admin / workspace admin / workflow 编排者`，但不同主体可见字段范围没有定义。
   引用：§16.2 “审计可见性”；§16.2 “审计主体”

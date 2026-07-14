@@ -376,3 +376,317 @@ WAITING -> EXPIRED
 - §10.1 HITL Task
 - §10.4 节点报错规则
 - §18.9 变更影响矩阵
+
+---
+
+## Decision 9: IM Identity Must Come From Manual Sync Results
+
+决策日期：2026-07-14
+
+适用范围：
+
+- §6.3 配置 IM identity
+- §6.4 IM 成员同步
+- 管理后台 / workspace Contact 的 IM identity 配置入口
+
+决策：
+
+- 一期不允许管理员手工输入自由文本 IM user ID。
+- IM identity 只能来自手动 IM sync 的结果；管理员需要在同步得到的 IM contacts 中搜索和选择目标 identity。
+- 搜索能力至少支持按 IM user ID 查询。
+- IM sync 由 Organization 管理员手动触发：
+  - IM 配置完成后手动首次同步；
+  - 后续刷新仍由管理员 / owner 手动发起；
+  - 本期不做自动同步。
+- 管理责任随部署形态变化：
+  - EE：企业管理员在管理后台手动同步并配置全局 IM identity；
+  - CE / SaaS：workspace owner / admin 在当前 workspace 内手动同步并配置。
+
+本期明确不做：
+
+- 不允许自由文本录入 IM user ID
+- 不做自动周期同步
+- 不在未同步的前提下配置 IM identity
+
+影响说明：
+
+- 这条决策把“如何拿到 IM identity”从开放输入收敛为“先 sync、后 search/select”，减少错误绑定和后续审计歧义。
+- 它同时澄清了手动 sync 的触发责任与部署形态差异，避免实现层误做自动任务。
+
+待回写 PRD 的章节：
+
+- §6.3 配置 IM identity
+- §6.4 IM 成员同步
+- §14 待确认问题
+
+---
+
+## Decision 10: Minimal Contact Permissions and Human Input Naming
+
+决策日期：2026-07-14
+
+适用范围：
+
+- §5.0 节点形态
+- §7.3 Add contact 入口
+- §18.10 后台操作权限矩阵
+
+决策：
+
+- 本期最小权限口径如下：
+  - workspace owner / admin 默认具备 Contact 编辑与 external contact 管理能力；
+  - workflow editor 不能在 HITL 节点配置中直接创建 external contact；
+  - regular member 不能查看完整 Contact，只能处理分配给自己的 HITL task。
+- 跨 workspace 的 Platform contact 搜索仍要求具备 `Manage contacts` 能力；更细的角色矩阵后续再结合 RBAC 收敛。
+- HITL 节点名称继续沿用 `Human Input`，本期不引入新的节点命名。
+
+本期明确不做：
+
+- 不在本期内完整展开后台 RBAC 矩阵
+- 不允许 workflow editor 通过节点配置旁路 Contact 管理权限
+- 不重命名 `Human Input` 节点
+
+影响说明：
+
+- 这条决策给了实现和评审足够的最小权限边界，同时避免把完整 RBAC 矩阵误当成本期 blocker。
+- `Human Input` 命名规则一旦固定，产品、设计、研发和 QA 的术语可以保持一致。
+
+待回写 PRD 的章节：
+
+- §5.0 节点形态
+- §7.3 Add contact 入口
+- §18.10 后台操作权限矩阵
+
+---
+
+## Decision 11: Removed Members Do Not Become External Contacts and Notification Center Stays Out of Scope
+
+决策日期：2026-07-14
+
+适用范围：
+
+- §4.2 CE
+- §12.3 通知中心
+- §18.2 联系人生命周期
+
+决策：
+
+- CE / SaaS workspace member 被移除后，不自动转为 external contact。
+- 该对象后续应遵守成员移除补充规则：
+  - 从新的 HITL 节点配置中不可再选择；
+  - 历史 workflow 引用与 task snapshot 继续保留，用于历史展示和审计；
+  - 所有 pending task 在打开页面和提交表单时，都必须重新校验该成员当前是否仍具备 membership 和审批资格；
+  - 如果该成员已不再属于当前 workspace，则旧的 pending task 不允许继续审批或提交。
+- member 通知中心接口、完整站内通知中心和 CLI 待办能力均不进入本期范围。
+
+本期明确不做：
+
+- 不提供 member 通知中心后端接口
+- 不提供完整 CLI 待办处理
+- 不把移除的 workspace member 自动沉降为 external contact
+
+影响说明：
+
+- 这条决策移除了“removed member -> external contact”这条高风险歧义路径。
+- 同时把通知中心相关需求明确后移，避免它继续污染本期范围和后端任务拆分。
+
+待回写 PRD 的章节：
+
+- §4.2 CE
+- §12.3 通知中心
+- §18.2 联系人生命周期
+- §15 里程碑建议
+
+---
+
+## Decision 12: Service API and CLI Are Call Origins, Not New Principal Types
+
+决策日期：2026-07-14
+
+适用范围：
+
+- §8.5 Allow Current Initiator to Approve
+- §17.3 不同对象的鉴权方式
+- §18.6 Recipient canonicalization 与去重
+
+决策：
+
+- 审批主体类型仍然只有 `workspace user` 与 `end_user` 两类。
+- `Service API` 与 `CLI` 只是调用来源，不产生第三种 initiator identity。
+- `Service API` 发起时：
+  - 调用请求必须显式提供 `user`；
+  - 系统将其物化为当前 app 下的 request-scoped `end_user`；
+  - current initiator 只能基于这个 request-scoped `end_user` 判断；
+  - API token 持有者本人不能自动成为审批主体。
+- `CLI` 发起时：
+  - 只有在调用方最终可解析为 `workspace user` 或 `end_user` 时，current initiator 才可用；
+  - 否则视为 initiator unavailable。
+- 如果 current initiator 不可用且 notified recipients 为空，节点直接报错。
+
+本期明确不做：
+
+- 不把 API token holder 视为默认 approver
+- 不把 CLI caller 单独建模为新主体类型
+- 不在没有可解析业务主体时保留模糊的 initiator 审批资格
+
+影响说明：
+
+- 这条决策直接收敛了 Service API / CLI 与 current initiator 的关系，避免实现层对“caller identity”各自发明规则。
+- 它也为 recipient canonicalization、审计和无 recipient 报错路径提供了统一前提。
+
+待回写 PRD 的章节：
+
+- §8.5 Allow Current Initiator to Approve
+- §17.3 不同对象的鉴权方式
+- §18.6 Recipient canonicalization 与去重
+
+---
+
+## Decision 13: Product UI Keeps Human Input While Runtime Uses a New Node
+
+决策日期：2026-07-14
+
+适用范围：
+
+- §5.0 节点形态
+- 节点可见性策略
+- DSL / migration / rollback 策略
+
+决策：
+
+- 代码实现层面使用新的 HITL v2 node 和新的 DSL。
+- 产品 UI 层面不同时展示新旧节点，继续沿用 `Human Input` 名称。
+- 迁移策略按以下规则执行：
+  - 不包含 HITLv1 节点的 workflow，只能添加 HITLv2 节点；
+  - 包含 HITLv1 节点的 workflow，允许继续编辑和添加 HITLv1 节点；
+  - 提供从 HITLv1 到 HITLv2 的自动升级能力；
+  - 在 SaaS 上，自动升级必须由用户手动确认；
+  - CE / EE 提供批量迁移脚本，由用户自行选择是否执行；
+  - `ENABLE_LEGACY_HITLv1_NODE` 仅作为可选后续 feature flag，不作为本期必做项。
+
+本期明确不做：
+
+- 不在 UI 上同时暴露两个不同命名的 HITL 节点
+- 不在未获用户许可的情况下自动修改 SaaS 用户已有 workflow 资产
+- 不把 legacy 节点可见性 flag 当成本期默认能力
+
+影响说明：
+
+- 这条决策把“代码层新节点”与“产品 UI 延续 Human Input 命名”拆成两层口径，避免再把它们误读成相互冲突。
+- 它同时固定了迁移和回滚的最小策略，便于 DSL、前端入口、联调和发布说明保持一致。
+
+待回写 PRD 的章节：
+
+- §5.0 节点形态
+- §11.3 旧数据迁移
+- §11.4 SaaS / CE 初始化迁移
+- §15 里程碑建议
+
+---
+
+## Decision 14: Notification Surface Routing Is Channel-Specific
+
+决策日期：2026-07-14
+
+适用范围：
+
+- IM / Email / Web 三个通知入口
+- `Message Template`
+- IM 卡片与网页详情入口的分工
+
+决策：
+
+- `Email` 入口统一使用 `Message Template`。
+- `IM` 入口按 provider / 表单映射能力分流：
+  - 能完整映射成 IM 卡片时，发送 IM 卡片；
+  - 不能完整映射时，退回 `Message Template`。
+- `Web` 始终提供完整表单详情入口，不承担“只看摘要”的裁剪职责。
+
+本期明确不做：
+
+- 不要求 Email 承载完整表单详情
+- 不要求所有 IM provider 都必须完整映射 IM 卡片
+- 不让 Web 入口退化为只展示模板摘要
+
+影响说明：
+
+- 这条决策先收敛了“按渠道如何呈现”的大框架，但还没有最终回答每个入口的最小字段清单。
+- 后续仍需要补一张字段清单，明确 App / Workflow / 节点 / 来源 / 有效期 / 短任务引用等字段分别在哪些入口强制展示。
+
+待回写 PRD 的章节：
+
+- §9.2 IM 通知
+- §9.3 Email 通知
+- §17 Web 独立页面审批
+
+---
+
+## Decision 15: Abuse Guardrails Start With Rate Limiting Constants
+
+决策日期：2026-07-14
+
+适用范围：
+
+- §19 SaaS abuse guardrails
+- dynamic Email / OTP / recipient volume / send volume
+
+决策：
+
+- 本期第一步先做频率限制。
+- 第一版阈值允许先以内置代码常量实现，而不是等待完整的动态配置系统。
+- 常量的具体数值仍需单独确认；在数值未拍板前，不默认宣称 guardrail 已完整收敛。
+
+本期明确不做：
+
+- 不要求第一版先完成复杂的可视化运营配置面板
+- 不把“已有常量占位”误写成“阈值已获得 SaaS / Security 最终批准”
+
+影响说明：
+
+- 这条决策允许研发先把节流骨架和拒绝路径做出来，避免 domain discovery 卡死在配置系统设计上。
+- 但它不能替代阈值本身的决策；dynamic Email、OTP、单 task 收件人数和发送量的具体常量仍需补齐。
+
+待回写 PRD 的章节：
+
+- §19 SaaS abuse guardrails
+
+---
+
+## Decision 16: HITL Does Not Add Extra Masking for Raw Runtime Values
+
+决策日期：2026-07-14
+
+适用范围：
+
+- `raw dynamic Email`
+- `form snapshot`
+- `submission content`
+- Last Run / Debug
+- 管理后台查询
+- 审计查询
+- 底层存储直接查询
+
+决策：
+
+- 对 `raw dynamic Email`、`form snapshot`、`submission content`，本期保留原值，不做额外的 HITL 级脱敏。
+- 产品运行记录面按现有权限体系原样展示：
+  - 只有当前就能看到运行日志的角色，才会在 `Debug / 管理后台` 中看到这些原值；
+  - 这属于运行日志本身的权限边界，不是 HITL 单独扩大的可见面。
+- 对应底层存储的直接查询同样可见原值。
+- 审计查询面也不额外做 HITL 级脱敏。
+
+本期明确不做：
+
+- 不为上述三类值增加额外的 HITL 专项脱敏层
+- 不因为 HITL 而改写现有运行日志的可见权限模型
+
+影响说明：
+
+- 这条决策把“是否脱敏”和“谁能看到日志”拆开了：前者回答“不额外脱敏”，后者继续服从现有权限系统。
+- 它直接影响 Last Run / Debug 投影、审计落库字段以及底层查询可见性说明。
+
+待回写 PRD 的章节：
+
+- §10.5 Last Run / Debug 日志
+- §16.2 需要记录的信息
+- §16.4 敏感信息处理

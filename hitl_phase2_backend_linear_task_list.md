@@ -79,8 +79,7 @@
 | BE-HITL-027 | 实现企业微信后端 adapter 与 Web fallback | 新建 | 连调 | 中 | 2026-07-22 | BE-HITL-010、BE-HITL-022 |
 | BE-HITL-028 | 实现旧 Email recipient 与 SaaS / CE Contact 初始化迁移 | 新建 | 测试 | 高 | 2026-07-24 | BE-HITL-006、BE-HITL-012、BE-HITL-013 |
 | BE-HITL-029 | 实现 SaaS abuse guardrails 后端基础能力 | 新建 | 测试 | 高 | 2026-07-24 | BE-HITL-014、BE-HITL-015、BE-HITL-018 |
-| BE-HITL-030 | 实现审批人是 member 的通知中心后端接口 | 新建 | 测试 | 中 | 2026-07-25 | BE-HITL-013、BE-HITL-016 |
-| BE-HITL-031 | 后端联调支持与测试证据包 | 新建 | 测试 | 高 | 2026-07-27 | BE-HITL-018、BE-HITL-019、BE-HITL-023、BE-HITL-024、BE-HITL-025、BE-HITL-026、BE-HITL-027、BE-HITL-028、BE-HITL-029 |
+| BE-HITL-030 | 后端联调支持与测试证据包 | 新建 | 测试 | 高 | 2026-07-27 | BE-HITL-018、BE-HITL-019、BE-HITL-023、BE-HITL-024、BE-HITL-025、BE-HITL-026、BE-HITL-027、BE-HITL-028、BE-HITL-029 |
 
 ## Issue 明细
 
@@ -112,7 +111,7 @@
 | 截止日期 | 2026-07-10 |
 | 标签 | backend、prd、scope |
 | 描述 | 对 PRD revision 1959 做后端实现范围确认，标出已进入本期、已移出本期、仍需产品或安全确认但不阻塞实现的事项。 |
-| 验收标准 | 1. 明确 Workspace IM override 本期做，但不覆盖 IM Integration credential。<br>2. 明确导入导出 / DSL ID-Email 转换移出本期。<br>3. 明确 Web 独立页审批按审批主体鉴权，不再按统一 OTP 或 Magic Link。<br>4. 明确 form/task status 复用 `WAITING / SUBMITTED / TIMEOUT / EXPIRED`。<br>5. 输出后端 scope note，可贴到 `WTA-1255` 或项目文档。 |
+| 验收标准 | 1. 明确 Workspace IM override 本期做，但不覆盖 IM Integration credential。<br>2. 明确导入导出 / DSL ID-Email 转换移出本期。<br>3. 明确 Web 独立页审批按审批主体鉴权，不再按统一 OTP 或 Magic Link。<br>4. 明确 form/task status 复用 `WAITING / SUBMITTED / TIMEOUT / EXPIRED`。<br>5. 明确 IM sync 为手动触发，IM identity 只能从 sync 结果中搜索选择。<br>6. 明确审批主体仍只有 `workspace user` 与 `end_user` 两类；Service API / CLI 只是调用来源。<br>7. 明确 member 通知中心接口不进入本期范围。<br>8. 输出后端 scope note，可贴到 `WTA-1255` 或项目文档。 |
 
 ### BE-HITL-003：设计 Contact / IM / HITL 数据模型与迁移方案
 
@@ -384,7 +383,7 @@
 | 标签 | backend、audit、security |
 | 依赖 | BE-HITL-013、BE-HITL-016、BE-HITL-018 |
 | 描述 | 本期不提供审计 UI，但后端必须保留审计相关数据，使管理员可通过数据库查询回答通知对象、投递渠道、身份校验、提交人、提交结果和拒绝原因。 |
-| 验收标准 | 1. 记录 task 所属 workspace、app、workflow、workflow run、node。<br>2. 记录运行时通知对象、recipient snapshot、channels、delivery result。<br>3. 记录提交人身份类型、提交渠道、是否为 allowed approver、提交时间和结果。<br>4. 非指定人提交、身份校验失败、成员退出、账号禁用、task 已提交或过期等拒绝事件有记录。<br>5. secret 不入库；Email / IM 正文不完整进入审计；表单敏感内容按策略脱敏或摘要。 |
+| 验收标准 | 1. 记录 task 所属 workspace、app、workflow、workflow run、node。<br>2. 记录运行时通知对象、recipient snapshot、channels、delivery result。<br>3. 记录提交人身份类型、提交渠道、是否为 allowed approver、提交时间和结果。<br>4. 非指定人提交、身份校验失败、成员退出、账号禁用、task 已提交或过期等拒绝事件有记录。<br>5. secret 不入库；Email / IM 正文不完整进入审计；`raw dynamic Email`、`form snapshot`、`submission content` 保留原值，不做额外 HITL 级脱敏。 |
 
 ### BE-HITL-020：实现 Last Run / Debug 后端日志投影
 
@@ -400,7 +399,7 @@
 | 标签 | backend、last-run、debug |
 | 依赖 | BE-HITL-012、BE-HITL-018、BE-HITL-019 |
 | 描述 | 为前端 Last Run / Debug 提供后端数据投影，展示 resolved recipients、dynamic email raw value、delivery channel、sent / failed / skipped、failure reason、submitted_by、submitted_at。 |
-| 验收标准 | 1. Last Run API 可展示 recipient resolution records 和 delivery records。<br>2. Debug 变量池没有值时，后端支持手动变量值进入 resolver。<br>3. raw dynamic value 的可见范围与脱敏策略一致。<br>4. 输出结构稳定，可供前端联调。 |
+| 验收标准 | 1. Last Run API 可展示 recipient resolution records 和 delivery records。<br>2. Debug 变量池没有值时，后端支持手动变量值进入 resolver。<br>3. `raw dynamic Email`、`form snapshot`、`submission content` 在能看到运行日志的前提下原样展示，不做额外 HITL 级脱敏。<br>4. 输出结构稳定，可供前端联调。 |
 
 ### BE-HITL-021：实现节点级错误、warning 和 timeout / expired 分流
 
@@ -546,23 +545,7 @@
 | 描述 | PRD 将具体阈值交给 SaaS 团队确认；后端需要先提供可配置的基础 guardrail 能力，覆盖 OTP、dynamic Email、单 task 收件人数、发送量和发送日志。 |
 | 验收标准 | 1. OTP 重试、重发、校验失败可限流。<br>2. dynamic Email 发送和单 task recipient 数量有可配置上限入口。<br>3. 发送日志足以支持 abuse 排查。<br>4. 阈值未最终确认时可使用保守默认值或 feature flag，不阻塞后续调整。 |
 
-### BE-HITL-030：实现审批人是 member 的通知中心后端接口
-
-| 字段 | 内容 |
-|-|-|
-| Linear 操作 | 新建 |
-| 团队 | `WTA` |
-| 项目 | `HITL IM 支持` |
-| 里程碑 | `测试` |
-| 优先级 | 中 |
-| 状态 | 待办 |
-| 截止日期 | 2026-07-25 |
-| 标签 | backend、api、notification-center |
-| 依赖 | BE-HITL-013、BE-HITL-016 |
-| 描述 | 按 PRD Milestone 4 提供“审批人是 member”的最小通知中心后端接口：查询待处理 HITL task、查看 task 状态、提交 task。完整站内通知中心和 CLI 待办能力后续专题讨论。 |
-| 验收标准 | 1. 只覆盖 Dify member / workspace member 审批人。<br>2. 查询结果只返回当前登录用户可审批 task。<br>3. 提交仍复用动态授权和原子提交逻辑。<br>4. 不扩展完整 CLI 待办能力。 |
-
-### BE-HITL-031：后端联调支持与测试证据包
+### BE-HITL-030：后端联调支持与测试证据包
 
 | 字段 | 内容 |
 |-|-|
@@ -585,5 +568,5 @@
 | 前端 Contact / IM Integration / HITL 节点配置 / Last Run UI | 用户本次要求只包含后端工作。 |
 | QA 具体执行用例 | QA 可以单独维护测试明细；本清单只保留后端测试支持与证据包。 |
 | 导入导出 / DSL ID-Email 转换 | PRD revision 1959 明确移出本期 Milestone 4。 |
-| 完整站内通知中心和 CLI 待办能力 | PRD 仅建议优先考虑 member 通知中心接口，完整能力后续专题讨论。 |
+| member 通知中心接口、完整站内通知中心和 CLI 待办能力 | 已从本期范围移出，后续单独立项。 |
 | SaaS 除 Slack 外的其他 IM ISV / Marketplace 接入 | PRD 非目标；本期 SaaS 仅 Slack ISV / OAuth 与钉钉企业自建应用。 |

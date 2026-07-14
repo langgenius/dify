@@ -81,3 +81,13 @@
 #### Scenario: 普通 member 无法查看完整 Contact
 - **WHEN** a regular member tries to browse the workspace Contact list
 - **THEN** 系统 MUST 拒绝其查看完整 Contact，并 MUST 仅允许其访问分配给自己的 HITL task
+
+## Acceptance Coverage
+
+| 场景族 | 最小验收标准 | Primary owner |
+| --- | --- | --- |
+| 联系人分类与作用域 | 必须证明同 Organization 跨 workspace member 会落成 `Platform contact`，不会误分类成 `External contact` | Product + Backend Contact |
+| external contact 准入失败 | 必须覆盖“email 命中内部联系人时拒绝创建 external contact”与“workspace editor 无权限创建 external contact”两类失败路径 | Backend Contact + Web Console |
+| 成员生命周期与权限变化 | 必须覆盖 SaaS / CE 移除成员、EE `Keep as Platform contact`、账号禁用 / 删除后三类变化，并证明 pending task 权限与新配置选择资格都按当前状态重算 | Backend Contact |
+| IM sync 与 unmatched 处理 | 必须覆盖“手动 sync 后才能选择 IM identity”与“按 IM user ID / email 都未命中时进入 unmatched list”两类路径 | Backend Contact + Admin Console |
+| Contact 可见性 | 必须覆盖普通 member 无法浏览完整 Contact，只能访问分配给自己的 HITL task | Backend Contact + QA |

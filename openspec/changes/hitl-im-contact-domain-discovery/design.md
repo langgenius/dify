@@ -103,7 +103,7 @@
 
 | # | 假设 | 为什么是“未经确认” | 追溯来源 |
 | --- | --- | --- | --- |
-| 1 | raw dynamic Email、form snapshot、submission content 的展示范围和脱敏边界尚未最终确定。 | PRD 明确标注“本期暂不在此处收敛”。 | PRD §16.4 |
+| 1 | raw dynamic Email、form snapshot、submission content 本期保留原值，不做额外 HITL 级脱敏。产品运行记录面按现有权限原样展示；对应底层存储的直接查询同样可见原值；审计查询面也不额外做 HITL 级脱敏。 | 用户澄清 2026-07-14 | PRD §16.4；用户澄清 2026-07-14 |
 | 2 | SaaS abuse guardrails 的具体阈值和触发规则不在本 PRD 内部定义。 | PRD 把该主题留给 SaaS 团队单独确认。 | PRD §4.1、§14、§19 |
 | 3 | 跨 workspace Contact 搜索的权限模型只有“拥有 Manage contacts 权限的人可搜索”的粗口径，没有完整权限矩阵。 | PRD 只给出最小口径，未说明更多角色差异。 | PRD §14、§18.10 |
 
@@ -112,14 +112,13 @@
 | # | 问题 | 冲突 / 缺口说明 | 追溯来源 |
 | --- | --- | --- | --- |
 | 1 | IM 消息最小上下文与消息内容列表存在张力 | §9.2 前半段要求提供 App、Workflow、节点、来源、有效期等最小上下文；后半段 IM 消息内容列表又把多项具体字段划掉，导致最终消息体边界不清。 | PRD §9.2 |
-| 2 | 观测性与隐私边界同时被强调，但边界值未定 | 运行日志要求记录 raw variable value、delivery 结果、submission content；敏感信息处理章节又明确脱敏边界待定。 | PRD §10.5、§16.4 |
+| 2 | 观测性与隐私边界同时被强调，但上游 PRD 尚未回写已确认口径 | 本地已确认运行记录、底层直接查询和审计查询都保留原值，不做额外 HITL 级脱敏；当前差异只剩上游 PRD 尚未同步。 | PRD §10.5、§16.4 |
 
 ### 5. 需要产品或架构人员回答的问题
 
 | # | 问题 | 为什么必须回答 | 追溯来源 |
 | --- | --- | --- | --- |
 | 1 | IM / Email 中最小任务上下文哪些字段必须展示，哪些可以只在审批页展示？ | 当前 PRD 对“必须提供上下文”和“消息体字段精简”同时给出信号。 | PRD §9.2、§9.3 |
-| 2 | raw dynamic Email、form snapshot、submission content 在运行日志、Last Run、数据库审计中的可见范围和保留期是什么？ | 没有这个答案，日志与审计实现会直接碰撞隐私和安全边界。 | PRD §10.5、§16.4 |
 | 3 | 跨 workspace Contact 搜索的完整权限矩阵是什么？ | 当前只有“拥有 Manage contacts 权限的人可搜索”的粗粒度说法。 | PRD §14、§18.10 |
 | 4 | SaaS abuse guardrails 的具体阈值、拒绝策略和例外流程是什么？ | Dynamic Email、OTP 和多收件人通知都依赖这组限制。 | PRD §4.1、§14、§19 |
 
@@ -159,3 +158,123 @@
 - [跨 workspace Contact 搜索权限矩阵未细化] -> 在进入实现前补齐角色与搜索范围定义，避免把粗粒度权限直接落地成默认行为。
 - [敏感信息边界待定] -> 在日志、Last Run 和审计落地前增加安全评审，明确保留期、可见范围和脱敏规则。
 - [SaaS abuse guardrails 缺失] -> 在开放 dynamic Email 与 OTP 之前先补齐阈值、告警和拒绝策略，否则容易把运行时风险留到上线后处理。
+
+## 7. 将确认规则拆成实现 backlog
+
+本节只把已确认的业务规则拆成实现工作单元与退出条件，不引入实体、表结构、接口或模块设计。任何仍依赖第 5 节待决问题的事项，都显式保留 blocker。
+
+### 7.1 `contact-directory-governance` backlog
+
+| Backlog ID | 工作单元 | 覆盖规则 | 退出条件 | 依赖 |
+| --- | --- | --- | --- | --- |
+| `CDG-1` | 联系人分类与审批域作用域收敛 | `workspace contact`、`Platform contact`、`External contact` 分类；CE / SaaS / EE 作用域差异 | 新增与编辑流程都能区分三类联系人，且跨 workspace member 不会落成 `External contact` | 无 |
+| `CDG-2` | 成员生命周期与 pending task 重校验 | 成员移除、保留为 `Platform contact`、账号禁用 / 删除、历史 snapshot 保留 | 新配置选择资格和 pending task 提交资格均按当前成员状态重算，历史展示与审计仍能回溯 | 无 |
+| `CDG-3` | IM Integration 归属、workspace override 与优先级 | Organization 级唯一 IM channel、部署形态差异、workspace override 优先级 | Organization 级凭据与 workspace override 职责边界固定，运行时优先级可验证为 override > global identity > email fallback | 无 |
+| `CDG-4` | 手动 IM sync 与 unmatched 处理 | 手动同步、按 IM user ID / email 匹配、unmatched list、禁止自动 external contact | IM identity 只能从同步结果中选择；未命中对象进入 unmatched list；系统不会自动创建 `External contact` | 无 |
+| `CDG-5` | Contact 编辑权限与可见性限制 | owner / admin 可编辑、workflow editor 禁止创建 external contact、member 不可浏览完整 Contact | Contact 管理入口、workflow 配置入口和普通 member 访问入口都遵守同一权限边界 | `Q-3` |
+
+### 7.2 `hitl-recipient-resolution` backlog
+
+| Backlog ID | 工作单元 | 覆盖规则 | 退出条件 | 依赖 |
+| --- | --- | --- | --- | --- |
+| `HRR-1` | `RecipientSpecification` 配置边界固化 | 静态 Contact recipient、one-time Email、dynamic Email、current initiator 的配置态边界 | 节点配置只保存 specification，不把 delivery endpoint 或 proof 混进配置层 | 无 |
+| `HRR-2` | Dynamic Email 校验、canonicalization 与 Contact 升级 | string-only、normalized email、命中 Contact 升级、未命中走 one-time Email、非法值记录失败原因 | 运行时先校验再匹配 Contact，并对每个失败值留下可审计原因 | `Q-4` |
+| `HRR-3` | `ApprovalPrincipal` 归并与多来源命中记录 | static recipient、dynamic Email、current initiator、多渠道投递 | 同一人从多个来源命中时只保留一个 canonical principal，同时保留 source hit 和 delivery records | 无 |
+| `HRR-4` | 双渠道默认通知与无渠道失败 | IM + Email 并发发送、Email 必发、无可用渠道 fail fast | 有 IM binding 且有 email 的对象默认双发；所有 recipient 都无渠道时节点直接失败 | `Q-1`, `Q-4` |
+| `HRR-5` | Debug-only recipient override 与无通知对象错误 | `Only notify me during debug`、`No notified recipients available` | 调试运行只影响 debug session；正式运行配置不被改写；空 recipient 场景有确定错误 | 无 |
+
+### 7.3 `hitl-approval-access-control` backlog
+
+| Backlog ID | 工作单元 | 覆盖规则 | 退出条件 | 依赖 |
+| --- | --- | --- | --- | --- |
+| `HAC-1` | current initiator 解析与业务主体收敛 | WebApp、Service API request-scoped `end_user`、CLI resolvable / unavailable | current initiator 只能落在 `workspace user` 或 `end_user`，且 Service API / CLI 不会产生第三种主体 | 无 |
+| `HAC-2` | 审批鉴权链路按主体类型分流 | Dify 登录、Email OTP、IM identity 映射 | Web / IM / Email 三条鉴权链路都基于当前主体类型重校验，而不是历史 link | `Q-1` |
+| `HAC-3` | snapshot 保留与当前状态重校验 | task snapshot、成员状态变化、contact email 变化、IM binding 变化 | 打开页面与提交表单都按当前 task / identity / contact 状态判定，snapshot 仅用于展示与审计 | 无 |
+| `HAC-4` | 并发提交的单次成功语义 | `first success wins`、后到请求返回已完成 | 多渠道、多入口并发提交下只有一个请求能成功完成 task | 无 |
+| `HAC-5` | 审计最小事实与拒绝原因保留 | 通知对象、delivery attempt、访问尝试、身份校验结果、拒绝原因 | 审计数据足以回答“通知给了谁、谁访问过、谁提交了、为什么被拒绝” | `Q-2` |
+
+## 8. 术语边界的实现约束
+
+第 1.1 节给出了术语定义；本节把这些定义转成实现时必须遵守的边界，避免后续把四类对象混成一个数据结构。
+
+| 概念 | 创建时机 | 必须承载的信息 | 明确不能承载的信息 | 主要用途 |
+| --- | --- | --- | --- | --- |
+| `RecipientSpecification` | workflow editor 保存节点配置时 | 静态 Contact 引用、one-time Email、dynamic Email 表达式、`Allow Current Initiator to Approve` 这类配置态来源 | 运行时匹配出的 principal、具体 delivery channel、任何一次性的 OTP / link proof | 作为节点配置的输入，供 task 创建时解析 |
+| `ApprovalPrincipal` | task 创建时解析 recipient 后 | 当前 task 中真正被授权的业务主体、canonical key、命中来源列表 | 历史 IM card token、Email OTP、裸 URL token | 作为 allowed approver 的唯一业务主体和并发判重单位 |
+| `DeliveryEndpoint` | task 创建并决定投递渠道时 | 某个 principal 的 email、IM identity、web link 等具体通知落点，以及每次 delivery attempt 的结果 | 是否拥有审批权的最终判断、可替代 identity proof 的永久凭证 | 驱动 IM / Email / Web 投递和事后排错 |
+| `IdentityProof` | 打开审批页或提交审批时 | Dify 登录态、当前 IM identity、Email OTP 验证结果等“当前是谁”的证据 | task 创建时的 snapshot、静态 recipient 配置、单独等价于 allowed approver 的业务主体 | 参与当前时刻的访问控制与提交鉴权 |
+
+实现约束如下：
+
+1. `RecipientSpecification` 到 `ApprovalPrincipal` 的转换只能发生在 task 创建或重新解析 recipient 的业务流程里，不能在保存节点配置时偷跑。
+2. `DeliveryEndpoint` 可以一对多挂在一个 `ApprovalPrincipal` 下，但 `ApprovalPrincipal` 不能因为多渠道投递而被复制。
+3. `IdentityProof` 只能证明“当前访问者是谁”，不能绕过 `ApprovalPrincipal` 与 task 当前状态校验。
+4. 历史 snapshot 可以引用旧的 `RecipientSpecification` / `ApprovalPrincipal` / `DeliveryEndpoint`，但它们都不能单独授予新的提交权限。
+
+## 9. 联系人变化对 pending task 的影响真值表
+
+| 变化事件 | 历史 snapshot 保留 | 旧链接 / 旧页面可继续打开 | 旧 proof 可继续提交 | 新节点还能继续选择 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| SaaS / CE 成员被移出 workspace | 是 | 否 | 否 | 否 | 失去当前 workspace 成员资格后，pending task 与新配置都必须按当前成员状态拒绝 |
+| EE 成员被移出 workspace 且勾选 `Keep as Platform contact` | 是 | 是，但需重新鉴权 | 是，但需重新命中当前 `Platform contact` 身份 | 是，类型变为 `Platform contact` | 该变化不是删除主体，而是切换 Contact 类型；旧 snapshot 保留，当前授权按最新类型重算 |
+| Dify Account 被禁用或删除 | 是 | 否 | 否 | 否 | 禁用 / 删除后不再具备有效登录主体，pending task 与新配置都要失效 |
+| external contact 被删除 | 是 | 否 | 否 | 否 | 旧的 email proof 或 link 不能替代当前 contact 存在性 |
+| 删除后以相同 normalized email 重建 external contact | 是 | 否 | 否 | 是，作为新 contact | 新 contact 不继承旧 pending task 授权，必须作为新主体处理 |
+| contact email 变更 | 是 | 可以打开历史页面，但必须重新走当前 email 身份校验 | 否 | 是，后续通知使用新 email | 旧 email 对应的 OTP、proof、link 均失效；后续只能按当前有效 email 身份继续 |
+| IM Binding 修改 | 是 | 可以打开历史页面，但 IM 卡片提交需映射到当前 binding | 否 | 是，后续通知使用新 binding | 历史 delivery record 保留，但旧 IM identity 不能继续提交 |
+
+## 10. 首批验收用例编组
+
+以下用例是进入实现前优先拉通的第一批验收集，用于覆盖 `tasks.md` 4.2 要求的高风险场景。
+
+| Batch ID | 场景 | 覆盖能力域 | 主要 owner | 验收重点 |
+| --- | --- | --- | --- | --- |
+| `A-1` | 手动 IM sync 后才能选择 IM identity，未命中对象进入 unmatched list | `contact-directory-governance` | Product + Backend Contact | 不允许自由文本 IM user ID；未命中对象不会自动变成 `External contact` |
+| `A-2` | workflow editor 无法创建 external contact，普通 member 无法浏览完整 Contact | `contact-directory-governance` | Backend Contact + Web Console | Contact 编辑权限与可见性限制在所有入口一致生效 |
+| `A-3` | Service API 显式提供 `user` 时，current initiator 物化为 request-scoped `end_user` | `hitl-approval-access-control` | Backend HITL Runtime | 不回退到 API token 持有者身份；allowed approver 基于 request-scoped `end_user` 计算 |
+| `A-4` | CLI 无法解析为 `workspace user` / `end_user` 且无其他 recipient 时，节点直接失败 | `hitl-approval-access-control` | Backend HITL Runtime | current initiator unavailable 时不会创建等待中的 task |
+| `A-5` | external contact 在同一请求里完成 OTP 验证与表单提交 | `hitl-approval-access-control` | Backend HITL Runtime + Web Approval | OTP 验证成功后仍要继续做 allowed approver 与 task 状态校验 |
+| `A-6` | external contact 删除后，旧 pending task 链接与 proof 失效 | `hitl-approval-access-control` | Backend HITL Runtime | 历史 snapshot 保留，但删除后的主体不能继续打开或提交旧 task |
+| `A-7` | 以相同 normalized email 重建 external contact，不继承旧 pending task 授权 | `hitl-approval-access-control` | Backend HITL Runtime | 新旧 contact 身份严格隔离，旧 task 不会被新 contact 接管 |
+| `A-8` | contact email 变更后，旧 email proof / OTP / link 失效 | `hitl-approval-access-control` | Backend HITL Runtime + Security | 当前有效 email 成为唯一可用的 Email proof 来源 |
+| `A-9` | IM 与 Email 并发提交同一 task，后到请求收到已完成提示 | `hitl-approval-access-control` | Backend HITL Runtime + QA | `first success wins` 在双渠道并发下稳定成立 |
+
+## 11. 上游 PRD 冲突决策矩阵
+
+本节只记录“上游 PRD 当前写法”与“本地 domain discovery 结论”之间的冲突或错位，用于用户决策。它不是回写动作，也不替代上游 PRD。
+
+| 冲突 ID | 上游 PRD 当前口径 | 本地 domain discovery 结论 | 若不决策的风险 | 需要谁拍板 |
+| --- | --- | --- | --- | --- |
+| `C-1` | `5.0` 仍写“对现有 `Human Input` 节点进行原地改造”，且围绕旧节点升级描述迁移与兼容 | 用户已裁决：代码实现层面使用新节点与新 DSL；产品 UI 层面不同时展示新旧节点，继续沿用 `Human Input` 命名。迁移策略为：不含 HITLv1 的 workflow 只能添加 HITLv2；含 HITLv1 的 workflow 允许继续编辑和添加 HITLv1；提供 v1 -> v2 升级能力；CE / EE 提供批量迁移脚本；legacy 可见性 flag 仅作为可选后续项 | 若本地材料不统一到“双层口径”，节点策略、DSL、迁移、回滚和前后端入口仍会被误读成单一叙事 | 已由用户拍板，后续只需保持本地材料一致 |
+| `C-2` | `6.3` 仍保留“具体参数待确定”，没有把 IM identity 明确收敛到“手动 IM sync 结果中搜索选择” | 用户已确认本地结论成立：一期不允许自由文本 IM user ID；只能从手动 sync 结果中搜索选择，且搜索至少支持 IM user ID。当前剩余差异仅是上游 PRD 尚未更新 | 若后续本地材料回退到“自由输入”，管理后台、workspace Contact、provider sync 与审计会再次分叉 | 已由用户拍板，本地保持一致即可 |
+| `C-3` | `8.5` 虽补了 API / CLI initiator 说明，但仍停留在“若调用方有明确身份”这类宽口径 | 用户已裁决为 4 条明确规则：`Service API` 必须显式提供 `user`；该 `user` 物化为 request-scoped `end_user`；`CLI` 只有在可解析为 `workspace user` / `end_user` 时 initiator 才可用；若 initiator 不可用且无其他 recipients，节点直接报错。审批主体仍只有 `workspace user` 与 `end_user` 两类 | 若本地材料不按四条规则统一，recipient canonicalization、审计、无 recipient 报错路径仍会各自发明 caller identity 规则 | 已由用户拍板，后续只需保持本地材料一致 |
+| `C-4` | `12.3` 仍写“可优先考虑提供审批人是 member 的通知中心接口” | 用户已裁决：通知中心不进入本期；完整站内通知中心与 CLI 待办后续专题讨论 | 若本地范围说明不收口，里程碑、后端 issue 拆分与 QA 范围会继续把通知中心误当成本期 deliverable | 已由用户拍板，后续只需保持本地材料一致 |
+| `C-5` | `18.10` 只有粗粒度 `Manage contacts` 口径，尚未固定最小可交付权限边界 | 用户已接受本地最小权限口径：owner / admin 默认可编辑 Contact；workflow editor 不能直接创建 external contact；regular member 不能查看完整 Contact | 若本地材料不保持一致，Contact 管理、节点配置、member 访问和跨 workspace 搜索范围会继续在实现层临时裁剪 | 已由用户拍板，后续只需保持本地材料一致 |
+| `C-6` | `18.2` / `4.2` 仍保留 “member 离开后是否转 external contact” 的历史痕迹与分支文案 | 用户已裁决：removed member 不自动转 external contact；新的 HITL 节点配置不能再选择该成员；历史 workflow 引用与 task snapshot 保留；所有 pending task 在打开页面和提交表单时都必须重新校验当前 membership 与审批资格；若该成员已不属于当前 workspace，则旧 pending task 不允许继续审批或提交 | 若本地材料不统一到这套生命周期口径，审计解释和 pending task submit authorization 仍会在“内部成员”与“外部邮箱对象”之间混淆 | 已由用户拍板，后续只需保持本地材料一致 |
+
+推荐的最小决策顺序：
+
+1. `C-1`、`C-2`、`C-3`、`C-4`、`C-5` 已由用户裁决；本地材料应统一按这些结论更新。
+2. 当前本地冲突矩阵里的 `C-1` 到 `C-6` 都已由用户拍板；剩余未决项集中在外部 owner 确认，而不是本地规则分歧。
+
+## 12. 走查清单（4.1 预组织）
+
+本节把 `4.1` 需要的 cross-functional walkthrough 预先组织成 checklist。它不代表已经完成走查，只是把“谁需要确认什么”压缩成最少列表，便于用户逐项决策。
+
+| 走查项 | 关联规则 / 场景 | 主要 owner | 当前状态 | 需要确认的最小问题 |
+| --- | --- | --- | --- | --- |
+| `R-1` 最小任务上下文字段 | `Q-1`、事实 `#29`、场景 `4/9/10/16` | Product + Design | `partially_confirmed_by_user_pending_field_inventory` | 已确认渠道策略：`Email` 使用 `Message Template`；`IM` 在表单可完整映射到 IM 卡片时使用 IM 卡片，否则使用 `Message Template`；`Web` 始终提供完整表单详情入口。仍待明确“最小任务上下文字段”清单本身 |
+| `R-2` 敏感信息可见范围 | `Q-2`、冲突 `#2`、`A-5/A-6/A-8` | Security + Backend | `confirmed_by_user_pending_upstream_sync` | 已确认：对 `raw dynamic Email`、`form snapshot`、`submission content`，本期保留原值，不做额外 HITL 级脱敏。产品运行记录面按现有权限原样展示；对应底层存储的直接查询同样可见原值；审计查询面也不额外做 HITL 级脱敏 |
+| `R-3` Contact 最小权限边界 | `CDG-5`、`A-2`、冲突 `C-5` | Product + RBAC | `confirmed_by_user_pending_external_matrix` | 已接受“owner / admin 可编辑、workflow editor 不能建 external、member 不能看完整 Contact”的最小口径；仍待补跨 workspace 搜索的详细矩阵 |
+| `R-4` 手动 IM sync 与 IM identity 选择 | `CDG-4`、`A-1`、冲突 `C-2` | Product + Admin Console | `confirmed_by_user_pending_upstream_sync` | 已接受“手动 sync + 从 sync 结果搜索选择 IM identity + 禁止自由文本 IM user ID”；上游 PRD 尚未更新 |
+| `R-5` Current initiator 主体模型 | `HAC-1`、`A-3/A-4`、冲突 `C-3` | Product + Architecture | `confirmed_by_user_pending_upstream_sync` | 已接受四条明确规则：Service API 显式 `user`、物化为 request-scoped `end_user`、CLI 仅在可解析时可用、无 initiator 且无 recipients 直接报错 |
+| `R-6` removed member 生命周期 | `CDG-2`、真值表 `§9`、冲突 `C-6` | Product + Architecture | `confirmed_by_user_pending_upstream_sync` | 已接受：removed member 不自动转 external contact；新配置不可再选择；历史 workflow 引用与 task snapshot 保留；所有 pending task 在打开页面和提交表单时重新校验 membership 与审批资格；若该成员已不属于当前 workspace，则旧 pending task 不允许继续审批或提交 |
+| `R-7` 通知中心范围 | 冲突 `C-4`、PRD `12.3` | Product | `confirmed_by_user_pending_upstream_sync` | 已确认本期完全移出 member 通知中心接口、完整站内通知中心和 CLI 待办能力 |
+| `R-8` 节点策略 | 冲突 `C-1`、周边材料中的新节点口径 | User + Product + Architecture | `confirmed_by_user_pending_material_sync` | 已确认“双层口径”：代码实现用新节点 / 新 DSL；产品 UI 不同时展示新旧节点，沿用 `Human Input` 命名；迁移策略按用户给定方案执行 |
+| `R-9` abuse guardrails | `Q-4`、`A-5`、`BE-HITL-029` | SaaS + Security | `partially_confirmed_by_user_pending_numeric_constants` | 已确认第一步先做频率限制；具体阈值先以代码层常量落地。仍待补齐这些常量的具体数值，以及例外流程和拒绝策略 |
+
+建议的走查顺序：
+
+1. 先把已拍板的 `R-8`、`R-4`、`R-5`、`R-7`、`R-3`、`R-6` 同步到所有 repo-local review materials。
+2. 再收口 `R-1` 的字段清单，而不是继续停留在渠道路由层。
+3. 仍需补的只剩 `R-1` 的字段清单、`R-3` 的跨 workspace 搜索细节矩阵，以及 `R-9` 的第一版频率限制常量与拒绝策略。

@@ -32,13 +32,14 @@
 
 | 决策项 | 状态 / 截止日期 | 影响范围 | 排期处理 |
 |-|-|-|-|
-| 新节点还是原 Human Input 原地改造 | 已确定 | DSL、迁移、回滚、前端入口、后端 runtime path | 使用新节点和新 DSL 定义；保留旧节点代码和逻辑不变；Workflow 执行时根据 DSL 中的 node version 选择实现。 |
+| 新节点还是原 Human Input 原地改造 | 已确定 | DSL、迁移、回滚、前端入口、后端 runtime path | 代码实现使用新节点和新 DSL；产品 UI 不同时展示新旧节点，继续沿用 `Human Input` 命名。迁移策略为：不含 HITLv1 的 workflow 只能添加 v2；含 HITLv1 的 workflow 允许继续编辑和添加 v1；提供 v1 -> v2 升级能力；SaaS 需用户手动确认；CE / EE 提供批量迁移脚本。 |
 | External / one-time / dynamic Email 鉴权方式 | 已确定 | Email 审批页、OTP、风控、审计 | 使用 Email OTP；现有 Email Web Form URL token 继续用于定位表单，提交表单时必须携带 OTP。 |
-| Dynamic Email 是否反查 Account / Contact | 已确定 | recipient resolution、去重、审计、allowed approver | 不反查 Account / Contact，只发送邮件；审计记录变量值、校验结果和邮件投递结果。 |
-| Current initiator identity schema | 已确定 | WebApp、Service API、CLI、匿名 session、去重、审计 | WebApp、Service API 和 CLI 都有身份，均可作为 current initiator；匿名 WebApp session 仅在原会话内有效。 |
-| RBAC 权限矩阵 | 已确定 | Contact Directory、Human Roster、IM credential、IM binding | 默认 workspace admin 管理 Human Roster；enterprise admin 管理 EE Contact Directory 与 IM Integration。 |
+| Dynamic Email 是否反查 Account / Contact | 已确定 | recipient resolution、去重、审计、allowed approver | 运行时先按 normalized email 匹配 Contact；命中时升级为 Contact recipient，未命中时才按 one-time Email 处理。 |
+| Current initiator identity schema | 已确定 | WebApp、Service API、CLI、去重、审计 | 审批主体仍只有 `workspace user` / `end_user` 两类；Service API 必须显式提供 `user` 并物化为 request-scoped `end_user`；CLI 只有在可解析为 `workspace user` / `end_user` 时 initiator 才可用。 |
+| RBAC 权限矩阵 | 部分确定 | Contact Directory、Human Roster、IM credential、IM binding | 当前只冻结最小权限口径：owner / admin 管理 Contact；workflow editor 不能创建 external contact；regular member 不能查看完整 Contact。更细矩阵后续补齐。 |
 | Provider 能力矩阵 | 已确定 | 卡片审批、fallback URL、IM 身份校验、通讯录同步 | 所有首发 provider 都支持通讯录同步；除企业微信外，其余 provider 基本可映射 Dify HITL 表单页。企业微信按有限交互或 Web fallback 验收。 |
-| SaaS abuse guardrails | 已确定 | dynamic Email、发送量、OTP、租户限流、发送日志 | 首发做最小限流和日志记录；有时间则追加 workspace 级 email service 配置，第一期只支持 Resend。 |
+| 通知中心接口 | 已移出本期 | member inbox、CLI 待办、站内待办聚合 | 不作为本期里程碑或验收条件；后续专题讨论。 |
+| SaaS abuse guardrails | 部分确定 | dynamic Email、发送量、OTP、租户限流、发送日志 | 后端先提供最小限流和发送日志能力；第一版阈值允许先以内置代码常量实现，但具体常量、拒绝策略与例外流程仍需 SaaS 团队确认。 |
 
 ## 主排期计划表
 
@@ -59,7 +60,7 @@
 | 功能冻结 | 2026-07-24 | All | 停止新增功能，只接受 P0/P1 缺陷、安全问题和 provider 兼容修复。 | Provider readiness gate 完成；未通过 provider 从 7 月底 ready-to-merge 范围移出或降级到 fallback。 |
 | 前端 RC 稳定与 QA handoff | 2026-07-25 至 2026-07-26 | Frontend、Backend、Provider owners | 收敛 provider 配置入口、fallback 状态、HITL 节点配置、Roster、Contact Directory、Web approval OTP、Last Run 展示；完成前端 smoke、i18n、type-check、已知限制和可测 build。 | 2026-07-26 前交付前端 RC build、feature flag / 配置说明、smoke checklist、关键页面截图或录屏，QA 可在 2026-07-27 接手。 |
 | 集成 QA | 2026-07-27 至 2026-07-28 | QA、Backend、Frontend、Provider owners | 覆盖 Roster、Email、Web approval、各 provider、debug、migration、RBAC、异常状态、并发提交。 | RC1 缺陷清零到可接受阈值；所有 P0/P1 关闭。 |
-| 安全与 abuse hardening | 2026-07-24 至 2026-07-29 | Security、SaaS、Backend | Email OTP 有效期、重试次数、提交校验、最小限流、发送日志、发送人数限制、dynamic Email 限制、secret redaction、审计敏感字段处理；有时间则补 workspace 级 Resend email service 配置。 | Security sign-off；SaaS guardrail 生效；敏感信息不出日志；Resend 配置不作为 7.31 merge 硬门禁。 |
+| 安全与 abuse hardening | 2026-07-24 至 2026-07-29 | Security、SaaS、Backend | Email OTP 有效期、重试次数、提交校验、最小限流、发送日志、发送人数限制、dynamic Email 限制、secret redaction、审计敏感字段处理；有时间则补 workspace 级 Resend email service 配置。 | Security sign-off；SaaS guardrail 生效；secret 不出日志；对 `raw dynamic Email` / `form snapshot` / `submission content` 不新增 HITL 级脱敏；Resend 配置不作为 7.31 merge 硬门禁。 |
 | Merge readiness | 2026-07-29 至 2026-07-30 | Backend、Frontend、Docs、Product、Security | PR 描述、配置文档、provider 配置指南、迁移说明、回滚方案、监控告警建议、已知限制说明。 | Ready-to-merge review 通过；后续灰度、发布和回滚责任人明确。 |
 | Final PR hardening | 2026-07-30 至 2026-07-31 | Backend、Frontend、QA、Provider owners | 处理最后一轮 code review、补齐测试证据、确认 CI、provider sandbox E2E、migration dry run 和安全准入。 | 2026-07-31 达到 PR ready to merge；SaaS 生产上线另行排期。 |
 

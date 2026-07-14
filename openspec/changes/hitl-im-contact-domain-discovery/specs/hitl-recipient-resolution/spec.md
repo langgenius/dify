@@ -81,3 +81,13 @@ HITL 节点中的静态通知对象 MUST 支持两类配置：从当前 workspac
 #### Scenario: 没有通知对象也没有可用 initiator
 - **WHEN** a node has no notified recipients and current initiator cannot be used
 - **THEN** 系统 MUST fail fast with `No notified recipients available`
+
+## Acceptance Coverage
+
+| 场景族 | 最小验收标准 | Primary owner |
+| --- | --- | --- |
+| 配置态与运行时对象分层 | 必须证明节点配置只保存 `RecipientSpecification`，task 创建后才产生 `ApprovalPrincipal` 与 `DeliveryEndpoint` | Backend HITL Runtime |
+| Dynamic Email 校验与升级 | 必须覆盖命中 Contact 升级、未命中走 one-time Email、非法 email 被跳过、unsupported type 直接失败四类路径 | Backend HITL Runtime + QA |
+| canonicalization 与去重 | 必须覆盖“static recipient + current initiator 命中同一人”与“相同 normalized email 重复命中”两类归并场景，并证明只保留一个 allowed approver | Backend HITL Runtime |
+| 双渠道投递 | 必须覆盖“IM + Email 并行发送”“无 IM binding 仅发 Email”“所有 recipient 无渠道时节点失败”三类路径 | Backend HITL Runtime + Notification QA |
+| Debug override | 必须覆盖 debug run 替换实际通知对象且不改写正式运行配置 | Backend HITL Runtime + Web Workflow |

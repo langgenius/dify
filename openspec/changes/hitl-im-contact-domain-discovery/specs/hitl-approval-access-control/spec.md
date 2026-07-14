@@ -109,3 +109,14 @@
 #### Scenario: 记录多渠道 delivery attempt
 - **WHEN** a recipient receives both IM and Email for the same task
 - **THEN** 系统 MUST 分别记录两条 delivery attempt，并 MUST 将它们关联到同一个 canonical approver 和同一个 task
+
+## Acceptance Coverage
+
+| 场景族 | 最小验收标准 | Primary owner |
+| --- | --- | --- |
+| current initiator 解析 | 必须覆盖 WebApp 发起者、Service API request-scoped `end_user`、CLI 可解析、CLI unavailable 四类入口，并证明业务主体仍只有 `workspace user` / `end_user` 两类 | Backend HITL Runtime |
+| Web / IM / Email 鉴权链路 | 必须覆盖 Platform contact 走 Dify 登录、external contact 走 Email OTP、IM 卡片按当前 IM binding 重新映射三类路径 | Backend HITL Runtime + Web Approval |
+| OTP 同步提交 | 必须覆盖 external contact 在同一请求里完成 OTP 验证与表单提交，且提交阶段仍会执行 task 状态与 allowed approver 校验 | Backend HITL Runtime + Security |
+| 权限变化后的 pending task 重校验 | 必须覆盖成员退出 workspace、IM binding 修改、external contact 删除、同邮箱重建、contact email 变更、task `TIMEOUT` / `EXPIRED` 六类路径 | Backend HITL Runtime + QA |
+| 并发提交 | 必须覆盖 IM / Email 双渠道并发提交，并证明后到请求收到 `This task has already been completed.` | Backend HITL Runtime + QA |
+| 审计与拒绝原因 | 必须覆盖未授权提交尝试与多渠道 delivery attempt 两类记录，能事后回答“通知给了谁、谁访问过、谁提交了、为什么被拒绝” | Backend HITL Runtime + Security |
