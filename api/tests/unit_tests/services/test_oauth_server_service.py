@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 import uuid
-from types import SimpleNamespace
+from collections.abc import Iterator
 from typing import cast
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from pytest_mock import MockerFixture
-from sqlalchemy.engine import Engine
+from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
-import services.oauth_server as oauth_server_module
+from models.engine import db
 from models.model import OAuthProviderApp
 from services.oauth_server import (
     OAUTH_ACCESS_TOKEN_EXPIRES_IN,
@@ -28,14 +27,18 @@ from services.oauth_server import (
 
 
 @pytest.fixture
-def oauth_db(sqlite_engine: Engine, sqlite_session: Session, mocker: MockerFixture) -> Session:
-    """Route service-owned sessions to the same SQLite engine used for seeding."""
+def oauth_db() -> Iterator[Session]:
+    """Provide the production database extension with an isolated SQLite provider table."""
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
 
-    mocker.patch.object(oauth_server_module, "db", SimpleNamespace(engine=sqlite_engine))
-    return sqlite_session
+    with app.app_context():
+        OAuthProviderApp.__table__.create(db.engine)
+        with Session(db.engine, expire_on_commit=False) as session:
+            yield session
 
 
-@pytest.mark.parametrize("sqlite_session", [(OAuthProviderApp,)], indirect=True)
 class TestOAuthServerServiceGetProviderApp:
     """Verify provider lookup against a real SQLAlchemy database."""
 
