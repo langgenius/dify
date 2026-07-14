@@ -8,6 +8,14 @@ Global command palette that coordinates detached dialog triggers, typed search, 
 - `components`: Goto Anything empty and footer presentation.
 - `dialog-handle`: The detached Base UI Dialog handle shared by triggers and the lazy dialog root.
 
+## State Ownership
+
+- The detached Dialog handle owns open state and trigger focus restoration.
+- The dialog component owns the transient search input and selected plugin installer state.
+- TanStack Query owns remote search lifecycle and cache state for each generated query contract.
+- Autocomplete owns option registration, highlighting, keyboard navigation, and item activation.
+- ScrollArea Viewport is the only results scroll container; Autocomplete List remains the listbox.
+
 ## External Modules
 
 - `app/components/app`: Application result icons and current application state used by workflow commands.

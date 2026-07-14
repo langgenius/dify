@@ -5,6 +5,7 @@ import type { Plugin } from '../plugins/types'
 import type { ActionItem, RecentSearchResult, SearchResult } from './actions/types'
 import {
   Autocomplete,
+  AutocompleteCollection,
   AutocompleteGroup,
   AutocompleteGroupLabel,
   AutocompleteInput,
@@ -22,6 +23,13 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import {
+  ScrollAreaContent,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -433,134 +441,140 @@ function GotoAnythingDialog() {
 
               <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
 
-              <div aria-busy={isLoading || undefined}>
-                {emptyStateVariant === 'loading' && (
-                  <div className="h-[240px] overflow-y-auto">
-                    <EmptyState variant="loading" />
-                  </div>
-                )}
+              <ScrollAreaRoot
+                aria-busy={isLoading || undefined}
+                className="relative h-[240px] min-h-0 overflow-hidden"
+              >
+                <ScrollAreaViewport className="scroll-py-1 overscroll-contain">
+                  <ScrollAreaContent
+                    className="min-h-full w-full max-w-full"
+                    style={{ minWidth: '100%' }}
+                  >
+                    {emptyStateVariant === 'loading' && <EmptyState variant="loading" />}
 
-                {emptyStateVariant === 'error' && (
-                  <div className="h-[240px] overflow-y-auto">
-                    <EmptyState variant="error" error={error} />
-                  </div>
-                )}
+                    {emptyStateVariant === 'error' && <EmptyState variant="error" error={error} />}
 
-                {!isLoading && !isError && isCommandsMode && autocompleteResultCount === 0 && (
-                  <div className="h-[240px] overflow-y-auto">
-                    <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
-                      <div>
-                        <div className="text-sm font-medium text-text-tertiary">
-                          {t(($) => $['gotoAnything.noMatchingCommands'], { ns: 'app' })}
-                        </div>
-                        <div className="mt-1 text-xs text-text-quaternary">
-                          {t(($) => $['gotoAnything.tryDifferentSearch'], { ns: 'app' })}
+                    {!isLoading && !isError && isCommandsMode && autocompleteResultCount === 0 && (
+                      <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
+                        <div>
+                          <div className="text-sm font-medium text-text-tertiary">
+                            {t(($) => $['gotoAnything.noMatchingCommands'], { ns: 'app' })}
+                          </div>
+                          <div className="mt-1 text-xs text-text-quaternary">
+                            {t(($) => $['gotoAnything.tryDifferentSearch'], { ns: 'app' })}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                )}
+                    )}
 
-                {!isLoading && !isError && isCommandsMode && autocompleteResultCount > 0 && (
-                  <AutocompleteList className="h-[240px] max-h-none p-0">
-                    <AutocompleteGroup items={commandOptions}>
-                      <AutocompleteGroupLabel className="px-4 pt-3 pb-2 text-left text-sm font-medium text-text-secondary">
-                        {isSlashMode
-                          ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
-                          : t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
-                      </AutocompleteGroupLabel>
-                      {commandOptions.map((option) => (
-                        <AutocompleteItem
-                          key={option.shortcut}
-                          value={option}
-                          className="mx-4 p-2"
-                          onClick={() => selectOption(option)}
-                        >
-                          <span className="min-w-18 text-left font-mono text-xs text-text-tertiary">
-                            {option.shortcut}
-                          </span>
-                          <span className="ml-3 text-sm text-text-secondary">
+                    {!isLoading && !isError && isCommandsMode && autocompleteResultCount > 0 && (
+                      <AutocompleteList className="max-h-none overflow-visible p-0">
+                        <AutocompleteGroup items={commandOptions}>
+                          <AutocompleteGroupLabel className="px-4 pt-3 pb-2 text-left text-sm font-medium text-text-secondary">
                             {isSlashMode
-                              ? t(
-                                  ($) =>
-                                    $[
-                                      slashCommandDescriptionKeys[
-                                        option.shortcut as keyof typeof slashCommandDescriptionKeys
-                                      ] || option.description
-                                    ],
-                                  { ns: 'app' },
-                                )
-                              : t(
-                                  ($) =>
-                                    $[
-                                      actionDescriptionKeys[
-                                        option.shortcut as keyof typeof actionDescriptionKeys
-                                      ]
-                                    ],
-                                  { ns: 'app' },
-                                )}
-                          </span>
-                        </AutocompleteItem>
-                      ))}
-                    </AutocompleteGroup>
-                  </AutocompleteList>
-                )}
-
-                {!isLoading && !isError && !isCommandsMode && emptyStateVariant && (
-                  <div className="h-[240px] overflow-y-auto">
-                    <EmptyState
-                      variant={emptyStateVariant}
-                      searchMode={searchMode}
-                      actions={actions}
-                    />
-                  </div>
-                )}
-
-                {!isLoading &&
-                  !isError &&
-                  !isCommandsMode &&
-                  !emptyStateVariant &&
-                  autocompleteResultCount > 0 && (
-                    <AutocompleteList className="h-[240px] max-h-none p-0">
-                      {Object.entries(groupedResults).map(([type, results]) => (
-                        <AutocompleteGroup key={type} items={results}>
-                          <AutocompleteGroupLabel className="px-4 pt-3 pb-2 text-text-secondary capitalize">
-                            {t(
-                              ($) =>
-                                $[
-                                  groupLabelKeys[type as keyof typeof groupLabelKeys] || `${type}s`
-                                ],
-                              { ns: 'app' },
-                            )}
+                              ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
+                              : t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
                           </AutocompleteGroupLabel>
-                          {results.map((result) => (
-                            <AutocompleteItem
-                              key={`${result.type}-${result.id}`}
-                              value={result}
-                              className="mx-2 gap-3 p-3 will-change-[background-color]"
-                              onClick={() => selectOption(result)}
-                            >
-                              {result.icon}
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate font-medium text-text-secondary">
-                                  {result.title}
-                                </div>
-                                {result.description && (
-                                  <div className="mt-0.5 truncate text-xs text-text-quaternary">
-                                    {result.description}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="text-xs text-text-quaternary capitalize">
-                                {result.type}
-                              </div>
-                            </AutocompleteItem>
-                          ))}
+                          <AutocompleteCollection>
+                            {(option: CommandOption) => (
+                              <AutocompleteItem
+                                key={option.shortcut}
+                                value={option}
+                                className="mx-4 p-2"
+                                onClick={() => selectOption(option)}
+                              >
+                                <span className="min-w-18 text-left font-mono text-xs text-text-tertiary">
+                                  {option.shortcut}
+                                </span>
+                                <span className="ml-3 text-sm text-text-secondary">
+                                  {isSlashMode
+                                    ? t(
+                                        ($) =>
+                                          $[
+                                            slashCommandDescriptionKeys[
+                                              option.shortcut as keyof typeof slashCommandDescriptionKeys
+                                            ] || option.description
+                                          ],
+                                        { ns: 'app' },
+                                      )
+                                    : t(
+                                        ($) =>
+                                          $[
+                                            actionDescriptionKeys[
+                                              option.shortcut as keyof typeof actionDescriptionKeys
+                                            ]
+                                          ],
+                                        { ns: 'app' },
+                                      )}
+                                </span>
+                              </AutocompleteItem>
+                            )}
+                          </AutocompleteCollection>
                         </AutocompleteGroup>
-                      ))}
-                    </AutocompleteList>
-                  )}
-              </div>
+                      </AutocompleteList>
+                    )}
+
+                    {!isLoading && !isError && !isCommandsMode && emptyStateVariant && (
+                      <EmptyState
+                        variant={emptyStateVariant}
+                        searchMode={searchMode}
+                        actions={actions}
+                      />
+                    )}
+
+                    {!isLoading &&
+                      !isError &&
+                      !isCommandsMode &&
+                      !emptyStateVariant &&
+                      autocompleteResultCount > 0 && (
+                        <AutocompleteList className="max-h-none overflow-visible p-0">
+                          {Object.entries(groupedResults).map(([type, results]) => (
+                            <AutocompleteGroup key={type} items={results}>
+                              <AutocompleteGroupLabel className="px-4 pt-3 pb-2 text-text-secondary capitalize">
+                                {t(
+                                  ($) =>
+                                    $[
+                                      groupLabelKeys[type as keyof typeof groupLabelKeys] ||
+                                        `${type}s`
+                                    ],
+                                  { ns: 'app' },
+                                )}
+                              </AutocompleteGroupLabel>
+                              <AutocompleteCollection>
+                                {(result: SearchResult) => (
+                                  <AutocompleteItem
+                                    key={`${result.type}-${result.id}`}
+                                    value={result}
+                                    className="mx-2 gap-3 p-3"
+                                    onClick={() => selectOption(result)}
+                                  >
+                                    {result.icon}
+                                    <div className="min-w-0 flex-1">
+                                      <div className="truncate font-medium text-text-secondary">
+                                        {result.title}
+                                      </div>
+                                      {result.description && (
+                                        <div className="mt-0.5 truncate text-xs text-text-quaternary">
+                                          {result.description}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-text-quaternary capitalize">
+                                      {result.type}
+                                    </div>
+                                  </AutocompleteItem>
+                                )}
+                              </AutocompleteCollection>
+                            </AutocompleteGroup>
+                          ))}
+                        </AutocompleteList>
+                      )}
+                  </ScrollAreaContent>
+                </ScrollAreaViewport>
+                <ScrollAreaScrollbar>
+                  <ScrollAreaThumb />
+                </ScrollAreaScrollbar>
+              </ScrollAreaRoot>
 
               <Footer
                 resultCount={autocompleteResultCount}
