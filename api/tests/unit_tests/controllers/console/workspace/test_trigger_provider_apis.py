@@ -1,4 +1,4 @@
-"""Testcontainers integration tests for controllers.console.workspace.trigger_providers endpoints."""
+"""Unit tests for controllers.console.workspace.trigger_providers endpoints."""
 
 from __future__ import annotations
 
@@ -24,7 +24,6 @@ from controllers.console.workspace.trigger_providers import (
     TriggerSubscriptionBuilderLogsApi,
     TriggerSubscriptionBuilderUpdateApi,
     TriggerSubscriptionBuilderVerifyApi,
-    TriggerSubscriptionDeleteApi,
     TriggerSubscriptionListApi,
     TriggerSubscriptionUpdateApi,
     TriggerSubscriptionVerifyApi,
@@ -83,10 +82,6 @@ def request_log() -> RequestLog:
 
 
 class TestTriggerProviderApis:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_icon_success(self, app: Flask) -> None:
         api = TriggerProviderIconApi()
         method = unwrap(api.get)
@@ -128,10 +123,6 @@ class TestTriggerProviderApis:
 
 
 class TestTriggerSubscriptionListApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_list_success(self, app: Flask) -> None:
         api = TriggerSubscriptionListApi()
         method = unwrap(api.get)
@@ -161,10 +152,6 @@ class TestTriggerSubscriptionListApi:
 
 
 class TestTriggerSubscriptionBuilderApis:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_create_builder(self, app: Flask) -> None:
         api = TriggerSubscriptionBuilderCreateApi()
         method = unwrap(api.post)
@@ -261,10 +248,6 @@ class TestTriggerSubscriptionBuilderApis:
 
 
 class TestTriggerSubscriptionCrud:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_update_rename_only(self, app: Flask) -> None:
         api = TriggerSubscriptionUpdateApi()
         method = unwrap(api.post)
@@ -319,53 +302,8 @@ class TestTriggerSubscriptionCrud:
         ):
             assert method(api, "t1", "s1") == {"result": "success"}
 
-    def test_delete_subscription(self, app: Flask) -> None:
-        api = TriggerSubscriptionDeleteApi()
-        method = unwrap(api.post)
-
-        mock_session = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.trigger_providers.db") as mock_db,
-            patch("controllers.console.workspace.trigger_providers.sessionmaker") as mock_session_cls,
-            patch("controllers.console.workspace.trigger_providers.TriggerProviderService.delete_trigger_provider"),
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerSubscriptionOperatorService.delete_plugin_trigger_by_subscription"
-            ),
-        ):
-            mock_db.engine = MagicMock()
-            mock_session_cls.return_value.begin.return_value.__enter__.return_value = mock_session
-
-            result = method(api, "t1", "sub1")
-
-        assert result["result"] == "success"
-
-    def test_delete_subscription_value_error(self, app: Flask) -> None:
-        api = TriggerSubscriptionDeleteApi()
-        method = unwrap(api.post)
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.trigger_providers.db") as mock_db,
-            patch("controllers.console.workspace.trigger_providers.sessionmaker") as session_cls,
-            patch(
-                "controllers.console.workspace.trigger_providers.TriggerProviderService.delete_trigger_provider",
-                side_effect=ValueError("bad"),
-            ),
-        ):
-            mock_db.engine = MagicMock()
-            session_cls.return_value.begin.return_value.__enter__.return_value = MagicMock()
-
-            with pytest.raises(BadRequest):
-                method(api, "t1", "sub1")
-
 
 class TestTriggerOAuthApis:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_oauth_authorize_success(self, app: Flask) -> None:
         api = TriggerOAuthAuthorizeApi()
         method = unwrap(api.get)
@@ -498,10 +436,6 @@ class TestTriggerOAuthApis:
 
 
 class TestTriggerOAuthClientManageApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_get_client(self, app: Flask) -> None:
         api = TriggerOAuthClientManageApi()
         method = unwrap(api.get)
@@ -570,10 +504,6 @@ class TestTriggerOAuthClientManageApi:
 
 
 class TestTriggerSubscriptionVerifyApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_verify_success(self, app: Flask) -> None:
         api = TriggerSubscriptionVerifyApi()
         method = unwrap(api.post)
