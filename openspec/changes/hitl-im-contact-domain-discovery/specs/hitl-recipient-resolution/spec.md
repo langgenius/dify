@@ -82,6 +82,50 @@ HITL 节点中的静态通知对象 MUST 支持两类配置：从当前 workspac
 - **WHEN** a node has no notified recipients and current initiator cannot be used
 - **THEN** 系统 MUST fail fast with `No notified recipients available`
 
+### Requirement: Recipient 配置界面必须支持混合收件人集合
+系统 MUST 允许同一个 HITL 节点在单一 recipient 配置集合中同时持有 `Contact recipient`、`one-time Email`、`dynamic Email variable` 和 `current initiator` 这几类来源。界面上的搜索与插入方式 MAY 被统一到同一控件，但持久化时 MUST 继续保留各自的 `RecipientSpecification` 边界，MUST NOT 因 UI 合并而把不同来源抹平成同一种 recipient。
+
+#### Scenario: 单个节点混合配置 contact、email、variable 与 initiator
+- **WHEN** a workflow editor configures notified recipients using contacts, direct emails, inserted variables and current initiator in the same node
+- **THEN** 系统 MUST 允许这些来源共存于同一个 recipient set，并 MUST 在保存后保留每个来源原本的 `RecipientSpecification` 类型
+
+#### Scenario: 统一 recipient picker 仍保留联系人分组语义
+- **WHEN** a workflow editor searches recipients from the unified recipient picker
+- **THEN** 系统 MUST 仍然提供 `All`、`Workspace`、`Organization` 和 `External` 这类联系人分组语义，且 MUST NOT 把 `Platform contact` 与 `External contact` 混成同一搜索结果含义
+
+### Requirement: Message Template 必须承担 Email 与 IM fallback 的消息文案职责
+系统 MUST 将 `Message Template` 作为 Email 投递与 IM fallback message 的统一文案来源。对于能够完整映射表单内容的 IM provider，系统 MAY 直接发送 IM card；对于不能完整映射的 IM provider，系统 MUST 回退到 `Message Template` + request URL 的组合。Web 独立页面 MUST 继续作为完整表单详情入口，而不是由 `Message Template` 承载全部表单内容。
+
+#### Scenario: Email 总是使用 Message Template
+- **WHEN** the system delivers a HITL request by email
+- **THEN** 系统 MUST 使用 `Message Template` 生成 email subject / body，并 MUST 提供跳转到完整表单详情页的 request URL
+
+#### Scenario: IM 能完整映射表单时优先发送 IM card
+- **WHEN** the selected IM provider can represent the configured form as a complete IM card
+- **THEN** 系统 MAY 直接发送 IM card，而不必退回到 `Message Template` 文案
+
+#### Scenario: IM 不能完整映射表单时回退到 Message Template
+- **WHEN** the selected IM provider cannot represent the configured form as a complete IM card
+- **THEN** 系统 MUST 使用 `Message Template` 作为 IM fallback message 文案，并 MUST 附带跳转到完整表单详情页的 request URL
+
+### Requirement: Message Template 必须支持发送测试邮件
+系统 MUST 在 `Message Template` 编辑能力中提供发送测试邮件的能力，以便管理员或 workflow editor 在不触发真实 HITL task 的前提下验证 Email 文案和基础投递配置。该能力 MUST 被视为产品级规则，而不是仅存在于设计稿的临时交互。
+
+#### Scenario: 编辑 Message Template 时发送测试邮件
+- **WHEN** a user edits the `Message Template`
+- **THEN** 系统 MUST 允许其触发测试邮件发送，以验证当前模板文案与投递链路
+
+### Requirement: Debug Mode 必须允许按渠道切换并至少保留一个启用渠道
+系统 MUST 允许在 `Debug Mode` 下按渠道控制调试通知是否发送到 Email 或各 IM 渠道。系统 MUST 强制至少保留一个可用渠道处于启用状态，MUST NOT 允许把所有渠道同时关闭后仍保存为有效调试配置。
+
+#### Scenario: Debug Mode 逐渠道启停
+- **WHEN** a workflow editor configures debug notifications
+- **THEN** 系统 MUST 允许其独立切换 Email 与各 IM 渠道的启用状态
+
+#### Scenario: Debug Mode 至少保留一个渠道
+- **WHEN** a workflow editor tries to disable every debug notification channel
+- **THEN** 系统 MUST 阻止该配置，并 MUST 提示至少保留一个渠道处于启用状态
+
 ## Acceptance Coverage
 
 | 场景族 | 最小验收标准 | Primary owner |

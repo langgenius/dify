@@ -71,6 +71,21 @@
 - **WHEN** an admin configures IM identity for a contact
 - **THEN** 系统 MUST 提供基于同步 IM contacts 的搜索与选择能力，且该搜索 MUST 支持按 IM user ID 查询，并 MUST NOT 依赖手工输入自由文本 IM user ID
 
+### Requirement: Sync details 必须表达一次 sync run 的 binding 对账结果
+系统 MUST 将 `Sync details` 建模为“一次 IM sync run 的 binding reconciliation result”，而不是联系人生命周期或 Contact 类型视图。`Added` MUST 表示本次 sync 为已匹配的 `Contact / Platform contact` 新建了 IM binding；`Not Matched` MUST 表示按 `provider_user_id` 与 email 都未命中当前可解释的 `Contact / Platform contact`，且 MUST 进入人工处理流、MUST NOT 自动创建 `External contact`；`Failed` MUST 表示理论上应能处理但本次同步处理失败，且 MUST 保留 failure reason；`Removed` MUST 仅表示本地既有 IM binding 在本次对账后被移除、失效或替换，MUST NOT 推导为 contact deletion、membership removal 或自动转换为 `External contact`；`Skipped` MUST 表示本次 sync 观察到该 identity 但按规则不做变更，且 MUST 保留 machine-readable skip reason。
+
+#### Scenario: Not Matched 进入人工处理流
+- **WHEN** an IM identity from the provider matches neither an existing binding by `provider_user_id` nor any `Contact / Platform contact` by email
+- **THEN** 系统 MUST 将其归入 `Not Matched` bucket，并 MUST 进入人工处理流，而 MUST NOT 自动创建 `External contact`
+
+#### Scenario: Removed 只表示 binding 对账结果
+- **WHEN** a previously existing local IM binding is removed, invalidated, or replaced during a sync reconciliation run
+- **THEN** 系统 MUST 将其归入 `Removed` bucket，并 MUST 将其解释为 binding-level reconciliation result only, not contact deletion, membership removal, or automatic conversion to `External contact`
+
+#### Scenario: Skipped 必须带 skip reason
+- **WHEN** the sync run sees an IM identity but intentionally makes no change
+- **THEN** 系统 MUST 将其归入 `Skipped` bucket，并 MUST 记录 machine-readable skip reason
+
 ### Requirement: Contact 的创建、编辑与可见性必须受权限约束
 系统 MUST 将 Contact 与 external contact 的创建、编辑能力限制在具备 Contact 编辑权限的用户上。默认情况下，workspace owner / admin MUST 具备该权限；workflow editor MUST NOT 直接创建 external contact。普通 member MUST NOT 查看完整 Contact，且只允许访问分配给自己的 HITL task。
 
@@ -81,6 +96,17 @@
 #### Scenario: 普通 member 无法查看完整 Contact
 - **WHEN** a regular member tries to browse the workspace Contact list
 - **THEN** 系统 MUST 拒绝其查看完整 Contact，并 MUST 仅允许其访问分配给自己的 HITL task
+
+### Requirement: Contact 管理界面必须显式区分联系人分组与添加路径
+系统 MUST 在 Contact 管理界面中显式区分 `All`、`Workspace`、`Organization` 和 `External` 四类浏览视图，从而把 `workspace contact`、`Platform contact` 和 `External contact` 的来源差异直接暴露给管理员。系统 MUST 为 `Platform contact` 与 `External contact` 提供不同的添加入口，MUST NOT 把二者混成同一条创建路径。
+
+#### Scenario: 管理员按联系人分组浏览
+- **WHEN** a workspace admin opens the Contact management page
+- **THEN** 系统 MUST 允许其在 `All`、`Workspace`、`Organization` 和 `External` 视图之间切换，以区分当前 workspace 成员、同 Organization 其他成员和外部联系人
+
+#### Scenario: Add contact 菜单分离 Organization 与 External 路径
+- **WHEN** a workspace admin adds a new contact from the Contact management page
+- **THEN** 系统 MUST 将 `Platform contact / Organization contact` 添加路径与 `External contact` 添加路径分离，并 MUST 在进入 external contact 创建前继续执行内部联系人命中校验
 
 ## Acceptance Coverage
 
