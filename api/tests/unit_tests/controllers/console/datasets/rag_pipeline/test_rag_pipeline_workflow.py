@@ -23,9 +23,12 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
 from services.errors.llm import InvokeRateLimitError
+from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
 def _make_workflow(**overrides):
+    author = Account(name="Alice", email="alice@example.com")
+    author.id = "user-1"
     workflow = SimpleNamespace(
         id="workflow-1",
         graph_dict={"nodes": [], "edges": []},
@@ -34,7 +37,7 @@ def _make_workflow(**overrides):
         version="1",
         marked_name="Release 1",
         marked_comment="Initial release",
-        created_by_account=SimpleNamespace(id="user-1", name="Alice", email="alice@example.com"),
+        created_by_account=author,
         created_at=datetime(2024, 1, 1, 12, 0, 0),
         updated_by_account=None,
         updated_at=datetime(2024, 1, 1, 12, 1, 0),
@@ -46,6 +49,13 @@ def _make_workflow(**overrides):
     for key, value in overrides.items():
         setattr(workflow, key, value)
     return workflow
+
+
+def _rag_pipeline_service(**methods):
+    service = object.__new__(RagPipelineService)
+    for name, method in methods.items():
+        setattr(service, name, method)
+    return service
 
 
 def _account() -> Account:
@@ -66,7 +76,7 @@ def test_draft_rag_pipeline_workflow_get_serializes_response_model(monkeypatch: 
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=lambda **_kwargs: workflow),
+        lambda *_args, **_kwargs: _rag_pipeline_service(get_draft_workflow=lambda **_kwargs: workflow),
     )
 
     api = module.DraftRagPipelineApi()
@@ -105,7 +115,7 @@ def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_all_published_workflow=_get_all_published_workflow),
+        lambda *_args, **_kwargs: _rag_pipeline_service(get_all_published_workflow=_get_all_published_workflow),
     )
 
     with Session(sqlite_engine) as request_session:
@@ -138,7 +148,7 @@ def test_rag_pipeline_workflow_patch_serializes_response_model(
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda *_args, **_kwargs: SimpleNamespace(update_workflow=_update_workflow),
+        lambda *_args, **_kwargs: _rag_pipeline_service(update_workflow=_update_workflow),
     )
     payload: dict[str, object] = {"marked_name": "Updated release"}
 
@@ -169,7 +179,7 @@ def test_default_rag_pipeline_block_configs_serializes_root_response(monkeypatch
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_default_block_configs=lambda: block_configs),
+        lambda *_args, **_kwargs: _rag_pipeline_service(get_default_block_configs=lambda: block_configs),
     )
 
     api = module.DefaultRagPipelineBlockConfigsApi()
@@ -194,7 +204,7 @@ def test_draft_rag_pipeline_second_step_parameters_serializes_variables(app, mon
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_second_step_parameters=lambda **_kwargs: variables),
+        lambda *_args, **_kwargs: _rag_pipeline_service(get_second_step_parameters=lambda **_kwargs: variables),
     )
 
     api = module.DraftRagPipelineSecondStepApi()
@@ -214,7 +224,7 @@ def test_rag_pipeline_recommended_plugins_serializes_known_envelope(app, monkeyp
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_recommended_plugins=lambda *_args: recommended_plugins),
+        lambda *_args, **_kwargs: _rag_pipeline_service(get_recommended_plugins=lambda *_args: recommended_plugins),
     )
 
     api = module.RagPipelineRecommendedPluginApi()
