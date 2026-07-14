@@ -42,9 +42,8 @@ const MembersPage = () => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<
-    MemberInviteResponse['invitation_results']
-  >([])
-  const [invitedModalVisible, setInvitedModalVisible] = useState(false)
+    MemberInviteResponse['invitation_results'] | null
+  >(null)
   const accounts = data?.accounts || []
   const { plan, enableBilling, isAllowTransferWorkspace } = useProviderContext()
   const isNotUnlimitedMemberPlan =
@@ -166,10 +165,7 @@ const MembersPage = () => {
                 trigger={<InviteButton />}
                 isEmailSetup={systemFeatures.is_email_setup}
                 onOpenChange={setInviteModalVisible}
-                onSend={(invitationResults) => {
-                  setInvitedModalVisible(true)
-                  setInvitationResults(invitationResults)
-                }}
+                onSend={setInvitationResults}
               />
             )}
           </div>
@@ -203,10 +199,10 @@ const MembersPage = () => {
           </div>
         </div>
       </div>
-      {invitedModalVisible && (
+      {invitationResults && (
         <InvitedModal
           invitationResults={invitationResults}
-          onCancel={() => setInvitedModalVisible(false)}
+          onCancel={() => setInvitationResults(null)}
         />
       )}
       {editWorkspaceModalVisible && (
