@@ -9,6 +9,7 @@ from libs.oauth import OAuthUserInfo, encode_oauth_state
 from models.account import AccountStatus
 
 REDIRECT_URL = "/apps?category=workflow"
+CONSOLE_WEB_URL = "https://console.example.com"
 
 
 @pytest.fixture
@@ -39,9 +40,22 @@ def test_oauth_login_passes_relative_redirect_url_through(app: Flask) -> None:
     assert response.headers["Location"] == "https://accounts.google.com/o/oauth2/v2/auth?state=..."
 
 
+@pytest.mark.parametrize(
+    ("redirect_url", "expected_target_url"),
+    [
+        (REDIRECT_URL, REDIRECT_URL),
+        (f"{CONSOLE_WEB_URL}{REDIRECT_URL}", f"{CONSOLE_WEB_URL}{REDIRECT_URL}"),
+        ("https://console.example.com.malicious.example/apps", CONSOLE_WEB_URL),
+        ("//malicious.example.com/apps", CONSOLE_WEB_URL),
+        ("///malicious.example.com/apps", CONSOLE_WEB_URL),
+        (r"\\malicious.example.com/apps", CONSOLE_WEB_URL),
+    ],
+)
 @pytest.mark.parametrize("oauth_new_user", [False, True])
-def test_oauth_callback_appends_new_user_flag_to_relative_original_page(
+def test_oauth_callback_validates_redirect_url_and_appends_new_user_flag(
     app: Flask,
+    redirect_url: str,
+    expected_target_url: str,
     oauth_new_user: bool,
 ) -> None:
     oauth_provider = MagicMock()
@@ -57,10 +71,11 @@ def test_oauth_callback_appends_new_user_flag_to_relative_original_page(
     token_pair.access_token = "dify-access-token"
     token_pair.refresh_token = "dify-refresh-token"
     token_pair.csrf_token = "dify-csrf-token"
-    state = encode_oauth_state(redirect_url=REDIRECT_URL)
+    state = encode_oauth_state(redirect_url=redirect_url)
 
     with (
         patch("controllers.console.auth.oauth.get_oauth_providers", return_value={"google": oauth_provider}),
+        patch("controllers.console.auth.oauth.dify_config.CONSOLE_WEB_URL", CONSOLE_WEB_URL),
         patch("controllers.console.auth.oauth._generate_account", return_value=(account, oauth_new_user)),
         patch("controllers.console.auth.oauth.TenantService.create_owner_tenant_if_not_exist"),
         patch("controllers.console.auth.oauth.AccountService.login", return_value=token_pair),
@@ -72,4 +87,7 @@ def test_oauth_callback_appends_new_user_flag_to_relative_original_page(
         response = OAuthCallback().get("google")
 
     assert response.status_code == 302
-    assert response.headers["Location"] == f"{REDIRECT_URL}&oauth_new_user={str(oauth_new_user).lower()}"
+    query_char = "&" if "?" in expected_target_url else "?"
+    assert response.headers["Location"] == (
+        f"{expected_target_url}{query_char}oauth_new_user={str(oauth_new_user).lower()}"
+    )

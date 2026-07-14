@@ -88,6 +88,36 @@ def _validated_language(value: str | None) -> str | None:
     return None
 
 
+def _url_origin(url: str) -> tuple[str, str, int] | None:
+    parsed_url = urllib.parse.urlsplit(url)
+    if parsed_url.scheme not in {"http", "https"} or parsed_url.hostname is None:
+        return None
+
+    try:
+        port = parsed_url.port
+    except ValueError:
+        return None
+
+    if port is None:
+        port = 443 if parsed_url.scheme == "https" else 80
+    return parsed_url.scheme, parsed_url.hostname, port
+
+
+def _get_redirect_target(redirect_url: str | None) -> str:
+    if not redirect_url:
+        return dify_config.CONSOLE_WEB_URL
+
+    parsed_url = urllib.parse.urlsplit(redirect_url)
+    normalized_path = redirect_url.lstrip().replace("\\", "/")
+    if not parsed_url.scheme and not parsed_url.netloc and not normalized_path.startswith("//"):
+        return redirect_url
+
+    redirect_origin = _url_origin(redirect_url)
+    if redirect_origin is not None and redirect_origin == _url_origin(dify_config.CONSOLE_WEB_URL):
+        return redirect_url
+    return dify_config.CONSOLE_WEB_URL
+
+
 def _preferred_interface_language(language: str | None = None) -> str:
     if language:
         return language
@@ -214,7 +244,7 @@ class OAuthCallback(Resource):
             ip_address=extract_remote_ip(request),
         )
 
-        target_url = redirect_url or dify_config.CONSOLE_WEB_URL
+        target_url = _get_redirect_target(redirect_url)
         query_char = "&" if "?" in target_url else "?"
         target_url = f"{target_url}{query_char}oauth_new_user={str(oauth_new_user).lower()}"
         response = redirect(target_url)
