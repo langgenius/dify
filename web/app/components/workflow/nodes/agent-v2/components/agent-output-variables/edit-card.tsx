@@ -1,4 +1,5 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { EditableOutputConfig, EditingState, OutputDraft } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
@@ -18,7 +19,7 @@ import {
   OUTPUT_NAME_PATTERN_SOURCE,
 } from './utils'
 
-const CONFIRM_HOTKEY = 'Mod+Enter'
+const CONFIRM_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 function ConfirmHotkeyHint() {
   const displayKeys = formatForDisplay(CONFIRM_HOTKEY, { separatorToken: ' ' })
