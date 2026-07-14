@@ -1296,7 +1296,7 @@ class RBACService:
             tenant_id: str,
             account_id: str | None,
             dataset_id: str,
-            target_account_id: str,
+            target_account_id: str | None,
             payload: ReplaceUserAccessPolicies,
         ) -> ReplaceUserAccessPoliciesResponse:
             data = _inner_call(
