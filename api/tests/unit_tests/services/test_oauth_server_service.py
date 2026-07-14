@@ -164,9 +164,7 @@ class TestOAuthServerServiceTokenOperations:
             ex=OAUTH_REFRESH_TOKEN_EXPIRES_IN,
         )
 
-    def test_validate_access_token_returns_none_when_not_found(
-        self, mock_redis, sqlite_engine: Engine
-    ) -> None:
+    def test_validate_access_token_returns_none_when_not_found(self, mock_redis, sqlite_engine: Engine) -> None:
         mock_redis.get.return_value = None
 
         with Session(sqlite_engine) as session:
