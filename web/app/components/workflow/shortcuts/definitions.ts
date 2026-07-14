@@ -34,10 +34,7 @@ export type WorkflowCanvasShortcutDefinition = {
   description: string
 }
 
-export const WORKFLOW_CANVAS_SHORTCUTS: Record<
-  WorkflowCanvasShortcutId,
-  WorkflowCanvasShortcutDefinition
-> = {
+export const WORKFLOW_CANVAS_SHORTCUTS = {
   'workflow.delete': {
     id: 'workflow.delete',
     hotkeys: ['Delete', 'Backspace'],
@@ -144,11 +141,11 @@ export const WORKFLOW_CANVAS_SHORTCUTS: Record<
     name: 'Dim other nodes',
     description: 'Dim nodes outside the current workflow selection',
   },
-}
+} as const satisfies Record<WorkflowCanvasShortcutId, WorkflowCanvasShortcutDefinition>
 
 export const getWorkflowCanvasShortcutDisplayHotkey = (
   id: WorkflowCanvasShortcutId,
 ): RegisterableHotkey | (string & {}) => {
   const shortcut = WORKFLOW_CANVAS_SHORTCUTS[id]
-  return shortcut.displayHotkey ?? shortcut.hotkeys[0]!
+  return ('displayHotkey' in shortcut && shortcut.displayHotkey) || shortcut.hotkeys[0]
 }
