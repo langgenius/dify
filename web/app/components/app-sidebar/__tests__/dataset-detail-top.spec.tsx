@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
+import { Dialog, DialogPopup, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { createStore, Provider as JotaiProvider } from 'jotai'
-import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import DatasetDetailTop from '../dataset-detail-top'
 
 vi.mock('../toggle-button', () => ({
@@ -26,25 +26,26 @@ vi.mock('../toggle-button', () => ({
   ),
 }))
 
-function GotoAnythingOpenProbe() {
-  const open = useGotoAnythingOpen()
-
-  return <div data-testid="goto-anything-open">{String(open)}</div>
-}
-
-const renderWithGotoAnythingStore = (ui: ReactNode) => {
-  const store = createStore()
-
-  return render(<JotaiProvider store={store}>{ui}</JotaiProvider>)
+function TestGotoAnythingDialog() {
+  return (
+    <Dialog handle={gotoAnythingDialogHandle}>
+      <DialogPortal>
+        <DialogPopup>
+          <DialogTitle>Goto Anything</DialogTitle>
+        </DialogPopup>
+      </DialogPortal>
+    </Dialog>
+  )
 }
 
 describe('DatasetDetailTop', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    gotoAnythingDialogHandle.close()
   })
 
   it('links the combined home control to home and labels the breadcrumb as datasets', () => {
-    renderWithGotoAnythingStore(<DatasetDetailTop />)
+    render(<DatasetDetailTop />)
 
     expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: 'common.menus.datasets' })).toHaveAttribute(
@@ -55,23 +56,23 @@ describe('DatasetDetailTop', () => {
   })
 
   it('keeps the quick search action', () => {
-    renderWithGotoAnythingStore(
+    render(
       <>
         <DatasetDetailTop />
-        <GotoAnythingOpenProbe />
+        <TestGotoAnythingDialog />
       </>,
     )
-    expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('false')
+    expect(screen.queryByRole('dialog', { name: 'Goto Anything' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
-    expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('true')
+    expect(screen.getByRole('dialog', { name: 'Goto Anything' })).toBeInTheDocument()
   })
 
   it('renders the sidebar toggle action in the top right', () => {
     const onToggle = vi.fn()
 
-    renderWithGotoAnythingStore(<DatasetDetailTop expand={false} onToggle={onToggle} />)
+    render(<DatasetDetailTop expand={false} onToggle={onToggle} />)
     fireEvent.click(screen.getByTestId('toggle-button'))
 
     expect(screen.getByTestId('toggle-button')).toHaveAttribute('data-expand', 'false')

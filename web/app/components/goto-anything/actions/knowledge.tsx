@@ -1,13 +1,13 @@
+import type { DatasetListItemResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ActionItem, KnowledgeSearchResult } from './types'
-import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { fetchDatasets } from '@/service/datasets'
+import { consoleQuery } from '@/service/client'
 import { Folder } from '../../base/icons/src/vender/solid/files'
 
 const EXTERNAL_PROVIDER = 'external' as const
 const isExternalProvider = (provider: string): boolean => provider === EXTERNAL_PROVIDER
 
-const parser = (datasets: DataSet[]): KnowledgeSearchResult[] => {
+function getKnowledgeResults(datasets: DatasetListItemResponse[]): KnowledgeSearchResult[] {
   return datasets.map((dataset) => {
     const path = isExternalProvider(dataset.provider)
       ? `/datasets/${dataset.id}/hitTesting`
@@ -15,7 +15,7 @@ const parser = (datasets: DataSet[]): KnowledgeSearchResult[] => {
     return {
       id: dataset.id,
       title: dataset.name,
-      description: dataset.description,
+      description: dataset.description ?? undefined,
       type: 'knowledge' as const,
       path,
       icon: (
@@ -38,22 +38,18 @@ export const knowledgeAction: ActionItem = {
   shortcut: '@kb',
   title: 'Search Knowledge Bases',
   description: 'Search and navigate to your knowledge bases',
-  // action,
-  search: async (_, searchTerm = '', _locale) => {
-    try {
-      const response = await fetchDatasets({
-        url: '/datasets',
-        params: {
-          page: 1,
-          limit: 10,
-          keyword: searchTerm,
-        },
-      })
-      const datasets = response?.data || []
-      return parser(datasets)
-    } catch (error) {
-      console.warn('Knowledge search failed:', error)
-      return []
-    }
-  },
+  source: 'remote',
+}
+
+export function knowledgeSearchQueryOptions(searchTerm: string) {
+  return consoleQuery.datasets.get.queryOptions({
+    input: {
+      query: {
+        page: 1,
+        limit: 10,
+        keyword: searchTerm,
+      },
+    },
+    select: (response) => getKnowledgeResults(response.data),
+  })
 }

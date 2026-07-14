@@ -1,110 +1,61 @@
-import type { DataSet } from '@/models/datasets'
-import { knowledgeAction } from '../knowledge'
+import type {
+  DatasetListItemResponse,
+  DatasetListResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import { knowledgeAction, knowledgeSearchQueryOptions } from '../knowledge'
 
-vi.mock('@/service/datasets', () => ({
-  fetchDatasets: vi.fn(),
+const serviceMocks = vi.hoisted(() => ({ queryOptions: vi.fn((options) => options) }))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: { datasets: { get: { queryOptions: serviceMocks.queryOptions } } },
 }))
 
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: string[]) => args.filter(Boolean).join(' '),
-}))
+function dataset(overrides: Partial<DatasetListItemResponse> = {}): DatasetListItemResponse {
+  return {
+    id: 'dataset-1',
+    name: 'Knowledge',
+    description: 'Description',
+    provider: 'vendor',
+    embedding_available: true,
+    ...overrides,
+  } as DatasetListItemResponse
+}
 
-describe('knowledgeAction', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+function response(data: DatasetListItemResponse[]): DatasetListResponse {
+  return { data, has_more: false, limit: 10, page: 1, total: data.length }
+}
 
-  it('has correct metadata', () => {
-    expect(knowledgeAction.key).toBe('@knowledge')
-    expect(knowledgeAction.shortcut).toBe('@kb')
-  })
+describe('knowledge search query', () => {
+  beforeEach(() => vi.clearAllMocks())
 
-  it('returns parsed dataset results on success', async () => {
-    const { fetchDatasets } = await import('@/service/datasets')
-    vi.mocked(fetchDatasets).mockResolvedValue({
-      data: [
-        {
-          id: 'ds-1',
-          name: 'My Knowledge',
-          description: 'A KB',
-          provider: 'vendor',
-          embedding_available: true,
-        } as unknown as DataSet,
-      ],
-      has_more: false,
-      limit: 10,
-      page: 1,
-      total: 1,
-    })
-
-    const results = await knowledgeAction.search('@knowledge query', 'query', 'en')
-
-    expect(fetchDatasets).toHaveBeenCalledWith({
-      url: '/datasets',
-      params: { page: 1, limit: 10, keyword: 'query' },
-    })
-    expect(results).toHaveLength(1)
-    expect(results[0]).toMatchObject({
-      id: 'ds-1',
-      title: 'My Knowledge',
-      type: 'knowledge',
+  it('exposes remote action metadata', () => {
+    expect(knowledgeAction).toMatchObject({
+      key: '@knowledge',
+      shortcut: '@kb',
+      source: 'remote',
     })
   })
 
-  it('generates correct path for external provider', async () => {
-    const { fetchDatasets } = await import('@/service/datasets')
-    vi.mocked(fetchDatasets).mockResolvedValue({
-      data: [
-        {
-          id: 'ds-ext',
-          name: 'External',
-          description: '',
-          provider: 'external',
-          embedding_available: true,
-        } as unknown as DataSet,
-      ],
-      has_more: false,
-      limit: 10,
-      page: 1,
-      total: 1,
-    })
+  it('builds generated query options from the search term', () => {
+    knowledgeSearchQueryOptions('vector')
 
-    const results = await knowledgeAction.search('@knowledge', '', 'en')
-
-    expect(results[0]!.path).toBe('/datasets/ds-ext/hitTesting')
+    expect(serviceMocks.queryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: { query: { page: 1, limit: 10, keyword: 'vector' } },
+        select: expect.any(Function),
+      }),
+    )
   })
 
-  it('generates correct path for non-external provider', async () => {
-    const { fetchDatasets } = await import('@/service/datasets')
-    vi.mocked(fetchDatasets).mockResolvedValue({
-      data: [
-        {
-          id: 'ds-2',
-          name: 'Internal',
-          description: '',
-          provider: 'vendor',
-          embedding_available: true,
-        } as unknown as DataSet,
-      ],
-      has_more: false,
-      limit: 10,
-      page: 1,
-      total: 1,
-    })
+  it('selects paths from the dataset provider contract', () => {
+    const options = knowledgeSearchQueryOptions('')
+    const results = options.select!(
+      response([dataset(), dataset({ id: 'external', provider: 'external' })]),
+    )
 
-    const results = await knowledgeAction.search('@knowledge', '', 'en')
-
-    expect(results[0]!.path).toBe('/datasets/ds-2/documents')
-  })
-
-  it('returns empty array on API failure', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const { fetchDatasets } = await import('@/service/datasets')
-    vi.mocked(fetchDatasets).mockRejectedValue(new Error('fail'))
-
-    const results = await knowledgeAction.search('@knowledge', 'fail', 'en')
-    expect(results).toEqual([])
-    expect(warnSpy).toHaveBeenCalledWith('Knowledge search failed:', expect.any(Error))
-    warnSpy.mockRestore()
+    expect(results.map((result) => result.path)).toEqual([
+      '/datasets/dataset-1/documents',
+      '/datasets/external/hitTesting',
+    ])
   })
 })
