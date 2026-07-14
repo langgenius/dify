@@ -328,6 +328,27 @@ export const STOP_PARAMETER_RULE: ModelParameterRule = {
   },
 }
 
+// Synthetic rule consumed by the Dify backend before the request reaches the
+// model provider; only enforced for workflow LLM-compatible nodes.
+export const FIRST_TOKEN_TIMEOUT_PARAMETER_RULE: ModelParameterRule = {
+  default: 60,
+  min: 1,
+  max: 1800,
+  precision: 0,
+  help: {
+    en_US:
+      'Max seconds to wait for the first streamed token. On timeout the node fails; combine with node retry to re-run it automatically.',
+    zh_Hans: '等待首个流式 Token 的最长秒数。超时后节点失败，可配合节点重试自动重跑。',
+  },
+  label: {
+    en_US: 'First token timeout',
+    zh_Hans: '首个 Token 超时',
+  },
+  name: 'first_token_timeout',
+  required: false,
+  type: 'int',
+}
+
 export const PARTNER_STACK_CONFIG = {
   cookieName: 'partner_stack_info',
   saveCookieDays: 90,

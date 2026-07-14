@@ -388,6 +388,23 @@ describe('ModelParameterModal', () => {
     expect(screen.getByText(/debugAsSingleModel/i)).toBeInTheDocument()
   })
 
+  it('should append the first token timeout parameter only in workflow advanced mode', () => {
+    render(<ModelParameterModal {...defaultProps} isAdvancedMode isInWorkflow />)
+
+    openSettings()
+
+    expect(screen.getByTestId('param-first_token_timeout')).toBeInTheDocument()
+  })
+
+  it('should not append the first token timeout parameter outside workflow', () => {
+    render(<ModelParameterModal {...defaultProps} isAdvancedMode />)
+
+    openSettings()
+
+    expect(screen.getByTestId('param-stop')).toBeInTheDocument()
+    expect(screen.queryByTestId('param-first_token_timeout')).not.toBeInTheDocument()
+  })
+
   it('should render the empty loading fallback when rules resolve to an empty list', () => {
     parameterRules = []
     isRulesLoading = true
