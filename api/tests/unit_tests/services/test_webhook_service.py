@@ -1,22 +1,35 @@
 import logging
+from collections.abc import Iterator
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 import services.trigger.webhook_service as webhook_service_module
+from models.engine import db
 from services.errors.app import QuotaExceededError
 from services.trigger.webhook_service import WebhookService
 
 
-class TestWebhookServiceUnit:
-    """Unit tests for WebhookService focusing on business logic without database dependencies."""
+@pytest.fixture
+def flask_sqlite_engine() -> Iterator[Engine]:
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
 
-    def test_trigger_workflow_execution_propagates_quota_error_without_error_log(self, sqlite_engine: Engine) -> None:
+    with app.app_context():
+        yield db.engine
+
+
+class TestWebhookServiceUnit:
+    """Unit tests for WebhookService using isolated SQLite sessions for database boundaries."""
+
+    def test_trigger_workflow_execution_propagates_quota_error_without_error_log(
+        self, flask_sqlite_engine: Engine
+    ) -> None:
         webhook_trigger = MagicMock(
             webhook_id="webhook-123",
             tenant_id="tenant-123",
@@ -27,27 +40,25 @@ class TestWebhookServiceUnit:
         quota_charge = MagicMock()
         quota_error = QuotaExceededError(feature="workflow", tenant_id="tenant-123", required=1)
 
-        with Session(sqlite_engine, expire_on_commit=False) as session:
-            with (
-                patch(
-                    "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
-                    return_value=MagicMock(id="end-user-123"),
-                ),
-                patch("services.trigger.webhook_service.QuotaService.reserve", return_value=quota_charge),
-                patch(
-                    "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
-                    side_effect=quota_error,
-                ),
-                patch("services.trigger.webhook_service.logger.info") as mock_log_info,
-                patch("services.trigger.webhook_service.logger.exception") as mock_log_exception,
-            ):
-                with pytest.raises(QuotaExceededError) as exc_info:
-                    WebhookService.trigger_workflow_execution(
-                        webhook_trigger,
-                        {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
-                        workflow,
-                        session=session,
-                    )
+        with (
+            patch(
+                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
+                return_value=MagicMock(id="end-user-123"),
+            ),
+            patch("services.trigger.webhook_service.QuotaService.reserve", return_value=quota_charge),
+            patch(
+                "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
+                side_effect=quota_error,
+            ),
+            patch("services.trigger.webhook_service.logger.info") as mock_log_info,
+            patch("services.trigger.webhook_service.logger.exception") as mock_log_exception,
+        ):
+            with pytest.raises(QuotaExceededError) as exc_info:
+                WebhookService.trigger_workflow_execution(
+                    webhook_trigger,
+                    {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
+                    workflow,
+                )
 
         assert exc_info.value is quota_error
         quota_charge.refund.assert_called_once_with()
@@ -59,7 +70,7 @@ class TestWebhookServiceUnit:
         )
         mock_log_exception.assert_not_called()
 
-    def test_trigger_workflow_execution_success(self, sqlite_engine: Engine) -> None:
+    def test_trigger_workflow_execution_success(self, flask_sqlite_engine: Engine) -> None:
         webhook_trigger = MagicMock(
             webhook_id="webhook-123",
             tenant_id="tenant-123",
@@ -77,26 +88,24 @@ class TestWebhookServiceUnit:
             "files": {},
         }
 
-        with Session(sqlite_engine, expire_on_commit=False) as session:
-            with (
-                patch.object(
-                    webhook_service_module.EndUserService,
-                    "get_or_create_end_user_by_type",
-                    return_value=end_user,
-                ),
-                patch.object(webhook_service_module.QuotaService, "reserve", return_value=quota_charge),
-                patch.object(
-                    webhook_service_module.AsyncWorkflowService,
-                    "trigger_workflow_async",
-                ) as mock_trigger,
-            ):
-                WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow, session=session)
+        with (
+            patch.object(
+                webhook_service_module.EndUserService,
+                "get_or_create_end_user_by_type",
+                return_value=end_user,
+            ),
+            patch.object(webhook_service_module.QuotaService, "reserve", return_value=quota_charge),
+            patch.object(
+                webhook_service_module.AsyncWorkflowService,
+                "trigger_workflow_async",
+            ) as mock_trigger,
+        ):
+            WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
 
-            call_session = mock_trigger.call_args.kwargs["session"]
-            assert call_session is session
-            assert call_session.get_bind() is sqlite_engine
-            quota_charge.commit.assert_called_once_with()
-            quota_charge.refund.assert_not_called()
+        call_session = mock_trigger.call_args.kwargs["session"]
+        assert call_session.get_bind() is flask_sqlite_engine
+        quota_charge.commit.assert_called_once_with()
+        quota_charge.refund.assert_not_called()
 
     def test_trigger_workflow_execution_end_user_service_failure(self) -> None:
         webhook_trigger = MagicMock(
