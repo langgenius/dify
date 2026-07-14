@@ -2,18 +2,23 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine, event
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from controllers.console.app import app_import as app_import_module
+from models.account import Account
+from models.engine import db
+from models.model import App
 from services.app_dsl_service import ImportStatus
+from services.entities.dsl_entities import CheckDependenciesResult
+from services.feature_service import SystemFeatureModel, WebAppAuthModel
 
 
 def _unwrap(func):
@@ -41,8 +46,24 @@ class _Result:
 
 
 def _install_features(monkeypatch: pytest.MonkeyPatch, enabled: bool) -> None:
-    features = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=enabled))
+    features = SystemFeatureModel(webapp_auth=WebAppAuthModel(enabled=enabled))
     monkeypatch.setattr(app_import_module.FeatureService, "get_system_features", lambda: features)
+
+
+def _make_account(account_id: str = "u1") -> Account:
+    account = Account(name="Test User", email="test@example.com")
+    account.id = account_id
+    return account
+
+
+@pytest.fixture
+def app() -> Iterator[Flask]:
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        yield app
 
 
 @dataclass
@@ -72,10 +93,6 @@ def transaction_events() -> TransactionEvents:
         event.remove(Session, "after_rollback", record_rollback)
 
 
-def _route_database_to_sqlite(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
-    monkeypatch.setattr(app_import_module, "db", SimpleNamespace(engine=sqlite_engine))
-
-
 def _failed_result_after_starting_transaction(
     service: app_import_module.AppDslService, *, app_id: str | None = None
 ) -> _Result:
@@ -93,13 +110,11 @@ class TestAppImportApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
-        _route_database_to_sqlite(monkeypatch, sqlite_engine)
         monkeypatch.setattr(
             app_import_module.AppDslService,
             "import_app",
@@ -107,7 +122,7 @@ class TestAppImportApi:
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(api, SimpleNamespace(id="u1"))
+            response, status = method(api, _make_account())
 
         assert transaction_events.rollbacks == 1
         assert transaction_events.commits == 0
@@ -119,13 +134,11 @@ class TestAppImportApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
-        _route_database_to_sqlite(monkeypatch, sqlite_engine)
         monkeypatch.setattr(
             app_import_module.AppDslService,
             "import_app",
@@ -133,7 +146,7 @@ class TestAppImportApi:
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(api, SimpleNamespace(id="u1"))
+            response, status = method(api, _make_account())
 
         assert transaction_events.commits == 1
         assert transaction_events.rollbacks == 0
@@ -145,13 +158,11 @@ class TestAppImportApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = unwrap(api.post)
 
         _install_features(monkeypatch, enabled=True)
-        _route_database_to_sqlite(monkeypatch, sqlite_engine)
         monkeypatch.setattr(
             app_import_module.AppDslService,
             "import_app",
@@ -161,7 +172,7 @@ class TestAppImportApi:
         monkeypatch.setattr(app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(api, SimpleNamespace(id="u1"))
+            response, status = method(api, _make_account())
 
         assert transaction_events.commits == 1
         assert transaction_events.rollbacks == 0
@@ -174,17 +185,15 @@ class TestAppImportApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = _unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
-        _route_database_to_sqlite(monkeypatch, sqlite_engine)
         monkeypatch.setattr(
             app_import_module,
             "current_account_with_tenant",
-            lambda: (SimpleNamespace(id="u1"), "tenant-1"),
+            lambda: (_make_account(), "tenant-1"),
         )
         monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
         monkeypatch.setattr(
@@ -210,17 +219,15 @@ class TestAppImportApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = _unwrap(api.post)
 
         _install_features(monkeypatch, enabled=False)
-        _route_database_to_sqlite(monkeypatch, sqlite_engine)
         monkeypatch.setattr(
             app_import_module,
             "current_account_with_tenant",
-            lambda: (SimpleNamespace(id="u1"), "tenant-1"),
+            lambda: (_make_account(), "tenant-1"),
         )
         monkeypatch.setattr(app_import_module.dify_config, "RBAC_ENABLED", True)
         monkeypatch.setattr(
@@ -256,12 +263,10 @@ class TestAppImportConfirmApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = unwrap(api.post)
 
-        _route_database_to_sqlite(monkeypatch, sqlite_engine)
         monkeypatch.setattr(
             app_import_module.AppDslService,
             "confirm_import",
@@ -269,7 +274,7 @@ class TestAppImportConfirmApi:
         )
 
         with app.test_request_context("/console/api/apps/imports/import-1/confirm", method="POST"):
-            response, status = method(api, SimpleNamespace(id="u1"), import_id="import-1")
+            response, status = method(api, _make_account(), import_id="import-1")
 
         assert transaction_events.rollbacks == 1
         assert transaction_events.commits == 0
@@ -281,16 +286,14 @@ class TestAppImportConfirmApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = _unwrap(api.post)
 
-        _route_database_to_sqlite(monkeypatch, sqlite_engine)
         monkeypatch.setattr(
             app_import_module,
             "current_account_with_tenant",
-            lambda: (SimpleNamespace(id="u1"), "tenant-1"),
+            lambda: (_make_account(), "tenant-1"),
         )
         monkeypatch.setattr(
             app_import_module.redis_client,
@@ -324,16 +327,14 @@ class TestAppImportConfirmApi:
         api,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
         transaction_events: TransactionEvents,
     ) -> None:
         method = _unwrap(api.post)
 
-        _route_database_to_sqlite(monkeypatch, sqlite_engine)
         monkeypatch.setattr(
             app_import_module,
             "current_account_with_tenant",
-            lambda: (SimpleNamespace(id="u1"), "tenant-1"),
+            lambda: (_make_account(), "tenant-1"),
         )
         monkeypatch.setattr(
             app_import_module.redis_client,
@@ -368,19 +369,17 @@ class TestAppImportCheckDependenciesApi:
         self,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
     ) -> None:
         api = app_import_module.AppImportCheckDependenciesApi()
         method = unwrap(api.get)
-        _route_database_to_sqlite(monkeypatch, sqlite_engine)
         monkeypatch.setattr(
             app_import_module.AppDslService,
             "check_dependencies",
-            lambda *_args, **_kwargs: SimpleNamespace(model_dump=lambda mode="json": {"leaked_dependencies": []}),
+            lambda *_args, **_kwargs: CheckDependenciesResult(leaked_dependencies=[]),
         )
 
         with app.test_request_context("/console/api/apps/imports/app-1/check-dependencies", method="GET"):
-            response, status = method(api, app_model=SimpleNamespace(id="app-1"))
+            response, status = method(api, app_model=App(id="app-1"))
 
         assert status == 200
         assert response["leaked_dependencies"] == []
