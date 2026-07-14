@@ -106,12 +106,12 @@ function WorkspaceCardTrigger({
   const showStatus = status !== undefined && status !== null
 
   return (
-    <div className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg text-left shadow-xs transition-colors hover:bg-components-card-bg-alt">
+    <div className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg text-left shadow-xs">
       <PopoverTrigger
         aria-label={t(($) => $['mainNav.workspace.openMenu'], { ns: 'common' })}
         title={name}
         className={cn(
-          'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
+          'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
           showCloudBilling ? 'rounded-t-xl' : 'rounded-xl',
           open && 'bg-linear-to-b from-background-section-burn to-background-section',
         )}
