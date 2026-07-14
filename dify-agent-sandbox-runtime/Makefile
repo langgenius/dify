@@ -38,21 +38,30 @@ clean:
 #
 # Container name and host port are randomised per invocation to avoid
 # conflicts when multiple runs overlap or a previous run leaked a container.
+#
+# State is written to .integration-state so that separate make invocations
+# (integration-up, integration-test, integration-logs, integration-down)
+# can reference the same container. `make integration` runs the full
+# lifecycle in a single invocation with automatic cleanup.
 
 IMAGE_NAME := dify-agent-sandbox-runtime:test
-TEST_ID := $(shell printf '%05d' $$((RANDOM % 100000)))
-CONTAINER_NAME := sandbox-rt-$(TEST_ID)
-HOST_PORT := $(shell python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print(s.getsockname()[1]); s.close()')
-AUTH_TOKEN := test-token-$(TEST_ID)
+STATE_FILE := .integration-state
 
 integration-up:
 	@echo "Building runtime image..."
 	docker build -t $(IMAGE_NAME) -f docker/Dockerfile .
+	$(eval TEST_ID := $(shell printf '%05d' $$((RANDOM % 100000))))
+	$(eval CONTAINER_NAME := sandbox-rt-$(TEST_ID))
+	$(eval HOST_PORT := $(shell python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print(s.getsockname()[1]); s.close()'))
+	$(eval AUTH_TOKEN := test-token-$(TEST_ID))
 	@echo "Starting runtime container $(CONTAINER_NAME) on port $(HOST_PORT)..."
 	docker run -d --name $(CONTAINER_NAME) \
 		-p $(HOST_PORT):5004 \
 		-e SHELLCTL_AUTH_TOKEN=$(AUTH_TOKEN) \
 		$(IMAGE_NAME)
+	@echo 'CONTAINER_NAME=$(CONTAINER_NAME)' > $(STATE_FILE)
+	@echo 'HOST_PORT=$(HOST_PORT)' >> $(STATE_FILE)
+	@echo 'AUTH_TOKEN=$(AUTH_TOKEN)' >> $(STATE_FILE)
 	@echo "Waiting for runtime to be ready..."
 	@for i in $$(seq 1 30); do \
 		if curl -sf http://localhost:$(HOST_PORT)/healthz > /dev/null 2>&1; then \
@@ -63,19 +72,31 @@ integration-up:
 			echo "ERROR: runtime not ready after 60s" >&2; \
 			docker logs $(CONTAINER_NAME); \
 			docker rm -f $(CONTAINER_NAME) 2>/dev/null; \
+			rm -f $(STATE_FILE); \
 			exit 1; \
 		fi; \
 		sleep 2; \
 	done
 
-integration-test: integration-up
-	@trap 'docker rm -f $(CONTAINER_NAME) 2>/dev/null' EXIT; \
-	SHELLCTL_GO_URL=http://localhost:$(HOST_PORT) \
-	SHELLCTL_TEST_TOKEN=$(AUTH_TOKEN) \
+integration-test:
+	@test -f $(STATE_FILE) || { echo "ERROR: run 'make integration-up' first" >&2; exit 1; }
+	@. ./$(STATE_FILE); \
+	SHELLCTL_GO_URL=http://localhost:$$HOST_PORT \
+	SHELLCTL_TEST_TOKEN=$$AUTH_TOKEN \
 	go test -tags=integration -v -count=1 -timeout=300s ./tests/...
 
+integration-logs:
+	@test -f $(STATE_FILE) || { echo "ERROR: no state file" >&2; exit 1; }
+	@. ./$(STATE_FILE); docker logs $$CONTAINER_NAME
+
 integration-down:
-	-docker rm -f $(CONTAINER_NAME)
+	@if [ -f $(STATE_FILE) ]; then \
+		. ./$(STATE_FILE); \
+		docker rm -f $$CONTAINER_NAME 2>/dev/null || true; \
+		rm -f $(STATE_FILE); \
+	fi
 
 integration:
-	@$(MAKE) integration-test
+	@$(MAKE) integration-up
+	@trap '$(MAKE) integration-down' EXIT; \
+	$(MAKE) integration-test

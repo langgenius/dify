@@ -262,3 +262,7 @@ scripts/stress-test/reports/
 
 # Vitest local reports
 web/.vitest-reports/
+
+# dify-agent-sandbox-runtime
+dify-agent-sandbox-runtime/bin/
+dify-agent-sandbox-runtime/.integration-state

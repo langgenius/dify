@@ -91,7 +91,7 @@ jobs:
 
       - name: Dump container logs on failure
         if: failure()
-        run: docker logs sandbox-runtime-test
+        run: make integration-logs || true
 
       - name: Stop runtime container
         if: always()

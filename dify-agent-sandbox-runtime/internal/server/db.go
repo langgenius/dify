@@ -57,7 +57,7 @@ type DB struct {
 
 // OpenDB opens (or creates) the shellctl SQLite database.
 func OpenDB(dbPath string, busyTimeoutMs int) (*DB, error) {
-	dsn := fmt.Sprintf("file:%s?_busy_timeout=%d&_journal_mode=WAL", dbPath, busyTimeoutMs)
+	dsn := fmt.Sprintf("file:%s?_pragma=busy_timeout(%d)&_pragma=journal_mode(WAL)", dbPath, busyTimeoutMs)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
