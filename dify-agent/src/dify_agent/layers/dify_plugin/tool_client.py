@@ -137,11 +137,13 @@ class DifyPluginToolClientError(Exception):
 
     error_type: str | None
     status_code: int | None
+    raw_payload: str | None
 
-    def __init__(self, message: str, *, error_type: str | None = None, status_code: int | None = None) -> None:
+    def __init__(self, message: str, *, error_type: str | None = None, status_code: int | None = None, raw_payload: str | None = None) -> None:
         super().__init__(message)
         self.error_type = error_type
         self.status_code = status_code
+        self.raw_payload = raw_payload
 
 
 @dataclass(slots=True)
@@ -222,6 +224,7 @@ class DifyPluginDaemonToolClient:
                         error_type=resolved_error["error_type"],
                         message=resolved_error["message"],
                         status_code=response.status_code,
+                        raw_payload=body,
                     )
                 raise DifyPluginToolClientError(
                     body or "Plugin daemon stream request failed.", status_code=response.status_code
@@ -245,6 +248,7 @@ class DifyPluginDaemonToolClient:
                         _raise_tool_daemon_error(
                             error_type=resolved_error["error_type"],
                             message=resolved_error["message"],
+                            raw_payload=wrapped.message,
                         )
                     raise DifyPluginToolClientError(wrapped.message or "Plugin daemon returned an error stream item.")
                 if wrapped.data is None:
@@ -320,8 +324,14 @@ def _raise_tool_daemon_error(
     error_type: str,
     message: str,
     status_code: int | None = None,
+    raw_payload: str | None = None,
 ) -> None:
-    raise DifyPluginToolClientError(message, error_type=error_type, status_code=status_code)
+    raise DifyPluginToolClientError(
+        message,
+        error_type=error_type,
+        status_code=status_code,
+        raw_payload=raw_payload,
+    )
 
 
 __all__ = [
