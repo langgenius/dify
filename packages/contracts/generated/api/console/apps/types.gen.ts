@@ -1374,16 +1374,11 @@ export type AdvancedChatWorkflowRunForListResponse = {
   version?: string | null
 }
 
-export type JsonValue =
-  | string
-  | number
-  | number
-  | boolean
-  | {
-      [key: string]: unknown
-    }
-  | Array<unknown>
-  | null
+export type HumanInputUserActionResponse = {
+  button_style?: string
+  id: string
+  title: string
+}
 
 export type AgentConfigVersionResponse = {
   id: string

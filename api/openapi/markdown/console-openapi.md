@@ -23614,14 +23614,6 @@ tenant's default model. The underlying generator never raises — an empty
 | updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | version | string |  | Yes |
 
-#### WorkflowRestoreResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| hash | string |  | Yes |
-| result | string |  | Yes |
-| updated_at | integer |  | Yes |
-
 #### WorkflowRunArchiveDownloadPayload
 
 Request body for preparing one monthly workflow-run archive download.

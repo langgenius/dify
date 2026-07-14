@@ -281,17 +281,6 @@ export type EnvironmentVariableItemResponse = {
   visible: boolean
 }
 
-export type JsonValue =
-  | string
-  | number
-  | number
-  | boolean
-  | {
-      [key: string]: unknown
-    }
-  | Array<unknown>
-  | null
-
 export type WorkflowDraftVariableWithoutValue = {
   description?: string
   edited?: boolean

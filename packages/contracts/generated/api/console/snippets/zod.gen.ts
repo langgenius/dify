@@ -422,8 +422,10 @@ export const zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsPath = z
 /**
  * Default block configs retrieved successfully
  */
-export const zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponse =
-  zDefaultBlockConfigsResponse
+export const zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftPath = z.object({
   snippet_id: z.uuid(),
@@ -486,7 +488,7 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunPath
  * Iteration node run started successfully (SSE stream)
  */
 export const zPostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunResponse =
-  zGeneratedAppResponse
+  zEventStreamResponse
 
 export const zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunBody =
   zSnippetLoopNodeRunPayload
@@ -500,7 +502,7 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunPath = z.
  * Loop node run started successfully (SSE stream)
  */
 export const zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponse =
-  zGeneratedAppResponse
+  zEventStreamResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunPath = z.object({
   node_id: z.string(),
@@ -678,5 +680,5 @@ export const zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestorePath = z.object
 /**
  * Workflow restored successfully
  */
-export const zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponse
-  = zSyncDraftWorkflowResponse
+export const zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponse =
+  zSyncDraftWorkflowResponse
