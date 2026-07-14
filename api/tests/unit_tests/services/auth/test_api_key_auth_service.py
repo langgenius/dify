@@ -49,9 +49,7 @@ class TestApiKeyAuthService:
         db_session.commit()
         return binding
 
-    def test_get_provider_auth_list_success(
-        self, sqlite_session: Session, tenant_id, category, provider
-    ):
+    def test_get_provider_auth_list_success(self, sqlite_session: Session, tenant_id, category, provider):
         self._create_binding(sqlite_session, tenant_id=tenant_id, category=category, provider=provider)
         sqlite_session.expire_all()
 
@@ -62,20 +60,14 @@ class TestApiKeyAuthService:
         assert len(tenant_results) == 1
         assert tenant_results[0].provider == provider
 
-    def test_get_provider_auth_list_empty(
-        self, sqlite_session: Session, tenant_id
-    ):
+    def test_get_provider_auth_list_empty(self, sqlite_session: Session, tenant_id):
         result = ApiKeyAuthService.get_provider_auth_list(tenant_id, session=sqlite_session)
 
         tenant_results = [r for r in result if r.tenant_id == tenant_id]
         assert tenant_results == []
 
-    def test_get_provider_auth_list_filters_disabled(
-        self, sqlite_session: Session, tenant_id, category, provider
-    ):
-        self._create_binding(
-            sqlite_session, tenant_id=tenant_id, category=category, provider=provider, disabled=True
-        )
+    def test_get_provider_auth_list_filters_disabled(self, sqlite_session: Session, tenant_id, category, provider):
+        self._create_binding(sqlite_session, tenant_id=tenant_id, category=category, provider=provider, disabled=True)
         sqlite_session.expire_all()
 
         result = ApiKeyAuthService.get_provider_auth_list(tenant_id, session=sqlite_session)
@@ -166,24 +158,16 @@ class TestApiKeyAuthService:
         )
         sqlite_session.expire_all()
 
-        result = ApiKeyAuthService.get_auth_credentials(
-            tenant_id, category, provider, session=sqlite_session
-        )
+        result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider, session=sqlite_session)
 
         assert result == mock_credentials
 
-    def test_get_auth_credentials_not_found(
-        self, sqlite_session: Session, tenant_id, category, provider
-    ):
-        result = ApiKeyAuthService.get_auth_credentials(
-            tenant_id, category, provider, session=sqlite_session
-        )
+    def test_get_auth_credentials_not_found(self, sqlite_session: Session, tenant_id, category, provider):
+        result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider, session=sqlite_session)
 
         assert result is None
 
-    def test_get_auth_credentials_json_parsing(
-        self, sqlite_session: Session, tenant_id, category, provider
-    ):
+    def test_get_auth_credentials_json_parsing(self, sqlite_session: Session, tenant_id, category, provider):
         special_credentials = {"auth_type": "api_key", "config": {"api_key": "key_with_中文_and_special_chars_!@#$%"}}
         self._create_binding(
             sqlite_session,
@@ -194,19 +178,13 @@ class TestApiKeyAuthService:
         )
         sqlite_session.expire_all()
 
-        result = ApiKeyAuthService.get_auth_credentials(
-            tenant_id, category, provider, session=sqlite_session
-        )
+        result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider, session=sqlite_session)
 
         assert result == special_credentials
         assert result["config"]["api_key"] == "key_with_中文_and_special_chars_!@#$%"
 
-    def test_delete_provider_auth_success(
-        self, sqlite_session: Session, tenant_id, category, provider
-    ):
-        binding = self._create_binding(
-            sqlite_session, tenant_id=tenant_id, category=category, provider=provider
-        )
+    def test_delete_provider_auth_success(self, sqlite_session: Session, tenant_id, category, provider):
+        binding = self._create_binding(sqlite_session, tenant_id=tenant_id, category=category, provider=provider)
         binding_id = binding.id
         sqlite_session.expire_all()
 
@@ -216,9 +194,7 @@ class TestApiKeyAuthService:
         remaining = sqlite_session.query(DataSourceApiKeyAuthBinding).filter_by(id=binding_id).first()
         assert remaining is None
 
-    def test_delete_provider_auth_not_found(
-        self, sqlite_session: Session, tenant_id
-    ):
+    def test_delete_provider_auth_not_found(self, sqlite_session: Session, tenant_id):
         # Should not raise when binding not found
         ApiKeyAuthService.delete_provider_auth(tenant_id, str(uuid4()), session=sqlite_session)
 
