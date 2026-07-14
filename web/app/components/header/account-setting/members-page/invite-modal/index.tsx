@@ -68,6 +68,10 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
     }),
   )
 
+  const clearEmailSubmissionError = () => {
+    setSubmissionError((error) => (error?.kind === 'fields' && error.errors.emails ? null : error))
+  }
+
   const handleSubmit = ({ role }: InviteFormValues) => {
     if (isPending) return
 
@@ -136,6 +140,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
         draft={draft}
         onRecipientsChange={setRecipients}
         onDraftChange={setDraft}
+        onChange={clearEmailSubmissionError}
         disabled={isPending}
       />
       <RoleSelector hasServerError={Boolean(fieldErrors?.role)} disabled={isPending} />

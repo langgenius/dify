@@ -19,6 +19,7 @@ type EmailRecipientsFieldProps = {
   draft: string
   onRecipientsChange: (recipients: EmailRecipient[]) => void
   onDraftChange: (draft: string) => void
+  onChange?: () => void
   disabled?: boolean
 }
 
@@ -31,6 +32,7 @@ export function EmailRecipientsField({
   draft,
   onRecipientsChange,
   onDraftChange,
+  onChange,
   disabled = false,
 }: EmailRecipientsFieldProps) {
   const { t } = useTranslation()
@@ -62,10 +64,12 @@ export function EmailRecipientsField({
 
   const updateRecipients = (nextRecipients: EmailRecipient[]) => {
     onRecipientsChange(nextRecipients)
+    onChange?.()
   }
 
   const updateDraft = (nextDraft: string) => {
     onDraftChange(nextDraft)
+    onChange?.()
   }
 
   const focusInput = (select = false) => {

@@ -598,6 +598,45 @@ describe('InviteModal', () => {
     })
   })
 
+  it('should clear an email server error when a recipient is removed before retrying', async () => {
+    const user = userEvent.setup()
+    inviteMember
+      .mockRejectedValueOnce({
+        code: 'BAD_REQUEST',
+        data: { body: { code: 'limit_exceeded', message: 'Backend message' } },
+      })
+      .mockResolvedValueOnce({
+        result: 'success',
+        invitation_results: [],
+        tenant_id: 'tenant-id',
+      } satisfies MemberInviteResponse)
+    renderModal()
+
+    await addRecipients(user, 'first@example.com, second@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    expect(await screen.findByText(/members\.inviteLimitExceeded/i)).toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: /operation\.remove.*second@example\.com/i }),
+    )
+    expect(screen.queryByText(/members\.inviteLimitExceeded/i)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(inviteMember).toHaveBeenCalledTimes(2)
+      expect(inviteMember.mock.calls[1]?.[0]).toEqual({
+        body: {
+          emails: ['first@example.com'],
+          role: 'admin',
+          language: 'en-US',
+        },
+      })
+    })
+  })
+
   it('keeps unknown request failures as a persistent form error', async () => {
     const user = userEvent.setup()
     inviteMember.mockRejectedValue(new Error('Network failed'))
