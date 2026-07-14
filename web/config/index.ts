@@ -331,7 +331,7 @@ export const STOP_PARAMETER_RULE: ModelParameterRule = {
 // Synthetic rule consumed by the Dify backend before the request reaches the
 // model provider; only enforced for workflow LLM-compatible nodes.
 export const FIRST_TOKEN_TIMEOUT_PARAMETER_RULE: ModelParameterRule = {
-  default: 10000,
+  default: 2000,
   min: 100,
   max: 600000,
   precision: 0,
