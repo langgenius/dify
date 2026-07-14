@@ -266,7 +266,7 @@
   "members.removeFromTeam": "Видалити з команди",
   "members.removeFromTeamConfirmDescription": "Підтвердьте видалення цього учасника. Цю дію не можна скасувати.",
   "members.removeFromTeamConfirmTitle": "Видалити {{memberName}} з команди",
-  "members.role": "РОЛЬ",
+  "members.role": "Роль",
   "members.roles": "РОЛІ",
   "members.seatsRemaining_one": "Залишилося {{count}} місце",
   "members.seatsRemaining_other": "Залишилося {{count}} місця",

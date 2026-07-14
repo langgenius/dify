@@ -1,6 +1,5 @@
 'use client'
 
-import type { Ref } from 'react'
 import type { Role } from '@/models/access-control'
 import { Field, FieldError } from '@langgenius/dify-ui/field'
 import {
@@ -20,12 +19,8 @@ import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 
 type RoleSelectorProps = {
-  value: Role | null
-  onChange: (role: Role | null) => void
-  onInteract?: () => void
-  error?: string
+  hasServerError?: boolean
   disabled?: boolean
-  triggerRef?: Ref<HTMLButtonElement>
 }
 
 const PAGE_SIZE = 20
@@ -51,14 +46,7 @@ function getLegacyRoleDescriptionKey(role: Role) {
   return candidateKeys.find(isLegacyRoleKey)
 }
 
-export function RoleSelector({
-  value,
-  onChange,
-  onInteract,
-  error,
-  disabled = false,
-  triggerRef,
-}: RoleSelectorProps) {
+export function RoleSelector({ hasServerError = false, disabled = false }: RoleSelectorProps) {
   const { t } = useTranslation()
   const locale = useLocale()
   const [open, setOpen] = useState(false)
@@ -150,27 +138,19 @@ export function RoleSelector({
   }
 
   return (
-    <Field name="role" invalid={Boolean(error)}>
+    <Field name="role">
       <Select<Role>
         name="role"
         required
         disabled={disabled}
-        value={value}
         open={open}
-        onOpenChange={(nextOpen) => {
-          setOpen(nextOpen)
-          onInteract?.()
-        }}
-        onValueChange={(nextRole) => {
-          onChange(nextRole)
-          onInteract?.()
-        }}
+        onOpenChange={setOpen}
         itemToStringLabel={(role) => role.name}
         itemToStringValue={(role) => role.id}
         isItemEqualToValue={(role, selectedRole) => role.id === selectedRole.id}
       >
         <SelectLabel>{t(($) => $['members.role'], { ns: 'common' })}</SelectLabel>
-        <SelectTrigger ref={triggerRef}>
+        <SelectTrigger>
           <SelectValue placeholder={t(($) => $['members.selectRole'], { ns: 'common' })} />
         </SelectTrigger>
         <SelectContent
@@ -183,6 +163,10 @@ export function RoleSelector({
           {rolesLoading ? (
             <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
               {t(($) => $.loading, { ns: 'common' })}
+            </div>
+          ) : rolesError && roles.length === 0 ? (
+            <div className="px-3 py-6 text-center system-sm-regular text-text-destructive-secondary">
+              {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
             </div>
           ) : roles.length === 0 ? (
             <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
@@ -208,10 +192,13 @@ export function RoleSelector({
           )}
         </SelectContent>
       </Select>
-      <FieldError match="valueMissing">
-        {t(($) => $['members.selectRole'], { ns: 'common' })}
-      </FieldError>
-      <FieldError match={Boolean(error)}>{error}</FieldError>
+      {hasServerError ? (
+        <FieldError />
+      ) : (
+        <FieldError match="valueMissing">
+          {t(($) => $['members.selectRole'], { ns: 'common' })}
+        </FieldError>
+      )}
     </Field>
   )
 }

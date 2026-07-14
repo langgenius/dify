@@ -271,7 +271,7 @@
   "members.seatsRemaining_one": "{{count}} جایگاه باقی‌مانده",
   "members.seatsRemaining_other": "{{count}} جایگاه باقی‌مانده",
   "members.selectRole": "یک نقش انتخاب کنید",
-  "members.sendInvite": "ارسال دعوت",
+  "members.sendInvite": "ارسال دعوت‌ها",
   "members.sendInviteCount_one": "ارسال {{count}} دعوت‌نامه",
   "members.sendInviteCount_other": "ارسال {{count}} دعوت‌نامه",
   "members.transferModal.codeLabel": "کد تأیید",
