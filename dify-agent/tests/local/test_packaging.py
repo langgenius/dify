@@ -77,5 +77,3 @@ def test_project_declares_console_scripts() -> None:
     assert "shellctl" not in scripts
     assert "shellctl-sanitize-pty" not in scripts
     assert "shellctl-runner-exit" not in scripts
-
-

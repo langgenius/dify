@@ -21,7 +21,6 @@ def test_generate_job_id_matches_proposal_format() -> None:
     assert all(char in f"{JOB_ID_ALPHABET}-" for char in job_id[9:])
 
 
-
 def test_read_output_window_preserves_utf8_boundaries(tmp_path: Path) -> None:
     output_path = tmp_path / "output.log"
     output_path.write_text("A🙂B", encoding="utf-8")
@@ -66,7 +65,6 @@ def test_tail_output_window_skips_partial_utf8_prefix(tmp_path: Path) -> None:
     assert tail.output == "b"
     assert tail.offset == output_path.stat().st_size
     assert tail.truncated is False
-
 
 
 @pytest.mark.parametrize(
