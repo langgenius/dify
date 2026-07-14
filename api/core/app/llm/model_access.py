@@ -128,21 +128,34 @@ def build_dify_model_access(run_context: DifyRunContext) -> tuple[CredentialsPro
     )
 
 
-def _normalize_completion_params(completion_params: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+def _normalize_completion_params(
+    completion_params: dict[str, Any],
+) -> tuple[dict[str, Any], list[str], float | None]:
     """
-    Split node-level completion params into provider parameters and stop sequences.
+    Split node-level completion params into provider parameters, stop sequences,
+    and the first-token timeout.
 
     Workflow LLM-compatible nodes still consume runtime invocation settings from
-    ``ModelInstance.parameters`` and ``ModelInstance.stop``. Keep the
-    ``ModelInstance`` view and the returned config entity aligned here so callers
-    do not need to duplicate normalization logic.
+    ``ModelInstance.parameters``, ``ModelInstance.stop`` and
+    ``ModelInstance.first_token_timeout``. Keep the ``ModelInstance`` view and the
+    returned config entity aligned here so callers do not need to duplicate
+    normalization logic.
+
+    ``first_token_timeout`` is user-facing config in seconds; it is consumed here and
+    never forwarded to providers. Invalid values (non-numeric, bool, non-positive)
+    disable the gate.
     """
     normalized_parameters = dict(completion_params)
     stop = normalized_parameters.pop("stop", [])
     if not isinstance(stop, list) or not all(isinstance(item, str) for item in stop):
         stop = []
 
-    return normalized_parameters, stop
+    raw_timeout = normalized_parameters.pop("first_token_timeout", None)
+    first_token_timeout: float | None = None
+    if isinstance(raw_timeout, (int, float)) and not isinstance(raw_timeout, bool) and raw_timeout > 0:
+        first_token_timeout = float(raw_timeout)
+
+    return normalized_parameters, stop, first_token_timeout
 
 
 def fetch_model_config(
@@ -178,12 +191,13 @@ def fetch_model_config(
     if model_schema is None:
         raise ModelNotExistError(f"Model {node_data_model.name} schema does not exist.")
 
-    parameters, stop = _normalize_completion_params(node_data_model.completion_params)
+    parameters, stop, first_token_timeout = _normalize_completion_params(node_data_model.completion_params)
     model_instance.provider = node_data_model.provider
     model_instance.model_name = node_data_model.name
     model_instance.credentials = credentials
     model_instance.parameters = parameters
     model_instance.stop = tuple(stop)
+    model_instance.first_token_timeout = first_token_timeout
 
     return model_instance, ModelConfigWithCredentialsEntity(
         provider=node_data_model.provider,
