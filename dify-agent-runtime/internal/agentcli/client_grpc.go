@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/langgenius/dify/dify-agent-sandbox-runtime/internal/stubclient"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/stubclient"
 )
 
 // grpcStubClient implements StubClient with gRPC for Connect/FileUpload/FileDownload

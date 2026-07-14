@@ -164,8 +164,8 @@ build-api:
 build-sandbox-runtime:
 	@echo "Building sandbox runtime Docker image: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)..."
 	docker build -t $(SANDBOX_RUNTIME_IMAGE):$(VERSION) \
-		-f dify-agent-sandbox-runtime/docker/Dockerfile \
-		dify-agent-sandbox-runtime
+		-f dify-agent-runtime/docker/Dockerfile \
+		dify-agent-runtime
 	@echo "Sandbox runtime Docker image built successfully: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)"
 
 # Push Docker images

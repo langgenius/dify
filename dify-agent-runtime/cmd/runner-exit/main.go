@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	runnerexit "github.com/langgenius/dify/dify-agent-sandbox-runtime/internal/runner_exit"
+	runnerexit "github.com/langgenius/dify/dify-agent-runtime/internal/runner_exit"
 )
 
 func main() {

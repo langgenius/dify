@@ -78,14 +78,14 @@ jobs:
           - service_name: "build-agent-local-sandbox-amd64"
             image_name_env: "DIFY_AGENT_LOCAL_SANDBOX_IMAGE_NAME"
             artifact_context: "local-sandbox"
-            build_context: "{{defaultContext}}:dify-agent-sandbox-runtime"
+            build_context: "{{defaultContext}}:dify-agent-runtime"
             file: "docker/Dockerfile"
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
           - service_name: "build-agent-local-sandbox-arm64"
             image_name_env: "DIFY_AGENT_LOCAL_SANDBOX_IMAGE_NAME"
             artifact_context: "local-sandbox"
-            build_context: "{{defaultContext}}:dify-agent-sandbox-runtime"
+            build_context: "{{defaultContext}}:dify-agent-runtime"
             file: "docker/Dockerfile"
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
@@ -156,7 +156,7 @@ jobs:
             build_context: "{{defaultContext}}"
             file: "dify-agent/Dockerfile"
           - service_name: "validate-agent-local-sandbox-amd64"
-            build_context: "{{defaultContext}}:dify-agent-sandbox-runtime"
+            build_context: "{{defaultContext}}:dify-agent-runtime"
             file: "docker/Dockerfile"
     steps:
       - name: Set up Docker Buildx

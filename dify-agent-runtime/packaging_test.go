@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-// projectRoot returns the absolute path to the dify-agent-sandbox-runtime
+// projectRoot returns the absolute path to the dify-agent-runtime
 // module root (the directory containing go.mod).
 func projectRoot(t *testing.T) string {
 	t.Helper()
@@ -33,7 +33,7 @@ func TestGoModDeclares(t *testing.T) {
 	}
 	content := string(data)
 
-	if !strings.Contains(content, "module github.com/langgenius/dify/dify-agent-sandbox-runtime") {
+	if !strings.Contains(content, "module github.com/langgenius/dify/dify-agent-runtime") {
 		t.Error("go.mod module path mismatch")
 	}
 	if !strings.Contains(content, "require modernc.org/sqlite") {

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/langgenius/dify/dify-agent-sandbox-runtime/internal/sanitize"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/sanitize"
 )
 
 func main() {

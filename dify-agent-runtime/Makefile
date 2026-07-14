@@ -44,7 +44,7 @@ clean:
 # can reference the same container. `make integration` runs the full
 # lifecycle in a single invocation with automatic cleanup.
 
-IMAGE_NAME := dify-agent-sandbox-runtime:test
+IMAGE_NAME := dify-agent-runtime:test
 STATE_FILE := .integration-state
 
 integration-up:

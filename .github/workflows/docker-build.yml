@@ -13,11 +13,11 @@ on:
       - dify-agent/README.md
       - dify-agent/src/**
       - web/Dockerfile
-      - dify-agent-sandbox-runtime/docker/Dockerfile
-      - dify-agent-sandbox-runtime/go.mod
-      - dify-agent-sandbox-runtime/go.sum
-      - dify-agent-sandbox-runtime/cmd/**
-      - dify-agent-sandbox-runtime/internal/**
+      - dify-agent-runtime/docker/Dockerfile
+      - dify-agent-runtime/go.mod
+      - dify-agent-runtime/go.sum
+      - dify-agent-runtime/cmd/**
+      - dify-agent-runtime/internal/**
 
 concurrency:
   group: docker-build-${{ github.head_ref || github.run_id }}
@@ -56,12 +56,12 @@ jobs:
           - service_name: "local-sandbox-amd64"
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}:dify-agent-sandbox-runtime"
+            context: "{{defaultContext}}:dify-agent-runtime"
             file: "docker/Dockerfile"
           - service_name: "local-sandbox-arm64"
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}:dify-agent-sandbox-runtime"
+            context: "{{defaultContext}}:dify-agent-runtime"
             file: "docker/Dockerfile"
     steps:
       - name: Set up Depot CLI
@@ -92,7 +92,7 @@ jobs:
             context: "{{defaultContext}}"
             file: "web/Dockerfile"
           - service_name: "local-sandbox-amd64"
-            context: "{{defaultContext}}:dify-agent-sandbox-runtime"
+            context: "{{defaultContext}}:dify-agent-runtime"
             file: "docker/Dockerfile"
     steps:
       - name: Set up Docker Buildx

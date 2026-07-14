@@ -128,7 +128,7 @@ jobs:
               - 'api/uv.lock'
               - 'api/pyproject.toml'
             sandbox-runtime:
-              - 'dify-agent-sandbox-runtime/**'
+              - 'dify-agent-runtime/**'
               - '.github/workflows/sandbox-runtime-tests.yml'
             migration:
               - 'api/migrations/**'

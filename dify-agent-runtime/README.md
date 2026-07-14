@@ -1,4 +1,4 @@
-# dify-agent-sandbox-runtime
+# dify-agent-runtime
 
 Go implementation of the shellctl server and runtime utilities.
 
@@ -34,18 +34,18 @@ Produces three binaries in `bin/`:
 ### Building docker image
 
 ```
-docker build -f dify-agent-sandbox-runtime/docker/Dockerfile \
+docker build -f dify-agent-runtime/docker/Dockerfile \
   --build-context agent=./dify-agent \
-  -t dify-agent-sandbox-runtime:latest \
-  dify-agent-sandbox-runtime/
+  -t dify-agent-runtime:latest \
+  dify-agent-runtime/
 ```
 
 ### Runing docker container
 
 ```
-docker run -d --name dify-agent-sandbox-runtime \
+docker run -d --name dify-agent-runtime \
   -p 15004:5004 \
-  dify-agent-sandbox-runtime:latest
+  dify-agent-runtime:latest
 ```
 
 ## Testing

@@ -1,4 +1,4 @@
-module github.com/langgenius/dify/dify-agent-sandbox-runtime
+module github.com/langgenius/dify/dify-agent-runtime
 
 go 1.26
 

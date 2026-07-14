@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/langgenius/dify/dify-agent-sandbox-runtime/internal/agentcli"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/agentcli"
 )
 
 func main() {

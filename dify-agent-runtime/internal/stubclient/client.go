@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	stubv1 "github.com/langgenius/dify/dify-agent-sandbox-runtime/gen/dify/agent/stub/v1"
+	stubv1 "github.com/langgenius/dify/dify-agent-runtime/gen/dify/agent/stub/v1"
 )
 
 // Client wraps the gRPC AgentStubService client with connection lifecycle management.

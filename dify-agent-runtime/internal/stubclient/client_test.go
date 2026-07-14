@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	stubv1 "github.com/langgenius/dify/dify-agent-sandbox-runtime/gen/dify/agent/stub/v1"
+	stubv1 "github.com/langgenius/dify/dify-agent-runtime/gen/dify/agent/stub/v1"
 )
 
 // fakeServer implements the AgentStubService for testing.
