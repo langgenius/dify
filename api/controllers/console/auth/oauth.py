@@ -38,6 +38,7 @@ class OAuthLoginQuery(BaseModel):
     invite_token: str | None = Field(default=None, description="Optional invitation token")
     timezone: str | None = Field(default=None, description="Preferred timezone")
     language: str | None = Field(default=None, description="Preferred interface language")
+    redirect_url: str | None = Field(default=None, description="Relative page to resume after login")
 
 
 class OAuthCallbackQuery(BaseModel):
@@ -109,6 +110,7 @@ class OAuthLogin(Resource):
         invite_token = request.args.get("invite_token") or None
         timezone = _validated_timezone(request.args.get("timezone") or None)
         language = _validated_language(request.args.get("language") or None)
+        redirect_url = request.args.get("redirect_url") or None
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
@@ -119,6 +121,7 @@ class OAuthLogin(Resource):
             invite_token=invite_token,
             timezone=timezone,
             language=language,
+            redirect_url=redirect_url,
         )
         return redirect(auth_url)
 
@@ -144,6 +147,7 @@ class OAuthCallback(Resource):
         invite_token = oauth_state.get("invite_token")
         timezone = _validated_timezone(oauth_state.get("timezone"))
         language = _validated_language(oauth_state.get("language"))
+        redirect_url = oauth_state.get("redirect_url")
 
         if not code:
             return {"error": "Authorization code is required"}, 400
@@ -210,9 +214,12 @@ class OAuthCallback(Resource):
             ip_address=extract_remote_ip(request),
         )
 
-        base_url = dify_config.CONSOLE_WEB_URL
-        query_char = "&" if "?" in base_url else "?"
-        target_url = f"{base_url}{query_char}oauth_new_user={str(oauth_new_user).lower()}"
+        if redirect_url:
+            target_url = redirect_url
+        else:
+            base_url = dify_config.CONSOLE_WEB_URL
+            query_char = "&" if "?" in base_url else "?"
+            target_url = f"{base_url}{query_char}oauth_new_user={str(oauth_new_user).lower()}"
         response = redirect(target_url)
 
         set_access_token_to_cookie(request, response, token_pair.access_token)
