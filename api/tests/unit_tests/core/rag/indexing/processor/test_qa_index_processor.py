@@ -274,6 +274,8 @@ class TestQAIndexProcessor:
         self, processor: QAIndexProcessor, dataset: Mock, dataset_document: Mock
     ) -> None:
         session = MagicMock()
+        phase_events: list[str] = []
+        session.commit.side_effect = lambda: phase_events.append("commit")
         qa_chunks = SimpleNamespace(
             qa_chunks=[
                 SimpleNamespace(question="Q1", answer="A1"),
@@ -292,8 +294,11 @@ class TestQAIndexProcessor:
             patch("core.rag.index_processor.processor.qa_index_processor.DatasetDocumentStore") as mock_store_cls,
             patch("core.rag.index_processor.processor.qa_index_processor.Vector") as mock_vector_cls,
         ):
+            mock_store_cls.return_value.add_documents.side_effect = lambda **_kwargs: phase_events.append("store")
+            mock_vector_cls.return_value.create.side_effect = lambda _documents: phase_events.append("vector")
             processor.index(dataset, dataset_document, {"qa_chunks": []}, session)
 
+        assert phase_events == ["store", "commit", "vector"]
         mock_store_cls.return_value.add_documents.assert_called_once()
         mock_vector_cls.return_value.create.assert_called_once()
 

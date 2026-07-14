@@ -51,6 +51,7 @@ from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetQuer
 from models.enums import ApiTokenType, SegmentStatus
 from models.provider_ids import ModelProviderID
 from services.api_token_service import ApiTokenCache
+from services.app_service import AppService
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
@@ -217,7 +218,7 @@ class _DatasetQueryResponseSource:
         return self.query.get_queries(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.query, name)
+        return getattr(self.query, name)  # noqa: no-new-getattr response adapter delegates model fields
 
 
 class DatasetQueryListResponse(ResponseModel):
@@ -256,7 +257,7 @@ class _RelatedAppResponseSource:
         return self.app.mode_compatible_with_agent_with_session(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.app, name)
+        return getattr(self.app, name)  # noqa: no-new-getattr response adapter delegates model fields
 
 
 class RelatedAppListResponse(ResponseModel):
@@ -990,7 +991,7 @@ class DatasetRelatedAppListApi(Resource):
 
         related_apps = []
         for app_dataset_join in app_dataset_joins:
-            app_model = session.get(App, app_dataset_join.app_id)
+            app_model = AppService.get_app_by_id(app_dataset_join.app_id, session)
             if app_model:
                 related_apps.append(_RelatedAppResponseSource(app=app_model, session=session))
 

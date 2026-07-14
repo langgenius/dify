@@ -984,21 +984,9 @@ class DocumentSegment(TypeBase):
 
     @property
     def child_chunks(self):
-        if not self.document:
-            return []
-        process_rule = self.document.dataset_process_rule
-        if process_rule and process_rule.mode == "hierarchical":
-            rules_dict = process_rule.rules_dict
-            if rules_dict:
-                rules = Rule.model_validate(rules_dict)
-                if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
-                    child_chunks = db.session.scalars(
-                        select(ChildChunk).where(ChildChunk.segment_id == self.id).order_by(ChildChunk.position.asc())
-                    ).all()
-                    return child_chunks or []
-        return []
+        return self.get_child_chunks(session=db.session(), include_full_doc=False)
 
-    def get_child_chunks(self, *, session: Session) -> Sequence["ChildChunk"]:
+    def get_child_chunks(self, *, session: Session, include_full_doc: bool = True) -> Sequence["ChildChunk"]:
         """Load hierarchical child chunks with the caller-owned database session."""
         document = session.get(Document, self.document_id)
         if not document:
@@ -1008,7 +996,7 @@ class DocumentSegment(TypeBase):
             rules_dict = process_rule.rules_dict
             if rules_dict:
                 rules = Rule.model_validate(rules_dict)
-                if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
+                if rules.parent_mode and (include_full_doc or rules.parent_mode != ParentMode.FULL_DOC):
                     child_chunks = session.scalars(
                         select(ChildChunk).where(ChildChunk.segment_id == self.id).order_by(ChildChunk.position.asc())
                     ).all()

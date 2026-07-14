@@ -59,6 +59,7 @@ def delete_segment_from_index_task(
                 delete_summaries=True,  # Actually delete summaries when segment is deleted,
                 session=session,
             )
+            session.commit()
             if dataset.is_multimodal:
                 # delete segment attachment binding
                 segment_attachment_bindings = session.scalars(
@@ -84,4 +85,5 @@ def delete_segment_from_index_task(
             end_at = time.perf_counter()
             logger.info(click.style(f"Segment deleted from index latency: {end_at - start_at}", fg="green"))
         except Exception:
+            session.rollback()
             logger.exception("delete segment from index failed")

@@ -318,7 +318,7 @@ class ExternalDatasetService:
         )
         session.add(external_knowledge_binding)
 
-        session.flush()
+        session.commit()
 
         return dataset
 

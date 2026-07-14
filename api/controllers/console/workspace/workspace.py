@@ -381,6 +381,7 @@ class CustomConfigWorkspaceApi(Resource):
         }
 
         tenant.custom_config_dict = custom_config_dict
+        session.commit()
 
         return WorkspaceTenantResultResponse(
             result="success", tenant=WorkspaceService.get_tenant_info(tenant, session=session)
@@ -449,6 +450,7 @@ class WorkspaceInfoApi(Resource):
         if tenant is None:
             raise NotFound()
         tenant.name = args.name
+        session.commit()
 
         return WorkspaceTenantResultResponse(
             result="success", tenant=WorkspaceService.get_tenant_info(tenant, session=session)

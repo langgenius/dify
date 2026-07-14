@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from core.app.file_access import DatabaseFileAccessController
 from core.app.llm import deduct_llm_quota
+from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
@@ -234,7 +235,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         all_multimodal_documents.append(file_document)
                     doc.attachments = attachments
                 else:
-                    account = AccountService.load_user(document.created_by, session)
+                    with session_factory.create_session() as account_session:
+                        account = AccountService.load_user(document.created_by, account_session)
                     if not account:
                         raise ValueError("Invalid account")
                     doc.attachments = self._get_content_files(doc, current_user=account, session=session)
@@ -246,6 +248,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             # add document segments
             doc_store.add_documents(docs=documents, save_child=False, session=session)
+            session.commit()
             if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 vector = Vector(dataset, session=session)
                 vector.create(documents)
@@ -301,23 +304,25 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             if flask_app:
                 # Ensure Flask app context in worker thread
                 with flask_app.app_context():
+                    with session_factory.create_session() as worker_session:
+                        summary, _ = self.generate_summary(
+                            tenant_id,
+                            preview.content,
+                            summary_index_setting,
+                            document_language=doc_language,
+                            session=worker_session,
+                        )
+                    preview.summary = summary
+            else:
+                # Fallback: try without app context (may fail)
+                with session_factory.create_session() as worker_session:
                     summary, _ = self.generate_summary(
                         tenant_id,
                         preview.content,
                         summary_index_setting,
                         document_language=doc_language,
-                        session=session,
+                        session=worker_session,
                     )
-                    preview.summary = summary
-            else:
-                # Fallback: try without app context (may fail)
-                summary, _ = self.generate_summary(
-                    tenant_id,
-                    preview.content,
-                    summary_index_setting,
-                    document_language=doc_language,
-                    session=session,
-                )
                 preview.summary = summary
 
         # Generate summaries concurrently using ThreadPoolExecutor

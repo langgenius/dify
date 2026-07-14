@@ -106,6 +106,8 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
             # save vector index
             index_processor.load(dataset, documents, multimodal_documents=multimodal_documents, session=session)
 
+            session.commit()
+
             # Enable summary indexes for these segments
             from services.summary_index_service import SummaryIndexService
 
@@ -123,6 +125,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
         except Exception as e:
             logger.exception("enable segments to index failed")
             # update segment error msg
+            session.rollback()
             session.execute(
                 update(DocumentSegment)
                 .where(

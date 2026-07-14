@@ -6,6 +6,7 @@ deprecated in generated API docs so clients migrate toward the canonical paths.
 """
 
 import json
+from collections.abc import Mapping
 from contextlib import ExitStack
 from copy import deepcopy
 from typing import Annotated, Any, Literal, Self, override
@@ -1303,7 +1304,7 @@ class DocumentApi(DatasetApiResource):
             dataset_process_rules = DatasetService.get_process_rules(dataset_id_str, session)
             response_exclude = {"doc_type", "doc_metadata"}
             document_process_rule = document.get_dataset_process_rule(session=session)
-            document_process_rules = document_process_rule.to_dict() if document_process_rule else {}
+            document_process_rules: Mapping[str, Any] = document_process_rule.to_dict() if document_process_rule else {}
             data_source_info = document.get_data_source_detail_dict(session=session)
             segment_count = document.get_segment_count(session=session)
             response = {

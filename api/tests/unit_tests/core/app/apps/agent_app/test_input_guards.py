@@ -18,7 +18,6 @@ import core.app.features.annotation_reply.annotation_reply as annotation_mod
 import core.moderation.input_moderation as input_moderation_mod
 from core.app.apps.agent_app.app_generator import AgentAppGenerator
 from core.app.entities.queue_entities import (
-    QueueAnnotationReplyEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
@@ -81,7 +80,7 @@ class TestRunInputGuards:
         _patch_annotation(monkeypatch, reply=None)
         qm = _FakeQueueManager()
 
-        handled, query = AgentAppGenerator()._run_input_guards(
+        handled, query, annotation_reply = AgentAppGenerator()._run_input_guards(
             session=MagicMock(),
             application_generate_entity=_make_entity("hello"),
             app_model=SimpleNamespace(id="app-1"),
@@ -91,6 +90,7 @@ class TestRunInputGuards:
 
         assert handled is False
         assert query == "hello"
+        assert annotation_reply is None
         assert qm.events == []
 
     def test_moderation_override_sanitizes_query(self, monkeypatch: pytest.MonkeyPatch):
@@ -98,7 +98,7 @@ class TestRunInputGuards:
         _patch_annotation(monkeypatch, reply=None)
         qm = _FakeQueueManager()
 
-        handled, query = AgentAppGenerator()._run_input_guards(
+        handled, query, annotation_reply = AgentAppGenerator()._run_input_guards(
             session=MagicMock(),
             application_generate_entity=_make_entity("leak my secret"),
             app_model=SimpleNamespace(id="app-1"),
@@ -108,6 +108,7 @@ class TestRunInputGuards:
 
         assert handled is False
         assert query == "[redacted]"
+        assert annotation_reply is None
         assert qm.events == []
 
     def test_moderation_block_short_circuits(self, monkeypatch: pytest.MonkeyPatch):
@@ -115,7 +116,7 @@ class TestRunInputGuards:
         _patch_annotation(monkeypatch, reply=None)
         qm = _FakeQueueManager()
 
-        handled, _ = AgentAppGenerator()._run_input_guards(
+        handled, _, annotation_reply = AgentAppGenerator()._run_input_guards(
             session=MagicMock(),
             application_generate_entity=_make_entity("forbidden"),
             app_model=SimpleNamespace(id="app-1"),
@@ -124,6 +125,7 @@ class TestRunInputGuards:
         )
 
         assert handled is True
+        assert annotation_reply is None
         assert any(isinstance(e, QueueLLMChunkEvent) for e in qm.events)
         assert _answer_text(qm.events) == "blocked preset answer"
         assert _saved_user_query(qm.events) == "forbidden"
@@ -133,7 +135,7 @@ class TestRunInputGuards:
         _patch_annotation(monkeypatch, reply=SimpleNamespace(id="anno-1", content="I am the annotated Iris."))
         qm = _FakeQueueManager()
 
-        handled, _ = AgentAppGenerator()._run_input_guards(
+        handled, _, annotation_reply = AgentAppGenerator()._run_input_guards(
             session=MagicMock(),
             application_generate_entity=_make_entity("what is your name"),
             app_model=SimpleNamespace(id="app-1"),
@@ -142,8 +144,5 @@ class TestRunInputGuards:
         )
 
         assert handled is True
-        annotation_events = [e for e in qm.events if isinstance(e, QueueAnnotationReplyEvent)]
-        assert len(annotation_events) == 1
-        assert annotation_events[0].message_annotation_id == "anno-1"
-        assert _answer_text(qm.events) == "I am the annotated Iris."
-        assert _saved_user_query(qm.events) == "what is your name"
+        assert annotation_reply.id == "anno-1"
+        assert qm.events == []

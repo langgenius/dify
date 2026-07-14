@@ -1,4 +1,5 @@
 import logging
+from contextlib import nullcontext
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import Mock, patch
@@ -257,6 +258,8 @@ class TestParagraphIndexProcessor:
         self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
     ) -> None:
         session = Mock()
+        phase_events: list[str] = []
+        session.commit.side_effect = lambda: phase_events.append("commit")
         with (
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.helper.generate_text_hash",
@@ -270,8 +273,11 @@ class TestParagraphIndexProcessor:
             ) as mock_store_cls,
             patch("core.rag.index_processor.processor.paragraph_index_processor.Vector") as mock_vector_cls,
         ):
+            mock_store_cls.return_value.add_documents.side_effect = lambda **_kwargs: phase_events.append("store")
+            mock_vector_cls.return_value.create.side_effect = lambda _documents: phase_events.append("vector")
             processor.index(dataset, dataset_document, ["chunk-1", "chunk-2"], session)
 
+        assert phase_events == ["store", "commit", "vector"]
         mock_store_cls.return_value.add_documents.assert_called_once()
         mock_vector_cls.assert_called_once_with(dataset, session=session)
         mock_vector_cls.return_value.create.assert_called_once()
@@ -282,17 +288,24 @@ class TestParagraphIndexProcessor:
     ) -> None:
         dataset.indexing_technique = IndexTechniqueType.ECONOMY
         session = Mock()
+        phase_events: list[str] = []
+        session.commit.side_effect = lambda: phase_events.append("commit")
         with (
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.helper.generate_text_hash",
                 return_value="hash",
             ),
             patch.object(processor, "_get_content_files", return_value=[]),
-            patch("core.rag.index_processor.processor.paragraph_index_processor.DatasetDocumentStore"),
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.DatasetDocumentStore"
+            ) as mock_store_cls,
             patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls,
         ):
+            mock_store_cls.return_value.add_documents.side_effect = lambda **_kwargs: phase_events.append("store")
+            mock_keyword_cls.return_value.add_texts.side_effect = lambda *_args: phase_events.append("keyword")
             processor.index(dataset, dataset_document, ["chunk-3"], session)
 
+        assert phase_events == ["store", "commit", "keyword"]
         mock_keyword_cls.return_value.add_texts.assert_called_once()
 
     def test_index_multimodal_structure_handles_files_and_account_lookup(
@@ -305,6 +318,7 @@ class TestParagraphIndexProcessor:
         chunk_without_files = SimpleNamespace(content="content-2", files=None)
         structure = SimpleNamespace(general_chunks=[chunk_with_files, chunk_without_files])
         session = Mock()
+        account_session = Mock()
 
         with (
             patch(
@@ -318,6 +332,10 @@ class TestParagraphIndexProcessor:
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.AccountService.load_user",
                 return_value=SimpleNamespace(id="user-1"),
+            ) as load_user,
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.session_factory.create_session",
+                return_value=nullcontext(account_session),
             ),
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="img", metadata={})]
@@ -328,6 +346,8 @@ class TestParagraphIndexProcessor:
             processor.index(dataset, dataset_document, {"general_chunks": []}, session)
 
         assert mock_files.call_count == 1
+        load_user.assert_called_once_with(dataset_document.created_by, account_session)
+        assert account_session is not session
 
     def test_index_multimodal_structure_requires_valid_account(
         self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
@@ -363,15 +383,27 @@ class TestParagraphIndexProcessor:
     def test_generate_summary_preview_success_and_failure(self, processor: ParagraphIndexProcessor) -> None:
         preview_items = [PreviewDetail(content="chunk-1"), PreviewDetail(content="chunk-2")]
         session = Mock()
+        worker_sessions = [Mock(), Mock()]
 
-        with patch.object(
-            processor, "generate_summary", return_value=("summary", LLMUsage.empty_usage())
-        ) as mock_generate_summary:
+        with (
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.session_factory.create_session",
+                side_effect=[nullcontext(worker_session) for worker_session in worker_sessions],
+            ) as create_session,
+            patch.object(
+                processor, "generate_summary", return_value=("summary", LLMUsage.empty_usage())
+            ) as mock_generate_summary,
+        ):
             result = processor.generate_summary_preview(
                 "tenant-1", preview_items, {"enable": True}, doc_language="English", session=session
             )
         assert all(item.summary == "summary" for item in result)
-        assert all(call.kwargs["session"] is session for call in mock_generate_summary.call_args_list)
+        call_sessions = [call.kwargs["session"] for call in mock_generate_summary.call_args_list]
+        assert create_session.call_count == len(preview_items)
+        assert all(call_session is not session for call_session in call_sessions)
+        assert {id(call_session) for call_session in call_sessions} == {
+            id(worker_session) for worker_session in worker_sessions
+        }
 
         with patch.object(processor, "generate_summary", side_effect=RuntimeError("summary failed")):
             with pytest.raises(ValueError, match="Failed to generate summaries"):

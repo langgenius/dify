@@ -62,6 +62,7 @@ def disable_segment_from_index_task(segment_id: str):
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
             assert segment.index_node_id
             index_processor.clean(dataset, [segment.index_node_id], session=session)
+            session.commit()
 
             # Disable summary index for this segment
             from services.summary_index_service import SummaryIndexService
@@ -84,6 +85,7 @@ def disable_segment_from_index_task(segment_id: str):
             )
         except Exception:
             logger.exception("remove segment from index failed")
+            session.rollback()
             segment.enabled = True
             session.commit()
         finally:

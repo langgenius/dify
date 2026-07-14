@@ -114,6 +114,7 @@ class WorkflowConverter:
         session.commit()
 
         app_was_created.send(new_app, account=account, session=session)
+        session.commit()
 
         return new_app
 

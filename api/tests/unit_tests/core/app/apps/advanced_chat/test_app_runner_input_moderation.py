@@ -6,7 +6,7 @@ import pytest
 import core.app.apps.advanced_chat.app_runner as module
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
-from core.app.entities.queue_entities import QueueStopEvent
+from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent
 from core.moderation.base import ModerationError
 
 MINIMAL_GRAPH = {
@@ -190,6 +190,38 @@ def test_run_returns_early_when_direct_output_via_handle_input_moderation(build_
         # Ensure no further steps executed
         mock_anno.assert_not_called()
         mock_init_graph.assert_not_called()
+
+
+def test_run_publishes_annotation_after_commit(build_runner):
+    runner = build_runner
+    events: list[str] = []
+    session = MagicMock()
+    session.scalar.return_value = MagicMock()
+    session.commit.side_effect = lambda: events.append("commit")
+    session_context = MagicMock()
+    session_context.__enter__.return_value = session
+    session_context.__exit__.return_value = False
+    annotation_reply = MagicMock(id="annotation-1", content="annotated answer")
+
+    def publish(event):
+        if isinstance(event, QueueAnnotationReplyEvent):
+            events.append("publish")
+
+    with (
+        _patch_common_run_deps(runner),
+        patch.object(module, "create_session", return_value=session_context),
+        patch.object(
+            runner,
+            "handle_input_moderation",
+            return_value=(False, runner.application_generate_entity.inputs, runner.application_generate_entity.query),
+        ),
+        patch.object(runner, "handle_annotation_reply", return_value=annotation_reply),
+        patch.object(runner, "_publish_event", side_effect=publish),
+        patch.object(runner, "_complete_with_stream_output"),
+    ):
+        runner.run()
+
+    assert events == ["commit", "publish"]
 
 
 def test_run_closes_scoped_session_before_workflow_run(build_runner):

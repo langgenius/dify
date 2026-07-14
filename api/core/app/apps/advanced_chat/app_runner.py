@@ -173,7 +173,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
             # annotation reply
             with create_session() as session:
-                should_stop = self.handle_annotation_reply(
+                annotation_reply = self.handle_annotation_reply(
                     app_record=self._app,
                     message=self.message,
                     query=new_query,
@@ -181,7 +181,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                     session=session,
                 )
                 session.commit()
-            if should_stop:
+            if annotation_reply:
+                self._publish_event(QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id))
+                self._complete_with_stream_output(
+                    text=annotation_reply.content,
+                    stopped_by=QueueStopEvent.StopBy.ANNOTATION_REPLY,
+                )
                 return
 
             # Initialize conversation variables
@@ -305,8 +310,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         query: str,
         app_generate_entity: AdvancedChatAppGenerateEntity,
         session: Session,
-    ) -> bool:
-        annotation_reply = self.query_app_annotations_to_reply(
+    ) -> MessageAnnotation | None:
+        return self.query_app_annotations_to_reply(
             app_record=app_record,
             message=message,
             query=query,
@@ -314,16 +319,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             invoke_from=app_generate_entity.invoke_from,
             session=session,
         )
-
-        if annotation_reply:
-            self._publish_event(QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id))
-
-            self._complete_with_stream_output(
-                text=annotation_reply.content, stopped_by=QueueStopEvent.StopBy.ANNOTATION_REPLY
-            )
-            return True
-
-        return False
 
     def _complete_with_stream_output(self, text: str, stopped_by: QueueStopEvent.StopBy):
         """

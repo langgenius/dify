@@ -124,7 +124,7 @@ def test_segment_response_with_summary():
         result = segment_response_with_summary(segment, "summary", session=session)
     assert result.summary == "summary"
     assert result.id == segment.id
-    get_child_chunks.assert_called_once_with(segment, session=session)
+    get_child_chunks.assert_called_once_with(segment, session=session, include_full_doc=False)
     get_attachments.assert_called_once_with(segment, session=session)
 
 

@@ -52,7 +52,7 @@ def with_session[T, **P, R](
                         session.commit()
                         return result
                     except Exception:
-                        session.rollback()
+                        session.rollback()  # noqa: no-new-controller-sqlalchemy decorator owns transaction rollback
                         raise
 
             with session_factory.create_session() as session:

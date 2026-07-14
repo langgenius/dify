@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
@@ -11,7 +12,58 @@ from models import Account
 from models.model import App, AppMode, AppModelConfig
 from models.workflow import Workflow
 from services.agent.errors import AgentNameConflictError
-from services.app_service import AppService
+from services.app_service import AppService, CreateAppParams
+
+
+class TestCreateAppTransactionBoundary:
+    def test_commits_database_state_before_external_side_effects(self) -> None:
+        session = MagicMock()
+        account = MagicMock(spec=Account, id="account-1", current_tenant_id="tenant-1")
+        phase_events: list[str] = []
+        session.commit.side_effect = lambda: phase_events.append("commit")
+
+        with (
+            patch(
+                "services.app_service.app_was_created.send",
+                side_effect=lambda *_args, **_kwargs: phase_events.append("signal"),
+            ),
+            patch(
+                "services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings",
+                side_effect=lambda *_args: phase_events.append("external"),
+            ),
+            patch(
+                "services.app_service.FeatureService.get_system_features",
+                return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            ),
+            patch("services.app_service.dify_config.BILLING_ENABLED", False),
+        ):
+            AppService().create_app(
+                "tenant-1",
+                CreateAppParams(name="Workflow", mode=AppMode.WORKFLOW.value),
+                account,
+                session=session,
+            )
+
+        assert phase_events == ["commit", "signal", "commit", "external"]
+
+
+@pytest.mark.parametrize(
+    "update_status",
+    [AppService.update_app_site_status, AppService.update_app_api_status],
+)
+def test_app_status_updates_commit_before_signal(update_status: Callable[..., App]) -> None:
+    app = cast(App, SimpleNamespace(enable_site=False, enable_api=False))
+    session = MagicMock()
+    phase_events: list[str] = []
+    session.commit.side_effect = lambda: phase_events.append("commit")
+
+    with (
+        patch("services.app_service.current_user", SimpleNamespace(id="account-1")),
+        patch("services.app_service.app_was_updated.send", side_effect=lambda *_args: phase_events.append("signal")),
+    ):
+        update_status(AppService(), app, True, session=session)
+
+    assert phase_events == ["commit", "signal"]
 
 
 class TestOpenapiVisibilityHelpers:

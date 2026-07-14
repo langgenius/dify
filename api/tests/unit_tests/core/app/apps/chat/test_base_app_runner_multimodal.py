@@ -7,7 +7,6 @@ import pytest
 
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueMessageFileEvent
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.enums import CreatorUserRole
@@ -86,7 +85,7 @@ class TestBaseAppRunnerMultimodal:
                 method = AppRunner._handle_multimodal_image_content
                 runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
 
-                runner._handle_multimodal_image_content(
+                message_file_id = runner._handle_multimodal_image_content(
                     session=file_session,
                     content=content,
                     message_id=mock_message_id,
@@ -113,12 +112,8 @@ class TestBaseAppRunnerMultimodal:
 
                 file_session.add.assert_called_once_with(mock_message_file)
                 file_session.flush.assert_called_once()
-
-                # Verify event was published
-                mock_queue_manager.publish.assert_called_once()
-                publish_call = mock_queue_manager.publish.call_args
-                assert isinstance(publish_call[0][0], QueueMessageFileEvent)
-                assert publish_call[0][0].message_file_id == mock_message_file.id
+                assert message_file_id == mock_message_file.id
+                mock_queue_manager.publish.assert_not_called()
 
     def test_handle_multimodal_image_content_with_base64(
         self,
@@ -157,7 +152,7 @@ class TestBaseAppRunnerMultimodal:
                 method = AppRunner._handle_multimodal_image_content
                 runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
 
-                runner._handle_multimodal_image_content(
+                message_file_id = runner._handle_multimodal_image_content(
                     session=file_session,
                     content=content,
                     message_id=mock_message_id,
@@ -179,8 +174,8 @@ class TestBaseAppRunnerMultimodal:
                 mock_msg_file_class.assert_called_once()
                 file_session.add.assert_called_once()
                 file_session.flush.assert_called_once()
-
-                mock_queue_manager.publish.assert_called_once()
+                assert message_file_id == mock_message_file.id
+                mock_queue_manager.publish.assert_not_called()
 
     def test_handle_multimodal_image_content_with_base64_data_uri(
         self,

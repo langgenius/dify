@@ -112,7 +112,7 @@ def test_post_uses_one_session_and_rolls_back_when_signal_fails(
             )
         )
 
-    monkeypatch.setattr(controller_session.session_factory, "get_session_maker", lambda: make_session)
+    monkeypatch.setattr(controller_session.session_factory, "create_session", make_session)
     monkeypatch.setattr(
         model_config_module.AppModelConfigService,
         "validate_configuration",

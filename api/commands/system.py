@@ -188,8 +188,8 @@ where sites.id is null limit 1000"""
                 if app_id in failed_app_ids:
                     continue
 
+                session = db.session()
                 try:
-                    session = db.session()
                     app = session.scalar(select(App).where(App.id == app_id))
                     if not app:
                         logger.info("App %s not found", app_id)
@@ -205,7 +205,9 @@ where sites.id is null limit 1000"""
                         account = accounts[0]
                         logger.info("Fixing missing site for app %s", app.id)
                         app_was_created.send(app, account=account, session=session)
+                        session.commit()
                 except Exception:
+                    session.rollback()
                     failed_app_ids.append(app_id)
                     click.echo(click.style(f"Failed to fix missing site for app {app_id}", fg="red"))
                     logger.exception("Failed to fix app related site missing issue, app_id: %s", app_id)

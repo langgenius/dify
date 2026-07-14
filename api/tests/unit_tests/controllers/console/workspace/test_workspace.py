@@ -422,16 +422,20 @@ class TestCustomConfigWorkspaceApi:
         method = unwrap(api.post)
         tenant = make_tenant(custom_config={})
         payload = {"remove_webapp_brand": True}
+        events = []
         with (
             app.test_request_context("/workspaces/custom-config", json=payload),
             patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t1"}
+                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
+                side_effect=lambda *args, **kwargs: events.append("get_tenant_info") or {"id": "t1"},
             ),
         ):
             session = MagicMock()
             session.get.return_value = tenant
+            session.commit.side_effect = lambda: events.append("commit")
             result = method(api, session, "t1")
         assert result["result"] == "success"
+        assert events == ["commit", "get_tenant_info"]
 
     def test_logo_fallback(self, app: Flask):
         api = CustomConfigWorkspaceApi()
@@ -542,17 +546,22 @@ class TestWorkspaceInfoApi:
         method = unwrap(api.post)
         tenant = make_tenant()
         payload = {"name": "New Name"}
+        events = []
         with (
             app.test_request_context("/workspaces/info", json=payload),
             patch(
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
-                return_value={"id": "t1", "name": "New Name"},
+                side_effect=lambda *args, **kwargs: (
+                    events.append("get_tenant_info") or {"id": "t1", "name": "New Name"}
+                ),
             ),
         ):
             session = MagicMock()
             session.get.return_value = tenant
+            session.commit.side_effect = lambda: events.append("commit")
             result = method(api, session, "t1")
         assert result["result"] == "success"
+        assert events == ["commit", "get_tenant_info"]
 
     def test_no_current_tenant(self, app: Flask):
         api = WorkspaceInfoApi()

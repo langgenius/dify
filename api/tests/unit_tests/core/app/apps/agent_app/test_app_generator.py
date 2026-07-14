@@ -16,12 +16,14 @@ import json
 import pytest
 from pytest_mock import MockerFixture
 
+import core.app.apps.agent_app.app_generator as module
 from core.app.apps.agent_app.app_generator import (
     AgentAppGenerator,
     AgentAppGeneratorError,
 )
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import AGENT_RUNTIME_EXIT_INTENT_ARG, InvokeFrom, UserFrom
+from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.workflow.file_reference import build_file_reference
 from models import Account, AppModelConfig
 from models.agent import AgentConfigDraftType
@@ -323,7 +325,7 @@ class TestGenerateWorker:
     ):
         generator._get_conversation = mocker.MagicMock(return_value=mocker.MagicMock(id="conv"))
         generator._get_message = mocker.MagicMock(return_value=mocker.MagicMock(id="msg"))
-        generator._run_input_guards = mocker.MagicMock(return_value=(handled, guard_query))
+        generator._run_input_guards = mocker.MagicMock(return_value=(handled, guard_query, None))
         generator._resolve_agent_by_id = mocker.MagicMock(
             return_value=(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
         )
@@ -453,6 +455,26 @@ class TestGenerateWorker:
         runner, _ = self._wire(generator, mocker, handled=True)
         queue_manager = mocker.MagicMock()
         self._call(generator, mocker, queue_manager)
+        runner.run.assert_not_called()
+
+    def test_annotation_reply_publishes_after_guard_transaction_commits(self, generator, mocker: MockerFixture):
+        runner, _ = self._wire(generator, mocker, handled=True)
+        annotation_reply = mocker.MagicMock(id="annotation-1", content="annotated answer")
+        generator._run_input_guards.return_value = (True, "query", annotation_reply)
+        events: list[str] = []
+        guard_context = module.session_factory.get_session_maker.return_value.begin.return_value
+        guard_context.__exit__.side_effect = lambda *args: events.append("commit") or False
+        queue_manager = mocker.MagicMock()
+
+        def publish(event, *_args):
+            if isinstance(event, QueueAnnotationReplyEvent):
+                events.append("publish")
+
+        queue_manager.publish.side_effect = publish
+
+        self._call(generator, mocker, queue_manager)
+
+        assert events == ["commit", "publish"]
         runner.run.assert_not_called()
 
     def test_resume_skips_input_guards_and_consumes_reply(self, generator, mocker: MockerFixture):

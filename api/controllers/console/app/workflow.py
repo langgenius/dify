@@ -330,7 +330,7 @@ class _WorkflowResponseSource:
         self._session = session
 
     def __getattr__(self, name: str) -> object:
-        return getattr(self._workflow, name)
+        return getattr(self._workflow, name)  # noqa: no-new-getattr response adapter delegates model fields
 
     @property
     def created_by_account(self) -> Account | None:

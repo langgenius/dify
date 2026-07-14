@@ -178,6 +178,7 @@ class TestRetrievalServiceInternals:
         session_context = MagicMock()
         session_context.__enter__.return_value = session
         session_class = MagicMock(return_value=session_context)
+        session.context = session_context
         monkeypatch.setattr(retrieval_service_module, "Session", session_class)
         monkeypatch.setattr(retrieval_service_module, "db", SimpleNamespace(engine=Mock()))
         return session
@@ -436,7 +437,12 @@ class TestRetrievalServiceInternals:
         reranked_docs = [create_mock_document("image-content-reranked", "img-doc", 0.97)]
 
         vector_instance = Mock()
-        vector_instance.search_by_file.return_value = original_docs
+
+        def search_by_file(**_kwargs):
+            assert vector_session.context.__exit__.call_count == 0
+            return original_docs
+
+        vector_instance.search_by_file.side_effect = search_by_file
         mock_vector_class.return_value = vector_instance
 
         processor_instance = Mock()

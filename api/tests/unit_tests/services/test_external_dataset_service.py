@@ -1549,8 +1549,8 @@ class TestExternalDatasetServiceCreateDataset:
         assert result.provider == "external"
         assert result.created_by == user_id
         mock_db.session.add.assert_called()
-        assert mock_db.session.flush.call_count == 2
-        mock_db.session.commit.assert_not_called()
+        mock_db.session.flush.assert_called_once()
+        mock_db.session.commit.assert_called_once()
 
     @patch("services.external_knowledge_service.db")
     def test_create_external_dataset_duplicate_name_error(

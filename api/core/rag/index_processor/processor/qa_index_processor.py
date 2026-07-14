@@ -208,6 +208,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             # save node to document segment
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             doc_store.add_documents(docs=documents, save_child=False, session=session)
+            session.commit()
             if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 vector = Vector(dataset, session=session)
                 vector.create(documents)

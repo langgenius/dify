@@ -1,5 +1,6 @@
 import datetime
 from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -240,6 +241,11 @@ class TestGetProcessRuleApi:
 
         document = MagicMock(dataset_id="ds-1")
         session = MagicMock()
+        dataset = MagicMock()
+        dataset.get_latest_process_rule.return_value = SimpleNamespace(
+            mode="custom",
+            rules_dict={"segmentation": {"delimiter": "---", "max_tokens": 123}},
+        )
 
         with (
             app.test_request_context("/?document_id=doc-1"),
@@ -249,27 +255,47 @@ class TestGetProcessRuleApi:
             ) as mock_get_document,
             patch(
                 "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=MagicMock(),
+                return_value=dataset,
             ),
             patch(
                 "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
                 return_value=None,
             ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_process_rules",
-                return_value={
-                    "mode": "custom",
-                    "rules": {"segmentation": {"delimiter": "---", "max_tokens": 123}},
-                },
-            ) as mock_get_process_rules,
         ):
             response = method(api, session, user)
 
         mock_get_document.assert_called_once_with("doc-1", session)
-        mock_get_process_rules.assert_called_once_with("ds-1", session)
+        dataset.get_latest_process_rule.assert_called_once_with(session=session)
         assert response["rules"]["segmentation"]["separator"] == "---"
         assert response["rules"]["segmentation"]["max_tokens"] == 123
         assert "delimiter" not in response["rules"]["segmentation"]
+
+    def test_get_with_document_preserves_null_rules(self, app: Flask, patch_tenant):
+        api = GetProcessRuleApi()
+        method = unwrap(api.get)
+        user, _ = patch_tenant
+        session = MagicMock()
+        dataset = MagicMock()
+        dataset.get_latest_process_rule.return_value = SimpleNamespace(mode="custom", rules_dict=None)
+        with (
+            app.test_request_context("/?document_id=doc-1"),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.get_document_by_id",
+                return_value=MagicMock(dataset_id="ds-1"),
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
+                return_value=None,
+            ),
+        ):
+            response = method(api, session, user)
+
+        assert response["mode"] == "custom"
+        assert response["rules"] is None
 
     def test_get_with_document_dataset_not_found(self, app: Flask, patch_tenant):
         api = GetProcessRuleApi()
@@ -399,9 +425,7 @@ class TestDatasetDocumentListApi:
         with (
             app.test_request_context("/", json={}),
             patch.object(type(console_ns), "payload", {}),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=MagicMock()
-            ),
+            patch("controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=dataset),
         ):
             with pytest.raises(Forbidden):
                 method(api, MagicMock(), user, "ds-1")
@@ -1289,22 +1313,18 @@ class TestDocumentPermissionCases:
         user, _ = patch_tenant
         document = MagicMock(dataset_id="ds-1")
         session = MagicMock()
+        dataset = MagicMock()
+        dataset.get_latest_process_rule.return_value = SimpleNamespace(mode="custom", rules_dict={"a": 1})
         with (
             app.test_request_context("/?document_id=doc-1"),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.get_document_by_id",
                 return_value=document,
             ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=MagicMock()
-            ),
+            patch("controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=dataset),
             patch(
                 "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
                 return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_process_rules",
-                return_value={"mode": "custom", "rules": {"a": 1}},
             ),
         ):
             result = method(api, session, user)

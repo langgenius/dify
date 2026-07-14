@@ -54,7 +54,7 @@ def test_resume_happy_path_account_user_sets_tenant_and_runs(mocker: MockerFixtu
 
     mod.resume_agent_app_execution(conversation_id="conv-1", form_id="form-1")
 
-    account.set_tenant_id.assert_called_once_with("tenant-1")
+    account.set_tenant_id_with_session.assert_called_once_with("tenant-1", session=db.session.return_value)
     gen.return_value.resume_after_form_submission.assert_called_once()
     kwargs = gen.return_value.resume_after_form_submission.call_args.kwargs
     assert kwargs["conversation_id"] == "conv-1"

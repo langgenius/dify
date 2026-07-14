@@ -86,7 +86,7 @@ class AppModelConfigResponseView:
         self._session = session
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self._app_model_config, name)
+        return getattr(self._app_model_config, name)  # noqa: no-new-getattr response adapter delegates model fields
 
     @property
     def annotation_reply_dict(self) -> Any:
@@ -101,7 +101,7 @@ class AppResponseView:
         self._session = session
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self._app, name)
+        return getattr(self._app, name)  # noqa: no-new-getattr response adapter delegates model fields
 
     @property
     def desc_or_prompt(self) -> str:
@@ -521,7 +521,10 @@ class AppService:
 
         session.flush()
 
+        # Preserve the original commit-before-signal ordering for telemetry.
+        session.commit()
         app_was_created.send(app, account=account, session=session)
+        session.commit()
         enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
             tenant_id,
             account.id,
@@ -810,7 +813,7 @@ class AppService:
         app.enable_site = enable_site
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
-        session.flush()
+        session.commit()
 
         app_was_updated.send(app)
 
@@ -830,7 +833,7 @@ class AppService:
         app.enable_api = enable_api
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
-        session.flush()
+        session.commit()
 
         app_was_updated.send(app)
 

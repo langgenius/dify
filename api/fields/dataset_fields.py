@@ -227,7 +227,7 @@ class DatasetDetailResponseSource:
         return self.dataset.get_total_available_documents(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.dataset, name)
+        return getattr(self.dataset, name)  # noqa: no-new-getattr response adapter delegates model fields
 
 
 def dataset_detail_response_source(dataset: Any, *, session: Session) -> DatasetDetailResponseSource:

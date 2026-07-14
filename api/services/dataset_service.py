@@ -740,7 +740,7 @@ class DatasetService:
         )
 
         # Commit changes to database
-        session.flush()
+        session.commit()
 
         return dataset
 
@@ -914,7 +914,7 @@ class DatasetService:
                     session.add(draft_workflow)
 
             # Commit all changes in one transaction
-            session.flush()
+            session.commit()
 
         except Exception:
             logging.exception("Failed to update pipeline knowledge base node data")

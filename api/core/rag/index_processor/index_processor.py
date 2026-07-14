@@ -9,6 +9,7 @@ from flask import current_app
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
+from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
@@ -171,6 +172,7 @@ class IndexProcessor:
             doc_language = document.doc_language
         indexing_technique = dataset.indexing_technique
         tenant_id = dataset.tenant_id
+        session.commit()
 
         preview_output = self.format_preview(chunk_structure, chunks)
         if indexing_technique != IndexTechniqueType.HIGH_QUALITY:
@@ -197,25 +199,13 @@ class IndexProcessor:
                 """Generate summary for a single chunk."""
                 if flask_app:
                     with flask_app.app_context():
-                        if preview_item.content is not None:
-                            # Set Flask application context in worker thread
-                            summary, _ = ParagraphIndexProcessor.generate_summary(
-                                tenant_id=tenant_id,
-                                text=preview_item.content,
-                                summary_index_setting=summary_index_setting,
-                                document_language=doc_language,
-                                session=session,
-                            )
-                            if summary:
-                                preview_item.summary = summary
-
-                        else:
+                        with session_factory.create_session() as worker_session:
                             summary, _ = ParagraphIndexProcessor.generate_summary(
                                 tenant_id=tenant_id,
                                 text=preview_item.content if preview_item.content is not None else "",
                                 summary_index_setting=summary_index_setting,
                                 document_language=doc_language,
-                                session=session,
+                                session=worker_session,
                             )
                             if summary:
                                 preview_item.summary = summary

@@ -106,7 +106,7 @@ class ExternalKnowledgeApiResponseSource:
         return self.external_knowledge_api.get_dataset_bindings(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.external_knowledge_api, name)
+        return getattr(self.external_knowledge_api, name)  # noqa: no-new-getattr response adapter delegates model fields
 
 
 def external_knowledge_api_response(

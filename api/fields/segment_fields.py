@@ -82,7 +82,7 @@ class SegmentWithSummary:
 
     @property
     def child_chunks(self) -> Any:
-        return self.segment.get_child_chunks(session=self.session)
+        return self.segment.get_child_chunks(session=self.session, include_full_doc=False)
 
     @property
     def attachments(self) -> Any:

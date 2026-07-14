@@ -1,7 +1,7 @@
 import json
 import logging
 from argparse import ArgumentTypeError
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import ExitStack
 from datetime import datetime
 from typing import Any, Literal, cast
@@ -367,9 +367,10 @@ class GetProcessRuleApi(Resource):
             except services.errors.account.NoPermissionError as e:
                 raise Forbidden(str(e))
 
-            process_rules = DatasetService.get_process_rules(document.dataset_id, session)
-            mode = process_rules["mode"]
-            rules = process_rules["rules"]
+            dataset_process_rule = dataset.get_latest_process_rule(session=session)
+            if dataset_process_rule:
+                mode = dataset_process_rule.mode
+                rules = dataset_process_rule.rules_dict
 
         return dump_response(ProcessRuleResponse, {"mode": mode, "rules": rules, "limits": limits})
 
@@ -694,7 +695,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
             raise DocumentAlreadyFinishedError()
 
         data_process_rule = document.get_dataset_process_rule(session=session)
-        data_process_rule_dict = data_process_rule.to_dict() if data_process_rule else {}
+        data_process_rule_dict: Mapping[str, Any] = data_process_rule.to_dict() if data_process_rule else {}
 
         if document.data_source_type == "upload_file":
             data_source_info = document.data_source_info_dict
@@ -792,7 +793,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 200,
             )
         data_process_rule = documents[0].get_dataset_process_rule(session=session)
-        data_process_rule_dict = data_process_rule.to_dict() if data_process_rule else {}
+        data_process_rule_dict: Mapping[str, Any] = data_process_rule.to_dict() if data_process_rule else {}
         extract_settings = []
         for document in documents:
             if document.indexing_status in {IndexingStatus.COMPLETED, IndexingStatus.ERROR}:
@@ -1045,7 +1046,7 @@ class DocumentApi(DocumentResource):
 
         dataset_process_rules = DatasetService.get_process_rules(dataset_id_str, session)
         document_process_rule = document.get_dataset_process_rule(session=session)
-        document_process_rules = document_process_rule.to_dict() if document_process_rule else {}
+        document_process_rules: Mapping[str, Any] = document_process_rule.to_dict() if document_process_rule else {}
         segment_count = document.get_segment_count(session=session)
         response = DocumentDetailResponse.model_validate(
             {

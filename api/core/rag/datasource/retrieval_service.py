@@ -336,8 +336,6 @@ class RetrievalService:
                 if not dataset:
                     raise ValueError("dataset not found")
 
-                with Session(db.engine) as session:
-                    vector = Vector(dataset=dataset, session=session)
                 documents = []
                 # Hybrid search merges keyword / full-text / vector hits and then reranks
                 # (weighted fusion or reranking model). Applying the user score threshold at
@@ -346,29 +344,31 @@ class RetrievalService:
                 embedding_score_threshold = (
                     0.0 if retrieval_method == RetrievalMethod.HYBRID_SEARCH else score_threshold
                 )
-                if query_type == QueryType.TEXT_QUERY:
-                    documents.extend(
-                        vector.search_by_vector(
-                            query,
-                            search_type="similarity_score_threshold",
-                            top_k=top_k,
-                            score_threshold=embedding_score_threshold,
-                            filter={"group_id": [dataset.id]},
-                            document_ids_filter=document_ids_filter,
+                with Session(db.engine) as session:
+                    vector = Vector(dataset=dataset, session=session)
+                    if query_type == QueryType.TEXT_QUERY:
+                        documents.extend(
+                            vector.search_by_vector(
+                                query,
+                                search_type="similarity_score_threshold",
+                                top_k=top_k,
+                                score_threshold=embedding_score_threshold,
+                                filter={"group_id": [dataset.id]},
+                                document_ids_filter=document_ids_filter,
+                            )
                         )
-                    )
-                if query_type == QueryType.IMAGE_QUERY:
-                    if not dataset.is_multimodal:
-                        return
-                    documents.extend(
-                        vector.search_by_file(
-                            file_id=query,
-                            top_k=top_k,
-                            score_threshold=embedding_score_threshold,
-                            filter={"group_id": [dataset.id]},
-                            document_ids_filter=document_ids_filter,
+                    if query_type == QueryType.IMAGE_QUERY:
+                        if not dataset.is_multimodal:
+                            return
+                        documents.extend(
+                            vector.search_by_file(
+                                file_id=query,
+                                top_k=top_k,
+                                score_threshold=embedding_score_threshold,
+                                filter={"group_id": [dataset.id]},
+                                document_ids_filter=document_ids_filter,
+                            )
                         )
-                    )
 
                 if documents:
                     if (

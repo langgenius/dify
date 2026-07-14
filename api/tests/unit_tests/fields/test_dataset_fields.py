@@ -186,27 +186,27 @@ def test_dataset_detail_expands_missing_weighted_score_nested_fields():
 
 def test_dataset_detail_response_source_uses_caller_session_for_database_fields():
     session = Mock()
-    getter_values = {
-        "get_app_count": 3,
-        "get_document_count": 4,
-        "get_word_count": 500,
-        "get_author_name": "Ada",
-        "get_tags": [{"id": "tag-1", "name": "Tag", "type": "knowledge"}],
-        "get_doc_form": "paragraph",
-        "get_external_knowledge_info": {
-            "external_knowledge_id": "knowledge-id",
-            "external_knowledge_api_id": "api-id",
-            "external_knowledge_api_name": "api",
-            "external_knowledge_api_endpoint": "https://example.com",
-        },
-        "get_doc_metadata": [{"id": "metadata-1", "name": "Metadata", "type": "string"}],
-        "get_is_published": True,
-        "get_total_documents": 4,
-        "get_total_available_documents": 2,
+    getter_mocks = {
+        "get_app_count": Mock(return_value=3),
+        "get_document_count": Mock(return_value=4),
+        "get_word_count": Mock(return_value=500),
+        "get_author_name": Mock(return_value="Ada"),
+        "get_tags": Mock(return_value=[{"id": "tag-1", "name": "Tag", "type": "knowledge"}]),
+        "get_doc_form": Mock(return_value="paragraph"),
+        "get_external_knowledge_info": Mock(
+            return_value={
+                "external_knowledge_id": "knowledge-id",
+                "external_knowledge_api_id": "api-id",
+                "external_knowledge_api_name": "api",
+                "external_knowledge_api_endpoint": "https://example.com",
+            }
+        ),
+        "get_doc_metadata": Mock(return_value=[{"id": "metadata-1", "name": "Metadata", "type": "string"}]),
+        "get_is_published": Mock(return_value=True),
+        "get_total_documents": Mock(return_value=4),
+        "get_total_available_documents": Mock(return_value=2),
     }
-    dataset = SimpleNamespace(**_dataset_detail_payload())
-    for getter_name, value in getter_values.items():
-        setattr(dataset, getter_name, Mock(return_value=value))
+    dataset = SimpleNamespace(**_dataset_detail_payload(), **getter_mocks)
 
     response = DatasetDetailResponse.model_validate(
         dataset_detail_response_source(dataset, session=session),
@@ -224,5 +224,5 @@ def test_dataset_detail_response_source_uses_caller_session_for_database_fields(
     assert response.is_published is True
     assert response.total_documents == 4
     assert response.total_available_documents == 2
-    for getter_name in getter_values:
-        getattr(dataset, getter_name).assert_called_once_with(session=session)
+    for getter in getter_mocks.values():
+        getter.assert_called_once_with(session=session)

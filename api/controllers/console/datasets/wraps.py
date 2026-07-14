@@ -1,20 +1,18 @@
 from collections.abc import Callable
 from functools import wraps
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.console.datasets.error import PipelineNotFoundError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models.dataset import Pipeline
+from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
 def load_rag_pipeline(session: Session, pipeline_id: str) -> Pipeline:
     _, current_tenant_id = current_account_with_tenant()
-    pipeline = session.scalar(
-        select(Pipeline).where(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_tenant_id).limit(1)
-    )
+    pipeline = RagPipelineService.get_pipeline_by_id(pipeline_id, current_tenant_id, session=session)
     if not pipeline:
         raise PipelineNotFoundError()
     return pipeline

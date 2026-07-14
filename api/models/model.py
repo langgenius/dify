@@ -545,8 +545,9 @@ class App(Base):
         if app_model_config.agent_mode_dict.get("enabled", False) and app_model_config.agent_mode_dict.get(
             "strategy", ""
         ) in {"function_call", "react"}:
-            self.mode = AppMode.AGENT_CHAT
+            session.execute(sa.update(App).where(App.id == self.id).values(mode=AppMode.AGENT_CHAT))
             session.commit()
+            self.mode = AppMode.AGENT_CHAT
             return True
         return False
 
@@ -1204,6 +1205,18 @@ class Conversation(Base):
     def inputs(self) -> dict[str, Any]:
         return self.inputs_with_session(session=db.session())
 
+    @inputs.setter
+    def inputs(self, value: Mapping[str, Any]):
+        inputs = dict(value)
+        for k, v in inputs.items():
+            match v:
+                case File():
+                    inputs[k] = v.model_dump()
+                case list():
+                    if all(isinstance(item, File) for item in v):
+                        inputs[k] = [item.model_dump() for item in v if isinstance(item, File)]
+        self._inputs = inputs
+
     def inputs_with_session(self, *, session: Session) -> dict[str, Any]:
         inputs = self._inputs.copy()
         # Compatibility bridge: stored input payloads may come from before or after the
@@ -1246,18 +1259,6 @@ class Conversation(Base):
                         inputs[key] = file_list
 
         return inputs
-
-    @inputs.setter
-    def inputs(self, value: Mapping[str, Any]):
-        inputs = dict(value)
-        for k, v in inputs.items():
-            match v:
-                case File():
-                    inputs[k] = v.model_dump()
-                case list():
-                    if all(isinstance(item, File) for item in v):
-                        inputs[k] = [item.model_dump() for item in v if isinstance(item, File)]
-        self._inputs = inputs
 
     @property
     def model_config(self) -> AppModelConfigDict:
@@ -1565,6 +1566,19 @@ class Message(Base):
     def inputs(self) -> dict[str, Any]:
         return self.inputs_with_session(session=db.session())
 
+    @inputs.setter
+    def inputs(self, value: Mapping[str, Any]):
+        inputs = dict(value)
+        for k, v in inputs.items():
+            match v:
+                case File():
+                    inputs[k] = v.model_dump()
+                case list():
+                    v_list = v
+                    if all(isinstance(item, File) for item in v_list):
+                        inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
+        self._inputs = inputs
+
     def inputs_with_session(self, *, session: Session) -> dict[str, Any]:
         inputs = self._inputs.copy()
         # Compatibility bridge: message inputs are persisted as JSON and must remain
@@ -1603,19 +1617,6 @@ class Message(Base):
                             )
                         inputs[key] = file_list
         return inputs
-
-    @inputs.setter
-    def inputs(self, value: Mapping[str, Any]):
-        inputs = dict(value)
-        for k, v in inputs.items():
-            match v:
-                case File():
-                    inputs[k] = v.model_dump()
-                case list():
-                    v_list = v
-                    if all(isinstance(item, File) for item in v_list):
-                        inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
-        self._inputs = inputs
 
     @property
     def re_sign_file_url_answer(self) -> str:

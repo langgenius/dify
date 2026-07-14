@@ -51,7 +51,7 @@ from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from extensions.ext_database import db
-from models import Account, App, AppModelConfig, EndUser, Message
+from models import Account, App, AppModelConfig, EndUser, Message, MessageAnnotation
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
@@ -446,12 +446,26 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                         app_model = session.get(App, app_config.app_id)
                         if app_model is None:
                             raise AgentAppGeneratorError("App not found")
-                        handled, query = self._run_input_guards(
+                        handled, query, annotation_reply = self._run_input_guards(
                             session=session,
                             application_generate_entity=application_generate_entity,
                             app_model=app_model,
                             message=message,
                             queue_manager=queue_manager,
+                        )
+                    if annotation_reply:
+                        from core.app.apps.agent_app.app_runner import publish_text_answer
+                        from core.app.entities.queue_entities import QueueAnnotationReplyEvent
+
+                        queue_manager.publish(
+                            QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
+                            PublishFrom.APPLICATION_MANAGER,
+                        )
+                        publish_text_answer(
+                            queue_manager=queue_manager,
+                            model_name=application_generate_entity.model_conf.model,
+                            answer=annotation_reply.content,
+                            user_query=query,
                         )
                     if handled:
                         return
@@ -540,16 +554,13 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         app_model: App,
         message: Message,
         queue_manager: AppQueueManager,
-    ) -> tuple[bool, str]:
+    ) -> tuple[bool, str, MessageAnnotation | None]:
         """Apply input moderation + annotation reply before the backend call.
 
-        Returns ``(handled, query)``: when ``handled`` is True a direct answer
-        has already been published (a blocked/preset moderation response or a
-        matched annotation) and the backend turn must be skipped. Otherwise
-        ``query`` is the possibly moderation-overridden query to send onward.
+        Returns ``(handled, query, annotation_reply)``. Annotation output is
+        published by the caller only after this transaction commits.
         """
         from core.app.apps.agent_app.app_runner import publish_text_answer
-        from core.app.entities.queue_entities import QueueAnnotationReplyEvent
         from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
         from core.moderation.base import ModerationError
         from core.moderation.input_moderation import InputModeration
@@ -572,7 +583,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             )
         except ModerationError as e:
             publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=str(e), user_query=query)
-            return True, query
+            return True, query, None
 
         # annotation reply: a matching annotation answers the turn deterministically.
         if query:
@@ -585,19 +596,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 session=session,
             )
             if annotation_reply:
-                queue_manager.publish(
-                    QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
-                    PublishFrom.APPLICATION_MANAGER,
-                )
-                publish_text_answer(
-                    queue_manager=queue_manager,
-                    model_name=model_name,
-                    answer=annotation_reply.content,
-                    user_query=query,
-                )
-                return True, query
+                return True, query, annotation_reply
 
-        return False, query
+        return False, query, None
 
     def _resolve_agent(
         self,

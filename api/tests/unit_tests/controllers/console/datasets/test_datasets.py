@@ -1102,12 +1102,15 @@ class TestDatasetRelatedAppListApi:
         join1 = MagicMock(app_id="app-1")
         join2 = MagicMock(app_id="app-2")
         session = MagicMock()
-        session.get.side_effect = [app1, app2]
         with (
             app.test_request_context("/"),
             patch("controllers.console.datasets.datasets.DatasetService.get_dataset", return_value=dataset),
             patch("controllers.console.datasets.datasets.DatasetService.check_dataset_permission", return_value=None),
             patch("controllers.console.datasets.datasets.DatasetService.get_related_apps", return_value=[join1, join2]),
+            patch(
+                "controllers.console.datasets.datasets.AppService.get_app_by_id",
+                side_effect=[app1, app2],
+            ) as get_app_by_id,
             patch.object(
                 App,
                 "mode_compatible_with_agent_with_session",
@@ -1141,6 +1144,7 @@ class TestDatasetRelatedAppListApi:
             },
         ]
         assert compatible_mode.call_args_list == [call(app1, session=session), call(app2, session=session)]
+        assert get_app_by_id.call_args_list == [call("app-1", session), call("app-2", session)]
 
     def test_get_dataset_not_found(self, app: Flask):
         api = DatasetRelatedAppListApi()
@@ -1175,12 +1179,15 @@ class TestDatasetRelatedAppListApi:
         join1 = MagicMock(app_id="app-1")
         join2 = MagicMock(app_id="app-2")
         session = MagicMock()
-        session.get.side_effect = [app1, None]
         with (
             app.test_request_context("/"),
             patch("controllers.console.datasets.datasets.DatasetService.get_dataset", return_value=dataset),
             patch("controllers.console.datasets.datasets.DatasetService.check_dataset_permission", return_value=None),
             patch("controllers.console.datasets.datasets.DatasetService.get_related_apps", return_value=[join1, join2]),
+            patch(
+                "controllers.console.datasets.datasets.AppService.get_app_by_id",
+                side_effect=[app1, None],
+            ),
         ):
             response, status = method(api, session, make_account(), "dataset-1")
         assert status == 200

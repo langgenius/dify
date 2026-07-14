@@ -9,6 +9,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.model_manager import ModelInstance
 from core.rag.cleaner.clean_processor import CleanProcessor
@@ -296,7 +297,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     attachments.append(file_document)
                 doc.attachments = attachments
             else:
-                account = AccountService.load_user(document.created_by, session)
+                with session_factory.create_session() as account_session:
+                    account = AccountService.load_user(document.created_by, account_session)
                 if not account:
                     raise ValueError("Invalid account")
                 doc.attachments = self._get_content_files(doc, current_user=account, session=session)
@@ -320,6 +322,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             # add document segments
             doc_store.add_documents(docs=documents, save_child=True, session=session)
+            session.commit()
             if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 all_child_documents = []
                 all_multimodal_documents = []
@@ -383,23 +386,25 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             if flask_app:
                 # Ensure Flask app context in worker thread
                 with flask_app.app_context():
+                    with session_factory.create_session() as worker_session:
+                        summary, _ = ParagraphIndexProcessor.generate_summary(
+                            tenant_id=tenant_id,
+                            text=preview.content,
+                            summary_index_setting=summary_index_setting,
+                            document_language=doc_language,
+                            session=worker_session,
+                        )
+                    preview.summary = summary
+            else:
+                # Fallback: try without app context (may fail)
+                with session_factory.create_session() as worker_session:
                     summary, _ = ParagraphIndexProcessor.generate_summary(
                         tenant_id=tenant_id,
                         text=preview.content,
                         summary_index_setting=summary_index_setting,
                         document_language=doc_language,
-                        session=session,
+                        session=worker_session,
                     )
-                    preview.summary = summary
-            else:
-                # Fallback: try without app context (may fail)
-                summary, _ = ParagraphIndexProcessor.generate_summary(
-                    tenant_id=tenant_id,
-                    text=preview.content,
-                    summary_index_setting=summary_index_setting,
-                    document_language=doc_language,
-                    session=session,
-                )
                 preview.summary = summary
 
         # Generate summaries concurrently using ThreadPoolExecutor

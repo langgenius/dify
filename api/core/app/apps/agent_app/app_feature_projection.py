@@ -1,13 +1,14 @@
 from typing import Any
 
 from models.agent_config_entities import AgentSoulConfig
+from models.model import AnnotationReplyConfig
 
 
 def merge_agent_app_features(
     *,
     agent_soul: AgentSoulConfig,
     app_model_config: Any | None,
-    annotation_reply: dict[str, Any] | None,
+    annotation_reply: AnnotationReplyConfig | None,
 ) -> dict[str, Any]:
     """Project public Agent App features from legacy config plus Agent Soul.
 

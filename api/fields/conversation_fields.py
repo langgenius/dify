@@ -34,7 +34,7 @@ class _SessionResponseSource[SourceT]:
         self._session = session
 
     def __getattr__(self, name: str) -> object:
-        return getattr(self._source, name)
+        return getattr(self._source, name)  # noqa: no-new-getattr response adapter delegates model fields
 
 
 class _FeedbackResponseSource(_SessionResponseSource[MessageFeedback]):

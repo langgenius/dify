@@ -316,7 +316,7 @@ class AppRunner:
                                     if message_id and user_id and tenant_id:
                                         try:
                                             with session_factory.create_session() as session:
-                                                self._handle_multimodal_image_content(
+                                                message_file_id = self._handle_multimodal_image_content(
                                                     session=session,
                                                     content=content,
                                                     message_id=message_id,
@@ -325,6 +325,15 @@ class AppRunner:
                                                     queue_manager=queue_manager,
                                                 )
                                                 session.commit()
+                                            if message_file_id:
+                                                queue_manager.publish(
+                                                    QueueMessageFileEvent(message_file_id=message_file_id),
+                                                    PublishFrom.APPLICATION_MANAGER,
+                                                )
+                                                _logger.info(
+                                                    "QueueMessageFileEvent published for message_file_id: %s",
+                                                    message_file_id,
+                                                )
                                         except Exception:
                                             _logger.exception("Failed to handle multimodal image output")
                                     else:
@@ -367,7 +376,7 @@ class AppRunner:
         tenant_id: str,
         queue_manager: AppQueueManager,
         session: Session,
-    ):
+    ) -> str | None:
         """
         Handle multimodal image content from LLM response.
         Save the image and create a MessageFile record.
@@ -388,7 +397,7 @@ class AppRunner:
 
         if not image_url and not base64_data:
             _logger.warning("Image content has neither URL nor base64 data")
-            return
+            return None
 
         tool_file_manager = ToolFileManager()
 
@@ -422,10 +431,10 @@ class AppRunner:
                 )
                 _logger.info("Image saved successfully, tool_file_id: %s", tool_file.id)
             else:
-                return
+                return None
         except Exception:
             _logger.exception("Failed to save image file")
-            return
+            return None
 
         # Create MessageFile record.
         # Use an independent session so this side-effect write does not
@@ -445,14 +454,7 @@ class AppRunner:
 
         session.add(message_file)
         session.flush()
-
-        # Publish QueueMessageFileEvent
-        queue_manager.publish(
-            QueueMessageFileEvent(message_file_id=message_file.id),
-            PublishFrom.APPLICATION_MANAGER,
-        )
-
-        _logger.info("QueueMessageFileEvent published for message_file_id: %s", message_file.id)
+        return message_file.id
 
     def moderation_for_inputs(
         self,

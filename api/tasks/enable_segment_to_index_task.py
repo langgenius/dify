@@ -107,6 +107,7 @@ def enable_segment_to_index_task(segment_id: str):
 
             # save vector index
             index_processor.load(dataset, [document], multimodal_documents=multimodel_documents, session=session)
+            session.commit()
 
             # Enable summary index for this segment
             from services.summary_index_service import SummaryIndexService
@@ -123,6 +124,7 @@ def enable_segment_to_index_task(segment_id: str):
             logger.info(click.style(f"Segment enabled to index: {segment.id} latency: {end_at - start_at}", fg="green"))
         except Exception as e:
             logger.exception("enable segment to index failed")
+            session.rollback()
             segment.enabled = False
             segment.disabled_at = naive_utc_now()
             segment.status = SegmentStatus.ERROR

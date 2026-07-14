@@ -472,18 +472,18 @@ def test_app_response_view_uses_the_caller_session_for_query_backed_fields(app_m
     assert view.author_name == "Author"
     assert model_config is not None
     assert model_config.annotation_reply_dict == {"enabled": False}
-    for method_name in (
-        "desc_or_prompt_with_session",
-        "site_with_session",
-        "app_model_config_with_session",
-        "workflow_with_session",
-        "bound_agent_id_with_session",
-        "mode_compatible_with_agent_with_session",
-        "deleted_tools_with_session",
-        "tags_with_session",
-        "author_name_with_session",
+    for method in (
+        app_obj.desc_or_prompt_with_session,
+        app_obj.site_with_session,
+        app_obj.app_model_config_with_session,
+        app_obj.workflow_with_session,
+        app_obj.bound_agent_id_with_session,
+        app_obj.mode_compatible_with_agent_with_session,
+        app_obj.deleted_tools_with_session,
+        app_obj.tags_with_session,
+        app_obj.author_name_with_session,
     ):
-        getattr(app_obj, method_name).assert_called_once_with(session=session)
+        method.assert_called_once_with(session=session)
     load_annotation_reply.assert_called_once_with(session, "app-1")
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -15,7 +16,12 @@ from core.app.app_config.entities import (
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueAgentMessageEvent, QueueLLMChunkEvent, QueueMessageEndEvent
+from core.app.entities.queue_entities import (
+    QueueAgentMessageEvent,
+    QueueLLMChunkEvent,
+    QueueMessageEndEvent,
+    QueueMessageFileEvent,
+)
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -351,6 +357,55 @@ class TestAppRunner:
         assert isinstance(queue.events[-1], QueueMessageEndEvent)
         assert queue.events[-1].llm_result.usage == usage
         assert "Failed to handle multimodal image output" in caplog.messages
+
+    def test_handle_invoke_result_stream_commits_message_file_before_publish(self, monkeypatch: pytest.MonkeyPatch):
+        runner = AppRunner()
+        runner._handle_multimodal_image_content = MagicMock(return_value="message-file-1")
+        session = MagicMock()
+        events: list[str] = []
+        session.commit.side_effect = lambda: events.append("commit")
+        monkeypatch.setattr(
+            "core.app.apps.base_app_runner.session_factory.create_session",
+            lambda: nullcontext(session),
+        )
+        queue = _QueueRecorder()
+        original_publish = queue.publish
+
+        def publish(event, pub_from):
+            if isinstance(event, QueueMessageFileEvent):
+                events.append("publish")
+            original_publish(event, pub_from)
+
+        queue.publish = publish
+
+        def stream():
+            yield LLMResultChunk(
+                model="model",
+                prompt_messages=[AssistantPromptMessage(content="prompt")],
+                delta=LLMResultChunkDelta(
+                    index=0,
+                    message=AssistantPromptMessage(
+                        content=[
+                            ImagePromptMessageContent(
+                                url="https://example.com/image.png",
+                                format="png",
+                                mime_type="image/png",
+                            )
+                        ]
+                    ),
+                ),
+            )
+
+        runner._handle_invoke_result_stream(
+            invoke_result=stream(),
+            queue_manager=queue,
+            agent=False,
+            message_id="message-1",
+            user_id="user-1",
+            tenant_id="tenant-1",
+        )
+
+        assert events == ["commit", "publish"]
 
     def test_handle_invoke_result_stream_closes_generator_when_stopped(self):
         runner = AppRunner()

@@ -768,7 +768,7 @@ class TestDocumentSegmentIndexing:
         document.get_dataset_process_rule.assert_called_once_with(session=session)
         session.scalars.assert_called_once()
 
-    def test_get_child_chunks_skips_full_doc_parent_mode(self):
+    def test_get_child_chunks_includes_full_doc_unless_explicitly_hidden(self):
         segment = DocumentSegment(
             tenant_id=str(uuid4()),
             dataset_id=str(uuid4()),
@@ -786,12 +786,16 @@ class TestDocumentSegmentIndexing:
         )
         session = Mock()
         session.get.return_value = document
+        child_chunk = Mock(spec=ChildChunk)
+        session.scalars.return_value.all.return_value = [child_chunk]
 
         with patch("models.dataset.Rule.model_validate", return_value=Mock(parent_mode=ParentMode.FULL_DOC)):
             result = segment.get_child_chunks(session=session)
+            response_result = segment.get_child_chunks(session=session, include_full_doc=False)
 
-        assert result == []
-        session.scalars.assert_not_called()
+        assert result == [child_chunk]
+        assert response_result == []
+        session.scalars.assert_called_once()
 
     def test_relationship_getters_use_caller_session(self):
         segment = DocumentSegment(

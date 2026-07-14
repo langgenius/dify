@@ -133,6 +133,7 @@ def test_agent_console_audio_api_uses_agent_draft(app: Flask, monkeypatch: pytes
         "app_model": app_model,
         "agent_soul": agent_soul,
         "file": calls["asr"]["file"],
+        "session": session,
         "end_user": None,
     }
 

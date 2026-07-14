@@ -67,6 +67,7 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
             index_processor.clean(
                 dataset, index_node_ids, with_keywords=True, delete_child_chunks=False, session=session
             )
+            session.commit()
 
             # Disable summary indexes for these segments
             from services.summary_index_service import SummaryIndexService
@@ -87,6 +88,7 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
             logger.info(click.style(f"Segments removed from index latency: {end_at - start_at}", fg="green"))
         except Exception:
             # update segment error msg
+            session.rollback()
             session.execute(
                 update(DocumentSegment)
                 .where(

@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
@@ -342,6 +343,8 @@ class TestParentChildIndexProcessor:
         )
         dataset_rule = SimpleNamespace(id="rule-1")
         session = MagicMock()
+        phase_events: list[str] = []
+        session.commit.side_effect = lambda: phase_events.append("commit")
 
         with (
             patch(
@@ -361,8 +364,11 @@ class TestParentChildIndexProcessor:
             ) as mock_store_cls,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
         ):
+            mock_store_cls.return_value.add_documents.side_effect = lambda **_kwargs: phase_events.append("store")
+            mock_vector_cls.return_value.create.side_effect = lambda _documents: phase_events.append("vector")
             processor.index(dataset, dataset_document, {"parent_child_chunks": []}, session)
 
+        assert phase_events == ["store", "commit", "vector"]
         assert dataset_document.dataset_process_rule_id == "rule-1"
         session.add.assert_called_once_with(dataset_rule)
         session.flush.assert_called_once()
@@ -380,6 +386,7 @@ class TestParentChildIndexProcessor:
         )
         dataset_rule = SimpleNamespace(id="rule-1")
         session = MagicMock()
+        account_session = MagicMock()
 
         with (
             patch(
@@ -397,6 +404,10 @@ class TestParentChildIndexProcessor:
             patch(
                 "core.rag.index_processor.processor.parent_child_index_processor.AccountService.load_user",
                 return_value=SimpleNamespace(id="user-1"),
+            ) as load_user,
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.session_factory.create_session",
+                return_value=nullcontext(account_session),
             ),
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
@@ -407,6 +418,8 @@ class TestParentChildIndexProcessor:
             processor.index(dataset, dataset_document, {"parent_child_chunks": []}, session)
 
         mock_files.assert_called_once()
+        load_user.assert_called_once_with(dataset_document.created_by, account_session)
+        assert account_session is not session
 
     def test_index_raises_when_account_missing(
         self, processor: ParentChildIndexProcessor, dataset: Mock, dataset_document: Mock
@@ -452,17 +465,29 @@ class TestParentChildIndexProcessor:
     def test_generate_summary_preview_sets_summaries(self, processor: ParentChildIndexProcessor) -> None:
         preview_texts = [PreviewDetail(content="chunk-1"), PreviewDetail(content="chunk-2")]
         session = MagicMock()
+        worker_sessions = [MagicMock(), MagicMock()]
 
-        with patch(
-            "core.rag.index_processor.processor.paragraph_index_processor.ParagraphIndexProcessor.generate_summary",
-            return_value=("summary", None),
-        ) as mock_generate_summary:
+        with (
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.session_factory.create_session",
+                side_effect=[nullcontext(worker_session) for worker_session in worker_sessions],
+            ) as create_session,
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.ParagraphIndexProcessor.generate_summary",
+                return_value=("summary", None),
+            ) as mock_generate_summary,
+        ):
             result = processor.generate_summary_preview(
                 "tenant-1", preview_texts, {"enable": True}, doc_language="English", session=session
             )
 
         assert all(item.summary == "summary" for item in result)
-        assert all(call.kwargs["session"] is session for call in mock_generate_summary.call_args_list)
+        call_sessions = [call.kwargs["session"] for call in mock_generate_summary.call_args_list]
+        assert create_session.call_count == len(preview_texts)
+        assert all(call_session is not session for call_session in call_sessions)
+        assert {id(call_session) for call_session in call_sessions} == {
+            id(worker_session) for worker_session in worker_sessions
+        }
 
     def test_generate_summary_preview_raises_when_worker_fails(self, processor: ParentChildIndexProcessor) -> None:
         preview_texts = [PreviewDetail(content="chunk-1")]

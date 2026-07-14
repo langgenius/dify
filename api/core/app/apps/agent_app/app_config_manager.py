@@ -24,7 +24,7 @@ from core.app.app_config.entities import (
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from models.agent_config_entities import AgentSoulConfig
-from models.model import App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
+from models.model import AnnotationReplyConfig, App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
 
 
 class AgentAppConfig(EasyUIBasedAppConfig):
@@ -43,7 +43,7 @@ class AgentAppConfigManager(BaseAppConfigManager):
         *,
         app_model: App,
         agent_soul: AgentSoulConfig,
-        annotation_reply: dict[str, Any] | None,
+        annotation_reply: AnnotationReplyConfig | None,
         app_model_config: AppModelConfig | None = None,
         conversation: Conversation | None = None,
     ) -> AgentAppConfig:
@@ -83,7 +83,7 @@ class AgentAppConfigManager(BaseAppConfigManager):
         agent_soul: AgentSoulConfig,
         app_model_config: AppModelConfig | None,
         *,
-        annotation_reply: dict[str, Any] | None,
+        annotation_reply: AnnotationReplyConfig | None,
     ) -> dict[str, Any]:
         """Shape a Soul + feature flags into an ``app_model_config``-style dict.
 

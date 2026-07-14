@@ -56,6 +56,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from sqlalchemy.orm.exc import ObjectDeletedError
 
+from core.entities.knowledge_entities import PreviewDetail
 from core.errors.error import ProviderTokenNotInitError
 from core.indexing_runner import (
     DocumentIsDeletedPausedError,
@@ -1513,12 +1514,14 @@ class TestIndexingRunnerEstimate:
                     session=mock_dependencies["session"],
                 )
 
-    def test_indexing_estimate_commits_preview_image_cleanup(self, mock_dependencies):
-        """Test indexing estimate persists cleanup for preview-only extracted images."""
+    def test_indexing_estimate_commits_preview_cleanup_before_summary_workers(self, mock_dependencies):
+        """Test preview cleanup is visible before summary workers use independent sessions."""
         runner = IndexingRunner()
         tenant_id = str(uuid.uuid4())
         mock_processor = MagicMock()
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
+        phase_events: list[str] = []
+        mock_dependencies["session"].commit.side_effect = lambda: phase_events.append("commit")
 
         preview_doc = Document(
             page_content="![image](http://files.local/files/image-1/file-preview)",
@@ -1526,6 +1529,9 @@ class TestIndexingRunnerEstimate:
         )
         mock_processor.extract.return_value = [preview_doc]
         mock_processor.transform.return_value = [preview_doc]
+        mock_processor.generate_summary_preview.side_effect = lambda *_args, **_kwargs: (
+            phase_events.append("summary") or [PreviewDetail(content=preview_doc.page_content)]
+        )
 
         image_file = SimpleNamespace(key="image_files/tenant-1/source-file-1/image.png")
         mock_dependencies["session"].scalar.return_value = image_file
@@ -1540,7 +1546,11 @@ class TestIndexingRunnerEstimate:
             result = runner.indexing_estimate(
                 tenant_id=tenant_id,
                 extract_settings=[MagicMock()],
-                tmp_processing_rule={"mode": "automatic", "rules": {}},
+                tmp_processing_rule={
+                    "mode": "automatic",
+                    "rules": {},
+                    "summary_index_setting": {"enable": True},
+                },
                 doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 session=mock_dependencies["session"],
             )
@@ -1548,7 +1558,7 @@ class TestIndexingRunnerEstimate:
         assert result.total_segments == 1
         mock_storage.delete.assert_called_once_with(image_file.key)
         mock_dependencies["session"].delete.assert_called_once_with(image_file)
-        mock_dependencies["session"].flush.assert_called_once()
+        assert phase_events == ["commit", "summary"]
 
 
 class TestIndexingRunnerProcessChunk:

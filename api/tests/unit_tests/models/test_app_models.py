@@ -17,6 +17,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import Session
 
 from models.enums import ConversationFromSource
 from models.model import (
@@ -203,7 +204,35 @@ class TestAppModelValidation:
         assert result is True
         assert app.mode == AppMode.AGENT_CHAT
         session.get.assert_called_once_with(AppModelConfig, "config-1")
+        session.execute.assert_called_once()
         session.commit.assert_called_once_with()
+
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_is_agent_with_session_persists_mode_across_sessions(self, sqlite_session: Session):
+        app = App(
+            tenant_id=str(uuid4()),
+            name="Test App",
+            mode=AppMode.CHAT,
+            enable_site=True,
+            enable_api=False,
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(app)
+        sqlite_session.flush()
+        model_config = AppModelConfig(
+            app_id=app.id,
+            agent_mode=json.dumps({"enabled": True, "strategy": "react"}),
+        )
+        sqlite_session.add(model_config)
+        sqlite_session.flush()
+        app.app_model_config_id = model_config.id
+        sqlite_session.commit()
+
+        with Session(sqlite_session.get_bind(), expire_on_commit=False) as migration_session:
+            assert app.is_agent_with_session(session=migration_session) is True
+
+        sqlite_session.expire_all()
+        assert sqlite_session.get(App, app.id).mode == AppMode.AGENT_CHAT
 
     def test_app_mode_compatible_with_agent(self):
         """Test mode_compatible_with_agent property."""

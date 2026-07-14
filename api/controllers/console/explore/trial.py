@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
@@ -64,10 +65,11 @@ from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import dump_response, to_timestamp, uuid_value
-from models import Account, AppModelConfig, Tenant
+from models import Account
 from models.account import TenantStatus
 from models.model import AppMode, Site, load_annotation_reply_config
 from models.workflow import Workflow
+from services.account_service import TenantService
 from services.app_generate_service import AppGenerateService
 from services.app_ref_service import AppRefService
 from services.app_service import AppResponseView, AppService
@@ -398,7 +400,7 @@ class TrialWorkflowResponseSource:
         return self.workflow.get_tool_published(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.workflow, name)
+        return getattr(self.workflow, name)  # noqa: no-new-getattr response adapter delegates model fields
 
 
 register_schema_models(
@@ -785,7 +787,7 @@ class TrialSitApi(Resource):
         if not site:
             raise Forbidden()
 
-        tenant = session.get(Tenant, app_model.tenant_id)
+        tenant = TenantService.get_tenant_by_id(app_model.tenant_id, session=session)
         assert tenant
         if tenant.status == TenantStatus.ARCHIVE:
             raise Forbidden()
@@ -805,17 +807,16 @@ class TrialAppParameterApi(Resource):
         if app_model is None:
             raise AppUnavailableError()
 
+        features_dict: Mapping[str, Any]
         if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = session.get(Workflow, app_model.workflow_id) if app_model.workflow_id else None
+            workflow = app_model.workflow_with_session(session=session)
             if workflow is None:
                 raise AppUnavailableError()
 
             features_dict = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
-            app_model_config = (
-                session.get(AppModelConfig, app_model.app_model_config_id) if app_model.app_model_config_id else None
-            )
+            app_model_config = app_model.app_model_config_with_session(session=session)
             if app_model_config is None:
                 raise AppUnavailableError()
 
@@ -853,7 +854,7 @@ class AppWorkflowApi(Resource):
         if not app_model.workflow_id:
             raise AppUnavailableError()
 
-        workflow = session.get(Workflow, app_model.workflow_id)
+        workflow = app_model.workflow_with_session(session=session)
         if workflow is None:
             raise AppUnavailableError()
 

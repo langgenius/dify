@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from events.app_event import app_was_deleted, app_was_updated
 from models.account import Account
 from models.dataset import AppDatasetJoin
-from models.model import App, AppMode, AppModelConfig, IconType
+from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp
 from services.app_service import AppService
 
 
@@ -247,4 +247,32 @@ class TestAppModelConfigWasUpdatedSignal:
         assert isinstance(added_join, AppDatasetJoin)
         assert added_join.app_id == "app-1"
         assert added_join.dataset_id == "dataset-1"
+        session.commit.assert_not_called()
+
+
+class TestCreateInstalledAppWhenAppCreated:
+    def test_skips_existing_installation(self) -> None:
+        from events.event_handlers.create_installed_app_when_app_created import handle
+
+        session = MagicMock()
+        session.scalar.return_value = "installed-app-1"
+
+        handle(SimpleNamespace(id="app-1", tenant_id="tenant-1"), session=session)
+
+        session.add.assert_not_called()
+        session.flush.assert_not_called()
+
+    def test_adds_missing_installation_without_committing(self) -> None:
+        from events.event_handlers.create_installed_app_when_app_created import handle
+
+        session = MagicMock()
+        session.scalar.return_value = None
+
+        handle(SimpleNamespace(id="app-1", tenant_id="tenant-1"), session=session)
+
+        installed_app = session.add.call_args.args[0]
+        assert isinstance(installed_app, InstalledApp)
+        assert installed_app.app_id == "app-1"
+        assert installed_app.tenant_id == "tenant-1"
+        session.flush.assert_called_once_with()
         session.commit.assert_not_called()

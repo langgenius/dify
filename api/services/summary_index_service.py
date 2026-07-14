@@ -709,7 +709,8 @@ class SummaryIndexService:
             summary_record_in_session.status = SummaryStatus.GENERATING
             summary_record_in_session.error = None
             session.add(summary_record_in_session)
-            # Don't flush here - wait until after vectorization succeeds
+            # Persist GENERATING and release the write transaction before LLM I/O.
+            session.commit()
 
             # Generate summary (returns summary_content and llm_usage)
             summary_content, llm_usage = SummaryIndexService.generate_summary_for_segment(
@@ -732,24 +733,16 @@ class SummaryIndexService:
                     llm_usage.completion_tokens,
                 )
 
-            try:
-                SummaryIndexService.vectorize_summary(summary_record_in_session, segment, dataset, session=session)
-                # vectorize_summary mutates status and token fields; refresh before returning the ORM object.
-                session.refresh(summary_record_in_session)
-                session.commit()
-                logger.info("Successfully generated and vectorized summary for segment %s", segment.id)
-                return summary_record_in_session
-            except Exception as vectorize_error:
-                # If vectorization fails, update status to error in current session
-                logger.exception("Failed to vectorize summary for segment %s", segment.id)
-                summary_record_in_session.status = SummaryStatus.ERROR
-                summary_record_in_session.error = f"Vectorization failed: {str(vectorize_error)}"
-                session.add(summary_record_in_session)
-                session.commit()
-                raise
+            SummaryIndexService.vectorize_summary(summary_record_in_session, segment, dataset, session=session)
+            # vectorize_summary mutates status and token fields; refresh before returning the ORM object.
+            session.refresh(summary_record_in_session)
+            session.commit()
+            logger.info("Successfully generated and vectorized summary for segment %s", segment.id)
+            return summary_record_in_session
 
         except Exception as e:
             logger.exception("Failed to generate summary for segment %s", segment.id)
+            session.rollback()
             # Update summary record with error status
             summary_record_in_session = session.scalar(
                 select(DocumentSegmentSummary)

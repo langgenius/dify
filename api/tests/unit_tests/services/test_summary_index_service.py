@@ -11,6 +11,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import create_engine, select
+from sqlalchemy.exc import PendingRollbackError
 from sqlalchemy.orm import sessionmaker
 
 import services.summary_index_service as summary_module
@@ -337,16 +338,20 @@ def test_generate_and_vectorize_summary_success(monkeypatch: pytest.MonkeyPatch)
 
     session = MagicMock()
     session.scalar.return_value = record
+    phase_events: list[str] = []
+    session.commit.side_effect = lambda: phase_events.append("commit")
 
-    monkeypatch.setattr(
-        SummaryIndexService, "generate_summary_for_segment", MagicMock(return_value=("sum", MagicMock(total_tokens=0)))
+    generate_summary = MagicMock(
+        side_effect=lambda *_args, **_kwargs: phase_events.append("generate") or ("sum", MagicMock(total_tokens=0))
     )
-    monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(return_value=None))
+    monkeypatch.setattr(SummaryIndexService, "generate_summary_for_segment", generate_summary)
+    vectorize_summary = MagicMock(side_effect=lambda *_args, **_kwargs: phase_events.append("vectorize"))
+    monkeypatch.setattr(SummaryIndexService, "vectorize_summary", vectorize_summary)
 
     out = SummaryIndexService.generate_and_vectorize_summary(segment, dataset, {"enable": True}, session=session)
     assert out is record
     session.refresh.assert_called_once_with(record)
-    session.commit.assert_called()
+    assert phase_events == ["commit", "generate", "vectorize", "commit"]
 
 
 def test_generate_and_vectorize_summary_vectorize_failure_sets_error(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -367,6 +372,49 @@ def test_generate_and_vectorize_summary_vectorize_failure_sets_error(monkeypatch
     assert record.status == SummaryStatus.ERROR
     # Outer exception handler overwrites the error with the raw exception message.
     assert record.error == "boom"
+    session.rollback.assert_called_once()
+
+
+def test_generate_and_vectorize_summary_rolls_back_failed_transaction_before_recording_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dataset = _dataset()
+    segment = _segment()
+    record = _summary_record(summary_content="")
+    session = MagicMock()
+    rolled_back = False
+    scalar_calls = 0
+
+    def scalar(*_args, **_kwargs):
+        nonlocal scalar_calls
+        scalar_calls += 1
+        if scalar_calls > 1 and not rolled_back:
+            raise PendingRollbackError("rollback required")
+        return record
+
+    def rollback() -> None:
+        nonlocal rolled_back
+        rolled_back = True
+
+    session.scalar.side_effect = scalar
+    session.rollback.side_effect = rollback
+    session.flush.side_effect = RuntimeError("flush failed")
+    monkeypatch.setattr(
+        SummaryIndexService,
+        "generate_summary_for_segment",
+        MagicMock(return_value=("sum", MagicMock(total_tokens=0))),
+    )
+    vectorize_summary = MagicMock()
+    monkeypatch.setattr(SummaryIndexService, "vectorize_summary", vectorize_summary)
+
+    with pytest.raises(RuntimeError, match="flush failed"):
+        SummaryIndexService.generate_and_vectorize_summary(segment, dataset, {"enable": True}, session=session)
+
+    assert rolled_back is True
+    assert record.status == SummaryStatus.ERROR
+    assert record.error == "flush failed"
+    vectorize_summary.assert_not_called()
+    assert session.commit.call_count == 2
 
 
 def test_vectorize_summary_updates_existing_record_found_by_chunk_id(monkeypatch: pytest.MonkeyPatch) -> None:

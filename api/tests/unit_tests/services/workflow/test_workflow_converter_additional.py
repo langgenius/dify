@@ -395,11 +395,15 @@ def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
     monkeypatch.setattr(converter_module, "App", FakeApp)
 
     app_model_config = _app_model_config(id="config-1")
+    phase_events: list[str] = []
     db_session = SimpleNamespace(
-        add=MagicMock(), flush=MagicMock(), commit=MagicMock(), get=MagicMock(return_value=app_model_config)
+        add=MagicMock(),
+        flush=MagicMock(),
+        commit=MagicMock(side_effect=lambda: phase_events.append("commit")),
+        get=MagicMock(return_value=app_model_config),
     )
 
-    send_mock = MagicMock()
+    send_mock = MagicMock(side_effect=lambda *_args, **_kwargs: phase_events.append("signal"))
     monkeypatch.setattr(converter_module.app_was_created, "send", send_mock)
 
     account = _account(id="account-1")
@@ -437,7 +441,8 @@ def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
     assert workflow.app_id == "new-app-id"
     db_session.add.assert_called_once()
     db_session.flush.assert_called_once()
-    db_session.commit.assert_called_once()
+    assert phase_events == ["commit", "signal", "commit"]
+    assert db_session.commit.call_count == 2
     db_session.get.assert_called_once_with(AppModelConfig, "config-1")
     send_mock.assert_called_once_with(new_app, account=account, session=db_session)
 

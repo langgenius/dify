@@ -685,11 +685,13 @@ class TestTrialAppParameterApi:
         api = module.TrialAppParameterApi()
         method = unwrap(api.get)
 
-        app_model = SimpleNamespace(mode=AppMode.CHAT, app_model_config_id="config-1")
         app_model_config = MagicMock(app_id="app-1")
         app_model_config.to_dict.return_value = {"user_input_form": []}
+        app_model = SimpleNamespace(
+            mode=AppMode.CHAT,
+            app_model_config_with_session=MagicMock(return_value=app_model_config),
+        )
         session = MagicMock()
-        session.get.return_value = app_model_config
         annotation_reply = {"enabled": False}
 
         with (
@@ -710,7 +712,7 @@ class TestTrialAppParameterApi:
             result = method(api, session, app_model)
 
         assert result == {"ok": True}
-        session.get.assert_called_once_with(module.AppModelConfig, "config-1")
+        app_model.app_model_config_with_session.assert_called_once_with(session=session)
         load_annotation_reply.assert_called_once_with(session, "app-1")
         app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
@@ -718,11 +720,13 @@ class TestTrialAppParameterApi:
         api = module.TrialAppParameterApi()
         method = unwrap(api.get)
 
-        app_model = SimpleNamespace(mode=AppMode.WORKFLOW, workflow_id="workflow-1")
         workflow = MagicMock(features_dict={})
         workflow.user_input_form.return_value = []
+        app_model = SimpleNamespace(
+            mode=AppMode.WORKFLOW,
+            workflow_with_session=MagicMock(return_value=workflow),
+        )
         session = MagicMock()
-        session.get.return_value = workflow
 
         with (
             patch.object(module, "get_parameters_from_feature_dict", return_value=valid_parameters),
@@ -735,7 +739,7 @@ class TestTrialAppParameterApi:
             result = method(api, session, app_model)
 
         assert result == {"ok": True}
-        session.get.assert_called_once_with(module.Workflow, "workflow-1")
+        app_model.workflow_with_session.assert_called_once_with(session=session)
         workflow.user_input_form.assert_called_once_with(to_old_structure=True)
 
 
@@ -1091,14 +1095,16 @@ class TestTrialSitApi:
         tenant = SimpleNamespace(status=TenantStatus.ARCHIVE)
         session = MagicMock()
         session.scalar.return_value = site
-        session.get.return_value = tenant
 
-        with app.test_request_context("/"):
+        with (
+            app.test_request_context("/"),
+            patch.object(module.TenantService, "get_tenant_by_id", return_value=tenant) as get_tenant_by_id,
+        ):
             with pytest.raises(Forbidden):
                 method(api, session, app_model)
 
         session.scalar.assert_called_once()
-        session.get.assert_called_once_with(module.Tenant, "tenant-1")
+        get_tenant_by_id.assert_called_once_with("tenant-1", session=session)
 
     def test_success(self, app: Flask) -> None:
         api = module.TrialSitApi()
@@ -1109,10 +1115,10 @@ class TestTrialSitApi:
         tenant = SimpleNamespace(status=TenantStatus.NORMAL)
         session = MagicMock()
         session.scalar.return_value = site
-        session.get.return_value = tenant
 
         with (
             app.test_request_context("/"),
+            patch.object(module.TenantService, "get_tenant_by_id", return_value=tenant) as get_tenant_by_id,
             patch.object(module.SiteResponse, "model_validate") as mock_validate,
         ):
             mock_validate_result = MagicMock()
@@ -1122,14 +1128,13 @@ class TestTrialSitApi:
 
         assert result == {"name": "test", "icon": "icon"}
         session.scalar.assert_called_once()
-        session.get.assert_called_once_with(module.Tenant, "tenant-1")
+        get_tenant_by_id.assert_called_once_with("tenant-1", session=session)
 
 
 class TestAppWorkflowApi:
     def test_uses_injected_session(self) -> None:
         api = module.AppWorkflowApi()
         method = unwrap(api.get)
-        app_model = SimpleNamespace(workflow_id="workflow-1")
         created_by = SimpleNamespace(id="account-1", name="Creator", email="creator@example.com")
         workflow = SimpleNamespace(
             id="workflow-1",
@@ -1148,8 +1153,11 @@ class TestAppWorkflowApi:
             get_updated_by_account=MagicMock(return_value=None),
             get_tool_published=MagicMock(return_value=True),
         )
+        app_model = SimpleNamespace(
+            workflow_id="workflow-1",
+            workflow_with_session=MagicMock(return_value=workflow),
+        )
         session = MagicMock()
-        session.get.return_value = workflow
 
         result = method(api, session, app_model)
 
@@ -1170,7 +1178,7 @@ class TestAppWorkflowApi:
             "conversation_variables": [],
             "rag_pipeline_variables": [],
         }
-        session.get.assert_called_once_with(module.Workflow, "workflow-1")
+        app_model.workflow_with_session.assert_called_once_with(session=session)
         workflow.get_created_by_account.assert_called_once_with(session=session)
         workflow.get_updated_by_account.assert_called_once_with(session=session)
         workflow.get_tool_published.assert_called_once_with(session=session)

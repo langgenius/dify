@@ -631,7 +631,7 @@ class TestDatasetServiceCreationAndUpdate:
         get_external_knowledge_api.assert_called_once_with("api-1", dataset.tenant_id, session=session)
         update_binding.assert_called_once_with("dataset-1", "knowledge-1", "api-1", session)
         session.add.assert_called_once_with(dataset)
-        session.flush.assert_called_once()
+        session.commit.assert_called_once()
 
     @pytest.mark.parametrize(
         ("payload", "message"),
@@ -670,7 +670,7 @@ class TestDatasetServiceCreationAndUpdate:
 
         get_external_knowledge_api.assert_called_once_with("foreign-api", dataset.tenant_id, session=session)
         update_binding.assert_not_called()
-        session.flush.assert_not_called()
+        session.commit.assert_not_called()
 
     def test_update_external_knowledge_binding_updates_changed_binding_values(self):
         binding = SimpleNamespace(external_knowledge_id="old-knowledge", external_knowledge_api_id="old-api")
@@ -754,7 +754,7 @@ class TestDatasetServiceCreationAndUpdate:
 
         DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1", session)
 
-        session.flush.assert_not_called()
+        session.commit.assert_not_called()
 
     def test_update_pipeline_knowledge_base_node_data_updates_published_and_draft_workflows(self):
         session = MagicMock()
@@ -799,7 +799,7 @@ class TestDatasetServiceCreationAndUpdate:
         assert json.loads(draft_workflow.graph)["nodes"][0]["data"]["embedding_model_provider"] == "provider"
         session.add.assert_any_call(new_workflow)
         session.add.assert_any_call(draft_workflow)
-        session.flush.assert_called_once()
+        session.commit.assert_called_once()
 
     def test_update_pipeline_knowledge_base_node_data_rolls_back_when_update_fails(self):
         session = MagicMock()
