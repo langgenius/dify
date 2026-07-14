@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -20,7 +20,9 @@ from core.workflow.human_input_adapter import (
 )
 from graphon.runtime import VariablePool
 from models.account import Account, TenantAccountJoin
+from models.engine import db
 from services import human_input_delivery_test_service as service_module
+from services.feature_service import FeatureModel
 from services.human_input_delivery_test_service import (
     DeliveryTestContext,
     DeliveryTestEmailRecipient,
@@ -91,10 +93,13 @@ class TestDeliveryTestRegistry:
         with pytest.raises(DeliveryTestUnsupportedError, match="Delivery method does not support test send."):
             registry.dispatch(context=context, method=method)
 
-    def test_default(self, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(service_module, "db", SimpleNamespace(engine=sqlite_engine))
+    def test_default(self) -> None:
+        app = Flask(__name__)
+        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+        db.init_app(app)
 
-        registry = DeliveryTestRegistry.default()
+        with app.app_context():
+            registry = DeliveryTestRegistry.default()
 
         assert len(registry._handlers) == 1
         assert isinstance(registry._handlers[0], EmailDeliveryTestHandler)
@@ -131,7 +136,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _tenant_id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=False),
+            lambda _tenant_id, **_kwargs: FeatureModel(human_input_email_delivery_enabled=False),
         )
         handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         context = DeliveryTestContext(
@@ -146,7 +151,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id, **_kwargs: FeatureModel(human_input_email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: False)
 
@@ -163,7 +168,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id, **_kwargs: FeatureModel(human_input_email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
 
@@ -182,7 +187,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id, **_kwargs: FeatureModel(human_input_email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
         mock_mail_send = MagicMock()
@@ -218,7 +223,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
-            lambda _id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=True),
+            lambda _id, **_kwargs: FeatureModel(human_input_email_delivery_enabled=True),
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
         mock_mail_send = MagicMock()
