@@ -1,4 +1,4 @@
-"""Tests for core.plugin.plugin_service.PluginService.
+"""Unit tests for core.plugin.plugin_service.PluginService.
 
 Covers: version caching with Redis, install permission/scope gates,
 icon URL construction, asset retrieval with MIME guessing, plugin
@@ -7,14 +7,16 @@ verification, marketplace upgrade flows, and uninstall with credential cleanup.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from flask import Flask
 from sqlalchemy import select
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+import core.plugin.plugin_service as plugin_service_module
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginVerification
 from core.plugin.plugin_service import PluginService
@@ -32,6 +34,18 @@ def _make_features(
     features.plugin_installation_permission.restrict_to_marketplace_only = restrict_to_marketplace
     features.plugin_installation_permission.plugin_installation_scope = scope
     return features
+
+
+@pytest.fixture
+def plugin_db(
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Session:
+    """Route service-owned credential cleanup transactions to SQLite."""
+
+    monkeypatch.setattr(plugin_service_module, "db", SimpleNamespace(engine=sqlite_engine))
+    return sqlite_session
 
 
 class TestFetchLatestPluginVersion:
@@ -348,9 +362,14 @@ class TestUninstall:
         installer.uninstall.assert_called_once_with("t1", "install-1")
 
     @patch("core.plugin.plugin_service.PluginInstaller")
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(Provider, ProviderCredential, TenantPreferredModelProvider)],
+        indirect=True,
+    )
     def test_cleans_credentials_when_plugin_found(
-        self, mock_installer_cls, flask_app_with_containers: Flask, db_session_with_containers: Session
-    ):
+        self, mock_installer_cls: MagicMock, plugin_db: Session
+    ) -> None:
         tenant_id = str(uuid4())
         plugin_id = "org/myplugin"
         provider_name = f"{plugin_id}/model-provider"
@@ -361,8 +380,8 @@ class TestUninstall:
             credential_name="default",
             encrypted_config="{}",
         )
-        db_session_with_containers.add(credential)
-        db_session_with_containers.flush()
+        plugin_db.add(credential)
+        plugin_db.flush()
         credential_id = credential.id
 
         provider = Provider(
@@ -370,8 +389,8 @@ class TestUninstall:
             provider_name=provider_name,
             credential_id=credential_id,
         )
-        db_session_with_containers.add(provider)
-        db_session_with_containers.flush()
+        plugin_db.add(provider)
+        plugin_db.flush()
         provider_id = provider.id
 
         pref = TenantPreferredModelProvider(
@@ -379,8 +398,8 @@ class TestUninstall:
             provider_name=provider_name,
             preferred_provider_type=ProviderType.CUSTOM,
         )
-        db_session_with_containers.add(pref)
-        db_session_with_containers.commit()
+        plugin_db.add(pref)
+        plugin_db.commit()
 
         plugin = MagicMock()
         plugin.installation_id = "install-1"
@@ -396,18 +415,18 @@ class TestUninstall:
         assert result is True
         installer.uninstall.assert_called_once()
 
-        db_session_with_containers.expire_all()
+        plugin_db.expire_all()
 
-        remaining_creds = db_session_with_containers.scalars(
+        remaining_creds = plugin_db.scalars(
             select(ProviderCredential).where(ProviderCredential.id == credential_id)
         ).all()
         assert len(remaining_creds) == 0
 
-        updated_provider = db_session_with_containers.get(Provider, provider_id)
+        updated_provider = plugin_db.get(Provider, provider_id)
         assert updated_provider is not None
         assert updated_provider.credential_id is None
 
-        remaining_prefs = db_session_with_containers.scalars(
+        remaining_prefs = plugin_db.scalars(
             select(TenantPreferredModelProvider).where(
                 TenantPreferredModelProvider.tenant_id == tenant_id,
                 TenantPreferredModelProvider.provider_name == provider_name,
