@@ -25,7 +25,7 @@ from libs.token import (
 from models import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
-from services.errors.account import AccountNotFoundError, AccountRegisterError
+from services.errors.account import AccountNotFoundError, AccountRegisterError, SeatsLimitExceededError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 from services.feature_service import FeatureService
 
@@ -182,6 +182,8 @@ class OAuthCallback(Resource):
                 f"{dify_config.CONSOLE_WEB_URL}/signin"
                 "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
             )
+        except SeatsLimitExceededError:
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Licensed seats limit exceeded.")
         except AccountRegisterError as e:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
 
