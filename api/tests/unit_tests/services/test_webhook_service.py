@@ -16,9 +16,7 @@ from services.trigger.webhook_service import WebhookService
 class TestWebhookServiceUnit:
     """Unit tests for WebhookService focusing on business logic without database dependencies."""
 
-    def test_trigger_workflow_execution_propagates_quota_error_without_error_log(
-        self, sqlite_engine: Engine
-    ) -> None:
+    def test_trigger_workflow_execution_propagates_quota_error_without_error_log(self, sqlite_engine: Engine) -> None:
         webhook_trigger = MagicMock(
             webhook_id="webhook-123",
             tenant_id="tenant-123",
