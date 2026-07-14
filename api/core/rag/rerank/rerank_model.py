@@ -8,6 +8,7 @@ from core.rag.models.document import Document
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.otel import trace_span
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from models.model import UploadFile
@@ -18,6 +19,7 @@ class RerankModelRunner(BaseRerankRunner):
         self.rerank_model_instance = rerank_model_instance
 
     @override
+    @trace_span()
     def run(
         self,
         query: str,

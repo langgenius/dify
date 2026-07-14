@@ -5,10 +5,11 @@ import re
 import threading
 import time
 from collections import Counter, defaultdict
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
+from opentelemetry import context as otel_context
 from sqlalchemy import and_, func, literal, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -65,6 +66,7 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from extensions.otel import trace_span
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
@@ -99,6 +101,20 @@ default_retrieval_model: DefaultRetrievalModelDict = {
 logger = logging.getLogger(__name__)
 
 
+def _propagate_otel_context[**P, R](func: Callable[P, R]) -> Callable[P, R]:
+    """Bind work submitted to a native thread to the caller's active OTel span."""
+    captured_context = otel_context.get_current()
+
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        token = otel_context.attach(captured_context)
+        try:
+            return func(*args, **kwargs)
+        finally:
+            otel_context.detach(token)
+
+    return wrapper
+
+
 class DatasetRetrieval:
     def __init__(self, application_generate_entity=None):
         self.application_generate_entity = application_generate_entity
@@ -116,6 +132,7 @@ class DatasetRetrieval:
         else:
             self._llm_usage = self._llm_usage.plus(usage)
 
+    @trace_span()
     def knowledge_retrieval(self, session: Session, request: KnowledgeRetrievalRequest) -> list[Source]:
         self._check_knowledge_rate_limit(request.tenant_id)
         available_datasets = self._get_available_datasets(request.tenant_id, request.dataset_ids)
@@ -597,6 +614,7 @@ class DatasetRetrieval:
             return "\n".join([document_context.content for document_context in document_context_list]), context_files
         return "", context_files
 
+    @trace_span()
     def single_retrieve(
         self,
         session: Session,
@@ -722,7 +740,7 @@ class DatasetRetrieval:
 
                 if results:
                     thread = threading.Thread(
-                        target=self._on_retrieval_end,
+                        target=_propagate_otel_context(self._on_retrieval_end),
                         kwargs={
                             "flask_app": current_app._get_current_object(),  # type: ignore
                             "documents": results,
@@ -735,6 +753,7 @@ class DatasetRetrieval:
                 return results
         return []
 
+    @trace_span()
     def multiple_retrieve(
         self,
         app_id: str,
@@ -796,7 +815,7 @@ class DatasetRetrieval:
 
             if query:
                 query_thread = threading.Thread(
-                    target=self._multiple_retrieve_thread,
+                    target=_propagate_otel_context(self._multiple_retrieve_thread),
                     kwargs={
                         "flask_app": current_app._get_current_object(),  # type: ignore
                         "available_datasets": available_datasets,
@@ -822,7 +841,7 @@ class DatasetRetrieval:
             if attachment_ids:
                 for attachment_id in attachment_ids:
                     attachment_thread = threading.Thread(
-                        target=self._multiple_retrieve_thread,
+                        target=_propagate_otel_context(self._multiple_retrieve_thread),
                         kwargs={
                             "flask_app": current_app._get_current_object(),  # type: ignore
                             "available_datasets": available_datasets,
@@ -863,7 +882,7 @@ class DatasetRetrieval:
         if all_documents:
             # add thread to call _on_retrieval_end
             retrieval_end_thread = threading.Thread(
-                target=self._on_retrieval_end,
+                target=_propagate_otel_context(self._on_retrieval_end),
                 kwargs={
                     "flask_app": current_app._get_current_object(),  # type: ignore
                     "documents": all_documents,
@@ -1159,6 +1178,7 @@ class DatasetRetrieval:
 
                         all_documents.extend(documents)
 
+    @trace_span()
     def _run_retriever_thread(
         self,
         *,
@@ -1789,6 +1809,7 @@ class DatasetRetrieval:
 
         return full_text, usage
 
+    @trace_span()
     def _multiple_retrieve_thread(
         self,
         flask_app: Flask,
@@ -1830,7 +1851,7 @@ class DatasetRetrieval:
                             else:
                                 continue
                     retrieval_thread = threading.Thread(
-                        target=self._run_retriever_thread,
+                        target=_propagate_otel_context(self._run_retriever_thread),
                         kwargs={
                             "flask_app": flask_app,
                             "dataset_id": dataset.id,
