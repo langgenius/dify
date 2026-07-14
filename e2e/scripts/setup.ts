@@ -55,6 +55,7 @@ const e2eStatePaths = [
   path.join(e2eDir, '.auth'),
   path.join(e2eDir, 'cucumber-report'),
   path.join(e2eDir, '.logs'),
+  path.join(e2eDir, '.logs-non-external'),
   path.join(e2eDir, 'playwright-report'),
   path.join(e2eDir, 'test-results'),
 ]
