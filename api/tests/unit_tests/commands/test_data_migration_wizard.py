@@ -1,3 +1,7 @@
+import pytest
+from sqlalchemy.orm import Session
+
+from commands import data_migration
 from commands.data_migration import (
     CONFLICT_STRATEGY_CHOICES,
     ID_STRATEGY_CHOICES,
@@ -12,6 +16,7 @@ from commands.data_migration import (
     migration_data_wizard,
     parse_index_selection,
 )
+from models.tools import MCPToolProvider
 
 
 def test_parse_index_selection_supports_all():
@@ -176,19 +181,31 @@ def test_print_auto_tools_lists_each_category(monkeypatch):
     assert "- none" in output_lines
 
 
-def test_resolve_mcp_tool_names_does_not_compare_non_uuid_identifier_to_uuid_id(monkeypatch):
-    statements = []
+@pytest.mark.parametrize("sqlite_session", [(MCPToolProvider,)], indirect=True)
+def test_resolve_mcp_tool_names_does_not_compare_non_uuid_identifier_to_uuid_id(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    tenant_id = "49a99e46-bc2c-4885-91fa-47615f6192b5"
+    provider = MCPToolProvider(
+        name="resolved-provider",
+        server_identifier="my-test-mcp",
+        server_url="encrypted-url",
+        server_url_hash="server-url-hash",
+        icon=None,
+        tenant_id=tenant_id,
+        user_id="d13f1f2a-5c68-4a2f-8d76-cb59cefe95b8",
+        encrypted_credentials=None,
+        authed=False,
+        tools="[]",
+    )
+    sqlite_session.add(provider)
+    sqlite_session.commit()
+    monkeypatch.setattr(data_migration.db, "session", sqlite_session)
 
-    def capture_scalar(statement):
-        statements.append(str(statement))
+    resolved = _resolve_mcp_tool_names(tenant_id, {"alias": provider.server_identifier})
 
-    monkeypatch.setattr("commands.data_migration.db.session.scalar", capture_scalar)
-
-    assert _resolve_mcp_tool_names("49a99e46-bc2c-4885-91fa-47615f6192b5", {"my-test-mcp": "my-test-mcp"}) == {
-        "my-test-mcp": "my-test-mcp"
-    }
-    assert "tool_mcp_providers.id =" not in statements[0]
-    assert "tool_mcp_providers.server_identifier =" in statements[0]
+    assert resolved == {provider.name: provider.id}
 
 
 def test_prompt_additional_tools_prints_final_selection_when_skipped(monkeypatch):
