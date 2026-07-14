@@ -157,7 +157,9 @@ class TestBatchCreateSegmentToIndexTask:
 
         return dataset
 
-    def _create_test_document(self, db_session_with_containers: Session, account, tenant, dataset):
+    def _create_test_document(
+        self, db_session_with_containers: Session, account, tenant, dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX
+    ):
         """
         Helper method to create a test document for testing.
 
@@ -166,6 +168,7 @@ class TestBatchCreateSegmentToIndexTask:
             account: Account instance
             tenant: Tenant instance
             dataset: Dataset instance
+            doc_form: Index structure type for the document
 
         Returns:
             Document: Created document instance
@@ -184,7 +187,7 @@ class TestBatchCreateSegmentToIndexTask:
             indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            doc_form=doc_form,
             word_count=0,
         )
 
@@ -598,27 +601,78 @@ class TestBatchCreateSegmentToIndexTask:
 
         mock_storage.download.side_effect = mock_download
 
-        # Execute the task - should raise ValueError for empty CSV
+        # Execute the task - an empty CSV should mark the job as failed instead of raising
         job_id = str(uuid.uuid4())
-        with pytest.raises(ValueError, match="The CSV file is empty"):
-            batch_create_segment_to_index_task(
-                job_id=job_id,
-                upload_file_id=upload_file.id,
-                dataset_id=dataset.id,
-                document_id=document.id,
-                tenant_id=tenant.id,
-                user_id=account.id,
-            )
+        batch_create_segment_to_index_task(
+            job_id=job_id,
+            upload_file_id=upload_file.id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            tenant_id=tenant.id,
+            user_id=account.id,
+        )
 
         # Verify error handling
-        # Since exception was raised, no segments should be created
+        # The Redis status must move to "error" so the polling UI stops waiting
+        from extensions.ext_redis import redis_client
 
+        cache_key = f"segment_batch_import_{job_id}"
+        assert redis_client.get(cache_key) == b"error"
+
+        # No segments should be created
         segments = db_session_with_containers.scalars(select(DocumentSegment)).all()
         assert len(segments) == 0
 
         # Verify document remains unchanged
         db_session_with_containers.refresh(document)
         assert document.word_count == 0
+
+    def test_batch_create_segment_to_index_task_qa_csv_missing_answer_column(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test task failure when a QA document is imported from a CSV without an answer column.
+
+        Regression: any processing error (here row.iloc[1] on a single-column CSV) must set
+        the Redis status to "error" instead of leaving the job stuck at "waiting".
+        """
+        # Create test data
+        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
+        document = self._create_test_document(
+            db_session_with_containers, account, tenant, dataset, doc_form=IndexStructureType.QA_INDEX
+        )
+        upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+
+        # A QA import expects two columns; a single-column row makes row.iloc[1] fail
+        single_column_csv = "content\nonly-a-question\n"
+        mock_storage = mock_external_service_dependencies["storage"]
+
+        def mock_download(key, file_path):
+            Path(file_path).write_text(single_column_csv, encoding="utf-8")
+
+        mock_storage.download.side_effect = mock_download
+
+        # Execute the task - the processing error should mark the job as failed
+        job_id = str(uuid.uuid4())
+        batch_create_segment_to_index_task(
+            job_id=job_id,
+            upload_file_id=upload_file.id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            tenant_id=tenant.id,
+            user_id=account.id,
+        )
+
+        # The Redis status must move to "error" so the polling UI stops waiting
+        from extensions.ext_redis import redis_client
+
+        cache_key = f"segment_batch_import_{job_id}"
+        assert redis_client.get(cache_key) == b"error"
+
+        # No segments should be created
+        segments = db_session_with_containers.scalars(select(DocumentSegment)).all()
+        assert len(segments) == 0
 
     def test_batch_create_segment_to_index_task_position_calculation(
         self, db_session_with_containers: Session, mock_external_service_dependencies
