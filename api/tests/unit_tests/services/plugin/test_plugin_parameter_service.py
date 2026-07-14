@@ -7,30 +7,31 @@ HIDDEN_VALUE replacement, and error handling for missing records.
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.engine import Engine
+from flask import Flask
 from sqlalchemy.orm import Session
 
-import services.plugin.plugin_parameter_service as plugin_parameter_module
 from core.plugin.entities.plugin_daemon import CredentialType
+from models.engine import db
 from models.tools import BuiltinToolProvider
 from services.plugin.plugin_parameter_service import PluginParameterService
 
 
 @pytest.fixture
-def plugin_parameter_db(
-    sqlite_engine: Engine,
-    sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
-) -> Session:
-    """Route service-owned credential lookups to the SQLite seed database."""
+def plugin_parameter_db() -> Iterator[Session]:
+    """Provide the production database extension with an isolated SQLite credential table."""
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
 
-    monkeypatch.setattr(plugin_parameter_module, "db", SimpleNamespace(engine=sqlite_engine))
-    return sqlite_session
+    with app.app_context():
+        BuiltinToolProvider.__table__.create(db.engine)
+        with Session(db.engine, expire_on_commit=False) as session:
+            yield session
 
 
 class TestGetDynamicSelectOptionsTool:
@@ -60,7 +61,6 @@ class TestGetDynamicSelectOptionsTool:
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
     @patch("services.plugin.plugin_parameter_service.create_tool_provider_encrypter")
     @patch("services.plugin.plugin_parameter_service.ToolManager")
-    @pytest.mark.parametrize("sqlite_session", [(BuiltinToolProvider,)], indirect=True)
     def test_fetches_credentials_with_credential_id(
         self,
         mock_tool_mgr: MagicMock,
@@ -103,7 +103,6 @@ class TestGetDynamicSelectOptionsTool:
 
     @patch("services.plugin.plugin_parameter_service.create_tool_provider_encrypter")
     @patch("services.plugin.plugin_parameter_service.ToolManager")
-    @pytest.mark.parametrize("sqlite_session", [(BuiltinToolProvider,)], indirect=True)
     def test_raises_when_tool_provider_not_found(
         self,
         mock_tool_mgr: MagicMock,
