@@ -2,20 +2,31 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
-from controllers.console.auth import forgot_password as module
 from controllers.console.auth.forgot_password import (
     ForgotPasswordCheckApi,
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
 )
 from models.account import Account
+from models.engine import db
+from services.feature_service import SystemFeatureModel
+
+
+@pytest.fixture
+def database_app() -> Iterator[Flask]:
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        Account.__table__.create(db.engine)
+        yield app
 
 
 class TestForgotPasswordSendEmailApi:
@@ -35,14 +46,14 @@ class TestForgotPasswordSendEmailApi:
         mock_get_account.return_value = mock_account
         mock_send_email.return_value = "token-123"
 
-        wraps_features = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
-        controller_features = SimpleNamespace(is_allow_register=True)
+        wraps_features = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
+        controller_features = SystemFeatureModel(is_allow_register=True)
         with (
             patch(
                 "controllers.console.auth.forgot_password.FeatureService.get_system_features",
                 return_value=controller_features,
             ),
-            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
         ):
             with app.test_request_context(
@@ -84,9 +95,9 @@ class TestForgotPasswordCheckApi:
         mock_get_data.return_value = {"email": "Admin@Example.com", "code": "4321"}
         mock_generate_token.return_value = (None, "new-token")
 
-        wraps_features = SimpleNamespace(enable_email_password_login=True)
+        wraps_features = SystemFeatureModel(enable_email_password_login=True)
         with (
-            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
         ):
             with app.test_request_context(
@@ -109,7 +120,6 @@ class TestForgotPasswordCheckApi:
 
 
 class TestForgotPasswordResetApi:
-    @pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
     @patch("controllers.console.auth.forgot_password.ForgotPasswordResetApi._update_existing_account")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
@@ -120,24 +130,20 @@ class TestForgotPasswordResetApi:
         mock_revoke_token,
         mock_get_account,
         mock_update_account,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
+        database_app: Flask,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "User@Example.com"}
         account = Account(name="User", email="user@example.com")
-        sqlite_session.add(account)
-        sqlite_session.commit()
+        db.session.add(account)
+        db.session.commit()
         mock_get_account.return_value = account
-        database_session = scoped_session(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False))
-        monkeypatch.setattr(module, "db", SimpleNamespace(session=database_session))
 
-        wraps_features = SimpleNamespace(enable_email_password_login=True)
+        wraps_features = SystemFeatureModel(enable_email_password_login=True)
         with (
-            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
         ):
-            with app.test_request_context(
+            with database_app.test_request_context(
                 "/forgot-password/resets",
                 method="POST",
                 json={
