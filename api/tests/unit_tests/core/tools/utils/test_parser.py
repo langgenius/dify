@@ -326,7 +326,7 @@ def test_parse_openai_plugin_json_branches(app):
 def test_parse_openai_plugin_json_http_branches(app):
     with app.test_request_context():
         response = type("Resp", (), {"status_code": 500, "text": "", "close": Mock()})()
-        with patch("core.tools.utils.parser.httpx.get", return_value=response):
+        with patch("core.tools.utils.parser.ssrf_proxy.get", return_value=response):
             with pytest.raises(ToolProviderNotFoundError, match="cannot get openapi yaml"):
                 ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(
                     '{"api": {"url": "https://x", "type": "openapi"}}'
@@ -334,7 +334,7 @@ def test_parse_openai_plugin_json_http_branches(app):
         response.close.assert_called_once()
 
         success_response = type("Resp", (), {"status_code": 200, "text": "openapi: 3.0.0", "close": Mock()})()
-        with patch("core.tools.utils.parser.httpx.get", return_value=success_response):
+        with patch("core.tools.utils.parser.ssrf_proxy.get", return_value=success_response):
             with patch(
                 "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle",
                 return_value=["bundle"],
