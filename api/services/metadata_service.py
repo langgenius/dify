@@ -122,6 +122,8 @@ class MetadataService:
                     session.add(document)
             session.commit()
             return metadata
+        except NotFound:
+            raise
         except Exception:
             logger.exception("Update metadata name failed")
             return None
@@ -159,6 +161,8 @@ class MetadataService:
                     session.add(document)
             session.commit()
             return metadata
+        except NotFound:
+            raise
         except Exception:
             logger.exception("Delete metadata failed")
         finally:
