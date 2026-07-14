@@ -1,13 +1,16 @@
-"""Testcontainers integration tests for rag_pipeline_import controller endpoints."""
+"""Unit tests for rag_pipeline_import controller endpoints."""
 
 from __future__ import annotations
 
+from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 
 from controllers.console import console_ns
+from controllers.console.datasets.rag_pipeline import rag_pipeline_import as module
 from controllers.console.datasets.rag_pipeline.rag_pipeline_import import (
     RagPipelineExportApi,
     RagPipelineImportApi,
@@ -18,14 +21,14 @@ from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from models.dataset import Pipeline
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineImportInfo
-from tests.test_containers_integration_tests.controllers.console.helpers import unwrap
+
+
+@pytest.fixture(autouse=True)
+def _route_database_to_sqlite(monkeypatch: pytest.MonkeyPatch, sqlite_engine) -> None:
+    monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine))
 
 
 class TestRagPipelineImportApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def _payload(self, mode: str = "create") -> dict[str, str]:
         return {
             "mode": mode,
@@ -140,10 +143,6 @@ class TestRagPipelineImportApi:
 
 
 class TestRagPipelineImportConfirmApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_confirm_success(self, app: Flask) -> None:
         api = RagPipelineImportConfirmApi()
         method = unwrap(api.post)
@@ -205,10 +204,6 @@ class TestRagPipelineImportConfirmApi:
 
 
 class TestRagPipelineImportCheckDependenciesApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_get_success(self, app: Flask) -> None:
         api = RagPipelineImportCheckDependenciesApi()
         method = unwrap(api.get)
@@ -272,10 +267,6 @@ class TestRagPipelineImportCheckDependenciesApi:
 
 
 class TestRagPipelineExportApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_get_with_include_secret(self, app: Flask) -> None:
         api = RagPipelineExportApi()
         method = unwrap(api.get)
