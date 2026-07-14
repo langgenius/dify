@@ -195,9 +195,23 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
 
                 # Squid typically identifies itself in Server or Via headers
                 if "squid" in server_header or "squid" in via_header:
+                    # The deny ACL is usually ``to_private_networks`` (RFC1918 +
+                    # loopback / link-local / CGN / IPv6 ULA, etc.). We don't know
+                    # which specific ACL tripped from Squid's response alone, but
+                    # the actionable remediation is the same in every case:
+                    # allowlist the destination in the SSRF proxy. Tell the user
+                    # exactly which env var to set so they don't have to grep the
+                    # squid config.
                     raise ToolSSRFError(
                         f"Access to '{url}' was blocked by SSRF protection. "
-                        f"The URL may point to a private or local network address. "
+                        f"The URL resolves to a private, loopback, link-local, or "
+                        f"otherwise non-public network address that the SSRF proxy "
+                        f"denies by default. To allow this destination, set "
+                        f"`SSRF_PROXY_ALLOW_PRIVATE_IPS` (CIDR list, e.g. "
+                        f"`172.21.0.0/16`) in the `ssrf_proxy` service environment "
+                        f"and restart Dify. See "
+                        f"https://github.com/langgenius/dify/issues/38443 for "
+                        f"context."
                     )
 
             if response.status_code not in STATUS_FORCELIST:
