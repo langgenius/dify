@@ -85,10 +85,10 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
         data-carousel-control
         role="group"
         aria-label={t(($) => $['pagination.pageNumber'], { ns: 'common' })}
-        className="pointer-events-auto flex min-w-0 items-center gap-2 py-1 @min-[996px]/banner:max-w-[600px] @min-[996px]/banner:min-w-60 @min-[996px]/banner:flex-[1_0_0] @min-[996px]/banner:pr-10"
+        className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-2 py-1 @min-[996px]/banner:max-w-[600px] @min-[996px]/banner:min-w-60 @min-[996px]/banner:flex-[1_0_0] @min-[996px]/banner:pr-10"
         onFocusCapture={stopRotation}
       >
-        <div className="flex max-w-full min-w-0 scrollbar-none items-center gap-0.5 overflow-x-auto">
+        <div className="flex items-center gap-0.5">
           {banners.map((banner, index) => (
             <IndicatorButton
               key={banner.id}
