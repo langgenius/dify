@@ -1,11 +1,14 @@
 import logging
 from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.engine import Engine
 from werkzeug.datastructures import FileStorage
 
+import services.trigger.webhook_service as webhook_service_module
 from services.errors.app import QuotaExceededError
 from services.trigger.webhook_service import WebhookService
 
@@ -13,7 +16,9 @@ from services.trigger.webhook_service import WebhookService
 class TestWebhookServiceUnit:
     """Unit tests for WebhookService focusing on business logic without database dependencies."""
 
-    def test_trigger_workflow_execution_propagates_quota_error_without_error_log(self):
+    def test_trigger_workflow_execution_propagates_quota_error_without_error_log(
+        self, sqlite_engine: Engine
+    ) -> None:
         webhook_trigger = MagicMock(
             webhook_id="webhook-123",
             tenant_id="tenant-123",
@@ -30,8 +35,7 @@ class TestWebhookServiceUnit:
                 return_value=MagicMock(id="end-user-123"),
             ),
             patch("services.trigger.webhook_service.QuotaService.reserve", return_value=quota_charge),
-            patch("services.trigger.webhook_service.db"),
-            patch("services.trigger.webhook_service.Session"),
+            patch.object(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine)),
             patch(
                 "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
                 side_effect=quota_error,
@@ -55,6 +59,62 @@ class TestWebhookServiceUnit:
             webhook_trigger.webhook_id,
         )
         mock_log_exception.assert_not_called()
+
+    def test_trigger_workflow_execution_success(self, sqlite_engine: Engine) -> None:
+        webhook_trigger = MagicMock(
+            webhook_id="webhook-123",
+            tenant_id="tenant-123",
+            app_id="app-123",
+            node_id="node-123",
+        )
+        workflow = MagicMock(id="workflow-123")
+        end_user = MagicMock(id="end-user-123")
+        quota_charge = MagicMock()
+        webhook_data = {
+            "method": "POST",
+            "headers": {"Authorization": "Bearer token"},
+            "query_params": {"version": "1"},
+            "body": {"message": "hello"},
+            "files": {},
+        }
+
+        with (
+            patch.object(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine)),
+            patch.object(
+                webhook_service_module.EndUserService,
+                "get_or_create_end_user_by_type",
+                return_value=end_user,
+            ),
+            patch.object(webhook_service_module.QuotaService, "reserve", return_value=quota_charge),
+            patch.object(
+                webhook_service_module.AsyncWorkflowService,
+                "trigger_workflow_async",
+            ) as mock_trigger,
+        ):
+            WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
+
+        call_session = mock_trigger.call_args.kwargs["session"]
+        assert call_session.get_bind() is sqlite_engine
+        quota_charge.commit.assert_called_once_with()
+        quota_charge.refund.assert_not_called()
+
+    def test_trigger_workflow_execution_end_user_service_failure(self) -> None:
+        webhook_trigger = MagicMock(
+            webhook_id="webhook-123",
+            tenant_id="tenant-123",
+            app_id="app-123",
+            node_id="node-123",
+        )
+        workflow = MagicMock(id="workflow-123")
+        webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
+
+        with patch.object(
+            webhook_service_module.EndUserService,
+            "get_or_create_end_user_by_type",
+            side_effect=ValueError("Failed to create end user"),
+        ):
+            with pytest.raises(ValueError, match="Failed to create end user"):
+                WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
 
     def test_extract_webhook_data_json(self):
         """Test webhook data extraction from JSON request."""
@@ -580,6 +640,104 @@ class TestWebhookServiceUnit:
 
             with pytest.raises(ValueError, match="HTTP method mismatch"):
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
+
+    def test_extract_and_validate_webhook_request_missing_required_header(self) -> None:
+        app = Flask(__name__)
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+        ):
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "headers": [{"name": "Authorization", "required": True}],
+                }
+            }
+
+            with pytest.raises(ValueError, match="Required header missing: Authorization"):
+                WebhookService.extract_and_validate_webhook_data(MagicMock(), node_config)
+
+    def test_extract_and_validate_webhook_request_case_insensitive_headers(self) -> None:
+        app = Flask(__name__)
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json", "authorization": "Bearer token"},
+            json={"message": "hello"},
+        ):
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "headers": [{"name": "Authorization", "required": True}],
+                    "body": [{"name": "message", "type": "string", "required": True}],
+                }
+            }
+
+            result = WebhookService.extract_and_validate_webhook_data(MagicMock(), node_config)
+
+        assert result["headers"].get("Authorization") == "Bearer token"
+
+    def test_extract_and_validate_webhook_request_missing_required_param(self) -> None:
+        app = Flask(__name__)
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            json={"message": "hello"},
+        ):
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "params": [{"name": "version", "required": True}],
+                    "body": [{"name": "message", "type": "string", "required": True}],
+                }
+            }
+
+            with pytest.raises(ValueError, match="Required parameter missing: version"):
+                WebhookService.extract_and_validate_webhook_data(MagicMock(), node_config)
+
+    def test_extract_and_validate_webhook_request_missing_required_body_param(self) -> None:
+        app = Flask(__name__)
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            json={},
+        ):
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "body": [{"name": "message", "type": "string", "required": True}],
+                }
+            }
+
+            with pytest.raises(ValueError, match="Required body parameter missing: message"):
+                WebhookService.extract_and_validate_webhook_data(MagicMock(), node_config)
+
+    def test_extract_and_validate_webhook_request_missing_required_file(self) -> None:
+        app = Flask(__name__)
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            data={"note": "test"},
+            content_type="multipart/form-data",
+        ):
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "multipart/form-data",
+                    "body": [{"name": "file", "type": "file", "required": True}],
+                }
+            }
+
+            result = WebhookService.extract_and_validate_webhook_data(MagicMock(), node_config)
+
+        assert result["files"] == {}
 
     def test_debug_mode_parameter_handling(self):
         """Test that the debug mode parameter is properly handled in _prepare_webhook_execution."""
