@@ -4,8 +4,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
+import { VERSION_HISTORY_HOTKEY } from '../hotkeys'
 import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
-import { VERSION_HISTORY_HOTKEY } from './shortcuts'
 
 type VersionHistoryButtonProps = {
   onClick: () => Promise<unknown> | unknown

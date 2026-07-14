@@ -19,6 +19,7 @@ import {
   OUTPUT_NAME_PATTERN_SOURCE,
 } from './utils'
 
+const CANCEL_HOTKEY = 'Escape' satisfies Hotkey
 const CONFIRM_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 function ConfirmHotkeyHint() {
@@ -71,8 +72,11 @@ export function OutputEditCard({
     if (confirmDisabled) return
     onConfirm(createOutputFromDraft(draft, { includeDefaultValue: allowDefaultValue }), state)
   }
-  useHotkey(CONFIRM_HOTKEY, handleConfirm, { target: editorRef, ignoreInputs: false })
-  useHotkey('Escape', onCancel, { target: editorRef, ignoreInputs: false })
+  useHotkey(CONFIRM_HOTKEY, handleConfirm, {
+    target: editorRef,
+    ignoreInputs: false,
+  })
+  useHotkey(CANCEL_HOTKEY, onCancel, { target: editorRef, ignoreInputs: false })
   return (
     <div ref={editorRef}>
       <Form
