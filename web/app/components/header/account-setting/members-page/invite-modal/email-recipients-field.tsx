@@ -38,7 +38,6 @@ export function EmailRecipientsField({
   const chipButtonRef = useRef<Array<HTMLButtonElement | null>>([])
   const selectDraftOnRenderRef = useRef(false)
   const [draftTouched, setDraftTouched] = useState(false)
-  const inputRef = internalInputRef
   const hasInvalidRecipient = recipients.some(({ isValid }) => !isValid)
   const draftRecipients = mergeEmailRecipients([], draft)
   const hasInvalidDraft = Boolean(
@@ -70,19 +69,19 @@ export function EmailRecipientsField({
   }
 
   const focusInput = (select = false) => {
-    inputRef.current?.focus()
+    internalInputRef.current?.focus()
     if (select) {
       selectDraftOnRenderRef.current = true
-      inputRef.current?.select()
+      internalInputRef.current?.select()
     }
   }
 
   useEffect(() => {
     if (!selectDraftOnRenderRef.current) return
 
-    inputRef.current?.select()
+    internalInputRef.current?.select()
     selectDraftOnRenderRef.current = false
-  }, [draft, inputRef])
+  }, [draft])
 
   const removeRecipient = (index: number, focus: 'input' | 'neighbor') => {
     const nextRecipients = recipients.filter((_, recipientIndex) => recipientIndex !== index)
@@ -247,7 +246,7 @@ export function EmailRecipientsField({
           </ul>
         )}
         <FieldControl
-          ref={inputRef}
+          ref={internalInputRef}
           type="text"
           disabled={disabled}
           autoComplete="off"
