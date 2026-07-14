@@ -141,19 +141,20 @@ def _normalize_completion_params(
     returned config entity aligned here so callers do not need to duplicate
     normalization logic.
 
-    ``first_token_timeout`` is user-facing config in seconds; it is consumed here and
-    never forwarded to providers. Invalid values (non-numeric, bool, non-positive)
-    disable the gate.
+    ``first_token_timeout_ms`` is user-facing config in milliseconds; it is consumed
+    here and never forwarded to providers. This is the only place the value is
+    converted to the seconds used everywhere downstream. Invalid values
+    (non-numeric, bool, non-positive) disable the gate.
     """
     normalized_parameters = dict(completion_params)
     stop = normalized_parameters.pop("stop", [])
     if not isinstance(stop, list) or not all(isinstance(item, str) for item in stop):
         stop = []
 
-    raw_timeout = normalized_parameters.pop("first_token_timeout", None)
+    raw_timeout_ms = normalized_parameters.pop("first_token_timeout_ms", None)
     first_token_timeout: float | None = None
-    if isinstance(raw_timeout, (int, float)) and not isinstance(raw_timeout, bool) and raw_timeout > 0:
-        first_token_timeout = float(raw_timeout)
+    if isinstance(raw_timeout_ms, (int, float)) and not isinstance(raw_timeout_ms, bool) and raw_timeout_ms > 0:
+        first_token_timeout = float(raw_timeout_ms) / 1000
 
     return normalized_parameters, stop, first_token_timeout
 

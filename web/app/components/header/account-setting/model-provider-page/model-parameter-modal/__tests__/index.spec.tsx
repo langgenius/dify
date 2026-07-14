@@ -393,7 +393,7 @@ describe('ModelParameterModal', () => {
 
     openSettings()
 
-    expect(screen.getByTestId('param-first_token_timeout')).toBeInTheDocument()
+    expect(screen.getByTestId('param-first_token_timeout_ms')).toBeInTheDocument()
   })
 
   it('should not append the first token timeout parameter outside workflow', () => {
@@ -402,7 +402,7 @@ describe('ModelParameterModal', () => {
     openSettings()
 
     expect(screen.getByTestId('param-stop')).toBeInTheDocument()
-    expect(screen.queryByTestId('param-first_token_timeout')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('param-first_token_timeout_ms')).not.toBeInTheDocument()
   })
 
   it('should render the empty loading fallback when rules resolve to an empty list', () => {
