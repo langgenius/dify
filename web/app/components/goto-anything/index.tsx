@@ -30,10 +30,10 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useGetLanguage } from '@/context/i18n'
@@ -55,7 +55,8 @@ import { gotoAnythingDialogHandle } from './dialog-handle'
 const appWorkflowPathPattern = /^\/app\/[^/]+\/workflow$/
 const sharedWorkflowPathPattern = /^\/workflow\/[^/]+$/
 const ragPipelinePathPattern = /^\/datasets\/[^/]+\/pipeline$/
-const searchShortcut = ['Mod', 'K']
+const searchHotkey = 'Mod+K'
+const searchShortcut = searchHotkey.split('+')
 
 type CommandOption = {
   kind: 'command-option'
@@ -218,11 +219,12 @@ function GotoAnythingDialog() {
   const searchMode = getSearchMode(searchQuery, isCommandsMode, actions)
   const debouncedSearchQuery = useDebounce(searchQuery, { wait: 300 })
   const normalizedDebouncedQuery = debouncedSearchQuery.trim().toLowerCase()
+  const isDebouncedCommandsMode = isCommandSelectionQuery(debouncedSearchQuery, actions)
   const debouncedAction = matchAction(normalizedDebouncedQuery, actions)
   const debouncedSearchTerm = debouncedAction
     ? getActionSearchTerm(normalizedDebouncedQuery, debouncedAction)
     : normalizedDebouncedQuery
-  const remoteSearchEnabled = Boolean(normalizedDebouncedQuery) && !isCommandsMode
+  const remoteSearchEnabled = Boolean(normalizedDebouncedQuery) && !isDebouncedCommandsMode
   const appSearchEnabled =
     remoteSearchEnabled && (!debouncedAction || debouncedAction.key === '@app')
   const knowledgeSearchEnabled =
@@ -285,21 +287,23 @@ function GotoAnythingDialog() {
     setSearchQuery('')
   }
 
-  useEffect(() => {
-    function handleKeyDown(event: globalThis.KeyboardEvent) {
+  useHotkey(
+    searchHotkey,
+    (event) => {
       if (event.defaultPrevented) return
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return
       if (!gotoAnythingDialogHandle.isOpen && isEditableShortcutTarget(event.target)) return
 
       event.preventDefault()
       event.stopPropagation()
 
       if (!gotoAnythingDialogHandle.isOpen) gotoAnythingDialogHandle.open(null)
-    }
-
-    window.addEventListener('keydown', handleKeyDown, { capture: true })
-    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [])
+    },
+    {
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
 
   function handleCommandSelect(commandKey: string) {
     if (commandKey.startsWith('/')) {

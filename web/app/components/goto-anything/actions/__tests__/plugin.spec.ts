@@ -33,6 +33,7 @@ describe('plugin search query', () => {
           params: { kind: 'plugins' },
           body: { page: 1, page_size: 10, query: 'agent' },
         },
+        retry: false,
         select: expect.any(Function),
       }),
     )

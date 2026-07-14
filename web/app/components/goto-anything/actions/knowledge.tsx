@@ -50,6 +50,7 @@ export function knowledgeSearchQueryOptions(searchTerm: string) {
         keyword: searchTerm,
       },
     },
+    retry: false,
     select: (response) => getKnowledgeResults(response.data),
   })
 }

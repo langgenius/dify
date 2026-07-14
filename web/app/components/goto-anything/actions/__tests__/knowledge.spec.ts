@@ -42,6 +42,7 @@ describe('knowledge search query', () => {
     expect(serviceMocks.queryOptions).toHaveBeenCalledWith(
       expect.objectContaining({
         input: { query: { page: 1, limit: 10, keyword: 'vector' } },
+        retry: false,
         select: expect.any(Function),
       }),
     )

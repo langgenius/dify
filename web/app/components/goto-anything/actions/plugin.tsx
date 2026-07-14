@@ -36,6 +36,7 @@ export function pluginSearchQueryOptions(searchTerm: string, locale: string) {
         query: searchTerm,
       },
     },
+    retry: false,
     select: (response) => {
       const plugins = response.data?.plugins ?? []
       return parser(

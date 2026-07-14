@@ -158,6 +158,7 @@ export function appSearchQueryOptions(searchTerm: string, scoped: boolean) {
         name: searchTerm,
       },
     },
+    retry: false,
     select: (response) =>
       scoped ? getScopedAppResults(response.data) : getAppResults(response.data),
   })

@@ -48,6 +48,7 @@ describe('app search query', () => {
     expect(serviceMocks.queryOptions).toHaveBeenCalledWith(
       expect.objectContaining({
         input: { query: { page: 1, name: 'assistant' } },
+        retry: false,
         select: expect.any(Function),
       }),
     )

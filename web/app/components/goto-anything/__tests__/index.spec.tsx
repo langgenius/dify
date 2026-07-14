@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { ActionItem, SearchResult } from '../actions/types'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { detectPlatform } from '@tanstack/react-hotkeys'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -20,12 +21,19 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/',
 }))
 
+let debouncedSearchQuery: string | undefined
 vi.mock('ahooks', () => ({
-  useDebounce: <T,>(value: T) => value,
+  useDebounce: <T,>(value: T) => (debouncedSearchQuery ?? value) as T,
 }))
 
-function triggerSearchShortcut(target: Window | HTMLElement = window) {
-  fireEvent.keyDown(target, { key: 'k', ctrlKey: true })
+const isMac = detectPlatform() === 'mac'
+
+function triggerSearchShortcut(target: Document | HTMLElement = document) {
+  fireEvent.keyDown(target, {
+    key: 'k',
+    ctrlKey: !isMac,
+    metaKey: isMac,
+  })
 }
 
 type RemoteQueryState = {
@@ -47,6 +55,7 @@ let remoteQueryStates: Record<'app' | 'knowledge' | 'plugin', RemoteQueryState> 
   knowledge: emptyRemoteQueryState(),
   plugin: emptyRemoteQueryState(),
 }
+let enabledRemoteQueryKeys: string[] = []
 
 function setRemoteResults(results: TestSearchResult[]) {
   results.forEach((result) => {
@@ -56,8 +65,10 @@ function setRemoteResults(results: TestSearchResult[]) {
 }
 
 vi.mock('@tanstack/react-query', () => ({
-  useQuery: (options: { queryKey: [key: keyof typeof remoteQueryStates]; enabled?: boolean }) =>
-    options.enabled ? remoteQueryStates[options.queryKey[0]] : emptyRemoteQueryState(),
+  useQuery: (options: { queryKey: [key: keyof typeof remoteQueryStates]; enabled?: boolean }) => {
+    if (options.enabled) enabledRemoteQueryKeys.push(options.queryKey[0])
+    return options.enabled ? remoteQueryStates[options.queryKey[0]] : emptyRemoteQueryState()
+  },
 }))
 
 vi.mock('../actions/app', () => ({
@@ -105,11 +116,14 @@ const actionsMock = {
 }
 
 const createActionsMock = vi.fn(() => actionsMock)
-const matchActionMock = vi.fn(() => undefined)
+const matchActionMock = vi.fn<
+  (query: string, actions: Record<string, ActionItem>) => ActionItem | undefined
+>(() => undefined)
 vi.mock('../actions', () => ({
   createActions: () => createActionsMock(),
   getActionSearchTerm: (_query: string, action: ActionItem) => action.key,
-  matchAction: () => matchActionMock(),
+  matchAction: (query: string, actions: Record<string, ActionItem>) =>
+    matchActionMock(query, actions),
 }))
 
 vi.mock('../actions/commands/slash-provider', () => ({
@@ -165,6 +179,8 @@ describe('GotoAnything', () => {
       knowledge: emptyRemoteQueryState(),
       plugin: emptyRemoteQueryState(),
     }
+    debouncedSearchQuery = undefined
+    enabledRemoteQueryKeys = []
     matchActionMock.mockReset()
     mockFindCommand = null
     mockAvailableCommands = []
@@ -193,6 +209,31 @@ describe('GotoAnything', () => {
       )
 
       triggerSearchShortcut(screen.getByRole('textbox', { name: 'Unrelated field' }))
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it.each(['shiftKey', 'altKey'] as const)('should ignore Mod+K with %s', (extraModifier) => {
+      renderGotoAnything(<GotoAnything />)
+
+      fireEvent.keyDown(document, {
+        key: 'k',
+        ctrlKey: !isMac,
+        metaKey: isMac,
+        [extraModifier]: true,
+      })
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it('should ignore K with the non-primary platform modifier', () => {
+      renderGotoAnything(<GotoAnything />)
+
+      fireEvent.keyDown(document, {
+        key: 'k',
+        ctrlKey: isMac,
+        metaKey: !isMac,
+      })
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
@@ -400,6 +441,27 @@ describe('GotoAnything', () => {
       await user.type(input, 'test query')
 
       expect(input).toHaveValue('test query')
+    })
+
+    it('should not search providers with a stale scope prefix', async () => {
+      const user = userEvent.setup()
+      matchActionMock.mockImplementation((query: string) =>
+        query.startsWith('@app') ? actionsMock.app : undefined,
+      )
+
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+
+      await user.type(input, '@')
+      debouncedSearchQuery = '@'
+      enabledRemoteQueryKeys = []
+      await user.click(screen.getByText('@app'))
+
+      expect(input).toHaveValue('@app ')
+      expect(enabledRemoteQueryKeys).toEqual([])
     })
   })
 
