@@ -13,25 +13,24 @@ const SummaryStatus = ({ status }: SummaryStatusProps) => {
 
   const tip = useMemo(() => {
     if (status === 'SUMMARIZING') {
-      return t($ => $['list.summary.generatingSummary'], { ns: 'datasetDocuments' })
+      return t(($) => $['list.summary.generatingSummary'], { ns: 'datasetDocuments' })
     }
     return ''
   }, [status, t])
 
-  if (status !== 'SUMMARIZING')
-    return null
+  if (status !== 'SUMMARIZING') return null
 
   return (
     <Tooltip>
       <TooltipTrigger
-        render={(
+        render={
           <span className="inline-flex">
             <Badge className="border-text-accent-secondary text-text-accent-secondary">
               <SearchLinesSparkle aria-hidden className="mr-0.5 size-3" />
-              <span>{t($ => $['list.summary.generating'], { ns: 'datasetDocuments' })}</span>
+              <span>{t(($) => $['list.summary.generating'], { ns: 'datasetDocuments' })}</span>
             </Badge>
           </span>
-        )}
+        }
       />
       <TooltipContent>{tip}</TooltipContent>
     </Tooltip>

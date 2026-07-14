@@ -1,5 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
+import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
 import { QueryClient } from '@tanstack/react-query'
@@ -34,6 +35,14 @@ const loadConsoleQueryWithRequest = async (request: ReturnType<typeof vi.fn>) =>
   return module.consoleQuery
 }
 
+const loadWorkflowGenerationStream = async (sseGeneratorPost: ReturnType<typeof vi.fn>) => {
+  vi.resetModules()
+  vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
+  vi.doMock('./base', () => ({ request: vi.fn(), sseGeneratorPost }))
+  const module = await import('./client')
+  return module.streamWorkflowGeneration
+}
+
 const createMutationContext = (queryClient: QueryClient): MutationFunctionContext => ({
   client: queryClient,
   meta: undefined,
@@ -47,7 +56,9 @@ const createTag = (overrides: Partial<Tag> = {}): Tag => ({
   ...overrides,
 })
 
-const createApiBasedExtension = (overrides: Partial<ApiBasedExtensionResponse> = {}): ApiBasedExtensionResponse => ({
+const createApiBasedExtension = (
+  overrides: Partial<ApiBasedExtensionResponse> = {},
+): ApiBasedExtensionResponse => ({
   id: 'extension-1',
   name: 'Weather',
   api_endpoint: 'https://api.example.com/weather',
@@ -55,17 +66,32 @@ const createApiBasedExtension = (overrides: Partial<ApiBasedExtensionResponse> =
   ...overrides,
 })
 
-type AgentMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.post.mutationOptions>['onSuccess']>>[0]
-type AgentComposerMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.byAgentId.composer.put.mutationOptions>['onSuccess']>>[0]
-type AgentPublishMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.byAgentId.publish.post.mutationOptions>['onSuccess']>>[0]
-type WorkflowAgentComposerMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions>['onSuccess']>>[0]
+type AgentMutationResponse = Parameters<
+  NonNullable<ReturnType<typeof ConsoleQuery.agent.post.mutationOptions>['onSuccess']>
+>[0]
+type AgentComposerMutationResponse = Parameters<
+  NonNullable<
+    ReturnType<typeof ConsoleQuery.agent.byAgentId.composer.put.mutationOptions>['onSuccess']
+  >
+>[0]
+type AgentPublishMutationResponse = Parameters<
+  NonNullable<
+    ReturnType<typeof ConsoleQuery.agent.byAgentId.publish.post.mutationOptions>['onSuccess']
+  >
+>[0]
+type WorkflowAgentComposerMutationResponse = Parameters<
+  NonNullable<
+    ReturnType<
+      typeof ConsoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions
+    >['onSuccess']
+  >
+>[0]
 type RetryFn = (failureCount: number, error: unknown) => boolean
 
 const getRetryFn = (queryOptions: object): RetryFn => {
   const retry = (queryOptions as { retry?: unknown }).retry
   expect(typeof retry).toBe('function')
-  if (typeof retry !== 'function')
-    throw new TypeError('Expected query retry to be a function.')
+  if (typeof retry !== 'function') throw new TypeError('Expected query retry to be a function.')
 
   return retry as RetryFn
 }
@@ -86,7 +112,9 @@ const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutat
   role: overrides.role ?? 'Assistant',
 })
 
-const createComposerState = (overrides: Partial<AgentComposerMutationResponse> = {}): AgentComposerMutationResponse => ({
+const createComposerState = (
+  overrides: Partial<AgentComposerMutationResponse> = {},
+): AgentComposerMutationResponse => ({
   active_config_snapshot: {
     id: 'snapshot-1',
     version: 1,
@@ -110,7 +138,9 @@ const createComposerState = (overrides: Partial<AgentComposerMutationResponse> =
   ...overrides,
 })
 
-const createAgentPublishResponse = (overrides: Partial<AgentPublishMutationResponse> = {}): AgentPublishMutationResponse => ({
+const createAgentPublishResponse = (
+  overrides: Partial<AgentPublishMutationResponse> = {},
+): AgentPublishMutationResponse => ({
   active_config_snapshot: {
     id: 'snapshot-1',
     version: 1,
@@ -120,7 +150,9 @@ const createAgentPublishResponse = (overrides: Partial<AgentPublishMutationRespo
   ...overrides,
 })
 
-const createWorkflowComposerState = (overrides: Partial<WorkflowAgentComposerMutationResponse> = {}): WorkflowAgentComposerMutationResponse => ({
+const createWorkflowComposerState = (
+  overrides: Partial<WorkflowAgentComposerMutationResponse> = {},
+): WorkflowAgentComposerMutationResponse => ({
   agent: {
     active_config_snapshot_id: 'snapshot-1',
     description: 'Agent description',
@@ -194,7 +226,9 @@ describe('getBaseURL', () => {
     // Assert
     expect(url.href).toBe('http://localhost/api')
     expect(warnSpy).toHaveBeenCalledTimes(1)
-    expect(warnSpy).toHaveBeenCalledWith('Using localhost as base URL in server environment, please configure accordingly.')
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Using localhost as base URL in server environment, please configure accordingly.',
+    )
   })
 
   // Scenario: non-http protocols surface warnings.
@@ -228,6 +262,21 @@ describe('getBaseURL', () => {
   })
 })
 
+describe('streamWorkflowGeneration', () => {
+  it('should preserve the generator stream transport contract', async () => {
+    const expectedResult = Promise.resolve()
+    const sseGeneratorPost = vi.fn().mockReturnValue(expectedResult)
+    const streamWorkflowGeneration = await loadWorkflowGenerationStream(sseGeneratorPost)
+    const body = { instruction: 'Build a researched answer' }
+    const callbacks = { onCompleted: vi.fn() }
+
+    const result = streamWorkflowGeneration('/workflow-generate/stream', body, callbacks)
+
+    expect(result).toBe(expectedResult)
+    expect(sseGeneratorPost).toHaveBeenCalledWith('/workflow-generate/stream', body, callbacks)
+  })
+})
+
 // Scenario: oRPC operation context controls transport behavior without handwritten REST helpers.
 describe('consoleQuery transport context', () => {
   afterEach(() => {
@@ -235,12 +284,14 @@ describe('consoleQuery transport context', () => {
   })
 
   it('should forward silent context to the base request transport', async () => {
-    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({}), {
-      status: 200,
-      headers: {
-        'content-type': 'application/json',
-      },
-    }))
+    const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
     const consoleQuery = await loadConsoleQueryWithRequest(request)
     const queryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
       input: {
@@ -253,9 +304,9 @@ describe('consoleQuery transport context', () => {
       },
     })
 
-    await Promise
-      .resolve(queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext))
-      .catch(() => undefined)
+    await Promise.resolve(
+      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+    ).catch(() => undefined)
 
     expect(request).toHaveBeenCalledWith(
       expect.stringContaining('/agent/agent-1/build-draft'),
@@ -268,18 +319,23 @@ describe('consoleQuery transport context', () => {
   })
 
   it('should serialize trial app dataset ids as repeated query params', async () => {
-    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      data: [],
-      has_more: false,
-      limit: 20,
-      page: 1,
-      total: 0,
-    }), {
-      status: 200,
-      headers: {
-        'content-type': 'application/json',
-      },
-    }))
+    const request = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [],
+          has_more: false,
+          limit: 20,
+          page: 1,
+          total: 0,
+        }),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        },
+      ),
+    )
     const consoleQuery = await loadConsoleQueryWithRequest(request)
     const queryOptions = consoleQuery.trialApps.byAppId.datasets.get.queryOptions({
       input: {
@@ -302,6 +358,74 @@ describe('consoleQuery transport context', () => {
       }),
     )
     expect(request.mock.calls[0]![0]).not.toContain('ids%5B0%5D')
+  })
+
+  it('should consume KnowledgeFS processing events through the generated stream contract', async () => {
+    const request = vi.fn().mockResolvedValue(
+      new Response(
+        [
+          'id: task-1:1',
+          'event: message',
+          'data: {"event":"progress","data":{"progressPercent":25,"stage":"parsed","state":"running","updatedAt":"2026-07-22T10:00:00.000Z"}}',
+          '',
+          'id: task-1:terminal',
+          'event: message',
+          'data: {"event":"terminal","data":{"state":"succeeded"}}',
+          '',
+          '',
+        ].join('\n'),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'text/event-stream',
+          },
+        },
+      ),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions =
+      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents.experimental_streamedOptions(
+        {
+          input: {
+            headers: {
+              'last-event-id': 'task-1:0',
+            },
+            params: {
+              documentId: 'document-1',
+              id: 'space-1',
+              taskId: 'task-1',
+            },
+          },
+        },
+      )
+
+    const events = await queryOptions.queryFn({
+      client: new QueryClient(),
+      signal: new AbortController().signal,
+    } as QueryFunctionContext)
+
+    expectTypeOf(events[0]!).toMatchTypeOf<DocumentProcessingTaskEvent>()
+    expect(events).toEqual([
+      {
+        data: {
+          progressPercent: 25,
+          stage: 'parsed',
+          state: 'running',
+          updatedAt: '2026-07-22T10:00:00.000Z',
+        },
+        event: 'progress',
+      },
+      { data: { state: 'succeeded' }, event: 'terminal' },
+    ])
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
+      ),
+      expect.any(Object),
+      expect.objectContaining({
+        fetchCompat: true,
+      }),
+    )
   })
 })
 
@@ -438,13 +562,17 @@ describe('consoleQuery agent mutation defaults', () => {
       createMutationContext(queryClient),
     )
 
-    expect(queryClient.getQueryData(consoleQuery.agent.byAgentId.get.queryKey({
-      input: {
-        params: {
-          agent_id: copiedAgent.id,
-        },
-      },
-    }))).toEqual(copiedAgent)
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.agent.byAgentId.get.queryKey({
+          input: {
+            params: {
+              agent_id: copiedAgent.id,
+            },
+          },
+        }),
+      ),
+    ).toEqual(copiedAgent)
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.get.key(),
     })
@@ -468,7 +596,8 @@ describe('consoleQuery agent mutation defaults', () => {
       },
     })
 
-    const mutationOptions = consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post.mutationOptions()
+    const mutationOptions =
+      consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post.mutationOptions()
     await mutationOptions.onSuccess?.(
       composerState,
       {
@@ -484,14 +613,18 @@ describe('consoleQuery agent mutation defaults', () => {
       createMutationContext(queryClient),
     )
 
-    expect(queryClient.getQueryData(consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
-      input: {
-        params: {
-          app_id: 'app-1',
-          node_id: 'node-1',
-        },
-      },
-    }))).toEqual(composerState)
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+          input: {
+            params: {
+              app_id: 'app-1',
+              node_id: 'node-1',
+            },
+          },
+        }),
+      ),
+    ).toEqual(composerState)
     expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.get.key(),
     })
@@ -514,7 +647,8 @@ describe('consoleQuery agent mutation defaults', () => {
       },
     })
 
-    const mutationOptions = consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions()
+    const mutationOptions =
+      consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions()
     await mutationOptions.onSuccess?.(
       composerState,
       {
@@ -531,14 +665,66 @@ describe('consoleQuery agent mutation defaults', () => {
       createMutationContext(queryClient),
     )
 
-    expect(queryClient.getQueryData(consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
-      input: {
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+          input: {
+            params: {
+              app_id: 'app-1',
+              node_id: 'node-1',
+            },
+          },
+        }),
+      ),
+    ).toEqual(composerState)
+  })
+
+  it('should cache snippet composer state after saving the inline agent', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const composerState = createWorkflowComposerState({
+      binding: {
+        agent_id: 'snippet-inline-agent-1',
+        binding_type: 'inline_agent',
+        current_snapshot_id: 'snippet-inline-snapshot-1',
+        id: 'binding-1',
+        node_id: 'node-1',
+        workflow_id: 'workflow-1',
+      },
+    })
+
+    const mutationOptions =
+      consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      composerState,
+      {
         params: {
-          app_id: 'app-1',
+          snippet_id: 'snippet-1',
           node_id: 'node-1',
         },
+        body: {
+          variant: 'workflow',
+          save_strategy: 'node_job_only',
+        },
       },
-    }))).toEqual(composerState)
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+          {
+            input: {
+              params: {
+                snippet_id: 'snippet-1',
+                node_id: 'node-1',
+              },
+            },
+          },
+        ),
+      ),
+    ).toEqual(composerState)
   })
 
   it('should cache workflow composer state and invalidate roster lists after saving inline agent to roster', async () => {
@@ -547,7 +733,8 @@ describe('consoleQuery agent mutation defaults', () => {
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const composerState = createWorkflowComposerState()
 
-    const mutationOptions = consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions()
+    const mutationOptions =
+      consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions()
     await mutationOptions.onSuccess?.(
       composerState,
       {
@@ -567,14 +754,76 @@ describe('consoleQuery agent mutation defaults', () => {
       createMutationContext(queryClient),
     )
 
-    expect(queryClient.getQueryData(consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
-      input: {
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+          input: {
+            params: {
+              app_id: 'app-1',
+              node_id: 'node-1',
+            },
+          },
+        }),
+      ),
+    ).toEqual(composerState)
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+        input: {
+          params: {
+            agent_id: 'agent-1',
+          },
+        },
+      }),
+    })
+  })
+
+  it('should cache snippet composer state and invalidate roster lists after saving inline agent to roster', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const composerState = createWorkflowComposerState()
+
+    const mutationOptions =
+      consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      composerState,
+      {
         params: {
-          app_id: 'app-1',
+          snippet_id: 'snippet-1',
           node_id: 'node-1',
         },
+        body: {
+          variant: 'workflow',
+          save_strategy: 'save_to_roster',
+          new_agent_name: 'Saved Agent',
+          description: 'Agent description',
+          role: 'Assistant',
+        },
       },
-    }))).toEqual(composerState)
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+          {
+            input: {
+              params: {
+                snippet_id: 'snippet-1',
+                node_id: 'node-1',
+              },
+            },
+          },
+        ),
+      ),
+    ).toEqual(composerState)
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.get.key(),
     })
@@ -755,6 +1004,43 @@ describe('consoleQuery agent mutation defaults', () => {
   })
 })
 
+// Scenario: oRPC mutation defaults own shared Web app access cache behavior.
+describe('consoleQuery Web app access mutation defaults', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should invalidate access data and Agent details after updating Web app access', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    const mutationOptions =
+      consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      { message: 'updated' },
+      {
+        body: {
+          appId: 'app-1',
+          accessMode: 'private',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.get.key(),
+    })
+  })
+})
+
 // Scenario: oRPC mutation defaults own shared tag cache behavior.
 describe('consoleQuery tag mutation defaults', () => {
   beforeEach(() => {
@@ -858,10 +1144,7 @@ describe('consoleQuery tag mutation defaults', () => {
       createMutationContext(queryClient),
     )
 
-    expect(queryClient.getQueryData(appListKey)).toEqual([
-      updatedTag,
-      otherTag,
-    ])
+    expect(queryClient.getQueryData(appListKey)).toEqual([updatedTag, otherTag])
     expect(queryClient.getQueryData(knowledgeListKey)).toEqual([knowledgeTag])
   })
 

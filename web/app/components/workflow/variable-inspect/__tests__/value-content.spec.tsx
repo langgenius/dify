@@ -13,11 +13,18 @@ vi.mock('@/app/components/base/file-uploader/utils', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor', () => ({
-  default: ({ schema, onUpdate }: { schema: string, onUpdate: (value: string) => void }) => (
-    <textarea data-testid="json-editor" value={schema} onChange={event => onUpdate(event.target.value)} />
-  ),
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor',
+  () => ({
+    default: ({ schema, onUpdate }: { schema: string; onUpdate: (value: string) => void }) => (
+      <textarea
+        data-testid="json-editor"
+        value={schema}
+        onChange={(event) => onUpdate(event.target.value)}
+      />
+    ),
+  }),
+)
 
 vi.mock('../value-content-sections', () => ({
   TextEditorSection: ({
@@ -26,19 +33,23 @@ vi.mock('../value-content-sections', () => ({
   }: {
     value: string
     onTextChange: (value: string) => void
-  }) => <textarea aria-label="value-text-editor" value={value ?? ''} onChange={event => onTextChange(event.target.value)} />,
-  BoolArraySection: ({
-    onChange,
-  }: {
-    onChange: (value: boolean[]) => void
-  }) => <button onClick={() => onChange([true, true])}>bool-array-editor</button>,
-  JsonEditorSection: ({
-    json,
-    onChange,
-  }: {
-    json: string
-    onChange: (value: string) => void
-  }) => <textarea data-testid="json-editor" value={json} onChange={event => onChange(event.target.value)} />,
+  }) => (
+    <textarea
+      aria-label="value-text-editor"
+      value={value ?? ''}
+      onChange={(event) => onTextChange(event.target.value)}
+    />
+  ),
+  BoolArraySection: ({ onChange }: { onChange: (value: boolean[]) => void }) => (
+    <button onClick={() => onChange([true, true])}>bool-array-editor</button>
+  ),
+  JsonEditorSection: ({ json, onChange }: { json: string; onChange: (value: string) => void }) => (
+    <textarea
+      data-testid="json-editor"
+      value={json}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  ),
   FileEditorSection: ({
     onChange,
   }: {
@@ -46,11 +57,16 @@ vi.mock('../value-content-sections', () => ({
   }) => (
     <div>
       <button onClick={() => onChange([{ upload_file_id: '' }])}>file-pending</button>
-      <button onClick={() => onChange([{ upload_file_id: 'file-1', name: 'report.pdf' }])}>file-uploaded</button>
-      <button onClick={() => onChange([
-        { upload_file_id: 'file-1', name: 'a.pdf' },
-        { upload_file_id: 'file-2', name: 'b.pdf' },
-      ])}
+      <button onClick={() => onChange([{ upload_file_id: 'file-1', name: 'report.pdf' }])}>
+        file-uploaded
+      </button>
+      <button
+        onClick={() =>
+          onChange([
+            { upload_file_id: 'file-1', name: 'a.pdf' },
+            { upload_file_id: 'file-2', name: 'b.pdf' },
+          ])
+        }
       >
         file-array-uploaded
       </button>
@@ -75,14 +91,15 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 describe('ValueContent', () => {
-  const createVar = (overrides: Partial<VarInInspect>): VarInInspect => ({
-    id: 'var-default',
-    name: 'query',
-    type: VarInInspectType.node,
-    value_type: VarType.string,
-    value: '',
-    ...overrides,
-  } as VarInInspect)
+  const createVar = (overrides: Partial<VarInInspect>): VarInInspect =>
+    ({
+      id: 'var-default',
+      name: 'query',
+      type: VarInInspectType.node,
+      value_type: VarType.string,
+      value: '',
+      ...overrides,
+    }) as VarInInspect
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -327,7 +344,10 @@ describe('ValueContent', () => {
     fireEvent.click(screen.getByText('file-uploaded'))
 
     await waitFor(() => {
-      expect(handleValueChange).toHaveBeenCalledWith('var-8', expect.objectContaining({ upload_file_id: 'file-1' }))
+      expect(handleValueChange).toHaveBeenCalledWith(
+        'var-8',
+        expect.objectContaining({ upload_file_id: 'file-1' }),
+      )
     })
   })
 
@@ -336,7 +356,10 @@ describe('ValueContent', () => {
     const observe = vi.fn()
     const disconnect = vi.fn()
     const originalResizeObserver = globalThis.ResizeObserver
-    const originalClientHeight = Object.getOwnPropertyDescriptor(HTMLDivElement.prototype, 'clientHeight')
+    const originalClientHeight = Object.getOwnPropertyDescriptor(
+      HTMLDivElement.prototype,
+      'clientHeight',
+    )
 
     Object.defineProperty(HTMLDivElement.prototype, 'clientHeight', {
       configurable: true,
@@ -352,9 +375,14 @@ describe('ValueContent', () => {
 
       observe = (target: Element) => {
         observe(target)
-        this.callback([{
-          borderBoxSize: [{ inlineSize: 20 }],
-        } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver)
+        this.callback(
+          [
+            {
+              borderBoxSize: [{ inlineSize: 20 }],
+            } as unknown as ResizeObserverEntry,
+          ],
+          this as unknown as ResizeObserver,
+        )
       }
 
       disconnect = disconnect
@@ -386,10 +414,13 @@ describe('ValueContent', () => {
     fireEvent.click(screen.getByText('file-array-uploaded'))
 
     await waitFor(() => {
-      expect(handleValueChange).toHaveBeenCalledWith('var-9', expect.arrayContaining([
-        expect.objectContaining({ upload_file_id: 'file-1' }),
-        expect.objectContaining({ upload_file_id: 'file-2' }),
-      ]))
+      expect(handleValueChange).toHaveBeenCalledWith(
+        'var-9',
+        expect.arrayContaining([
+          expect.objectContaining({ upload_file_id: 'file-1' }),
+          expect.objectContaining({ upload_file_id: 'file-2' }),
+        ]),
+      )
     })
 
     expect(observe).toHaveBeenCalled()
@@ -397,13 +428,10 @@ describe('ValueContent', () => {
 
     if (originalClientHeight)
       Object.defineProperty(HTMLDivElement.prototype, 'clientHeight', originalClientHeight)
-    else
-      delete (HTMLDivElement.prototype as { clientHeight?: number }).clientHeight
+    else delete (HTMLDivElement.prototype as { clientHeight?: number }).clientHeight
 
-    if (originalResizeObserver)
-      vi.stubGlobal('ResizeObserver', originalResizeObserver)
-    else
-      vi.unstubAllGlobals()
+    if (originalResizeObserver) vi.stubGlobal('ResizeObserver', originalResizeObserver)
+    else vi.unstubAllGlobals()
 
     expect(disconnect).not.toHaveBeenCalled()
   })

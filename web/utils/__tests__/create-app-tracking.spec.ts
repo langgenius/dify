@@ -30,20 +30,26 @@ describe('create-app-tracking', () => {
     })
 
     it('should accept any non-empty utm_source and keep raw values', () => {
-      expect(extractExternalCreateAppAttribution({
-        searchParams: new URLSearchParams('utm_source=newsletter'),
-      })).toEqual({ utmSource: 'newsletter' })
+      expect(
+        extractExternalCreateAppAttribution({
+          searchParams: new URLSearchParams('utm_source=newsletter'),
+        }),
+      ).toEqual({ utmSource: 'newsletter' })
 
-      expect(extractExternalCreateAppAttribution({
-        utmInfo: { utm_source: 'dify_blog', slug: 'launch-week' },
-      })).toEqual({
+      expect(
+        extractExternalCreateAppAttribution({
+          utmInfo: { utm_source: 'dify_blog', slug: 'launch-week' },
+        }),
+      ).toEqual({
         utmSource: 'dify_blog',
         slug: 'launch-week',
       })
 
-      expect(extractExternalCreateAppAttribution({
-        searchParams: new URLSearchParams('utm_source=random&slug=x'),
-      })).toEqual({
+      expect(
+        extractExternalCreateAppAttribution({
+          searchParams: new URLSearchParams('utm_source=random&slug=x'),
+        }),
+      ).toEqual({
         utmSource: 'random',
         slug: 'x',
       })
@@ -65,10 +71,12 @@ describe('create-app-tracking', () => {
         utmSource: 'community',
         slug: 'partner-launch',
       })
-      expect(window.sessionStorage.getItem('create_app_external_attribution')).toBe(JSON.stringify({
-        utmSource: 'community',
-        slug: 'partner-launch',
-      }))
+      expect(window.sessionStorage.getItem('create_app_external_attribution')).toBe(
+        JSON.stringify({
+          utmSource: 'community',
+          slug: 'partner-launch',
+        }),
+      )
     })
 
     it('should ignore malformed utm cookies', () => {
@@ -83,10 +91,16 @@ describe('create-app-tracking', () => {
 
   describe('buildCreateAppEventPayload', () => {
     it('should build payloads with source, normalized app mode, and timestamp', () => {
-      expect(buildCreateAppEventPayload({
-        source: 'studio_blank',
-        appMode: AppModeEnum.ADVANCED_CHAT,
-      }, null, new Date(2026, 3, 13, 14, 5, 9))).toEqual({
+      expect(
+        buildCreateAppEventPayload(
+          {
+            source: 'studio_blank',
+            appMode: AppModeEnum.ADVANCED_CHAT,
+          },
+          null,
+          new Date(2026, 3, 13, 14, 5, 9),
+        ),
+      ).toEqual({
         source: 'studio_blank',
         app_mode: 'chatflow',
         time: '04-13-14:05:09',
@@ -94,10 +108,16 @@ describe('create-app-tracking', () => {
     })
 
     it('should map agent mode into the canonical app mode bucket', () => {
-      expect(buildCreateAppEventPayload({
-        source: 'studio_blank',
-        appMode: AppModeEnum.AGENT_CHAT,
-      }, null, new Date(2026, 3, 13, 9, 8, 7))).toEqual({
+      expect(
+        buildCreateAppEventPayload(
+          {
+            source: 'studio_blank',
+            appMode: AppModeEnum.AGENT_CHAT,
+          },
+          null,
+          new Date(2026, 3, 13, 9, 8, 7),
+        ),
+      ).toEqual({
         source: 'studio_blank',
         app_mode: 'agent',
         time: '04-13-09:08:07',
@@ -105,10 +125,16 @@ describe('create-app-tracking', () => {
     })
 
     it('should map the current backend agent mode into the canonical app mode bucket', () => {
-      expect(buildCreateAppEventPayload({
-        source: 'explore_template_list',
-        appMode: 'agent',
-      }, null, new Date(2026, 3, 13, 9, 8, 8))).toEqual({
+      expect(
+        buildCreateAppEventPayload(
+          {
+            source: 'explore_template_list',
+            appMode: 'agent',
+          },
+          null,
+          new Date(2026, 3, 13, 9, 8, 8),
+        ),
+      ).toEqual({
         source: 'explore_template_list',
         app_mode: 'agent',
         time: '04-13-09:08:08',
@@ -116,19 +142,31 @@ describe('create-app-tracking', () => {
     })
 
     it('should fold legacy non-agent modes into chatflow', () => {
-      expect(buildCreateAppEventPayload({
-        source: 'studio_blank',
-        appMode: AppModeEnum.CHAT,
-      }, null, new Date(2026, 3, 13, 8, 0, 1))).toEqual({
+      expect(
+        buildCreateAppEventPayload(
+          {
+            source: 'studio_blank',
+            appMode: AppModeEnum.CHAT,
+          },
+          null,
+          new Date(2026, 3, 13, 8, 0, 1),
+        ),
+      ).toEqual({
         source: 'studio_blank',
         app_mode: 'chatflow',
         time: '04-13-08:00:01',
       })
 
-      expect(buildCreateAppEventPayload({
-        source: 'studio_blank',
-        appMode: AppModeEnum.COMPLETION,
-      }, null, new Date(2026, 3, 13, 8, 0, 2))).toEqual({
+      expect(
+        buildCreateAppEventPayload(
+          {
+            source: 'studio_blank',
+            appMode: AppModeEnum.COMPLETION,
+          },
+          null,
+          new Date(2026, 3, 13, 8, 0, 2),
+        ),
+      ).toEqual({
         source: 'studio_blank',
         app_mode: 'chatflow',
         time: '04-13-08:00:02',
@@ -136,10 +174,16 @@ describe('create-app-tracking', () => {
     })
 
     it('should map workflow mode into the workflow bucket', () => {
-      expect(buildCreateAppEventPayload({
-        source: 'studio_blank',
-        appMode: AppModeEnum.WORKFLOW,
-      }, null, new Date(2026, 3, 13, 7, 6, 5))).toEqual({
+      expect(
+        buildCreateAppEventPayload(
+          {
+            source: 'studio_blank',
+            appMode: AppModeEnum.WORKFLOW,
+          },
+          null,
+          new Date(2026, 3, 13, 7, 6, 5),
+        ),
+      ).toEqual({
         source: 'studio_blank',
         app_mode: 'workflow',
         time: '04-13-07:06:05',
@@ -147,11 +191,17 @@ describe('create-app-tracking', () => {
     })
 
     it('should include template_id for template sources', () => {
-      expect(buildCreateAppEventPayload({
-        source: 'studio_template_list',
-        appMode: AppModeEnum.CHAT,
-        templateId: 'template-1',
-      }, null, new Date(2026, 3, 13, 8, 0, 1))).toEqual({
+      expect(
+        buildCreateAppEventPayload(
+          {
+            source: 'studio_template_list',
+            appMode: AppModeEnum.CHAT,
+            templateId: 'template-1',
+          },
+          null,
+          new Date(2026, 3, 13, 8, 0, 1),
+        ),
+      ).toEqual({
         source: 'studio_template_list',
         app_mode: 'chatflow',
         time: '04-13-08:00:01',
@@ -160,18 +210,20 @@ describe('create-app-tracking', () => {
     })
 
     it('should prefer external attribution when present', () => {
-      expect(buildCreateAppEventPayload(
-        {
-          source: 'studio_template_list',
-          appMode: AppModeEnum.WORKFLOW,
-          templateId: 'template-1',
-        },
-        {
-          utmSource: 'linkedin',
-          slug: 'agent-launch',
-        },
-        new Date(2026, 3, 13, 7, 6, 5),
-      )).toEqual({
+      expect(
+        buildCreateAppEventPayload(
+          {
+            source: 'studio_template_list',
+            appMode: AppModeEnum.WORKFLOW,
+            templateId: 'template-1',
+          },
+          {
+            utmSource: 'linkedin',
+            slug: 'agent-launch',
+          },
+          new Date(2026, 3, 13, 7, 6, 5),
+        ),
+      ).toEqual({
         source: 'external',
         app_mode: 'workflow',
         time: '04-13-07:06:05',
@@ -182,10 +234,16 @@ describe('create-app-tracking', () => {
     })
 
     it('should not build external payloads without attribution', () => {
-      expect(buildCreateAppEventPayload({
-        source: 'external',
-        appMode: AppModeEnum.WORKFLOW,
-      }, null, new Date(2026, 3, 13, 7, 6, 5))).toBeNull()
+      expect(
+        buildCreateAppEventPayload(
+          {
+            source: 'external',
+            appMode: AppModeEnum.WORKFLOW,
+          },
+          null,
+          new Date(2026, 3, 13, 7, 6, 5),
+        ),
+      ).toBeNull()
     })
   })
 
@@ -198,7 +256,9 @@ describe('create-app-tracking', () => {
         promise: Promise.resolve(),
       } as ReturnType<typeof amplitude.flushEvents>)
 
-      await expect(trackCreateApp({ source: 'studio_blank', appMode: AppModeEnum.ADVANCED_CHAT })).resolves.toBeUndefined()
+      await expect(
+        trackCreateApp({ source: 'studio_blank', appMode: AppModeEnum.ADVANCED_CHAT }),
+      ).resolves.toBeUndefined()
 
       expect(amplitude.trackEvent).toHaveBeenCalledWith('create_app', {
         source: 'studio_blank',
@@ -213,7 +273,11 @@ describe('create-app-tracking', () => {
         searchParams: new URLSearchParams('utm_source=newsletter&slug=how-to-build-rag-agent'),
       })
 
-      trackCreateApp({ source: 'studio_template_list', appMode: AppModeEnum.WORKFLOW, templateId: 'template-1' })
+      trackCreateApp({
+        source: 'studio_template_list',
+        appMode: AppModeEnum.WORKFLOW,
+        templateId: 'template-1',
+      })
 
       expect(amplitude.trackEvent).toHaveBeenNthCalledWith(1, 'create_app', {
         source: 'external',
@@ -224,7 +288,11 @@ describe('create-app-tracking', () => {
         slug: 'how-to-build-rag-agent',
       })
 
-      trackCreateApp({ source: 'studio_template_list', appMode: AppModeEnum.WORKFLOW, templateId: 'template-1' })
+      trackCreateApp({
+        source: 'studio_template_list',
+        appMode: AppModeEnum.WORKFLOW,
+        templateId: 'template-1',
+      })
 
       expect(amplitude.trackEvent).toHaveBeenNthCalledWith(2, 'create_app', {
         source: 'studio_template_list',
@@ -243,7 +311,11 @@ describe('create-app-tracking', () => {
 
       window.history.replaceState({}, '', '/explore')
 
-      trackCreateApp({ source: 'explore_template_preview', appMode: AppModeEnum.CHAT, templateId: 'template-2' })
+      trackCreateApp({
+        source: 'explore_template_preview',
+        appMode: AppModeEnum.CHAT,
+        templateId: 'template-2',
+      })
 
       expect(amplitude.trackEvent).toHaveBeenCalledWith('create_app', {
         source: 'external',
@@ -271,8 +343,7 @@ describe('create-app-tracking', () => {
           app_mode: 'agent',
           time: expect.stringMatching(/^\d{2}-\d{2}-\d{2}:\d{2}:\d{2}$/),
         })
-      }
-      finally {
+      } finally {
         Object.defineProperty(globalThis, 'window', {
           configurable: true,
           value: originalWindow,
@@ -281,10 +352,13 @@ describe('create-app-tracking', () => {
     })
 
     it('should consume snake_case sessionStorage attribution and map legacy utm_campaign to slug', () => {
-      window.sessionStorage.setItem('create_app_external_attribution', JSON.stringify({
-        utm_source: 'community',
-        utm_campaign: 'launch-week',
-      }))
+      window.sessionStorage.setItem(
+        'create_app_external_attribution',
+        JSON.stringify({
+          utm_source: 'community',
+          utm_campaign: 'launch-week',
+        }),
+      )
 
       trackCreateApp({ source: 'studio_blank', appMode: AppModeEnum.CHAT })
 
@@ -299,7 +373,11 @@ describe('create-app-tracking', () => {
     })
 
     it('should not track external source without remembered attribution', () => {
-      trackCreateApp({ source: 'external', appMode: AppModeEnum.WORKFLOW, templateId: 'template-1' })
+      trackCreateApp({
+        source: 'external',
+        appMode: AppModeEnum.WORKFLOW,
+        templateId: 'template-1',
+      })
 
       expect(amplitude.trackEvent).not.toHaveBeenCalled()
     })

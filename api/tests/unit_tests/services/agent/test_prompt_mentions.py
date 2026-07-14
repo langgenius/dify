@@ -140,6 +140,7 @@ def soul() -> AgentSoulConfig:
                     {
                         "plugin_id": "langgenius/tavily",
                         "provider": "tavily",
+                        "provider_type": "plugin",
                         "tool_name": "tavily_search",
                         "credential_type": "unauthorized",
                     },

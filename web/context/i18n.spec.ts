@@ -45,13 +45,6 @@ describe('useDocLink', () => {
     vi.mocked(getDocLanguage).mockReturnValue('en')
   })
 
-  describe('Rendering', () => {
-    it('should return a function', () => {
-      const { result } = renderHook(() => useDocLink())
-      expect(typeof result.current).toBe('function')
-    })
-  })
-
   describe('Base URL handling', () => {
     it('should use default base URL when no baseUrl provided', () => {
       const { result } = renderHook(() => useDocLink())
@@ -108,7 +101,9 @@ describe('useDocLink', () => {
 
     it('should keep explicit product docs path without adding another product prefix', () => {
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/cloud/use-dify/getting-started/introduction' as DocPathWithoutLang)
+      const url = result.current(
+        '/cloud/use-dify/getting-started/introduction' as DocPathWithoutLang,
+      )
       expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction`)
     })
   })
@@ -175,7 +170,9 @@ describe('useDocLink', () => {
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/workspace/subscription-management#dify-for-education')
-      expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/workspace/subscription-management#dify-for-education`)
+      expect(url).toBe(
+        `${defaultDocBaseUrl}/en/cloud/use-dify/workspace/subscription-management#dify-for-education`,
+      )
     })
 
     it('should use the self-host Start node docs path outside cloud edition', () => {
@@ -336,8 +333,12 @@ describe('useDocLink', () => {
   describe('Edge Cases', () => {
     it('should handle path with anchor', () => {
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/getting-started/introduction#overview' as DocPathWithoutLang)
-      expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction#overview`)
+      const url = result.current(
+        '/use-dify/getting-started/introduction#overview' as DocPathWithoutLang,
+      )
+      expect(url).toBe(
+        `${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction#overview`,
+      )
     })
 
     it('should handle multiple calls with same hook instance', () => {

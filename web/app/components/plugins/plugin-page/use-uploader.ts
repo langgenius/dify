@@ -14,8 +14,7 @@ export const useUploader = ({ onFileChange, containerRef, enabled = true }: Uplo
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.dataTransfer?.types.includes('Files'))
-      setDragging(true)
+    if (e.dataTransfer?.types.includes('Files')) setDragging(true)
   }
 
   const handleDragOver = (e: DragEvent) => {
@@ -34,11 +33,9 @@ export const useUploader = ({ onFileChange, containerRef, enabled = true }: Uplo
     e.preventDefault()
     e.stopPropagation()
     setDragging(false)
-    if (!e.dataTransfer)
-      return
+    if (!e.dataTransfer) return
     const files = Array.from(e.dataTransfer.files)
-    if (files.length > 0)
-      onFileChange(files[0]!)
+    if (files.length > 0) onFileChange(files[0]!)
   }
 
   const fileChangeHandle = enabled
@@ -50,16 +47,14 @@ export const useUploader = ({ onFileChange, containerRef, enabled = true }: Uplo
 
   const removeFile = enabled
     ? () => {
-        if (fileUploader.current)
-          fileUploader.current.value = ''
+        if (fileUploader.current) fileUploader.current.value = ''
 
         onFileChange(null)
       }
     : null
 
   useEffect(() => {
-    if (!enabled)
-      return
+    if (!enabled) return
 
     const current = containerRef.current
     if (current) {

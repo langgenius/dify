@@ -8,13 +8,9 @@ export type IDevelopProps = {
 const Overview = async (props: IDevelopProps) => {
   const params = await props.params
 
-  const {
-    appId,
-  } = params
+  const { appId } = params
 
-  return (
-    <OverviewView appId={appId} />
-  )
+  return <OverviewView appId={appId} />
 }
 
 export default Overview

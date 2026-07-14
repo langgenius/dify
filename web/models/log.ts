@@ -1,9 +1,6 @@
 import type { Viewport } from 'reactflow'
 import type { Metadata } from '@/app/components/base/chat/chat/type'
-import type {
-  Edge,
-  Node,
-} from '@/app/components/workflow/types'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import type { VisionFile } from '@/types/app'
 
 type CompletionParamsType = {
@@ -58,7 +55,7 @@ type MessageContent = {
   conversation_id: string
   query: string
   inputs: Record<string, any>
-  message: { role: string, text: string, files?: VisionFile[] }[]
+  message: { role: string; text: string; files?: VisionFile[] }[]
   message_tokens: number
   answer_tokens: number
   answer: string
@@ -147,7 +144,10 @@ export type CompletionConversationsRequest = {
   limit: number // The default value is 20 and the range is 1-100
 }
 
-export type ChatConversationGeneralDetail = Omit<CompletionConversationGeneralDetail, 'message' | 'annotation'> & {
+export type ChatConversationGeneralDetail = Omit<
+  CompletionConversationGeneralDetail,
+  'message' | 'annotation'
+> & {
   summary: string
   message_count: number
   annotated: boolean
@@ -163,7 +163,10 @@ export type ChatConversationsResponse = {
 
 export type ChatConversationsRequest = CompletionConversationsRequest & { message_count: number }
 
-export type ChatConversationFullDetailResponse = Omit<CompletionConversationGeneralDetail, 'message' | 'model_config'> & {
+export type ChatConversationFullDetailResponse = Omit<
+  CompletionConversationGeneralDetail,
+  'message' | 'model_config'
+> & {
   message_count: number
   model_config: {
     provider: string
@@ -352,13 +355,15 @@ export type AgentLogDetailResponse = {
   files: AgentLogFile[]
 }
 
-type PauseType = {
-  type: 'human_input'
-  form_id: string
-  backstage_input_url: string
-} | {
-  type: 'breakpoint'
-}
+type PauseType =
+  | {
+      type: 'human_input'
+      form_id: string
+      backstage_input_url: string
+    }
+  | {
+      type: 'breakpoint'
+    }
 
 type PauseDetail = {
   node_id: string

@@ -44,12 +44,12 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
-from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
+from models.agent import AgentConfigDraftType
 from models.model import App, AppMode
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
@@ -158,8 +158,8 @@ class CompletionMessageApi(Resource):
     @account_initialization_required
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    @get_app_model(mode=AppMode.COMPLETION)
     @with_session
+    @get_app_model(mode=AppMode.COMPLETION)
     def post(self, session: Session, current_user: Account, app_model: App):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
@@ -240,8 +240,8 @@ class ChatMessageApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     @with_session
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     def post(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
         return _create_chat_message(
             session=session, current_tenant_id=current_tenant_id, current_user=current_user, app_model=app_model
@@ -266,7 +266,9 @@ class AgentChatMessageApi(Resource):
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = AgentRosterService(session).get_agent_runtime_app_model(
+            tenant_id=current_tenant_id, agent_id=str(agent_id)
+        )
         return _create_chat_message(
             session=session,
             current_tenant_id=current_tenant_id,
@@ -293,7 +295,9 @@ class AgentBuildChatFinalizeApi(Resource):
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = AgentRosterService(session).get_agent_runtime_app_model(
+            tenant_id=current_tenant_id, agent_id=str(agent_id)
+        )
         return _create_build_chat_finalization_message(
             session=session,
             current_tenant_id=current_tenant_id,
@@ -329,20 +333,34 @@ class AgentChatMessageStopApi(Resource):
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user_id: str, agent_id: UUID, task_id: str):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+    @with_session(write=False)
+    def post(self, session: Session, current_tenant_id: str, current_user_id: str, agent_id: UUID, task_id: str):
+        app_model = resolve_agent_runtime_app_model(
+            session=session,
+            tenant_id=current_tenant_id,
+            agent_id=agent_id,
+        )
         return _stop_chat_message(current_user_id=current_user_id, app_model=app_model, task_id=task_id)
 
 
 def _resolve_current_user_agent_debug_conversation_id(
-    *, current_tenant_id: str, current_user: Account, app_model: App, agent_id: str | None
+    *,
+    session: Session,
+    current_tenant_id: str,
+    current_user: Account,
+    app_model: App,
+    agent_id: str | None,
+    draft_type: AgentConfigDraftType,
 ) -> str:
-    roster_service = AgentRosterService(db.session)
+    """Resolve the current editor's conversation without crossing draft surfaces."""
+
+    roster_service = AgentRosterService(session)
     if agent_id:
         return roster_service.get_or_create_agent_app_debug_conversation_id(
             tenant_id=current_tenant_id,
             agent_id=agent_id,
             account_id=current_user.id,
+            draft_type=draft_type,
         )
 
     agent = roster_service.get_app_backing_agent(tenant_id=current_tenant_id, app_id=str(app_model.id))
@@ -352,6 +370,7 @@ def _resolve_current_user_agent_debug_conversation_id(
         tenant_id=current_tenant_id,
         agent_id=agent.id,
         account_id=current_user.id,
+        draft_type=draft_type,
     )
 
 
@@ -369,10 +388,12 @@ def _create_chat_message(
 
     if AppMode.value_of(app_model.mode) == AppMode.AGENT:
         debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
+            session=session,
             current_tenant_id=current_tenant_id or app_model.tenant_id,
             current_user=current_user,
             app_model=app_model,
             agent_id=agent_id,
+            draft_type=AgentConfigDraftType(args_model.draft_type),
         )
         if args_model.conversation_id and args_model.conversation_id != debug_conversation_id:
             raise NotFound("Conversation Not Exists.")
@@ -404,10 +425,12 @@ def _create_build_chat_finalization_message(
     *, session: Session, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
 ):
     debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
+        session=session,
         current_tenant_id=current_tenant_id,
         current_user=current_user,
         app_model=app_model,
         agent_id=agent_id,
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
     )
     args: dict[str, Any] = {
         "query": _BUILD_CHAT_FINALIZATION_QUERY,

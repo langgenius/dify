@@ -66,6 +66,7 @@ class TestWorkflowAppGeneratorValidation:
                 user=SimpleNamespace(),
                 args={"inputs": {}},
                 streaming=False,
+                session=Mock(),
             )
 
         with pytest.raises(ValueError, match="inputs is required"):
@@ -76,6 +77,7 @@ class TestWorkflowAppGeneratorValidation:
                 user=SimpleNamespace(),
                 args={},
                 streaming=False,
+                session=Mock(),
             )
 
     def test_single_loop_generate_validates_args(self):
@@ -89,6 +91,7 @@ class TestWorkflowAppGeneratorValidation:
                 user=SimpleNamespace(),
                 args=SimpleNamespace(inputs={}),
                 streaming=False,
+                session=Mock(),
             )
 
     def test_single_iteration_generate_includes_trace_session_id_in_extras(self, monkeypatch: pytest.MonkeyPatch):
@@ -134,6 +137,7 @@ class TestWorkflowAppGeneratorValidation:
             user=SimpleNamespace(id="user-id"),
             args={"inputs": {"foo": "bar"}, "trace_session_id": "session-1"},
             streaming=False,
+            session=Mock(),
         )
 
         assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
@@ -181,6 +185,7 @@ class TestWorkflowAppGeneratorValidation:
             user=SimpleNamespace(id="user-id"),
             args=SimpleNamespace(inputs={"foo": "bar"}, trace_session_id="session-1"),
             streaming=False,
+            session=Mock(),
         )
 
         assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
@@ -193,6 +198,7 @@ class TestWorkflowAppGeneratorValidation:
                 user=SimpleNamespace(),
                 args=SimpleNamespace(inputs=None),
                 streaming=False,
+                session=Mock(),
             )
 
 

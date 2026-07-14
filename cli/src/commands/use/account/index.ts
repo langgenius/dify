@@ -12,7 +12,11 @@ export default class UseAccount extends DifyCommand {
   ]
 
   static override flags = {
-    email: Flags.string({ description: 'email of the account to switch to (interactive picker shown when omitted in TTY)', default: '' }),
+    email: Flags.string({
+      description:
+        'email of the account to switch to (interactive picker shown when omitted in TTY)',
+      default: '',
+    }),
   }
 
   async run(argv: string[]): Promise<void> {

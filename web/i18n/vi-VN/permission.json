@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "Quyền ngoại lệ cho {{name}}",
   "accessRule.expandSection": "Mở rộng {{title}}",
   "accessRule.individualPermissionSettings": "Cài đặt quyền riêng lẻ",
-  "accessRule.individualPermissionSettingsTip": "Đặt các ngoại lệ về quyền cho các cộng tác viên hoặc nhóm cụ thể. Các cài đặt này sẽ ghi đè cấp độ truy cập mặc định.",
+  "accessRule.individualPermissionSettingsTip": "Đặt các ngoại lệ về quyền cho các cộng tác viên hoặc nhóm cụ thể. Các cài đặt này sẽ ghi đè quyền vai trò của họ.",
   "accessRule.maintainer": "Người bảo trì",
   "accessRule.member": "Thành viên",
   "accessRule.newPermissionSet": "Bộ quyền mới",

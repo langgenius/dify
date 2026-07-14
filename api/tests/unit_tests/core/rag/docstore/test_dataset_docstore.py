@@ -100,20 +100,18 @@ class TestDatasetDocumentStoreDocs:
         mock_segment.dataset_id = "test-dataset-id"
         mock_segment.content = "Test content"
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            mock_session = MagicMock()
-            mock_db.session = mock_session
-            mock_db.session.scalars.return_value.all.return_value = [mock_segment]
+        mock_session = MagicMock()
+        mock_session.scalars.return_value.all.return_value = [mock_segment]
 
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
+        store = DatasetDocumentStore(
+            dataset=mock_dataset,
+            user_id="test-user-id",
+        )
 
-            result = store.docs
+        result = store.get_docs(mock_session)
 
-            assert "node-1" in result
-            assert isinstance(result["node-1"], Document)
+        assert "node-1" in result
+        assert isinstance(result["node-1"], Document)
 
     def test_docs_empty_dataset(self):
         """Test docs property with no segments."""
@@ -121,19 +119,17 @@ class TestDatasetDocumentStoreDocs:
         mock_dataset = MagicMock(spec=Dataset)
         mock_dataset.id = "test-dataset-id"
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            mock_session = MagicMock()
-            mock_db.session = mock_session
-            mock_db.session.scalars.return_value.all.return_value = []
+        mock_session = MagicMock()
+        mock_session.scalars.return_value.all.return_value = []
 
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
+        store = DatasetDocumentStore(
+            dataset=mock_dataset,
+            user_id="test-user-id",
+        )
 
-            result = store.docs
+        result = store.get_docs(mock_session)
 
-            assert result == {}
+        assert result == {}
 
 
 class TestDatasetDocumentStoreAddDocuments:
@@ -162,12 +158,10 @@ class TestDatasetDocumentStoreAddDocuments:
         mock_model_instance.get_text_embedding_num_tokens.return_value = [10]
 
         with (
-            patch("core.rag.docstore.dataset_docstore.db") as mock_db,
             patch("core.rag.docstore.dataset_docstore.ModelManager.for_tenant") as mock_manager_class,
         ):
             mock_session = MagicMock()
-            mock_db.session = mock_session
-            mock_db.session.scalar.return_value = None
+            mock_session.scalar.return_value = None
 
             mock_manager = MagicMock()
             mock_manager.get_model_instance.return_value = mock_model_instance
@@ -181,10 +175,10 @@ class TestDatasetDocumentStoreAddDocuments:
                         document_id="test-doc-id",
                     )
 
-                    store.add_documents([mock_doc])
+                    store.add_documents([mock_doc], session=mock_session)
 
-                    mock_db.session.add.assert_called()
-                    mock_db.session.commit.assert_called()
+                    mock_session.add.assert_called()
+                    mock_session.flush.assert_called()
 
     def test_add_documents_update_existing_document(self):
         """Test updating existing document with allow_update=True."""
@@ -208,22 +202,20 @@ class TestDatasetDocumentStoreAddDocuments:
         mock_existing_segment = MagicMock()
         mock_existing_segment.id = "seg-1"
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            mock_session = MagicMock()
-            mock_db.session = mock_session
-            mock_db.session.scalar.return_value = 5
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = 5
 
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_existing_segment):
-                with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
-                    store = DatasetDocumentStore(
-                        dataset=mock_dataset,
-                        user_id="test-user-id",
-                        document_id="test-doc-id",
-                    )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_existing_segment):
+            with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
+                store = DatasetDocumentStore(
+                    dataset=mock_dataset,
+                    user_id="test-user-id",
+                    document_id="test-doc-id",
+                )
 
-                    store.add_documents([mock_doc])
+                store.add_documents([mock_doc], session=mock_session)
 
-                    mock_db.session.commit.assert_called()
+                mock_session.flush.assert_called()
 
     def test_add_documents_raises_when_not_allowed(self):
         """Test that adding existing doc without allow_update raises ValueError."""
@@ -243,17 +235,17 @@ class TestDatasetDocumentStoreAddDocuments:
         mock_doc.children = None
 
         mock_existing_segment = MagicMock()
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db"):
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_existing_segment):
-                store = DatasetDocumentStore(
-                    dataset=mock_dataset,
-                    user_id="test-user-id",
-                    document_id="test-doc-id",
-                )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_existing_segment):
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+                document_id="test-doc-id",
+            )
 
-                with pytest.raises(ValueError, match="already exists"):
-                    store.add_documents([mock_doc], allow_update=False)
+            with pytest.raises(ValueError, match="already exists"):
+                store.add_documents([mock_doc], session=mock_session, allow_update=False)
 
     def test_add_documents_with_answer_metadata(self):
         """Test adding document with answer in metadata."""
@@ -273,38 +265,36 @@ class TestDatasetDocumentStoreAddDocuments:
         mock_doc.attachments = None
         mock_doc.children = None
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            mock_session = MagicMock()
-            mock_db.session = mock_session
-            mock_db.session.scalar.return_value = None
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
 
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-                with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
-                    store = DatasetDocumentStore(
-                        dataset=mock_dataset,
-                        user_id="test-user-id",
-                        document_id="test-doc-id",
-                    )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
+            with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
+                store = DatasetDocumentStore(
+                    dataset=mock_dataset,
+                    user_id="test-user-id",
+                    document_id="test-doc-id",
+                )
 
-                    store.add_documents([mock_doc])
+                store.add_documents([mock_doc], session=mock_session)
 
-                    mock_db.session.add.assert_called()
+                mock_session.add.assert_called()
 
     def test_add_documents_with_invalid_document_type(self):
         """Test that non-Document raises ValueError."""
 
         mock_dataset = MagicMock(spec=Dataset)
         mock_dataset.id = "test-dataset-id"
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db"):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-                document_id="test-doc-id",
-            )
+        store = DatasetDocumentStore(
+            dataset=mock_dataset,
+            user_id="test-user-id",
+            document_id="test-doc-id",
+        )
 
-            with pytest.raises(ValueError, match="must be a Document"):
-                store.add_documents(["not a document"])
+        with pytest.raises(ValueError, match="must be a Document"):
+            store.add_documents(["not a document"], session=mock_session)
 
     def test_add_documents_with_none_metadata(self):
         """Test that document with None metadata raises ValueError."""
@@ -315,16 +305,16 @@ class TestDatasetDocumentStoreAddDocuments:
         mock_doc = MagicMock(spec=Document)
         mock_doc.page_content = "Test content"
         mock_doc.metadata = None
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db"):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-                document_id="test-doc-id",
-            )
+        store = DatasetDocumentStore(
+            dataset=mock_dataset,
+            user_id="test-user-id",
+            document_id="test-doc-id",
+        )
 
-            with pytest.raises(ValueError, match="metadata must be a dict"):
-                store.add_documents([mock_doc])
+        with pytest.raises(ValueError, match="metadata must be a dict"):
+            store.add_documents([mock_doc], session=mock_session)
 
     def test_add_documents_with_save_child(self):
         """Test adding documents with save_child=True."""
@@ -350,22 +340,20 @@ class TestDatasetDocumentStoreAddDocuments:
         mock_doc.attachments = None
         mock_doc.children = [mock_child]
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            mock_session = MagicMock()
-            mock_db.session = mock_session
-            mock_db.session.scalar.return_value = None
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
 
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-                with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
-                    store = DatasetDocumentStore(
-                        dataset=mock_dataset,
-                        user_id="test-user-id",
-                        document_id="test-doc-id",
-                    )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
+            with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
+                store = DatasetDocumentStore(
+                    dataset=mock_dataset,
+                    user_id="test-user-id",
+                    document_id="test-doc-id",
+                )
 
-                    store.add_documents([mock_doc], save_child=True)
+                store.add_documents([mock_doc], session=mock_session, save_child=True)
 
-                    mock_db.session.add.assert_called()
+                mock_session.add.assert_called()
 
 
 class TestDatasetDocumentStoreExists:
@@ -378,34 +366,34 @@ class TestDatasetDocumentStoreExists:
         mock_dataset.id = "test-dataset-id"
 
         mock_segment = MagicMock()
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db"):
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
-                store = DatasetDocumentStore(
-                    dataset=mock_dataset,
-                    user_id="test-user-id",
-                )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+            )
 
-                result = store.document_exists("doc-1")
+            result = store.document_exists("doc-1", session=mock_session)
 
-                assert result is True
+            assert result is True
 
     def test_document_exists_returns_false(self):
         """Test document_exists returns False when segment doesn't exist."""
 
         mock_dataset = MagicMock(spec=Dataset)
         mock_dataset.id = "test-dataset-id"
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db"):
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-                store = DatasetDocumentStore(
-                    dataset=mock_dataset,
-                    user_id="test-user-id",
-                )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+            )
 
-                result = store.document_exists("doc-1")
+            result = store.document_exists("doc-1", session=mock_session)
 
-                assert result is False
+            assert result is False
 
 
 class TestDatasetDocumentStoreGetDocument:
@@ -423,51 +411,51 @@ class TestDatasetDocumentStoreGetDocument:
         mock_segment.document_id = "doc-1"
         mock_segment.dataset_id = "test-dataset-id"
         mock_segment.content = "Test content"
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db"):
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
-                store = DatasetDocumentStore(
-                    dataset=mock_dataset,
-                    user_id="test-user-id",
-                )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+            )
 
-                result = store.get_document("node-1", raise_error=False)
+            result = store.get_document("node-1", session=mock_session, raise_error=False)
 
-                assert isinstance(result, Document)
-                assert result.page_content == "Test content"
+            assert isinstance(result, Document)
+            assert result.page_content == "Test content"
 
     def test_get_document_returns_none_when_not_found(self):
         """Test get_document returns None when not found and raise_error=False."""
 
         mock_dataset = MagicMock(spec=Dataset)
         mock_dataset.id = "test-dataset-id"
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db"):
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-                store = DatasetDocumentStore(
-                    dataset=mock_dataset,
-                    user_id="test-user-id",
-                )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+            )
 
-                result = store.get_document("nonexistent", raise_error=False)
+            result = store.get_document("nonexistent", session=mock_session, raise_error=False)
 
-                assert result is None
+            assert result is None
 
     def test_get_document_raises_when_not_found(self):
         """Test get_document raises ValueError when not found and raise_error=True."""
 
         mock_dataset = MagicMock(spec=Dataset)
         mock_dataset.id = "test-dataset-id"
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db"):
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-                store = DatasetDocumentStore(
-                    dataset=mock_dataset,
-                    user_id="test-user-id",
-                )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+            )
 
-                with pytest.raises(ValueError, match="not found"):
-                    store.get_document("nonexistent", raise_error=True)
+            with pytest.raises(ValueError, match="not found"):
+                store.get_document("nonexistent", session=mock_session, raise_error=True)
 
 
 class TestDatasetDocumentStoreDeleteDocument:
@@ -480,51 +468,51 @@ class TestDatasetDocumentStoreDeleteDocument:
         mock_dataset.id = "test-dataset-id"
 
         mock_segment = MagicMock()
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
-                store = DatasetDocumentStore(
-                    dataset=mock_dataset,
-                    user_id="test-user-id",
-                )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+            )
 
-                store.delete_document("doc-1")
+            store.delete_document("doc-1", session=mock_session)
 
-                mock_db.session.delete.assert_called_with(mock_segment)
-                mock_db.session.commit.assert_called()
+            mock_session.delete.assert_called_with(mock_segment)
+            mock_session.flush.assert_called()
 
     def test_delete_document_returns_none_when_not_found(self):
         """Test delete_document returns None when not found and raise_error=False."""
 
         mock_dataset = MagicMock(spec=Dataset)
         mock_dataset.id = "test-dataset-id"
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db"):
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-                store = DatasetDocumentStore(
-                    dataset=mock_dataset,
-                    user_id="test-user-id",
-                )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+            )
 
-                result = store.delete_document("nonexistent", raise_error=False)
+            result = store.delete_document("nonexistent", session=mock_session, raise_error=False)
 
-                assert result is None
+            assert result is None
 
     def test_delete_document_raises_when_not_found(self):
         """Test delete_document raises ValueError when not found and raise_error=True."""
 
         mock_dataset = MagicMock(spec=Dataset)
         mock_dataset.id = "test-dataset-id"
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db"):
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-                store = DatasetDocumentStore(
-                    dataset=mock_dataset,
-                    user_id="test-user-id",
-                )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+            )
 
-                with pytest.raises(ValueError, match="not found"):
-                    store.delete_document("nonexistent", raise_error=True)
+            with pytest.raises(ValueError, match="not found"):
+                store.delete_document("nonexistent", session=mock_session, raise_error=True)
 
 
 class TestDatasetDocumentStoreHashOperations:
@@ -538,35 +526,35 @@ class TestDatasetDocumentStoreHashOperations:
 
         mock_segment = MagicMock()
         mock_segment.index_node_hash = "old-hash"
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
-                store = DatasetDocumentStore(
-                    dataset=mock_dataset,
-                    user_id="test-user-id",
-                )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+            )
 
-                store.set_document_hash("doc-1", "new-hash")
+            store.set_document_hash("doc-1", "new-hash", session=mock_session)
 
-                assert mock_segment.index_node_hash == "new-hash"
-                mock_db.session.commit.assert_called()
+            assert mock_segment.index_node_hash == "new-hash"
+            mock_session.flush.assert_called()
 
     def test_set_document_hash_returns_none_when_not_found(self):
         """Test set_document_hash returns None when segment not found."""
 
         mock_dataset = MagicMock(spec=Dataset)
         mock_dataset.id = "test-dataset-id"
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db"):
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-                store = DatasetDocumentStore(
-                    dataset=mock_dataset,
-                    user_id="test-user-id",
-                )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+            )
 
-                result = store.set_document_hash("nonexistent", "new-hash")
+            result = store.set_document_hash("nonexistent", "new-hash", session=mock_session)
 
-                assert result is None
+            assert result is None
 
     def test_get_document_hash_success(self):
         """Test getting document hash successfully."""
@@ -576,34 +564,34 @@ class TestDatasetDocumentStoreHashOperations:
 
         mock_segment = MagicMock()
         mock_segment.index_node_hash = "test-hash"
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db"):
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
-                store = DatasetDocumentStore(
-                    dataset=mock_dataset,
-                    user_id="test-user-id",
-                )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+            )
 
-                result = store.get_document_hash("doc-1")
+            result = store.get_document_hash("doc-1", session=mock_session)
 
-                assert result == "test-hash"
+            assert result == "test-hash"
 
     def test_get_document_hash_returns_none_when_not_found(self):
         """Test get_document_hash returns None when segment not found."""
 
         mock_dataset = MagicMock(spec=Dataset)
         mock_dataset.id = "test-dataset-id"
+        mock_session = MagicMock()
 
-        with patch("core.rag.docstore.dataset_docstore.db"):
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-                store = DatasetDocumentStore(
-                    dataset=mock_dataset,
-                    user_id="test-user-id",
-                )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
+            store = DatasetDocumentStore(
+                dataset=mock_dataset,
+                user_id="test-user-id",
+            )
 
-                result = store.get_document_hash("nonexistent")
+            result = store.get_document_hash("nonexistent", session=mock_session)
 
-                assert result is None
+            assert result is None
 
 
 class TestDatasetDocumentStoreSegment:
@@ -617,19 +605,17 @@ class TestDatasetDocumentStoreSegment:
 
         mock_segment = MagicMock(spec=DocumentSegment)
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            mock_session = MagicMock()
-            mock_db.session = mock_session
-            mock_db.session.scalar.return_value = mock_segment
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = mock_segment
 
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
+        store = DatasetDocumentStore(
+            dataset=mock_dataset,
+            user_id="test-user-id",
+        )
 
-            result = store.get_document_segment("doc-1")
+        result = store.get_document_segment("doc-1", session=mock_session)
 
-            assert result == mock_segment
+        assert result == mock_segment
 
     def test_get_document_segment_returns_none(self):
         """Test getting a non-existent document segment."""
@@ -637,19 +623,17 @@ class TestDatasetDocumentStoreSegment:
         mock_dataset = MagicMock(spec=Dataset)
         mock_dataset.id = "test-dataset-id"
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            mock_session = MagicMock()
-            mock_db.session = mock_session
-            mock_db.session.scalar.return_value = None
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
 
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
+        store = DatasetDocumentStore(
+            dataset=mock_dataset,
+            user_id="test-user-id",
+        )
 
-            result = store.get_document_segment("nonexistent")
+        result = store.get_document_segment("nonexistent", session=mock_session)
 
-            assert result is None
+        assert result is None
 
 
 class TestDatasetDocumentStoreMultimodelBinding:
@@ -665,19 +649,17 @@ class TestDatasetDocumentStoreMultimodelBinding:
         mock_attachment = MagicMock(spec=AttachmentDocument)
         mock_attachment.metadata = {"doc_id": "attachment-1"}
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            mock_session = MagicMock()
-            mock_db.session = mock_session
+        mock_session = MagicMock()
 
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-                document_id="test-doc-id",
-            )
+        store = DatasetDocumentStore(
+            dataset=mock_dataset,
+            user_id="test-user-id",
+            document_id="test-doc-id",
+        )
 
-            store.add_multimodel_documents_binding("seg-1", [mock_attachment])
+        store.add_multimodel_documents_binding("seg-1", [mock_attachment], session=mock_session)
 
-            mock_db.session.add.assert_called()
+        mock_session.add.assert_called()
 
     def test_add_multimodel_documents_binding_without_attachments(self):
         """Test adding bindings with None attachments."""
@@ -686,19 +668,17 @@ class TestDatasetDocumentStoreMultimodelBinding:
         mock_dataset.id = "test-dataset-id"
         mock_dataset.tenant_id = "tenant-1"
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            mock_session = MagicMock()
-            mock_db.session = mock_session
+        mock_session = MagicMock()
 
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-                document_id="test-doc-id",
-            )
+        store = DatasetDocumentStore(
+            dataset=mock_dataset,
+            user_id="test-user-id",
+            document_id="test-doc-id",
+        )
 
-            store.add_multimodel_documents_binding("seg-1", None)
+        store.add_multimodel_documents_binding("seg-1", None, session=mock_session)
 
-            mock_db.session.add.assert_not_called()
+        mock_session.add.assert_not_called()
 
     def test_add_multimodel_documents_binding_with_empty_list(self):
         """Test adding bindings with empty list."""
@@ -707,19 +687,17 @@ class TestDatasetDocumentStoreMultimodelBinding:
         mock_dataset.id = "test-dataset-id"
         mock_dataset.tenant_id = "tenant-1"
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            mock_session = MagicMock()
-            mock_db.session = mock_session
+        mock_session = MagicMock()
 
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-                document_id="test-doc-id",
-            )
+        store = DatasetDocumentStore(
+            dataset=mock_dataset,
+            user_id="test-user-id",
+            document_id="test-doc-id",
+        )
 
-            store.add_multimodel_documents_binding("seg-1", [])
+        store.add_multimodel_documents_binding("seg-1", [], session=mock_session)
 
-            mock_db.session.add.assert_not_called()
+        mock_session.add.assert_not_called()
 
     def test_add_multimodel_documents_binding_with_none_document_id(self):
         """Test that no bindings are added when document_id is None."""
@@ -731,19 +709,17 @@ class TestDatasetDocumentStoreMultimodelBinding:
         mock_attachment = MagicMock(spec=AttachmentDocument)
         mock_attachment.metadata = {"doc_id": "attachment-1"}
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            mock_session = MagicMock()
-            mock_db.session = mock_session
+        mock_session = MagicMock()
 
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-                document_id=None,
-            )
+        store = DatasetDocumentStore(
+            dataset=mock_dataset,
+            user_id="test-user-id",
+            document_id=None,
+        )
 
-            store.add_multimodel_documents_binding("seg-1", [mock_attachment])
+        store.add_multimodel_documents_binding("seg-1", [mock_attachment], session=mock_session)
 
-            mock_db.session.add.assert_not_called()
+        mock_session.add.assert_not_called()
 
 
 class TestDatasetDocumentStoreAddDocumentsUpdateChild:
@@ -776,23 +752,21 @@ class TestDatasetDocumentStoreAddDocumentsUpdateChild:
         mock_existing_segment = MagicMock()
         mock_existing_segment.id = "seg-1"
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            mock_session = MagicMock()
-            mock_db.session = mock_session
-            mock_db.session.scalar.return_value = 5
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = 5
 
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_existing_segment):
-                with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
-                    store = DatasetDocumentStore(
-                        dataset=mock_dataset,
-                        user_id="test-user-id",
-                        document_id="test-doc-id",
-                    )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_existing_segment):
+            with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
+                store = DatasetDocumentStore(
+                    dataset=mock_dataset,
+                    user_id="test-user-id",
+                    document_id="test-doc-id",
+                )
 
-                    store.add_documents([mock_doc], save_child=True)
+                store.add_documents([mock_doc], session=mock_session, save_child=True)
 
-                    mock_db.session.execute.assert_called()
-                    mock_db.session.commit.assert_called()
+                mock_session.execute.assert_called()
+                mock_session.flush.assert_called()
 
 
 class TestDatasetDocumentStoreAddDocumentsUpdateAnswer:
@@ -819,19 +793,17 @@ class TestDatasetDocumentStoreAddDocumentsUpdateAnswer:
         mock_existing_segment = MagicMock()
         mock_existing_segment.id = "seg-1"
 
-        with patch("core.rag.docstore.dataset_docstore.db") as mock_db:
-            mock_session = MagicMock()
-            mock_db.session = mock_session
-            mock_db.session.scalar.return_value = 5
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = 5
 
-            with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_existing_segment):
-                with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
-                    store = DatasetDocumentStore(
-                        dataset=mock_dataset,
-                        user_id="test-user-id",
-                        document_id="test-doc-id",
-                    )
+        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_existing_segment):
+            with patch.object(DatasetDocumentStore, "add_multimodel_documents_binding"):
+                store = DatasetDocumentStore(
+                    dataset=mock_dataset,
+                    user_id="test-user-id",
+                    document_id="test-doc-id",
+                )
 
-                    store.add_documents([mock_doc])
+                store.add_documents([mock_doc], session=mock_session)
 
-                    mock_db.session.commit.assert_called()
+                mock_session.flush.assert_called()

@@ -58,23 +58,23 @@ export type MarketplaceTemplate = {
   categories: string[]
 }
 
-export type MarketplacePluginCategory
-  = | 'tool'
-    | 'model'
-    | 'extension'
-    | 'agent-strategy'
-    | 'datasource'
-    | 'trigger'
+export type MarketplacePluginCategory =
+  | 'tool'
+  | 'model'
+  | 'extension'
+  | 'agent-strategy'
+  | 'datasource'
+  | 'trigger'
 
-export type MarketplacePluginType
-  = | 'plugin'
-    | 'bundle'
-    | 'model'
-    | 'extension'
-    | 'tool'
-    | 'agent_strategy'
-    | 'datasource'
-    | 'trigger'
+export type MarketplacePluginType =
+  | 'plugin'
+  | 'bundle'
+  | 'model'
+  | 'extension'
+  | 'tool'
+  | 'agent_strategy'
+  | 'datasource'
+  | 'trigger'
 
 export type MarketplacePluginDependencySource = 'github' | 'marketplace' | 'package'
 
@@ -163,7 +163,7 @@ const collectionsContract = base
   })
   .input(
     type<{
-      query?: CollectionsAndPluginsSearchParams & { page?: number, page_size?: number }
+      query?: CollectionsAndPluginsSearchParams & { page?: number; page_size?: number }
     }>(),
   )
   .output(type<CollectionsResponse>())
@@ -188,12 +188,14 @@ const searchAdvancedContract = base
     path: '/{kind}/search/advanced',
     method: 'POST',
   })
-  .input(type<{
-    params: {
-      kind: 'plugins' | 'bundles'
-    }
-    body: Omit<PluginsSearchParams, 'type'>
-  }>())
+  .input(
+    type<{
+      params: {
+        kind: 'plugins' | 'bundles'
+      }
+      body: Omit<PluginsSearchParams, 'type'>
+    }>(),
+  )
   .output(type<SearchAdvancedResponse>())
 
 const templateDetailContract = base
@@ -201,11 +203,13 @@ const templateDetailContract = base
     path: '/templates/{templateId}',
     method: 'GET',
   })
-  .input(type<{
-    params: {
-      templateId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        templateId: string
+      }
+    }>(),
+  )
   .output(type<TemplateDetailResponse>())
 
 const downloadPluginContract = base
@@ -213,13 +217,15 @@ const downloadPluginContract = base
     path: '/plugins/{organization}/{pluginName}/{version}/download',
     method: 'GET',
   })
-  .input(type<{
-    params: {
-      organization: string
-      pluginName: string
-      version: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        organization: string
+        pluginName: string
+        version: string
+      }
+    }>(),
+  )
   .output(type<DownloadPluginResponse>())
 
 export const marketplaceRouterContract = {

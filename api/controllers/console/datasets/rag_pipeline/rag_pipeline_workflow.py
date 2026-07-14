@@ -27,7 +27,7 @@ from controllers.console.app.workflow import (
     WorkflowResponse,
 )
 from controllers.console.app.wraps import with_session
-from controllers.console.datasets.wraps import get_rag_pipeline
+from controllers.console.datasets.wraps import get_rag_pipeline, load_rag_pipeline
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -344,11 +344,11 @@ class DraftRagPipelineRunApi(Resource):
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
     @with_session
-    @get_rag_pipeline
-    def post(self, session: Session, current_user: Account, pipeline: Pipeline):
+    def post(self, session: Session, current_user: Account, pipeline_id: UUID):
         """
         Run draft workflow
         """
+        pipeline = load_rag_pipeline(session, str(pipeline_id))
         payload = DraftWorkflowRunPayload.model_validate(console_ns.payload or {})
         args = payload.model_dump()
 
@@ -378,11 +378,11 @@ class PublishedRagPipelineRunApi(Resource):
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
     @with_session
-    @get_rag_pipeline
-    def post(self, session: Session, current_user: Account, pipeline: Pipeline):
+    def post(self, session: Session, current_user: Account, pipeline_id: UUID):
         """
         Run published workflow
         """
+        pipeline = load_rag_pipeline(session, str(pipeline_id))
         payload = PublishedWorkflowRunPayload.model_validate(console_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
         streaming = payload.response_mode == "streaming"

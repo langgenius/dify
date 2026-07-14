@@ -53,29 +53,31 @@ function DeploymentActionsMenuContent({
         className,
         '[&:has([data-popup-open])]:pointer-events-auto [&:has([data-popup-open])]:opacity-100',
       )}
-      onClick={event => event.stopPropagation()}
-      onKeyDown={event => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
     >
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger
-          aria-label={t($ => $['card.moreActions'])}
+          aria-label={t(($) => $['card.moreActions'])}
           className={cn(ACTION_TRIGGER_CLASS_NAME, triggerClassName)}
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement={placement} sideOffset={sideOffset} popupClassName="min-w-44">
+        <DropdownMenuContent
+          placement={placement}
+          sideOffset={sideOffset}
+          popupClassName="min-w-44"
+        >
           <DropdownMenuItem className="gap-2 px-3" onClick={openEditDialog}>
             <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-            <span className="system-sm-regular text-text-secondary">{t($ => $['card.menu.editInfo'])}</span>
+            <span className="system-sm-regular text-text-secondary">
+              {t(($) => $['card.menu.editInfo'])}
+            </span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            className="gap-2 px-3"
-            onClick={openDeleteDialog}
-          >
+          <DropdownMenuItem variant="destructive" className="gap-2 px-3" onClick={openDeleteDialog}>
             <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-            <span className="system-sm-regular">{t($ => $['card.menu.delete'])}</span>
+            <span className="system-sm-regular">{t(($) => $['card.menu.delete'])}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -85,17 +87,11 @@ function DeploymentActionsMenuContent({
   )
 }
 
-export function DeploymentActionsMenu({
-  appInstance,
-  ...props
-}: DeploymentActionsMenuProps) {
+export function DeploymentActionsMenu({ appInstance, ...props }: DeploymentActionsMenuProps) {
   return (
     <ScopeProvider
       key={appInstance.id}
-      atoms={[
-        [deploymentActionAppInstanceAtom, appInstance],
-        ...deploymentActionsLocalAtoms,
-      ]}
+      atoms={[[deploymentActionAppInstanceAtom, appInstance], ...deploymentActionsLocalAtoms]}
       name="DeploymentActionsMenu"
     >
       <DeploymentActionsMenuContent {...props} />

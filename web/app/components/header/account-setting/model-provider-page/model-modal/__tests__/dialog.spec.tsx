@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Credential, ModelProvider } from '../../declarations'
-import { act, render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '../../declarations'
 import ModelModal from '../index'
 
@@ -23,12 +24,21 @@ let mockDeleteCredentialId: string | null = null
 const mockCloseConfirmDelete = vi.fn()
 const mockHandleConfirmDelete = vi.fn()
 
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
   default: () => <div data-testid="auth-form" />,
 }))
 
 vi.mock('../../model-auth', () => ({
-  CredentialSelector: ({ credentials }: { credentials: Credential[] }) => <div>{`credentials:${credentials.length}`}</div>,
+  CredentialSelector: ({ credentials }: { credentials: Credential[] }) => (
+    <div>{`credentials:${credentials.length}`}</div>
+  ),
 }))
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
@@ -46,8 +56,20 @@ vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
     return <div>{children}</div>
   },
   AlertDialogActions: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children: ReactNode }) => <button type="button">{children}</button>,
-  AlertDialogConfirmButton: ({ children, onClick }: { children: ReactNode, onClick?: () => void }) => <button type="button" onClick={onClick}>{children}</button>,
+  AlertDialogCancelButton: ({ children }: { children: ReactNode }) => (
+    <button type="button">{children}</button>
+  ),
+  AlertDialogConfirmButton: ({
+    children,
+    onClick,
+  }: {
+    children: ReactNode
+    onClick?: () => void
+  }) => (
+    <button type="button" onClick={onClick}>
+      {children}
+    </button>
+  ),
   AlertDialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
@@ -85,35 +107,47 @@ vi.mock('../../hooks', () => ({
   useLanguage: () => mockLanguage,
 }))
 
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'openai',
-  label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-  help: {
-    title: { en_US: 'Help', zh_Hans: '帮助' },
-    url: { en_US: 'https://example.com', zh_Hans: 'https://example.cn' },
-  },
-  icon_small: { en_US: '', zh_Hans: '' },
-  supported_model_types: [],
-  configurate_methods: [],
-  provider_credential_schema: { credential_form_schemas: [] },
-  model_credential_schema: {
-    model: { label: { en_US: 'Model', zh_Hans: '模型' }, placeholder: { en_US: 'Select', zh_Hans: '选择' } },
-    credential_form_schemas: [],
-  },
-  custom_configuration: {
-    status: 'active',
-    available_credentials: [],
-    custom_models: [],
-    can_added_models: [],
-  },
-  system_configuration: {
-    enabled: true,
-    current_quota_type: 'trial',
-    quota_configurations: [],
-  },
-  allow_custom_token: true,
-  ...overrides,
-} as unknown as ModelProvider)
+const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
+  ({
+    provider: 'openai',
+    label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+    help: {
+      title: { en_US: 'Help', zh_Hans: '帮助' },
+      url: { en_US: 'https://example.com', zh_Hans: 'https://example.cn' },
+    },
+    icon_small: { en_US: '', zh_Hans: '' },
+    supported_model_types: [],
+    configurate_methods: [],
+    provider_credential_schema: { credential_form_schemas: [] },
+    model_credential_schema: {
+      model: {
+        label: { en_US: 'Model', zh_Hans: '模型' },
+        placeholder: { en_US: 'Select', zh_Hans: '选择' },
+      },
+      credential_form_schemas: [],
+    },
+    custom_configuration: {
+      status: 'active',
+      available_credentials: [],
+      custom_models: [],
+      can_added_models: [],
+    },
+    system_configuration: {
+      enabled: true,
+      current_quota_type: 'trial',
+      quota_configurations: [],
+    },
+    allow_custom_token: true,
+    ...overrides,
+  }) as unknown as ModelProvider
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('ModelModal dialog branches', () => {
   beforeEach(() => {
@@ -239,7 +273,10 @@ describe('ModelModal dialog branches', () => {
       />,
     )
 
-    expect(screen.getByRole('link', { name: 'https://example.cn' })).toHaveAttribute('href', 'https://example.cn')
+    expect(screen.getByRole('link', { name: 'https://example.cn' })).toHaveAttribute(
+      'href',
+      'https://example.cn',
+    )
 
     rerender(
       <ModelModal

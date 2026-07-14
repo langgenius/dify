@@ -15,6 +15,8 @@ from models.workflow import WorkflowType as ModelWorkflowType
 
 TABLES = (WorkflowRun,)
 
+RESOURCE_TENANT_ID = "resource-tenant-id"
+
 
 def _make_account(*, tenant_id: str | None = None) -> Account:
     account = Account(name="Repository User", email=f"{uuid4()}@example.com")
@@ -77,11 +79,15 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         triggered_from = WorkflowRunTriggeredFrom.APP_RUN
 
         repo = SQLAlchemyWorkflowExecutionRepository(
-            session_factory=sqlite_session_factory, user=account, app_id=app_id, triggered_from=triggered_from
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id=app_id,
+            triggered_from=triggered_from,
         )
 
         assert repo._session_factory is sqlite_session_factory
-        assert repo._tenant_id == account.current_tenant_id
+        assert repo._tenant_id == RESOURCE_TENANT_ID
         assert repo._app_id == app_id
         assert repo._triggered_from == triggered_from
         assert repo._creator_user_id == account.id
@@ -90,6 +96,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     def test_init_with_engine(self, sqlite_engine: Engine, account: Account):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=sqlite_engine,
+            tenant_id=RESOURCE_TENANT_ID,
             user=account,
             app_id="test_app_id",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -101,22 +108,50 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     def test_init_invalid_session_factory(self, account: Account):
         with pytest.raises(ValueError, match="Invalid session_factory type"):
             SQLAlchemyWorkflowExecutionRepository(
-                session_factory="invalid", user=account, app_id=None, triggered_from=None
+                session_factory="invalid",
+                tenant_id=RESOURCE_TENANT_ID,
+                user=account,
+                app_id=None,
+                triggered_from=None,
             )
 
     def test_init_no_tenant_id(self, sqlite_session_factory: sessionmaker[Session]):
         user = _make_account()
 
-        with pytest.raises(ValueError, match="User must have a tenant_id"):
+        with pytest.raises(ValueError, match="tenant_id is required"):
             SQLAlchemyWorkflowExecutionRepository(
-                session_factory=sqlite_session_factory, user=user, app_id=None, triggered_from=None
+                session_factory=sqlite_session_factory,
+                tenant_id="",
+                user=user,
+                app_id=None,
+                triggered_from=None,
             )
+
+    def test_init_uses_resource_tenant_when_account_has_no_current_tenant(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ):
+        user = _make_account()
+
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=user,
+            app_id="test-app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+
+        assert repo._tenant_id == RESOURCE_TENANT_ID
+        assert repo._creator_user_id == user.id
 
     def test_init_with_end_user(self, sqlite_session_factory: sessionmaker[Session], end_user: EndUser):
         repo = SQLAlchemyWorkflowExecutionRepository(
-            session_factory=sqlite_session_factory, user=end_user, app_id=None, triggered_from=None
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=end_user,
+            app_id=None,
+            triggered_from=None,
         )
-        assert repo._tenant_id == end_user.tenant_id
+        assert repo._tenant_id == RESOURCE_TENANT_ID
         assert repo._creator_user_role == CreatorUserRole.END_USER
 
     @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
@@ -127,7 +162,11 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         account: Account,
     ):
         repo = SQLAlchemyWorkflowExecutionRepository(
-            session_factory=sqlite_session_factory, user=account, app_id=None, triggered_from=None
+            session_factory=sqlite_session_factory,
+            tenant_id=account.current_tenant_id,
+            user=account,
+            app_id=None,
+            triggered_from=None,
         )
 
         db_model = WorkflowRun(
@@ -174,6 +213,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     ):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
+            tenant_id=account.current_tenant_id,
             user=account,
             app_id="test_app",
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
@@ -201,6 +241,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     ):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
+            tenant_id=account.current_tenant_id,
             user=account,
             app_id="test_app",
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
@@ -228,6 +269,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     ):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
+            tenant_id=account.current_tenant_id,
             user=account,
             app_id=None,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -244,7 +286,11 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         sample_workflow_execution: WorkflowExecution,
     ):
         repo = SQLAlchemyWorkflowExecutionRepository(
-            session_factory=sqlite_session_factory, user=account, app_id=None, triggered_from=None
+            session_factory=sqlite_session_factory,
+            tenant_id=account.current_tenant_id,
+            user=account,
+            app_id=None,
+            triggered_from=None,
         )
 
         # Test triggered_from missing
@@ -271,6 +317,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     ):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
+            tenant_id=account.current_tenant_id,
             user=account,
             app_id="test_app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -299,6 +346,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     ):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
+            tenant_id=account.current_tenant_id,
             user=account,
             app_id="test_app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -323,6 +371,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     ):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
+            tenant_id=account.current_tenant_id,
             user=account,
             app_id="test_app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -352,6 +401,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         other_account = _make_account(tenant_id=str(uuid4()))
         other_repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
+            tenant_id=other_account.current_tenant_id,
             user=other_account,
             app_id="test_app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -360,6 +410,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
 
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=sqlite_session_factory,
+            tenant_id=account.current_tenant_id,
             user=account,
             app_id="test_app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,

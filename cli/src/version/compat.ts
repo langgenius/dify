@@ -43,18 +43,33 @@ export function evaluateCompat(
 
   const server = tryParse(serverVersion)
   if (server === undefined)
-    return { status: 'unknown', detail: `server version ${JSON.stringify(clamp(serverVersion))} is not valid semver` }
+    return {
+      status: 'unknown',
+      detail: `server version ${JSON.stringify(clamp(serverVersion))} is not valid semver`,
+    }
 
   const min = tryParse(range.minDify)
   const max = tryParse(range.maxDify)
   if (min === undefined || max === undefined)
-    return { status: 'unknown', detail: `compat range ${JSON.stringify(`>=${range.minDify} <=${range.maxDify}`)} is not valid semver` }
+    return {
+      status: 'unknown',
+      detail: `compat range ${JSON.stringify(`>=${range.minDify} <=${range.maxDify}`)} is not valid semver`,
+    }
 
   if (compare(core(server), core(min)) < 0)
-    return { status: 'too_old', detail: `server ${serverVersion} is older than the minimum ${range.minDify}` }
+    return {
+      status: 'too_old',
+      detail: `server ${serverVersion} is older than the minimum ${range.minDify}`,
+    }
 
   if (compare(core(server), core(max)) > 0)
-    return { status: 'too_new', detail: `server ${serverVersion} is newer than the tested maximum ${range.maxDify}` }
+    return {
+      status: 'too_new',
+      detail: `server ${serverVersion} is newer than the tested maximum ${range.maxDify}`,
+    }
 
-  return { status: 'compatible', detail: `server ${serverVersion} in [${range.minDify}, ${range.maxDify}]` }
+  return {
+    status: 'compatible',
+    detail: `server ${serverVersion} in [${range.minDify}, ${range.maxDify}]`,
+  }
 }

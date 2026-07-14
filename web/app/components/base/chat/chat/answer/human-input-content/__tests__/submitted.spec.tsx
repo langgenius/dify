@@ -33,18 +33,21 @@ describe('SubmittedHumanInputContent Integration', () => {
 
   it('should prefer structured form data over rendered markdown when available', () => {
     render(
-      <SubmittedHumanInputContent formData={{
-        ...mockFormData,
-        form_content: 'Decision: {{#$output.answer#}}',
-        inputs: [{
-          type: InputVarType.paragraph,
-          output_variable_name: 'answer',
-          default: { type: 'constant', value: '', selector: [] },
-        }],
-        submitted_data: {
-          answer: 'approved',
-        },
-      }}
+      <SubmittedHumanInputContent
+        formData={{
+          ...mockFormData,
+          form_content: 'Decision: {{#$output.answer#}}',
+          inputs: [
+            {
+              type: InputVarType.paragraph,
+              output_variable_name: 'answer',
+              default: { type: 'constant', value: '', selector: [] },
+            },
+          ],
+          submitted_data: {
+            answer: 'approved',
+          },
+        }}
       />,
     )
 
@@ -55,39 +58,40 @@ describe('SubmittedHumanInputContent Integration', () => {
 
   it('should render submitted select and file fields with the original form layout', () => {
     render(
-      <SubmittedHumanInputContent formData={{
-        ...mockFormData,
-        form_content: '{{#$output.decision#}} {{#$output.attachment#}}',
-        inputs: [
-          {
-            type: InputVarType.select,
-            output_variable_name: 'decision',
-            option_source: { type: 'constant', value: ['approve', 'reject'], selector: [] },
+      <SubmittedHumanInputContent
+        formData={{
+          ...mockFormData,
+          form_content: '{{#$output.decision#}} {{#$output.attachment#}}',
+          inputs: [
+            {
+              type: InputVarType.select,
+              output_variable_name: 'decision',
+              option_source: { type: 'constant', value: ['approve', 'reject'], selector: [] },
+            },
+            {
+              type: InputVarType.singleFile,
+              output_variable_name: 'attachment',
+              allowed_file_extensions: [],
+              allowed_file_types: [],
+              allowed_file_upload_methods: [],
+            },
+          ],
+          submitted_data: {
+            decision: 'approve',
+            attachment: {
+              related_id: 'file-1',
+              upload_file_id: 'upload-1',
+              filename: 'decision.pdf',
+              extension: 'pdf',
+              size: 128,
+              mime_type: 'application/pdf',
+              transfer_method: TransferMethod.local_file,
+              type: 'document',
+              url: 'https://example.com/decision.pdf',
+              remote_url: '',
+            },
           },
-          {
-            type: InputVarType.singleFile,
-            output_variable_name: 'attachment',
-            allowed_file_extensions: [],
-            allowed_file_types: [],
-            allowed_file_upload_methods: [],
-          },
-        ],
-        submitted_data: {
-          decision: 'approve',
-          attachment: {
-            related_id: 'file-1',
-            upload_file_id: 'upload-1',
-            filename: 'decision.pdf',
-            extension: 'pdf',
-            size: 128,
-            mime_type: 'application/pdf',
-            transfer_method: TransferMethod.local_file,
-            type: 'document',
-            url: 'https://example.com/decision.pdf',
-            remote_url: '',
-          },
-        },
-      }}
+        }}
       />,
     )
 
@@ -98,10 +102,11 @@ describe('SubmittedHumanInputContent Integration', () => {
 
   it('should fallback to rendered markdown when structured form data is empty', () => {
     render(
-      <SubmittedHumanInputContent formData={{
-        ...mockFormData,
-        submitted_data: {},
-      }}
+      <SubmittedHumanInputContent
+        formData={{
+          ...mockFormData,
+          submitted_data: {},
+        }}
       />,
     )
 
@@ -112,12 +117,13 @@ describe('SubmittedHumanInputContent Integration', () => {
 
   it('should render submitted field values when original form layout is unavailable', () => {
     render(
-      <SubmittedHumanInputContent formData={{
-        ...mockFormData,
-        submitted_data: {
-          answer: 'approved',
-        },
-      }}
+      <SubmittedHumanInputContent
+        formData={{
+          ...mockFormData,
+          submitted_data: {
+            answer: 'approved',
+          },
+        }}
       />,
     )
 

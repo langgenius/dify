@@ -1,33 +1,34 @@
+import type { PluginPayload } from '@/app/components/plugins/plugin-auth/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { CollectionType } from '@/app/components/tools/types'
-import ToolAuthorizationSection from '../tool-authorization-section'
+import { ToolAuthorizationSection } from '../tool-authorization-section'
 
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
   AuthCategory: {
     tool: 'tool',
   },
-  PluginAuthInAgent: ({ pluginPayload, credentialId }: {
-    pluginPayload: { provider: string, providerType: string }
+  PluginAuthInAgent: ({
+    pluginPayload,
+    credentialId,
+  }: {
+    pluginPayload: PluginPayload
     credentialId?: string
   }) => (
     <div data-testid="plugin-auth-in-agent">
-      {pluginPayload.provider}
-      :
-      {pluginPayload.providerType}
-      :
-      {credentialId}
+      {pluginPayload.provider}:{pluginPayload.providerType}:{credentialId}
     </div>
   ),
 }))
 
-const createProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
-  name: 'provider-a',
-  type: CollectionType.builtIn,
-  allow_delete: true,
-  ...overrides,
-}) as ToolWithProvider
+const createProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider =>
+  ({
+    name: 'provider-a',
+    type: CollectionType.builtIn,
+    allow_delete: true,
+    ...overrides,
+  }) as ToolWithProvider
 
 describe('ToolAuthorizationSection', () => {
   it('returns null for providers that are not removable built-ins', () => {
@@ -59,6 +60,8 @@ describe('ToolAuthorizationSection', () => {
       />,
     )
 
-    expect(screen.getByTestId('plugin-auth-in-agent')).toHaveTextContent('provider-a:builtin:credential-1')
+    expect(screen.getByTestId('plugin-auth-in-agent')).toHaveTextContent(
+      'provider-a:builtin:credential-1',
+    )
   })
 })

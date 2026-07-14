@@ -5,7 +5,10 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import type { SelectorParam } from 'i18next'
 import { releaseDeploymentAction } from '../../../shared/domain/release-action'
-import { isRuntimeDeploymentInProgress, isUndeployedDeploymentRow } from '../../../shared/domain/runtime-status'
+import {
+  isRuntimeDeploymentInProgress,
+  isUndeployedDeploymentRow,
+} from '../../../shared/domain/runtime-status'
 
 export type DeployMenuRowState = 'deploy' | 'rollback' | 'current' | 'deploying'
 
@@ -32,10 +35,8 @@ type DeploymentTranslator = (
 const GROUP_ORDER: DeployMenuGroup[] = ['deploy', 'rollback', 'unavailable']
 
 function stateToGroup(state: DeployMenuRowState): DeployMenuGroup {
-  if (state === 'rollback')
-    return 'rollback'
-  if (state === 'deploy')
-    return 'deploy'
+  if (state === 'rollback') return 'rollback'
+  if (state === 'deploy') return 'deploy'
   return 'unavailable'
 }
 
@@ -44,8 +45,7 @@ export function releaseUsageCount(releaseId: string, deploymentRows: Environment
 
   deploymentRows.forEach((row) => {
     const usesRelease = row.currentRelease?.id === releaseId || row.desiredRelease?.id === releaseId
-    if (usesRelease)
-      environmentIds.add(row.environment.id)
+    if (usesRelease) environmentIds.add(row.environment.id)
   })
 
   return environmentIds.size
@@ -68,7 +68,7 @@ function buildDeployMenuRow({
 }): DeployMenuRow {
   const envId = env.id
   const envName = env.displayName
-  const row = deploymentRows.find(item => item.environment.id === envId)
+  const row = deploymentRows.find((item) => item.environment.id === envId)
   const currentRelease = row?.currentRelease
   const isCurrent = currentRelease?.id === releaseId
   const isEnvironmentInProgress = isRuntimeDeploymentInProgress(row?.status)
@@ -78,8 +78,8 @@ function buildDeployMenuRow({
       env,
       environmentId: envId,
       state: 'deploying',
-      label: t($ => $['versions.deployingTo'], { name: envName }),
-      disabledReason: t($ => $['versions.disabledReason.deploying']),
+      label: t(($) => $['versions.deployingTo'], { name: envName }),
+      disabledReason: t(($) => $['versions.disabledReason.deploying']),
     }
   }
   if (isCurrent) {
@@ -87,8 +87,8 @@ function buildDeployMenuRow({
       env,
       environmentId: envId,
       state: 'current',
-      label: t($ => $['versions.currentOn'], { name: envName }),
-      disabledReason: t($ => $['versions.disabledReason.current'], { name: envName }),
+      label: t(($) => $['versions.currentOn'], { name: envName }),
+      disabledReason: t(($) => $['versions.disabledReason.current'], { name: envName }),
     }
   }
 
@@ -104,7 +104,7 @@ function buildDeployMenuRow({
       env,
       environmentId: envId,
       state: 'deploy',
-      label: t($ => $['versions.deployTo'], { name: envName }),
+      label: t(($) => $['versions.deployTo'], { name: envName }),
     }
   }
   if (action === 'rollback') {
@@ -112,14 +112,14 @@ function buildDeployMenuRow({
       env,
       environmentId: envId,
       state: 'rollback',
-      label: t($ => $['versions.rollbackTo'], { name: envName }),
+      label: t(($) => $['versions.rollbackTo'], { name: envName }),
     }
   }
   return {
     env,
     environmentId: envId,
     state: 'deploy',
-    label: t($ => $['versions.deployTo'], { name: envName }),
+    label: t(($) => $['versions.deployTo'], { name: envName }),
   }
 }
 
@@ -138,18 +138,20 @@ export function buildDeployMenuSections({
   targetRelease: Release
   t: DeploymentTranslator
 }) {
-  const deploymentRows = environmentDeployments.filter(row => !isUndeployedDeploymentRow(row))
-  const menuRows = environments.map(env => buildDeployMenuRow({
-    env,
-    deploymentRows,
-    releaseRows,
-    releaseId,
-    targetRelease,
-    t,
-  }))
+  const deploymentRows = environmentDeployments.filter((row) => !isUndeployedDeploymentRow(row))
+  const menuRows = environments.map((env) =>
+    buildDeployMenuRow({
+      env,
+      deploymentRows,
+      releaseRows,
+      releaseId,
+      targetRelease,
+      t,
+    }),
+  )
 
-  return GROUP_ORDER.map(group => ({
+  return GROUP_ORDER.map((group) => ({
     group,
-    rows: menuRows.filter(row => stateToGroup(row.state) === group),
+    rows: menuRows.filter((row) => stateToGroup(row.state) === group),
   })).filter((section): section is DeployMenuSection => section.rows.length > 0)
 }

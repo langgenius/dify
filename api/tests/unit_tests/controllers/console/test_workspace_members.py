@@ -5,6 +5,7 @@ from unittest.mock import ANY, patch
 import pytest
 from flask import Flask, g
 
+from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.workspace.members import MemberInviteEmailApi
 from models.account import Account, TenantAccountRole
 
@@ -51,7 +52,7 @@ class TestMemberInviteEmailApi:
         with (
             patch("controllers.console.workspace.members.dify_config.RBAC_ENABLED", False),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "https://console.example.com"),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):
@@ -150,10 +151,11 @@ class TestMemberInviteEmailApi:
                 account._current_tenant = tenant
                 g._login_user = account
                 g._current_tenant = tenant
-                response, status_code = MemberInviteEmailApi().post()
+                with pytest.raises(InvalidMemberRoleError) as exc_info:
+                    MemberInviteEmailApi().post()
 
-        assert status_code == 400
-        assert response["code"] == "invalid-role"
+        assert exc_info.value.error_code == "invalid_role"
+        assert exc_info.value.data == {"code": "invalid_role", "message": "Invalid role.", "status": 400}
 
     @patch("controllers.console.workspace.members.FeatureService.get_features")
     @patch("controllers.console.workspace.members.current_account_with_tenant")
@@ -186,7 +188,7 @@ class TestMemberInviteEmailApi:
                 account._current_tenant = tenant
                 g._login_user = account
                 g._current_tenant = tenant
-                response, status_code = MemberInviteEmailApi().post()
+                with pytest.raises(InvalidMemberRoleError) as exc_info:
+                    MemberInviteEmailApi().post()
 
-        assert status_code == 400
-        assert response["code"] == "invalid-role"
+        assert exc_info.value.error_code == "invalid_role"
