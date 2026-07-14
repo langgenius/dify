@@ -90,9 +90,7 @@ class TestWebhookServiceUnit:
                     "trigger_workflow_async",
                 ) as mock_trigger,
             ):
-                WebhookService.trigger_workflow_execution(
-                    webhook_trigger, webhook_data, workflow, session=session
-                )
+                WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow, session=session)
 
             call_session = mock_trigger.call_args.kwargs["session"]
             assert call_session is session
