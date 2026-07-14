@@ -17,6 +17,7 @@ import Divider from '@/app/components/base/divider'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -38,8 +39,6 @@ type AgentDetailNavItem = {
   icon: NavIcon
   activeIcon: NavIcon
 }
-
-const SEARCH_SHORTCUT = ['Mod', 'K']
 
 const createAgentNavIcon = (iconClassName: string) => {
   function AgentNavIcon({ className }: ComponentProps<'svg'>) {
@@ -145,7 +144,7 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
         >
           <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
           <KbdGroup>
-            {SEARCH_SHORTCUT.map((key) => (
+            {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
               <Kbd key={key}>{formatForDisplay(key)}</Kbd>
             ))}
           </KbdGroup>

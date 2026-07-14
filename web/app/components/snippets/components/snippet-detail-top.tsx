@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 
@@ -15,8 +16,6 @@ type SnippetDetailTopProps = {
   expand?: boolean
   onToggle?: () => void
 }
-
-const SEARCH_SHORTCUT = ['Mod', 'K']
 
 export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopProps) {
   const { t } = useTranslation()
@@ -88,7 +87,7 @@ export function SnippetDetailTop({ expand = true, onToggle }: SnippetDetailTopPr
         >
           <span className="px-0.5">{t(($) => $['gotoAnything.quickAction'], { ns: 'app' })}</span>
           <KbdGroup>
-            {SEARCH_SHORTCUT.map((key) => (
+            {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
               <Kbd key={key}>{formatForDisplay(key)}</Kbd>
             ))}
           </KbdGroup>
