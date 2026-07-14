@@ -4,11 +4,12 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import EnvNav from '@/app/components/header/env-nav'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { DETAIL_SIDEBAR_TOGGLE_HOTKEY } from './hotkeys'
 import { useDetailSidebarMode } from './storage'
 
 type DetailSidebarRenderProps = {
@@ -56,7 +57,7 @@ export function DetailSidebarFrame({
   const currentEnv = langGeniusVersionInfo?.current_env
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
 
-  const handleToggleDetailNavigation = useCallback(() => {
+  function handleToggleDetailNavigation() {
     if (isDetailNavigationHoverPreviewOpen) {
       if (detailNavigationTransitionTimerRef.current)
         clearTimeout(detailNavigationTransitionTimerRef.current)
@@ -73,25 +74,25 @@ export function DetailSidebarFrame({
     const nextMode = detailNavigationExpanded ? 'collapse' : 'expand'
     setDetailNavigationHoverPreviewOpen(false)
     setStoredDetailSidebarExpand(nextMode)
-  }, [detailNavigationExpanded, isDetailNavigationHoverPreviewOpen, setStoredDetailSidebarExpand])
+  }
 
-  const openDetailNavigationHoverPreview = useCallback(() => {
+  function openDetailNavigationHoverPreview() {
     if (detailNavigationExpanded) return
 
     if (closeDetailNavigationHoverPreviewTimerRef.current)
       clearTimeout(closeDetailNavigationHoverPreviewTimerRef.current)
 
     setDetailNavigationHoverPreviewOpen(true)
-  }, [detailNavigationExpanded])
+  }
 
-  const closeDetailNavigationHoverPreview = useCallback(() => {
+  function closeDetailNavigationHoverPreview() {
     if (closeDetailNavigationHoverPreviewTimerRef.current)
       clearTimeout(closeDetailNavigationHoverPreviewTimerRef.current)
 
     closeDetailNavigationHoverPreviewTimerRef.current = setTimeout(() => {
       setDetailNavigationHoverPreviewOpen(false)
     }, 120)
-  }, [])
+  }
 
   useEffect(() => {
     return () => {
@@ -102,16 +103,10 @@ export function DetailSidebarFrame({
     }
   }, [])
 
-  useHotkey(
-    'Mod+B',
-    (e) => {
-      e.preventDefault()
-      handleToggleDetailNavigation()
-    },
-    {
-      ignoreInputs: false,
-    },
-  )
+  useHotkey(DETAIL_SIDEBAR_TOGGLE_HOTKEY, handleToggleDetailNavigation, {
+    ignoreInputs: false,
+    preventDefault: true,
+  })
 
   return (
     <aside

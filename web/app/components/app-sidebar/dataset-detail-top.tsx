@@ -6,9 +6,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
+import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import Link from '@/next/link'
-import ToggleButton from './toggle-button'
 
 type DatasetDetailTopProps = {
   expand?: boolean
@@ -17,16 +17,16 @@ type DatasetDetailTopProps = {
 
 const SEARCH_SHORTCUT = ['Mod', 'K']
 
-const DatasetDetailTop = ({ expand = true, onToggle }: DatasetDetailTopProps) => {
+export function DatasetDetailTop({ expand = true, onToggle }: DatasetDetailTopProps) {
   const { t } = useTranslation()
 
   if (!expand) {
     return (
       <div className="flex w-full items-center justify-center px-3 pt-2 pb-1">
         {onToggle && (
-          <ToggleButton
+          <DetailSidebarToggleButton
             expand={expand}
-            handleToggle={onToggle}
+            onToggle={onToggle}
             icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
             className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
           />
@@ -90,9 +90,9 @@ const DatasetDetailTop = ({ expand = true, onToggle }: DatasetDetailTopProps) =>
         </Tooltip>
       )}
       {onToggle && (
-        <ToggleButton
+        <DetailSidebarToggleButton
           expand={expand}
-          handleToggle={onToggle}
+          onToggle={onToggle}
           icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
           className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
         />
@@ -100,5 +100,3 @@ const DatasetDetailTop = ({ expand = true, onToggle }: DatasetDetailTopProps) =>
     </div>
   )
 }
-
-export default DatasetDetailTop
