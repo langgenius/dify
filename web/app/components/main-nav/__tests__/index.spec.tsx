@@ -2,6 +2,7 @@ import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
+import type { createStore } from 'jotai'
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
@@ -15,7 +16,7 @@ import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { createStore, Provider as JotaiProvider } from 'jotai'
+import { Provider as JotaiProvider } from 'jotai'
 import {
   createTestQueryClient,
   renderWithSystemFeatures,
