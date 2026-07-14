@@ -69,7 +69,7 @@ class TestRerankModelRunner:
     @pytest.fixture
     def rerank_runner(self, mock_model_instance):
         """Create a RerankModelRunner with mocked model instance."""
-        return RerankModelRunner(rerank_model_instance=mock_model_instance)
+        return RerankModelRunner(rerank_model_instance=mock_model_instance, session=MagicMock())
 
     @pytest.fixture
     def sample_documents(self):
@@ -427,7 +427,7 @@ class TestRerankModelRunnerMultimodal:
 
     @pytest.fixture
     def rerank_runner(self, mock_model_instance):
-        return RerankModelRunner(rerank_model_instance=mock_model_instance)
+        return RerankModelRunner(rerank_model_instance=mock_model_instance, session=MagicMock())
 
     def test_run_returns_original_documents_for_non_text_query_without_vision_support(
         self, rerank_runner, mock_model_instance
@@ -486,7 +486,7 @@ class TestRerankModelRunnerMultimodal:
         rerank_result = RerankResult(model="rerank-model", docs=[])
 
         with (
-            patch("core.rag.rerank.rerank_model.db.session.get", return_value=SimpleNamespace(key="image-key")),
+            patch.object(rerank_runner._session, "get", return_value=SimpleNamespace(key="image-key")),
             patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"image-bytes") as mock_load_once,
             patch.object(
                 rerank_runner,
@@ -515,7 +515,7 @@ class TestRerankModelRunnerMultimodal:
         rerank_result = RerankResult(model="rerank-model", docs=[])
 
         with (
-            patch("core.rag.rerank.rerank_model.db.session.get", return_value=None),
+            patch.object(rerank_runner._session, "get", return_value=None),
             patch.object(
                 rerank_runner,
                 "fetch_text_rerank",
@@ -550,7 +550,7 @@ class TestRerankModelRunnerMultimodal:
         session = MagicMock()
         session.get.return_value = SimpleNamespace(key="query-image-key")
         with (
-            patch("core.rag.rerank.rerank_model.db.session", session),
+            patch.object(rerank_runner, "_session", session),
             patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"query-image-bytes"),
         ):
             result, unique_documents = rerank_runner.fetch_multimodal_rerank(
@@ -569,7 +569,7 @@ class TestRerankModelRunnerMultimodal:
         assert "user" not in invoke_kwargs
 
     def test_fetch_multimodal_rerank_raises_when_query_image_not_found(self, rerank_runner):
-        with patch("core.rag.rerank.rerank_model.db.session.get", return_value=None):
+        with patch.object(rerank_runner._session, "get", return_value=None):
             with pytest.raises(ValueError, match="Upload file not found for query"):
                 rerank_runner.fetch_multimodal_rerank(
                     query="missing-upload-id",
@@ -1071,6 +1071,7 @@ class TestRerankRunnerFactory:
         runner = RerankRunnerFactory.create_rerank_runner(
             runner_type=RerankMode.RERANKING_MODEL,
             rerank_model_instance=mock_model_instance,
+            session=MagicMock(),
         )
 
         # Assert: Correct runner type is created
@@ -1133,6 +1134,7 @@ class TestRerankRunnerFactory:
         runner = RerankRunnerFactory.create_rerank_runner(
             runner_type=RerankMode.RERANKING_MODEL.value,
             rerank_model_instance=mock_model_instance,
+            session=MagicMock(),
         )
 
         # Assert: Runner is created successfully
@@ -1197,6 +1199,7 @@ class TestRerankIntegration:
         runner = RerankRunnerFactory.create_rerank_runner(
             runner_type=RerankMode.RERANKING_MODEL,
             rerank_model_instance=mock_model_instance,
+            session=MagicMock(),
         )
         result = runner.run(
             query="best programming language",
@@ -1237,7 +1240,7 @@ class TestRerankIntegration:
             Document(page_content="Low relevance", metadata={"doc_id": "doc3"}, provider="dify"),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance)
+        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=MagicMock())
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1299,7 +1302,7 @@ class TestRerankEdgeCases:
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance)
+        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=MagicMock())
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1339,7 +1342,7 @@ class TestRerankEdgeCases:
             Document(page_content="Negative score", metadata={"doc_id": "doc3"}, provider="dify"),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance)
+        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=MagicMock())
 
         # Act: Run reranking with zero threshold
         result = runner.run(query="test", documents=documents, score_threshold=0.0)
@@ -1375,7 +1378,7 @@ class TestRerankEdgeCases:
             Document(page_content="Perfect 3", metadata={"doc_id": "doc3"}, provider="dify"),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance)
+        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=MagicMock())
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1416,7 +1419,7 @@ class TestRerankEdgeCases:
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance)
+        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=MagicMock())
 
         # Act: Run reranking
         result = runner.run(query="test 测试", documents=documents)
@@ -1454,7 +1457,7 @@ class TestRerankEdgeCases:
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance)
+        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=MagicMock())
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1490,7 +1493,7 @@ class TestRerankEdgeCases:
             for i in range(num_docs)
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance)
+        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=MagicMock())
 
         # Act: Run reranking with top_n
         result = runner.run(query="test", documents=documents, top_n=10)
@@ -1580,7 +1583,7 @@ class TestRerankEdgeCases:
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance)
+        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=MagicMock())
 
         # Act: Run reranking with empty query
         result = runner.run(query="", documents=documents)
@@ -1633,7 +1636,7 @@ class TestRerankPerformance:
             for i in range(5)
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance)
+        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=MagicMock())
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1745,7 +1748,7 @@ class TestRerankErrorHandling:
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance)
+        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=MagicMock())
 
         # Act & Assert: Exception is raised
         with pytest.raises(RuntimeError, match="Model invocation failed"):
@@ -1778,7 +1781,7 @@ class TestRerankErrorHandling:
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance)
+        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=MagicMock())
 
         # Act & Assert: Should raise IndexError or handle gracefully
         with pytest.raises(IndexError):

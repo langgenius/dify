@@ -41,7 +41,11 @@ describe('MarkdownMusic', () => {
   describe('Rendering', () => {
     it('should render wrapper and two internal container nodes', async () => {
       const MarkdownMusic = await loadMarkdownMusic()
-      const { container } = render(<MarkdownMusic><span>child</span></MarkdownMusic>)
+      const { container } = render(
+        <MarkdownMusic>
+          <span>child</span>
+        </MarkdownMusic>,
+      )
 
       const topLevel = container.firstElementChild as HTMLElement | null
       expect(topLevel).toBeTruthy()
@@ -66,7 +70,11 @@ describe('MarkdownMusic', () => {
 
     it('should not render fallback when children is not a string', async () => {
       const MarkdownMusic = await loadMarkdownMusic()
-      render(<MarkdownMusic><span>not a string</span></MarkdownMusic>)
+      render(
+        <MarkdownMusic>
+          <span>not a string</span>
+        </MarkdownMusic>,
+      )
       expect(mockRenderAbc).not.toHaveBeenCalled()
       expect(mockLoad).not.toHaveBeenCalled()
       expect(mockInit).not.toHaveBeenCalled()

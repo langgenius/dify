@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 import PublishAsKnowledgePipelineModal from '../publish-as-knowledge-pipeline-modal'
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -18,12 +17,14 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) =>
+  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) =>
     open === false ? null : <>{children}</>,
-  DialogContent: ({ children, className }: { children: React.ReactNode, className?: string }) => (
-    <div data-testid="modal" className={className}>{children}</div>
+  DialogContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div data-testid="modal" className={className}>
+      {children}
+    </div>
   ),
-  DialogTitle: ({ children, className }: { children: React.ReactNode, className?: string }) => (
+  DialogTitle: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <h2 className={className}>{children}</h2>
   ),
 }))
@@ -91,7 +92,9 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should initialize description as empty', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    const textarea = screen.getByRole('textbox', { name: 'pipeline.common.publishAsPipeline.description' }) as HTMLTextAreaElement
+    const textarea = screen.getByRole('textbox', {
+      name: 'pipeline.common.publishAsPipeline.description',
+    }) as HTMLTextAreaElement
     expect(textarea.value).toBe('')
   })
 
@@ -135,7 +138,9 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should update description when textarea changes', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    const textarea = screen.getByRole('textbox', { name: 'pipeline.common.publishAsPipeline.description' })
+    const textarea = screen.getByRole('textbox', {
+      name: 'pipeline.common.publishAsPipeline.description',
+    })
     fireEvent.change(textarea, { target: { value: 'My description' } })
 
     expect((textarea as HTMLTextAreaElement).value).toBe('My description')
@@ -214,15 +219,13 @@ describe('PublishAsKnowledgePipelineModal', () => {
     const nameInput = screen.getByTestId('name-input')
     fireEvent.change(nameInput, { target: { value: '  Trimmed Name  ' } })
 
-    const textarea = screen.getByRole('textbox', { name: 'pipeline.common.publishAsPipeline.description' })
+    const textarea = screen.getByRole('textbox', {
+      name: 'pipeline.common.publishAsPipeline.description',
+    })
     fireEvent.change(textarea, { target: { value: '  Some desc  ' } })
 
     fireEvent.click(screen.getByText('workflow.common.publish'))
 
-    expect(mockOnConfirm).toHaveBeenCalledWith(
-      'Trimmed Name',
-      expect.any(Object),
-      'Some desc',
-    )
+    expect(mockOnConfirm).toHaveBeenCalledWith('Trimmed Name', expect.any(Object), 'Some desc')
   })
 })

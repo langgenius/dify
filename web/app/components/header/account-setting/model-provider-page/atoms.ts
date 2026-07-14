@@ -6,17 +6,14 @@ const expandedAtom = atom<Record<string, boolean>>({})
 
 export function useModelProviderListExpanded(providerName: string) {
   return useAtomValue(
-    useMemo(
-      () => selectAtom(expandedAtom, s => !!s[providerName]),
-      [providerName],
-    ),
+    useMemo(() => selectAtom(expandedAtom, (s) => !!s[providerName]), [providerName]),
   )
 }
 
 export function useSetModelProviderListExpanded(providerName: string) {
   const set = useSetAtom(expandedAtom)
   return useCallback(
-    (expanded: boolean) => set(prev => ({ ...prev, [providerName]: expanded })),
+    (expanded: boolean) => set((prev) => ({ ...prev, [providerName]: expanded })),
     [providerName, set],
   )
 }
@@ -24,7 +21,7 @@ export function useSetModelProviderListExpanded(providerName: string) {
 export function useExpandModelProviderList() {
   const set = useSetAtom(expandedAtom)
   return useCallback(
-    (providerName: string) => set(prev => ({ ...prev, [providerName]: true })),
+    (providerName: string) => set((prev) => ({ ...prev, [providerName]: true })),
     [set],
   )
 }

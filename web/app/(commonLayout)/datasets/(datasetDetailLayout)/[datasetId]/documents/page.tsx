@@ -8,13 +8,9 @@ export type IProps = {
 const Documents = async (props: IProps) => {
   const params = await props.params
 
-  const {
-    datasetId,
-  } = params
+  const { datasetId } = params
 
-  return (
-    <Main datasetId={datasetId} />
-  )
+  return <Main datasetId={datasetId} />
 }
 
 export default Documents

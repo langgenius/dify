@@ -5,12 +5,12 @@ import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
 import { cn } from '../cn'
 
 const avatarSizeClasses = {
-  'xxs': { root: 'size-4', text: 'text-[7px]' },
-  'xs': { root: 'size-5', text: 'text-[8px]' },
-  'sm': { root: 'size-6', text: 'text-[10px]' },
-  'md': { root: 'size-8', text: 'text-xs' },
-  'lg': { root: 'size-9', text: 'text-sm' },
-  'xl': { root: 'size-10', text: 'text-base' },
+  xxs: { root: 'size-4', text: 'text-[7px]' },
+  xs: { root: 'size-5', text: 'text-[8px]' },
+  sm: { root: 'size-6', text: 'text-[10px]' },
+  md: { root: 'size-8', text: 'text-xs' },
+  lg: { root: 'size-9', text: 'text-sm' },
+  xl: { root: 'size-10', text: 'text-base' },
   '2xl': { root: 'size-12', text: 'text-xl' },
   '3xl': { root: 'size-16', text: 'text-2xl' },
 } as const
@@ -29,11 +29,7 @@ type AvatarRootProps = BaseAvatar.Root.Props & {
   size?: AvatarSize
 }
 
-export function AvatarRoot({
-  size = 'md',
-  className,
-  ...props
-}: AvatarRootProps) {
+export function AvatarRoot({ size = 'md', className, ...props }: AvatarRootProps) {
   return (
     <BaseAvatar.Root
       className={cn(
@@ -50,11 +46,7 @@ type AvatarFallbackProps = BaseAvatar.Fallback.Props & {
   size?: AvatarSize
 }
 
-export function AvatarFallback({
-  size = 'md',
-  className,
-  ...props
-}: AvatarFallbackProps) {
+export function AvatarFallback({ size = 'md', className, ...props }: AvatarFallbackProps) {
   return (
     <BaseAvatar.Fallback
       className={cn(
@@ -69,10 +61,7 @@ export function AvatarFallback({
 
 type AvatarImageProps = BaseAvatar.Image.Props
 
-export function AvatarImage({
-  className,
-  ...props
-}: AvatarImageProps) {
+export function AvatarImage({ className, ...props }: AvatarImageProps) {
   return (
     <BaseAvatar.Image
       className={cn('absolute inset-0 size-full object-cover', className)}
@@ -91,15 +80,9 @@ export const Avatar = ({
   return (
     <AvatarRoot size={size} className={className}>
       {avatar && (
-        <AvatarImage
-          src={avatar}
-          alt={name}
-          onLoadingStatusChange={onLoadingStatusChange}
-        />
+        <AvatarImage src={avatar} alt={name} onLoadingStatusChange={onLoadingStatusChange} />
       )}
-      <AvatarFallback size={size}>
-        {name?.[0]?.toLocaleUpperCase()}
-      </AvatarFallback>
+      <AvatarFallback size={size}>{name?.[0]?.toLocaleUpperCase()}</AvatarFallback>
     </AvatarRoot>
   )
 }

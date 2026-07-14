@@ -47,18 +47,16 @@ describe('AccessSubjectAddButton', () => {
   it('should reset expanded group browsing when the add menu reopens', async () => {
     const user = userEvent.setup()
 
-    render(
-      <AccessSubjectAddButton
-        selectedGroups={[]}
-        selectedMembers={[]}
-        onChange={vi.fn()}
-      />,
-    )
+    render(<AccessSubjectAddButton selectedGroups={[]} selectedMembers={[]} onChange={vi.fn()} />)
 
     const addButton = screen.getByRole('combobox', { name: 'common.operation.add' })
 
     await user.click(addButton)
-    await user.click(await screen.findByRole('button', { name: 'app.accessControlDialog.operateGroupAndMember.expand' }))
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'app.accessControlDialog.operateGroupAndMember.expand',
+      }),
+    )
 
     await waitFor(() => {
       expect(lastSearchParams()).toMatchObject({ groupId: 'group-1' })

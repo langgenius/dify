@@ -1,10 +1,7 @@
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  NODE_WIDTH_X_OFFSET,
-  START_INITIAL_POSITION,
-} from '@/app/components/workflow/constants'
+import { NODE_WIDTH_X_OFFSET, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import answerDefault from '@/app/components/workflow/nodes/answer/default'
 import llmDefault from '@/app/components/workflow/nodes/llm/default'
 import startPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
@@ -15,15 +12,15 @@ import { useIsChatMode } from './use-is-chat-mode'
 
 export const useWorkflowTemplate = () => {
   const isChatMode = useIsChatMode()
-  const appDetail = useAppStore(s => s.appDetail)
+  const appDetail = useAppStore((s) => s.appDetail)
   const { t } = useTranslation()
 
   const createStartNode = () => {
     const { newNode: startNode } = generateNewNode({
       data: {
-        ...startDefault.defaultValue as StartNodeType,
+        ...(startDefault.defaultValue as StartNodeType),
         type: startDefault.metaData.type,
-        title: t($ => $[`blocks.${startDefault.metaData.type}`], { ns: 'workflow' }),
+        title: t(($) => $[`blocks.${startDefault.metaData.type}`], { ns: 'workflow' }),
       },
       position: START_INITIAL_POSITION,
     })
@@ -44,7 +41,7 @@ export const useWorkflowTemplate = () => {
         },
         selected: true,
         type: llmDefault.metaData.type,
-        title: t($ => $[`blocks.${llmDefault.metaData.type}`], { ns: 'workflow' }),
+        title: t(($) => $[`blocks.${llmDefault.metaData.type}`], { ns: 'workflow' }),
       },
       position: {
         x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET,
@@ -58,7 +55,7 @@ export const useWorkflowTemplate = () => {
         ...answerDefault.defaultValue,
         answer: `{{#${llmNode.id}.text#}}`,
         type: answerDefault.metaData.type,
-        title: t($ => $[`blocks.${answerDefault.metaData.type}`], { ns: 'workflow' }),
+        title: t(($) => $[`blocks.${answerDefault.metaData.type}`], { ns: 'workflow' }),
       },
       position: {
         x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET * 2,
@@ -93,7 +90,7 @@ export const useWorkflowTemplate = () => {
         ...startPlaceholderDefault.defaultValue,
         selected: true,
         type: startPlaceholderDefault.metaData.type,
-        title: t($ => $[`blocks.${startPlaceholderDefault.metaData.type}`], { ns: 'workflow' }),
+        title: t(($) => $[`blocks.${startPlaceholderDefault.metaData.type}`], { ns: 'workflow' }),
         desc: '',
       },
       position: START_INITIAL_POSITION,

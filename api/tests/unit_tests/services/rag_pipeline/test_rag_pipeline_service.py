@@ -8,9 +8,14 @@ from unittest.mock import Mock
 import pytest
 from pytest_mock import MockerFixture
 
+from core.app.entities.app_invoke_entities import InvokeFrom
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.graph_events import NodeRunFailedEvent
+from graphon.node_events.base import NodeRunResult
 from models import Account, Tenant
 from models.dataset import Dataset, Pipeline, PipelineCustomizedTemplate, PipelineRecommendedPlugin
 from models.workflow import Workflow
+from services.dataset_ref_service import DatasetRefService
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_ref_service import WorkflowRef
@@ -120,6 +125,45 @@ def _make_dataset(*, dataset_id: str = "d1", pipeline_id: str = "p1", tenant_id:
     )
     dataset.pipeline_id = pipeline_id
     return dataset
+
+
+def _make_failed_published_node_run() -> tuple[SimpleNamespace, NodeRunFailedEvent]:
+    class FakeVariablePool:
+        def __init__(self) -> None:
+            self._values = {
+                ("sys", "invoke_from"): SimpleNamespace(value=InvokeFrom.PUBLISHED_PIPELINE),
+                ("sys", "app_id"): SimpleNamespace(value="pipeline-1"),
+                ("sys", "dataset_id"): SimpleNamespace(value="dataset-1"),
+                ("sys", "document_id"): SimpleNamespace(value="doc-1"),
+            }
+
+        def get(self, path: list[str]) -> SimpleNamespace | None:
+            return self._values.get(tuple(path))
+
+    node_instance = SimpleNamespace(
+        workflow_id="wf-1",
+        node_type="start",
+        title="Start",
+        graph_runtime_state=SimpleNamespace(variable_pool=FakeVariablePool()),
+        error_strategy=None,
+    )
+    run_result = NodeRunResult(
+        status=WorkflowNodeExecutionStatus.FAILED,
+        error="boom",
+        error_type="runtime",
+        inputs={},
+        outputs={},
+    )
+    event = NodeRunFailedEvent(
+        id="evt-1",
+        start_at=time.time(),
+        node_id="node-1",
+        node_type="start",
+        node_run_result=run_result,
+        error="boom",
+        route_node_id=None,
+    )
+    return node_instance, event
 
 
 def _make_customized_template() -> PipelineCustomizedTemplate:
@@ -1347,22 +1391,33 @@ def test_get_rag_pipeline_workflow_run_node_executions_empty_when_run_missing(
     assert result == []
 
 
-def test_get_rag_pipeline_workflow_run_node_executions_returns_sorted_executions(
+def test_get_rag_pipeline_workflow_run_node_executions_assembles_configured_repository_results(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
     pipeline = _make_pipeline()
     mocker.patch.object(
         rag_pipeline_service.service, "get_rag_pipeline_workflow_run", return_value=SimpleNamespace(id="run-1")
     )
-    repo = mocker.Mock()
-    repo.get_db_models_by_workflow_run.return_value = ["n1", "n2"]
-    mocker.patch("services.rag_pipeline.rag_pipeline.SQLAlchemyWorkflowNodeExecutionRepository", return_value=repo)
+    node_repo = rag_pipeline_service.service._node_execution_service_repo
+    expected_executions = ["n1", "n2"]
+    expected_traces = ["retry-n1", "n1", "n2"]
+    node_repo.get_executions_by_workflow_run = mocker.Mock(return_value=expected_executions)
+    mock_assemble = mocker.patch(
+        "services.rag_pipeline.rag_pipeline.assemble_workflow_node_execution_traces",
+        return_value=expected_traces,
+    )
 
     result = rag_pipeline_service.service.get_rag_pipeline_workflow_run_node_executions(
         pipeline=pipeline, run_id="run-1", user=_make_account()
     )
 
-    assert result == ["n1", "n2"]
+    assert result == expected_traces
+    node_repo.get_executions_by_workflow_run.assert_called_once_with(
+        tenant_id=pipeline.tenant_id,
+        app_id=pipeline.id,
+        workflow_run_id="run-1",
+    )
+    mock_assemble.assert_called_once_with(expected_executions, node_repo)
 
 
 def test_get_recommended_plugins_returns_empty_when_no_active_plugins(
@@ -1669,54 +1724,15 @@ def test_handle_node_run_result_raises_when_no_terminal_event(
 def test_handle_node_run_result_marks_document_error_for_published_invoke(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    from core.app.entities.app_invoke_entities import InvokeFrom
-    from graphon.enums import WorkflowNodeExecutionStatus
-    from graphon.graph_events import NodeRunFailedEvent
-    from graphon.node_events.base import NodeRunResult
-
-    class FakeVariablePool:
-        def __init__(self):
-            self._values = {
-                ("sys", "invoke_from"): SimpleNamespace(value=InvokeFrom.PUBLISHED_PIPELINE),
-                ("sys", "app_id"): SimpleNamespace(value="pipeline-1"),
-                ("sys", "dataset_id"): SimpleNamespace(value="dataset-1"),
-                ("sys", "document_id"): SimpleNamespace(value="doc-1"),
-            }
-
-        def get(self, path):
-            return self._values.get(tuple(path))
-
-    node_instance = SimpleNamespace(
-        workflow_id="wf-1",
-        node_type="start",
-        title="Start",
-        graph_runtime_state=SimpleNamespace(variable_pool=FakeVariablePool()),
-        error_strategy=None,
-    )
-    run_result = NodeRunResult(
-        status=WorkflowNodeExecutionStatus.FAILED,
-        error="boom",
-        error_type="runtime",
-        inputs={},
-        outputs={},
-    )
-
-    def _event_generator():
-        yield NodeRunFailedEvent(
-            id="evt-1",
-            start_at=time.time(),
-            node_id="node-1",
-            node_type="start",
-            node_run_result=run_result,
-            error="boom",
-            route_node_id=None,
-        )
-
+    node_instance, event = _make_failed_published_node_run()
     document = SimpleNamespace(indexing_status="waiting", error=None)
-    rag_pipeline_service.session.scalar.return_value = document
+    rag_pipeline_service.session.scalar.return_value = _make_dataset(
+        dataset_id="dataset-1", pipeline_id="pipeline-1", tenant_id="t1"
+    )
+    get_document_by_ref = mocker.patch.object(DatasetRefService, "get_document_by_ref", return_value=document)
 
     result = rag_pipeline_service.service._handle_node_run_result(
-        getter=lambda: (node_instance, _event_generator()),
+        getter=lambda: (node_instance, iter([event])),
         start_at=time.perf_counter(),
         tenant_id="t1",
         node_id="node-1",
@@ -1726,17 +1742,41 @@ def test_handle_node_run_result_marks_document_error_for_published_invoke(
     stmt = rag_pipeline_service.session.scalar.call_args.args[0]
     compiled = stmt.compile()
     statement = str(compiled)
-    assert "documents.id" in statement
-    assert "documents.tenant_id" in statement
-    assert "documents.dataset_id" in statement
+    assert "datasets.id" in statement
     assert "datasets.tenant_id" in statement
     assert "datasets.pipeline_id" in statement
-    assert "doc-1" in compiled.params.values()
     assert "t1" in compiled.params.values()
     assert "dataset-1" in compiled.params.values()
     assert "pipeline-1" in compiled.params.values()
+    document_ref = get_document_by_ref.call_args.args[0]
+    assert document_ref.dataset.tenant_id == "t1"
+    assert document_ref.dataset.dataset_id == "dataset-1"
+    assert document_ref.document_id == "doc-1"
+    get_document_by_ref.assert_called_once_with(document_ref, session=rag_pipeline_service.session)
     assert document.indexing_status == "error"
     assert document.error == "boom"
+    rag_pipeline_service.session.add.assert_called_once_with(document)
+    rag_pipeline_service.session.commit.assert_called_once_with()
+
+
+def test_handle_node_run_result_does_not_write_when_pipeline_dataset_is_missing(
+    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+) -> None:
+    node_instance, event = _make_failed_published_node_run()
+    rag_pipeline_service.session.scalar.return_value = None
+    get_document_by_ref = mocker.patch.object(DatasetRefService, "get_document_by_ref")
+
+    result = rag_pipeline_service.service._handle_node_run_result(
+        getter=lambda: (node_instance, iter([event])),
+        start_at=time.perf_counter(),
+        tenant_id="t1",
+        node_id="node-1",
+    )
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    get_document_by_ref.assert_not_called()
+    rag_pipeline_service.session.add.assert_not_called()
+    rag_pipeline_service.session.commit.assert_not_called()
 
 
 def test_run_datasource_node_preview_raises_for_unsupported_provider(
@@ -2413,3 +2453,16 @@ def test_get_pipeline_returns_pipeline_when_found(
     result = rag_pipeline_service.service.get_pipeline("t1", "d1")
 
     assert result is pipeline
+
+
+def test_get_pipeline_by_id_uses_provided_session() -> None:
+    pipeline = _make_pipeline()
+    session = Mock()
+    session.scalar.return_value = pipeline
+
+    result = RagPipelineService.get_pipeline_by_id("p1", "t1", session=session)
+
+    assert result is pipeline
+    statement = session.scalar.call_args.args[0]
+    where_clauses = statement.whereclause.clauses
+    assert [clause.right.value for clause in where_clauses] == ["p1", "t1"]

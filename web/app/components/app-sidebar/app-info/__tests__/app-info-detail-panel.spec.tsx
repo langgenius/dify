@@ -1,7 +1,8 @@
 import type { App, AppSSO } from '@/types/app'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { render } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppInfoDetailPanel from '../app-info-detail-panel'
@@ -9,7 +10,7 @@ import AppInfoDetailPanel from '../app-info-detail-panel'
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['app.create_and_management'] as string[],
 }))
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   current: {
     userProfile: { id: 'user-1' },
     get workspacePermissionKeys() {
@@ -18,89 +19,109 @@ const mockAppContextState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState.current)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
 vi.mock('../../../base/app-icon', () => ({
-  default: ({ size, icon }: { size: string, icon: string }) => (
+  default: ({ size, icon }: { size: string; icon: string }) => (
     <div data-testid="app-icon" data-size={size} data-icon={icon} />
   ),
 }))
 
 vi.mock('../app-info-detail-drawer', () => ({
-  AppInfoDetailDrawer: ({ open, onClose, children }: {
+  AppInfoDetailDrawer: ({
+    open,
+    onClose,
+    children,
+  }: {
     open: boolean
     onClose: () => void
     children: React.ReactNode
-  }) => (
-    open
-      ? (
-          <div data-testid="app-info-detail-drawer">
-            <button type="button" data-testid="drawer-close" onClick={onClose}>Close</button>
-            {children}
-          </div>
-        )
-      : null
-  ),
+  }) =>
+    open ? (
+      <div data-testid="app-info-detail-drawer">
+        <button type="button" data-testid="drawer-close" onClick={onClose}>
+          Close
+        </button>
+        {children}
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view', () => ({
-  default: ({ appId }: { appId: string }) => (
-    <div data-testid="card-view" data-app-id={appId} />
-  ),
+  default: ({ appId }: { appId: string }) => <div data-testid="card-view" data-app-id={appId} />,
 }))
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, className, size, variant }: {
+  Button: ({
+    children,
+    onClick,
+    className,
+    size,
+    variant,
+  }: {
     children: React.ReactNode
     onClick?: () => void
     className?: string
     size?: string
     variant?: string
   }) => (
-    <button type="button" onClick={onClick} className={className} data-size={size} data-variant={variant}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={className}
+      data-size={size}
+      data-variant={variant}
+    >
       {children}
     </button>
   ),
 }))
 
 vi.mock('../app-operations', () => ({
-  default: ({ primaryOperations, secondaryOperations }: {
-    primaryOperations?: Array<{ id: string, title: string, onClick: () => void }>
-    secondaryOperations?: Array<{ id: string, title: string, onClick: () => void, type?: string }>
+  default: ({
+    primaryOperations,
+    secondaryOperations,
+  }: {
+    primaryOperations?: Array<{
+      id: string
+      title: string
+      onClick: () => void
+      disabled?: boolean
+      loading?: boolean
+    }>
+    secondaryOperations?: Array<{ id: string; title: string; onClick: () => void; type?: string }>
   }) => (
     <div data-testid="app-operations">
-      {primaryOperations?.map(op => (
-        <button key={op.id} type="button" data-testid={`op-${op.id}`} onClick={op.onClick}>{op.title}</button>
+      {primaryOperations?.map((op) => (
+        <button
+          key={op.id}
+          type="button"
+          data-testid={`op-${op.id}`}
+          data-loading={op.loading || undefined}
+          disabled={op.disabled}
+          onClick={op.onClick}
+        >
+          {op.title}
+        </button>
       ))}
-      {secondaryOperations?.map(op => (
-        op.type === 'divider'
-          ? <button key={op.id} type="button" data-testid={`op-${op.id}`} onClick={op.onClick}>divider</button>
-          : <button key={op.id} type="button" data-testid={`op-${op.id}`} onClick={op.onClick}>{op.title}</button>
-      ))}
+      {secondaryOperations?.map((op) =>
+        op.type === 'divider' ? (
+          <button key={op.id} type="button" data-testid={`op-${op.id}`} onClick={op.onClick}>
+            divider
+          </button>
+        ) : (
+          <button key={op.id} type="button" data-testid={`op-${op.id}`} onClick={op.onClick}>
+            {op.title}
+          </button>
+        ),
+      )}
     </div>
   ),
 }))
@@ -111,19 +132,20 @@ const defaultAppPermissionKeys = [
   AppACLPermission.Delete,
 ]
 
-const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> => ({
-  id: 'app-1',
-  name: 'Test App',
-  mode: AppModeEnum.CHAT,
-  icon: '🤖',
-  icon_type: 'emoji',
-  icon_background: '#FFEAD5',
-  icon_url: '',
-  description: 'A test description',
-  use_icon_as_answer_icon: false,
-  permission_keys: defaultAppPermissionKeys,
-  ...overrides,
-} as App & Partial<AppSSO>)
+const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
+  ({
+    id: 'app-1',
+    name: 'Test App',
+    mode: AppModeEnum.CHAT,
+    icon: '🤖',
+    icon_type: 'emoji',
+    icon_background: '#FFEAD5',
+    icon_url: '',
+    description: 'A test description',
+    use_icon_as_answer_icon: false,
+    permission_keys: defaultAppPermissionKeys,
+    ...overrides,
+  }) as App & Partial<AppSSO>
 
 describe('AppInfoDetailPanel', () => {
   const defaultProps = {
@@ -131,6 +153,7 @@ describe('AppInfoDetailPanel', () => {
     show: true,
     onClose: vi.fn(),
     openModal: vi.fn(),
+    isExporting: false,
     exportCheck: vi.fn(),
   }
 
@@ -166,12 +189,19 @@ describe('AppInfoDetailPanel', () => {
     })
 
     it('should not display description when empty', () => {
-      render(<AppInfoDetailPanel {...defaultProps} appDetail={createAppDetail({ description: '' })} />)
+      render(
+        <AppInfoDetailPanel {...defaultProps} appDetail={createAppDetail({ description: '' })} />,
+      )
       expect(screen.queryByText('A test description')).not.toBeInTheDocument()
     })
 
     it('should not display description when undefined', () => {
-      render(<AppInfoDetailPanel {...defaultProps} appDetail={createAppDetail({ description: undefined as unknown as string })} />)
+      render(
+        <AppInfoDetailPanel
+          {...defaultProps}
+          appDetail={createAppDetail({ description: undefined as unknown as string })}
+        />,
+      )
       expect(screen.queryByText('A test description')).not.toBeInTheDocument()
     })
 
@@ -229,6 +259,13 @@ describe('AppInfoDetailPanel', () => {
       await user.click(screen.getByTestId('op-export'))
 
       expect(defaultProps.exportCheck).toHaveBeenCalledTimes(1)
+    })
+
+    it('should show the export operation as loading while export is pending', () => {
+      render(<AppInfoDetailPanel {...defaultProps} isExporting />)
+
+      expect(screen.getByTestId('op-export')).toHaveAttribute('data-loading', 'true')
+      expect(screen.getByTestId('op-export')).not.toBeDisabled()
     })
 
     it('should render delete operation', () => {

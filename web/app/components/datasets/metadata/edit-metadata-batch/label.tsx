@@ -9,17 +9,14 @@ type Props = Readonly<{
   text: string
 }>
 
-const Label: FC<Props> = ({
-  isDeleted,
-  className,
-  text,
-}) => {
+const Label: FC<Props> = ({ isDeleted, className, text }) => {
   return (
-    <div className={cn(
-      'w-[136px] shrink-0 truncate system-xs-medium text-text-tertiary',
-      isDeleted && 'text-text-quaternary line-through',
-      className,
-    )}
+    <div
+      className={cn(
+        'w-[136px] shrink-0 truncate system-xs-medium text-text-tertiary',
+        isDeleted && 'text-text-quaternary line-through',
+        className,
+      )}
     >
       {text}
     </div>

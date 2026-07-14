@@ -32,11 +32,7 @@ export class LastRunBlockNode extends DecoratorNode<React.JSX.Element> {
   }
 
   override decorate(): React.JSX.Element {
-    return (
-      <LastRunBlockComponent
-        nodeKey={this.getKey()}
-      />
-    )
+    return <LastRunBlockComponent nodeKey={this.getKey()} />
   }
 
   static override importJSON(): LastRunBlockNode {

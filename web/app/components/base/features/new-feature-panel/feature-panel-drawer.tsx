@@ -32,8 +32,7 @@ export function FeaturePanelDrawer({
       open={show}
       swipeDirection="right"
       onOpenChange={(open) => {
-        if (!open)
-          close()
+        if (!open) close()
       }}
     >
       <DrawerPortal>

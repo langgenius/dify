@@ -13,26 +13,18 @@ type HeaderProps = {
   pluginName: string
 } & CredentialSelectorProps
 
-const Header = ({
-  docTitle,
-  docLink,
-  onClickConfiguration,
-  pluginName,
-  ...rest
-}: HeaderProps) => {
+const Header = ({ docTitle, docLink, onClickConfiguration, pluginName, ...rest }: HeaderProps) => {
   const { t } = useTranslation()
-  const configurationTip = t($ => $.configurationTip, { ns: 'datasetPipeline', pluginName })
+  const configurationTip = t(($) => $.configurationTip, { ns: 'datasetPipeline', pluginName })
 
   return (
     <div className="flex items-center justify-between gap-x-2">
       <div className="flex items-center gap-x-1 overflow-hidden">
-        <CredentialSelector
-          {...rest}
-        />
+        <CredentialSelector {...rest} />
         <Divider type="vertical" className="mx-1 h-3.5 shrink-0" />
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <Button
                 variant="ghost"
                 size="small"
@@ -42,11 +34,9 @@ const Header = ({
               >
                 <span aria-hidden className="i-ri-equalizer-2-line size-4" />
               </Button>
-            )}
+            }
           />
-          <TooltipContent>
-            {configurationTip}
-          </TooltipContent>
+          <TooltipContent>{configurationTip}</TooltipContent>
         </Tooltip>
       </div>
       <a

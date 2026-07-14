@@ -11,7 +11,7 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     tags: {
       get: {
-        queryOptions: vi.fn(input => ({ queryKey: ['tags', input] })),
+        queryOptions: vi.fn((input) => ({ queryKey: ['tags', input] })),
       },
     },
   },
@@ -50,15 +50,36 @@ describe('SnippetTagsFilter', () => {
 
     render(<SnippetTagsFilter value={[]} onChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'common.tag.placeholder' }))
-    await user.type(screen.getByPlaceholderText('pluginTags.searchTags'), 'sup')
+    const trigger = screen.getByRole('button', { name: 'common.tag.placeholder' })
+    trigger.focus()
+    await user.keyboard('{Enter}')
+    const search = screen.getByRole('textbox', { name: 'pluginTags.searchTags' })
+    await user.type(search, 'sup')
 
     expect(screen.getByText('Support')).toBeInTheDocument()
     expect(screen.queryByText('Sales')).not.toBeInTheDocument()
 
-    await user.clear(screen.getByPlaceholderText('pluginTags.searchTags'))
-    await user.type(screen.getByPlaceholderText('pluginTags.searchTags'), 'missing')
+    await user.clear(search)
+    await user.type(search, 'missing')
 
     expect(screen.getByText('common.tag.noTag')).toBeInTheDocument()
+  })
+
+  it('resets the transient tag search after the popover closes', async () => {
+    const user = userEvent.setup()
+
+    render(<SnippetTagsFilter value={[]} onChange={vi.fn()} />)
+
+    const trigger = screen.getByRole('button', { name: 'common.tag.placeholder' })
+    await user.click(trigger)
+    expect(screen.getByRole('dialog', { name: 'common.tag.placeholder' })).toBeInTheDocument()
+    await user.type(screen.getByRole('textbox', { name: 'pluginTags.searchTags' }), 'sup')
+    expect(screen.queryByText('Sales')).not.toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    await user.click(trigger)
+
+    expect(screen.getByText('Sales')).toBeInTheDocument()
+    expect(screen.getByText('Support')).toBeInTheDocument()
   })
 })

@@ -5,6 +5,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import (
     query_params_from_model,
@@ -12,6 +13,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.wraps import get_app_model
@@ -24,7 +26,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import uuid_value
 from libs.login import login_required
@@ -169,23 +170,23 @@ register_response_schema_models(
 )
 
 
-def _resolve_agent_id(app_model: App, node_id: str | None) -> str | None:
+def _resolve_agent_id(session: Session, app_model: App, node_id: str | None) -> str | None:
     if node_id and app_model.mode != AppMode.AGENT:
         return AgentComposerService.resolve_workflow_node_agent_id(
-            tenant_id=app_model.tenant_id, app_id=app_model.id, node_id=node_id, session=db.session()
+            session=session, tenant_id=app_model.tenant_id, app_id=app_model.id, node_id=node_id
         )
-    return app_model.bound_agent_id
+    return app_model.bound_agent_id_with_session(session=session)
 
 
 def _agent_not_bound() -> tuple[dict[str, str], int]:
     return {"code": "agent_not_bound", "message": "no agent is bound for this app/node"}, 400
 
 
-def _upload_skill_for_app(*, current_user: Account, app_model: App):
+def _upload_skill_for_app(*, session: Session, current_user: Account, app_model: App):
     """Upload one skill package and commit its normalized files into the agent drive."""
 
     query = query_params_from_request(AgentDriveMutationQuery)
-    agent_id = _resolve_agent_id(app_model, query.node_id)
+    agent_id = _resolve_agent_id(session, app_model, query.node_id)
     if not agent_id:
         return _agent_not_bound()
     if "file" not in request.files:
@@ -202,22 +203,22 @@ def _upload_skill_for_app(*, current_user: Account, app_model: App):
             tenant_id=app_model.tenant_id,
             user_id=current_user.id,
             agent_id=agent_id,
-            session=db.session(),
+            session=session,
         )
     except (SkillPackageError, AgentDriveError) as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
     return result, 201
 
 
-def _commit_drive_file_for_app(*, current_user: Account, app_model: App, allow_node_id: bool = True):
+def _commit_drive_file_for_app(*, session: Session, current_user: Account, app_model: App, allow_node_id: bool = True):
     query = query_params_from_request(AgentDriveMutationQuery)
     node_id = query.node_id if allow_node_id else None
-    agent_id = _resolve_agent_id(app_model, node_id)
+    agent_id = _resolve_agent_id(session, app_model, node_id)
     if not agent_id:
         return _agent_not_bound()
     payload = AgentDriveFilePayload.model_validate(console_ns.payload or {})
 
-    upload_file = db.session.scalar(
+    upload_file = session.scalar(
         select(UploadFile).where(
             UploadFile.id == payload.upload_file_id,
             UploadFile.tenant_id == app_model.tenant_id,
@@ -241,7 +242,7 @@ def _commit_drive_file_for_app(*, current_user: Account, app_model: App, allow_n
                     value_owned_by_drive=True,
                 )
             ],
-            session=db.session(),
+            session=session,
         )
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
@@ -258,10 +259,10 @@ def _commit_drive_file_for_app(*, current_user: Account, app_model: App, allow_n
     }, 201
 
 
-def _delete_drive_file_for_app(*, current_user: Account, app_model: App, allow_node_id: bool = True):
+def _delete_drive_file_for_app(*, session: Session, current_user: Account, app_model: App, allow_node_id: bool = True):
     query = query_params_from_request(AgentDriveDeleteFileQuery)
     node_id = query.node_id if allow_node_id else None
-    agent_id = _resolve_agent_id(app_model, node_id)
+    agent_id = _resolve_agent_id(session, app_model, node_id)
     if not agent_id:
         return _agent_not_bound()
     try:
@@ -275,7 +276,7 @@ def _delete_drive_file_for_app(*, current_user: Account, app_model: App, allow_n
             user_id=current_user.id,
             agent_id=agent_id,
             items=[DriveCommitItem(key=key, file_ref=None)],
-            session=db.session(),
+            session=session,
         )
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
@@ -283,10 +284,12 @@ def _delete_drive_file_for_app(*, current_user: Account, app_model: App, allow_n
     return {"result": "success", "removed_keys": removed_keys}
 
 
-def _delete_skill_for_app(*, current_user: Account, app_model: App, slug: str, allow_node_id: bool = True):
+def _delete_skill_for_app(
+    *, session: Session, current_user: Account, app_model: App, slug: str, allow_node_id: bool = True
+):
     query = query_params_from_request(AgentDriveMutationQuery)
     node_id = query.node_id if allow_node_id else None
-    agent_id = _resolve_agent_id(app_model, node_id)
+    agent_id = _resolve_agent_id(session, app_model, node_id)
     if not agent_id:
         return _agent_not_bound()
     if "/" in slug or not slug.strip():
@@ -301,7 +304,7 @@ def _delete_skill_for_app(*, current_user: Account, app_model: App, slug: str, a
                 DriveCommitItem(key=f"{slug}/SKILL.md", file_ref=None),
                 DriveCommitItem(key=f"{slug}/.DIFY-SKILL-FULL.zip", file_ref=None),
             ],
-            session=db.session(),
+            session=session,
         )
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
@@ -309,16 +312,16 @@ def _delete_skill_for_app(*, current_user: Account, app_model: App, slug: str, a
     return {"result": "success", "removed_keys": removed_keys}
 
 
-def _infer_skill_tools_for_app(*, app_model: App, slug: str):
+def _infer_skill_tools_for_app(*, session: Session, app_model: App, slug: str):
     query = query_params_from_request(AgentDriveMutationQuery)
-    agent_id = _resolve_agent_id(app_model, query.node_id)
+    agent_id = _resolve_agent_id(session, app_model, query.node_id)
     if not agent_id:
         return _agent_not_bound()
     if "/" in slug or not slug.strip():
         return {"code": "drive_key_invalid", "message": "skill slug must be a single path segment"}, 400
     try:
         return SkillToolInferenceService().infer(
-            tenant_id=app_model.tenant_id, agent_id=agent_id, slug=slug, session=db.session()
+            tenant_id=app_model.tenant_id, agent_id=agent_id, slug=slug, session=session
         )
     except SkillToolInferenceError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
@@ -336,12 +339,13 @@ class AgentLogApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.AGENT_CHAT])
-    def get(self, app_model: App):
+    def get(self, session: Session, app_model: App):
         """Get agent logs"""
         args = AgentLogQuery.model_validate(request.args.to_dict(flat=True))
 
-        return AgentService.get_agent_logs(app_model, args.conversation_id, args.message_id, db.session())
+        return AgentService.get_agent_logs(app_model, args.conversation_id, args.message_id, session)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/skills/upload")
@@ -356,9 +360,10 @@ class AgentSkillUploadByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return _upload_skill_for_app(current_user=current_user, app_model=app_model)
+    @with_session
+    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        return _upload_skill_for_app(session=session, current_user=current_user, app_model=app_model)
 
 
 @console_ns.route("/apps/<uuid:app_id>/agent/skills/upload")
@@ -378,11 +383,12 @@ class AgentSkillUploadApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_AGENT_DRIVE_APP_MODES)
     @with_current_user
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    @get_app_model(mode=_WORKFLOW_AGENT_DRIVE_APP_MODES)
+    def post(self, session: Session, current_user: Account, app_model: App):
         """Upload a Skill, validate it, and commit drive-backed skill files."""
-        return _upload_skill_for_app(current_user=current_user, app_model=app_model)
+        return _upload_skill_for_app(session=session, current_user=current_user, app_model=app_model)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/files")
@@ -399,9 +405,12 @@ class AgentDriveFilesByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return _commit_drive_file_for_app(current_user=current_user, app_model=app_model, allow_node_id=False)
+    @with_session
+    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        return _commit_drive_file_for_app(
+            session=session, current_user=current_user, app_model=app_model, allow_node_id=False
+        )
 
     @console_ns.doc("delete_agent_drive_file_by_agent")
     @console_ns.doc(description="Delete one Agent App drive file by key")
@@ -412,9 +421,12 @@ class AgentDriveFilesByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def delete(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return _delete_drive_file_for_app(current_user=current_user, app_model=app_model, allow_node_id=False)
+    @with_session
+    def delete(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        return _delete_drive_file_for_app(
+            session=session, current_user=current_user, app_model=app_model, allow_node_id=False
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/agent/files")
@@ -429,11 +441,12 @@ class AgentDriveFilesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_AGENT_DRIVE_APP_MODES)
     @with_current_user
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    @get_app_model(mode=_WORKFLOW_AGENT_DRIVE_APP_MODES)
+    def post(self, session: Session, current_user: Account, app_model: App):
         """ADD FILE: commit one uploaded file into the bound agent's drive."""
-        return _commit_drive_file_for_app(current_user=current_user, app_model=app_model)
+        return _commit_drive_file_for_app(session=session, current_user=current_user, app_model=app_model)
 
     @console_ns.doc("delete_agent_drive_file")
     @console_ns.doc(description="Delete one drive file by key via drive commit-null semantics")
@@ -442,10 +455,11 @@ class AgentDriveFilesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_AGENT_DRIVE_APP_MODES)
     @with_current_user
-    def delete(self, current_user: Account, app_model: App):
-        return _delete_drive_file_for_app(current_user=current_user, app_model=app_model)
+    @with_session
+    @get_app_model(mode=_WORKFLOW_AGENT_DRIVE_APP_MODES)
+    def delete(self, session: Session, current_user: Account, app_model: App):
+        return _delete_drive_file_for_app(session=session, current_user=current_user, app_model=app_model)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/skills/<string:slug>")
@@ -459,9 +473,12 @@ class AgentSkillByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def delete(self, tenant_id: str, current_user: Account, agent_id: UUID, slug: str):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return _delete_skill_for_app(current_user=current_user, app_model=app_model, slug=slug, allow_node_id=False)
+    @with_session
+    def delete(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, slug: str):
+        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        return _delete_skill_for_app(
+            session=session, current_user=current_user, app_model=app_model, slug=slug, allow_node_id=False
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/agent/skills/<string:slug>")
@@ -479,10 +496,11 @@ class AgentSkillApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_AGENT_DRIVE_APP_MODES)
     @with_current_user
-    def delete(self, current_user: Account, app_model: App, slug: str):
-        return _delete_skill_for_app(current_user=current_user, app_model=app_model, slug=slug)
+    @with_session
+    @get_app_model(mode=_WORKFLOW_AGENT_DRIVE_APP_MODES)
+    def delete(self, session: Session, current_user: Account, app_model: App, slug: str):
+        return _delete_skill_for_app(session=session, current_user=current_user, app_model=app_model, slug=slug)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/skills/<string:slug>/infer-tools")
@@ -499,9 +517,10 @@ class AgentSkillInferToolsByAgentApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, tenant_id: str, agent_id: UUID, slug: str):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return _infer_skill_tools_for_app(app_model=app_model, slug=slug)
+    @with_session(write=False)
+    def post(self, session: Session, tenant_id: str, agent_id: UUID, slug: str):
+        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        return _infer_skill_tools_for_app(session=session, app_model=app_model, slug=slug)
 
 
 @console_ns.route("/apps/<uuid:app_id>/agent/skills/<string:slug>/infer-tools")
@@ -525,7 +544,8 @@ class AgentSkillInferToolsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @get_app_model(mode=_WORKFLOW_AGENT_DRIVE_APP_MODES)
-    def post(self, app_model: App, slug: str):
+    def post(self, session: Session, app_model: App, slug: str):
         """Suggest CLI tools/env for a skill. Saving still goes through composer validation."""
-        return _infer_skill_tools_for_app(app_model=app_model, slug=slug)
+        return _infer_skill_tools_for_app(session=session, app_model=app_model, slug=slug)

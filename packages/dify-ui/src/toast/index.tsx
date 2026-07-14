@@ -16,41 +16,60 @@ type ToastToneStyle = {
 }
 
 const TOAST_TONE_STYLES = {
+  loading: {
+    iconClassName: 'i-ri-loader-2-line animate-spin text-text-accent motion-reduce:animate-none',
+    gradientClassName:
+      'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent',
+  },
   success: {
     iconClassName: 'i-ri-checkbox-circle-fill text-text-success',
-    gradientClassName: 'from-components-badge-status-light-success-halo to-background-gradient-mask-transparent',
+    gradientClassName:
+      'from-components-badge-status-light-success-halo to-background-gradient-mask-transparent',
   },
   error: {
     iconClassName: 'i-ri-error-warning-fill text-text-destructive',
-    gradientClassName: 'from-components-badge-status-light-error-halo to-background-gradient-mask-transparent',
+    gradientClassName:
+      'from-components-badge-status-light-error-halo to-background-gradient-mask-transparent',
   },
   warning: {
     iconClassName: 'i-ri-alert-fill text-text-warning-secondary',
-    gradientClassName: 'from-components-badge-status-light-warning-halo to-background-gradient-mask-transparent',
+    gradientClassName:
+      'from-components-badge-status-light-warning-halo to-background-gradient-mask-transparent',
   },
   info: {
     iconClassName: 'i-ri-information-2-fill text-text-accent',
-    gradientClassName: 'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent',
+    gradientClassName:
+      'from-components-badge-status-light-normal-halo to-background-gradient-mask-transparent',
   },
 } satisfies Record<string, ToastToneStyle>
 
 const toastCloseLabel = 'Close notification'
 const toastViewportLabel = 'Notifications'
 
-type ToastType = keyof typeof TOAST_TONE_STYLES
+type ToastRenderType = keyof typeof TOAST_TONE_STYLES
+type ToastType = Exclude<ToastRenderType, 'loading'>
 
-type ToastAddOptions = Omit<ToastManagerAddOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
+type ToastAddOptions = Omit<
+  ToastManagerAddOptions<ToastData>,
+  'data' | 'positionerProps' | 'type'
+> & {
   type?: ToastType
 }
 
-type ToastUpdateOptions = Omit<ToastManagerUpdateOptions<ToastData>, 'data' | 'positionerProps' | 'type'> & {
+type ToastUpdateOptions = Omit<
+  ToastManagerUpdateOptions<ToastData>,
+  'data' | 'positionerProps' | 'type'
+> & {
   type?: ToastType
 }
 
 type ToastOptions = Omit<ToastAddOptions, 'title'>
 type TypedToastOptions = Omit<ToastOptions, 'type'>
 
-type ToastPromiseResultOption<Value> = string | ToastUpdateOptions | ((value: Value) => string | ToastUpdateOptions)
+type ToastPromiseResultOption<Value> =
+  | string
+  | ToastUpdateOptions
+  | ((value: Value) => string | ToastUpdateOptions)
 
 type ToastPromiseOptions<Value> = {
   loading: string | ToastUpdateOptions
@@ -75,38 +94,43 @@ type ToastApi = {
   info: TypedToastCall
   dismiss: ToastDismiss
   update: (toastId: string, options: ToastUpdateOptions) => void
-  promise: <Value>(promiseValue: Promise<Value>, options: ToastPromiseOptions<Value>) => Promise<Value>
+  promise: <Value>(
+    promiseValue: Promise<Value>,
+    options: ToastPromiseOptions<Value>,
+  ) => Promise<Value>
 }
 
 const toastManager = BaseToast.createToastManager<ToastData>()
 
-function isToastType(type: string): type is ToastType {
+function isToastRenderType(type: string): type is ToastRenderType {
   return Object.prototype.hasOwnProperty.call(TOAST_TONE_STYLES, type)
 }
 
-function getToastType(type?: string): ToastType | undefined {
-  return type && isToastType(type) ? type : undefined
+function getToastRenderType(type?: string): ToastRenderType | undefined {
+  return type && isToastRenderType(type) ? type : undefined
 }
 
 function addToast(options: ToastAddOptions) {
   return toastManager.add(options)
 }
 
-const showToast: ToastCall = (title, options) => addToast({
-  ...options,
-  title,
-})
+const showToast: ToastCall = (title, options) =>
+  addToast({
+    ...options,
+    title,
+  })
 
 const dismissToast: ToastDismiss = (toastId) => {
   toastManager.close(toastId)
 }
 
 function createTypedToast(type: ToastType): TypedToastCall {
-  return (title, options) => addToast({
-    ...options,
-    title,
-    type,
-  })
+  return (title, options) =>
+    addToast({
+      ...options,
+      title,
+      type,
+    })
 }
 
 function updateToast(toastId: string, options: ToastUpdateOptions) {
@@ -117,37 +141,29 @@ function promiseToast<Value>(promiseValue: Promise<Value>, options: ToastPromise
   return toastManager.promise(promiseValue, options)
 }
 
-export const toast: ToastApi = Object.assign(
-  showToast,
-  {
-    success: createTypedToast('success'),
-    error: createTypedToast('error'),
-    warning: createTypedToast('warning'),
-    info: createTypedToast('info'),
-    dismiss: dismissToast,
-    update: updateToast,
-    promise: promiseToast,
-  },
-)
+export const toast: ToastApi = Object.assign(showToast, {
+  success: createTypedToast('success'),
+  error: createTypedToast('error'),
+  warning: createTypedToast('warning'),
+  info: createTypedToast('info'),
+  dismiss: dismissToast,
+  update: updateToast,
+  promise: promiseToast,
+})
 
-function ToastIcon({ type }: { type?: ToastType }) {
-  return type
-    ? <span aria-hidden="true" className={cn('h-5 w-5', TOAST_TONE_STYLES[type].iconClassName)} />
-    : null
+function ToastIcon({ type }: { type?: ToastRenderType }) {
+  return type ? (
+    <span aria-hidden="true" className={cn('h-5 w-5', TOAST_TONE_STYLES[type].iconClassName)} />
+  ) : null
 }
 
-function getToneGradientClasses(type?: ToastType) {
-  if (type)
-    return TOAST_TONE_STYLES[type].gradientClassName
+function getToneGradientClasses(type?: ToastRenderType) {
+  if (type) return TOAST_TONE_STYLES[type].gradientClassName
   return 'from-background-default-subtle to-background-gradient-mask-transparent'
 }
 
-function ToastCard({
-  toast: toastItem,
-}: {
-  toast: ToastObject<ToastData>
-}) {
-  const toastType = getToastType(toastItem.type)
+function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
+  const toastType = getToastRenderType(toastItem.type)
 
   return (
     <BaseToast.Root
@@ -159,17 +175,20 @@ function ToastCard({
         '[transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
         'transform-[translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-peek))+(var(--toast-shrink)*var(--toast-current-height))))_scale(var(--toast-scale))]',
         'data-expanded:h-(--toast-height) data-expanded:transform-[translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*8px)))_scale(1)]',
-        'data-ending-style:pointer-events-none data-ending-style:after:pointer-events-none data-ending-style:transform-[translateY(-150%)] data-ending-style:opacity-0',
+        'data-ending-style:pointer-events-none data-ending-style:transform-[translateY(-150%)] data-ending-style:opacity-0 data-ending-style:after:pointer-events-none',
         'data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(var(--toast-swipe-movement-y)+150%))]',
         'data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(var(--toast-swipe-movement-x)+150%))]',
         'data-limited:pointer-events-none data-limited:opacity-0 data-starting-style:transform-[translateY(-150%)] data-starting-style:opacity-0',
-        'after:pointer-events-auto after:absolute after:top-full after:left-0 after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-[\'\']',
+        "after:pointer-events-auto after:absolute after:top-full after:left-0 after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-['']",
       )}
     >
       <div className="relative h-full overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
         <div
           aria-hidden="true"
-          className={cn('absolute -inset-px bg-linear-to-r opacity-40', getToneGradientClasses(toastType))}
+          className={cn(
+            'absolute -inset-px bg-linear-to-r opacity-40',
+            getToneGradientClasses(toastType),
+          )}
         />
         <BaseToast.Content className="relative flex h-full items-start gap-1 overflow-hidden p-3 transition-opacity duration-200 data-behind:opacity-0 data-expanded:opacity-100 motion-reduce:transition-none">
           <div className="flex shrink-0 items-center justify-center p-0.5">
@@ -225,20 +244,14 @@ function ToastViewport() {
         'group/toast-viewport pointer-events-none fixed top-4 right-4 z-60 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8',
       )}
     >
-      {toasts.map(toastItem => (
-        <ToastCard
-          key={toastItem.id}
-          toast={toastItem}
-        />
+      {toasts.map((toastItem) => (
+        <ToastCard key={toastItem.id} toast={toastItem} />
       ))}
     </BaseToast.Viewport>
   )
 }
 
-export function ToastHost({
-  timeout,
-  limit,
-}: ToastHostProps) {
+export function ToastHost({ timeout, limit }: ToastHostProps) {
   return (
     <BaseToast.Provider toastManager={toastManager} timeout={timeout} limit={limit}>
       <BaseToast.Portal>

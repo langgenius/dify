@@ -1,4 +1,5 @@
 {
+  "agent.manage": "Upravljanje Agents",
   "api_extension.manage": "Upravljanje konfiguracije razširitve API",
   "app.access_config": "Konfiguracija dovoljenj za dostop do aplikacije",
   "app.acl.access_config": "Konfiguracija dovoljenj za dostop do aplikacije",

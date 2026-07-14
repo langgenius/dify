@@ -38,7 +38,7 @@
  */
 
 import type { AuthFixture } from '../../helpers/cli.js'
-import { afterEach, beforeEach, describe, expect, it, inject } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import { assertExitCode, assertNoAnsi } from '../../helpers/assert.js'
 import { withAuthFixture } from '../../helpers/cli.js'
 import { resolveEnv } from '../../setup/env.js'
@@ -51,8 +51,12 @@ const E = resolveEnv(caps)
 describe('E2E / table output — header and column format (spec 5.1–5.19)', () => {
   let fx: AuthFixture
 
-  beforeEach(async () => { fx = await withAuthFixture(E) })
-  afterEach(async () => { await fx.cleanup() })
+  beforeEach(async () => {
+    fx = await withAuthFixture(E)
+  })
+  afterEach(async () => {
+    await fx.cleanup()
+  })
 
   it('[P0] 5.1 default output (no -o) is an aligned text table, not JSON or YAML', async () => {
     // Spec 5.1: the default format is a text table; -o table does not exist.
@@ -100,7 +104,10 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     // Spec 5.5: when there are multiple apps, all rows are rendered.
     const result = await fx.r(['get', 'app'])
     assertExitCode(result, 0)
-    const lines = result.stdout.trim().split('\n').filter(l => l.trim())
+    const lines = result.stdout
+      .trim()
+      .split('\n')
+      .filter((l) => l.trim())
     // At least header + 1 data row
     expect(lines.length).toBeGreaterThan(1)
   })
@@ -110,7 +117,10 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     // row with no data rows underneath (not an error, exit 0).
     const result = await fx.r(['get', 'app', '--name', 'zzz-nonexistent-app-xyz-000'])
     assertExitCode(result, 0)
-    const lines = result.stdout.trim().split('\n').filter(l => l.trim())
+    const lines = result.stdout
+      .trim()
+      .split('\n')
+      .filter((l) => l.trim())
     // Only the header row should remain
     expect(lines).toHaveLength(1)
     expect(lines[0] ?? '').toMatch(/NAME/i)
@@ -124,7 +134,7 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     // Extract word-like tokens from the header
     const tokens = header.match(/[A-Z]{2,}/g) ?? []
     expect(tokens.length).toBeGreaterThan(0)
-    tokens.forEach(token =>
+    tokens.forEach((token) =>
       expect(token, `header token "${token}" should be uppercase`).toBe(token.toUpperCase()),
     )
   })
@@ -137,7 +147,7 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     assertExitCode(result, 0)
     // No NUL, BEL, BS, VT, FF, SO–US, DEL bytes that would corrupt a pipe
     // eslint-disable-next-line no-control-regex
-    expect(result.stdout).not.toMatch(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/)
+    expect(result.stdout).not.toMatch(/[\x00-\x08\v\f\x0E-\x1F\x7F]/)
   })
 
   it('[P0] 5.16 default table output written to a file contains no control characters', async () => {
@@ -146,7 +156,7 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     assertExitCode(result, 0)
     assertNoAnsi(result.stdout, 'stdout')
     // eslint-disable-next-line no-control-regex
-    expect(result.stdout).not.toMatch(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/)
+    expect(result.stdout).not.toMatch(/[\x00-\x08\v\f\x0E-\x1F\x7F]/)
   })
 
   // ── 5.25 — Performance ────────────────────────────────────────────────────

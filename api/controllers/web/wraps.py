@@ -11,6 +11,7 @@ from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
+from core.logging.context import set_identity_context
 from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
@@ -28,6 +29,11 @@ def validate_jwt_token[**P, R](
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             app_model, end_user = decode_jwt_token()
+            set_identity_context(
+                tenant_id=end_user.tenant_id,
+                user_id=end_user.id,
+                user_type=end_user.type or "end_user",
+            )
             return view(app_model, end_user, *args, **kwargs)
 
         return decorated

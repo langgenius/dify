@@ -14,6 +14,12 @@ class EnterpriseFeatureConfig(BaseSettings):
         default=False,
     )
 
+    WEBAPP_PUBLIC_ACCESS_ENABLED: bool = Field(
+        description="Whether admins are allowed to set a webapp's access mode to public (anyone with the link, "
+        "no auth). Disable in security-sensitive on-prem deployments.",
+        default=True,
+    )
+
     CAN_REPLACE_LOGO: bool = Field(
         description="Allow customization of the enterprise logo.",
         default=False,

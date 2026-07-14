@@ -19,9 +19,7 @@ vi.mock('@/service/use-plugins', () => ({
       },
       {
         id: 'task-2',
-        plugins: [
-          { id: 'plugin-3', status: TaskStatus.failed, taskId: 'task-2' },
-        ],
+        plugins: [{ id: 'plugin-3', status: TaskStatus.failed, taskId: 'task-2' }],
       },
     ],
     handleRefetch: mockRefetch,

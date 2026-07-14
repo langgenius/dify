@@ -162,7 +162,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=page, per_page=per_page, tenant_id=tenant_id
+            page=page, per_page=per_page, tenant_id=tenant_id, session=MagicMock()
         )
 
         # Assert
@@ -190,7 +190,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=10, tenant_id=tenant_id, search=search
+            page=1, per_page=10, tenant_id=tenant_id, search=search, session=MagicMock()
         )
 
         # Assert
@@ -211,7 +211,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=10, tenant_id="tenant-123"
+            page=1, per_page=10, tenant_id="tenant-123", session=MagicMock()
         )
 
         # Assert
@@ -233,7 +233,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=10, tenant_id="tenant-123"
+            page=1, per_page=10, tenant_id="tenant-123", session=MagicMock()
         )
 
         # Assert
@@ -255,7 +255,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=10, per_page=10, tenant_id="tenant-123"
+            page=10, per_page=10, tenant_id="tenant-123", session=MagicMock()
         )
 
         # Assert
@@ -280,7 +280,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=10, tenant_id="tenant-123", search="PRODUCTION"
+            page=1, per_page=10, tenant_id="tenant-123", search="PRODUCTION", session=MagicMock()
         )
 
         # Assert
@@ -302,7 +302,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=10, tenant_id="tenant-123", search="v2.0"
+            page=1, per_page=10, tenant_id="tenant-123", search="v2.0", session=MagicMock()
         )
 
         # Assert
@@ -323,7 +323,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=100, tenant_id="tenant-123"
+            page=1, per_page=100, tenant_id="tenant-123", session=MagicMock()
         )
 
         # Assert
@@ -348,7 +348,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=10, tenant_id="tenant-123"
+            page=1, per_page=10, tenant_id="tenant-123", session=MagicMock()
         )
 
         # Assert
@@ -463,7 +463,8 @@ class TestExternalDatasetServiceCreateAPI:
         assert result.updated_by == user_id
         mock_check.assert_called_once_with(args["settings"])
         mock_db.session.add.assert_called_once()
-        mock_db.session.commit.assert_called_once()
+        mock_db.session.flush.assert_called_once()
+        mock_db.session.commit.assert_not_called()
 
     @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.ExternalDatasetService.check_endpoint_and_api_key")
@@ -611,6 +612,31 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert - should not raise
         ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+    @patch("services.external_knowledge_service.ssrf_proxy")
+    def test_check_endpoint_sends_json_body(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
+        """Regression for #39402: the validation probe must POST a JSON body matching the
+        External Knowledge API retrieval contract, not a body-less request that providers
+        such as RAGFlow reject (empty POST -> 502 ERR_ZERO_SIZE_OBJECT)."""
+        # Arrange
+        settings = {"endpoint": "https://api.example.com", "api_key": "test-key"}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_proxy.post.return_value = mock_response
+
+        # Act
+        ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+        # Assert - a non-empty JSON body is sent with the JSON content type
+        mock_proxy.post.assert_called_once()
+        _, call_kwargs = mock_proxy.post.call_args
+        assert call_kwargs["headers"]["Content-Type"] == "application/json"
+        assert call_kwargs["headers"]["Authorization"] == "Bearer test-key"
+        sent_body = json.loads(call_kwargs["data"])
+        assert "knowledge_id" in sent_body
+        assert "query" in sent_body
+        assert sent_body["retrieval_setting"] == {"top_k": 1, "score_threshold": 0.0}
 
     def test_check_endpoint_missing_endpoint_key(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails when endpoint key is missing."""
@@ -901,7 +927,8 @@ class TestExternalDatasetServiceUpdateAPI:
         assert result.description == "Updated description"
         assert result.updated_by == user_id
         assert result.updated_at == current_time
-        mock_db.session.commit.assert_called_once()
+        mock_db.session.flush.assert_called_once()
+        mock_db.session.commit.assert_not_called()
 
     @patch("services.external_knowledge_service.db")
     def test_update_external_knowledge_api_preserve_hidden_api_key(
@@ -1005,7 +1032,8 @@ class TestExternalDatasetServiceDeleteAPI:
 
         # Assert
         mock_db.session.delete.assert_called_once_with(existing_api)
-        mock_db.session.commit.assert_called_once()
+        mock_db.session.flush.assert_called_once()
+        mock_db.session.commit.assert_not_called()
 
     @patch("services.external_knowledge_service.db")
     def test_delete_external_knowledge_api_not_found(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
@@ -1546,6 +1574,7 @@ class TestExternalDatasetServiceCreateDataset:
         assert result.provider == "external"
         assert result.created_by == user_id
         mock_db.session.add.assert_called()
+        mock_db.session.flush.assert_called_once()
         mock_db.session.commit.assert_called_once()
 
     @patch("services.external_knowledge_service.db")

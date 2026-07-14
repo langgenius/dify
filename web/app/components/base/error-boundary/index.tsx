@@ -73,13 +73,12 @@ class ErrorBoundaryInner extends React.Component<
       console.error('Error Info:', errorInfo)
     }
 
-    this.setState(prevState => ({
+    this.setState((prevState) => ({
       errorInfo,
       errorCount: prevState.errorCount + 1,
     }))
 
-    if (this.props.onError)
-      this.props.onError(error, errorInfo)
+    if (this.props.onError) this.props.onError(error, errorInfo)
   }
 
   override componentDidUpdate(prevProps: any) {
@@ -94,8 +93,7 @@ class ErrorBoundaryInner extends React.Component<
     if (hasError && resetOnPropsChange && prevProps.children !== this.props.children)
       this.props.resetErrorBoundary()
 
-    if (prevProps.resetKeys !== resetKeys)
-      this.props.onResetKeysChange(prevProps.resetKeys)
+    if (prevProps.resetKeys !== resetKeys) this.props.onResetKeysChange(prevProps.resetKeys)
   }
 
   override render() {
@@ -115,8 +113,7 @@ class ErrorBoundaryInner extends React.Component<
 
     if (hasError && error) {
       if (fallback) {
-        if (typeof fallback === 'function')
-          return fallback(error, resetErrorBoundary)
+        if (typeof fallback === 'function') return fallback(error, resetErrorBoundary)
 
         return fallback
       }
@@ -131,14 +128,10 @@ class ErrorBoundaryInner extends React.Component<
         >
           <div className="mb-4 flex items-center gap-2">
             <RiAlertLine className="text-state-critical-solid size-8" />
-            <h2 className="text-xl font-semibold text-text-primary">
-              {customTitle || copy.title}
-            </h2>
+            <h2 className="text-xl font-semibold text-text-primary">{customTitle || copy.title}</h2>
           </div>
 
-          <p className="mb-6 text-center text-text-secondary">
-            {customMessage || copy.message}
-          </p>
+          <p className="mb-6 text-center text-text-secondary">{customMessage || copy.message}</p>
 
           {showDetails && errorInfo && (
             <details className="mb-6 w-full max-w-2xl">
@@ -150,14 +143,18 @@ class ErrorBoundaryInner extends React.Component<
               </summary>
               <div className="rounded-lg bg-gray-100 p-4">
                 <div className="mb-2">
-                  <span className="font-mono text-xs font-semibold text-gray-600">{copy.error}</span>
+                  <span className="font-mono text-xs font-semibold text-gray-600">
+                    {copy.error}
+                  </span>
                   <pre className="mt-1 overflow-auto font-mono text-xs whitespace-pre-wrap text-gray-800">
                     {error.toString()}
                   </pre>
                 </div>
                 {errorInfo && (
                   <div>
-                    <span className="font-mono text-xs font-semibold text-gray-600">{copy.componentStack}</span>
+                    <span className="font-mono text-xs font-semibold text-gray-600">
+                      {copy.componentStack}
+                    </span>
                     <pre className="mt-1 max-h-40 overflow-auto font-mono text-xs whitespace-pre-wrap text-gray-700">
                       {errorInfo.componentStack}
                     </pre>
@@ -174,18 +171,10 @@ class ErrorBoundaryInner extends React.Component<
 
           {enableRecovery && (
             <div className="flex gap-3">
-              <Button
-                variant="primary"
-                size="small"
-                onClick={resetErrorBoundary}
-              >
+              <Button variant="primary" size="small" onClick={resetErrorBoundary}>
                 {copy.tryAgain}
               </Button>
-              <Button
-                variant="secondary"
-                size="small"
-                onClick={() => window.location.reload()}
-              >
+              <Button variant="secondary" size="small" onClick={() => window.location.reload()}>
                 {copy.reload}
               </Button>
             </div>
@@ -205,18 +194,19 @@ const ErrorBoundary: React.FC<ErrorBoundaryProps> = (props) => {
   const resetKeysRef = useRef(props.resetKeys)
   const prevResetKeysRef = useRef<Array<string | number> | undefined>(undefined)
   const copy = {
-    componentStack: t($ => $['errorBoundary.componentStack'], { ns: 'common' }),
-    details: t($ => $['errorBoundary.details'], { ns: 'common' }),
-    error: `${t($ => $.error, { ns: 'common' })}:`,
-    formatErrorCount: (count: number) => t($ => $['errorBoundary.errorCount'], { ns: 'common', count }),
-    message: t($ => $['errorBoundary.message'], { ns: 'common' }),
-    reload: t($ => $['errorBoundary.reloadPage'], { ns: 'common' }),
-    title: t($ => $['errorBoundary.title'], { ns: 'common' }),
-    tryAgain: t($ => $['errorBoundary.tryAgain'], { ns: 'common' }),
+    componentStack: t(($) => $['errorBoundary.componentStack'], { ns: 'common' }),
+    details: t(($) => $['errorBoundary.details'], { ns: 'common' }),
+    error: `${t(($) => $.error, { ns: 'common' })}:`,
+    formatErrorCount: (count: number) =>
+      t(($) => $['errorBoundary.errorCount'], { ns: 'common', count }),
+    message: t(($) => $['errorBoundary.message'], { ns: 'common' }),
+    reload: t(($) => $['errorBoundary.reloadPage'], { ns: 'common' }),
+    title: t(($) => $['errorBoundary.title'], { ns: 'common' }),
+    tryAgain: t(($) => $['errorBoundary.tryAgain'], { ns: 'common' }),
   }
 
   const resetErrorBoundary = useCallback(() => {
-    setErrorBoundaryKey(prev => prev + 1)
+    setErrorBoundaryKey((prev) => prev + 1)
     props.onReset?.()
   }, [props])
 
@@ -225,8 +215,7 @@ const ErrorBoundary: React.FC<ErrorBoundaryProps> = (props) => {
   }, [])
 
   useEffect(() => {
-    if (prevResetKeysRef.current !== props.resetKeys)
-      resetKeysRef.current = props.resetKeys
+    if (prevResetKeysRef.current !== props.resetKeys) resetKeysRef.current = props.resetKeys
   }, [props.resetKeys])
 
   return (
@@ -238,7 +227,7 @@ const ErrorBoundary: React.FC<ErrorBoundaryProps> = (props) => {
       onResetKeysChange={onResetKeysChange}
     />
   )
-}// HOC for wrapping components with error boundary
+} // HOC for wrapping components with error boundary
 export function withErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
   errorBoundaryProps?: Omit<ErrorBoundaryProps, 'children'>,

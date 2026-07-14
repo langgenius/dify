@@ -1,5 +1,6 @@
 import uuid
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
@@ -39,6 +40,7 @@ class TestAgentChatAppConfigManagerGetAppConfig:
             app_model_config=app_model_config,
             conversation=None,
             override_config_dict=override_config,
+            annotation_reply=None,
         )
 
         assert result.app_model_config_dict == override_config
@@ -50,6 +52,7 @@ class TestAgentChatAppConfigManagerGetAppConfig:
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent-chat")
         app_model_config = mocker.MagicMock(id="cfg1")
         app_model_config.to_dict.return_value = {"model": {"provider": "p"}}
+        annotation_reply = {"enabled": False}
         conversation = mocker.MagicMock()
 
         mocker.patch("core.app.apps.agent_chat.app_config_manager.ModelConfigManager.convert")
@@ -72,15 +75,18 @@ class TestAgentChatAppConfigManagerGetAppConfig:
             app_model_config=app_model_config,
             conversation=conversation,
             override_config_dict=None,
+            annotation_reply=annotation_reply,
         )
 
         assert result.app_model_config_dict == app_model_config.to_dict.return_value
         assert result.app_model_config_from.value == "conversation-specific-config"
+        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
     def test_get_app_config_latest_config(self, mocker: MockerFixture):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent-chat")
         app_model_config = mocker.MagicMock(id="cfg1")
         app_model_config.to_dict.return_value = {"model": {"provider": "p"}}
+        annotation_reply = {"enabled": False}
 
         mocker.patch("core.app.apps.agent_chat.app_config_manager.ModelConfigManager.convert")
         mocker.patch("core.app.apps.agent_chat.app_config_manager.PromptTemplateConfigManager.convert")
@@ -102,9 +108,11 @@ class TestAgentChatAppConfigManagerGetAppConfig:
             app_model_config=app_model_config,
             conversation=None,
             override_config_dict=None,
+            annotation_reply=annotation_reply,
         )
 
         assert result.app_model_config_from.value == "app-latest-config"
+        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
 
 class TestAgentChatAppConfigManagerConfigValidate:
@@ -147,7 +155,7 @@ class TestAgentChatAppConfigManagerConfigValidate:
         mocker.patch.object(
             AgentChatAppConfigManager,
             "validate_agent_mode_and_set_defaults",
-            side_effect=lambda tenant_id, cfg: return_with_key("agent_mode"),
+            side_effect=lambda tenant_id, cfg, session: return_with_key("agent_mode"),
         )
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.OpeningStatementConfigManager.validate_and_set_defaults",
@@ -171,14 +179,14 @@ class TestAgentChatAppConfigManagerConfigValidate:
         )
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.DatasetConfigManager.validate_and_set_defaults",
-            side_effect=lambda tenant_id, app_mode, cfg: return_with_key("dataset"),
+            side_effect=lambda tenant_id, app_mode, cfg, session: return_with_key("dataset"),
         )
         mocker.patch(
             "core.app.apps.agent_chat.app_config_manager.SensitiveWordAvoidanceConfigManager.validate_and_set_defaults",
             side_effect=lambda tenant_id, cfg: return_with_key("moderation"),
         )
 
-        filtered = AgentChatAppConfigManager.config_validate("tenant", config)
+        filtered = AgentChatAppConfigManager.config_validate("tenant", config, mocker.MagicMock())
         assert set(filtered.keys()) == {
             "model",
             "user_input_form",
@@ -199,7 +207,7 @@ class TestAgentChatAppConfigManagerConfigValidate:
 class TestValidateAgentModeAndSetDefaults:
     def test_defaults_when_missing(self):
         config = {}
-        updated, keys = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config)
+        updated, keys = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config, MagicMock())
         assert "agent_mode" in updated
         assert updated["agent_mode"]["enabled"] is False
         assert updated["agent_mode"]["tools"] == []
@@ -211,34 +219,38 @@ class TestValidateAgentModeAndSetDefaults:
     )
     def test_agent_mode_type_validation(self, agent_mode):
         with pytest.raises(ValueError):
-            AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", {"agent_mode": agent_mode})
+            AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
+                "tenant", {"agent_mode": agent_mode}, MagicMock()
+            )
 
     def test_agent_mode_empty_list_defaults(self):
         config = {"agent_mode": []}
-        updated, _ = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config)
+        updated, _ = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config, MagicMock())
         assert updated["agent_mode"]["enabled"] is False
         assert updated["agent_mode"]["tools"] == []
 
     def test_enabled_must_be_bool(self):
         with pytest.raises(ValueError):
-            AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", {"agent_mode": {"enabled": "yes"}})
+            AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
+                "tenant", {"agent_mode": {"enabled": "yes"}}, MagicMock()
+            )
 
     def test_strategy_must_be_valid(self):
         with pytest.raises(ValueError):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
-                "tenant", {"agent_mode": {"enabled": True, "strategy": "invalid"}}
+                "tenant", {"agent_mode": {"enabled": True, "strategy": "invalid"}}, MagicMock()
             )
 
     def test_tools_must_be_list(self):
         with pytest.raises(ValueError):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
-                "tenant", {"agent_mode": {"enabled": True, "tools": "not-list"}}
+                "tenant", {"agent_mode": {"enabled": True, "tools": "not-list"}}, MagicMock()
             )
 
     def test_old_tool_dataset_requires_id(self):
         with pytest.raises(ValueError):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
-                "tenant", {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": True}}]}}
+                "tenant", {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": True}}]}}, MagicMock()
             )
 
     def test_old_tool_dataset_id_must_be_uuid(self):
@@ -246,6 +258,7 @@ class TestValidateAgentModeAndSetDefaults:
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant",
                 {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": True, "id": "bad"}}]}},
+                MagicMock(),
             )
 
     def test_old_tool_dataset_id_not_exists(self, mocker: MockerFixture):
@@ -258,6 +271,7 @@ class TestValidateAgentModeAndSetDefaults:
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant",
                 {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": True, "id": dataset_id}}]}},
+                MagicMock(),
             )
 
     def test_old_tool_enabled_must_be_bool(self):
@@ -265,6 +279,7 @@ class TestValidateAgentModeAndSetDefaults:
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
                 "tenant",
                 {"agent_mode": {"enabled": True, "tools": [{"dataset": {"enabled": "yes", "id": str(uuid.uuid4())}}]}},
+                MagicMock(),
             )
 
     @pytest.mark.parametrize("missing_key", ["provider_type", "provider_id", "tool_name", "tool_parameters"])
@@ -273,7 +288,7 @@ class TestValidateAgentModeAndSetDefaults:
         tool.pop(missing_key, None)
         with pytest.raises(ValueError):
             AgentChatAppConfigManager.validate_agent_mode_and_set_defaults(
-                "tenant", {"agent_mode": {"enabled": True, "tools": [tool]}}
+                "tenant", {"agent_mode": {"enabled": True, "tools": [tool]}}, MagicMock()
             )
 
     def test_valid_old_and_new_style_tools(self, mocker: MockerFixture):
@@ -298,6 +313,6 @@ class TestValidateAgentModeAndSetDefaults:
             }
         }
 
-        updated, _ = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config)
+        updated, _ = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config, MagicMock())
         assert updated["agent_mode"]["tools"][0]["dataset"]["enabled"] is False
         assert updated["agent_mode"]["tools"][1]["enabled"] is False

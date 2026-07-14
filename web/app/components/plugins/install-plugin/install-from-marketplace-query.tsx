@@ -21,11 +21,9 @@ const InstallFromMarketplaceQuery = ({
     marketplaceInstall,
   } = useInstallFromMarketplaceQueryHook(options)
 
-  if (!isShowInstallFromMarketplace)
-    return null
+  if (!isShowInstallFromMarketplace) return null
 
-  if (!marketplaceInstall && !bundleInfo)
-    return null
+  if (!marketplaceInstall && !bundleInfo) return null
 
   return (
     <InstallFromMarketplace

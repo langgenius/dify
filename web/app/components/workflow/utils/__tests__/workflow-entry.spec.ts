@@ -1,4 +1,9 @@
-import { createNode, createStartNode, createTriggerNode, resetFixtureCounters } from '../../__tests__/fixtures'
+import {
+  createNode,
+  createStartNode,
+  createTriggerNode,
+  resetFixtureCounters,
+} from '../../__tests__/fixtures'
 import { BlockEnum } from '../../types'
 import { getWorkflowEntryNode, isTriggerWorkflow, isWorkflowEntryNode } from '../workflow-entry'
 
@@ -29,9 +34,7 @@ describe('getWorkflowEntryNode', () => {
   })
 
   it('should return undefined when no entry node exists', () => {
-    const nodes = [
-      createNode({ id: 'code', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-    ]
+    const nodes = [createNode({ id: 'code', data: { type: BlockEnum.Code, title: '', desc: '' } })]
 
     expect(getWorkflowEntryNode(nodes)).toBeUndefined()
   })
@@ -68,10 +71,7 @@ describe('isWorkflowEntryNode', () => {
 
 describe('isTriggerWorkflow', () => {
   it('should return true when nodes contain a trigger node', () => {
-    const nodes = [
-      createStartNode(),
-      createTriggerNode(BlockEnum.TriggerWebhook),
-    ]
+    const nodes = [createStartNode(), createTriggerNode(BlockEnum.TriggerWebhook)]
     expect(isTriggerWorkflow(nodes)).toBe(true)
   })
 

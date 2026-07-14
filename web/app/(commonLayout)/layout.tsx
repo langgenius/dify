@@ -20,9 +20,7 @@ export default async function Layout({
           <div className="flex h-full flex-col overflow-hidden">
             <MaintenanceNotice />
             <ConsoleContextProviders>
-              <MainNavLayout detailSidebar={detailSidebar}>
-                {children}
-              </MainNavLayout>
+              <MainNavLayout detailSidebar={detailSidebar}>{children}</MainNavLayout>
               <CommonLayoutGlobalMounts />
             </ConsoleContextProviders>
           </div>

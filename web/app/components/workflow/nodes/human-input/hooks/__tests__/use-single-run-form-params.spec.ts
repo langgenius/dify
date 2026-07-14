@@ -19,12 +19,15 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail?: { id?: string, mode?: AppModeEnum } }) => unknown) => mockUseAppStore(selector),
+  useStore: (selector: (state: { appDetail?: { id?: string; mode?: AppModeEnum } }) => unknown) =>
+    mockUseAppStore(selector),
 }))
 
 vi.mock('@/service/workflow', () => ({
-  fetchHumanInputNodeStepRunForm: (...args: unknown[]) => mockFetchHumanInputNodeStepRunForm(...args),
-  submitHumanInputNodeStepRunForm: (...args: unknown[]) => mockSubmitHumanInputNodeStepRunForm(...args),
+  fetchHumanInputNodeStepRunForm: (...args: unknown[]) =>
+    mockFetchHumanInputNodeStepRunForm(...args),
+  submitHumanInputNodeStepRunForm: (...args: unknown[]) =>
+    mockSubmitHumanInputNodeStepRunForm(...args),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
@@ -38,15 +41,17 @@ const createPayload = (overrides: Partial<HumanInputNodeType> = {}): HumanInputN
   type: BlockEnum.HumanInput,
   delivery_methods: [],
   form_content: 'Summary: {{#start.topic#}}',
-  inputs: [{
-    type: InputVarType.paragraph,
-    output_variable_name: 'summary',
-    default: {
-      type: 'variable',
-      selector: ['start', 'topic'],
-      value: '',
+  inputs: [
+    {
+      type: InputVarType.paragraph,
+      output_variable_name: 'summary',
+      default: {
+        type: 'variable',
+        selector: ['start', 'topic'],
+        value: '',
+      },
     },
-  }],
+  ],
   user_actions: [],
   timeout: 1,
   timeout_unit: 'day',
@@ -81,7 +86,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
   const mockSetRunInputData = vi.fn()
   const getInputVars = vi.fn()
   let currentInputs = createPayload()
-  let appDetail: { id?: string, mode?: AppModeEnum } | undefined
+  let appDetail: { id?: string; mode?: AppModeEnum } | undefined
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -94,7 +99,10 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     mockUseTranslation.mockReturnValue({
       t: withSelectorKey((key: string) => key),
     })
-    mockUseAppStore.mockImplementation((selector: (state: { appDetail?: { id?: string, mode?: AppModeEnum } }) => unknown) => selector({ appDetail }))
+    mockUseAppStore.mockImplementation(
+      (selector: (state: { appDetail?: { id?: string; mode?: AppModeEnum } }) => unknown) =>
+        selector({ appDetail }),
+    )
     mockUseNodeCrud.mockImplementation(() => ({
       inputs: currentInputs,
     }))
@@ -139,36 +147,35 @@ describe('human-input/hooks/use-single-run-form-params', () => {
   }
 
   it('should build a single before-run form, filter output vars, and expose dependent vars', () => {
-    const { result } = renderHook(() => useSingleRunFormParams({
-      id: 'node-1',
-      payload: currentInputs,
-      runInputData: { topic: 'AI' },
-      getInputVars,
-      setRunInputData: mockSetRunInputData,
-    }))
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'node-1',
+        payload: currentInputs,
+        runInputData: { topic: 'AI' },
+        getInputVars,
+        setRunInputData: mockSetRunInputData,
+      }),
+    )
 
-    expect(getInputVars).toHaveBeenCalledWith([
-      '{{#start.topic#}}',
-      'Summary: {{#start.topic#}}',
-    ])
+    expect(getInputVars).toHaveBeenCalledWith(['{{#start.topic#}}', 'Summary: {{#start.topic#}}'])
     expect(result.current.forms).toHaveLength(1)
-    expect(result.current.forms[0]).toEqual(expect.objectContaining({
-      label: 'nodes.humanInput.singleRun.label',
-      values: { topic: 'AI' },
-      inputs: [
-        expect.objectContaining({ variable: '#start.topic#' }),
-        expect.objectContaining({ label: 'Broken' }),
-      ],
-    }))
+    expect(result.current.forms[0]).toEqual(
+      expect.objectContaining({
+        label: 'nodes.humanInput.singleRun.label',
+        values: { topic: 'AI' },
+        inputs: [
+          expect.objectContaining({ variable: '#start.topic#' }),
+          expect.objectContaining({ label: 'Broken' }),
+        ],
+      }),
+    )
 
     act(() => {
       result.current.forms[0]!.onChange?.({ topic: 'Updated' })
     })
 
     expect(mockSetRunInputData).toHaveBeenCalledWith({ topic: 'Updated' })
-    expect(result.current.getDependentVars()).toEqual([
-      ['start', 'topic'],
-    ])
+    expect(result.current.getDependentVars()).toEqual([['start', 'topic']])
   })
 
   it('should include variables referenced by dynamic select option sources', () => {
@@ -203,13 +210,15 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       }),
     ])
 
-    const { result } = renderHook(() => useSingleRunFormParams({
-      id: 'node-1',
-      payload: currentInputs,
-      runInputData: {},
-      getInputVars,
-      setRunInputData: mockSetRunInputData,
-    }))
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'node-1',
+        payload: currentInputs,
+        runInputData: {},
+        getInputVars,
+        setRunInputData: mockSetRunInputData,
+      }),
+    )
 
     expect(getInputVars).toHaveBeenCalledWith([
       '{{#start.topic#}}',
@@ -258,13 +267,15 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     } satisfies HumanInputFormData
     mockFetchHumanInputNodeStepRunForm.mockResolvedValue(formDataWithFiles)
 
-    const { result } = renderHook(() => useSingleRunFormParams({
-      id: 'node-1',
-      payload: currentInputs,
-      runInputData: {},
-      getInputVars,
-      setRunInputData: mockSetRunInputData,
-    }))
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'node-1',
+        payload: currentInputs,
+        runInputData: {},
+        getInputVars,
+        setRunInputData: mockSetRunInputData,
+      }),
+    )
 
     await act(async () => {
       await result.current.handleShowGeneratedForm({
@@ -284,7 +295,11 @@ describe('human-input/hooks/use-single-run-form-params', () => {
 
     await act(async () => {
       await result.current.handleSubmitHumanInputForm({
-        inputs: { answer: 'approved', attachment: uploadedFile, references: [uploadedFile, remoteFile] },
+        inputs: {
+          answer: 'approved',
+          attachment: uploadedFile,
+          references: [uploadedFile, remoteFile],
+        },
         form_inputs: { ignored: 'value' },
         action: 'approve',
       })
@@ -334,13 +349,15 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       mode: AppModeEnum.ADVANCED_CHAT,
     }
 
-    const { result, rerender } = renderHook(() => useSingleRunFormParams({
-      id: 'node-9',
-      payload: currentInputs,
-      runInputData: {},
-      getInputVars,
-      setRunInputData: mockSetRunInputData,
-    }))
+    const { result, rerender } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'node-9',
+        payload: currentInputs,
+        runInputData: {},
+        getInputVars,
+        setRunInputData: mockSetRunInputData,
+      }),
+    )
 
     await act(async () => {
       await result.current.handleFetchFormContent({ topic: 'hello' })

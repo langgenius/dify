@@ -29,9 +29,7 @@ export function atomWithResolvedSuspenseQuery<
   TData = TQueryFnData,
   TQueryKey extends QueryKey = QueryKey,
 >(
-  getOptions: (
-    get: Getter,
-  ) => AtomWithSuspenseQueryOptions<TQueryFnData, TError, TData, TQueryKey>,
+  getOptions: (get: Getter) => AtomWithSuspenseQueryOptions<TQueryFnData, TError, TData, TQueryKey>,
   getQueryClient?: (get: Getter) => QueryClient,
 ): WritableAtom<ResolvedAtomWithSuspenseQueryResult<TData, TError>, [], void> {
   const queryAtom = atomWithSuspenseQuery(getOptions, getQueryClient)

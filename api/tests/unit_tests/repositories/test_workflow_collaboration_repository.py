@@ -48,6 +48,101 @@ class TestWorkflowCollaborationRepository:
             }
         ]
 
+    def test_list_sessions_preserves_graph_active_false(self, mock_redis: Mock) -> None:
+        # Arrange
+        mock_redis.hgetall.return_value = {
+            b"sid-1": b'{"user_id":"u-1","username":"Jane","sid":"sid-1","connected_at":2,"graph_active":false}',
+        }
+        repository = WorkflowCollaborationRepository()
+
+        # Act
+        result = repository.list_sessions("wf-1")
+
+        # Assert
+        assert result[0]["graph_active"] is False
+
+    def test_get_session_info_returns_session_with_optional_fields(self, mock_redis: Mock) -> None:
+        # Arrange
+        mock_redis.hget.return_value = (
+            b'{"user_id":"u-1","username":"Jane","sid":"sid-1","connected_at":2,'
+            b'"server_id":"server-1","graph_active":false}'
+        )
+        repository = WorkflowCollaborationRepository()
+
+        # Act
+        result = repository.get_session_info("wf-1", "sid-1")
+
+        # Assert
+        assert result == {
+            "user_id": "u-1",
+            "username": "Jane",
+            "avatar": None,
+            "sid": "sid-1",
+            "connected_at": 2,
+            "server_id": "server-1",
+            "graph_active": False,
+        }
+        mock_redis.hget.assert_called_once_with("workflow_online_users:wf-1", "sid-1")
+
+    def test_get_session_info_returns_none_on_missing_or_bad_json(self, mock_redis: Mock) -> None:
+        repository = WorkflowCollaborationRepository()
+
+        mock_redis.hget.return_value = None
+        assert repository.get_session_info("wf-1", "sid-1") is None
+
+        mock_redis.hget.return_value = b"not-json"
+        assert repository.get_session_info("wf-1", "sid-1") is None
+
+        mock_redis.hget.return_value = b'{"username":"missing-required-keys"}'
+        assert repository.get_session_info("wf-1", "sid-1") is None
+
+    def test_update_session_graph_active_uses_atomic_lua_with_prefixed_key(
+        self, mock_redis: Mock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        mock_redis.eval.return_value = 1
+        monkeypatch.setattr(repo_module, "serialize_redis_name", lambda key: f"dify-prefix:{key}")
+        repository = WorkflowCollaborationRepository()
+
+        # Act
+        result = repository.update_session_graph_active("wf-1", "sid-1", active=False, sequence=7)
+
+        # Assert
+        assert result is True
+        script, key_count, workflow_key, sid, active, sequence = mock_redis.eval.call_args.args
+        assert key_count == 1
+        assert workflow_key == "dify-prefix:workflow_online_users:wf-1"
+        assert sid == "sid-1"
+        assert active == "0"
+        assert sequence == 7
+        assert "incoming_sequence <= current_sequence" in script
+        assert "cjson.encode(session_info)" in script
+
+    def test_update_session_graph_active_returns_false_when_lua_ignores_update(self, mock_redis: Mock) -> None:
+        # Arrange
+        mock_redis.eval.return_value = 0
+        repository = WorkflowCollaborationRepository()
+
+        # Act
+        result = repository.update_session_graph_active("wf-1", "sid-1", active=True, sequence=3)
+
+        # Assert
+        assert result is False
+        assert mock_redis.eval.call_args.args[-2:] == ("1", 3)
+
+    def test_graph_view_state_lock_is_scoped_to_workflow(self, mock_redis: Mock) -> None:
+        expected_lock = Mock()
+        mock_redis.lock.return_value = expected_lock
+        repository = WorkflowCollaborationRepository()
+
+        lock = repository.graph_view_state_lock("wf-1")
+
+        assert lock is expected_lock
+        mock_redis.lock.assert_called_once_with(
+            "workflow_graph_view_state_lock:wf-1",
+            timeout=repo_module.GRAPH_VIEW_STATE_LOCK_TIMEOUT_SECONDS,
+        )
+
     def test_set_session_info_persists_payload(self, mock_redis: Mock) -> None:
         # Arrange
         mock_redis.exists.return_value = True

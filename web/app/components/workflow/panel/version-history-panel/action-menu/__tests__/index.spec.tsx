@@ -1,15 +1,21 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Plan } from '@/app/components/billing/type'
+import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
 import { renderWorkflowComponent } from '../../../../__tests__/workflow-test-env'
 import { VersionHistoryContextMenuOptions } from '../../../../types'
 import ActionMenu from '../index'
+
+const renderActionMenu = (ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
+  return renderWorkflowComponent(ui, { queryClient })
+}
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    IS_CLOUD_EDITION: true,
   }
 })
 
@@ -35,7 +41,7 @@ describe('ActionMenu', () => {
     const setOpen = vi.fn()
     const handleClickActionMenuItem = vi.fn()
 
-    renderWorkflowComponent(
+    renderActionMenu(
       <ActionMenu
         isNamedVersion
         isShowDelete
@@ -66,7 +72,7 @@ describe('ActionMenu', () => {
     const handleClickActionMenuItem = vi.fn()
     mockPlanType = Plan.sandbox
 
-    renderWorkflowComponent(
+    renderActionMenu(
       <ActionMenu
         isNamedVersion
         isShowDelete
@@ -77,7 +83,9 @@ describe('ActionMenu', () => {
       />,
     )
 
-    const upgradeButtons = screen.getAllByRole('button', { name: 'billing.upgradeBtn.encourageShort' })
+    const upgradeButtons = screen.getAllByRole('button', {
+      name: 'billing.upgradeBtn.encourageShort',
+    })
     expect(upgradeButtons).toHaveLength(2)
 
     await user.click(upgradeButtons[0]!)

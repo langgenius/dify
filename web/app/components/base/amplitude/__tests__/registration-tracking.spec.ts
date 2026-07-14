@@ -5,9 +5,16 @@ import {
 } from '../registration-tracking'
 
 const mockTrackEvent = vi.hoisted(() => vi.fn())
+const mockConsent = vi.hoisted(() => ({
+  value: 'granted' as 'unknown' | 'denied' | 'granted',
+}))
 
 vi.mock('../utils', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
+}))
+
+vi.mock('@/app/components/base/analytics-consent/consent-store', () => ({
+  getAnalyticsConsent: () => mockConsent.value,
 }))
 
 describe('registration tracking', () => {
@@ -15,6 +22,7 @@ describe('registration tracking', () => {
     vi.clearAllMocks()
     vi.unstubAllGlobals()
     window.sessionStorage.clear()
+    mockConsent.value = 'granted'
   })
 
   // Captures the registration event for a later flush instead of firing it right away.
@@ -54,11 +62,21 @@ describe('registration tracking', () => {
 
       try {
         expect(() => rememberRegistrationSuccess({ method: 'email' })).not.toThrow()
-      }
-      finally {
+      } finally {
         vi.unstubAllGlobals()
       }
     })
+
+    it.each(['unknown', 'denied'] as const)(
+      'should not cache an event while consent is %s',
+      (consent) => {
+        mockConsent.value = consent
+
+        rememberRegistrationSuccess({ method: 'email' })
+
+        expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+      },
+    )
   })
 
   // Replays the remembered event exactly once, after the user ID has been attached.
@@ -89,6 +107,16 @@ describe('registration tracking', () => {
       flushRegistrationSuccess()
 
       expect(mockTrackEvent).toHaveBeenCalledTimes(1)
+    })
+
+    it('should discard a pending event when consent was revoked before flush', () => {
+      rememberRegistrationSuccess({ method: 'oauth' })
+      mockConsent.value = 'denied'
+
+      flushRegistrationSuccess()
+
+      expect(mockTrackEvent).not.toHaveBeenCalled()
+      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
     })
 
     it('should clear malformed pending data without tracking', () => {
@@ -126,8 +154,7 @@ describe('registration tracking', () => {
       try {
         expect(() => flushRegistrationSuccess()).not.toThrow()
         expect(mockTrackEvent).not.toHaveBeenCalled()
-      }
-      finally {
+      } finally {
         vi.unstubAllGlobals()
       }
     })
@@ -147,9 +174,10 @@ describe('registration tracking', () => {
       try {
         flushRegistrationSuccess()
 
-        expect(mockTrackEvent).toHaveBeenCalledWith('user_registration_success', { method: 'email' })
-      }
-      finally {
+        expect(mockTrackEvent).toHaveBeenCalledWith('user_registration_success', {
+          method: 'email',
+        })
+      } finally {
         vi.unstubAllGlobals()
       }
     })
@@ -165,8 +193,7 @@ describe('registration tracking', () => {
         expect(() => rememberRegistrationSuccess({ method: 'email' })).not.toThrow()
         expect(() => flushRegistrationSuccess()).not.toThrow()
         expect(mockTrackEvent).not.toHaveBeenCalled()
-      }
-      finally {
+      } finally {
         vi.unstubAllGlobals()
       }
     })
@@ -182,8 +209,7 @@ describe('registration tracking', () => {
         expect(() => rememberRegistrationSuccess({ method: 'oauth' })).not.toThrow()
         expect(() => flushRegistrationSuccess()).not.toThrow()
         expect(mockTrackEvent).not.toHaveBeenCalled()
-      }
-      finally {
+      } finally {
         vi.unstubAllGlobals()
       }
     })

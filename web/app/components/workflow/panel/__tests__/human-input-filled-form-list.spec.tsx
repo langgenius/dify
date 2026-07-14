@@ -3,7 +3,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import HumanInputFilledFormList from '../human-input-filled-form-list'
 
-const createFilledForm = (overrides: Partial<HumanInputFilledFormData> = {}): HumanInputFilledFormData => ({
+const createFilledForm = (
+  overrides: Partial<HumanInputFilledFormData> = {},
+): HumanInputFilledFormData => ({
   node_id: 'node-1',
   node_title: 'Approval',
   rendered_content: 'Approved by Alice',
@@ -39,7 +41,9 @@ describe('HumanInputFilledFormList', () => {
     expect(screen.getAllByTestId('submitted-field-values')).toHaveLength(2)
     expect(screen.getAllByTestId('executed-action')).toHaveLength(2)
     expect(screen.getAllByTestId('submitted-field-summary')).toHaveLength(2)
-    expect(screen.getAllByTestId('submitted-field-summary')[0]).toHaveTextContent('Approved by Alice')
+    expect(screen.getAllByTestId('submitted-field-summary')[0]).toHaveTextContent(
+      'Approved by Alice',
+    )
 
     await user.click(screen.getAllByTestId('expand-icon')[0]!)
 

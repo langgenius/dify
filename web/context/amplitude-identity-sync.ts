@@ -30,7 +30,6 @@ function buildAmplitudeProperties({
     properties.workspace_id = currentWorkspace.id
     properties.workspace_name = currentWorkspace.name
     properties.workspace_plan = currentWorkspace.plan
-    properties.workspace_status = currentWorkspace.status
     properties.workspace_role = currentWorkspace.role
   }
 
@@ -41,8 +40,7 @@ export const amplitudeIdentitySyncAtom = atomEffect((get, set) => {
   const userProfile = get(userProfileAtom)
   const currentWorkspace = get(currentWorkspaceAtom)
 
-  if (!userProfile.id)
-    return
+  if (!userProfile.id) return
 
   const properties = buildAmplitudeProperties({
     currentWorkspace,
@@ -53,8 +51,7 @@ export const amplitudeIdentitySyncAtom = atomEffect((get, set) => {
     properties,
   })
 
-  if (identity === get.peek(amplitudeIdentityAtom))
-    return
+  if (identity === get.peek(amplitudeIdentityAtom)) return
 
   setUserId(userProfile.email)
   setUserProperties(properties)

@@ -42,12 +42,19 @@ type PluginDependencyLabelInput = {
   readonly value?: unknown
 }
 
-export async function runImportApp(opts: ImportAppOptions, deps: ImportAppDeps): Promise<ImportAppResult> {
+export async function runImportApp(
+  opts: ImportAppOptions,
+  deps: ImportAppDeps,
+): Promise<ImportAppResult> {
   const env = deps.envLookup ?? getEnv
   const io = deps.io ?? nullStreams()
   const dslFactory = deps.dslFactory ?? ((h: HttpClient) => new AppDslClient(h))
 
-  const workspaceId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
+  const workspaceId = resolveWorkspaceId({
+    flag: opts.workspace,
+    env: env('DIFY_WORKSPACE_ID'),
+    active: deps.active,
+  })
   const client = dslFactory(deps.http)
 
   if (opts.fromFile !== undefined && opts.fromUrl !== undefined)
@@ -61,25 +68,21 @@ export async function runImportApp(opts: ImportAppOptions, deps: ImportAppDeps):
     mode = 'yaml-content'
     try {
       yamlContent = fs.readFileSync(opts.fromFile, 'utf8')
-    }
-    catch (err) {
+    } catch (err) {
       const code = (err as NodeJS.ErrnoException).code
       if (code === 'ENOENT')
         throw newError(ErrorCode.UsageInvalidFlag, `--from-file: file not found: ${opts.fromFile}`)
       throw err
     }
-  }
-  else if (opts.fromUrl !== undefined) {
+  } else if (opts.fromUrl !== undefined) {
     mode = 'yaml-url'
     yamlUrl = opts.fromUrl
-  }
-  else {
+  } else {
     throw newError(ErrorCode.UsageInvalidFlag, 'one of --from-file or --from-url is required')
   }
 
-  let result = await runWithSpinner(
-    { io, label: 'Importing app DSL' },
-    () => client.importApp(workspaceId, {
+  let result = await runWithSpinner({ io, label: 'Importing app DSL' }, () =>
+    client.importApp(workspaceId, {
       mode,
       yaml_content: yamlContent,
       yaml_url: yamlUrl,
@@ -102,10 +105,11 @@ export async function runImportApp(opts: ImportAppOptions, deps: ImportAppDeps):
   // DSL version mismatch: the server needs an explicit acknowledgement before
   // finalising. Auto-confirm here so the user does not need a second command.
   if (result.status === 'pending') {
-    io.err.write(`note: DSL version mismatch (imported ${result.imported_dsl_version ?? '?'}, current ${result.current_dsl_version ?? '?'}); confirming automatically\n`)
-    result = await runWithSpinner(
-      { io, label: 'Confirming import' },
-      () => client.confirmImport(workspaceId, result.id),
+    io.err.write(
+      `note: DSL version mismatch (imported ${result.imported_dsl_version ?? '?'}, current ${result.current_dsl_version ?? '?'}); confirming automatically\n`,
+    )
+    result = await runWithSpinner({ io, label: 'Confirming import' }, () =>
+      client.confirmImport(workspaceId, result.id),
     )
   }
 
@@ -117,8 +121,7 @@ export async function runImportApp(opts: ImportAppOptions, deps: ImportAppDeps):
   }
 
   const appId = result.app_id
-  if (appId === undefined || appId === null)
-    return { result, leakedDependencies: [] }
+  if (appId === undefined || appId === null) return { result, leakedDependencies: [] }
 
   const { leaked_dependencies } = await runWithSpinner(
     { io, label: 'Checking plugin dependencies' },
@@ -134,11 +137,11 @@ export function pluginDependencyLabel(dep: PluginDependencyLabelInput): string {
   const value = dep.value
   if (typeof value === 'object' && value !== null) {
     const fields = value as Record<string, unknown>
-    const id = fields.marketplace_plugin_unique_identifier
-      ?? fields.github_plugin_unique_identifier
-      ?? fields.plugin_unique_identifier
-    if (typeof id === 'string' && id !== '')
-      return id
+    const id =
+      fields.marketplace_plugin_unique_identifier ??
+      fields.github_plugin_unique_identifier ??
+      fields.plugin_unique_identifier
+    if (typeof id === 'string' && id !== '') return id
   }
   return dep.current_identifier ?? '<unknown>'
 }

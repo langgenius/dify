@@ -129,13 +129,8 @@ class Account(UserMixin, TypeBase):
         return self._current_tenant
 
     @current_tenant.setter
-    def current_tenant(self, tenant: "Tenant"):
+    def current_tenant(self, tenant: "Tenant") -> None:
         with Session(db.engine, expire_on_commit=False) as session:
-            tenant_join_query = select(TenantAccountJoin).where(
-                TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == self.id
-            )
-            tenant_join = session.scalar(tenant_join_query)
-            tenant_query = select(Tenant).where(Tenant.id == tenant.id)
             # TODO: A workaround to reload the tenant with `expire_on_commit=False`, allowing
             # access to it after the session has been closed.
             # This prevents `DetachedInstanceError` when accessing the tenant outside
@@ -143,7 +138,16 @@ class Account(UserMixin, TypeBase):
             # (The `tenant` argument is typically loaded by `db.session` without the
             # `expire_on_commit=False` flag, meaning its lifetime is tied to the web
             # request's lifecycle.)
-            tenant_reloaded = session.scalars(tenant_query).one()
+            self.set_current_tenant_with_session(tenant, session=session)
+
+    def set_current_tenant_with_session(self, tenant: "Tenant", *, session: Session) -> None:
+        """Set the current tenant and role using the caller-owned session."""
+        tenant_join_query = select(TenantAccountJoin).where(
+            TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == self.id
+        )
+        tenant_join = session.scalar(tenant_join_query)
+        tenant_query = select(Tenant).where(Tenant.id == tenant.id)
+        tenant_reloaded = session.scalars(tenant_query).one()
 
         if tenant_join:
             self.role = TenantAccountRole(tenant_join.role)
@@ -155,20 +159,24 @@ class Account(UserMixin, TypeBase):
     def current_tenant_id(self) -> str | None:
         return self._current_tenant.id if self._current_tenant else None
 
-    def set_tenant_id(self, tenant_id: str):
+    def set_tenant_id(self, tenant_id: str) -> None:
+        with Session(db.engine, expire_on_commit=False) as session:
+            self.set_tenant_id_with_session(tenant_id, session=session)
+
+    def set_tenant_id_with_session(self, tenant_id: str, *, session: Session) -> None:
+        """Set the current tenant by id using the caller-owned session."""
         query = (
             select(Tenant, TenantAccountJoin)
             .where(Tenant.id == tenant_id)
             .where(TenantAccountJoin.tenant_id == Tenant.id)
             .where(TenantAccountJoin.account_id == self.id)
         )
-        with Session(db.engine, expire_on_commit=False) as session:
-            tenant_account_join = session.execute(query).first()
-            if not tenant_account_join:
-                return
-            tenant, join = tenant_account_join
-            self.role = TenantAccountRole(join.role)
-            self._current_tenant = tenant
+        tenant_account_join = session.execute(query).first()
+        if not tenant_account_join:
+            return
+        tenant, join = tenant_account_join
+        self.role = TenantAccountRole(join.role)
+        self._current_tenant = tenant
 
     @property
     def current_role(self):
@@ -270,9 +278,9 @@ class Tenant(TypeBase):
         DateTime, server_default=func.current_timestamp(), init=False, onupdate=func.current_timestamp()
     )
 
-    def get_accounts(self) -> list[Account]:
+    def get_accounts(self, *, session: Session) -> list[Account]:
         return list(
-            db.session.scalars(
+            session.scalars(
                 select(Account).where(
                     Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id
                 )

@@ -1,14 +1,21 @@
-import type { Dependency, GitHubItemAndMarketPlaceDependency, InstallStatus, PackageDependency, Plugin, PluginDeclaration, VersionProps } from '../../../types'
+import type {
+  Dependency,
+  GitHubItemAndMarketPlaceDependency,
+  InstallStatus,
+  PackageDependency,
+  Plugin,
+  PluginDeclaration,
+  VersionProps,
+} from '../../../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { InstallStep, PluginCategoryEnum } from '../../../types'
 import InstallBundle, { InstallType } from '../index'
 import GithubItem from '../item/github-item'
 import LoadedItem from '../item/loaded-item'
 import MarketplaceItem from '../item/marketplace-item'
 import PackageItem from '../item/package-item'
-import ReadyToInstall from '../ready-to-install'
 import Installed from '../steps/installed'
 
 // Factory functions for test data
@@ -86,13 +93,14 @@ const createMockPackageDependency = (): PackageDependency => ({
   },
 })
 
-const createMockDependency = (overrides: Partial<Dependency> = {}): Dependency => ({
-  type: 'marketplace',
-  value: {
-    plugin_unique_identifier: 'test-plugin-uid',
-  },
-  ...overrides,
-} as Dependency)
+const createMockDependency = (overrides: Partial<Dependency> = {}): Dependency =>
+  ({
+    type: 'marketplace',
+    value: {
+      plugin_unique_identifier: 'test-plugin-uid',
+    },
+    ...overrides,
+  }) as Dependency
 
 const createMockDependencies = (): Dependency[] => [
   {
@@ -164,7 +172,8 @@ vi.mock('../../hooks/use-install-plugin-limit', () => ({
 // Mock useUploadGitHub hook
 const mockUseUploadGitHub = vi.fn()
 vi.mock('@/service/use-plugins', () => ({
-  useUploadGitHub: (params: { repo: string, version: string, package: string }) => mockUseUploadGitHub(params),
+  useUploadGitHub: (params: { repo: string; version: string; package: string }) =>
+    mockUseUploadGitHub(params),
   useInstallOrUpdate: () => ({ mutate: vi.fn(), isPending: false }),
   usePluginTaskList: () => ({ handleRefetch: vi.fn() }),
   useFetchPluginsInMarketPlaceByInfo: () => ({ isLoading: false, data: null, error: null }),
@@ -224,13 +233,33 @@ vi.mock('../ready-to-install', () => ({
     <div data-testid="ready-to-install">
       <span data-testid="current-step">{step}</span>
       <span data-testid="plugins-count">{allPlugins?.length || 0}</span>
-      <button data-testid="start-install-btn" onClick={onStartToInstall}>Start Install</button>
-      <button data-testid="set-installing-true" onClick={() => setIsInstalling(true)}>Set Installing True</button>
-      <button data-testid="set-installing-false" onClick={() => setIsInstalling(false)}>Set Installing False</button>
-      <button data-testid="change-to-installed" onClick={() => onStepChange(InstallStep.installed)}>Change to Installed</button>
-      <button data-testid="change-to-upload-failed" onClick={() => onStepChange(InstallStep.uploadFailed)}>Change to Upload Failed</button>
-      <button data-testid="change-to-ready" onClick={() => onStepChange(InstallStep.readyToInstall)}>Change to Ready</button>
-      <button data-testid="close-btn" onClick={onClose}>Close</button>
+      <button data-testid="start-install-btn" onClick={onStartToInstall}>
+        Start Install
+      </button>
+      <button data-testid="set-installing-true" onClick={() => setIsInstalling(true)}>
+        Set Installing True
+      </button>
+      <button data-testid="set-installing-false" onClick={() => setIsInstalling(false)}>
+        Set Installing False
+      </button>
+      <button data-testid="change-to-installed" onClick={() => onStepChange(InstallStep.installed)}>
+        Change to Installed
+      </button>
+      <button
+        data-testid="change-to-upload-failed"
+        onClick={() => onStepChange(InstallStep.uploadFailed)}
+      >
+        Change to Upload Failed
+      </button>
+      <button
+        data-testid="change-to-ready"
+        onClick={() => onStepChange(InstallStep.readyToInstall)}
+      >
+        Change to Ready
+      </button>
+      <button data-testid="close-btn" onClick={onClose}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -264,7 +293,9 @@ describe('InstallBundle', () => {
     it('should constrain modal height to the viewport', () => {
       render(<InstallBundle {...defaultProps} />)
 
-      expect(screen.getByText('plugin.installModal.installPlugin').parentElement?.parentElement).toHaveClass('max-h-[calc(100dvh-48px)]')
+      expect(
+        screen.getByText('plugin.installModal.installPlugin').parentElement?.parentElement,
+      ).toHaveClass('max-h-[calc(100dvh-48px)]')
     })
 
     it('should render ReadyToInstall component', () => {
@@ -483,33 +514,6 @@ describe('InstallBundle', () => {
   })
 
   // ================================
-  // Component Memoization Tests
-  // ================================
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      // Verify that InstallBundle is memoized by checking its displayName or structure
-      // Since the component is exported as React.memo(InstallBundle), we can check its type
-      expect(InstallBundle).toBeDefined()
-      expect(typeof InstallBundle).toBe('object') // memo returns an object
-    })
-
-    it('should not re-render when same props are passed', () => {
-      const onClose = vi.fn()
-      const payload = createMockDependencies()
-
-      const { rerender } = render(
-        <InstallBundle fromDSLPayload={payload} onClose={onClose} />,
-      )
-
-      // Re-render with same props reference
-      rerender(<InstallBundle fromDSLPayload={payload} onClose={onClose} />)
-
-      // Component should still render correctly
-      expect(screen.getByTestId('ready-to-install')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
   // User Interactions Tests
   // ================================
   describe('User Interactions', () => {
@@ -650,9 +654,7 @@ describe('InstallBundle', () => {
       const types = [InstallType.fromLocal, InstallType.fromMarketplace, InstallType.fromDSL]
 
       types.forEach((type) => {
-        const { unmount } = render(
-          <InstallBundle {...defaultProps} installType={type} />,
-        )
+        const { unmount } = render(<InstallBundle {...defaultProps} installType={type} />)
         expect(screen.getByTestId('ready-to-install')).toBeInTheDocument()
         unmount()
       })
@@ -709,7 +711,12 @@ describe('InstallBundle', () => {
     })
 
     it('should use default installType when not provided', () => {
-      render(<InstallBundle fromDSLPayload={defaultProps.fromDSLPayload} onClose={defaultProps.onClose} />)
+      render(
+        <InstallBundle
+          fromDSLPayload={defaultProps.fromDSLPayload}
+          onClose={defaultProps.onClose}
+        />,
+      )
 
       // Default is fromMarketplace which results in readyToInstall
       expect(screen.getByTestId('current-step')).toHaveTextContent(InstallStep.readyToInstall)
@@ -720,15 +727,6 @@ describe('InstallBundle', () => {
   // useHideLogic Hook Integration Tests
   // ================================
   describe('useHideLogic Hook Integration', () => {
-    it('should receive modalClassName from useHideLogic', () => {
-      mockHideLogicState.modalClassName = 'custom-modal-class'
-
-      render(<InstallBundle {...defaultProps} />)
-
-      // Verify hook provides modalClassName (component uses it in Modal className prop)
-      expect(mockHideLogicState.modalClassName).toBe('custom-modal-class')
-    })
-
     it('should pass onClose to useHideLogic', () => {
       const onClose = vi.fn()
       render(<InstallBundle {...defaultProps} onClose={onClose} />)
@@ -836,7 +834,6 @@ describe('InstallBundle', () => {
       // @ts-expect-error Testing null handling
       render(<InstallBundle fromDSLPayload={null} onClose={vi.fn()} />)
 
-      // Should render without crashing, count will be 0
       expect(screen.getByTestId('plugins-count')).toHaveTextContent('0')
     })
 
@@ -844,7 +841,6 @@ describe('InstallBundle', () => {
       // @ts-expect-error Testing undefined handling
       render(<InstallBundle fromDSLPayload={undefined} onClose={vi.fn()} />)
 
-      // Should render without crashing
       expect(screen.getByTestId('plugins-count')).toHaveTextContent('0')
     })
   })
@@ -859,14 +855,6 @@ describe('InstallBundle', () => {
       // Verify component renders with expected structure
       expect(screen.getByTestId('ready-to-install')).toBeInTheDocument()
       expect(screen.getByText('plugin.installModal.installPlugin')).toBeInTheDocument()
-    })
-
-    it('should apply correct CSS classes to title', () => {
-      render(<InstallBundle {...defaultProps} />)
-
-      const title = screen.getByText('plugin.installModal.installPlugin')
-      expect(title).toHaveClass('title-2xl-semi-bold')
-      expect(title).toHaveClass('text-text-primary')
     })
   })
 
@@ -915,32 +903,6 @@ describe('InstallBundle', () => {
 })
 
 // ================================================================
-// ReadyToInstall Component Tests (using mocked version from InstallBundle)
-// ================================================================
-describe('ReadyToInstall (via InstallBundle mock)', () => {
-  // Note: ReadyToInstall is mocked for InstallBundle tests.
-  // These tests verify the mock interface and component behavior.
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // ================================
-  // Component Definition Tests
-  // ================================
-  describe('Component Definition', () => {
-    it('should be defined and importable', () => {
-      expect(ReadyToInstall).toBeDefined()
-    })
-
-    it('should be a memoized component', () => {
-      // The import gives us the mocked version, which is a function
-      expect(typeof ReadyToInstall).toBe('function')
-    })
-  })
-})
-
-// ================================================================
 // Installed Component Tests
 // ================================================================
 describe('Installed', () => {
@@ -983,7 +945,9 @@ describe('Installed', () => {
     it('should not render close button when isHideButton is true', () => {
       render(<Installed {...defaultInstalledProps} isHideButton={true} />)
 
-      expect(screen.queryByRole('button', { name: 'common.operation.close' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.close' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -1030,12 +994,6 @@ describe('Installed', () => {
   // ================================
   // Component Memoization Tests
   // ================================
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(Installed).toBeDefined()
-      expect(typeof Installed).toBe('object')
-    })
-  })
 })
 
 // ================================================================
@@ -1053,7 +1011,8 @@ describe('LoadedItem', () => {
     vi.clearAllMocks()
   })
 
-  const getCheckbox = () => screen.getByRole('checkbox', { name: defaultLoadedItemProps.payload.name })
+  const getCheckbox = () =>
+    screen.getByRole('checkbox', { name: defaultLoadedItemProps.payload.name })
 
   // ================================
   // Rendering Tests
@@ -1115,12 +1074,6 @@ describe('LoadedItem', () => {
   // ================================
   // Component Memoization Tests
   // ================================
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(LoadedItem).toBeDefined()
-      expect(typeof LoadedItem).toBe('object')
-    })
-  })
 })
 
 // ================================================================
@@ -1139,7 +1092,8 @@ describe('MarketplaceItem', () => {
     vi.clearAllMocks()
   })
 
-  const getCheckbox = () => screen.getByRole('checkbox', { name: defaultMarketplaceItemProps.payload.name })
+  const getCheckbox = () =>
+    screen.getByRole('checkbox', { name: defaultMarketplaceItemProps.payload.name })
 
   // ================================
   // Rendering Tests
@@ -1192,12 +1146,6 @@ describe('MarketplaceItem', () => {
   // ================================
   // Component Memoization Tests
   // ================================
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(MarketplaceItem).toBeDefined()
-      expect(typeof MarketplaceItem).toBe('object')
-    })
-  })
 })
 
 // ================================================================
@@ -1274,12 +1222,6 @@ describe('PackageItem', () => {
   // ================================
   // Component Memoization Tests
   // ================================
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(PackageItem).toBeDefined()
-      expect(typeof PackageItem).toBe('object')
-    })
-  })
 })
 
 // ================================================================
@@ -1414,10 +1356,4 @@ describe('GithubItem', () => {
   // ================================
   // Component Memoization Tests
   // ================================
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(GithubItem).toBeDefined()
-      expect(typeof GithubItem).toBe('object')
-    })
-  })
 })

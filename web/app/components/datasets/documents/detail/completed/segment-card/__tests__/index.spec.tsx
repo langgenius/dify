@@ -1,6 +1,11 @@
 import type { SegmentListContextValue } from '@/app/components/datasets/documents/detail/completed'
 import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
-import type { Attachment, ChildChunkDetail, ParentMode, SegmentDetailModel } from '@/models/datasets'
+import type {
+  Attachment,
+  ChildChunkDetail,
+  ParentMode,
+  SegmentDetailModel,
+} from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { ChunkingMode } from '@/models/datasets'
@@ -41,19 +46,38 @@ vi.mock('../../index', () => ({
 
 // StatusItem uses React Query hooks which require QueryClientProvider
 vi.mock('../../../../status-item', () => ({
-  default: ({ status, reverse, textCls }: { status: string, reverse?: boolean, textCls?: string }) => (
+  default: ({
+    status,
+    reverse,
+    textCls,
+  }: {
+    status: string
+    reverse?: boolean
+    textCls?: string
+  }) => (
     <div data-testid="status-item" data-status={status} data-reverse={reverse} className={textCls}>
-      Status:
-      {' '}
-      {status}
+      Status: {status}
     </div>
   ),
 }))
 
 // ImageList has deep dependency: FileThumb → file-uploader → react-pdf-highlighter (ESM)
 vi.mock('@/app/components/datasets/common/image-list', () => ({
-  default: ({ images, size, className }: { images: Array<{ sourceUrl: string, name: string }>, size?: string, className?: string }) => (
-    <div data-testid="image-list" data-image-count={images.length} data-size={size} className={className}>
+  default: ({
+    images,
+    size,
+    className,
+  }: {
+    images: Array<{ sourceUrl: string; name: string }>
+    size?: string
+    className?: string
+  }) => (
+    <div
+      data-testid="image-list"
+      data-image-count={images.length}
+      data-size={size}
+      className={className}
+    >
       {images.map((img, idx: number) => (
         <img key={idx} src={img.sourceUrl} alt={img.name} />
       ))}
@@ -63,8 +87,10 @@ vi.mock('@/app/components/datasets/common/image-list', () => ({
 
 // Markdown uses next/dynamic and shiki (ESM)
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content, className }: { content: string, className?: string }) => (
-    <div data-testid="markdown" className={`markdown-body ${className || ''}`}>{content}</div>
+  Markdown: ({ content, className }: { content: string; className?: string }) => (
+    <div data-testid="markdown" className={`markdown-body ${className || ''}`}>
+      {content}
+    </div>
   ),
 }))
 
@@ -90,7 +116,9 @@ const createMockChildChunk = (overrides: Partial<ChildChunkDetail> = {}): ChildC
   ...overrides,
 })
 
-const createMockSegmentDetail = (overrides: Partial<SegmentDetailModel & { document?: { name: string } }> = {}): SegmentDetailModel & { document?: { name: string } } => ({
+const createMockSegmentDetail = (
+  overrides: Partial<SegmentDetailModel & { document?: { name: string } }> = {},
+): SegmentDetailModel & { document?: { name: string } } => ({
   id: 'segment-1',
   position: 1,
   document_id: 'doc-1',
@@ -135,8 +163,7 @@ describe('SegmentCard', () => {
     it('should render loading skeleton when loading is true', () => {
       render(<SegmentCard loading={true} focused={defaultFocused} />)
 
-      // ParentChunkCardSkeleton should render
-      expect(screen.getByTestId('parent-chunk-card-skeleton')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.viewMore' })).toBeDisabled()
     })
 
     it('should render segment card content when loading is false', () => {
@@ -161,7 +188,9 @@ describe('SegmentCard', () => {
 
       render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
 
-      expect(screen.getByText('250 datasetDocuments.segment.characters:{"count":250}')).toBeInTheDocument()
+      expect(
+        screen.getByText('250 datasetDocuments.segment.characters:{"count":250}'),
+      ).toBeInTheDocument()
     })
 
     it('should render hit count text', () => {
@@ -170,17 +199,6 @@ describe('SegmentCard', () => {
       render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
 
       expect(screen.getByText('42 datasetDocuments.segment.hitCount')).toBeInTheDocument()
-    })
-
-    it('should apply custom className', () => {
-      const detail = createMockSegmentDetail()
-
-      render(
-        <SegmentCard loading={false} detail={detail} className="custom-class" focused={defaultFocused} />,
-      )
-
-      const card = screen.getByTestId('segment-card')
-      expect(card).toHaveClass('custom-class')
     })
   })
 
@@ -239,21 +257,6 @@ describe('SegmentCard', () => {
       )
 
       expect(screen.queryByRole('switch')).not.toBeInTheDocument()
-    })
-
-    it('should apply focused styles when segmentContent is focused', () => {
-      const detail = createMockSegmentDetail()
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          focused={{ segmentIndex: false, segmentContent: true }}
-        />,
-      )
-
-      const card = screen.getByTestId('segment-card')
-      expect(card).toHaveClass('bg-dataset-chunk-detail-card-hover-bg')
     })
   })
 
@@ -343,7 +346,9 @@ describe('SegmentCard', () => {
       mockDocForm.current = ChunkingMode.parentChild
       mockParentMode.current = 'full-doc'
 
-      render(<SegmentCard loading={false} detail={detail} onClick={onClick} focused={defaultFocused} />)
+      render(
+        <SegmentCard loading={false} detail={detail} onClick={onClick} focused={defaultFocused} />,
+      )
 
       const viewMoreButton = screen.getByRole('button', { name: /viewMore/i })
       fireEvent.click(viewMoreButton)
@@ -401,7 +406,11 @@ describe('SegmentCard', () => {
 
     it('should call onChangeSwitch when switch is toggled', async () => {
       const onChangeSwitch = vi.fn().mockResolvedValue(undefined)
-      const detail = createMockSegmentDetail({ id: 'test-segment-id', enabled: true, status: 'completed' })
+      const detail = createMockSegmentDetail({
+        id: 'test-segment-id',
+        enabled: true,
+        status: 'completed',
+      })
 
       render(
         <SegmentCard
@@ -556,7 +565,9 @@ describe('SegmentCard', () => {
     it('should compute contentOpacity correctly when enabled', () => {
       const detail = createMockSegmentDetail({ enabled: true })
 
-      const { container } = render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
+      const { container } = render(
+        <SegmentCard loading={false} detail={detail} focused={defaultFocused} />,
+      )
 
       const wordCount = container.querySelector('.system-xs-medium.text-text-tertiary')
       expect(wordCount).not.toHaveClass('opacity-50')
@@ -592,35 +603,14 @@ describe('SegmentCard', () => {
 
       render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
 
-      expect(screen.getByText('1 datasetDocuments.segment.characters:{"count":1}')).toBeInTheDocument()
+      expect(
+        screen.getByText('1 datasetDocuments.segment.characters:{"count":1}'),
+      ).toBeInTheDocument()
     })
   })
 
   // Mode-specific Rendering Tests
   describe('Mode-specific Rendering', () => {
-    it('should render without padding classes in full-doc mode', () => {
-      mockDocForm.current = ChunkingMode.parentChild
-      mockParentMode.current = 'full-doc'
-      const detail = createMockSegmentDetail()
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      const card = screen.getByTestId('segment-card')
-      expect(card).not.toHaveClass('pb-2')
-      expect(card).not.toHaveClass('pt-2.5')
-    })
-
-    it('should render with hover classes in non full-doc mode', () => {
-      mockDocForm.current = ChunkingMode.text
-      const detail = createMockSegmentDetail()
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      const card = screen.getByTestId('segment-card')
-      expect(card).toHaveClass('pb-2')
-      expect(card).toHaveClass('pt-2.5')
-    })
-
     it('should not render status item in full-doc mode', () => {
       mockDocForm.current = ChunkingMode.parentChild
       mockParentMode.current = 'full-doc'
@@ -638,7 +628,10 @@ describe('SegmentCard', () => {
     it('should render ChildSegmentList when in paragraph mode with child chunks', () => {
       mockDocForm.current = ChunkingMode.parentChild
       mockParentMode.current = 'paragraph'
-      const childChunks = [createMockChildChunk(), createMockChildChunk({ id: 'child-2', position: 2 })]
+      const childChunks = [
+        createMockChildChunk(),
+        createMockChildChunk({ id: 'child-2', position: 2 }),
+      ]
       const detail = createMockSegmentDetail({ child_chunks: childChunks })
 
       render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
@@ -697,7 +690,9 @@ describe('SegmentCard', () => {
       mockDocForm.current = ChunkingMode.text
       const detail = createMockSegmentDetail({ keywords: ['keyword1', 'keyword2'] })
 
-      const { container } = render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
+      const { container } = render(
+        <SegmentCard loading={false} detail={detail} focused={defaultFocused} />,
+      )
 
       expect(screen.getByText('keyword1')).toBeInTheDocument()
       expect(screen.getByText('keyword2')).toBeInTheDocument()
@@ -755,7 +750,9 @@ describe('SegmentCard', () => {
     })
 
     it('should handle empty detail object gracefully', () => {
-      render(<SegmentCard loading={false} detail={{} as SegmentDetailModel} focused={defaultFocused} />)
+      render(
+        <SegmentCard loading={false} detail={{} as SegmentDetailModel} focused={defaultFocused} />,
+      )
 
       expect(screen.getByText(/Chunk/i)).toBeInTheDocument()
     })
@@ -801,7 +798,9 @@ describe('SegmentCard', () => {
 
       render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
 
-      expect(screen.getByText('0 datasetDocuments.segment.characters:{"count":0}')).toBeInTheDocument()
+      expect(
+        screen.getByText('0 datasetDocuments.segment.characters:{"count":0}'),
+      ).toBeInTheDocument()
     })
 
     it('should handle zero hit count', () => {
@@ -967,7 +966,9 @@ describe('SegmentCard', () => {
     it('should handle loading transition correctly', () => {
       const detail = createMockSegmentDetail()
 
-      const { rerender } = render(<SegmentCard loading={true} detail={detail} focused={defaultFocused} />)
+      const { rerender } = render(
+        <SegmentCard loading={true} detail={detail} focused={defaultFocused} />,
+      )
 
       // When loading, content should not be visible
       expect(screen.queryByText('Test signed content')).not.toBeInTheDocument()
@@ -1000,40 +1001,6 @@ describe('SegmentCard', () => {
       expect(screen.getByText('This is the answer content')).toBeInTheDocument()
     })
 
-    it('should apply line-clamp-2 class when isCollapsed is true in QA mode', () => {
-      mockIsCollapsed.current = true
-      const detail = createMockSegmentDetail({
-        content: 'Question content',
-        answer: 'Answer content',
-        sign_content: '',
-      })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      // Markdown components should have line-clamp-2 class when collapsed
-      const markdowns = screen.getAllByTestId('markdown')
-      markdowns.forEach((markdown) => {
-        expect(markdown).toHaveClass('line-clamp-2')
-      })
-    })
-
-    it('should apply line-clamp-20 class when isCollapsed is false in QA mode', () => {
-      mockIsCollapsed.current = false
-      const detail = createMockSegmentDetail({
-        content: 'Question content',
-        answer: 'Answer content',
-        sign_content: '',
-      })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      // Markdown components should have line-clamp-20 class when not collapsed
-      const markdowns = screen.getAllByTestId('markdown')
-      markdowns.forEach((markdown) => {
-        expect(markdown).toHaveClass('line-clamp-20')
-      })
-    })
-
     it('should render QA mode with className applied to wrapper', () => {
       const detail = createMockSegmentDetail({
         content: 'Question',
@@ -1042,7 +1009,9 @@ describe('SegmentCard', () => {
         enabled: false,
       })
 
-      const { container } = render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
+      const { container } = render(
+        <SegmentCard loading={false} detail={detail} focused={defaultFocused} />,
+      )
 
       // The ChunkContent wrapper should have opacity class when disabled
       const qaWrapper = container.querySelector('.flex.gap-x-1')

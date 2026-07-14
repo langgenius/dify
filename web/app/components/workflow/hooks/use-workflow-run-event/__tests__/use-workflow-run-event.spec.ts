@@ -24,26 +24,82 @@ const handlers = vi.hoisted(() => ({
   handleWorkflowNodeHumanInputFormTimeout: vi.fn(),
 }))
 
-vi.mock('..', () => ({
+vi.mock('../use-workflow-started', () => ({
   useWorkflowStarted: () => ({ handleWorkflowStarted: handlers.handleWorkflowStarted }),
+}))
+vi.mock('../use-workflow-finished', () => ({
   useWorkflowFinished: () => ({ handleWorkflowFinished: handlers.handleWorkflowFinished }),
+}))
+vi.mock('../use-workflow-failed', () => ({
   useWorkflowFailed: () => ({ handleWorkflowFailed: handlers.handleWorkflowFailed }),
+}))
+vi.mock('../use-workflow-node-started', () => ({
   useWorkflowNodeStarted: () => ({ handleWorkflowNodeStarted: handlers.handleWorkflowNodeStarted }),
-  useWorkflowNodeFinished: () => ({ handleWorkflowNodeFinished: handlers.handleWorkflowNodeFinished }),
-  useWorkflowNodeIterationStarted: () => ({ handleWorkflowNodeIterationStarted: handlers.handleWorkflowNodeIterationStarted }),
-  useWorkflowNodeIterationNext: () => ({ handleWorkflowNodeIterationNext: handlers.handleWorkflowNodeIterationNext }),
-  useWorkflowNodeIterationFinished: () => ({ handleWorkflowNodeIterationFinished: handlers.handleWorkflowNodeIterationFinished }),
-  useWorkflowNodeLoopStarted: () => ({ handleWorkflowNodeLoopStarted: handlers.handleWorkflowNodeLoopStarted }),
-  useWorkflowNodeLoopNext: () => ({ handleWorkflowNodeLoopNext: handlers.handleWorkflowNodeLoopNext }),
-  useWorkflowNodeLoopFinished: () => ({ handleWorkflowNodeLoopFinished: handlers.handleWorkflowNodeLoopFinished }),
+}))
+vi.mock('../use-workflow-node-finished', () => ({
+  useWorkflowNodeFinished: () => ({
+    handleWorkflowNodeFinished: handlers.handleWorkflowNodeFinished,
+  }),
+}))
+vi.mock('../use-workflow-node-iteration-started', () => ({
+  useWorkflowNodeIterationStarted: () => ({
+    handleWorkflowNodeIterationStarted: handlers.handleWorkflowNodeIterationStarted,
+  }),
+}))
+vi.mock('../use-workflow-node-iteration-next', () => ({
+  useWorkflowNodeIterationNext: () => ({
+    handleWorkflowNodeIterationNext: handlers.handleWorkflowNodeIterationNext,
+  }),
+}))
+vi.mock('../use-workflow-node-iteration-finished', () => ({
+  useWorkflowNodeIterationFinished: () => ({
+    handleWorkflowNodeIterationFinished: handlers.handleWorkflowNodeIterationFinished,
+  }),
+}))
+vi.mock('../use-workflow-node-loop-started', () => ({
+  useWorkflowNodeLoopStarted: () => ({
+    handleWorkflowNodeLoopStarted: handlers.handleWorkflowNodeLoopStarted,
+  }),
+}))
+vi.mock('../use-workflow-node-loop-next', () => ({
+  useWorkflowNodeLoopNext: () => ({
+    handleWorkflowNodeLoopNext: handlers.handleWorkflowNodeLoopNext,
+  }),
+}))
+vi.mock('../use-workflow-node-loop-finished', () => ({
+  useWorkflowNodeLoopFinished: () => ({
+    handleWorkflowNodeLoopFinished: handlers.handleWorkflowNodeLoopFinished,
+  }),
+}))
+vi.mock('../use-workflow-node-retry', () => ({
   useWorkflowNodeRetry: () => ({ handleWorkflowNodeRetry: handlers.handleWorkflowNodeRetry }),
+}))
+vi.mock('../use-workflow-text-chunk', () => ({
   useWorkflowTextChunk: () => ({ handleWorkflowTextChunk: handlers.handleWorkflowTextChunk }),
+}))
+vi.mock('../use-workflow-text-replace', () => ({
   useWorkflowTextReplace: () => ({ handleWorkflowTextReplace: handlers.handleWorkflowTextReplace }),
+}))
+vi.mock('../use-workflow-agent-log', () => ({
   useWorkflowAgentLog: () => ({ handleWorkflowAgentLog: handlers.handleWorkflowAgentLog }),
+}))
+vi.mock('../use-workflow-paused', () => ({
   useWorkflowPaused: () => ({ handleWorkflowPaused: handlers.handleWorkflowPaused }),
-  useWorkflowNodeHumanInputRequired: () => ({ handleWorkflowNodeHumanInputRequired: handlers.handleWorkflowNodeHumanInputRequired }),
-  useWorkflowNodeHumanInputFormFilled: () => ({ handleWorkflowNodeHumanInputFormFilled: handlers.handleWorkflowNodeHumanInputFormFilled }),
-  useWorkflowNodeHumanInputFormTimeout: () => ({ handleWorkflowNodeHumanInputFormTimeout: handlers.handleWorkflowNodeHumanInputFormTimeout }),
+}))
+vi.mock('../use-workflow-node-human-input-required', () => ({
+  useWorkflowNodeHumanInputRequired: () => ({
+    handleWorkflowNodeHumanInputRequired: handlers.handleWorkflowNodeHumanInputRequired,
+  }),
+}))
+vi.mock('../use-workflow-node-human-input-form-filled', () => ({
+  useWorkflowNodeHumanInputFormFilled: () => ({
+    handleWorkflowNodeHumanInputFormFilled: handlers.handleWorkflowNodeHumanInputFormFilled,
+  }),
+}))
+vi.mock('../use-workflow-node-human-input-form-timeout', () => ({
+  useWorkflowNodeHumanInputFormTimeout: () => ({
+    handleWorkflowNodeHumanInputFormTimeout: handlers.handleWorkflowNodeHumanInputFormTimeout,
+  }),
 }))
 
 vi.mock('../use-workflow-reasoning', () => ({

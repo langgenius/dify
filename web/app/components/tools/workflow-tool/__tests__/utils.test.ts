@@ -1,4 +1,7 @@
-import type { WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema } from '../../types'
+import type {
+  WorkflowToolProviderOutputParameter,
+  WorkflowToolProviderOutputSchema,
+} from '../../types'
 import { VarType } from '@/app/components/workflow/types'
 import { buildWorkflowOutputParameters } from '../utils'
 
@@ -56,9 +59,7 @@ describe('buildWorkflowOutputParameters', () => {
 
     const result = buildWorkflowOutputParameters(params, schema)
 
-    expect(result).toEqual([
-      { name: 'missing_desc', description: '', type: undefined },
-    ])
+    expect(result).toEqual([{ name: 'missing_desc', description: '', type: undefined }])
   })
 
   it('derives parameters from schema when explicit array missing', () => {
@@ -140,8 +141,6 @@ describe('buildWorkflowOutputParameters', () => {
 
     const result = buildWorkflowOutputParameters(undefined, schema)
 
-    expect(result).toEqual([
-      { name: 'answer', description: '', type: VarType.string },
-    ])
+    expect(result).toEqual([{ name: 'answer', description: '', type: VarType.string }])
   })
 })

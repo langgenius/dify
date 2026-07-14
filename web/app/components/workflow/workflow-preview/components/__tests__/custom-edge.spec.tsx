@@ -84,6 +84,9 @@ describe('workflow preview custom edge', () => {
       </svg>,
     )
 
-    expect(screen.getByTestId('base-edge')).toHaveAttribute('data-stroke', 'var(--color-workflow-link-line-handle)')
+    expect(screen.getByTestId('base-edge')).toHaveAttribute(
+      'data-stroke',
+      'var(--color-workflow-link-line-handle)',
+    )
   })
 })

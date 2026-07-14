@@ -7,8 +7,7 @@ import { normalizeOperationItems } from './utils'
 
 export const filterVarByType = (varType: VarType) => {
   return (variable: Var) => {
-    if (varType === VarType.any || variable.type === VarType.any)
-      return true
+    if (varType === VarType.any || variable.type === VarType.any) return true
 
     return variable.type === varType
   }
@@ -16,12 +15,12 @@ export const filterVarByType = (varType: VarType) => {
 
 export const normalizeAssignedVarType = (assignedVarType: VarType, writeMode: WriteMode) => {
   if (
-    writeMode === WriteMode.overwrite
-    || writeMode === WriteMode.increment
-    || writeMode === WriteMode.decrement
-    || writeMode === WriteMode.multiply
-    || writeMode === WriteMode.divide
-    || writeMode === WriteMode.extend
+    writeMode === WriteMode.overwrite ||
+    writeMode === WriteMode.increment ||
+    writeMode === WriteMode.decrement ||
+    writeMode === WriteMode.multiply ||
+    writeMode === WriteMode.divide ||
+    writeMode === WriteMode.extend
   ) {
     return assignedVarType
   }
@@ -46,18 +45,14 @@ export const canAssignVar = (_varPayload: Var, selector: ValueSelector) => {
   return selector.join('.').startsWith('conversation')
 }
 
-export const canAssignToVar = (
-  varPayload: Var,
-  assignedVarType: VarType,
-  writeMode: WriteMode,
-) => {
+export const canAssignToVar = (varPayload: Var, assignedVarType: VarType, writeMode: WriteMode) => {
   if (
-    writeMode === WriteMode.overwrite
-    || writeMode === WriteMode.extend
-    || writeMode === WriteMode.increment
-    || writeMode === WriteMode.decrement
-    || writeMode === WriteMode.multiply
-    || writeMode === WriteMode.divide
+    writeMode === WriteMode.overwrite ||
+    writeMode === WriteMode.extend ||
+    writeMode === WriteMode.increment ||
+    writeMode === WriteMode.decrement ||
+    writeMode === WriteMode.multiply ||
+    writeMode === WriteMode.divide
   ) {
     return varPayload.type === assignedVarType
   }
@@ -78,14 +73,12 @@ export const canAssignToVar = (
   return true
 }
 
-export const ensureAssignerVersion = (newInputs: AssignerNodeType) => produce(newInputs, (draft) => {
-  if (draft.version !== '2')
-    draft.version = '2'
-})
+export const ensureAssignerVersion = (newInputs: AssignerNodeType) =>
+  produce(newInputs, (draft) => {
+    if (draft.version !== '2') draft.version = '2'
+  })
 
-export const updateOperationItems = (
-  inputs: AssignerNodeType,
-  items: AssignerNodeOperation[],
-) => produce(inputs, (draft) => {
-  draft.items = normalizeOperationItems(items)
-})
+export const updateOperationItems = (inputs: AssignerNodeType, items: AssignerNodeOperation[]) =>
+  produce(inputs, (draft) => {
+    draft.items = normalizeOperationItems(items)
+  })

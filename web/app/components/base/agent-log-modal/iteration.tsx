@@ -19,10 +19,12 @@ const Iteration: FC<Props> = ({ iterationInfo, isFinal, index }) => {
     <div className={cn('px-4 py-2')}>
       <div className="flex items-center">
         {isFinal && (
-          <div className="mr-3 shrink-0 text-xs leading-[18px] font-semibold text-text-tertiary">{t($ => $['agentLogDetail.finalProcessing'], { ns: 'appLog' })}</div>
+          <div className="mr-3 shrink-0 text-xs leading-[18px] font-semibold text-text-tertiary">
+            {t(($) => $['agentLogDetail.finalProcessing'], { ns: 'appLog' })}
+          </div>
         )}
         {!isFinal && (
-          <div className="mr-3 shrink-0 text-xs leading-[18px] font-semibold text-text-tertiary">{`${t($ => $['agentLogDetail.iteration'], { ns: 'appLog' }).toUpperCase()} ${index}`}</div>
+          <div className="mr-3 shrink-0 text-xs leading-[18px] font-semibold text-text-tertiary">{`${t(($) => $['agentLogDetail.iteration'], { ns: 'appLog' }).toUpperCase()} ${index}`}</div>
         )}
         <Divider bgStyle="gradient" className="mx-0 h-px grow" />
       </div>
@@ -38,11 +40,7 @@ const Iteration: FC<Props> = ({ iterationInfo, isFinal, index }) => {
         }}
       />
       {iterationInfo.tool_calls.map((toolCall, index) => (
-        <ToolCall
-          isLLM={false}
-          key={index}
-          toolCall={toolCall}
-        />
+        <ToolCall isLLM={false} key={index} toolCall={toolCall} />
       ))}
     </div>
   )

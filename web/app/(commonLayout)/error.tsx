@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { useQueryErrorResetBoundary } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { FullScreenLoading } from '@/app/components/full-screen-loading'
 import { isLegacyBase401 } from '@/features/account-profile/client'
@@ -12,6 +13,7 @@ type Props = Readonly<{
 
 export default function CommonLayoutError({ error, unstable_retry }: Props) {
   const { t } = useTranslation('common')
+  const { reset } = useQueryErrorResetBoundary()
 
   console.error(error)
 
@@ -19,16 +21,22 @@ export default function CommonLayoutError({ error, unstable_retry }: Props) {
   // until the browser navigation completes, matching main's Splash behavior.
   // Showing the "Try again" button here would just flash for a few frames before
   // the page navigates away, and clicking it would 401 again anyway.
-  if (isLegacyBase401(error))
-    return <FullScreenLoading />
+  if (isLegacyBase401(error)) return <FullScreenLoading />
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center gap-4 bg-background-body">
       <div className="system-sm-regular text-text-tertiary">
-        {t($ => $['errorBoundary.message'])}
+        {t(($) => $['errorBoundary.message'])}
       </div>
-      <Button size="small" variant="secondary" onClick={() => unstable_retry()}>
-        {t($ => $['errorBoundary.tryAgain'])}
+      <Button
+        size="small"
+        variant="secondary"
+        onClick={() => {
+          reset()
+          unstable_retry()
+        }}
+      >
+        {t(($) => $['errorBoundary.tryAgain'])}
       </Button>
     </div>
   )

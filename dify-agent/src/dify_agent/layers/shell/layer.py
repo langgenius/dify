@@ -2,7 +2,7 @@
 
 Shell command execution requires a bound execution-context layer with a safe
 ``agent_id``. The layer uses the current bound execution context to run
-commands with ``HOME=/home/<agent_id>`` and a home-rooted workspace path. The
+commands with ``HOME=<shell_home_root>/<agent_id>`` and a home-rooted workspace path. The
 persisted runtime state intentionally keeps the historical
 ``~/workspace/<session>`` identity so existing session snapshots stay
 compatible while live command execution no longer depends on the sandbox user's
@@ -33,7 +33,7 @@ import logging
 import re
 import secrets
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar, Literal, NotRequired, Protocol, TypedDict, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validator, model_validator
@@ -57,6 +57,7 @@ from dify_agent.adapters.shell.protocols import (
     ShellProviderProtocol,
     ShellResourceProtocol,
 )
+from dify_agent.agent_stub.protocol import AGENT_STUB_AUTH_JWE_ENV_VAR
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
@@ -250,6 +251,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
 
     config: DifyShellLayerConfig
     shell_provider: ShellProviderProtocol
+    shell_home_root: str = "/home"
+    shell_redact_patterns: list[str] = field(default_factory=list)
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     _shell_resource: ShellResourceProtocol | None = None
@@ -267,6 +270,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         config: DifyShellLayerConfig,
         *,
         shell_provider: ShellProviderProtocol | None,
+        shell_home_root: str = "/home",
+        shell_redact_patterns: list[str] | None = None,
         agent_stub_api_base_url: str | None = None,
         agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
     ) -> Self:
@@ -275,6 +280,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         layer = cls(
             config=config,
             shell_provider=shell_provider,
+            shell_home_root=_normalize_shell_home_root(shell_home_root),
+            shell_redact_patterns=shell_redact_patterns or [],
             agent_stub_api_base_url=agent_stub_api_base_url,
             agent_stub_token_factory=agent_stub_token_factory,
         )
@@ -414,7 +421,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     exit_code=result.exit_code,
                     output_path=observation.output_path,
                 ),
-                observation.text,
+                self._redact_output(observation.text),
             )
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc)
@@ -440,7 +447,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     exit_code=result.exit_code,
                     output_path=observation.output_path,
                 ),
-                observation.text,
+                self._redact_output(observation.text),
             )
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc, job_id=job_id)
@@ -466,7 +473,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     exit_code=result.exit_code,
                     output_path=observation.output_path,
                 ),
-                observation.text,
+                self._redact_output(observation.text),
             )
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc, job_id=job_id)
@@ -673,7 +680,10 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         self.runtime_state.job_ids = []
 
     def _shell_home_dir(self) -> str:
-        return _shell_home_dir_for_agent_id(self._require_current_execution_agent_id())
+        return _shell_home_dir_for_agent_id(
+            self._require_current_execution_agent_id(),
+            shell_home_root=self.shell_home_root,
+        )
 
     def _current_execution_agent_id(self) -> str | None:
         execution_context_layer = self.deps.execution_context
@@ -711,6 +721,30 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             raise RuntimeError("Agent Stub environment injection is not available for this shell session.")
         env.update(agent_stub_env)
         return env
+
+    def _redact_output(self, text: str) -> str:
+        """Redact sensitive content from shell output before the model sees it.
+
+        Two layers of redaction are applied:
+
+        1. **Built-in token redaction** — the actual Agent Stub JWE token value
+           is always replaced with ``***``. This is unconditional and cannot be
+           disabled.
+        2. **Pattern redaction** — regex patterns from both server-level
+           ``shell_redact_patterns`` and per-agent ``config.redact_patterns``
+           are applied via ``re.sub`` to mask additional secrets.
+        """
+        if not text:
+            return text
+        # Built-in: always redact the JWE token value.
+        env = self._build_shell_command_env(include_agent_stub_env=True)
+        jwe_value = env.get(AGENT_STUB_AUTH_JWE_ENV_VAR)
+        if jwe_value and len(jwe_value) > 8:
+            text = text.replace(jwe_value, "***")
+        # Server-level + per-agent regex patterns.
+        for pattern in (*self.shell_redact_patterns, *self.config.redact_patterns):
+            text = re.sub(pattern, "***", text)
+        return text
 
 
 async def execute_complete_with_commands(
@@ -890,10 +924,19 @@ def _workspace_cwd(session_id: str) -> str:
     return f"{_WORKSPACE_ROOT}/{_validated_session_id(session_id)}"
 
 
-def _shell_home_dir_for_agent_id(agent_id: str | None) -> str:
+def _normalize_shell_home_root(shell_home_root: str) -> str:
+    stripped = shell_home_root.strip().rstrip("/")
+    if not stripped:
+        raise ValueError("shell_home_root must not be empty")
+    if not stripped.startswith("/"):
+        raise ValueError("shell_home_root must be an absolute path")
+    return stripped
+
+
+def _shell_home_dir_for_agent_id(agent_id: str | None, *, shell_home_root: str = "/home") -> str:
     if agent_id is None:
         raise ValueError("ShellLayer command execution requires execution_context.agent_id.")
-    return f"/home/{_validated_agent_home_segment(agent_id)}"
+    return f"{_normalize_shell_home_root(shell_home_root)}/{_validated_agent_home_segment(agent_id)}"
 
 
 def _validated_agent_home_segment(agent_id: str) -> str:
