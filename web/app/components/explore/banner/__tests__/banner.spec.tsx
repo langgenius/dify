@@ -246,7 +246,7 @@ describe('Banner', () => {
     expect(screen.getAllByRole('button')).toHaveLength(2)
   })
 
-  it('stops autoplay when pointer selection does not move focus', () => {
+  it('keeps autoplay running when pointer selection does not move focus', () => {
     render(
       <Banner
         banners={[
@@ -258,7 +258,7 @@ describe('Banner', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '02 Second banner' }))
 
-    expect(mockAutoplay.stop).toHaveBeenCalledOnce()
+    expect(mockAutoplay.stop).not.toHaveBeenCalled()
     expect(mockScrollTo).toHaveBeenCalledWith(1)
   })
 
@@ -274,7 +274,7 @@ describe('Banner', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '01 First banner' }))
 
-    expect(mockAutoplay.stop).toHaveBeenCalledOnce()
+    expect(mockAutoplay.stop).not.toHaveBeenCalled()
     expect(mockScrollTo).not.toHaveBeenCalled()
   })
 
@@ -314,7 +314,7 @@ describe('Banner', () => {
     expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'off')
   })
 
-  it('stops rotation after keyboard focus enters the pagination controls', () => {
+  it('pauses rotation while keyboard focus is within the pagination controls', () => {
     render(
       <Banner
         banners={[
@@ -329,6 +329,25 @@ describe('Banner', () => {
     expect(mockAutoplay.stop).toHaveBeenCalledOnce()
 
     fireEvent.blur(secondBannerButton)
+    expect(mockAutoplay.play).toHaveBeenCalledOnce()
+  })
+
+  it('does not resume an autoplay plugin that was already inactive before focus', () => {
+    mockAutoplayPlaying = false
+    render(
+      <Banner
+        banners={[
+          createMockBanner('1', 'enabled', 'First banner'),
+          createMockBanner('2', 'enabled', 'Second banner'),
+        ]}
+      />,
+    )
+
+    const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
+    fireEvent.focus(secondBannerButton)
+    fireEvent.blur(secondBannerButton)
+
+    expect(mockAutoplay.stop).not.toHaveBeenCalled()
     expect(mockAutoplay.play).not.toHaveBeenCalled()
   })
 

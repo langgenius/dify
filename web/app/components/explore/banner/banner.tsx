@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react'
+import type { ComponentProps, FocusEvent } from 'react'
 import type { Banner as BannerType } from '@/models/app'
 import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
@@ -28,20 +28,29 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
   const { api, selectedIndex } = useCarousel()
   const [isPlaying, setIsPlaying] = useState(false)
   const trackedBannerKeysRef = useRef(new Set<string>())
+  const shouldResumeAfterFocusRef = useRef(false)
   const nextIndex = (selectedIndex + 1) % banners.length
   const activeBanner = banners[selectedIndex]
   const trackingKey = accountId && activeBanner ? `${accountId}:${activeBanner.id}` : null
 
-  const stopRotation = () => {
+  const pauseRotationForFocus = () => {
     const autoplay = api?.plugins().autoplay
-    if (autoplay?.isPlaying()) autoplay.stop()
+    if (!autoplay?.isPlaying()) return
+
+    shouldResumeAfterFocusRef.current = true
+    autoplay.stop()
+  }
+
+  const resumeRotationAfterFocus = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget)) return
+    if (!shouldResumeAfterFocusRef.current) return
+
+    shouldResumeAfterFocusRef.current = false
+    api?.plugins().autoplay?.play()
   }
 
   const selectBanner = (index: number) => {
-    if (!api) return
-
-    stopRotation()
-    if (index === selectedIndex) return
+    if (!api || index === selectedIndex) return
     api.scrollTo(index)
   }
 
@@ -86,7 +95,8 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
         role="group"
         aria-label={t(($) => $['pagination.pageNumber'], { ns: 'common' })}
         className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-2 py-1 @min-[996px]/banner:max-w-[600px] @min-[996px]/banner:min-w-60 @min-[996px]/banner:flex-[1_0_0] @min-[996px]/banner:pr-10"
-        onFocusCapture={stopRotation}
+        onFocusCapture={pauseRotationForFocus}
+        onBlurCapture={resumeRotationAfterFocus}
       >
         <div className="flex items-center gap-0.5">
           {banners.map((banner, index) => (
@@ -169,7 +179,7 @@ export function Banner({ banners }: BannerProps) {
     Carousel.Plugin.Autoplay({
       delay: AUTOPLAY_DELAY,
       stopOnFocusIn: true,
-      stopOnInteraction: true,
+      stopOnInteraction: false,
       stopOnMouseEnter: true,
       breakpoints: {
         '(prefers-reduced-motion: reduce)': { active: false },
