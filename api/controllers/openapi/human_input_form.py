@@ -1,8 +1,8 @@
 """
 OpenAPI bearer-authed human input form endpoints.
 
-GET  /apps/<app_id>/form/human_input/<form_token>  — fetch paused form definition
-POST /apps/<app_id>/form/human_input/<form_token>  — submit form response
+GET  /apps/<app_id>/human-input-forms/<form_token>         — fetch paused form definition
+POST /apps/<app_id>/human-input-forms/<form_token>:submit  — submit form response
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from controllers.openapi._contract import accepts, returns
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, RBACRequirement
+from controllers.openapi.auth.data import AuthData, CallerKind, RBACRequirement
 from core.workflow.human_input_policy import (
     HumanInputSurface,
     is_recipient_type_allowed_for_surface,
@@ -60,7 +60,7 @@ def _ensure_form_is_allowed_for_openapi(form) -> None:
         raise RecipientSurfaceMismatch()
 
 
-@openapi_ns.route("/apps/<string:app_id>/form/human_input/<string:form_token>")
+@openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>")
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @openapi_ns.response(200, "Form definition", openapi_ns.models[HumanInputFormDefinitionResponse.__name__])
     @auth_router.guard(
@@ -79,6 +79,9 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
         service.ensure_form_active(form)
         return _jsonify_form_definition(form)
 
+
+@openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>:submit")
+class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_RUN,
         rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
@@ -98,7 +101,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 
         submission_user_id: str | None = None
         submission_end_user_id: str | None = None
-        if caller_kind == "account":
+        if caller_kind == CallerKind.ACCOUNT:
             submission_user_id = caller.id
         else:
             submission_end_user_id = caller.id

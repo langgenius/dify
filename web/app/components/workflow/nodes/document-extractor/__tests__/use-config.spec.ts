@@ -83,10 +83,12 @@ describe('document-extractor/use-config', () => {
     result.current.handleVarChanges(['node-2', 'files'])
 
     expect(getCurrentVariableType).toHaveBeenCalled()
-    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
-      variable_selector: ['node-2', 'files'],
-      is_array_file: true,
-    }))
+    expect(setInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variable_selector: ['node-2', 'files'],
+        is_array_file: true,
+      }),
+    )
   })
 
   it('only accepts file variables in the picker filter', () => {

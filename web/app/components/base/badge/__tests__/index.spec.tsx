@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import Badge, { BadgeState, BadgeVariants } from '../index'
+import Badge, { BadgeState } from '../index'
 
 describe('Badge', () => {
   describe('Rendering', () => {
@@ -76,7 +76,11 @@ describe('Badge', () => {
       { size: 'l', iconOnly: false, label: 'large with text' },
       { size: 'l', iconOnly: true, label: 'large icon-only' },
     ] as const)('should render correctly for $label', ({ size, iconOnly }) => {
-      const { container } = render(<Badge size={size} iconOnly={iconOnly}>🔔</Badge>)
+      const { container } = render(
+        <Badge size={size} iconOnly={iconOnly}>
+          🔔
+        </Badge>,
+      )
       const badge = screen.getByText('🔔')
 
       // Verify badge renders with correct size
@@ -226,9 +230,11 @@ describe('Badge', () => {
 
       fireEvent.click(screen.getByText('Event Badge'))
 
-      expect(handleClick).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'click',
-      }))
+      expect(handleClick).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'click',
+        }),
+      )
     })
   })
 
@@ -248,7 +254,13 @@ describe('Badge', () => {
       )
 
       const badge = screen.getByTestId('combined-badge')
-      expect(badge).toHaveClass('badge', 'badge-l', 'badge-warning', 'system-2xs-medium-uppercase', 'custom-badge')
+      expect(badge).toHaveClass(
+        'badge',
+        'badge-l',
+        'badge-warning',
+        'system-2xs-medium-uppercase',
+        'custom-badge',
+      )
       expect(badge).toHaveStyle({ backgroundColor: 'rgb(0, 0, 255)' })
       expect(badge).toHaveTextContent('Full Featured')
     })
@@ -330,30 +342,6 @@ describe('Badge', () => {
         { key: 'Default', value: '' },
       ])('should export $key state with value "$value"', ({ key, value }) => {
         expect(BadgeState[key as keyof typeof BadgeState]).toBe(value)
-      })
-    })
-
-    describe('BadgeVariants utility', () => {
-      it('should be a function', () => {
-        expect(typeof BadgeVariants).toBe('function')
-      })
-
-      it('should generate base badge class with default medium size', () => {
-        const result = BadgeVariants({})
-
-        expect(result).toContain('badge')
-        expect(result).toContain('badge-m')
-      })
-
-      it.each([
-        { size: 's' },
-        { size: 'm' },
-        { size: 'l' },
-      ] as const)('should generate correct classes for size=$size', ({ size }) => {
-        const result = BadgeVariants({ size })
-
-        expect(result).toContain('badge')
-        expect(result).toContain(`badge-${size}`)
       })
     })
   })

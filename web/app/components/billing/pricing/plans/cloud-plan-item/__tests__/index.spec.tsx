@@ -2,7 +2,6 @@ import type { Mock } from 'vitest'
 import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
@@ -12,9 +11,35 @@ import { Plan } from '../../../../type'
 import { PlanRange } from '../../../plan-switcher/plan-range-switcher'
 import CloudPlanItem from '../index'
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
+let mockAppCtx: Record<string, unknown> = {}
+const mockUseAppContext = vi.hoisted(() => vi.fn())
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -27,7 +52,9 @@ vi.mock('@/service/billing', () => ({
 vi.mock('@/service/client', () => ({
   consoleClient: {
     billing: {
-      invoices: vi.fn(),
+      invoices: {
+        get: vi.fn(),
+      },
     },
   },
 }))
@@ -42,14 +69,18 @@ vi.mock('../../../assets', () => ({
   Team: () => <div>Team Icon</div>,
 }))
 
-const mockUseAppContext = useAppContext as Mock
 const mockUseProviderContext = useProviderContext as Mock
 const mockUseAsyncWindowOpen = useAsyncWindowOpen as Mock
-const mockBillingInvoices = consoleClient.billing.invoices as Mock
+const mockBillingInvoices = consoleClient.billing.invoices.get as Mock
 const mockFetchSubscriptionUrls = fetchSubscriptionUrls as Mock
 
 let assignedHref = ''
 const originalLocation = window.location
+
+const mockAppContext = (state: Record<string, unknown>) => {
+  mockAppCtx = state
+  mockUseAppContext.mockReturnValue(state)
+}
 
 const renderWithToastHost = (ui: React.ReactNode) => {
   return render(
@@ -77,19 +108,15 @@ beforeAll(() => {
 beforeEach(() => {
   vi.clearAllMocks()
   toast.dismiss()
-  mockUseAppContext.mockReturnValue({
+  mockAppContext({
     isCurrentWorkspaceManager: true,
-    workspacePermissionKeys: [
-      'billing.view',
-      'billing.manage',
-      'billing.subscription.manage',
-    ],
+    workspacePermissionKeys: ['billing.view', 'billing.manage', 'billing.subscription.manage'],
   })
   mockUseProviderContext.mockReturnValue({
     enableEducationPlan: false,
     isEducationAccount: false,
   })
-  mockUseAsyncWindowOpen.mockReturnValue(vi.fn(async open => await open()))
+  mockUseAsyncWindowOpen.mockReturnValue(vi.fn(async (open) => await open()))
   mockBillingInvoices.mockResolvedValue({ url: 'https://billing.example' })
   mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://subscription.example' })
   assignedHref = ''
@@ -118,7 +145,9 @@ describe('CloudPlanItem', () => {
       expect(screen.getByText('billing.plans.sandbox.name'))!.toBeInTheDocument()
       expect(screen.getByText('billing.plans.sandbox.description'))!.toBeInTheDocument()
       expect(screen.getByText('billing.plansCommon.free'))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }),
+      )!.toBeInTheDocument()
     })
 
     it('should display yearly pricing with discount when planRange is yearly', () => {
@@ -134,7 +163,9 @@ describe('CloudPlanItem', () => {
       const professionalPlan = ALL_PLANS[Plan.professional]
       expect(screen.getByText(`$${professionalPlan.price * 12}`))!.toBeInTheDocument()
       expect(screen.getByText(`$${professionalPlan.price * 10}`))!.toBeInTheDocument()
-      expect(screen.getByText(/billing\.plansCommon\.priceTip.*billing\.plansCommon\.year/))!.toBeInTheDocument()
+      expect(
+        screen.getByText(/billing\.plansCommon\.priceTip.*billing\.plansCommon\.year/),
+      )!.toBeInTheDocument()
     })
 
     it('should show "most popular" badge for professional plan', () => {
@@ -181,7 +212,7 @@ describe('CloudPlanItem', () => {
   // Payment actions triggered from the CTA
   describe('Plan purchase flow', () => {
     it('should show toast when billing manage permission is missing for plan purchase', () => {
-      mockUseAppContext.mockReturnValue({
+      mockAppContext({
         isCurrentWorkspaceManager: true,
         workspacePermissionKeys: ['billing.subscription.manage'],
       })
@@ -204,7 +235,7 @@ describe('CloudPlanItem', () => {
     it('should open billing portal when upgrading current paid plan', async () => {
       const openWindow = vi.fn(async (cb: () => Promise<string>) => await cb())
       mockUseAsyncWindowOpen.mockReturnValue(openWindow)
-      mockUseAppContext.mockReturnValue({
+      mockAppContext({
         isCurrentWorkspaceManager: false,
         workspacePermissionKeys: ['billing.subscription.manage'],
       })
@@ -227,7 +258,7 @@ describe('CloudPlanItem', () => {
     })
 
     it('should redirect to subscription url when selecting a new paid plan', async () => {
-      mockUseAppContext.mockReturnValue({
+      mockAppContext({
         isCurrentWorkspaceManager: false,
         workspacePermissionKeys: ['billing.manage'],
       })
@@ -314,7 +345,7 @@ describe('CloudPlanItem', () => {
     })
 
     it('should show default CTA and hide warning when billing manage permission is missing', () => {
-      mockUseAppContext.mockReturnValue({
+      mockAppContext({
         isCurrentWorkspaceManager: true,
         workspacePermissionKeys: [],
       })
@@ -332,13 +363,19 @@ describe('CloudPlanItem', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))!.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'education.useEducationDiscount' })).not.toBeInTheDocument()
-      expect(screen.queryByText('education.planNotSupportEducationDiscount')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }),
+      )!.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'education.useEducationDiscount' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('education.planNotSupportEducationDiscount'),
+      ).not.toBeInTheDocument()
     })
 
     it('should hide education unsupported warning when billing manage permission is missing', () => {
-      mockUseAppContext.mockReturnValue({
+      mockAppContext({
         isCurrentWorkspaceManager: true,
         workspacePermissionKeys: [],
       })
@@ -356,8 +393,12 @@ describe('CloudPlanItem', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))!.toBeInTheDocument()
-      expect(screen.queryByText('education.planNotSupportEducationDiscount')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }),
+      )!.toBeInTheDocument()
+      expect(
+        screen.queryByText('education.planNotSupportEducationDiscount'),
+      ).not.toBeInTheDocument()
     })
 
     it('should show education unsupported warning and switch checkout to professional annual', async () => {
@@ -383,8 +424,12 @@ describe('CloudPlanItem', () => {
       expect(screen.getByText('education.educationPricingConfirm.title'))!.toBeInTheDocument()
       expect(screen.getByText('education.educationPricingConfirm.description'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.close' }))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'education.educationPricingConfirm.cancel' }))!.toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'education.educationPricingConfirm.continue' }))
+      expect(
+        screen.getByRole('button', { name: 'education.educationPricingConfirm.cancel' }),
+      )!.toBeInTheDocument()
+      fireEvent.click(
+        screen.getByRole('button', { name: 'education.educationPricingConfirm.continue' }),
+      )
 
       await waitFor(() => {
         expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'year')
@@ -408,10 +453,14 @@ describe('CloudPlanItem', () => {
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
-      fireEvent.click(screen.getByRole('button', { name: 'education.educationPricingConfirm.cancel' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'education.educationPricingConfirm.cancel' }),
+      )
 
       await waitFor(() => {
-        expect(screen.queryByText('education.educationPricingConfirm.title'))!.not.toBeInTheDocument()
+        expect(
+          screen.queryByText('education.educationPricingConfirm.title'),
+        )!.not.toBeInTheDocument()
         expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.team, 'year')
         expect(assignedHref).toBe('https://subscription.example')
       })
@@ -436,7 +485,9 @@ describe('CloudPlanItem', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       await waitFor(() => {
-        expect(screen.queryByText('education.educationPricingConfirm.title'))!.not.toBeInTheDocument()
+        expect(
+          screen.queryByText('education.educationPricingConfirm.title'),
+        )!.not.toBeInTheDocument()
       })
       expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
       expect(assignedHref).toBe('')
@@ -447,7 +498,10 @@ describe('CloudPlanItem', () => {
       // Make the first fetch hang until we resolve it
       let resolveFirst!: (v: { url: string }) => void
       mockFetchSubscriptionUrls.mockImplementationOnce(
-        () => new Promise((resolve) => { resolveFirst = resolve }),
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve
+          }),
       )
 
       render(
@@ -477,14 +531,15 @@ describe('CloudPlanItem', () => {
     // Covers L82-83, L85-87: openAsyncWindow error path when invoices returns no url
     it('should invoke onError when billing invoices returns empty url', async () => {
       mockBillingInvoices.mockResolvedValue({ url: '' })
-      const openWindow = vi.fn(async (cb: () => Promise<string>, opts: { onError?: (e: Error) => void }) => {
-        try {
-          await cb()
-        }
-        catch (e) {
-          opts.onError?.(e as Error)
-        }
-      })
+      const openWindow = vi.fn(
+        async (cb: () => Promise<string>, opts: { onError?: (e: Error) => void }) => {
+          try {
+            await cb()
+          } catch (e) {
+            opts.onError?.(e as Error)
+          }
+        },
+      )
       mockUseAsyncWindowOpen.mockReturnValue(openWindow)
 
       render(
@@ -519,7 +574,9 @@ describe('CloudPlanItem', () => {
 
       const teamPlan = ALL_PLANS[Plan.team]
       expect(screen.getByText(`$${teamPlan.price}`))!.toBeInTheDocument()
-      expect(screen.getByText(/billing\.plansCommon\.priceTip.*billing\.plansCommon\.month/))!.toBeInTheDocument()
+      expect(
+        screen.getByText(/billing\.plansCommon\.priceTip.*billing\.plansCommon\.month/),
+      )!.toBeInTheDocument()
       // Should NOT show crossed-out yearly price
       // Should NOT show crossed-out yearly price
       // Should NOT show crossed-out yearly price

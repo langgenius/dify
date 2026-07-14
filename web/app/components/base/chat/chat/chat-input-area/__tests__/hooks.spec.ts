@@ -3,10 +3,7 @@ import { useTextAreaHeight } from '../hooks'
 
 describe('useTextAreaHeight', () => {
   // Mock getBoundingClientRect for all ref elements
-  const mockGetBoundingClientRect = (
-    width: number = 0,
-    height: number = 0,
-  ) => ({
+  const mockGetBoundingClientRect = (width: number = 0, height: number = 0) => ({
     width,
     height,
     top: 0,

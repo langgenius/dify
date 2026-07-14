@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from inspect import unwrap
-from unittest.mock import PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -64,15 +64,16 @@ class TestPipelineTemplateListApi:
         tenant_id = "tenant-1"
         service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(template_type: str, language: str, current_tenant_id: str) -> dict[str, object]:
-            service_calls.append((template_type, language, current_tenant_id))
+        def get_pipeline_templates(*, type: str, language: str, current_tenant_id: str, session) -> dict[str, object]:
+            del session
+            service_calls.append((type, language, current_tenant_id))
             return {"pipeline_templates": [_template_item()]}
 
         with (
             app.test_request_context("/rag/pipeline/templates"),
             patch.object(module.RagPipelineService, "get_pipeline_templates", side_effect=get_pipeline_templates),
         ):
-            response, status = method(api, tenant_id)
+            response, status = method(api, Mock(), tenant_id)
 
         assert status == 200
         assert service_calls == [("built-in", "en-US", tenant_id)]
@@ -92,15 +93,16 @@ class TestPipelineTemplateListApi:
         tenant_id = "tenant-1"
         service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(template_type: str, language: str, current_tenant_id: str) -> dict[str, object]:
-            service_calls.append((template_type, language, current_tenant_id))
+        def get_pipeline_templates(*, type: str, language: str, current_tenant_id: str, session) -> dict[str, object]:
+            del session
+            service_calls.append((type, language, current_tenant_id))
             return {"pipeline_templates": []}
 
         with (
             app.test_request_context("/rag/pipeline/templates?type=customized&language=ja-JP"),
             patch.object(module.RagPipelineService, "get_pipeline_templates", side_effect=get_pipeline_templates),
         ):
-            response, status = method(api, tenant_id)
+            response, status = method(api, Mock(), tenant_id)
 
         assert status == 200
         assert response == {"pipeline_templates": []}
@@ -113,16 +115,20 @@ class TestPipelineTemplateDetailApi:
         method = unwrap(api.get)
         service_calls: list[tuple[str, str]] = []
 
-        class Service:
-            def get_pipeline_template_detail(self, template_id: str, template_type: str) -> dict[str, object]:
-                service_calls.append((template_id, template_type))
-                return _template_detail()
+        def get_pipeline_template_detail(template_id: str, type: str, *, session) -> dict[str, object]:
+            del session
+            service_calls.append((template_id, type))
+            return _template_detail()
 
         with (
             app.test_request_context("/rag/pipeline/templates/template-1?type=customized"),
-            patch.object(module, "RagPipelineService", Service),
+            patch.object(
+                module.RagPipelineService,
+                "get_pipeline_template_detail",
+                side_effect=get_pipeline_template_detail,
+            ),
         ):
-            response, status = method(api, "template-1")
+            response, status = method(api, Mock(), "template-1")
 
         assert status == 200
         assert response == {**_template_detail(), "created_by": None}
@@ -132,16 +138,19 @@ class TestPipelineTemplateDetailApi:
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
 
-        class Service:
-            def get_pipeline_template_detail(self, template_id: str, template_type: str) -> None:
-                return None
+        def get_pipeline_template_detail(template_id: str, type: str, *, session) -> None:
+            del template_id, type, session
 
         with (
             app.test_request_context("/rag/pipeline/templates/missing"),
-            patch.object(module, "RagPipelineService", Service),
+            patch.object(
+                module.RagPipelineService,
+                "get_pipeline_template_detail",
+                side_effect=get_pipeline_template_detail,
+            ),
         ):
             with pytest.raises(NotFound):
-                method(api, "missing")
+                method(api, Mock(), "missing")
 
 
 class TestCustomizedPipelineTemplateApi:
@@ -154,8 +163,14 @@ class TestCustomizedPipelineTemplateApi:
         service_calls: list[tuple[str, PipelineTemplateInfoEntity, Account, str]] = []
 
         def update_template(
-            template_id: str, template_info: PipelineTemplateInfoEntity, current_user: Account, current_tenant_id: str
+            template_id: str,
+            template_info: PipelineTemplateInfoEntity,
+            current_user: Account,
+            current_tenant_id: str,
+            *,
+            session,
         ) -> None:
+            del session
             service_calls.append((template_id, template_info, current_user, current_tenant_id))
 
         with (
@@ -192,8 +207,14 @@ class TestCustomizedPipelineTemplateApi:
         service_calls: list[tuple[str, PipelineTemplateInfoEntity, Account, str]] = []
 
         def update_template(
-            template_id: str, template_info: PipelineTemplateInfoEntity, current_user: Account, current_tenant_id: str
+            template_id: str,
+            template_info: PipelineTemplateInfoEntity,
+            current_user: Account,
+            current_tenant_id: str,
+            *,
+            session,
         ) -> None:
+            del session
             service_calls.append((template_id, template_info, current_user, current_tenant_id))
 
         with (
@@ -222,7 +243,8 @@ class TestCustomizedPipelineTemplateApi:
         tenant_id = "tenant-1"
         deleted_templates: list[tuple[str, str]] = []
 
-        def delete_template(template_id: str, current_tenant_id: str) -> None:
+        def delete_template(template_id: str, current_tenant_id: str, *, session) -> None:
+            del session
             deleted_templates.append((template_id, current_tenant_id))
 
         with (
@@ -319,9 +341,19 @@ class TestPublishCustomizedPipelineTemplateApi:
         service_calls: list[tuple[str, dict[str, object], Account, str]] = []
 
         class Service:
+            def __init__(self, *args, **kwargs) -> None:
+                pass
+
             def publish_customized_pipeline_template(
-                self, pipeline_id: str, data: dict[str, object], current_user: Account, current_tenant_id: str
+                self,
+                pipeline_id: str,
+                data: dict[str, object],
+                current_user: Account,
+                current_tenant_id: str,
+                *,
+                session,
             ) -> None:
+                del session
                 service_calls.append((pipeline_id, data, current_user, current_tenant_id))
 
         with (
@@ -346,9 +378,19 @@ class TestPublishCustomizedPipelineTemplateApi:
         service_calls: list[tuple[str, dict[str, object], Account, str]] = []
 
         class Service:
+            def __init__(self, *args, **kwargs) -> None:
+                pass
+
             def publish_customized_pipeline_template(
-                self, pipeline_id: str, data: dict[str, object], current_user: Account, current_tenant_id: str
+                self,
+                pipeline_id: str,
+                data: dict[str, object],
+                current_user: Account,
+                current_tenant_id: str,
+                *,
+                session,
             ) -> None:
+                del session
                 service_calls.append((pipeline_id, data, current_user, current_tenant_id))
 
         with (

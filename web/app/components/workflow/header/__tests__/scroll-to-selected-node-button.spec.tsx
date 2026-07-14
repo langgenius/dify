@@ -6,7 +6,8 @@ import ScrollToSelectedNodeButton from '../scroll-to-selected-node-button'
 const mockScrollToWorkflowNode = vi.fn()
 
 vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
+  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
+)
 
 vi.mock('../../utils/node-navigation', () => ({
   scrollToWorkflowNode: (nodeId: string) => mockScrollToWorkflowNode(nodeId),

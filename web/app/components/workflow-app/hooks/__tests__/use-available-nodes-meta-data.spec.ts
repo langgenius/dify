@@ -32,8 +32,12 @@ describe('useAvailableNodesMetaData', () => {
     expect(result.current.nodesMap?.[BlockEnum.Answer]).toBeDefined()
     expect(result.current.nodesMap?.[BlockEnum.End]).toBeUndefined()
     expect(result.current.nodesMap?.[BlockEnum.TriggerWebhook]).toBeUndefined()
-    expect(result.current.nodesMap?.[BlockEnum.VariableAssigner]).toBe(result.current.nodesMap?.[BlockEnum.VariableAggregator])
-    expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.helpLinkUri).toContain('/docs/use-dify/nodes/')
+    expect(result.current.nodesMap?.[BlockEnum.VariableAssigner]).toBe(
+      result.current.nodesMap?.[BlockEnum.VariableAggregator],
+    )
+    expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.helpLinkUri).toContain(
+      '/docs/use-dify/nodes/',
+    )
   })
 
   it('should include workflow-specific trigger and end nodes outside chat mode', () => {
@@ -54,11 +58,29 @@ describe('useAvailableNodesMetaData', () => {
     })
   })
 
+  it('should use explicit docs pages and skip nodes without generated docs pages', () => {
+    mockUseIsChatMode.mockReturnValue(false)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+
+    expect(result.current.nodesMap?.[BlockEnum.End]?.metaData.helpLinkUri).toBe(
+      '/docs/use-dify/nodes/output',
+    )
+    expect(
+      result.current.nodesMap?.[BlockEnum.IterationStart]?.metaData.helpLinkUri,
+    ).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.LoopStart]?.metaData.helpLinkUri).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.LoopEnd]?.metaData.helpLinkUri).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.helpLinkUri).toBe(
+      '/docs/use-dify/nodes/start',
+    )
+  })
+
   it('should expose Agent v2 instead of legacy Agent when Agent v2 is enabled', () => {
     mockUseIsChatMode.mockReturnValue(false)
 
     const { result } = renderHook(() => useAvailableNodesMetaData())
-    const nodeTypes = result.current.nodes.map(node => node.metaData.type)
+    const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
 
     expect(nodeTypes).toContain(BlockEnum.AgentV2)
     expect(nodeTypes).not.toContain(BlockEnum.Agent)
@@ -71,7 +93,7 @@ describe('useAvailableNodesMetaData', () => {
     mockIsAgentV2Enabled.mockReturnValue(false)
 
     const { result } = renderHook(() => useAvailableNodesMetaData())
-    const nodeTypes = result.current.nodes.map(node => node.metaData.type)
+    const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
 
     expect(nodeTypes).toContain(BlockEnum.Agent)
     expect(nodeTypes).not.toContain(BlockEnum.AgentV2)

@@ -1,8 +1,8 @@
+import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { ComponentProps } from 'react'
-import type { AgentRosterListItem } from '../agent-roster-list'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentRosterList } from '../agent-roster-list'
 
@@ -20,6 +20,12 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
+        get: {
+          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
+            'agent-detail',
+            input.params.agent_id,
+          ],
+        },
         copy: {
           post: {
             mutationOptions: () => ({
@@ -42,10 +48,13 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const createAgent = (overrides: Partial<AgentRosterListItem> = {}): AgentRosterListItem => ({
+const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial => ({
   active_config_is_published: false,
   description: 'Find and summarize market materials.',
   id: 'agent-1',
+  icon: '🧸',
+  icon_background: '#F5F3FF',
+  icon_type: 'emoji',
   icon_url: null,
   mode: 'agent',
   name: 'Research Agent',
@@ -56,12 +65,12 @@ const createAgent = (overrides: Partial<AgentRosterListItem> = {}): AgentRosterL
 })
 
 const renderList = (
-  agents: AgentRosterListItem[],
+  agents: AgentAppPartial[],
   overrides: Partial<ComponentProps<typeof AgentRosterList>> = {},
 ) => {
   const queryClient = new QueryClient()
 
-  return render(
+  const result = render(
     <QueryClientProvider client={queryClient}>
       <AgentRosterList
         agents={agents}
@@ -77,6 +86,11 @@ const renderList = (
       />
     </QueryClientProvider>,
   )
+
+  return {
+    ...result,
+    queryClient,
+  }
 }
 
 describe('AgentRosterList', () => {
@@ -84,10 +98,12 @@ describe('AgentRosterList', () => {
     vi.clearAllMocks()
     vi.spyOn(toast, 'error').mockReturnValue('toast-id')
     vi.spyOn(toast, 'success').mockReturnValue('toast-id')
-    duplicateAgentMutationFn.mockResolvedValue(createAgent({
-      id: 'agent-copy',
-      name: 'Research Agent copy',
-    }))
+    duplicateAgentMutationFn.mockResolvedValue(
+      createAgent({
+        id: 'agent-copy',
+        name: 'Research Agent copy',
+      }),
+    )
   })
 
   afterEach(() => {
@@ -104,31 +120,13 @@ describe('AgentRosterList', () => {
   it('uses the Figma-aligned card title and role typography', () => {
     renderList([createAgent()])
 
-    expect(screen.getByRole('heading', { name: 'Research Agent' })).toHaveClass('system-md-semibold')
+    expect(screen.getByRole('heading', { name: 'Research Agent' })).toHaveClass(
+      'system-md-semibold',
+    )
     expect(screen.getByText('Research Assistant')).toHaveClass('system-xs-regular')
-    expect(screen.getByText('agentV2.roster.usageStatus.draft')).toHaveClass('system-2xs-medium-uppercase')
-  })
-
-  it('draws the primary link focus ring above the draft corner label without z-index', () => {
-    renderList([createAgent()])
-
-    const configureLink = screen.getByRole('link', { name: 'Research Agent' })
-    const draftLabel = screen.getByText('agentV2.roster.usageStatus.draft')
-    const draftCornerLabel = draftLabel.closest('.absolute')
-
-    expect(configureLink).toHaveClass(
-      'relative',
-      'focus-visible:after:ring-2',
-      'focus-visible:after:ring-state-accent-solid',
-      'focus-visible:after:ring-inset',
+    expect(screen.getByText('agentV2.roster.usageStatus.draft')).toHaveClass(
+      'system-2xs-medium-uppercase',
     )
-    expect(configureLink).not.toHaveClass('peer/card-link')
-    expect(draftCornerLabel && configureLink.contains(draftCornerLabel)).toBe(true)
-    expect(draftCornerLabel).toHaveClass(
-      'top-[-0.5px]',
-      'right-0',
-    )
-    expect(draftCornerLabel).not.toHaveClass('z-10', 'z-20')
   })
 
   it('only renders the draft badge for unpublished agents', () => {
@@ -154,11 +152,33 @@ describe('AgentRosterList', () => {
 
   it('renders the Figma-aligned empty roster overlay', () => {
     const { container } = renderList([])
+    const placeholderGrid = Array.from(container.querySelectorAll('.pointer-events-none')).find(
+      (element) => element.className.includes('grid-rows-4'),
+    )
 
-    expect(screen.getByRole('heading', { name: 'agentV2.roster.empty' })).toHaveClass('system-sm-regular', 'text-text-tertiary')
+    if (!placeholderGrid) throw new Error('Expected agent roster placeholder grid to render')
+
+    expect(screen.getByRole('heading', { name: 'agentV2.roster.empty' })).toHaveClass(
+      'system-sm-regular',
+      'text-text-tertiary',
+    )
     expect(container.querySelectorAll('.bg-background-default-lighter')).toHaveLength(16)
     expect(container.querySelector('.bg-linear-to-b')).toBeInTheDocument()
-    expect(container.querySelector('.i-ri-robot-2-line')).toHaveClass('size-6', 'text-text-tertiary')
+    expect(container.querySelector('.i-ri-robot-2-line')).toHaveClass(
+      'size-6',
+      'text-text-tertiary',
+    )
+    expect(placeholderGrid).toHaveClass(
+      'grid',
+      'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+      'grid-rows-4',
+    )
+    expect(placeholderGrid).not.toHaveClass(
+      'grid-cols-1',
+      'sm:grid-cols-2',
+      'lg:grid-cols-3',
+      'xl:grid-cols-4',
+    )
   })
 
   it('uses the same overlay treatment for empty search results', () => {
@@ -172,7 +192,10 @@ describe('AgentRosterList', () => {
   it('uses the same overlay treatment for loading errors', () => {
     const { container } = renderList([], { isError: true })
 
-    expect(screen.getByRole('heading', { name: 'agentV2.roster.loadingError' })).toHaveClass('system-sm-regular', 'text-text-tertiary')
+    expect(screen.getByRole('heading', { name: 'agentV2.roster.loadingError' })).toHaveClass(
+      'system-sm-regular',
+      'text-text-tertiary',
+    )
     expect(container.querySelectorAll('.bg-background-default-lighter')).toHaveLength(16)
     expect(container.querySelector('.bg-linear-to-b')).toBeInTheDocument()
   })
@@ -198,22 +221,151 @@ describe('AgentRosterList', () => {
 
     const workflowLink = screen.getByRole('menuitem', { name: /RFP Review Flow/ })
     expect(workflowLink).toHaveAttribute('href', '/app/workflow-app-id/workflow')
+    expect(workflowLink).toHaveAttribute('target', '_blank')
+    expect(workflowLink).toHaveAttribute('rel', 'noopener noreferrer')
     expect(screen.getByText(/agentV2\.roster\.references\.label/)).toBeInTheDocument()
   })
 
-  it('duplicates an agent from the card action menu', async () => {
+  it('opens a duplicate dialog from the card action menu', async () => {
     const user = userEvent.setup()
     renderList([createAgent()])
 
     await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
 
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentV2.roster.duplicateDialog.title',
+    })
+    const nameInput = within(dialog).getByRole('textbox', {
+      name: /agentV2\.roster\.createForm\.nameLabel.*common\.label\.optional/,
+    })
+    const roleInput = within(dialog).getByRole('textbox', {
+      name: /agentV2\.roster\.createForm\.roleLabel.*common\.label\.optional/,
+    })
+    const descriptionInput = within(dialog).getByRole('textbox', {
+      name: /agentV2\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
+    })
+    expect(nameInput).toHaveValue('')
+    expect(nameInput).toHaveAttribute('placeholder', 'Research Agent copy')
+    expect(roleInput).toHaveValue('Research Assistant')
+    expect(roleInput).not.toBeRequired()
+    expect(descriptionInput).toHaveValue('Find and summarize market materials.')
+    expect(descriptionInput).not.toBeRequired()
+    expect(duplicateAgentMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('uses the latest cached agent detail when opening the duplicate dialog', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderList([
+      createAgent({
+        description: null,
+      }),
+    ])
+    queryClient.setQueryData(
+      ['agent-detail', 'agent-1'],
+      createAgent({
+        description: 'Summarize new market updates.',
+        role: 'Market Researcher',
+      }),
+    )
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentV2.roster.duplicateDialog.title',
+    })
+    expect(
+      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ }),
+    ).toHaveValue('')
+    expect(
+      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ }),
+    ).toHaveAttribute('placeholder', 'Research Agent copy')
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: /agentV2\.roster\.createForm\.descriptionLabel/,
+      }),
+    ).toHaveValue('Summarize new market updates.')
+    expect(
+      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }),
+    ).toHaveValue('Market Researcher')
+  })
+
+  it('duplicates an agent with backend-generated naming when the dialog name is empty', async () => {
+    const user = userEvent.setup()
+    renderList([createAgent()])
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentV2.roster.duplicateDialog.title',
+    })
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.duplicate' }))
+
     expect(duplicateAgentMutationFn).toHaveBeenCalledWith(
       {
         params: {
           agent_id: 'agent-1',
         },
-        body: {},
+        body: {
+          description: 'Find and summarize market materials.',
+          role: 'Research Assistant',
+          icon: '🧸',
+          icon_background: '#F5F3FF',
+          icon_type: 'emoji',
+        },
+      },
+      expect.objectContaining({
+        client: expect.any(QueryClient),
+      }),
+    )
+    expect(duplicateAgentMutationFn.mock.calls[0]?.[0].body).not.toHaveProperty('name')
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('agentV2.roster.duplicateSuccess')
+    })
+  })
+
+  it('duplicates an agent with the dialog name, role, and description when provided', async () => {
+    const user = userEvent.setup()
+    renderList([createAgent()])
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentV2.roster.duplicateDialog.title',
+    })
+    const nameInput = within(dialog).getByRole('textbox', {
+      name: /agentV2\.roster\.createForm\.nameLabel/,
+    })
+    const roleInput = within(dialog).getByRole('textbox', {
+      name: /agentV2\.roster\.createForm\.roleLabel/,
+    })
+    const descriptionInput = within(dialog).getByRole('textbox', {
+      name: /agentV2\.roster\.createForm\.descriptionLabel/,
+    })
+    await user.clear(nameInput)
+    await user.type(nameInput, ' Market Agent ')
+    await user.clear(roleInput)
+    await user.type(roleInput, ' Market Analyst ')
+    await user.clear(descriptionInput)
+    await user.type(descriptionInput, ' Copied for market research ')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.duplicate' }))
+
+    expect(duplicateAgentMutationFn).toHaveBeenCalledWith(
+      {
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          name: 'Market Agent',
+          description: 'Copied for market research',
+          role: 'Market Analyst',
+          icon: '🧸',
+          icon_background: '#F5F3FF',
+          icon_type: 'emoji',
+        },
       },
       expect.objectContaining({
         client: expect.any(QueryClient),
@@ -222,5 +374,79 @@ describe('AgentRosterList', () => {
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('agentV2.roster.duplicateSuccess')
     })
+  })
+
+  it('duplicates an agent with an empty role when the role is cleared', async () => {
+    const user = userEvent.setup()
+    renderList([createAgent()])
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentV2.roster.duplicateDialog.title',
+    })
+    await user.clear(
+      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }),
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.duplicate' }))
+
+    expect(duplicateAgentMutationFn).toHaveBeenCalledWith(
+      {
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          description: 'Find and summarize market materials.',
+          role: '',
+          icon: '🧸',
+          icon_background: '#F5F3FF',
+          icon_type: 'emoji',
+        },
+      },
+      expect.objectContaining({
+        client: expect.any(QueryClient),
+      }),
+    )
+  })
+
+  it('resets the edit form draft when reopening after canceling unsaved changes', async () => {
+    const user = userEvent.setup()
+    renderList([createAgent()])
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /agentV2\.roster\.editInfo/ }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const nameInput = within(dialog).getByRole('textbox', {
+      name: 'agentV2.roster.createForm.nameLabel',
+    })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Draft Name')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'agentV2.roster.editDialog.title' }),
+      ).not.toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /agentV2\.roster\.editInfo/ }))
+
+    const reopenedDialog = await screen.findByRole('dialog', {
+      name: 'agentV2.roster.editDialog.title',
+    })
+    expect(
+      within(reopenedDialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+    ).toHaveValue('Research Agent')
+    expect(
+      within(reopenedDialog).getByRole('textbox', {
+        name: /agentV2\.roster\.createForm\.roleLabel/,
+      }),
+    ).toHaveValue('Research Assistant')
+    expect(
+      within(reopenedDialog).getByRole('button', { name: 'common.operation.save' }),
+    ).toBeDisabled()
   })
 })

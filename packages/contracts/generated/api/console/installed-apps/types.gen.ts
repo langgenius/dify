@@ -31,6 +31,7 @@ export type AudioTranscriptResponse = {
 
 export type ChatMessagePayload = {
   conversation_id?: string | null
+  draft_type?: 'debug_build' | 'draft'
   files?: Array<unknown> | null
   inputs: {
     [key: string]: unknown
@@ -43,8 +44,6 @@ export type ChatMessagePayload = {
   response_mode?: 'blocking' | 'streaming'
   retriever_from?: string
 }
-
-export type GeneratedAppResponse = JsonValue
 
 export type SimpleResultResponse = {
   result: string
@@ -70,13 +69,13 @@ export type ConversationInfiniteScrollPagination = {
 
 export type ConversationRenamePayload = (
   | {
-    auto_generate: true
-    name?: string | null
-  }
+      auto_generate: true
+      name?: string | null
+    }
   | {
-    auto_generate?: false
-    name: string
-  }
+      auto_generate?: false
+      name: string
+    }
 ) & {
   auto_generate?: boolean
   name?: string | null
@@ -98,8 +97,8 @@ export type ResultResponse = {
   result: string
 }
 
-export type MessageInfiniteScrollPagination = {
-  data: Array<MessageListItem>
+export type ExploreMessageInfiniteScrollPagination = {
+  data: Array<ExploreMessageListItem>
   has_more: boolean
   limit: number
 }
@@ -116,7 +115,11 @@ export type SuggestedQuestionsResponse = {
 
 export type ExploreAppMetaResponse = {
   tool_icons?: {
-    [key: string]: unknown
+    [key: string]:
+      | string
+      | {
+          [key: string]: unknown
+        }
   }
 }
 
@@ -176,22 +179,24 @@ export type InstalledAppResponse = {
   uninstallable: boolean
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
+export type JsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
       [key: string]: unknown
     }
-    | Array<unknown>
-    | null
+  | Array<unknown>
+  | null
 
-export type MessageListItem = {
+export type ExploreMessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
+  answer_tokens?: number
   conversation_id: string
   created_at?: number | null
+  currency?: string | null
   error?: string | null
   extra_contents: Array<HumanInputContent>
   feedback?: SimpleFeedback | null
@@ -200,10 +205,15 @@ export type MessageListItem = {
     [key: string]: JsonValueType
   }
   message_files: Array<MessageFile>
+  message_tokens?: number
+  metadata?: JsonValueType | null
   parent_message_id?: string | null
+  provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
   status: string
+  total_price?: string | null
+  readonly total_tokens: number
 }
 
 export type JsonObject = {
@@ -231,9 +241,11 @@ export type SavedMessageItem = {
 }
 
 export type InstalledAppInfoResponse = {
+  description?: string | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  readonly icon_url: string | null
   id: string
   mode?: string | null
   name?: string | null
@@ -241,11 +253,11 @@ export type InstalledAppInfoResponse = {
 }
 
 export type AgentThought = {
+  answer?: string | null
   chain_id?: string | null
   created_at?: number | null
   files: Array<string>
   id: string
-  message_chain_id?: string | null
   message_id: string
   observation?: string | null
   position: number
@@ -335,19 +347,19 @@ export type UserActionConfig = {
   title: string
 }
 
-export type FormInputConfig
-  = | ({
-    type: 'paragraph'
-  } & ParagraphInputConfig)
+export type FormInputConfig =
   | ({
-    type: 'select'
-  } & SelectInputConfig)
+      type: 'paragraph'
+    } & ParagraphInputConfig)
   | ({
-    type: 'file'
-  } & FileInputConfig)
+      type: 'select'
+    } & SelectInputConfig)
   | ({
-    type: 'file-list'
-  } & FileListInputConfig)
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
 
 export type JsonValue2 = unknown
 
@@ -400,6 +412,62 @@ export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url'
 
 export type ValueSourceType = 'constant' | 'variable'
 
+export type InstalledAppListResponseWritable = {
+  installed_apps: Array<InstalledAppResponseWritable>
+}
+
+export type ExploreMessageInfiniteScrollPaginationWritable = {
+  data: Array<ExploreMessageListItemWritable>
+  has_more: boolean
+  limit: number
+}
+
+export type InstalledAppResponseWritable = {
+  app: InstalledAppInfoResponseWritable
+  app_owner_tenant_id: string
+  editable: boolean
+  id: string
+  is_pinned: boolean
+  last_used_at?: number | null
+  uninstallable: boolean
+}
+
+export type ExploreMessageListItemWritable = {
+  agent_thoughts: Array<AgentThought>
+  answer: string
+  answer_tokens?: number
+  conversation_id: string
+  created_at?: number | null
+  currency?: string | null
+  error?: string | null
+  extra_contents: Array<HumanInputContent>
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  message_tokens?: number
+  metadata?: JsonValueType | null
+  parent_message_id?: string | null
+  provider_response_latency?: number
+  query: string
+  retriever_resources: Array<RetrieverResource>
+  status: string
+  total_price?: string | null
+}
+
+export type InstalledAppInfoResponseWritable = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  mode?: string | null
+  name?: string | null
+  use_icon_as_answer_icon?: boolean | null
+}
+
 export type GetInstalledAppsData = {
   body?: never
   path?: never
@@ -441,8 +509,8 @@ export type DeleteInstalledAppsByInstalledAppIdResponses = {
   204: void
 }
 
-export type DeleteInstalledAppsByInstalledAppIdResponse
-  = DeleteInstalledAppsByInstalledAppIdResponses[keyof DeleteInstalledAppsByInstalledAppIdResponses]
+export type DeleteInstalledAppsByInstalledAppIdResponse =
+  DeleteInstalledAppsByInstalledAppIdResponses[keyof DeleteInstalledAppsByInstalledAppIdResponses]
 
 export type PatchInstalledAppsByInstalledAppIdData = {
   body: InstalledAppUpdatePayload
@@ -457,8 +525,8 @@ export type PatchInstalledAppsByInstalledAppIdResponses = {
   200: SimpleResultMessageResponse
 }
 
-export type PatchInstalledAppsByInstalledAppIdResponse
-  = PatchInstalledAppsByInstalledAppIdResponses[keyof PatchInstalledAppsByInstalledAppIdResponses]
+export type PatchInstalledAppsByInstalledAppIdResponse =
+  PatchInstalledAppsByInstalledAppIdResponses[keyof PatchInstalledAppsByInstalledAppIdResponses]
 
 export type PostInstalledAppsByInstalledAppIdAudioToTextData = {
   body?: never
@@ -473,8 +541,8 @@ export type PostInstalledAppsByInstalledAppIdAudioToTextResponses = {
   200: AudioTranscriptResponse
 }
 
-export type PostInstalledAppsByInstalledAppIdAudioToTextResponse
-  = PostInstalledAppsByInstalledAppIdAudioToTextResponses[keyof PostInstalledAppsByInstalledAppIdAudioToTextResponses]
+export type PostInstalledAppsByInstalledAppIdAudioToTextResponse =
+  PostInstalledAppsByInstalledAppIdAudioToTextResponses[keyof PostInstalledAppsByInstalledAppIdAudioToTextResponses]
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesData = {
   body: ChatMessagePayload
@@ -486,11 +554,13 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
-export type PostInstalledAppsByInstalledAppIdChatMessagesResponse
-  = PostInstalledAppsByInstalledAppIdChatMessagesResponses[keyof PostInstalledAppsByInstalledAppIdChatMessagesResponses]
+export type PostInstalledAppsByInstalledAppIdChatMessagesResponse =
+  PostInstalledAppsByInstalledAppIdChatMessagesResponses[keyof PostInstalledAppsByInstalledAppIdChatMessagesResponses]
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopData = {
   body?: never
@@ -506,8 +576,8 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponses =
   200: SimpleResultResponse
 }
 
-export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse
-  = PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponses[keyof PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponses]
+export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse =
+  PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponses[keyof PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponses]
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesData = {
   body: CompletionMessageExplorePayload
@@ -519,11 +589,13 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
-export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponse
-  = PostInstalledAppsByInstalledAppIdCompletionMessagesResponses[keyof PostInstalledAppsByInstalledAppIdCompletionMessagesResponses]
+export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponse =
+  PostInstalledAppsByInstalledAppIdCompletionMessagesResponses[keyof PostInstalledAppsByInstalledAppIdCompletionMessagesResponses]
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopData = {
   body?: never
@@ -539,8 +611,8 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopRespo
   200: SimpleResultResponse
 }
 
-export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse
-  = PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponses[keyof PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponses]
+export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse =
+  PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponses[keyof PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponses]
 
 export type GetInstalledAppsByInstalledAppIdConversationsData = {
   body?: never
@@ -559,8 +631,8 @@ export type GetInstalledAppsByInstalledAppIdConversationsResponses = {
   200: ConversationInfiniteScrollPagination
 }
 
-export type GetInstalledAppsByInstalledAppIdConversationsResponse
-  = GetInstalledAppsByInstalledAppIdConversationsResponses[keyof GetInstalledAppsByInstalledAppIdConversationsResponses]
+export type GetInstalledAppsByInstalledAppIdConversationsResponse =
+  GetInstalledAppsByInstalledAppIdConversationsResponses[keyof GetInstalledAppsByInstalledAppIdConversationsResponses]
 
 export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdData = {
   body?: never
@@ -576,8 +648,8 @@ export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponses = {
   204: void
 }
 
-export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse
-  = DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponses[keyof DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponses]
+export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse =
+  DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponses[keyof DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponses]
 
 export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameData = {
   body: ConversationRenamePayload
@@ -593,8 +665,8 @@ export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameResponses = {
   200: SimpleConversation
 }
 
-export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameResponse
-  = PostInstalledAppsByInstalledAppIdConversationsByCIdNameResponses[keyof PostInstalledAppsByInstalledAppIdConversationsByCIdNameResponses]
+export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameResponse =
+  PostInstalledAppsByInstalledAppIdConversationsByCIdNameResponses[keyof PostInstalledAppsByInstalledAppIdConversationsByCIdNameResponses]
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinData = {
   body?: never
@@ -610,8 +682,8 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponses = {
   200: ResultResponse
 }
 
-export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse
-  = PatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponses[keyof PatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponses]
+export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse =
+  PatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponses[keyof PatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponses]
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinData = {
   body?: never
@@ -627,8 +699,8 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponses =
   200: ResultResponse
 }
 
-export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse
-  = PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponses[keyof PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponses]
+export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse =
+  PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponses[keyof PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponses]
 
 export type GetInstalledAppsByInstalledAppIdMessagesData = {
   body?: never
@@ -644,11 +716,11 @@ export type GetInstalledAppsByInstalledAppIdMessagesData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesResponses = {
-  200: MessageInfiniteScrollPagination
+  200: ExploreMessageInfiniteScrollPagination
 }
 
-export type GetInstalledAppsByInstalledAppIdMessagesResponse
-  = GetInstalledAppsByInstalledAppIdMessagesResponses[keyof GetInstalledAppsByInstalledAppIdMessagesResponses]
+export type GetInstalledAppsByInstalledAppIdMessagesResponse =
+  GetInstalledAppsByInstalledAppIdMessagesResponses[keyof GetInstalledAppsByInstalledAppIdMessagesResponses]
 
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksData = {
   body: MessageFeedbackPayload
@@ -664,8 +736,8 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksRespons
   200: ResultResponse
 }
 
-export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse
-  = PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponses[keyof PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponses]
+export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse =
+  PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponses[keyof PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponses]
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisData = {
   body?: never
@@ -680,11 +752,13 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisData 
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
-export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse
-  = GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses[keyof GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses]
+export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse =
+  GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses[keyof GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses]
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
@@ -700,8 +774,8 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestion
   200: SuggestedQuestionsResponse
 }
 
-export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse
-  = GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponses[keyof GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponses]
+export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse =
+  GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponses[keyof GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponses]
 
 export type GetInstalledAppsByInstalledAppIdMetaData = {
   body?: never
@@ -716,8 +790,8 @@ export type GetInstalledAppsByInstalledAppIdMetaResponses = {
   200: ExploreAppMetaResponse
 }
 
-export type GetInstalledAppsByInstalledAppIdMetaResponse
-  = GetInstalledAppsByInstalledAppIdMetaResponses[keyof GetInstalledAppsByInstalledAppIdMetaResponses]
+export type GetInstalledAppsByInstalledAppIdMetaResponse =
+  GetInstalledAppsByInstalledAppIdMetaResponses[keyof GetInstalledAppsByInstalledAppIdMetaResponses]
 
 export type GetInstalledAppsByInstalledAppIdParametersData = {
   body?: never
@@ -732,8 +806,8 @@ export type GetInstalledAppsByInstalledAppIdParametersResponses = {
   200: Parameters
 }
 
-export type GetInstalledAppsByInstalledAppIdParametersResponse
-  = GetInstalledAppsByInstalledAppIdParametersResponses[keyof GetInstalledAppsByInstalledAppIdParametersResponses]
+export type GetInstalledAppsByInstalledAppIdParametersResponse =
+  GetInstalledAppsByInstalledAppIdParametersResponses[keyof GetInstalledAppsByInstalledAppIdParametersResponses]
 
 export type GetInstalledAppsByInstalledAppIdSavedMessagesData = {
   body?: never
@@ -751,8 +825,8 @@ export type GetInstalledAppsByInstalledAppIdSavedMessagesResponses = {
   200: SavedMessageInfiniteScrollPagination
 }
 
-export type GetInstalledAppsByInstalledAppIdSavedMessagesResponse
-  = GetInstalledAppsByInstalledAppIdSavedMessagesResponses[keyof GetInstalledAppsByInstalledAppIdSavedMessagesResponses]
+export type GetInstalledAppsByInstalledAppIdSavedMessagesResponse =
+  GetInstalledAppsByInstalledAppIdSavedMessagesResponses[keyof GetInstalledAppsByInstalledAppIdSavedMessagesResponses]
 
 export type PostInstalledAppsByInstalledAppIdSavedMessagesData = {
   body: SavedMessageCreatePayload
@@ -767,8 +841,8 @@ export type PostInstalledAppsByInstalledAppIdSavedMessagesResponses = {
   200: ResultResponse
 }
 
-export type PostInstalledAppsByInstalledAppIdSavedMessagesResponse
-  = PostInstalledAppsByInstalledAppIdSavedMessagesResponses[keyof PostInstalledAppsByInstalledAppIdSavedMessagesResponses]
+export type PostInstalledAppsByInstalledAppIdSavedMessagesResponse =
+  PostInstalledAppsByInstalledAppIdSavedMessagesResponses[keyof PostInstalledAppsByInstalledAppIdSavedMessagesResponses]
 
 export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdData = {
   body?: never
@@ -784,8 +858,8 @@ export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponses
   204: void
 }
 
-export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse
-  = DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponses[keyof DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponses]
+export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse =
+  DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponses[keyof DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponses]
 
 export type PostInstalledAppsByInstalledAppIdTextToAudioData = {
   body: TextToAudioPayload
@@ -800,8 +874,8 @@ export type PostInstalledAppsByInstalledAppIdTextToAudioResponses = {
   200: AudioBinaryResponse
 }
 
-export type PostInstalledAppsByInstalledAppIdTextToAudioResponse
-  = PostInstalledAppsByInstalledAppIdTextToAudioResponses[keyof PostInstalledAppsByInstalledAppIdTextToAudioResponses]
+export type PostInstalledAppsByInstalledAppIdTextToAudioResponse =
+  PostInstalledAppsByInstalledAppIdTextToAudioResponses[keyof PostInstalledAppsByInstalledAppIdTextToAudioResponses]
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunData = {
   body: WorkflowRunPayload
@@ -813,11 +887,13 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsRunData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
-export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponse
-  = PostInstalledAppsByInstalledAppIdWorkflowsRunResponses[keyof PostInstalledAppsByInstalledAppIdWorkflowsRunResponses]
+export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponse =
+  PostInstalledAppsByInstalledAppIdWorkflowsRunResponses[keyof PostInstalledAppsByInstalledAppIdWorkflowsRunResponses]
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopData = {
   body?: never
@@ -833,5 +909,5 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponses
   200: SimpleResultResponse
 }
 
-export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse
-  = PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponses[keyof PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponses]
+export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse =
+  PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponses[keyof PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponses]

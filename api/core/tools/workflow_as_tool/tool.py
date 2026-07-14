@@ -6,6 +6,7 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import Any, cast, override
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
@@ -79,6 +80,7 @@ class WorkflowTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

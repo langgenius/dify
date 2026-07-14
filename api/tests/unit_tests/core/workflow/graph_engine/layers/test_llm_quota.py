@@ -4,6 +4,8 @@ from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.errors.error import QuotaExceededError
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
@@ -122,7 +124,7 @@ def test_precheck_ignores_non_quota_node() -> None:
     mock_check.assert_not_called()
 
 
-def test_quota_error_is_handled_in_layer(caplog) -> None:
+def test_quota_error_is_handled_in_layer(caplog: pytest.LogCaptureFixture) -> None:
     layer = LLMQuotaLayer(tenant_id="tenant-id")
     stop_event = threading.Event()
     layer.command_channel = MagicMock()

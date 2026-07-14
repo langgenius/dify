@@ -2,7 +2,12 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { IOtherOptions } from '@/service/base'
 import type { HumanInputFormData, HumanInputFormTimeoutData, NodeTracing } from '@/types/workflow'
 import { act } from '@testing-library/react'
-import { BlockEnum, NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import {
+  BlockEnum,
+  NodeRunningStatus,
+  WorkflowRunningStatus,
+} from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   appendParallelNext,
   appendParallelStart,
@@ -108,15 +113,21 @@ describe('workflow-stream-handlers helpers', () => {
 
     let workflowProcessData = appendParallelStart(undefined, parallelTrace)
     workflowProcessData = appendParallelNext(workflowProcessData, parallelTrace)
-    workflowProcessData = finishParallelTrace(workflowProcessData, createTrace({
-      node_id: 'parallel-node',
-      execution_metadata: { parallel_id: 'parallel-1' },
-      error: 'failed',
-    }))
-    workflowProcessData = upsertWorkflowNode(workflowProcessData, createTrace({
-      node_id: 'node-1',
-      execution_metadata: { parallel_id: 'parallel-2' },
-    }))!
+    workflowProcessData = finishParallelTrace(
+      workflowProcessData,
+      createTrace({
+        node_id: 'parallel-node',
+        execution_metadata: { parallel_id: 'parallel-1' },
+        error: 'failed',
+      }),
+    )
+    workflowProcessData = upsertWorkflowNode(
+      workflowProcessData,
+      createTrace({
+        node_id: 'node-1',
+        execution_metadata: { parallel_id: 'parallel-2' },
+      }),
+    )!
     workflowProcessData = appendResultText(workflowProcessData, 'Hello ')
     workflowProcessData = replaceResultText(workflowProcessData, 'Hello world')
     workflowProcessData = updateHumanInputRequired(workflowProcessData, createHumanInput())
@@ -143,10 +154,12 @@ describe('workflow-stream-handlers helpers', () => {
         inputs: [],
       }),
     ])
-    expect(workflowProcessData.tracing[0]).toEqual(expect.objectContaining({
-      node_id: 'parallel-node',
-      expand: true,
-    }))
+    expect(workflowProcessData.tracing[0]).toEqual(
+      expect.objectContaining({
+        node_id: 'parallel-node',
+        expand: true,
+      }),
+    )
   })
 
   it('should initialize missing parallel details on start and next events', () => {
@@ -172,10 +185,13 @@ describe('workflow-stream-handlers helpers', () => {
       }),
     ]
 
-    const nextProcess = appendParallelNext(process, createTrace({
-      node_id: 'missing-node',
-      execution_metadata: { parallel_id: 'parallel-2' },
-    }))
+    const nextProcess = appendParallelNext(
+      process,
+      createTrace({
+        node_id: 'missing-node',
+        execution_metadata: { parallel_id: 'parallel-2' },
+      }),
+    )
 
     expect(nextProcess.tracing).toEqual(process.tracing)
     expect(nextProcess.expand).toBe(true)
@@ -190,7 +206,10 @@ describe('workflow-stream-handlers helpers', () => {
       }),
     ]
 
-    const stoppedWorkflow = applyWorkflowFinishedState(workflowProcessData, WorkflowRunningStatus.Stopped)
+    const stoppedWorkflow = applyWorkflowFinishedState(
+      workflowProcessData,
+      WorkflowRunningStatus.Stopped,
+    )
     markNodesStopped(stoppedWorkflow.tracing)
 
     expect(stoppedWorkflow.status).toBe(WorkflowRunningStatus.Stopped)
@@ -210,9 +229,7 @@ describe('workflow-stream-handlers helpers', () => {
         status: NodeRunningStatus.Succeeded,
       }),
     ]
-    process.humanInputFormDataList = [
-      createHumanInput({ node_id: 'node-1' }),
-    ]
+    process.humanInputFormDataList = [createHumanInput({ node_id: 'node-1' })]
     process.humanInputFilledFormDataList = [
       {
         action_id: 'action-0',
@@ -223,49 +240,76 @@ describe('workflow-stream-handlers helpers', () => {
       },
     ]
 
-    const parallelMatched = appendParallelNext(process, createTrace({
-      node_id: 'node-1',
-      execution_metadata: {
-        parallel_id: 'parallel-1',
-      },
-    }))
-    const notFinished = finishParallelTrace(process, createTrace({
-      node_id: 'missing',
-      execution_metadata: {
-        parallel_id: 'parallel-missing',
-      },
-    }))
-    const ignoredIteration = upsertWorkflowNode(process, createTrace({
-      iteration_id: 'iteration-1',
-    }))
-    const replacedNode = upsertWorkflowNode(process, createTrace({
-      node_id: 'node-1',
-    }))
-    const ignoredFinish = finishWorkflowNode(process, createTrace({
-      loop_id: 'loop-1',
-    }))
-    const unmatchedFinish = finishWorkflowNode(process, createTrace({
-      node_id: 'missing',
-      execution_metadata: {
-        parallel_id: 'missing',
-      },
-    }))
-    const finishedWithExtras = finishWorkflowNode(process, createTrace({
-      node_id: 'node-1',
-      execution_metadata: {
-        parallel_id: 'parallel-1',
-      },
-      error: 'failed',
-    }))
+    const parallelMatched = appendParallelNext(
+      process,
+      createTrace({
+        node_id: 'node-1',
+        execution_metadata: {
+          parallel_id: 'parallel-1',
+        },
+      }),
+    )
+    const notFinished = finishParallelTrace(
+      process,
+      createTrace({
+        node_id: 'missing',
+        execution_metadata: {
+          parallel_id: 'parallel-missing',
+        },
+      }),
+    )
+    const ignoredIteration = upsertWorkflowNode(
+      process,
+      createTrace({
+        iteration_id: 'iteration-1',
+      }),
+    )
+    const replacedNode = upsertWorkflowNode(
+      process,
+      createTrace({
+        node_id: 'node-1',
+      }),
+    )
+    const ignoredFinish = finishWorkflowNode(
+      process,
+      createTrace({
+        loop_id: 'loop-1',
+      }),
+    )
+    const unmatchedFinish = finishWorkflowNode(
+      process,
+      createTrace({
+        node_id: 'missing',
+        execution_metadata: {
+          parallel_id: 'missing',
+        },
+      }),
+    )
+    const finishedWithExtras = finishWorkflowNode(
+      process,
+      createTrace({
+        node_id: 'node-1',
+        execution_metadata: {
+          parallel_id: 'parallel-1',
+        },
+        error: 'failed',
+      }),
+    )
     const succeededWorkflow = applyWorkflowFinishedState(process, WorkflowRunningStatus.Succeeded)
     const outputlessWorkflow = applyWorkflowOutputs(undefined, null)
-    const updatedHumanInput = updateHumanInputRequired(process, createHumanInput({
-      node_id: 'node-1',
-      expiration_time: 300,
-    }))
-    const appendedHumanInput = updateHumanInputRequired(process, createHumanInput({
-      node_id: 'node-2',
-    }))
+    const updatedHumanInput = updateHumanInputRequired(
+      process,
+      createHumanInput({
+        node_id: 'node-1',
+        expiration_time: 300,
+      }),
+    )
+    const appendedHumanInput = updateHumanInputRequired(
+      process,
+      createHumanInput({
+        node_id: 'node-2',
+      }),
+    )
     const noListFilled = updateHumanInputFilled(undefined, {
       action_id: 'action-1',
       action_text: 'Submit',
@@ -294,33 +338,41 @@ describe('workflow-stream-handlers helpers', () => {
     markNodesStopped(undefined)
 
     expect(parallelMatched.tracing[0]!.details).toHaveLength(2)
-    expect(notFinished).toEqual(expect.objectContaining({
-      expand: true,
-      tracing: process.tracing,
-    }))
+    expect(notFinished).toEqual(
+      expect.objectContaining({
+        expand: true,
+        tracing: process.tracing,
+      }),
+    )
     expect(ignoredIteration).toEqual(process)
-    expect(replacedNode?.tracing[0]).toEqual(expect.objectContaining({
-      node_id: 'node-1',
-      status: NodeRunningStatus.Running,
-    }))
+    expect(replacedNode?.tracing[0]).toEqual(
+      expect.objectContaining({
+        node_id: 'node-1',
+        status: NodeRunningStatus.Running,
+      }),
+    )
     expect(ignoredFinish).toEqual(process)
     expect(unmatchedFinish).toEqual(process)
-    expect(finishedWithExtras?.tracing[0]).toEqual(expect.objectContaining({
-      extras: {
-        source: 'extra',
-      },
-      error: 'failed',
-    }))
+    expect(finishedWithExtras?.tracing[0]).toEqual(
+      expect.objectContaining({
+        extras: {
+          source: 'extra',
+        },
+        error: 'failed',
+      }),
+    )
     expect(succeededWorkflow.status).toBe(WorkflowRunningStatus.Succeeded)
     expect(outputlessWorkflow.files).toEqual([])
     expect(updatedHumanInput.humanInputFormDataList?.[0]!.expiration_time).toBe(300)
     expect(appendedHumanInput.humanInputFormDataList).toHaveLength(2)
     expect(noListFilled.humanInputFilledFormDataList).toHaveLength(1)
     expect(appendedFilled.humanInputFilledFormDataList).toHaveLength(2)
-    expect(timeoutWithoutList).toEqual(expect.objectContaining({
-      status: WorkflowRunningStatus.Running,
-      tracing: [],
-    }))
+    expect(timeoutWithoutList).toEqual(
+      expect.objectContaining({
+        status: WorkflowRunningStatus.Running,
+        tracing: [],
+      }),
+    )
     expect(timeoutWithMatch.humanInputFormDataList?.[0]!.expiration_time).toBe(400)
   })
 })
@@ -330,22 +382,26 @@ describe('createWorkflowStreamHandlers', () => {
     vi.clearAllMocks()
   })
 
-  const setupHandlers = (overrides: { isPublicAPI?: boolean, isTimedOut?: () => boolean } = {}) => {
+  const setupHandlers = (overrides: { isPublicAPI?: boolean; isTimedOut?: () => boolean } = {}) => {
     let completionRes = ''
     let currentTaskId: string | null = null
     let isStopping = false
     let messageId: string | null = null
     let workflowProcessData: WorkflowProcess | undefined
 
-    const setCurrentTaskId = vi.fn((value: string | null | ((prev: string | null) => string | null)) => {
-      currentTaskId = typeof value === 'function' ? value(currentTaskId) : value
-    })
+    const setCurrentTaskId = vi.fn(
+      (value: string | null | ((prev: string | null) => string | null)) => {
+        currentTaskId = typeof value === 'function' ? value(currentTaskId) : value
+      },
+    )
     const setIsStopping = vi.fn((value: boolean | ((prev: boolean) => boolean)) => {
       isStopping = typeof value === 'function' ? value(isStopping) : value
     })
-    const setMessageId = vi.fn((value: string | null | ((prev: string | null) => string | null)) => {
-      messageId = typeof value === 'function' ? value(messageId) : value
-    })
+    const setMessageId = vi.fn(
+      (value: string | null | ((prev: string | null) => string | null)) => {
+        messageId = typeof value === 'function' ? value(messageId) : value
+      },
+    )
     const setWorkflowProcessData = vi.fn((value: WorkflowProcess | undefined) => {
       workflowProcessData = value
     })
@@ -373,7 +429,7 @@ describe('createWorkflowStreamHandlers', () => {
       setMessageId,
       setRespondingFalse,
       setWorkflowProcessData,
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
       taskId: 3,
     })
 
@@ -395,7 +451,26 @@ describe('createWorkflowStreamHandlers', () => {
 
   it('should process workflow success and paused events', () => {
     const setup = setupHandlers({ isPublicAPI: true })
-    const handlers = setup.handlers as Required<Pick<IOtherOptions, 'onWorkflowStarted' | 'onTextChunk' | 'onHumanInputRequired' | 'onHumanInputFormFilled' | 'onHumanInputFormTimeout' | 'onWorkflowPaused' | 'onWorkflowFinished' | 'onNodeStarted' | 'onNodeFinished' | 'onIterationStart' | 'onIterationNext' | 'onIterationFinish' | 'onLoopStart' | 'onLoopNext' | 'onLoopFinish'>>
+    const handlers = setup.handlers as Required<
+      Pick<
+        IOtherOptions,
+        | 'onWorkflowStarted'
+        | 'onTextChunk'
+        | 'onHumanInputRequired'
+        | 'onHumanInputFormFilled'
+        | 'onHumanInputFormTimeout'
+        | 'onWorkflowPaused'
+        | 'onWorkflowFinished'
+        | 'onNodeStarted'
+        | 'onNodeFinished'
+        | 'onIterationStart'
+        | 'onIterationNext'
+        | 'onIterationFinish'
+        | 'onLoopStart'
+        | 'onLoopNext'
+        | 'onLoopFinish'
+      >
+    >
 
     act(() => {
       handlers.onWorkflowStarted({
@@ -545,10 +620,12 @@ describe('createWorkflowStreamHandlers', () => {
 
     expect(setup.currentTaskId()).toBe('task-1')
     expect(setup.isStopping()).toBe(false)
-    expect(setup.workflowProcessData()).toEqual(expect.objectContaining({
-      resultText: 'Hello',
-      status: WorkflowRunningStatus.Succeeded,
-    }))
+    expect(setup.workflowProcessData()).toEqual(
+      expect.objectContaining({
+        resultText: 'Hello',
+        status: WorkflowRunningStatus.Succeeded,
+      }),
+    )
     expect(sseGetMock).toHaveBeenCalledWith(
       '/workflow/run-1/events',
       {},
@@ -564,7 +641,9 @@ describe('createWorkflowStreamHandlers', () => {
     const timeoutSetup = setupHandlers({
       isTimedOut: () => true,
     })
-    const timeoutHandlers = timeoutSetup.handlers as Required<Pick<IOtherOptions, 'onWorkflowFinished'>>
+    const timeoutHandlers = timeoutSetup.handlers as Required<
+      Pick<IOtherOptions, 'onWorkflowFinished'>
+    >
 
     act(() => {
       timeoutHandlers.onWorkflowFinished({
@@ -597,7 +676,9 @@ describe('createWorkflowStreamHandlers', () => {
     })
 
     const failureSetup = setupHandlers()
-    const failureHandlers = failureSetup.handlers as Required<Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished'>>
+    const failureHandlers = failureSetup.handlers as Required<
+      Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished'>
+    >
 
     act(() => {
       failureHandlers.onWorkflowStarted({
@@ -635,6 +716,12 @@ describe('createWorkflowStreamHandlers', () => {
       message: 'failed',
     })
     expect(failureSetup.onCompleted).toHaveBeenCalledWith('', 3, false)
+    expect(failureSetup.workflowProcessData()).toEqual(
+      expect.objectContaining({
+        status: WorkflowRunningStatus.Failed,
+        error: 'failed',
+      }),
+    )
   })
 
   it('should cover existing workflow starts, stopped runs, and non-string outputs', () => {
@@ -668,9 +755,11 @@ describe('createWorkflowStreamHandlers', () => {
       setWorkflowProcessData: (value) => {
         existingProcess = value!
       },
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
       taskId: 5,
-    }) as Required<Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished' | 'onTextReplace'>>
+    }) as Required<
+      Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished' | 'onTextReplace'>
+    >
 
     act(() => {
       handlers.onWorkflowStarted({
@@ -687,11 +776,13 @@ describe('createWorkflowStreamHandlers', () => {
       })
     })
 
-    expect(existingProcess).toEqual(expect.objectContaining({
-      expand: true,
-      status: WorkflowRunningStatus.Running,
-      resultText: 'Replaced text',
-    }))
+    expect(existingProcess).toEqual(
+      expect.objectContaining({
+        expand: true,
+        status: WorkflowRunningStatus.Running,
+        resultText: 'Replaced text',
+      }),
+    )
 
     act(() => {
       handlers.onWorkflowFinished({
@@ -723,7 +814,9 @@ describe('createWorkflowStreamHandlers', () => {
     expect(setup.onCompleted).toHaveBeenCalledWith('', 5, false)
 
     const noOutputSetup = setupHandlers()
-    const noOutputHandlers = noOutputSetup.handlers as Required<Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished' | 'onTextReplace'>>
+    const noOutputHandlers = noOutputSetup.handlers as Required<
+      Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished' | 'onTextReplace'>
+    >
 
     act(() => {
       noOutputHandlers.onWorkflowStarted({
@@ -765,7 +858,9 @@ describe('createWorkflowStreamHandlers', () => {
     expect(noOutputSetup.setCompletionRes).toHaveBeenCalledWith('')
 
     const objectOutputSetup = setupHandlers()
-    const objectOutputHandlers = objectOutputSetup.handlers as Required<Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished'>>
+    const objectOutputHandlers = objectOutputSetup.handlers as Required<
+      Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished'>
+    >
 
     act(() => {
       objectOutputHandlers.onWorkflowStarted({
@@ -804,16 +899,22 @@ describe('createWorkflowStreamHandlers', () => {
     })
 
     expect(objectOutputSetup.currentTaskId()).toBeNull()
-    expect(objectOutputSetup.setCompletionRes).toHaveBeenCalledWith('{"answer":"Hello","meta":{"mode":"object"}}')
-    expect(objectOutputSetup.workflowProcessData()).toEqual(expect.objectContaining({
-      status: WorkflowRunningStatus.Succeeded,
-      resultText: '',
-    }))
+    expect(objectOutputSetup.setCompletionRes).toHaveBeenCalledWith(
+      '{"answer":"Hello","meta":{"mode":"object"}}',
+    )
+    expect(objectOutputSetup.workflowProcessData()).toEqual(
+      expect.objectContaining({
+        status: WorkflowRunningStatus.Succeeded,
+        resultText: '',
+      }),
+    )
   })
 
   it('should serialize empty, string, and circular workflow outputs', () => {
     const noOutputSetup = setupHandlers()
-    const noOutputHandlers = noOutputSetup.handlers as Required<Pick<IOtherOptions, 'onWorkflowFinished'>>
+    const noOutputHandlers = noOutputSetup.handlers as Required<
+      Pick<IOtherOptions, 'onWorkflowFinished'>
+    >
 
     act(() => {
       noOutputHandlers.onWorkflowFinished({
@@ -843,7 +944,9 @@ describe('createWorkflowStreamHandlers', () => {
     expect(noOutputSetup.setCompletionRes).toHaveBeenCalledWith('')
 
     const stringOutputSetup = setupHandlers()
-    const stringOutputHandlers = stringOutputSetup.handlers as Required<Pick<IOtherOptions, 'onWorkflowFinished'>>
+    const stringOutputHandlers = stringOutputSetup.handlers as Required<
+      Pick<IOtherOptions, 'onWorkflowFinished'>
+    >
 
     act(() => {
       stringOutputHandlers.onWorkflowFinished({
@@ -873,7 +976,9 @@ describe('createWorkflowStreamHandlers', () => {
     expect(stringOutputSetup.setCompletionRes).toHaveBeenCalledWith('plain text output')
 
     const circularOutputSetup = setupHandlers()
-    const circularOutputHandlers = circularOutputSetup.handlers as Required<Pick<IOtherOptions, 'onWorkflowFinished'>>
+    const circularOutputHandlers = circularOutputSetup.handlers as Required<
+      Pick<IOtherOptions, 'onWorkflowFinished'>
+    >
     const circularOutputs: Record<string, unknown> = {
       answer: 'Hello',
     }

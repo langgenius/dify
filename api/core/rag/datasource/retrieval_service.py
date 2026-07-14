@@ -192,13 +192,14 @@ class RetrievalService:
     @classmethod
     def external_retrieve(
         cls,
+        session: Session,
         dataset_id: str,
         query: str,
         external_retrieval_model: dict[str, Any] | None = None,
         metadata_filtering_conditions: dict[str, Any] | None = None,
     ):
         stmt = select(Dataset).where(Dataset.id == dataset_id)
-        dataset = db.session.scalar(stmt)
+        dataset = session.scalar(stmt)
         if not dataset:
             return []
         metadata_condition = (
@@ -207,11 +208,12 @@ class RetrievalService:
             else None
         )
         all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            dataset.tenant_id,
-            dataset_id,
-            query,
-            external_retrieval_model or {},
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset_id,
+            query=query,
+            external_retrieval_parameters=external_retrieval_model or {},
             metadata_condition=metadata_condition,
+            session=session,
         )
         return all_documents
 

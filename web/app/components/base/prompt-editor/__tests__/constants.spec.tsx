@@ -3,7 +3,6 @@ import {
   checkHasContextBlock,
   checkHasHistoryBlock,
   checkHasQueryBlock,
-  checkHasRequestURLBlock,
   CONTEXT_PLACEHOLDER_TEXT,
   CURRENT_PLACEHOLDER_TEXT,
   ERROR_MESSAGE_PLACEHOLDER_TEXT,
@@ -55,12 +54,6 @@ describe('prompt-editor constants', () => {
       expect(checkHasQueryBlock('plain text')).toBe(false)
       expect(checkHasQueryBlock(`before ${QUERY_PLACEHOLDER_TEXT} after`)).toBe(true)
     })
-
-    it('should detect request url placeholder only when present', () => {
-      expect(checkHasRequestURLBlock('')).toBe(false)
-      expect(checkHasRequestURLBlock('plain text')).toBe(false)
-      expect(checkHasRequestURLBlock(`before ${REQUEST_URL_PLACEHOLDER_TEXT} after`)).toBe(true)
-    })
   })
 
   describe('getInputVars', () => {
@@ -88,17 +81,13 @@ describe('prompt-editor constants', () => {
     it('should strip numeric node id for sys selector vars', () => {
       const text = 'value {{#1711617514996.sys.query#}}'
 
-      expect(getInputVars(text)).toEqual([
-        ['sys', 'query'],
-      ])
+      expect(getInputVars(text)).toEqual([['sys', 'query']])
     })
 
     it('should keep selector unchanged when sys prefix is not numeric id', () => {
       const text = 'value {{#abc.sys.query#}}'
 
-      expect(getInputVars(text)).toEqual([
-        ['abc', 'sys', 'query'],
-      ])
+      expect(getInputVars(text)).toEqual([['abc', 'sys', 'query']])
     })
   })
 

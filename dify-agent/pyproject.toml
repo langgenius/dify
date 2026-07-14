@@ -1,13 +1,15 @@
 [project]
 name = "dify-agent"
-version = "0.1.0"
+version = "1.16.0-rc1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
+    "anyio>=4.12.1,<5.0.0",
     "httpx==0.28.1",
+    "httpx2>=2.5.0,<3.0.0",
     "pydantic>=2.12.5,<2.13",
-    "pydantic-ai-slim>=1.85.1,<2.0.0",
+    "pydantic-ai-slim>=1.102.0,<2.0.0",
     "typer>=0.16.1,<0.17",
     "typing-extensions>=4.12.2,<5.0.0",
 ]
@@ -15,6 +17,9 @@ dependencies = [
 [project.scripts]
 dify-agent = "dify_agent.agent_stub.cli.main:main"
 dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
+shellctl = "shellctl.cli:main"
+shellctl-sanitize-pty = "shellctl_runtime.sanitize:main"
+shellctl-runner-exit = "shellctl_runtime.runner_exit:main"
 
 [project.optional-dependencies]
 grpc = ["grpclib[protobuf]>=0.4.9,<0.5.0", "protobuf>=6.33.5,<7.0.0"]
@@ -23,16 +28,22 @@ server = [
     "graphon==0.5.2",
     "jsonschema>=4.23.0,<5.0.0",
     "jwcrypto>=1.5.6,<2",
+    "logfire[fastapi,httpx,redis]>=4.37.0,<5.0.0",
     "pydantic-ai-slim[anthropic,google,openai]>=1.85.1,<2.0.0",
     "pydantic-settings>=2.12.0,<3.0.0",
     "redis>=7.4.0,<8.0.0",
-    "shell-session-manager==2.2.0",
+    "uvicorn[standard]==0.46.0",
+]
+shellctl-server = [
+    "aiosqlite>=0.21.0,<1.0.0",
+    "fastapi==0.136.0",
+    "sqlmodel>=0.0.24,<0.1.0",
     "uvicorn[standard]==0.46.0",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["agenton*", "agenton_collections*", "dify_agent*"]
+include = ["agenton*", "agenton_collections*", "dify_agent*", "shellctl*", "shellctl_runtime*"]
 
 [tool.pyright]
 include = ["src", "examples", "tests"]

@@ -2,13 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 
 // Simple Mock Components that reproduce the exact UI issues
-const MockNavLink = ({ name, mode }: { name: string, mode: string }) => {
+const MockNavLink = ({ name, mode }: { name: string; mode: string }) => {
   return (
     <a
-      className={`
-        group flex h-9 items-center rounded-md py-2 text-sm font-normal
-        ${mode === 'expand' ? 'px-3' : 'px-2.5'}
-      `}
+      className={`group flex h-9 items-center rounded-md py-2 text-sm font-normal ${mode === 'expand' ? 'px-3' : 'px-2.5'} `}
       data-testid={`nav-link-${name}`}
       data-mode={mode}
     >
@@ -23,13 +20,16 @@ const MockNavLink = ({ name, mode }: { name: string, mode: string }) => {
   )
 }
 
-const MockSidebarToggleButton = ({ expand, onToggle }: { expand: boolean, onToggle: () => void }) => {
+const MockSidebarToggleButton = ({
+  expand,
+  onToggle,
+}: {
+  expand: boolean
+  onToggle: () => void
+}) => {
   return (
     <div
-      className={`
-        flex shrink-0 flex-col border-r border-divider-burn bg-background-default-subtle transition-all
-        ${expand ? 'w-[216px]' : 'w-14'}
-      `}
+      className={`flex shrink-0 flex-col border-r border-divider-burn bg-background-default-subtle transition-all ${expand ? 'w-[216px]' : 'w-14'} `}
       data-testid="sidebar-container"
     >
       {/* Top section with variable padding - reproduces issue #1 */}
@@ -46,10 +46,7 @@ const MockSidebarToggleButton = ({ expand, onToggle }: { expand: boolean, onTogg
       </nav>
 
       {/* Toggle button section with consistent padding - issue #1 FIXED */}
-      <div
-        className="shrink-0 px-4 py-3"
-        data-testid="toggle-section"
-      >
+      <div className="shrink-0 px-4 py-3" data-testid="toggle-section">
         <button
           type="button"
           className="flex h-6 w-6 cursor-pointer items-center justify-center"
@@ -68,9 +65,14 @@ const MockAppInfo = ({ expand }: { expand: boolean }) => {
     <div data-testid="app-info" data-expand={expand}>
       <button type="button" className="block w-full">
         {/* Container with layout mode switching - reproduces issue #3 */}
-        <div className={`flex rounded-lg ${expand ? 'flex-col gap-2 p-2 pb-2.5' : 'items-start justify-center gap-1 p-1'}`}>
+        <div
+          className={`flex rounded-lg ${expand ? 'flex-col gap-2 p-2 pb-2.5' : 'items-start justify-center gap-1 p-1'}`}
+        >
           {/* Icon container with justify-between to flex-col switch - reproduces issue #3 */}
-          <div className={`flex items-center self-stretch ${expand ? 'justify-between' : 'flex-col gap-1'}`} data-testid="icon-container">
+          <div
+            className={`flex items-center self-stretch ${expand ? 'justify-between' : 'flex-col gap-1'}`}
+            data-testid="icon-container"
+          >
             {/* Icon with size changes - reproduces issue #3 */}
             <div
               data-testid="app-icon"
@@ -85,16 +87,14 @@ const MockAppInfo = ({ expand }: { expand: boolean }) => {
               Icon
             </div>
             <div className="flex items-center justify-center rounded-md p-0.5">
-              <div className="flex h-5 w-5 items-center justify-center">
-                ⚙️
-              </div>
+              <div className="flex h-5 w-5 items-center justify-center">⚙️</div>
             </div>
           </div>
           {/* Text that appears/disappears conditionally */}
           {expand && (
             <div className="flex flex-col items-start gap-1">
               <div className="flex w-full">
-                <div className="system-md-semibold truncate text-text-secondary">Test App</div>
+                <div className="truncate system-md-semibold text-text-secondary">Test App</div>
               </div>
               <div className="system-2xs-medium-uppercase text-text-tertiary">chatflow</div>
             </div>
@@ -128,7 +128,9 @@ describe('Sidebar Animation Issues Reproduction', () => {
         expanded = !expanded
       }
 
-      const { rerender } = render(<MockSidebarToggleButton expand={false} onToggle={handleToggle} />)
+      const { rerender } = render(
+        <MockSidebarToggleButton expand={false} onToggle={handleToggle} />,
+      )
 
       // Check collapsed state padding
       const toggleSection = screen.getByTestId('toggle-section')
@@ -147,7 +149,9 @@ describe('Sidebar Animation Issues Reproduction', () => {
 
     it('should verify sidebar width animation is working correctly', () => {
       const handleToggle = vi.fn()
-      const { rerender } = render(<MockSidebarToggleButton expand={false} onToggle={handleToggle} />)
+      const { rerender } = render(
+        <MockSidebarToggleButton expand={false} onToggle={handleToggle} />,
+      )
 
       const container = screen.getByTestId('sidebar-container')
 

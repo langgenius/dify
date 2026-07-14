@@ -6,7 +6,8 @@
 
 * @crazywoola @laipz8200
 
-# ESLint suppression file is maintained by autofix.ci pruning.
+# Lint bulk suppression baselines.
+/oxlint-suppressions.json
 /eslint-suppressions.json
 
 # CODEOWNERS file
@@ -25,6 +26,9 @@
 # CLI
 /cli/ @GareArc
 /.github/workflows/cli-tests.yml @GareArc
+
+# E2E
+/e2e/ @lyzno1
 
 # Backend (default owner, more specific rules below will override)
 /api/ @QuantumGhost

@@ -1,5 +1,7 @@
-"""Unit tests for the inner knowledge retrieval controller."""
+"""Unit tests for the plugin inner knowledge retrieval controller."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import pytest
@@ -53,31 +55,38 @@ def _payload() -> dict[str, object]:
     }
 
 
+@contextmanager
+def _plugin_inner_auth() -> Iterator[None]:
+    with (
+        patch("configs.dify_config.PLUGIN_DAEMON_KEY", "plugin-daemon-key"),
+        patch("configs.dify_config.INNER_API_KEY_FOR_PLUGIN", "inner-key"),
+    ):
+        yield
+
+
 class TestInnerKnowledgeRetrieveApi:
-    def test_post_returns_401_when_api_key_missing(self, inner_api_app: Flask):
-        with patch("configs.dify_config.INNER_API", True):
+    def test_post_returns_404_when_api_key_missing(self, inner_api_app: Flask):
+        with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
                 json=_payload(),
                 headers=_headers(api_key=None),
             )
 
-        assert response.status_code == 401
-        assert response.get_json()["code"] == "inner_api_unauthorized"
+        assert response.status_code == 404
 
-    def test_post_returns_401_when_api_key_invalid(self, inner_api_app: Flask):
-        with patch("configs.dify_config.INNER_API", True), patch("configs.dify_config.INNER_API_KEY", "inner-key"):
+    def test_post_returns_404_when_api_key_invalid(self, inner_api_app: Flask):
+        with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
                 json=_payload(),
                 headers=_headers(api_key="wrong-key"),
             )
 
-        assert response.status_code == 401
-        assert response.get_json()["code"] == "inner_api_unauthorized"
+        assert response.status_code == 404
 
     def test_post_returns_400_for_invalid_body(self, inner_api_app: Flask):
-        with patch("configs.dify_config.INNER_API", True), patch("configs.dify_config.INNER_API_KEY", "inner-key"):
+        with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
                 json={"caller": {"tenant_id": "tenant-1"}},
@@ -91,7 +100,7 @@ class TestInnerKnowledgeRetrieveApi:
     def test_post_returns_404_for_service_not_found_error(self, mock_retrieve, inner_api_app: Flask):
         mock_retrieve.side_effect = InnerKnowledgeRetrieveAppNotFoundError("app missing")
 
-        with patch("configs.dify_config.INNER_API", True), patch("configs.dify_config.INNER_API_KEY", "inner-key"):
+        with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
                 json=_payload(),
@@ -105,7 +114,7 @@ class TestInnerKnowledgeRetrieveApi:
     def test_post_returns_403_for_service_forbidden_error(self, mock_retrieve, inner_api_app: Flask):
         mock_retrieve.side_effect = InnerKnowledgeRetrieveDatasetTenantMismatchError("wrong tenant")
 
-        with patch("configs.dify_config.INNER_API", True), patch("configs.dify_config.INNER_API_KEY", "inner-key"):
+        with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
                 json=_payload(),
@@ -119,7 +128,7 @@ class TestInnerKnowledgeRetrieveApi:
     def test_post_returns_422_for_retrieval_config_value_error(self, mock_retrieve, inner_api_app: Flask):
         mock_retrieve.side_effect = ValueError("invalid reranking config")
 
-        with patch("configs.dify_config.INNER_API", True), patch("configs.dify_config.INNER_API_KEY", "inner-key"):
+        with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
                 json=_payload(),
@@ -133,7 +142,7 @@ class TestInnerKnowledgeRetrieveApi:
     def test_post_returns_429_for_rate_limit_error(self, mock_retrieve, inner_api_app: Flask):
         mock_retrieve.side_effect = RateLimitExceededError("knowledge rate limited")
 
-        with patch("configs.dify_config.INNER_API", True), patch("configs.dify_config.INNER_API_KEY", "inner-key"):
+        with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
                 json=_payload(),
@@ -147,7 +156,7 @@ class TestInnerKnowledgeRetrieveApi:
         payload = _payload()
         payload["metadata_filtering"] = {"mode": "manual"}
 
-        with patch("configs.dify_config.INNER_API", True), patch("configs.dify_config.INNER_API_KEY", "inner-key"):
+        with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
                 json=payload,
@@ -161,7 +170,7 @@ class TestInnerKnowledgeRetrieveApi:
         payload = _payload()
         payload["metadata_filtering"] = {"mode": "automatic"}
 
-        with patch("configs.dify_config.INNER_API", True), patch("configs.dify_config.INNER_API_KEY", "inner-key"):
+        with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
                 json=payload,
@@ -175,7 +184,7 @@ class TestInnerKnowledgeRetrieveApi:
     def test_post_returns_502_for_external_knowledge_failure(self, mock_retrieve, inner_api_app: Flask):
         mock_retrieve.side_effect = ExternalKnowledgeRetrievalError("upstream failed")
 
-        with patch("configs.dify_config.INNER_API", True), patch("configs.dify_config.INNER_API_KEY", "inner-key"):
+        with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
                 json=_payload(),
@@ -219,7 +228,7 @@ class TestInnerKnowledgeRetrieveApi:
             ),
         )
 
-        with patch("configs.dify_config.INNER_API", True), patch("configs.dify_config.INNER_API_KEY", "inner-key"):
+        with _plugin_inner_auth():
             response = inner_api_app.test_client().post(
                 "/inner/api/knowledge/retrieve",
                 json=_payload(),

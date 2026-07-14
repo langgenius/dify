@@ -1,7 +1,63 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SourceAppPicker } from '../source-app-picker'
+
+const mocks = vi.hoisted(() => {
+  const sourceAppsQuery = {
+    data: {
+      pages: [
+        {
+          data: [
+            {
+              id: 'app-1',
+              name: 'Workflow App',
+            },
+          ],
+        },
+      ],
+    },
+    error: null,
+    fetchNextPage: vi.fn(),
+    hasNextPage: true,
+    isFetching: false,
+    isFetchingNextPage: false,
+    isLoading: false,
+  }
+
+  return {
+    sourceAppsQuery,
+    useInfiniteScroll: vi.fn(() => ({
+      rootRef: vi.fn(),
+      sentinelRef: vi.fn(),
+    })),
+  }
+})
+
+vi.mock('@/features/deployments/create-release/state', async () => {
+  const { atom } = await import('jotai')
+
+  return {
+    createReleaseSourceAppsAtom: atom(() =>
+      mocks.sourceAppsQuery.data.pages.flatMap((page) => page.data),
+    ),
+    createReleaseSourceAppsErrorAtom: atom(() => mocks.sourceAppsQuery.error),
+    createReleaseSourceAppsFetchNextPageAtom: atom(() => mocks.sourceAppsQuery.fetchNextPage),
+    createReleaseSourceAppsHasNextPageAtom: atom(() => mocks.sourceAppsQuery.hasNextPage),
+    createReleaseSourceAppsIsFetchingAtom: atom(() => mocks.sourceAppsQuery.isFetching),
+    createReleaseSourceAppsIsFetchingNextPageAtom: atom(
+      () => mocks.sourceAppsQuery.isFetchingNextPage,
+    ),
+    createReleaseSourceAppsIsLoadingAtom: atom(() => mocks.sourceAppsQuery.isLoading),
+    createReleaseSourceAppSearchTextAtom: atom(''),
+    createReleaseSourceAppsQueryAtom: atom(mocks.sourceAppsQuery),
+  }
+})
+
+vi.mock('@/features/deployments/shared/hooks/use-infinite-scroll', () => ({
+  useInfiniteScroll: mocks.useInfiniteScroll,
+}))
 
 function renderSourceAppPicker(disabled: boolean) {
   const queryClient = new QueryClient({
@@ -17,7 +73,6 @@ function renderSourceAppPicker(disabled: boolean) {
       <SourceAppPicker
         value={{ id: 'app-1', name: 'Workflow 1' }}
         onChange={() => undefined}
-        ariaLabel="Source app"
         disabled={disabled}
       />
     </QueryClientProvider>,
@@ -25,10 +80,79 @@ function renderSourceAppPicker(disabled: boolean) {
 }
 
 describe('SourceAppPicker', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    Object.assign(mocks.sourceAppsQuery, {
+      data: {
+        pages: [
+          {
+            data: [
+              {
+                id: 'app-1',
+                name: 'Workflow App',
+              },
+            ],
+          },
+        ],
+      },
+      error: null,
+      fetchNextPage: vi.fn(),
+      hasNextPage: true,
+      isFetching: false,
+      isFetchingNextPage: false,
+      isLoading: false,
+    })
+  })
+
   it('should disable the switch control when disabled', () => {
     renderSourceAppPicker(true)
 
     expect(screen.getByText('Workflow 1')).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Source app' })).toBeDisabled()
+    expect(
+      screen.getByRole('combobox', { name: 'deployments.versions.sourceAppOption' }),
+    ).toBeDisabled()
+  })
+
+  it('should use infinite scroll to load more apps when the picker is open', async () => {
+    const user = userEvent.setup()
+
+    renderSourceAppPicker(false)
+
+    expect(mocks.useInfiniteScroll).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fetchNextPage: expect.any(Function),
+        hasNextPage: true,
+        isFetching: false,
+        isFetchingNextPage: false,
+        isLoading: false,
+      }),
+      expect.objectContaining({
+        enabled: false,
+        rootMargin: '0px 0px 160px 0px',
+        threshold: 0.1,
+      }),
+    )
+
+    await user.click(screen.getByRole('combobox', { name: 'deployments.versions.sourceAppOption' }))
+
+    await waitFor(() => {
+      expect(mocks.useInfiniteScroll).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          fetchNextPage: expect.any(Function),
+          hasNextPage: true,
+          isFetching: false,
+          isFetchingNextPage: false,
+          isLoading: false,
+        }),
+        expect.objectContaining({
+          enabled: true,
+          rootMargin: '0px 0px 160px 0px',
+          threshold: 0.1,
+        }),
+      )
+    })
+    expect(
+      screen.queryByRole('button', { name: /createModal\.loadMoreApps/ }),
+    ).not.toBeInTheDocument()
   })
 })

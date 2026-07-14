@@ -110,6 +110,7 @@ class AgentThought(ResponseModel):
     message_id: str
     position: int
     thought: str | None = None
+    answer: str | None = None
     tool: str | None = None
     tool_labels: JSONValue
     tool_input: str | None = None

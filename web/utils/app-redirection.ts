@@ -17,15 +17,14 @@ export const getRedirectionPath = (
   if (appACLCapabilities.canAccessLayout) {
     if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
       return `/app/${app.id}/workflow`
-    else
-      return `/app/${app.id}/configuration`
+    else return `/app/${app.id}/configuration`
   }
 
-  if (appACLCapabilities.canMonitor)
-    return `/app/${app.id}/overview`
+  if (appACLCapabilities.canMonitor) return `/app/${app.id}/overview`
 
-  if (appACLCapabilities.canAccessConfig)
-    return `/app/${app.id}/access-config`
+  if (appACLCapabilities.canAccessLogAndAnnotation) return `/app/${app.id}/logs`
+
+  if (appACLCapabilities.canAccessConfig) return `/app/${app.id}/access-config`
 
   return `/app/${app.id}/develop`
 }

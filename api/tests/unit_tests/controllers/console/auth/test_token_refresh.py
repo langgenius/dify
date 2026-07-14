@@ -8,13 +8,15 @@ This module tests the token refresh mechanism including:
 - Error handling for invalid tokens
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
 from flask_restx import Api
+from werkzeug.exceptions import Unauthorized
 
 from controllers.console.auth.login import RefreshTokenApi
+from services.errors.account import RefreshTokenAccountNotFoundError, RefreshTokenNotFoundError
 
 
 class TestRefreshTokenApi:
@@ -70,7 +72,7 @@ class TestRefreshTokenApi:
 
         # Assert
         mock_extract_token.assert_called_once()
-        mock_refresh_token.assert_called_once_with("valid_refresh_token")
+        mock_refresh_token.assert_called_once_with("valid_refresh_token", session=ANY)
         assert response.json["result"] == "success"
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
@@ -98,18 +100,19 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_refresh_fails_with_invalid_token(self, mock_refresh_token, mock_extract_token, app: Flask):
+    def test_refresh_returns_unauthorized_for_invalid_refresh_token(
+        self, mock_refresh_token, mock_extract_token, app: Flask
+    ):
         """
-        Test token refresh failure with invalid refresh token.
+        Test token refresh maps invalid refresh tokens to unauthorized responses.
 
         Verifies that:
-        - Exception is caught when token is invalid
-        - 401 status code is returned
-        - Error message is included in response
+        - Invalid refresh token validation failures return 401
+        - The failure response preserves the validation message
         """
         # Arrange
         mock_extract_token.return_value = "invalid_refresh_token"
-        mock_refresh_token.side_effect = Exception("Invalid refresh token")
+        mock_refresh_token.side_effect = RefreshTokenNotFoundError("Invalid refresh token")
 
         # Act
         with app.test_request_context("/refresh-token", method="POST"):
@@ -119,22 +122,21 @@ class TestRefreshTokenApi:
         # Assert
         assert status_code == 401
         assert response["result"] == "fail"
-        assert "Invalid refresh token" in response["message"]
+        assert response["message"] == "Invalid refresh token"
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_refresh_fails_with_expired_token(self, mock_refresh_token, mock_extract_token, app: Flask):
+    def test_refresh_returns_unauthorized_for_invalid_account(self, mock_refresh_token, mock_extract_token, app: Flask):
         """
-        Test token refresh failure with expired refresh token.
+        Test token refresh maps missing accounts to unauthorized responses.
 
         Verifies that:
-        - Expired tokens are rejected
-        - 401 status code is returned
-        - Appropriate error handling
+        - Invalid account validation failures return 401
+        - The failure response preserves the validation message
         """
         # Arrange
-        mock_extract_token.return_value = "expired_refresh_token"
-        mock_refresh_token.side_effect = Exception("Refresh token expired")
+        mock_extract_token.return_value = "refresh_token_for_missing_account"
+        mock_refresh_token.side_effect = RefreshTokenAccountNotFoundError("Invalid account")
 
         # Act
         with app.test_request_context("/refresh-token", method="POST"):
@@ -144,7 +146,71 @@ class TestRefreshTokenApi:
         # Assert
         assert status_code == 401
         assert response["result"] == "fail"
-        assert "expired" in response["message"].lower()
+        assert response["message"] == "Invalid account"
+
+    @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
+    def test_refresh_returns_unauthorized_for_banned_account(self, mock_refresh_token, mock_extract_token, app: Flask):
+        """
+        Test token refresh maps banned accounts to unauthorized responses.
+
+        Verifies that:
+        - Authorization failures raised during account loading return 401
+        - The failure response preserves the authorization message
+        """
+        # Arrange
+        mock_extract_token.return_value = "refresh_token_for_banned_account"
+        mock_refresh_token.side_effect = Unauthorized("Account is banned.")
+
+        # Act
+        with app.test_request_context("/refresh-token", method="POST"):
+            refresh_api = RefreshTokenApi()
+            response, status_code = refresh_api.post()
+
+        # Assert
+        assert status_code == 401
+        assert response["result"] == "fail"
+        assert response["message"] == "Account is banned."
+
+    @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
+    def test_refresh_propagates_non_whitelisted_value_error(self, mock_refresh_token, mock_extract_token, app: Flask):
+        """
+        Test token refresh preserves non-whitelisted ValueError failures.
+
+        Verifies that:
+        - Only known refresh-token validation errors are mapped to 401
+        - Unexpected ValueError instances continue to propagate
+        """
+        # Arrange
+        mock_extract_token.return_value = "valid_refresh_token"
+        mock_refresh_token.side_effect = ValueError("unexpected parse failure")
+
+        # Act & Assert
+        with app.test_request_context("/refresh-token", method="POST"):
+            refresh_api = RefreshTokenApi()
+            with pytest.raises(ValueError, match="unexpected parse failure"):
+                refresh_api.post()
+
+    @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
+    def test_refresh_propagates_unexpected_service_errors(self, mock_refresh_token, mock_extract_token, app: Flask):
+        """
+        Test token refresh preserves unexpected service failures.
+
+        Verifies that:
+        - Operational errors are not misreported as authentication failures
+        - The original exception is preserved for higher-level error handling
+        """
+        # Arrange
+        mock_extract_token.return_value = "valid_refresh_token"
+        mock_refresh_token.side_effect = RuntimeError("redis unavailable")
+
+        # Act & Assert
+        with app.test_request_context("/refresh-token", method="POST"):
+            refresh_api = RefreshTokenApi()
+            with pytest.raises(RuntimeError, match="redis unavailable"):
+                refresh_api.post()
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
@@ -191,7 +257,7 @@ class TestRefreshTokenApi:
         # Assert
         assert response.json["result"] == "success"
         # Verify new token pair was generated
-        mock_refresh_token.assert_called_once_with("valid_refresh_token")
+        mock_refresh_token.assert_called_once_with("valid_refresh_token", session=ANY)
         # In real implementation, cookies would be set with new values
         assert mock_token_pair.access_token == "new_access_token"
         assert mock_token_pair.refresh_token == "new_refresh_token"

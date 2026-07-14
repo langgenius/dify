@@ -243,7 +243,7 @@ class TestQAIndexProcessor:
             vector = mock_vector_cls.return_value
             processor.clean(dataset, ["node-1"], delete_summaries=True)
 
-        mock_summary.assert_called_once_with(dataset, ["seg-1"])
+        mock_summary.assert_called_once_with(dataset=dataset, segment_ids=["seg-1"])
         vector.delete_by_ids.assert_called_once_with(["node-1"])
 
     def test_clean_handles_dataset_wide_cleanup(self, processor: QAIndexProcessor, dataset: Mock) -> None:
@@ -256,7 +256,7 @@ class TestQAIndexProcessor:
             vector = mock_vector_cls.return_value
             processor.clean(dataset, None, delete_summaries=True)
 
-        mock_summary.assert_called_once_with(dataset, None)
+        mock_summary.assert_called_once_with(dataset=dataset, segment_ids=None)
         vector.delete.assert_called_once()
 
     def test_index_adds_documents_and_vectors_for_high_quality(
@@ -351,7 +351,9 @@ class TestQAIndexProcessor:
         assert all_qa_documents[0].metadata["answer"] == "A test."
         assert all_qa_documents[1].metadata["answer"] == "Coverage."
 
-    def test_format_qa_document_logs_errors(self, processor: QAIndexProcessor, fake_flask_app, caplog) -> None:
+    def test_format_qa_document_logs_errors(
+        self, processor: QAIndexProcessor, fake_flask_app, caplog: pytest.LogCaptureFixture
+    ) -> None:
         all_qa_documents: list[Document] = []
         source_document = Document(page_content="source text", metadata={"origin": "doc-1"})
 

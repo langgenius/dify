@@ -25,6 +25,7 @@ from controllers.openapi.auth.data import AuthData, Edition
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import App
+from models.enums import AppStatus
 from services.account_service import TenantService
 from services.app_service import AppService
 from services.enterprise.app_permitted_service import list_permitted_apps
@@ -54,15 +55,15 @@ class PermittedExternalAppsListApi(Resource):
             return env
 
         apps_by_id: dict[str, App] = {
-            str(a.id): a for a in AppService.find_visible_apps_by_ids(db.session, page_result.app_ids)
+            str(a.id): a for a in AppService.find_visible_apps_by_ids(page_result.app_ids, session=db.session())
         }
         tenant_ids = list({str(a.tenant_id) for a in apps_by_id.values()})
-        tenants_by_id = {str(t.id): t for t in TenantService.get_tenants_by_ids(db.session, tenant_ids)}
+        tenants_by_id = {str(t.id): t for t in TenantService.get_tenants_by_ids(tenant_ids, session=db.session())}
 
         items: list[AppListRow] = []
         for app_id in page_result.app_ids:
             app = apps_by_id.get(app_id)
-            if not app or app.status != "normal":
+            if not app or app.status != AppStatus.NORMAL:
                 continue
             tenant = tenants_by_id.get(str(app.tenant_id))
             items.append(
@@ -86,7 +87,7 @@ class PermittedExternalAppsListApi(Resource):
         return env
 
 
-@openapi_ns.route("/permitted-external-apps/<string:app_id>/describe")
+@openapi_ns.route("/permitted-external-apps/<string:app_id>")
 class PermittedExternalAppDescribeApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_READ_PERMITTED_EXTERNAL,

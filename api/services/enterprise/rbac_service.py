@@ -9,9 +9,10 @@ from flask import has_request_context, request
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.db.session_factory import session_factory
+from core.rbac import RBACResourceWhitelistScope
 from models import TenantAccountJoin, TenantAccountRole
 from services.enterprise.base import EnterpriseRequest
 
@@ -248,12 +249,13 @@ class ResourceUserAccessPolicies(_RBACModel):
 
 
 class ResourceUserAccessPoliciesResponse(_RBACModel):
-    scope: str
+    scope: RBACResourceWhitelistScope
     data: list[ResourceUserAccessPolicies] = Field(default_factory=list)
 
 
 class ReplaceUserAccessPolicies(_RBACModel):
     access_policy_ids: list[str] = Field(default_factory=list)
+    account_ids: list[str] = Field(default_factory=list)
 
     @field_validator("access_policy_ids", mode="before")
     @classmethod
@@ -309,9 +311,11 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "customization.manage",
     "plugin.install",
     "plugin.plugin_preferences",
-    "plugin.manage",
+    "plugin.model_config",
+    "plugin.delete",
     "plugin.debug",
     "credential.use",
+    "credential.create",
     "credential.manage",
     "billing.view",
     "billing.subscription.manage",
@@ -329,8 +333,6 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
-    "snippets.create_and_modify",
-    "snippets.management",
 ]
 
 _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
@@ -341,9 +343,11 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "customization.manage",
     "plugin.install",
     "plugin.plugin_preferences",
-    "plugin.manage",
+    "plugin.model_config",
+    "plugin.delete",
     "plugin.debug",
     "credential.use",
+    "credential.create",
     "credential.manage",
     "billing.view",
     "billing.subscription.manage",
@@ -359,12 +363,9 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
-    "snippets.create_and_modify",
-    "snippets.management",
 ]
 
 _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
-    "workspace.member.manage",
     "api_extension.manage",
     "plugin.install",
     "credential.use",
@@ -376,7 +377,9 @@ _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
     "dataset.external.connect",
     "snippets.create_and_modify",
     "tool.manage",
-    "snippets.create_and_modify",
+    "billing.view",
+    "billing.subscription.manage",
+    "billing.manage",
 ]
 
 _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
@@ -384,6 +387,9 @@ _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
     "plugin.install",
     "credential.use",
     "app_library.access",
+    "billing.view",
+    "billing.subscription.manage",
+    "billing.manage",
 ]
 
 _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
@@ -402,6 +408,8 @@ _LEGACY_APP_OWNER_KEYS: list[str] = [
     "app.acl.release_and_version",
     "app.acl.monitor",
     "app.acl.access_config",
+    "app.acl.tracing_config",
+    "app.acl.log_and_annotation",
 ]
 
 _LEGACY_APP_ADMIN_KEYS: list[str] = [
@@ -414,6 +422,9 @@ _LEGACY_APP_ADMIN_KEYS: list[str] = [
     "app.acl.release_and_version",
     "app.acl.monitor",
     "app.acl.access_config",
+    "app.acl.access_config",
+    "app.acl.tracing_config",
+    "app.acl.log_and_annotation",
 ]
 
 _LEGACY_APP_EDITOR_KEYS: list[str] = [
@@ -425,13 +436,11 @@ _LEGACY_APP_EDITOR_KEYS: list[str] = [
     "app.acl.delete",
     "app.acl.release_and_version",
     "app.acl.monitor",
+    "app.acl.log_and_annotation",
     "app.acl.access_config",
 ]
 
 _LEGACY_APP_NORMAL_KEYS: list[str] = [
-    "app.acl.preview",
-    "app.acl.view_layout",
-    "app.acl.test_and_run",
     "app.acl.monitor",
 ]
 
@@ -532,25 +541,49 @@ def _legacy_role_permission_keys(role: TenantAccountRole) -> list[str]:
     )
 
 
-def _legacy_my_permissions(tenant_id: str, account_id: str | None) -> MyPermissionsResponse:
+def _legacy_member_roles_response(
+    tenant_id: str, member_account_id: str, role: TenantAccountRole | str | None
+) -> MemberRolesResponse:
+    if not role:
+        return MemberRolesResponse(account_id=member_account_id, roles=[])
+
+    tenant_role = TenantAccountRole(role)
+    role_value = tenant_role.value
+    return MemberRolesResponse(
+        account_id=member_account_id,
+        roles=[
+            RBACRole(
+                id=role_value,
+                name=role_value,
+                description="",
+                is_builtin=True,
+                type="",
+                permission_keys=_legacy_role_permission_keys(tenant_role),
+                role_tag="owner" if tenant_role == TenantAccountRole.OWNER else role_value,
+                tenant_id=tenant_id,
+            )
+        ],
+    )
+
+
+def _legacy_my_permissions(tenant_id: str, account_id: str | None, *, session: Session) -> MyPermissionsResponse:
     if not account_id:
         return MyPermissionsResponse()
 
     try:
-        with session_factory.create_session() as session:
-            role = session.scalar(
-                select(TenantAccountJoin.role).where(
-                    TenantAccountJoin.tenant_id == tenant_id,
-                    TenantAccountJoin.account_id == account_id,
-                )
+        role = session.scalar(
+            select(TenantAccountJoin.role).where(
+                TenantAccountJoin.tenant_id == tenant_id,
+                TenantAccountJoin.account_id == account_id,
             )
-            if not role:
-                return MyPermissionsResponse()
+        )
+        if not role:
+            return MyPermissionsResponse()
 
-            try:
-                tenant_role = TenantAccountRole(role)
-            except ValueError:
-                return MyPermissionsResponse()
+        try:
+            tenant_role = TenantAccountRole(role)
+        except ValueError:
+            return MyPermissionsResponse()
     except SQLAlchemyError:
         return MyPermissionsResponse()
 
@@ -567,8 +600,10 @@ def _legacy_resource_permission_keys_batch(
     account_id: str | None,
     resource_ids: list[str],
     resource_type: RBACResourceType,
+    *,
+    session: Session,
 ) -> dict[str, list[str]]:
-    snapshot = _legacy_my_permissions(tenant_id, account_id)
+    snapshot = _legacy_my_permissions(tenant_id, account_id, session=session)
     if resource_type == RBACResourceType.APP:
         permission_keys = snapshot.app.default_permission_keys
     else:
@@ -617,17 +652,18 @@ class ReplaceRoleBindings(_RBACModel):
 
 
 class ReplaceMemberBindings(_RBACModel):
-    scope: str = "specific"
+    scope: RBACResourceWhitelistScope = RBACResourceWhitelistScope.SPECIFIC
 
     @field_validator("scope")
     @classmethod
-    def _normalize_scope(cls, value: Any) -> str:
+    def _normalize_scope(cls, value: Any) -> RBACResourceWhitelistScope:
         scope = str(value or "").strip().lower()
-        if scope in {"", "specific"}:
-            return "specific"
-        if scope in {"all", "only_me"}:
-            return scope
-        raise ValueError(f"invalid scope: {value}")
+        if scope == "":
+            return RBACResourceWhitelistScope.SPECIFIC
+        try:
+            return RBACResourceWhitelistScope(scope)
+        except ValueError as exc:
+            raise ValueError(f"invalid scope: {value}") from exc
 
 
 class DeleteMemberBindings(_RBACModel):
@@ -711,6 +747,7 @@ def _inner_call(
         account_id=account_id,
         json=json,
         params=params,
+        timeout=dify_config.ENTERPRISE_RBAC_REQUEST_TIMEOUT,
     )
 
 
@@ -768,6 +805,7 @@ class RBACService:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/role-permissions/catalog",
+                params={"billing_enabled": dify_config.BILLING_ENABLED},
                 tenant_id=tenant_id,
                 account_id=account_id,
             )
@@ -806,6 +844,7 @@ class RBACService:
             options: ListOption | None = None,
         ) -> Paginated[RBACRole]:
             params = (options or ListOption()).to_params({"include_owner": include_owner})
+            params["dataset_operator_enabled"] = dify_config.DATASET_OPERATOR_ENABLED
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/roles",
@@ -1088,16 +1127,17 @@ class RBACService:
             tenant_id: str,
             account_id: str | None,
             app_id: str,
-            target_account_id: str,
+            target_account_id: str | None,
             payload: ReplaceUserAccessPolicies,
         ) -> ReplaceUserAccessPoliciesResponse:
+            request_data = payload.model_dump(mode="json")
             data = _inner_call(
                 "PUT",
                 f"{_INNER_PREFIX}/apps/user-access-policies",
                 tenant_id=tenant_id,
                 account_id=account_id,
                 params={"app_id": app_id, "account_id": target_account_id},
-                json=payload.model_dump(mode="json"),
+                json=request_data,
             )
             return ReplaceUserAccessPoliciesResponse.model_validate(data or {})
 
@@ -1257,7 +1297,7 @@ class RBACService:
             tenant_id: str,
             account_id: str | None,
             dataset_id: str,
-            target_account_id: str,
+            target_account_id: str | None,
             payload: ReplaceUserAccessPolicies,
         ) -> ReplaceUserAccessPoliciesResponse:
             data = _inner_call(
@@ -1266,7 +1306,7 @@ class RBACService:
                 tenant_id=tenant_id,
                 account_id=account_id,
                 params={"dataset_id": dataset_id, "account_id": target_account_id},
-                json=payload.model_dump(mode="json"),
+                json=payload.model_dump(mode="json", exclude_unset=True),
             )
             return ReplaceUserAccessPoliciesResponse.model_validate(data or {})
 
@@ -1560,7 +1600,9 @@ class RBACService:
 
     class MemberRoles:
         @staticmethod
-        def get(tenant_id: str, account_id: str | None, member_account_id: str) -> MemberRolesResponse:
+        def get(
+            tenant_id: str, account_id: str | None, member_account_id: str, *, session: Session
+        ) -> MemberRolesResponse:
             if dify_config.RBAC_ENABLED:
                 data = _inner_call(
                     "GET",
@@ -1572,30 +1614,13 @@ class RBACService:
                 rst = MemberRolesResponse.model_validate(data or {})
                 return rst
             else:
-                with session_factory.create_session() as session:
-                    role = session.scalar(
-                        select(TenantAccountJoin.role).where(
-                            TenantAccountJoin.tenant_id == tenant_id,
-                            TenantAccountJoin.account_id == member_account_id,
-                        )
+                role = session.scalar(
+                    select(TenantAccountJoin.role).where(
+                        TenantAccountJoin.tenant_id == tenant_id,
+                        TenantAccountJoin.account_id == member_account_id,
                     )
-                    return MemberRolesResponse(
-                        account_id=member_account_id,
-                        roles=[
-                            RBACRole(
-                                id="",
-                                name=role,
-                                description="",
-                                is_builtin=True,
-                                type="",
-                                permission_keys=_legacy_role_permission_keys(role),
-                                role_tag="owner" if role == "owner" else role,
-                                tenant_id=tenant_id,
-                            )
-                        ]
-                        if role
-                        else [],
-                    )
+                )
+                return _legacy_member_roles_response(tenant_id, member_account_id, role)
 
         @staticmethod
         def batch_get(
@@ -1625,7 +1650,38 @@ class RBACService:
             account_id: str | None,
             member_account_id: str,
             role_ids: list[str],
+            *,
+            session: Session,
         ) -> MemberRolesResponse:
+            if not dify_config.RBAC_ENABLED:
+                if len(role_ids) != 1:
+                    raise ValueError("Legacy workspace member role update requires exactly one role.")
+
+                tenant_role = TenantAccountRole(role_ids[0])
+                target_member_join = session.scalar(
+                    select(TenantAccountJoin).where(
+                        TenantAccountJoin.tenant_id == tenant_id,
+                        TenantAccountJoin.account_id == member_account_id,
+                    )
+                )
+                if not target_member_join:
+                    raise ValueError("Member not in tenant.")
+
+                if tenant_role == TenantAccountRole.OWNER:
+                    current_owner_join = session.scalar(
+                        select(TenantAccountJoin).where(
+                            TenantAccountJoin.tenant_id == tenant_id,
+                            TenantAccountJoin.role == TenantAccountRole.OWNER,
+                        )
+                    )
+                    if current_owner_join and current_owner_join.account_id != member_account_id:
+                        current_owner_join.role = TenantAccountRole.ADMIN
+
+                target_member_join.role = tenant_role
+                session.commit()
+
+                return _legacy_member_roles_response(tenant_id, member_account_id, tenant_role)
+
             data = _inner_call(
                 "PUT",
                 f"{_INNER_PREFIX}/members/rbac-roles",
@@ -1635,6 +1691,17 @@ class RBACService:
                 json={"role_ids": role_ids},
             )
             return MemberRolesResponse.model_validate(data or {})
+
+        @staticmethod
+        def delete_rbac_bindings(tenant_id: str, account_id: str):
+            data = _inner_call(
+                "DELETE",
+                f"{_INNER_PREFIX}/members/rbac-bindings",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"account_id": account_id},
+            )
+            return data
 
     class CheckAccess:
         """Call the ``/inner/api/rbac/check-access`` endpoint."""
@@ -1677,11 +1744,15 @@ class RBACService:
             tenant_id: str,
             account_id: str | None,
             app_ids: list[str],
+            *,
+            session: Session,
         ) -> dict[str, list[str]]:
             if not app_ids:
                 return {}
             if not dify_config.RBAC_ENABLED:
-                return _legacy_resource_permission_keys_batch(tenant_id, account_id, app_ids, RBACResourceType.APP)
+                return _legacy_resource_permission_keys_batch(
+                    tenant_id, account_id, app_ids, RBACResourceType.APP, session=session
+                )
             data = _inner_call(
                 "POST",
                 f"{_INNER_PREFIX}/apps/permission-keys/batch",
@@ -1697,12 +1768,14 @@ class RBACService:
             tenant_id: str,
             account_id: str | None,
             dataset_ids: list[str],
+            *,
+            session: Session,
         ) -> dict[str, list[str]]:
             if not dataset_ids:
                 return {}
             if not dify_config.RBAC_ENABLED:
                 return _legacy_resource_permission_keys_batch(
-                    tenant_id, account_id, dataset_ids, RBACResourceType.DATASET
+                    tenant_id, account_id, dataset_ids, RBACResourceType.DATASET, session=session
                 )
             data = _inner_call(
                 "POST",
@@ -1721,9 +1794,10 @@ class RBACService:
             *,
             app_id: str | None = None,
             dataset_id: str | None = None,
+            session: Session,
         ) -> MyPermissionsResponse:
             if not dify_config.RBAC_ENABLED:
-                return _legacy_my_permissions(tenant_id, account_id)
+                return _legacy_my_permissions(tenant_id, account_id, session=session)
 
             data = _inner_call(
                 "GET",

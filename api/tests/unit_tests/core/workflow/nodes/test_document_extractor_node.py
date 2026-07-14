@@ -242,7 +242,7 @@ def test_extract_text_from_pdf(mock_pdf_document):
     mock_text_page = Mock()
     mock_text_page.get_text_range.return_value = "PDF content"
     mock_page.get_textpage.return_value = mock_text_page
-    mock_pdf_document.return_value = [mock_page]
+    mock_pdf_document.return_value.__enter__.return_value = [mock_page]
     text = _extract_text_from_pdf(b"%PDF-1.5\n%Test PDF content")
     assert text == "PDF content"
 

@@ -79,6 +79,7 @@ class LicenseModel(FeatureResponseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
     workspaces: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
+    seats: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
 
 
 class BrandingModel(FeatureResponseModel):
@@ -181,6 +182,7 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_creators_platform: bool = False
     enable_trial_app: bool = False
     enable_explore_banner: bool = False
+    enable_learn_app: bool = True
     rbac_enabled: bool = False
 
 
@@ -282,6 +284,7 @@ class FeatureService:
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
         system_features.enable_trial_app = dify_config.ENABLE_TRIAL_APP
         system_features.enable_explore_banner = dify_config.ENABLE_EXPLORE_BANNER
+        system_features.enable_learn_app = dify_config.ENABLE_LEARN_APP
 
     @classmethod
     def _fulfill_trial_models_from_env(cls) -> list[str]:
@@ -454,6 +457,11 @@ class FeatureService:
                     features.license.workspaces.enabled = workspaces_info.get("enabled", False)
                     features.license.workspaces.limit = workspaces_info.get("limit", 0)
                     features.license.workspaces.size = workspaces_info.get("used", 0)
+
+                if seats_info := license_info.get("licensedSeats"):
+                    features.license.seats.enabled = seats_info.get("enabled", False)
+                    features.license.seats.limit = seats_info.get("limit", 0)
+                    features.license.seats.size = seats_info.get("used", 0)
 
         if "PluginInstallationPermission" in enterprise_info:
             plugin_installation_info = enterprise_info["PluginInstallationPermission"]

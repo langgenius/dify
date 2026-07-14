@@ -1,10 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Dialog,
-  DialogCloseButton,
-  DialogContent,
-} from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { useCallback } from 'react'
 
 type DialogProps = {
   className?: string
@@ -13,17 +10,16 @@ type DialogProps = {
   onClose?: () => void
 }
 
-export function AccessControlDialog({
-  className,
-  children,
-  show,
-  onClose,
-}: DialogProps) {
+const AccessControlDialog = ({ className, children, show, onClose }: DialogProps) => {
+  const close = useCallback(() => {
+    onClose?.()
+  }, [onClose])
+
   return (
-    <Dialog open={show} disablePointerDismissal onOpenChange={open => !open && onClose?.()}>
+    <Dialog open={show} disablePointerDismissal onOpenChange={(open) => !open && close()}>
       <DialogContent
         className={cn(
-          'h-auto max-h-[calc(100dvh-2rem)] min-h-[323px] w-[600px] max-w-none overflow-y-auto rounded-2xl border-none bg-components-panel-bg p-0 shadow-xl transition-shadow',
+          'h-auto max-h-[calc(100dvh-2rem)] min-h-[323px] w-[600px] max-w-none overflow-y-auto rounded-2xl border-none bg-components-panel-bg p-0 shadow-xl transition-all',
           className,
         )}
       >
@@ -33,3 +29,5 @@ export function AccessControlDialog({
     </Dialog>
   )
 }
+
+export default AccessControlDialog

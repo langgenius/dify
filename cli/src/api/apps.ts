@@ -1,4 +1,8 @@
-import type { AppDescribeResponse, AppListResponse, AppMode } from '@dify/contracts/api/openapi/types.gen'
+import type {
+  AppDescribeResponse,
+  AppListResponse,
+  SupportedAppType,
+} from '@dify/contracts/api/openapi/types.gen'
 import type { AppReader } from './app-reader'
 import type { OpenApiClient } from '@/http/orpc'
 import type { HttpClient } from '@/http/types'
@@ -8,12 +12,14 @@ export type ListQuery = {
   readonly workspaceId: string
   readonly page?: number
   readonly limit?: number
-  readonly mode?: AppMode | ''
+  readonly mode?: SupportedAppType | ''
   readonly name?: string
 }
 
 // An absent or empty mode filter means "any mode" — collapse both to undefined for the query.
-export function normalizeMode(mode: AppMode | '' | undefined): AppMode | undefined {
+export function normalizeMode(
+  mode: SupportedAppType | '' | undefined,
+): SupportedAppType | undefined {
   return mode !== undefined && mode !== '' ? mode : undefined
 }
 
@@ -37,7 +43,7 @@ export class AppsClient implements AppReader {
   }
 
   async describe(appId: string, fields?: readonly string[]): Promise<AppDescribeResponse> {
-    return this.orpc.apps.byAppId.describe.get({
+    return this.orpc.apps.byAppId.get({
       params: { app_id: appId },
       query: {
         fields: fields !== undefined && fields.length > 0 ? fields.join(',') : undefined,

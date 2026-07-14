@@ -15,12 +15,40 @@ const mockDeleteMutate = vi.fn()
 let mockWorkspacePermissionKeys: string[] = ['snippets.create_and_modify', 'snippets.management']
 let mockDropdownOpen = false
 let mockDropdownOnOpenChange: ((open: boolean) => void) | undefined
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
+const mockAppContextState = vi.hoisted(() => ({
+  current: {
+    get workspacePermissionKeys() {
+      return mockWorkspacePermissionKeys
+    },
+  },
 }))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -29,7 +57,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/utils/download', () => ({
-  downloadBlob: (args: { data: Blob, fileName: string }) => mockDownloadBlob(args),
+  downloadBlob: (args: { data: Blob; fileName: string }) => mockDownloadBlob(args),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -68,9 +96,8 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
       {children}
     </button>
   ),
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => (
-    mockDropdownOpen ? <div>{children}</div> : null
-  ),
+  DropdownMenuContent: ({ children }: { children: React.ReactNode }) =>
+    mockDropdownOpen ? <div>{children}</div> : null,
   DropdownMenuItem: ({
     children,
     onClick,
@@ -121,8 +148,7 @@ vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
     onClose,
     onConfirm,
   }: MockCreateSnippetDialogProps) => {
-    if (!isOpen)
-      return null
+    if (!isOpen) return null
 
     return (
       <div data-testid="create-snippet-dialog">
@@ -132,19 +158,23 @@ vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
         <div>{initialValue?.description}</div>
         <button
           type="button"
-          onClick={() => onConfirm({
-            name: 'Updated snippet',
-            description: 'Updated description',
-            graph: {
-              nodes: [],
-              edges: [],
-              viewport: { x: 0, y: 0, zoom: 1 },
-            },
-          })}
+          onClick={() =>
+            onConfirm({
+              name: 'Updated snippet',
+              description: 'Updated description',
+              graph: {
+                nodes: [],
+                edges: [],
+                viewport: { x: 0, y: 0, zoom: 1 },
+              },
+            })
+          }
         >
           submit-edit
         </button>
-        <button type="button" onClick={onClose}>close-edit</button>
+        <button type="button" onClick={onClose}>
+          close-edit
+        </button>
       </div>
     )
   },
@@ -192,7 +222,7 @@ describe('SnippetInfoDropdown', () => {
       await user.click(screen.getByRole('button'))
 
       expect(screen.getByText('snippet.menu.editInfo')).toBeInTheDocument()
-      expect(screen.queryByText('snippet.menu.exportSnippet')).not.toBeInTheDocument()
+      expect(screen.getByText('snippet.menu.exportSnippet')).toBeInTheDocument()
       expect(screen.queryByText('snippet.menu.deleteSnippet')).not.toBeInTheDocument()
 
       unmount()
@@ -201,7 +231,7 @@ describe('SnippetInfoDropdown', () => {
       await user.click(screen.getByRole('button'))
 
       expect(screen.queryByText('snippet.menu.editInfo')).not.toBeInTheDocument()
-      expect(screen.getByText('snippet.menu.exportSnippet')).toBeInTheDocument()
+      expect(screen.queryByText('snippet.menu.exportSnippet')).not.toBeInTheDocument()
       expect(screen.getByText('snippet.menu.deleteSnippet')).toBeInTheDocument()
     })
   })
@@ -210,9 +240,11 @@ describe('SnippetInfoDropdown', () => {
   describe('Edit Snippet', () => {
     it('should open the edit dialog and submit snippet updates', async () => {
       const user = userEvent.setup()
-      mockUpdateMutate.mockImplementation((_variables: unknown, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.()
-      })
+      mockUpdateMutate.mockImplementation(
+        (_variables: unknown, options?: { onSuccess?: () => void }) => {
+          options?.onSuccess?.()
+        },
+      )
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
       await user.click(screen.getByRole('button'))
@@ -222,20 +254,25 @@ describe('SnippetInfoDropdown', () => {
       expect(screen.getByText('snippet.editDialogTitle')).toBeInTheDocument()
       expect(screen.getByText('common.operation.save')).toBeInTheDocument()
       expect(screen.getByText(mockSnippet.name)).toBeInTheDocument()
+      if (!mockSnippet.description)
+        throw new Error('mockSnippet.description is required for this test')
       expect(screen.getByText(mockSnippet.description)).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'submit-edit' }))
 
-      expect(mockUpdateMutate).toHaveBeenCalledWith({
-        params: { snippetId: mockSnippet.id },
-        body: {
-          name: 'Updated snippet',
-          description: 'Updated description',
+      expect(mockUpdateMutate).toHaveBeenCalledWith(
+        {
+          params: { snippetId: mockSnippet.id },
+          body: {
+            name: 'Updated snippet',
+            description: 'Updated description',
+          },
         },
-      }, expect.objectContaining({
-        onSuccess: expect.any(Function),
-        onError: expect.any(Function),
-      }))
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+          onError: expect.any(Function),
+        }),
+      )
       expect(mockToastSuccess).toHaveBeenCalledWith('snippet.editDone')
     })
   })
@@ -244,7 +281,7 @@ describe('SnippetInfoDropdown', () => {
   describe('Export Snippet', () => {
     it('should export and download the snippet yaml', async () => {
       const user = userEvent.setup()
-      mockWorkspacePermissionKeys = ['snippets.management']
+      mockWorkspacePermissionKeys = ['snippets.create_and_modify']
       mockExportMutateAsync.mockResolvedValue('yaml: content')
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
@@ -264,7 +301,7 @@ describe('SnippetInfoDropdown', () => {
 
     it('should show an error toast when export fails', async () => {
       const user = userEvent.setup()
-      mockWorkspacePermissionKeys = ['snippets.management']
+      mockWorkspacePermissionKeys = ['snippets.create_and_modify']
       mockExportMutateAsync.mockRejectedValue(new Error('export failed'))
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
@@ -282,9 +319,11 @@ describe('SnippetInfoDropdown', () => {
   describe('Delete Snippet', () => {
     it('should confirm deletion and redirect to the snippets list', async () => {
       const user = userEvent.setup()
-      mockDeleteMutate.mockImplementation((_variables: unknown, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.()
-      })
+      mockDeleteMutate.mockImplementation(
+        (_variables: unknown, options?: { onSuccess?: () => void }) => {
+          options?.onSuccess?.()
+        },
+      )
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
 
@@ -296,12 +335,15 @@ describe('SnippetInfoDropdown', () => {
 
       await user.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 
-      expect(mockDeleteMutate).toHaveBeenCalledWith({
-        params: { snippetId: mockSnippet.id },
-      }, expect.objectContaining({
-        onSuccess: expect.any(Function),
-        onError: expect.any(Function),
-      }))
+      expect(mockDeleteMutate).toHaveBeenCalledWith(
+        {
+          params: { snippetId: mockSnippet.id },
+        },
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+          onError: expect.any(Function),
+        }),
+      )
       expect(mockToastSuccess).toHaveBeenCalledWith('snippet.deleted')
       expect(mockReplace).toHaveBeenCalledWith('/snippets')
     })

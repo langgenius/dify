@@ -6,7 +6,6 @@ import {
   fetchWithRetry,
   getPurifyHref,
   getTextWidthWithCanvas,
-  randomString,
   sleep,
 } from './index'
 
@@ -34,7 +33,7 @@ describe('asyncRunSafe', () => {
   })
 
   it('should return [Error] when promise rejects with undefined', async () => {
-    // eslint-disable-next-line prefer-promise-reject-errors
+    // oxlint-disable-next-line prefer-promise-reject-errors
     const result = await asyncRunSafe(Promise.reject())
     expect(result[0]).toBeInstanceOf(Error)
     expect(result[0]?.message).toBe('unknown error')
@@ -78,26 +77,6 @@ describe('getTextWidthWithCanvas', () => {
 
     const width = getTextWidthWithCanvas('test text')
     expect(width).toBe(0)
-  })
-})
-
-describe('randomString', () => {
-  it('should generate string of specified length', () => {
-    const result = randomString(10)
-    expect(result.length).toBe(10)
-  })
-
-  it('should only contain valid characters', () => {
-    const result = randomString(100)
-    const validChars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_'
-    for (const char of result)
-      expect(validChars).toContain(char)
-  })
-
-  it('should generate different strings on consecutive calls', () => {
-    const result1 = randomString(20)
-    const result2 = randomString(20)
-    expect(result1).not.toEqual(result2)
   })
 })
 
@@ -323,39 +302,6 @@ describe('getTextWidthWithCanvas', () => {
   })
 })
 
-describe('randomString extended', () => {
-  it('should generate string of exact length', () => {
-    expect(randomString(10).length).toBe(10)
-    expect(randomString(50).length).toBe(50)
-    expect(randomString(100).length).toBe(100)
-  })
-
-  it('should generate different strings on multiple calls', () => {
-    const str1 = randomString(20)
-    const str2 = randomString(20)
-    const str3 = randomString(20)
-    expect(str1).not.toBe(str2)
-    expect(str2).not.toBe(str3)
-    expect(str1).not.toBe(str3)
-  })
-
-  it('should only contain valid characters', () => {
-    const validChars = /^[\w-]+$/
-    const str = randomString(100)
-    expect(validChars.test(str)).toBe(true)
-  })
-
-  it('should handle length of 1', () => {
-    const str = randomString(1)
-    expect(str.length).toBe(1)
-  })
-
-  it('should handle length of 0', () => {
-    const str = randomString(0)
-    expect(str).toBe('')
-  })
-})
-
 describe('getPurifyHref extended', () => {
   it('should escape HTML entities', () => {
     expect(getPurifyHref('<script>alert(1)</script>')).not.toContain('<script>')
@@ -403,10 +349,8 @@ describe('fetchWithRetry extended', () => {
     let attempts = 0
     const eventuallySucceed = new Promise((resolve, reject) => {
       attempts++
-      if (attempts < 2)
-        reject(new Error('not yet'))
-      else
-        resolve('success')
+      if (attempts < 2) reject(new Error('not yet'))
+      else resolve('success')
     })
 
     const [error] = await fetchWithRetry(eventuallySucceed, 3)
@@ -462,7 +406,9 @@ describe('correctToolProvider extended', () => {
   it('should handle special tool providers', () => {
     expect(correctToolProvider('stepfun', false)).toBe('langgenius/stepfun_tool/stepfun')
     expect(correctToolProvider('jina', false)).toBe('langgenius/jina_tool/jina')
-    expect(correctToolProvider('siliconflow', false)).toBe('langgenius/siliconflow_tool/siliconflow')
+    expect(correctToolProvider('siliconflow', false)).toBe(
+      'langgenius/siliconflow_tool/siliconflow',
+    )
     expect(correctToolProvider('gitee_ai', false)).toBe('langgenius/gitee_ai_tool/gitee_ai')
   })
 

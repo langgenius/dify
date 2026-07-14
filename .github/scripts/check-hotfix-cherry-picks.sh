@@ -45,7 +45,7 @@ while IFS= read -r commit_sha; do
   )
 
   if [[ -z "$source_sha" ]]; then
-    error "Commit $commit_sha ($subject) is missing cherry-pick provenance. $REMEDIATION_HINT"
+    error "Commit $commit_sha ($subject) is missing cherry-pick provenance. $REMEDIATION_HINT If version differences prevent using git cherry-pick -x, manually add '(cherry picked from commit <sha>)' to the commit message."
     failed=1
     continue
   fi

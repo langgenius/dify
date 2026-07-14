@@ -1,13 +1,18 @@
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { DatasourceType } from './pipeline'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { Tag } from '@/contract/console/tags'
 import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { SegmentImportStatus } from '@/types/dataset'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { ExternalKnowledgeBase, General, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
+import {
+  ExternalKnowledgeBase,
+  General,
+  ParentChild,
+  Qa,
+} from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 import { PermissionLevel } from './permission'
 
 export enum DataSourceType {
@@ -110,7 +115,7 @@ export type ExternalAPIItem = {
     endpoint: string
     api_key: string
   }
-  dataset_bindings: { id: string, name: string }[]
+  dataset_bindings: { id: string; name: string }[]
   created_by: string
   created_at: string
 }
@@ -236,7 +241,7 @@ type IndexingEstimateResponse = {
   total_price: number
   currency: string
   total_segments: number
-  preview: Array<{ content: string, child_chunks: string[], summary?: string }>
+  preview: Array<{ content: string; child_chunks: string[]; summary?: string }>
   qa_preview?: QA[]
 }
 
@@ -298,15 +303,15 @@ type Segmentation = {
   chunk_overlap?: number
 }
 
-export type DocumentIndexingStatus
-  = | 'waiting'
-    | 'parsing'
-    | 'cleaning'
-    | 'splitting'
-    | 'indexing'
-    | 'paused'
-    | 'error'
-    | 'completed'
+export type DocumentIndexingStatus =
+  | 'waiting'
+  | 'parsing'
+  | 'cleaning'
+  | 'splitting'
+  | 'indexing'
+  | 'paused'
+  | 'error'
+  | 'completed'
 
 export const DisplayStatusList = [
   'queuing',
@@ -319,7 +324,7 @@ export const DisplayStatusList = [
   'archived',
 ] as const
 
-export type DocumentDisplayStatus = typeof DisplayStatusList[number]
+export type DocumentDisplayStatus = (typeof DisplayStatusList)[number]
 
 export type LegacyDataSourceInfo = {
   upload_file: {
@@ -385,7 +390,12 @@ export type UploadFileIdInfo = {
   upload_file_id: string
 }
 
-export type DataSourceInfo = LegacyDataSourceInfo | LocalFileInfo | OnlineDocumentInfo | WebsiteCrawlInfo | UploadFileIdInfo
+export type DataSourceInfo =
+  | LegacyDataSourceInfo
+  | LocalFileInfo
+  | OnlineDocumentInfo
+  | WebsiteCrawlInfo
+  | UploadFileIdInfo
 
 type InitialDocumentDetail = {
   id: string
@@ -449,9 +459,10 @@ export type CreateDocumentReq = DocumentReq & {
   embedding_model_provider: string
 }
 
-export type IndexingEstimateParams = DocumentReq & Partial<DataSource> & {
-  dataset_id: string
-}
+export type IndexingEstimateParams = DocumentReq &
+  Partial<DataSource> & {
+    dataset_id: string
+  }
 
 type DataSource = {
   type: DataSourceType
@@ -525,17 +536,14 @@ type DocMetadata = {
   [key: string]: string
 }
 
-export const CUSTOMIZABLE_DOC_TYPES = [
-  'book',
-  'web_page',
-  'paper',
-  'social_media_post',
-  'personal_document',
-  'business_document',
-  'im_chat_log',
-] as const
-
-type CustomizableDocType = typeof CUSTOMIZABLE_DOC_TYPES[number]
+type CustomizableDocType =
+  | 'book'
+  | 'web_page'
+  | 'paper'
+  | 'social_media_post'
+  | 'personal_document'
+  | 'business_document'
+  | 'im_chat_log'
 type FixedDocType = 'synced_from_github' | 'synced_from_notion' | 'wikipedia_entry'
 export type DocType = CustomizableDocType | FixedDocType
 
@@ -790,7 +798,10 @@ export type BatchImportResponse = {
   job_status: SegmentImportStatus
 }
 
-export const DOC_FORM_ICON_WITH_BG: Record<ChunkingMode | 'external', React.ComponentType<{ className: string }>> = {
+export const DOC_FORM_ICON_WITH_BG: Record<
+  ChunkingMode | 'external',
+  React.ComponentType<{ className: string }>
+> = {
   [ChunkingMode.text]: General,
   [ChunkingMode.qa]: Qa,
   [ChunkingMode.parentChild]: ParentChild,

@@ -81,8 +81,7 @@ async function captureRun(tree: CommandTree, argv: string[]): Promise<Captured> 
 
   try {
     await run(tree, argv)
-  }
-  finally {
+  } finally {
     process.stdout.write = origStdout
     process.stderr.write = origStderr
     process.exit = origExit
@@ -172,7 +171,9 @@ describe('run() catch routing', () => {
   it('routes Server5xx error with http_status line and generic exit', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
-        throw HttpClientError.from(newError(ErrorCode.Server5xx, 'upstream boom')).withHttpStatus(502)
+        throw HttpClientError.from(newError(ErrorCode.Server5xx, 'upstream boom')).withHttpStatus(
+          502,
+        )
       }
     }
     const result = await captureRun(makeTree(Throwing), ['cmd'])
@@ -212,27 +213,83 @@ describe('run() catch routing', () => {
     expect(result.exit).toBe(ExitCode.Generic)
   })
 
-  it('falls through to generic Error branch and exits 1', async () => {
+  it('routes non-BaseError to JSON envelope with -o json (exit 1)', async () => {
+    class Throwing extends Command {
+      async run(_argv: string[]) {
+        throw new Error('boom')
+      }
+    }
+    const result = await captureRun(makeTree(Throwing), ['cmd', '-o', 'json'])
+    expect(result.stderr).toBe(
+      `${JSON.stringify({ error: { code: 'unknown', message: 'boom' } })}\n`,
+    )
+    expect(result.exit).toBe(ExitCode.Generic)
+    expect(result.stdout).toBe('')
+  })
+
+  it('wraps a generic Error into the human unknown form and exits 1', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
         throw new Error('oops')
       }
     }
     const result = await captureRun(makeTree(Throwing), ['cmd'])
-    expect(result.stderr).toBe('oops\n')
-    expect(result.exit).toBe(1)
+    expect(result.stderr).toBe('unknown: oops\n')
+    expect(result.exit).toBe(ExitCode.Generic)
   })
 
-  it('handles non-Error throw via String() coercion', async () => {
+  it('wraps a non-Error throw via String() coercion into unknown form', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
-        // eslint-disable-next-line no-throw-literal
+        // oxlint-disable-next-line no-throw-literal
         throw 'plain string'
       }
     }
     const result = await captureRun(makeTree(Throwing), ['cmd'])
-    expect(result.stderr).toBe('plain string\n')
-    expect(result.exit).toBe(1)
+    expect(result.stderr).toBe('unknown: plain string\n')
+    expect(result.exit).toBe(ExitCode.Generic)
+  })
+
+  it('exits 0 on EPIPE without writing an error envelope', async () => {
+    class Throwing extends Command {
+      async run(_argv: string[]) {
+        throw Object.assign(new Error('broken pipe'), { code: 'EPIPE' })
+      }
+    }
+    // process.exit is typed `never`; stub it to halt (throw) like the real call,
+    // so the EPIPE early-exit doesn't fall through to the envelope path.
+    let exitCode: number | undefined
+    let stderr = ''
+    const origExit = process.exit.bind(process)
+    const origStderr = process.stderr.write.bind(process.stderr)
+    process.exit = ((code?: number) => {
+      exitCode = code
+      throw new Error('__exit__')
+    }) as typeof process.exit
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      stderr += typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk)
+      return true
+    }) as typeof process.stderr.write
+    try {
+      await run(makeTree(Throwing), ['cmd', '-o', 'json'])
+    } catch (e) {
+      expect((e as Error).message).toBe('__exit__')
+    } finally {
+      process.exit = origExit
+      process.stderr.write = origStderr
+    }
+    expect(exitCode).toBe(0)
+    expect(stderr).toBe('')
+  })
+
+  it('preserves RateLimited semantic exit code through the collapsed catch', async () => {
+    class Throwing extends Command {
+      async run(_argv: string[]) {
+        throw newError(ErrorCode.RateLimited, 'slow down')
+      }
+    }
+    const result = await captureRun(makeTree(Throwing), ['cmd'])
+    expect(result.exit).toBe(ExitCode.RateLimited)
   })
 
   it('does not call process.exit when command runs successfully', async () => {
@@ -255,10 +312,10 @@ describe('run() catch routing', () => {
 
       async run(_argv: string[]) {}
     }
-    const result = await captureRun(
-      { cmd: { command: CtorBang, subcommands: {} } },
-      ['cmd', '--output=json'],
-    )
+    const result = await captureRun({ cmd: { command: CtorBang, subcommands: {} } }, [
+      'cmd',
+      '--output=json',
+    ])
     expect(result.stderr).toContain('"code":"unknown"')
     expect(result.stderr).toContain('"message":"ctor-bang"')
     expect(result.exit).toBe(ExitCode.Generic)
@@ -277,7 +334,7 @@ describe('hidden commands', () => {
       async run() {}
     }
     const tree: CommandTree = {
-      'visible': { command: Visible, subcommands: {} },
+      visible: { command: Visible, subcommands: {} },
       'secret-debug': { command: Hidden, subcommands: {} },
     }
     const result = await captureRun(tree, [])
@@ -298,7 +355,7 @@ describe('hidden commands', () => {
     const tree: CommandTree = {
       topic: {
         subcommands: {
-          'public': { command: Public, subcommands: {} },
+          public: { command: Public, subcommands: {} },
           'debug-only': { command: HiddenSub, subcommands: {} },
         },
       },
@@ -312,7 +369,9 @@ describe('hidden commands', () => {
     let ran = false
     class Hidden extends Command {
       static hidden = true
-      async run() { ran = true }
+      async run() {
+        ran = true
+      }
     }
     const tree: CommandTree = {
       'secret-debug': { command: Hidden, subcommands: {} },
@@ -334,9 +393,7 @@ describe('deprecated commands', () => {
       old: { command: Old, subcommands: {} },
     }
     const result = await captureRun(tree, ['old'])
-    expect(result.stderr).toBe(
-      'deprecated: use `difyctl run app` instead; removal in 2.0\n',
-    )
+    expect(result.stderr).toBe('deprecated: use `difyctl run app` instead; removal in 2.0\n')
     expect(result.stdout).toBe('old-ran\n')
     expect(result.exit).toBeUndefined()
   })
@@ -411,7 +468,9 @@ describe('run() help routing', () => {
 
   it('does not print trailing whitespace on group rows', async () => {
     const groupTree: CommandTree = {
-      auth: { subcommands: { devices: { subcommands: { list: { command: GetApp, subcommands: {} } } } } },
+      auth: {
+        subcommands: { devices: { subcommands: { list: { command: GetApp, subcommands: {} } } } },
+      },
     }
     const result = await captureRun(groupTree, ['help'])
     expect(result.stdout).not.toMatch(/ \n/)
@@ -492,7 +551,7 @@ describe('run() help routing', () => {
     expect(result.exit).toBeUndefined()
     expect(result.stdout).not.toContain('COMMANDS')
     const parsed = JSON.parse(result.stdout) as { commands: Array<{ command: string }> }
-    expect(parsed.commands.map(c => c.command)).toEqual([
+    expect(parsed.commands.map((c) => c.command)).toEqual([
       'auth login',
       'auth devices list',
       'auth devices revoke',

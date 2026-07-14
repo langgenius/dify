@@ -8,21 +8,14 @@ type PermissionItemProps = {
   isSelected: boolean
 }
 
-const PermissionItem = ({
-  leftIcon,
-  text,
-  onClick,
-  isSelected,
-}: PermissionItemProps) => {
+const PermissionItem = ({ leftIcon, text, onClick, isSelected }: PermissionItemProps) => {
   return (
     <div
       className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1 hover:bg-state-base-hover"
       onClick={onClick}
     >
       {leftIcon}
-      <div className="grow px-1 system-md-regular text-text-secondary">
-        {text}
-      </div>
+      <div className="grow px-1 system-md-regular text-text-secondary">{text}</div>
       {isSelected && <RiCheckLine className="size-4 text-text-accent" />}
     </div>
   )

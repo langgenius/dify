@@ -5,7 +5,7 @@ import { AppPublisher } from '@/app/components/app/app-publisher'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 
-const mockFetchAppDetailDirect = vi.fn()
+const mockFetchAppDetail = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockRefetch = vi.fn()
 
@@ -32,18 +32,12 @@ const renderWithQueryClient = (ui: React.ReactElement) =>
       },
     },
   })
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: mockAppDetail,
-    setAppDetail: mockSetAppDetail,
-  }),
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: mockAppDetail,
+      setAppDetail: mockSetAppDetail,
+    }),
 }))
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
@@ -69,7 +63,7 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
 }))
 
 vi.mock('@/service/apps', () => ({
-  fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
+  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
 }))
 
 vi.mock('@/app/components/app/overview/embedded', () => ({
@@ -89,16 +83,14 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
-  AccessControl: ({
-    onConfirm,
-    onClose,
-  }: {
-    onConfirm: () => Promise<void>
-    onClose: () => void
-  }) => (
+  default: ({ onConfirm, onClose }: { onConfirm: () => Promise<void>; onClose: () => void }) => (
     <div data-testid="access-control-modal">
-      <button type="button" onClick={() => void onConfirm()}>confirm-access-control</button>
-      <button type="button" onClick={onClose}>close-access-control</button>
+      <button type="button" onClick={() => void onConfirm()}>
+        confirm-access-control
+      </button>
+      <button type="button" onClick={onClose}>
+        close-access-control
+      </button>
     </div>
   ),
 }))
@@ -120,7 +112,7 @@ describe('App Access Control Flow', () => {
         access_token: 'token-1',
       },
     }
-    mockFetchAppDetailDirect.mockResolvedValue({
+    mockFetchAppDetail.mockResolvedValue({
       ...mockAppDetail,
       access_mode: AccessMode.PUBLIC,
     })
@@ -128,7 +120,7 @@ describe('App Access Control Flow', () => {
 
   it('refreshes app detail after confirming access control updates', async () => {
     const { queryClient } = renderWithQueryClient(<AppPublisher publishedAt={1700000000} />)
-    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData')
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.publish' }))
     fireEvent.click(screen.getByText('app.accessControlDialog.accessItems.specific'))
@@ -138,8 +130,19 @@ describe('App Access Control Flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'confirm-access-control' }))
 
     await waitFor(() => {
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['apps', 'detail', 'app-1'] })
+      expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
     })
+    expect(setQueryDataSpy).toHaveBeenCalledWith(
+      ['apps', 'detail', 'app-1'],
+      expect.objectContaining({
+        access_mode: AccessMode.PUBLIC,
+      }),
+    )
+    expect(mockSetAppDetail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        access_mode: AccessMode.PUBLIC,
+      }),
+    )
 
     await waitFor(() => {
       expect(screen.queryByTestId('access-control-modal')).not.toBeInTheDocument()

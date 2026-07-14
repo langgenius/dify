@@ -1,0 +1,21 @@
+# Deployments List
+
+Deployment list page for browsing app instances, filtering by keyword or environment, and rendering deployment status cards.
+
+## Internal Modules
+
+| Module                | Why this module uses it                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `create-guide/link`   | Links the create deployment CTA to the create-guide workflow while keeping list-owned button styling local.         |
+| `deployment-actions`  | Reuses the deployment action menu for each card. The list supplies the app instance identity and placement only.    |
+| `create-release`      | Reuses release creation entry points from card footer actions.                                                      |
+| `deploy-drawer/state` | Opens the deploy drawer from a card action without making the list own deploy form state.                           |
+| `shared`              | Reuses shared deployment domain rules, UI primitives, hooks, or local helpers.                                      |
+| `detail/tabs`         | Uses the detail tab key type when building card navigation URLs. The list must not depend on detail tab components. |
+
+## External Modules
+
+| Module                                   | Why this module uses it                                                                   |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `app/components/apps/studio-list-header` | Reuses the app studio list header layout instead of defining a list-specific page chrome. |
+| `app/components/base/skeleton`           | Reuses the existing skeleton primitive for list and card loading states.                  |

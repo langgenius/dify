@@ -21,7 +21,9 @@ describe('ExpirationTime', () => {
     const { container } = render(<ExpirationTime expirationTime={1234567890} />)
 
     expect(screen.getByTestId('expiration-time')).toHaveClass('text-text-tertiary')
-    expect(screen.getByText('share.humanInput.expirationTimeNowOrFuture:{"relativeTime":"in 2 hours"}')).toBeInTheDocument()
+    expect(
+      screen.getByText('share.humanInput.expirationTimeNowOrFuture:{"relativeTime":"in 2 hours"}'),
+    ).toBeInTheDocument()
     expect(container.querySelector('.i-ri-time-line')).toBeInTheDocument()
   })
 

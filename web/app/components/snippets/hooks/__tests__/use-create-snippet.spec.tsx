@@ -32,19 +32,59 @@ vi.mock('@/service/use-snippets', () => ({
 vi.mock('@/service/client', () => ({
   consoleClient: {
     snippets: {
-      syncDraftWorkflow: mockSyncDraftWorkflow,
+      bySnippetId: {
+        workflows: {
+          draft: {
+            post: mockSyncDraftWorkflow,
+          },
+        },
+      },
     },
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }),
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }),
-}))
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -78,7 +118,11 @@ describe('useCreateSnippet', () => {
   describe('Create Flow', () => {
     it('should create snippet with graph and navigate on success', async () => {
       mockMutateAsync.mockResolvedValue({ id: 'snippet-123' })
-      mockSyncDraftWorkflow.mockResolvedValue({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 })
+      mockSyncDraftWorkflow.mockResolvedValue({
+        result: 'success',
+        hash: 'draft-hash',
+        updated_at: 1704067200,
+      })
       const graph = {
         nodes: [],
         edges: [],
@@ -123,7 +167,7 @@ describe('useCreateSnippet', () => {
         },
       })
       expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
-        params: { snippetId: 'snippet-123' },
+        params: { snippet_id: 'snippet-123' },
         body: {
           graph,
           input_fields: [

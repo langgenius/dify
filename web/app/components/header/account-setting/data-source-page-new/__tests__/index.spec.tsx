@@ -7,7 +7,11 @@ import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { useGetDataSourceListAuth, useGetDataSourceOAuthUrl, useInvalidDataSourceListAuth } from '@/service/use-datasource'
+import {
+  useGetDataSourceListAuth,
+  useGetDataSourceOAuthUrl,
+  useInvalidDataSourceListAuth,
+} from '@/service/use-datasource'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useDataSourceAuthUpdate, useMarketplaceAllPlugins } from '../hooks'
@@ -47,7 +51,9 @@ vi.mock('@/app/components/plugins/hooks', () => ({
 }))
 
 vi.mock('../plugin-actions', () => ({
-  default: ({ detail }: { detail: { plugin_id: string } }) => <button data-testid={`plugin-actions-${detail.plugin_id}`}>Actions</button>,
+  default: ({ detail }: { detail: { plugin_id: string } }) => (
+    <button data-testid={`plugin-actions-${detail.plugin_id}`}>Actions</button>
+  ),
 }))
 
 vi.mock('../hooks', () => ({
@@ -69,7 +75,6 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   usePluginSettingsAccess: () => ({
     canSetPermissions: true,
     canSetPluginPreferences: true,
-    canViewInstalledPlugins: true,
   }),
   default: () => ({
     canSetPermissions: true,
@@ -167,13 +172,23 @@ describe('DataSourcePage Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useTheme).mockReturnValue({ theme: 'light' } as unknown as ReturnType<typeof useTheme>)
-    vi.mocked(useRenderI18nObject).mockReturnValue((obj: Record<string, string>) => obj?.en_US || '')
-    vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({ mutateAsync: vi.fn() } as unknown as ReturnType<typeof useGetDataSourceOAuthUrl>)
+    vi.mocked(useTheme).mockReturnValue({ theme: 'light' } as unknown as ReturnType<
+      typeof useTheme
+    >)
+    vi.mocked(useRenderI18nObject).mockReturnValue(
+      (obj: Record<string, string>) => obj?.en_US || '',
+    )
+    vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({
+      mutateAsync: vi.fn(),
+    } as unknown as ReturnType<typeof useGetDataSourceOAuthUrl>)
     vi.mocked(useInvalidDataSourceListAuth).mockReturnValue(vi.fn())
     vi.mocked(useInvalidDataSourceList).mockReturnValue(vi.fn())
-    vi.mocked(useInstalledPluginList).mockReturnValue({ data: { plugins: [], total: 0 } } as unknown as ReturnType<typeof useInstalledPluginList>)
-    vi.mocked(usePluginsWithLatestVersion).mockImplementation((plugins = []) => plugins as PluginDetail[])
+    vi.mocked(useInstalledPluginList).mockReturnValue({
+      data: { plugins: [], total: 0 },
+    } as unknown as ReturnType<typeof useInstalledPluginList>)
+    vi.mocked(usePluginsWithLatestVersion).mockImplementation(
+      (plugins = []) => plugins as PluginDetail[],
+    )
     vi.mocked(useInvalidateInstalledPluginList).mockReturnValue(vi.fn())
     vi.mocked(useDataSourceAuthUpdate).mockReturnValue({ handleAuthUpdate: vi.fn() })
     vi.mocked(useMarketplaceAllPlugins).mockReturnValue({ plugins: [], isLoading: false })
@@ -208,11 +223,18 @@ describe('DataSourcePage Component', () => {
 
       // Assert
       expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('common.operation.search').closest('.sticky')).toHaveClass('top-0', 'z-10', '-mx-6', 'bg-components-panel-bg', 'px-6', 'pb-2')
+      expect(screen.getByPlaceholderText('common.operation.search').closest('.sticky')).toHaveClass(
+        'top-0',
+        'z-10',
+        '-mx-6',
+        'bg-components-panel-bg',
+        'px-6',
+        'pb-2',
+      )
       expect(screen.getByText('plugin.autoUpdate.autoUpdate')).toBeInTheDocument()
       expect(screen.getAllByText('plugin.autoUpdate.strategy.fixOnly.name')[0]).toBeInTheDocument()
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
-      expect(screen.getByText('dataSourcePage.notSetUpTitle')).toBeInTheDocument()
+      expect(screen.getByText('common.dataSourcePage.notSetUpTitle')).toBeInTheDocument()
       expect(screen.getByText('common.dataSourcePage.installFirst')).toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.installDataSource')).not.toBeInTheDocument()
     })

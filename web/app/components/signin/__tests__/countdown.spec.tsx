@@ -1,4 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { hydrateRoot } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Countdown from '../countdown'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../storage'
@@ -40,12 +42,33 @@ describe('Countdown', () => {
       localStorage.setItem(COUNT_DOWN_KEY, '1000')
       render(<Countdown />)
 
-      expect(screen.queryByRole('button', { name: 'login.checkCode.resend' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'login.checkCode.resend' }),
+      ).not.toBeInTheDocument()
     })
   })
 
   // State Management Tests
   describe('State Management', () => {
+    it('should render stored countdown time after hydrating server markup', async () => {
+      vi.useRealTimers()
+      const savedTime = 30000
+      localStorage.setItem(COUNT_DOWN_KEY, String(savedTime))
+      const container = document.createElement('div')
+      container.innerHTML = renderToString(<Countdown />)
+      const root = hydrateRoot(container, <Countdown />)
+
+      try {
+        await waitFor(() => {
+          expect(container).toHaveTextContent('30')
+        })
+      } finally {
+        act(() => {
+          root.unmount()
+        })
+      }
+    })
+
     it('should initialize leftTime from localStorage if available', () => {
       const savedTime = 45000
       localStorage.setItem(COUNT_DOWN_KEY, String(savedTime))

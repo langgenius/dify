@@ -25,6 +25,13 @@ from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.nodes.human_input.pause_reason import (
+    HumanInputRequired,
+)
+from core.workflow.nodes.human_input.pause_reason import (
+    PauseReason as DifyPauseReason,
+)
+from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
@@ -32,7 +39,8 @@ from core.workflow.variable_prefixes import (
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
 from graphon.enums import (
     BuiltinNodeTypes,
     NodeType,
@@ -1438,6 +1446,40 @@ class WorkflowArchiveLog(TypeBase):
         }
 
 
+class WorkflowRunArchiveBundle(DefaultFieldsDCMixin, TypeBase):
+    """
+    Query index for one immutable V2 workflow-run archive bundle.
+
+    R2 manifest objects remain the recoverable archive source of truth. This table stores the small subset needed to
+    list tenant/month archives and locate bundles without listing object storage online. Missing rows can be rebuilt
+    from existing manifests by a backfill/reconciliation command.
+    """
+
+    __tablename__ = "workflow_run_archive_bundles"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_run_archive_bundle_pkey"),
+        sa.UniqueConstraint(
+            "tenant_id",
+            "year",
+            "month",
+            "shard",
+            "bundle_id",
+            name="workflow_run_archive_bundle_identity_uq",
+        ),
+        sa.Index("workflow_run_archive_bundle_tenant_month_idx", "tenant_id", "year", "month"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    year: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    month: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    shard: Mapped[str] = mapped_column(String(32), nullable=False)
+    bundle_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    workflow_run_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    row_count: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    archive_bytes: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    archived_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
 class ConversationVariable(TypeBase):
     __tablename__ = "workflow_conversation_variables"
 
@@ -2106,7 +2148,7 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
 
     type_: Mapped[PauseReasonType] = mapped_column(EnumText(PauseReasonType), nullable=False)
 
-    # form_id is not empty if and if only type_ == PauseReasonType.HUMAN_INPUT_REQUIRED
+    # form_id is not empty if and only if type_ is one of the Human Input pause variants.
     #
     form_id: Mapped[str] = mapped_column(
         String(36),
@@ -2144,12 +2186,24 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
     )
 
     @classmethod
-    def from_entity(cls, *, pause_id: str, pause_reason: PauseReason) -> "WorkflowPauseReason":
+    def from_entity(
+        cls,
+        *,
+        pause_id: str,
+        pause_reason: GraphonPauseReason | DifyPauseReason,
+    ) -> "WorkflowPauseReason":
         match pause_reason:
+            case HitlRequired():
+                return cls(
+                    pause_id=pause_id,
+                    type_=PauseReasonType.HITL_REQUIRED,
+                    form_id=default_session_binding.resolve_form_id_from_session_id(session_id=pause_reason.session_id),
+                    node_id=pause_reason.node_id,
+                )
             case HumanInputRequired():
                 return cls(
                     pause_id=pause_id,
-                    type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+                    type_=PauseReasonType.HITL_REQUIRED,
                     form_id=pause_reason.form_id,
                     node_id=pause_reason.node_id,
                 )
@@ -2158,11 +2212,17 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
             case _:
                 raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
-    def to_entity(self) -> PauseReason:
-        if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
+    def to_entity(self) -> DifyPauseReason | GraphonPauseReason:
+        if self.type_ == PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED:
             return HumanInputRequired(
                 form_id=self.form_id,
                 form_content="",
+                node_id=self.node_id,
+                node_title="",
+            )
+        elif self.type_ == PauseReasonType.HITL_REQUIRED:
+            return HitlRequired(
+                session_id=default_session_binding.issue_session_id_for_form(form_id=self.form_id),
                 node_id=self.node_id,
                 node_title="",
             )

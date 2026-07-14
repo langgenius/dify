@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { ChatVarType } from '../../type'
 import {
   DescriptionSection,
@@ -84,7 +85,7 @@ describe('variable-modal sections', () => {
           onObjectChange={onObjectChange}
           onValueChange={onValueChange}
           placeholder="placeholder"
-          t={(key: string) => key}
+          t={withSelectorKey((key: string) => key)}
           toggleLabelKey="chatVariable.modal.editInJSON"
           type={ChatVarType.String}
           value="draft"

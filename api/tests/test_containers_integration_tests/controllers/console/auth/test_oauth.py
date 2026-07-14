@@ -105,6 +105,7 @@ class TestOAuthLogin:
             invite_token=expected_token,
             timezone=None,
             language=None,
+            redirect_url=None,
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -127,6 +128,7 @@ class TestOAuthLogin:
             invite_token=None,
             timezone="Asia/Shanghai",
             language=None,
+            redirect_url=None,
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -149,6 +151,7 @@ class TestOAuthLogin:
             invite_token=None,
             timezone=None,
             language="zh-Hans",
+            redirect_url=None,
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -494,10 +497,7 @@ class TestAccountGeneration:
         second_result.scalar_one_or_none.return_value = expected_account
         mock_session.execute.side_effect = [first_result, second_result]
 
-        with patch("services.account_service.session_factory") as mock_factory:
-            mock_factory.create_session.return_value.__enter__ = MagicMock(return_value=mock_session)
-            mock_factory.create_session.return_value.__exit__ = MagicMock(return_value=False)
-            result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com")
+        result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=mock_session)
 
         assert result is expected_account
         assert mock_session.execute.call_count == 2
@@ -551,6 +551,7 @@ class TestAccountGeneration:
                         provider="github",
                         language="en-US",
                         timezone=None,
+                        session=ANY,
                     )
                 else:
                     mock_register_service.register.assert_not_called()
@@ -584,6 +585,7 @@ class TestAccountGeneration:
             provider="github",
             language="en-US",
             timezone=None,
+            session=ANY,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
@@ -615,6 +617,7 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone="Asia/Shanghai",
+            session=ANY,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
@@ -646,6 +649,7 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone=None,
+            session=ANY,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")
@@ -676,7 +680,7 @@ class TestAccountGeneration:
 
             assert result == mock_account
             assert oauth_new_user is False
-            mock_tenant_service.create_tenant.assert_called_once_with("Test User's Workspace")
+            mock_tenant_service.create_tenant.assert_called_once_with("Test User's Workspace", session=ANY)
             mock_tenant_service.create_tenant_member.assert_called_once_with(
                 mock_new_tenant, mock_account, ANY, role="owner"
             )

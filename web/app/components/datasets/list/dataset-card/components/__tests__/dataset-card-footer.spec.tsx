@@ -16,28 +16,29 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 }))
 
 describe('DatasetCardFooter', () => {
-  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-    id: 'dataset-1',
-    name: 'Test Dataset',
-    description: 'Test description',
-    provider: 'vendor',
-    permission: DatasetPermission.allTeamMembers,
-    data_source_type: DataSourceType.FILE,
-    indexing_technique: IndexingType.QUALIFIED,
-    embedding_available: true,
-    app_count: 5,
-    document_count: 10,
-    word_count: 1000,
-    created_at: 1609459200,
-    updated_at: 1609545600,
-    tags: [],
-    embedding_model: 'text-embedding-ada-002',
-    embedding_model_provider: 'openai',
-    created_by: 'user-1',
-    doc_form: ChunkingMode.text,
-    total_available_documents: 10,
-    ...overrides,
-  } as DataSet)
+  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+    ({
+      id: 'dataset-1',
+      name: 'Test Dataset',
+      description: 'Test description',
+      provider: 'vendor',
+      permission: DatasetPermission.allTeamMembers,
+      data_source_type: DataSourceType.FILE,
+      indexing_technique: IndexingType.QUALIFIED,
+      embedding_available: true,
+      app_count: 5,
+      document_count: 10,
+      word_count: 1000,
+      created_at: 1609459200,
+      updated_at: 1609545600,
+      tags: [],
+      embedding_model: 'text-embedding-ada-002',
+      embedding_model_provider: 'openai',
+      created_by: 'user-1',
+      doc_form: ChunkingMode.text,
+      total_available_documents: 10,
+      ...overrides,
+    }) as DataSet
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
@@ -167,7 +168,11 @@ describe('DatasetCardFooter', () => {
     })
 
     it('should handle zero app count', () => {
-      const dataset = createMockDataset({ app_count: 0, document_count: 5, total_available_documents: 5 })
+      const dataset = createMockDataset({
+        app_count: 0,
+        document_count: 5,
+        total_available_documents: 5,
+      })
       render(<DatasetCardFooter dataset={dataset} />)
       // Both document count and app count are shown
       const zeros = screen.getAllByText('0')

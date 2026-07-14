@@ -24,7 +24,7 @@ import { SubscriptionList } from './subscription-list'
 import { TriggerEventsList } from './trigger/event-list'
 
 type Props = Readonly<{
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
   detail?: PluginDetail
   onUpdate: () => void
@@ -32,35 +32,38 @@ type Props = Readonly<{
 }>
 
 const PluginDetailPanel: FC<Props> = ({
-  canManagePlugin = true,
+  canDeletePlugin = true,
   canUpdatePlugin = true,
   detail,
   onUpdate,
   onHide,
 }) => {
-  const handleUpdate = useCallback((isDelete = false) => {
-    if (isDelete)
-      onHide()
-    onUpdate()
-  }, [onHide, onUpdate])
+  const handleUpdate = useCallback(
+    (isDelete = false) => {
+      if (isDelete) onHide()
+      onUpdate()
+    },
+    [onHide, onUpdate],
+  )
 
   const { setDetail } = usePluginStore()
 
   useEffect(() => {
-    setDetail(!detail
-      ? undefined
-      : {
-          plugin_id: detail.plugin_id,
-          provider: `${detail.plugin_id}/${detail.declaration.name}`,
-          plugin_unique_identifier: detail.plugin_unique_identifier || '',
-          declaration: detail.declaration,
-          name: detail.name,
-          id: detail.id,
-        })
+    setDetail(
+      !detail
+        ? undefined
+        : {
+            plugin_id: detail.plugin_id,
+            provider: `${detail.plugin_id}/${detail.declaration.name}`,
+            plugin_unique_identifier: detail.plugin_unique_identifier || '',
+            declaration: detail.declaration,
+            name: detail.name,
+            id: detail.id,
+          },
+    )
   }, [detail, setDetail])
 
-  if (!detail)
-    return null
+  if (!detail) return null
 
   return (
     <Drawer
@@ -68,14 +71,17 @@ const PluginDetailPanel: FC<Props> = ({
       modal
       swipeDirection="right"
       onOpenChange={(open) => {
-        if (!open)
-          onHide()
+        if (!open) onHide()
       }}
     >
       <DrawerPortal>
         <DrawerBackdrop className="bg-transparent" />
         <DrawerViewport>
-          <DrawerPopup className={cn('justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-[400px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border')}>
+          <DrawerPopup
+            className={cn(
+              'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-[400px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
+            )}
+          >
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               {detail && (
                 <>
@@ -83,7 +89,7 @@ const PluginDetailPanel: FC<Props> = ({
                     detail={detail}
                     onUpdate={handleUpdate}
                     onHide={onHide}
-                    canManagePlugin={canManagePlugin}
+                    canDeletePlugin={canDeletePlugin}
                     canUpdatePlugin={canUpdatePlugin}
                   />
                   <div className="grow overflow-y-auto">
@@ -96,10 +102,14 @@ const PluginDetailPanel: FC<Props> = ({
                           </>
                         )}
                         {!!detail.declaration.tool && <ActionList detail={detail} />}
-                        {!!detail.declaration.agent_strategy && <AgentStrategyList detail={detail} />}
+                        {!!detail.declaration.agent_strategy && (
+                          <AgentStrategyList detail={detail} />
+                        )}
                         {!!detail.declaration.endpoint && <EndpointList detail={detail} />}
                         {!!detail.declaration.model && <ModelList detail={detail} />}
-                        {!!detail.declaration.datasource && <DatasourceActionList detail={detail} />}
+                        {!!detail.declaration.datasource && (
+                          <DatasourceActionList detail={detail} />
+                        )}
                       </div>
                       <ReadmeEntrance pluginDetail={detail} className="mt-auto" />
                     </div>

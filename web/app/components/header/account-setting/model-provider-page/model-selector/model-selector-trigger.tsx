@@ -3,7 +3,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
-import { DERIVED_MODEL_STATUS_BADGE_I18N, DERIVED_MODEL_STATUS_TOOLTIP_I18N, deriveModelStatus } from '../derive-model-status'
+import {
+  DERIVED_MODEL_STATUS_BADGE_I18N,
+  DERIVED_MODEL_STATUS_TOOLTIP_I18N,
+  deriveModelStatus,
+} from '../derive-model-status'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import { useCredentialPanelState } from '../provider-added-card/use-credential-panel-state'
@@ -18,6 +22,7 @@ type ModelSelectorTriggerProps = {
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
   showModelMeta?: boolean
+  isModelCompatible?: boolean
 }
 
 function ModelSelectorTrigger({
@@ -30,6 +35,7 @@ function ModelSelectorTrigger({
   deprecatedClassName,
   showDeprecatedWarnIcon = true,
   showModelMeta = true,
+  isModelCompatible = true,
 }: ModelSelectorTriggerProps) {
   const { t } = useTranslation()
   const { modelProviders } = useProviderContext()
@@ -38,10 +44,10 @@ function ModelSelectorTrigger({
   const isDeprecated = !isSelected && !!defaultModel
   const isEmpty = !isSelected && !defaultModel
   const selectedProvider = isSelected
-    ? modelProviders.find(provider => provider.provider === currentProvider.provider)
+    ? modelProviders.find((provider) => provider.provider === currentProvider.provider)
     : undefined
   const deprecatedProvider = isDeprecated
-    ? modelProviders.find(p => p.provider === defaultModel.provider)
+    ? modelProviders.find((p) => p.provider === defaultModel.provider)
     : undefined
   const resolvedProvider = isSelected ? selectedProvider : deprecatedProvider
   const selectedProviderState = useCredentialPanelState(resolvedProvider)
@@ -56,44 +62,55 @@ function ModelSelectorTrigger({
 
   const isActive = status === 'active'
   const isDisabled = status !== 'active' && status !== 'empty'
-  const statusI18nKey = DERIVED_MODEL_STATUS_BADGE_I18N[status as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N]
-  const tooltipI18nKey = DERIVED_MODEL_STATUS_TOOLTIP_I18N[status as keyof typeof DERIVED_MODEL_STATUS_TOOLTIP_I18N]
-  const statusLabel = statusI18nKey ? t(statusI18nKey, { ns: 'common' }) : null
-  const tooltipLabel = tooltipI18nKey ? t(tooltipI18nKey, { ns: 'common' }) : null
+  const statusI18nKey =
+    DERIVED_MODEL_STATUS_BADGE_I18N[status as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N]
+  const tooltipI18nKey =
+    DERIVED_MODEL_STATUS_TOOLTIP_I18N[status as keyof typeof DERIVED_MODEL_STATUS_TOOLTIP_I18N]
+  const statusLabel =
+    isModelCompatible && statusI18nKey
+      ? t(($) => $[statusI18nKey], { ns: 'common' })
+      : t(($) => $['modelProvider.selector.incompatible'], { ns: 'common' })
+  const tooltipLabel =
+    isModelCompatible && tooltipI18nKey
+      ? t(($) => $[tooltipI18nKey], { ns: 'common' })
+      : t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'common' })
   const isCreditsExhausted = status === 'credits-exhausted'
-  const shouldShowModelMeta = showModelMeta && status === 'active'
-  const deprecatedStatusLabel = statusLabel || t('modelProvider.selector.incompatible', { ns: 'common' })
-  const deprecatedTooltipLabel = tooltipLabel || t('modelProvider.selector.incompatibleTip', { ns: 'common' })
+  const shouldShowModelMeta = showModelMeta && status === 'active' && isModelCompatible
+  const deprecatedStatusLabel =
+    statusLabel || t(($) => $['modelProvider.selector.incompatible'], { ns: 'common' })
+  const deprecatedTooltipLabel =
+    tooltipLabel || t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'common' })
 
   return (
     <div
       className={cn(
         'group flex h-8 items-center gap-0.5 rounded-lg p-1',
-        isDisabled
-          ? 'bg-components-input-bg-disabled'
-          : 'bg-components-input-bg-normal',
+        isDisabled ? 'bg-components-input-bg-disabled' : 'bg-components-input-bg-normal',
         !readonly && !isDisabled && 'cursor-pointer hover:bg-components-input-bg-hover',
         open && !isDisabled && 'bg-components-input-bg-hover',
         className,
       )}
     >
-      {isEmpty
-        ? (
-            <div className="flex size-6 items-center justify-center">
-              <div className="flex h-5 w-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
-                <span className="i-ri-brain-2-line size-3.5 text-text-quaternary" />
-              </div>
-            </div>
-          )
-        : (
-            <ModelIcon
-              className="p-0.5"
-              provider={isSelected ? currentProvider : deprecatedProvider}
-              modelName={isSelected ? currentModel.model : defaultModel?.model}
-            />
-          )}
+      {isEmpty ? (
+        <div className="flex size-6 items-center justify-center">
+          <div className="flex h-5 w-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
+            <span className="i-ri-brain-2-line size-3.5 text-text-quaternary" />
+          </div>
+        </div>
+      ) : (
+        <ModelIcon
+          className="p-0.5"
+          provider={isSelected ? currentProvider : deprecatedProvider}
+          modelName={isSelected ? currentModel.model : defaultModel?.model}
+        />
+      )}
 
-      <div className={cn('flex grow items-center gap-1 truncate px-1 py-0.75', isDeprecated && deprecatedClassName)}>
+      <div
+        className={cn(
+          'flex grow items-center gap-1 truncate px-1 py-0.75',
+          isDeprecated && deprecatedClassName,
+        )}
+      >
         {isSelected && (
           <ModelName
             className="grow"
@@ -110,15 +127,15 @@ function ModelSelectorTrigger({
         )}
         {isEmpty && (
           <div className="grow truncate text-[13px] text-components-input-text-placeholder">
-            {t('detailPanel.configureModel', { ns: 'plugin' })}
+            {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
           </div>
         )}
 
-        {isSelected && !readonly && !isActive && statusI18nKey && (
+        {isSelected && !readonly && ((!isActive && statusI18nKey) || !isModelCompatible) && (
           <Tooltip>
             <TooltipTrigger
               disabled={!tooltipLabel}
-              render={(
+              render={
                 <div
                   className={cn(
                     'flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning px-1.25 py-0.5',
@@ -130,31 +147,25 @@ function ModelSelectorTrigger({
                     {statusLabel}
                   </span>
                 </div>
-              )}
+              }
             />
-            {tooltipLabel && (
-              <TooltipContent placement="top">
-                {tooltipLabel}
-              </TooltipContent>
-            )}
+            {tooltipLabel && <TooltipContent placement="top">{tooltipLabel}</TooltipContent>}
           </Tooltip>
         )}
 
         {isDeprecated && showDeprecatedWarnIcon && (
           <Tooltip>
             <TooltipTrigger
-              render={(
+              render={
                 <div className="flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning bg-components-badge-bg-dimm px-1.25 py-0.5">
                   <span className="i-ri-alert-fill size-3 text-text-warning" />
                   <span className="system-xs-medium whitespace-nowrap text-text-warning">
                     {deprecatedStatusLabel}
                   </span>
                 </div>
-              )}
+              }
             />
-            <TooltipContent placement="top">
-              {deprecatedTooltipLabel}
-            </TooltipContent>
+            <TooltipContent placement="top">{deprecatedTooltipLabel}</TooltipContent>
           </Tooltip>
         )}
 

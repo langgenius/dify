@@ -5,7 +5,10 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import { createNodeTracing, createWorkflowRunningData } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  createNodeTracing,
+  createWorkflowRunningData,
+} from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { submitHumanInputForm } from '@/service/workflow'
@@ -34,16 +37,12 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/run/result-panel', () => ({
-  default: ({
-    status,
-    onOpenTracingTab,
-  }: {
-    status?: string
-    onOpenTracingTab?: () => void
-  }) => (
+  default: ({ status, onOpenTracingTab }: { status?: string; onOpenTracingTab?: () => void }) => (
     <div data-testid="result-panel">
       <div>{status}</div>
-      <button type="button" onClick={onOpenTracingTab}>open-tracing</button>
+      <button type="button" onClick={onOpenTracingTab}>
+        open-tracing
+      </button>
     </div>
   ),
 }))
@@ -62,13 +61,23 @@ vi.mock('@/app/components/workflow/run/result-text', () => ({
   }) => (
     <div>
       <div data-testid="result-text">{JSON.stringify({ outputs, isPaused, isRunning })}</div>
-      <button type="button" onClick={onClick}>open-detail</button>
+      <button type="button" onClick={onClick}>
+        open-detail
+      </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/run/tracing-panel', () => ({
   default: ({ list }: { list: unknown[] }) => <div data-testid="tracing-panel">{list.length}</div>,
+}))
+
+vi.mock('@/app/components/base/chat/chat/answer/reasoning-panel', () => ({
+  default: ({ content, done }: { content: Record<string, string>; done: boolean }) => (
+    <div data-testid="reasoning-panel" data-done={String(done)}>
+      {Object.keys(content).join(',')}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/panel/inputs-panel', () => ({
@@ -85,11 +94,19 @@ vi.mock('@/app/components/workflow/panel/human-input-form-list', () => ({
     onHumanInputFormSubmit,
   }: {
     humanInputFormDataList: unknown[]
-    onHumanInputFormSubmit?: (token: string, formData: { inputs: Record<string, HumanInputFieldValue>, action: string }) => Promise<void>
+    onHumanInputFormSubmit?: (
+      token: string,
+      formData: { inputs: Record<string, HumanInputFieldValue>; action: string },
+    ) => Promise<void>
   }) => (
     <div>
       <div data-testid="human-form-list">{humanInputFormDataList.length}</div>
-      <button type="button" onClick={() => onHumanInputFormSubmit?.('form-token', { inputs: { answer: 'ok' }, action: 'approve' })}>
+      <button
+        type="button"
+        onClick={() =>
+          onHumanInputFormSubmit?.('form-token', { inputs: { answer: 'ok' }, action: 'approve' })
+        }
+      >
         submit-human-form
       </button>
     </div>
@@ -154,16 +171,13 @@ describe('WorkflowPreview', () => {
 
   it('should keep the input tab active, switch to result after running, and close the preview panel', async () => {
     const user = userEvent.setup()
-    renderWorkflowComponent(
-      <WorkflowPreview />,
-      {
-        initialStoreState: {
-          showInputsPanel: true,
-          showDebugAndPreviewPanel: true,
-          previewPanelWidth: 420,
-        },
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        showInputsPanel: true,
+        showDebugAndPreviewPanel: true,
+        previewPanelWidth: 420,
       },
-    )
+    })
 
     expect(screen.getByRole('button', { name: 'run-inputs' })).toBeInTheDocument()
 
@@ -175,40 +189,34 @@ describe('WorkflowPreview', () => {
   })
 
   it('should switch to detail when the workflow is listening', () => {
-    renderWorkflowComponent(
-      <WorkflowPreview />,
-      {
-        initialStoreState: {
-          isListening: true,
-          workflowRunningData: createWorkflowRunningData({
-            result: createWorkflowResult({
-              status: WorkflowRunningStatus.Running,
-            }),
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        isListening: true,
+        workflowRunningData: createWorkflowRunningData({
+          result: createWorkflowResult({
+            status: WorkflowRunningStatus.Running,
           }),
-        },
+        }),
       },
-    )
+    })
 
     expect(screen.getByTestId('result-panel')).toHaveTextContent(WorkflowRunningStatus.Running)
   })
 
   it('should switch to detail when a finished run has no outputs or files', () => {
-    renderWorkflowComponent(
-      <WorkflowPreview />,
-      {
-        initialStoreState: {
-          workflowRunningData: {
-            ...createWorkflowRunningData({
-              result: createWorkflowResult({
-                status: WorkflowRunningStatus.Succeeded,
-                files: [],
-              }),
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        workflowRunningData: {
+          ...createWorkflowRunningData({
+            result: createWorkflowResult({
+              status: WorkflowRunningStatus.Succeeded,
+              files: [],
             }),
-            resultText: '',
-          } as NonNullable<Shape['workflowRunningData']>,
-        },
+          }),
+          resultText: '',
+        } as NonNullable<Shape['workflowRunningData']>,
       },
-    )
+    })
 
     expect(screen.getByTestId('result-panel')).toHaveTextContent(WorkflowRunningStatus.Succeeded)
   })
@@ -224,41 +232,38 @@ describe('WorkflowPreview', () => {
       humanInputFilledFormDataList: [createHumanInputFilledFormData()],
     })
 
-    renderWorkflowComponent(
-      <WorkflowPreview />,
-      {
-        initialStoreState: {
-          workflowRunningData: pausedData,
-        },
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        workflowRunningData: pausedData,
       },
-    )
+    })
 
     expect(screen.getByTestId('human-form-list')).toHaveTextContent('1')
     expect(screen.getByTestId('filled-form-list')).toHaveTextContent('1')
 
     await user.click(screen.getByRole('button', { name: 'submit-human-form' }))
-    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('form-token', { inputs: { answer: 'ok' }, action: 'approve' })
+    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('form-token', {
+      inputs: { answer: 'ok' },
+      action: 'approve',
+    })
   })
 
   it('should copy successful string output and show a success toast', async () => {
     const user = userEvent.setup()
 
-    renderWorkflowComponent(
-      <WorkflowPreview />,
-      {
-        initialStoreState: {
-          workflowRunningData: {
-            ...createWorkflowRunningData({
-              result: createWorkflowResult({
-                status: WorkflowRunningStatus.Succeeded,
-                files: [],
-              }),
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        workflowRunningData: {
+          ...createWorkflowRunningData({
+            result: createWorkflowResult({
+              status: WorkflowRunningStatus.Succeeded,
+              files: [],
             }),
-            resultText: 'final answer',
-          } as NonNullable<Shape['workflowRunningData']>,
-        },
+          }),
+          resultText: 'final answer',
+        } as NonNullable<Shape['workflowRunningData']>,
       },
-    )
+    })
 
     await user.click(screen.getByText('runLog.result'))
     await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
@@ -268,30 +273,24 @@ describe('WorkflowPreview', () => {
   })
 
   it('should show a loading state for an empty detail panel', () => {
-    renderWorkflowComponent(
-      <WorkflowPreview />,
-      {
-        initialStoreState: {
-          isListening: true,
-          workflowRunningData: undefined,
-        },
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        isListening: true,
+        workflowRunningData: undefined,
       },
-    )
+    })
 
     expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
   })
 
   it('should show a loading state for an empty tracing panel', () => {
-    renderWorkflowComponent(
-      <WorkflowPreview />,
-      {
-        initialStoreState: {
-          workflowRunningData: createWorkflowRunningData({
-            tracing: [],
-          }),
-        },
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        workflowRunningData: createWorkflowRunningData({
+          tracing: [],
+        }),
       },
-    )
+    })
 
     expect(screen.getByTestId('tracing-panel')).toHaveTextContent('0')
     expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
@@ -299,15 +298,12 @@ describe('WorkflowPreview', () => {
 
   it('should keep inert tabs disabled without run data and switch among result, detail, and tracing when data exists', async () => {
     const user = userEvent.setup()
-    const { store } = renderWorkflowComponent(
-      <WorkflowPreview />,
-      {
-        initialStoreState: {
-          showInputsPanel: true,
-          workflowRunningData: undefined,
-        },
+    const { store } = renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        showInputsPanel: true,
+        workflowRunningData: undefined,
       },
-    )
+    })
 
     await user.click(screen.getByText('runLog.result'))
     await user.click(screen.getByText('runLog.detail'))
@@ -341,26 +337,88 @@ describe('WorkflowPreview', () => {
     expect(screen.getByTestId('result-panel')).toBeInTheDocument()
   })
 
+  it('should render a single merged reasoning panel above the result on the result tab', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        workflowRunningData: {
+          ...createWorkflowRunningData({
+            result: createWorkflowResult({ status: WorkflowRunningStatus.Running }),
+          }),
+          resultText: '',
+          reasoningContent: { 'llm-1': 'thinking a', 'llm-2': 'thinking b' },
+        } as NonNullable<Shape['workflowRunningData']>,
+      },
+    })
+
+    await user.click(screen.getByText('runLog.result'))
+
+    // one panel that carries both nodes' reasoning; still running → timer keeps ticking
+    const panels = screen.getAllByTestId('reasoning-panel')
+    expect(panels).toHaveLength(1)
+    expect(panels[0]).toHaveTextContent('llm-1,llm-2')
+    expect(panels[0]).toHaveAttribute('data-done', 'false')
+  })
+
+  it('should mark reasoning done once the answer starts streaming while still running', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        workflowRunningData: {
+          ...createWorkflowRunningData({
+            result: createWorkflowResult({ status: WorkflowRunningStatus.Running }),
+          }),
+          resultText: 'the answer',
+          reasoningContent: { 'llm-1': 'thinking a' },
+        } as NonNullable<Shape['workflowRunningData']>,
+      },
+    })
+
+    await user.click(screen.getByText('runLog.result'))
+
+    // answer-started (resultText non-empty) freezes the timer even though the run is still Running
+    expect(screen.getByTestId('reasoning-panel')).toHaveAttribute('data-done', 'true')
+  })
+
+  it('should not render a reasoning panel when there is no reasoning content', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        workflowRunningData: {
+          ...createWorkflowRunningData({
+            result: createWorkflowResult({ status: WorkflowRunningStatus.Running }),
+          }),
+          resultText: '',
+          reasoningContent: { llm: '' },
+        } as NonNullable<Shape['workflowRunningData']>,
+      },
+    })
+
+    await user.click(screen.getByText('runLog.result'))
+
+    expect(screen.queryByTestId('reasoning-panel')).not.toBeInTheDocument()
+  })
+
   it('should switch to the tracing tab when result panel requests it', async () => {
     const user = userEvent.setup()
 
-    renderWorkflowComponent(
-      <WorkflowPreview />,
-      {
-        initialStoreState: {
-          workflowRunningData: {
-            ...createWorkflowRunningData({
-              result: createWorkflowResult({
-                status: 'partial-succeeded',
-                files: [],
-              }),
-              tracing: [createNodeTracing()],
+    renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        workflowRunningData: {
+          ...createWorkflowRunningData({
+            result: createWorkflowResult({
+              status: 'partial-succeeded',
+              files: [],
             }),
-            resultText: 'ready',
-          } as NonNullable<Shape['workflowRunningData']>,
-        },
+            tracing: [createNodeTracing()],
+          }),
+          resultText: 'ready',
+        } as NonNullable<Shape['workflowRunningData']>,
       },
-    )
+    })
 
     await user.click(screen.getByText('runLog.detail'))
     await user.click(screen.getByRole('button', { name: 'open-tracing' }))
@@ -369,15 +427,12 @@ describe('WorkflowPreview', () => {
   })
 
   it('should resize the preview panel within the allowed workflow canvas bounds', async () => {
-    const { container, store } = renderWorkflowComponent(
-      <WorkflowPreview />,
-      {
-        initialStoreState: {
-          previewPanelWidth: 450,
-          workflowCanvasWidth: 1000,
-        },
+    const { container, store } = renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: {
+        previewPanelWidth: 450,
+        workflowCanvasWidth: 1000,
       },
-    )
+    })
 
     const resizeHandle = container.querySelector('.cursor-col-resize') as HTMLElement
 

@@ -33,6 +33,7 @@ from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.apps.workflow.active_workflow_tasks import active_workflow_task
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import (
     AdvancedChatPausedBlockingResponse,
@@ -47,6 +48,7 @@ from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.runtime import GraphRuntimeState
@@ -155,7 +157,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         if conversation_id:
             try:
                 conversation = ConversationService.get_conversation(
-                    app_model=app_model, conversation_id=conversation_id, user=user
+                    app_model=app_model, conversation_id=conversation_id, user=user, session=db.session()
                 )
             except ConversationNotExistsError:
                 if invoke_from == InvokeFrom.SERVICE_API:
@@ -268,6 +270,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_runtime_state: GraphRuntimeState,
         pause_state_config: PauseStateLayerConfig | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
     ):
         """
         Resume a paused advanced chat execution.
@@ -297,6 +300,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             stream=application_generate_entity.stream,
             pause_state_config=pause_state_config,
             graph_runtime_state=graph_runtime_state,
+            response_stream_filter=response_stream_filter,
         )
 
     def single_iteration_generate(
@@ -491,6 +495,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         graph_runtime_state: GraphRuntimeState | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        response_stream_filter: ResponseStreamFilter | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -538,12 +543,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             )
 
             graph_layers: list[GraphEngineLayer] = list(graph_engine_layers)
+            resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
             if pause_state_config is not None:
                 graph_layers.append(
                     PauseStatePersistenceLayer(
                         session_factory=pause_state_config.session_factory,
                         generate_entity=application_generate_entity,
                         state_owner_user_id=pause_state_config.state_owner_user_id,
+                        response_stream_filter=resolved_response_stream_filter,
                     )
                 )
 
@@ -564,6 +571,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     "workflow_node_execution_repository": workflow_node_execution_repository,
                     "graph_engine_layers": tuple(graph_layers),
                     "graph_runtime_state": graph_runtime_state,
+                    "response_stream_filter": resolved_response_stream_filter,
                 },
             )
 
@@ -603,6 +611,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
     ):
         """
         Generate worker in a new thread.
@@ -662,10 +671,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 workflow_node_execution_repository=workflow_node_execution_repository,
                 graph_engine_layers=graph_engine_layers,
                 graph_runtime_state=graph_runtime_state,
+                response_stream_filter=response_stream_filter,
             )
 
             try:
-                runner.run()
+                with active_workflow_task(application_generate_entity.task_id):
+                    runner.run()
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:

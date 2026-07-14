@@ -1,5 +1,5 @@
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { ComponentProps } from 'react'
-import type { Tag } from '@/contract/console/tags'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TagSelector } from '../components/tag-selector'
@@ -30,20 +30,57 @@ const { mockUseQueryData, createTag, bindTag, unBindTag } = vi.hoisted(() => {
 })
 
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
-  value: ['app.tag.manage', 'dataset.tag.manage', 'snippets.management'] as string[],
+  value: ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify'] as string[],
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
   useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
     isPending: false,
-    mutate: (input: unknown, options?: { onSuccess?: () => void, onError?: () => void }) => {
+    mutate: (input: unknown, options?: { onSuccess?: () => void; onError?: () => void }) => {
       Promise.resolve(mutationOptions.mutationFn(input))
         .then(() => options?.onSuccess?.())
         .catch(() => options?.onError?.())
@@ -54,12 +91,16 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     tags: {
-      list: {
+      get: {
         queryOptions: () => ({}),
       },
-      create: {
+      post: {
         mutationOptions: () => ({
-          mutationFn: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }) => createTag(body.name, body.type),
+          mutationFn: ({
+            body,
+          }: {
+            body: { name: string; type: 'app' | 'knowledge' | 'snippet' }
+          }) => createTag(body.name, body.type),
         }),
       },
     },
@@ -69,16 +110,27 @@ vi.mock('@/service/client', () => ({
 vi.mock('../hooks/use-tag-mutations', () => ({
   useApplyTagBindingsMutation: () => ({
     mutate: (
-      { currentTagIds, nextTagIds, targetId, type }: { currentTagIds: string[], nextTagIds: string[], targetId: string, type: 'app' | 'knowledge' },
-      options?: { onSuccess?: () => void, onError?: () => void, onSettled?: () => void },
+      {
+        currentTagIds,
+        nextTagIds,
+        targetId,
+        type,
+      }: {
+        currentTagIds: string[]
+        nextTagIds: string[]
+        targetId: string
+        type: 'app' | 'knowledge'
+      },
+      options?: { onSuccess?: () => void; onError?: () => void; onSettled?: () => void },
     ) => {
-      const addTagIds = nextTagIds.filter(tagId => !currentTagIds.includes(tagId))
-      const removeTagIds = currentTagIds.filter(tagId => !nextTagIds.includes(tagId))
+      const addTagIds = nextTagIds.filter((tagId) => !currentTagIds.includes(tagId))
+      const removeTagIds = currentTagIds.filter((tagId) => !nextTagIds.includes(tagId))
       const operations: Promise<unknown>[] = []
 
-      if (addTagIds.length)
-        operations.push(Promise.resolve(bindTag(addTagIds, targetId, type)))
-      operations.push(...removeTagIds.map(tagId => Promise.resolve(unBindTag(tagId, targetId, type))))
+      if (addTagIds.length) operations.push(Promise.resolve(bindTag(addTagIds, targetId, type)))
+      operations.push(
+        ...removeTagIds.map((tagId) => Promise.resolve(unBindTag(tagId, targetId, type))),
+      )
 
       Promise.all(operations)
         .then(() => options?.onSuccess?.())
@@ -90,6 +142,7 @@ vi.mock('../hooks/use-tag-mutations', () => ({
 
 const i18n = {
   addTag: 'common.tag.addTag',
+  noTag: 'common.tag.noTag',
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
   manageTags: 'common.tag.manageTags',
   modifiedSuccessfully: 'common.actionMsg.modifiedSuccessfully',
@@ -97,8 +150,8 @@ const i18n = {
 }
 
 const appTags: Tag[] = [
-  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: 3 },
-  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: 5 },
+  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
+  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
 ]
 
 const defaultProps = {
@@ -110,9 +163,18 @@ const defaultProps = {
 describe('TagSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage', 'snippets.management']
+    mockWorkspacePermissionKeys.value = [
+      'app.tag.manage',
+      'dataset.tag.manage',
+      'snippets.create_and_modify',
+    ]
     mockUseQueryData.current = appTags
-    vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
+    vi.mocked(createTag).mockResolvedValue({
+      id: 'new-tag',
+      name: 'NewTag',
+      type: 'app',
+      binding_count: '',
+    })
     vi.mocked(bindTag).mockResolvedValue(undefined)
     vi.mocked(unBindTag).mockResolvedValue(undefined)
   })
@@ -122,8 +184,26 @@ describe('TagSelector', () => {
     expect(screen.getByText('Frontend')).toBeInTheDocument()
   })
 
-  it('renders the add tag trigger when no current tag is visible in the workspace tag list', () => {
-    render(<TagSelector {...defaultProps} value={[{ id: 'orphan', name: 'Orphan', type: 'app', binding_count: 0 }]} />)
+  it('renders the no tag trigger when no current tag is visible and binding is unavailable', () => {
+    render(
+      <TagSelector
+        {...defaultProps}
+        value={[{ id: 'orphan', name: 'Orphan', type: 'app', binding_count: '' }]}
+      />,
+    )
+    expect(screen.queryByText('Orphan')).not.toBeInTheDocument()
+    expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
+    expect(screen.queryByText(i18n.addTag)).not.toBeInTheDocument()
+  })
+
+  it('renders the add tag trigger when no current tag is visible and binding is available', () => {
+    render(
+      <TagSelector
+        {...defaultProps}
+        value={[{ id: 'orphan', name: 'Orphan', type: 'app', binding_count: '' }]}
+        canBindOrUnbindTags
+      />,
+    )
     expect(screen.queryByText('Orphan')).not.toBeInTheDocument()
     expect(screen.getByText(i18n.addTag)).toBeInTheDocument()
   })
@@ -134,7 +214,9 @@ describe('TagSelector', () => {
 
     await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
 
-    expect(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }),
+    ).toBeInTheDocument()
     expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /Backend/i })).toBeInTheDocument()
   })
@@ -242,8 +324,11 @@ describe('TagSelector', () => {
     const user = userEvent.setup()
     render(<TagSelector {...defaultProps} type="knowledge" value={[]} />)
 
-    await user.click(screen.getByRole('combobox', { name: i18n.addTag }))
-    await user.type(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }), 'NewKnowledgeTag')
+    await user.click(screen.getByRole('combobox', { name: i18n.noTag }))
+    await user.type(
+      await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }),
+      'NewKnowledgeTag',
+    )
     await user.click(await screen.findByRole('option', { name: /NewKnowledgeTag/i }))
 
     await waitFor(() => {
@@ -260,7 +345,9 @@ describe('TagSelector', () => {
 
     await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
 
-    expect(screen.queryByRole('combobox', { name: i18n.selectorPlaceholder })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('combobox', { name: i18n.selectorPlaceholder }),
+    ).not.toBeInTheDocument()
   })
 
   it('opens the tag selector with binding capability even without workspace tag management permission', async () => {
@@ -271,8 +358,26 @@ describe('TagSelector', () => {
 
     await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
 
-    expect(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
+  })
+
+  it('applies added tags with binding capability even without workspace tag management permission', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = []
+
+    render(<TagSelector {...defaultProps} canBindOrUnbindTags />)
+
+    const trigger = screen.getByRole('combobox', { name: /Frontend/i })
+    await user.click(trigger)
+    await user.click(await screen.findByRole('option', { name: /Backend/i }))
+    await user.click(trigger)
+
+    await waitFor(() => {
+      expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
+    })
   })
 
   it('does not create new tags when only binding capability is available', async () => {
@@ -282,27 +387,34 @@ describe('TagSelector', () => {
     render(<TagSelector {...defaultProps} canBindOrUnbindTags />)
 
     await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
-    await user.type(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }), 'BrandNewTag')
+    await user.type(
+      await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }),
+      'BrandNewTag',
+    )
 
     expect(screen.queryByRole('option', { name: /BrandNewTag/i })).not.toBeInTheDocument()
     expect(createTag).not.toHaveBeenCalled()
   })
 
-  it('opens snippet tag selector with snippets management permission', async () => {
+  it('opens snippet tag selector with snippets create-and-modify permission', async () => {
     const user = userEvent.setup()
-    mockWorkspacePermissionKeys.value = ['snippets.management']
-    mockUseQueryData.current = [{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: 1 }]
+    mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
+    mockUseQueryData.current = [
+      { id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: '' },
+    ]
 
     render(
       <TagSelector
         targetId="snippet-1"
         type="snippet"
-        value={[{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: 1 }]}
+        value={[{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: '' }]}
       />,
     )
 
     await user.click(screen.getByRole('combobox', { name: /Reusable/i }))
 
-    expect(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }),
+    ).toBeInTheDocument()
   })
 })

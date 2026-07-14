@@ -16,6 +16,7 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
 from controllers.openapi._models import (
+    SUPPORTED_APP_TYPES,
     AppDescribeInfo,
     AppDescribeQuery,
     AppDescribeResponse,
@@ -24,17 +25,23 @@ from controllers.openapi._models import (
     AppListRow,
 )
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, RBACRequirement
+from controllers.openapi.auth.data import AuthData, CallerKind, RBACRequirement
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import App
+from models.enums import AppStatus
 from models.model import AppMode
 from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
 
 _ALLOWED_DESCRIBE_FIELDS: frozenset[str] = frozenset({"info", "parameters", "input_schema"})
+
+
+def _is_listable(app: App) -> bool:
+    """Whether the openapi app face exposes this app (curated, listable types only)."""
+    return app.mode in SUPPORTED_APP_TYPES
 
 
 _EMPTY_PARAMETERS: dict[str, Any] = {
@@ -59,13 +66,13 @@ class AppReadResource(Resource):
 
         if is_uuid:
             # ``str(parsed_uuid)`` normalises to the canonical dashed form.
-            app = AppService.get_visible_app_by_id(db.session, str(parsed_uuid))
+            app = AppService.get_visible_app_by_id(str(parsed_uuid), session=db.session())
             if app is None:
                 raise NotFound("app not found")
         else:
             if not workspace_id:
                 raise UnprocessableEntity("workspace_id is required for name-based lookup")
-            matches = AppService.find_visible_apps_by_name(db.session, name=app_id, tenant_id=workspace_id)
+            matches = AppService.find_visible_apps_by_name(name=app_id, tenant_id=workspace_id, session=db.session())
             if len(matches) == 0:
                 raise NotFound("app not found")
             if len(matches) > 1:
@@ -122,7 +129,7 @@ def build_app_describe_response(app: App, fields: set[str] | None) -> AppDescrib
     return AppDescribeResponse(info=info, parameters=parameters, input_schema=input_schema)
 
 
-@openapi_ns.route("/apps/<string:app_id>/describe")
+@openapi_ns.route("/apps/<string:app_id>")
 class AppDescribeApi(AppReadResource):
     @auth_router.guard(
         scope=Scope.APPS_READ,
@@ -160,7 +167,9 @@ class AppListApi(Resource):
         # an empty set or list means the caller has no accessible apps.
         # End-users bypass RBAC here — their access is controlled by scope upstream.
         apply_rbac_filter = (
-            dify_config.RBAC_ENABLED and auth_data.caller_kind != "end_user" and auth_data.account_id is not None
+            dify_config.RBAC_ENABLED
+            and auth_data.caller_kind != CallerKind.END_USER
+            and auth_data.account_id is not None
         )
         access_filter = AppAccessFilter.unrestricted()
         if apply_rbac_filter:
@@ -168,8 +177,10 @@ class AppListApi(Resource):
 
         tenant_name: str | None = None
         if parsed_uuid is not None:
-            app: App | None = AppService.get_visible_app_by_id(db.session, str(parsed_uuid))
+            app: App | None = AppService.get_visible_app_by_id(str(parsed_uuid), session=db.session())
             if app is None or str(app.tenant_id) != workspace_id:
+                return empty
+            if not _is_listable(app):
                 return empty
             # Apply RBAC visibility to the UUID fast-path the same way the service
             # layer does for paginated queries (id in accessible set OR own app).
@@ -177,7 +188,7 @@ class AppListApi(Resource):
                 str(app.id), str(app.maintainer) if app.maintainer else None, str(auth_data.account_id)
             ):
                 return empty
-            tenant_name = TenantService.get_tenant_name(db.session, workspace_id)
+            tenant_name = TenantService.get_tenant_name(workspace_id, session=db.session())
             item = AppListRow(
                 id=str(app.id),
                 name=app.name,
@@ -195,7 +206,7 @@ class AppListApi(Resource):
             limit=query.limit,
             mode=query.mode.value if query.mode else "all",  # type:ignore
             name=query.name,
-            status="normal",
+            status=AppStatus.NORMAL,
             # Visibility gate pushed into the query — pagination.total stays
             # consistent across pages because invisible rows never count.
             openapi_visible=True,
@@ -204,13 +215,13 @@ class AppListApi(Resource):
         if apply_rbac_filter:
             access_filter.apply_to_params(params)
 
-        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params, db.session)
+        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params, db.session())
         if pagination is None:
             return empty
 
         tenant_name = None
         if pagination.items:
-            tenant_name = TenantService.get_tenant_name(db.session, workspace_id)
+            tenant_name = TenantService.get_tenant_name(workspace_id, session=db.session())
 
         items = [
             AppListRow(
@@ -223,6 +234,7 @@ class AppListApi(Resource):
                 workspace_name=tenant_name,
             )
             for r in pagination.items
+            if _is_listable(r)
         ]
 
         env = AppListResponse(

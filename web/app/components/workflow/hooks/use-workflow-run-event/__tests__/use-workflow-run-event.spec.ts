@@ -16,6 +16,7 @@ const handlers = vi.hoisted(() => ({
   handleWorkflowNodeRetry: vi.fn(),
   handleWorkflowTextChunk: vi.fn(),
   handleWorkflowTextReplace: vi.fn(),
+  handleWorkflowReasoning: vi.fn(),
   handleWorkflowAgentLog: vi.fn(),
   handleWorkflowPaused: vi.fn(),
   handleWorkflowNodeHumanInputRequired: vi.fn(),
@@ -28,21 +29,45 @@ vi.mock('..', () => ({
   useWorkflowFinished: () => ({ handleWorkflowFinished: handlers.handleWorkflowFinished }),
   useWorkflowFailed: () => ({ handleWorkflowFailed: handlers.handleWorkflowFailed }),
   useWorkflowNodeStarted: () => ({ handleWorkflowNodeStarted: handlers.handleWorkflowNodeStarted }),
-  useWorkflowNodeFinished: () => ({ handleWorkflowNodeFinished: handlers.handleWorkflowNodeFinished }),
-  useWorkflowNodeIterationStarted: () => ({ handleWorkflowNodeIterationStarted: handlers.handleWorkflowNodeIterationStarted }),
-  useWorkflowNodeIterationNext: () => ({ handleWorkflowNodeIterationNext: handlers.handleWorkflowNodeIterationNext }),
-  useWorkflowNodeIterationFinished: () => ({ handleWorkflowNodeIterationFinished: handlers.handleWorkflowNodeIterationFinished }),
-  useWorkflowNodeLoopStarted: () => ({ handleWorkflowNodeLoopStarted: handlers.handleWorkflowNodeLoopStarted }),
-  useWorkflowNodeLoopNext: () => ({ handleWorkflowNodeLoopNext: handlers.handleWorkflowNodeLoopNext }),
-  useWorkflowNodeLoopFinished: () => ({ handleWorkflowNodeLoopFinished: handlers.handleWorkflowNodeLoopFinished }),
+  useWorkflowNodeFinished: () => ({
+    handleWorkflowNodeFinished: handlers.handleWorkflowNodeFinished,
+  }),
+  useWorkflowNodeIterationStarted: () => ({
+    handleWorkflowNodeIterationStarted: handlers.handleWorkflowNodeIterationStarted,
+  }),
+  useWorkflowNodeIterationNext: () => ({
+    handleWorkflowNodeIterationNext: handlers.handleWorkflowNodeIterationNext,
+  }),
+  useWorkflowNodeIterationFinished: () => ({
+    handleWorkflowNodeIterationFinished: handlers.handleWorkflowNodeIterationFinished,
+  }),
+  useWorkflowNodeLoopStarted: () => ({
+    handleWorkflowNodeLoopStarted: handlers.handleWorkflowNodeLoopStarted,
+  }),
+  useWorkflowNodeLoopNext: () => ({
+    handleWorkflowNodeLoopNext: handlers.handleWorkflowNodeLoopNext,
+  }),
+  useWorkflowNodeLoopFinished: () => ({
+    handleWorkflowNodeLoopFinished: handlers.handleWorkflowNodeLoopFinished,
+  }),
   useWorkflowNodeRetry: () => ({ handleWorkflowNodeRetry: handlers.handleWorkflowNodeRetry }),
   useWorkflowTextChunk: () => ({ handleWorkflowTextChunk: handlers.handleWorkflowTextChunk }),
   useWorkflowTextReplace: () => ({ handleWorkflowTextReplace: handlers.handleWorkflowTextReplace }),
   useWorkflowAgentLog: () => ({ handleWorkflowAgentLog: handlers.handleWorkflowAgentLog }),
   useWorkflowPaused: () => ({ handleWorkflowPaused: handlers.handleWorkflowPaused }),
-  useWorkflowNodeHumanInputRequired: () => ({ handleWorkflowNodeHumanInputRequired: handlers.handleWorkflowNodeHumanInputRequired }),
-  useWorkflowNodeHumanInputFormFilled: () => ({ handleWorkflowNodeHumanInputFormFilled: handlers.handleWorkflowNodeHumanInputFormFilled }),
-  useWorkflowNodeHumanInputFormTimeout: () => ({ handleWorkflowNodeHumanInputFormTimeout: handlers.handleWorkflowNodeHumanInputFormTimeout }),
+  useWorkflowNodeHumanInputRequired: () => ({
+    handleWorkflowNodeHumanInputRequired: handlers.handleWorkflowNodeHumanInputRequired,
+  }),
+  useWorkflowNodeHumanInputFormFilled: () => ({
+    handleWorkflowNodeHumanInputFormFilled: handlers.handleWorkflowNodeHumanInputFormFilled,
+  }),
+  useWorkflowNodeHumanInputFormTimeout: () => ({
+    handleWorkflowNodeHumanInputFormTimeout: handlers.handleWorkflowNodeHumanInputFormTimeout,
+  }),
+}))
+
+vi.mock('../use-workflow-reasoning', () => ({
+  useWorkflowReasoning: () => ({ handleWorkflowReasoning: handlers.handleWorkflowReasoning }),
 }))
 
 describe('useWorkflowRunEvent', () => {

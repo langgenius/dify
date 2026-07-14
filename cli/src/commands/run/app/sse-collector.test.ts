@@ -27,11 +27,14 @@ describe('collectorFor', () => {
 
 describe('collect — chat', () => {
   it('aggregates message + message_end into blocking shape', async () => {
-    const got = await collect(iterOf(
-      ev('message', { conversation_id: 'c1', message_id: 'm1', mode: 'chat', answer: 'hello ' }),
-      ev('message', { answer: 'world' }),
-      ev('message_end', { metadata: { usage: { tokens: 5 } } }),
-    ), 'chat')
+    const got = await collect(
+      iterOf(
+        ev('message', { conversation_id: 'c1', message_id: 'm1', mode: 'chat', answer: 'hello ' }),
+        ev('message', { answer: 'world' }),
+        ev('message_end', { metadata: { usage: { tokens: 5 } } }),
+      ),
+      'chat',
+    )
     expect(got).toMatchObject({
       mode: 'chat',
       answer: 'hello world',
@@ -42,31 +45,79 @@ describe('collect — chat', () => {
   })
 
   it('drops ping events', async () => {
-    const got = await collect(iterOf(
-      ev('ping', {}),
-      ev('message', { answer: 'x' }),
-      ev('ping', {}),
-    ), 'chat')
+    const got = await collect(
+      iterOf(ev('ping', {}), ev('message', { answer: 'x' }), ev('ping', {})),
+      'chat',
+    )
     expect(got.answer).toBe('x')
   })
 
   it('ignores unknown event names', async () => {
-    const got = await collect(iterOf(
-      ev('weird_future_event', { whatever: true }),
-      ev('message', { answer: 'x' }),
-    ), 'chat')
+    const got = await collect(
+      iterOf(ev('weird_future_event', { whatever: true }), ev('message', { answer: 'x' })),
+      'chat',
+    )
     expect(got.answer).toBe('x')
+  })
+})
+
+describe('collect — chat separated reasoning', () => {
+  function reasoningEvent(reasoning: string, isFinal: boolean) {
+    return ev('reasoning_chunk', {
+      data: { message_id: 'm1', reasoning, node_id: 'llm-1', is_final: isFinal },
+    })
+  }
+
+  it('backfills metadata.reasoning from live deltas when the server omits it', async () => {
+    const got = await collect(
+      iterOf(
+        reasoningEvent('pon', false),
+        reasoningEvent('dering', true),
+        ev('message', { message_id: 'm1', answer: 'answer' }),
+        ev('message_end', { metadata: { usage: { tokens: 3 } } }),
+      ),
+      'advanced-chat',
+    )
+    expect(got.answer).toBe('answer')
+    expect((got.metadata as { reasoning?: unknown }).reasoning).toEqual({ 'llm-1': 'pondering' })
+    expect((got.metadata as { usage?: unknown }).usage).toEqual({ tokens: 3 })
+  })
+
+  it('keeps the server-persisted reasoning over live deltas', async () => {
+    const got = await collect(
+      iterOf(
+        reasoningEvent('live', true),
+        ev('message', { answer: 'a' }),
+        ev('message_end', { metadata: { reasoning: { 'llm-1': 'persisted' } } }),
+      ),
+      'advanced-chat',
+    )
+    expect((got.metadata as { reasoning?: unknown }).reasoning).toEqual({ 'llm-1': 'persisted' })
+  })
+
+  it('leaves metadata untouched when there is no reasoning at all', async () => {
+    const got = await collect(
+      iterOf(
+        ev('message', { answer: 'a' }),
+        ev('message_end', { metadata: { usage: { tokens: 1 } } }),
+      ),
+      'advanced-chat',
+    )
+    expect((got.metadata as { reasoning?: unknown }).reasoning).toBeUndefined()
   })
 })
 
 describe('collect — agent-chat', () => {
   it('captures agent_thoughts', async () => {
-    const got = await collect(iterOf(
-      ev('agent_thought', { thought: 'first' }),
-      ev('agent_message', { answer: 'a' }),
-      ev('agent_thought', { thought: 'second' }),
-      ev('agent_message', { answer: 'b' }),
-    ), 'agent-chat')
+    const got = await collect(
+      iterOf(
+        ev('agent_thought', { thought: 'first' }),
+        ev('agent_message', { answer: 'a' }),
+        ev('agent_thought', { thought: 'second' }),
+        ev('agent_message', { answer: 'b' }),
+      ),
+      'agent-chat',
+    )
     expect(got.answer).toBe('ab')
     expect(Array.isArray(got.agent_thoughts)).toBe(true)
     expect((got.agent_thoughts as unknown[]).length).toBe(2)
@@ -75,33 +126,84 @@ describe('collect — agent-chat', () => {
 
 describe('collect — completion', () => {
   it('aggregates message events into answer', async () => {
-    const got = await collect(iterOf(
-      ev('message', { mode: 'completion', message_id: 'm1', answer: 'foo' }),
-      ev('message', { answer: 'bar' }),
-      ev('message_end', { metadata: {} }),
-    ), 'completion')
+    const got = await collect(
+      iterOf(
+        ev('message', { mode: 'completion', message_id: 'm1', answer: 'foo' }),
+        ev('message', { answer: 'bar' }),
+        ev('message_end', { metadata: {} }),
+      ),
+      'completion',
+    )
     expect(got).toMatchObject({ mode: 'completion', answer: 'foobar', message_id: 'm1' })
   })
 })
 
 describe('collect — workflow', () => {
   it('captures only workflow_finished payload', async () => {
-    const got = await collect(iterOf(
-      ev('workflow_started', { id: 'wf' }),
-      ev('node_started', { id: 'n1' }),
-      ev('node_finished', { id: 'n1', status: 'succeeded' }),
-      ev('workflow_finished', { data: { status: 'succeeded', outputs: { x: 1 } } }),
-    ), 'workflow')
+    const got = await collect(
+      iterOf(
+        ev('workflow_started', { id: 'wf' }),
+        ev('node_started', { id: 'n1' }),
+        ev('node_finished', { id: 'n1', status: 'succeeded' }),
+        ev('workflow_finished', { data: { status: 'succeeded', outputs: { x: 1 } } }),
+      ),
+      'workflow',
+    )
     expect(got.mode).toBe('workflow')
     expect((got.data as { outputs: { x: number } }).outputs.x).toBe(1)
   })
 })
 
+describe('collect — workflow separated reasoning', () => {
+  function wfReasoning(reasoning: string, nodeId: string, isFinal: boolean) {
+    return ev('reasoning_chunk', { data: { reasoning, node_id: nodeId, is_final: isFinal } })
+  }
+
+  it('accumulates reasoning_chunk per node into metadata.reasoning', async () => {
+    const got = await collect(
+      iterOf(
+        ev('node_started', { id: 'llm-1' }),
+        wfReasoning('pon', 'llm-1', false),
+        wfReasoning('dering', 'llm-1', true),
+        ev('workflow_finished', { data: { status: 'succeeded', outputs: { result: 'clean' } } }),
+      ),
+      'workflow',
+    )
+    expect((got.data as { outputs: { result: string } }).outputs.result).toBe('clean')
+    expect((got.metadata as { reasoning?: unknown }).reasoning).toEqual({ 'llm-1': 'pondering' })
+  })
+
+  it('keys reasoning by node, leaves metadata absent when there is none', async () => {
+    const got = await collect(
+      iterOf(
+        ev('workflow_finished', { data: { status: 'succeeded', outputs: { result: 'clean' } } }),
+      ),
+      'workflow',
+    )
+    expect((got.metadata as { reasoning?: unknown } | undefined)?.reasoning).toBeUndefined()
+  })
+
+  it('merges reasoning into metadata already carried by workflow_finished', async () => {
+    const got = await collect(
+      iterOf(
+        wfReasoning('think', 'llm-1', true),
+        ev('workflow_finished', {
+          data: { status: 'succeeded' },
+          metadata: { usage: { tokens: 7 } },
+        }),
+      ),
+      'workflow',
+    )
+    expect((got.metadata as { reasoning?: unknown }).reasoning).toEqual({ 'llm-1': 'think' })
+    expect((got.metadata as { usage?: unknown }).usage).toEqual({ tokens: 7 })
+  })
+})
+
 describe('collect — error event', () => {
   it('throws BaseError when error event arrives', async () => {
-    await expect(collect(iterOf(
-      ev('error', { message: 'boom', status: 503 }),
-    ), 'chat')).rejects.toMatchObject({ code: 'server_5xx', message: 'boom' })
+    await expect(
+      collect(iterOf(ev('error', { message: 'boom', status: 503 })), 'chat'),
+    ).rejects.toMatchObject({ code: 'server_5xx', message: 'boom' })
   })
 })
 
@@ -123,7 +225,10 @@ describe('decodeStreamError', () => {
 
   it('unwraps openapi-v1 invoke-error: prefers args.description', () => {
     const inner = {
-      args: { description: '[models] Error: API request failed with status code 402: Insufficient Balance' },
+      args: {
+        description:
+          '[models] Error: API request failed with status code 402: Insufficient Balance',
+      },
       error_type: 'InvokeError',
       message: 'fallback message',
     }
@@ -179,10 +284,9 @@ describe('collect — human_input_required', () => {
         expiration_time: 9999999999,
       },
     }
-    await expect(collect(iterOf(
-      ev('workflow_started', {}),
-      ev('human_input_required', hitlData),
-    ), 'workflow')).rejects.toBeInstanceOf(HitlPauseError)
+    await expect(
+      collect(iterOf(ev('workflow_started', {}), ev('human_input_required', hitlData)), 'workflow'),
+    ).rejects.toBeInstanceOf(HitlPauseError)
   })
 
   it('HitlPauseError carries the pause payload', async () => {
@@ -205,10 +309,8 @@ describe('collect — human_input_required', () => {
     let caught: HitlPauseError | undefined
     try {
       await collect(iterOf(ev('human_input_required', hitlData)), 'workflow')
-    }
-    catch (e) {
-      if (e instanceof HitlPauseError)
-        caught = e
+    } catch (e) {
+      if (e instanceof HitlPauseError) caught = e
     }
     expect(caught).toBeDefined()
     expect(caught!.pausePayload.data.form_token).toBe('ft-abc')
@@ -218,27 +320,32 @@ describe('collect — human_input_required', () => {
 
 describe('collect — silent events', () => {
   it('silently ignores iteration_started and loop_started', async () => {
-    const got = await collect(iterOf(
-      ev('iteration_started', { id: 'iter-1' }),
-      ev('loop_started', { id: 'loop-1' }),
-      ev('node_started', {}),
-      ev('message', { answer: 'x' }),
-    ), 'chat')
+    const got = await collect(
+      iterOf(
+        ev('iteration_started', { id: 'iter-1' }),
+        ev('loop_started', { id: 'loop-1' }),
+        ev('node_started', {}),
+        ev('message', { answer: 'x' }),
+      ),
+      'chat',
+    )
     expect(got.answer).toBe('x')
   })
 
   it('silently ignores node_retry', async () => {
-    const got = await collect(iterOf(
-      ev('node_retry', { id: 'n1', retry: 1 }),
-      ev('message', { answer: 'ok' }),
-    ), 'chat')
+    const got = await collect(
+      iterOf(ev('node_retry', { id: 'n1', retry: 1 }), ev('message', { answer: 'ok' })),
+      'chat',
+    )
     expect(got.answer).toBe('ok')
   })
 
   it('workflow_paused without prior HITL throws a plain error', async () => {
-    await expect(collect(iterOf(
-      ev('workflow_started', {}),
-      ev('workflow_paused', { reasons: [] }),
-    ), 'workflow')).rejects.toThrow(/paused/)
+    await expect(
+      collect(
+        iterOf(ev('workflow_started', {}), ev('workflow_paused', { reasons: [] })),
+        'workflow',
+      ),
+    ).rejects.toThrow(/paused/)
   })
 })

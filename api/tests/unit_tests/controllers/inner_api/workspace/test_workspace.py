@@ -8,7 +8,7 @@ handler tests use inspect.unwrap() to bypass them and focus on business logic.
 
 import inspect
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -115,9 +115,9 @@ class TestEnterpriseWorkspace:
         assert result["message"] == "enterprise workspace created."
         assert result["tenant"]["id"] == "tenant-id"
         assert result["tenant"]["name"] == "My Workspace"
-        mock_tenant_svc.create_tenant.assert_called_once_with("My Workspace", is_from_dashboard=True)
+        mock_tenant_svc.create_tenant.assert_called_once_with("My Workspace", is_from_dashboard=True, session=ANY)
         mock_tenant_svc.create_tenant_member.assert_called_once_with(
-            mock_tenant, mock_account, mock_db.session, role="owner"
+            mock_tenant, mock_account, mock_db.session(), role="owner"
         )
         mock_event.send.assert_called_once_with(mock_tenant)
 
@@ -183,5 +183,5 @@ class TestEnterpriseWorkspaceNoOwnerEmail:
         assert result["tenant"]["id"] == "tenant-id"
         assert result["tenant"]["encrypt_public_key"] == "pub-key"
         assert result["tenant"]["custom_config"] == {}
-        mock_tenant_svc.create_tenant.assert_called_once_with("My Workspace", is_from_dashboard=True)
+        mock_tenant_svc.create_tenant.assert_called_once_with("My Workspace", is_from_dashboard=True, session=ANY)
         mock_event.send.assert_called_once_with(mock_tenant)
