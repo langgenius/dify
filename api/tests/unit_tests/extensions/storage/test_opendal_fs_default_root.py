@@ -1,3 +1,5 @@
+"""Unit coverage for OpenDAL's local filesystem root selection."""
+
 from pathlib import Path
 
 import pytest
