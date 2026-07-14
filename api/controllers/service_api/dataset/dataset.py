@@ -536,8 +536,7 @@ class DatasetListApi(DatasetApiResource):
                 dataset.id,
                 ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
             )
-            initialize_created_app_rbac_access_task.delay(
-                tenant_id, current_user.id, dataset_id=dataset.id)
+            initialize_created_app_rbac_access_task.delay(tenant_id, current_user.id, dataset_id=dataset.id)
 
         return _dump_service_dataset_detail(dataset), 200
 

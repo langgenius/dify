@@ -18,7 +18,8 @@ APP_RBAC_QUEUE = "app_rbac"
 
 @shared_task(queue=APP_RBAC_QUEUE, bind=True, max_retries=3, default_retry_delay=60)
 def initialize_created_app_rbac_access_task(
-        self, tenant_id: str, account_id: str, app_id: str | None = None, dataset_id: str | None = None) -> None:
+    self, tenant_id: str, account_id: str, app_id: str | None = None, dataset_id: str | None = None
+) -> None:
     """Grant the default app policy to current workspace members.
 
     App scope is persisted synchronously before this task is queued. Replacing

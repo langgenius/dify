@@ -570,8 +570,7 @@ class DatasetListApi(Resource):
                     dataset.id,
                     ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
                 )
-                initialize_created_app_rbac_access_task.delay(
-                    current_tenant_id, current_user.id, dataset_id=dataset.id)
+                initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
 
         permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
             current_tenant_id,
