@@ -348,7 +348,9 @@ class TestWorkflowRunService:
         # Act: Execute the method under test
         workflow_run_service = WorkflowRunService()
         args = {"limit": 2, "last_id": None}
-        result = workflow_run_service.get_paginate_advanced_chat_workflow_runs(app, args, session=db_session_with_containers)
+        result = workflow_run_service.get_paginate_advanced_chat_workflow_runs(
+            app, args, session=db_session_with_containers
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None

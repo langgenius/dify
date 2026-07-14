@@ -167,9 +167,7 @@ class TestWorkflowRunServiceQueries:
 
         fake_session = _fake_session_returning_messages([])
 
-        service.get_paginate_advanced_chat_workflow_runs(
-            app_model=app_model, args={}, session=fake_session
-        )
+        service.get_paginate_advanced_chat_workflow_runs(app_model=app_model, args={}, session=fake_session)
 
         # Exactly one message query for the whole page, independent of run count.
         assert fake_session.scalars.call_count == 1
