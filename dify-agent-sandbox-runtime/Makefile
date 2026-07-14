@@ -35,39 +35,47 @@ clean:
 	rm -rf $(BIN_DIR)
 
 # --- Integration tests ---
+#
+# Container name and host port are randomised per invocation to avoid
+# conflicts when multiple runs overlap or a previous run leaked a container.
 
 IMAGE_NAME := dify-agent-sandbox-runtime:test
-CONTAINER_NAME := sandbox-runtime-test
-HOST_PORT := 15005
+TEST_ID := $(shell printf '%05d' $$((RANDOM % 100000)))
+CONTAINER_NAME := sandbox-rt-$(TEST_ID)
+HOST_PORT := $(shell python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print(s.getsockname()[1]); s.close()')
+AUTH_TOKEN := test-token-$(TEST_ID)
 
 integration-up:
 	@echo "Building runtime image..."
 	docker build -t $(IMAGE_NAME) -f docker/Dockerfile .
-	@echo "Starting runtime container..."
+	@echo "Starting runtime container $(CONTAINER_NAME) on port $(HOST_PORT)..."
 	docker run -d --name $(CONTAINER_NAME) \
 		-p $(HOST_PORT):5004 \
-		-e SHELLCTL_AUTH_TOKEN=test-token-123 \
+		-e SHELLCTL_AUTH_TOKEN=$(AUTH_TOKEN) \
 		$(IMAGE_NAME)
 	@echo "Waiting for runtime to be ready..."
 	@for i in $$(seq 1 30); do \
 		if curl -sf http://localhost:$(HOST_PORT)/healthz > /dev/null 2>&1; then \
-			echo "Runtime is ready"; \
+			echo "Runtime is ready on port $(HOST_PORT)"; \
 			break; \
 		fi; \
 		if [ "$$i" -eq 30 ]; then \
 			echo "ERROR: runtime not ready after 60s" >&2; \
 			docker logs $(CONTAINER_NAME); \
+			docker rm -f $(CONTAINER_NAME) 2>/dev/null; \
 			exit 1; \
 		fi; \
 		sleep 2; \
 	done
 
 integration-test: integration-up
+	@trap 'docker rm -f $(CONTAINER_NAME) 2>/dev/null' EXIT; \
 	SHELLCTL_GO_URL=http://localhost:$(HOST_PORT) \
-	SHELLCTL_TEST_TOKEN=test-token-123 \
+	SHELLCTL_TEST_TOKEN=$(AUTH_TOKEN) \
 	go test -tags=integration -v -count=1 -timeout=300s ./tests/...
 
 integration-down:
 	-docker rm -f $(CONTAINER_NAME)
 
-integration: integration-up integration-test integration-down
+integration:
+	@$(MAKE) integration-test
