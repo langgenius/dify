@@ -48,6 +48,7 @@ from dify_agent.layers.dify_core_tools.configs import (
     DifyCoreToolsLayerConfig,
 )
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
+from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
 from dify_agent.layers.knowledge.configs import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
@@ -147,6 +148,20 @@ def test_run_failed_error_payload_infers_rate_limit_reason_from_status_code() ->
 
     assert message == "too many requests"
     assert reason == "InvokeRateLimitError"
+
+
+def test_run_failed_error_payload_preserves_knowledge_error_code() -> None:
+    exc = DifyKnowledgeBaseClientError(
+        "Knowledge base search failed with HTTP 400 (dataset_not_found): Dataset not found",
+        status_code=400,
+        error_code="dataset_not_found",
+        retryable=False,
+    )
+
+    message, reason = _run_failed_error_payload(exc)
+
+    assert message == "Knowledge base search failed with HTTP 400 (dataset_not_found): Dataset not found"
+    assert reason == "dataset_not_found"
 
 
 def _request(

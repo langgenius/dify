@@ -2,15 +2,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CompletedDrawer } from '../drawer'
 
-(
+;(
   globalThis as typeof globalThis & {
     BASE_UI_ANIMATIONS_DISABLED: boolean
   }
 ).BASE_UI_ANIMATIONS_DISABLED = true
 
 const getOverlay = () =>
-  Array.from(document.querySelectorAll<HTMLElement>('[class]'))
-    .find(element => element.className.includes('bg-background-overlay'))
+  Array.from(document.querySelectorAll<HTMLElement>('[class]')).find((element) =>
+    element.className.includes('bg-background-overlay'),
+  )
 
 describe('Drawer', () => {
   const defaultProps = {

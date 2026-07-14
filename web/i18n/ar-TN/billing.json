@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "قم بالترقية لتحميل عدة مستندات دفعة واحدة",
   "upgrade.workflowRestore.description": "استعادة إصدارات سير العمل غير متاحة في خطتك الحالية.",
   "upgrade.workflowRestore.title": "قم بالترقية لاستعادة إصدارات سير العمل",
+  "upgrade.workflowVersionRun.description": "تشغيل إصدار محدد من سير العمل باستخدام معرّف سير العمل غير متاح في خطتك الحالية.",
+  "upgrade.workflowVersionRun.title": "قم بالترقية لتشغيل إصدارات محددة من سير العمل",
   "upgradeBtn.encourage": "الترقية الآن",
   "upgradeBtn.encourageShort": "ترقية",
   "upgradeBtn.plain": "عرض الخطة",

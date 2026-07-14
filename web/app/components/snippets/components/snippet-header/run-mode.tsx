@@ -16,13 +16,11 @@ type RunModeProps = {
   text?: string
 }
 
-const RunMode = ({
-  text,
-}: RunModeProps) => {
+const RunMode = ({ text }: RunModeProps) => {
   const { t } = useTranslation('snippet')
   const { handleWorkflowStartRunInWorkflow } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
-  const workflowRunningData = useStore(s => s.workflowRunningData)
+  const workflowRunningData = useStore((s) => s.workflowRunningData)
 
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
 
@@ -32,8 +30,7 @@ const RunMode = ({
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v) => {
-    if (typeof v !== 'string' && v.type === EVENT_WORKFLOW_STOP)
-      handleStop()
+    if (typeof v !== 'string' && v.type === EVENT_WORKFLOW_STOP) handleStop()
   })
 
   return (
@@ -47,20 +44,18 @@ const RunMode = ({
         onClick={handleWorkflowStartRunInWorkflow}
         disabled={isRunning}
       >
-        {isRunning
-          ? (
-              <>
-                <span aria-hidden className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
-                {t('common.running', { ns: 'workflow' })}
-              </>
-            )
-          : (
-              <>
-                <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
-                {text ?? t('common.run', { ns: 'workflow' })}
-                <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} textColor="secondary" />
-              </>
-            )}
+        {isRunning ? (
+          <>
+            <span aria-hidden className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
+            {t(($) => $['common.running'], { ns: 'workflow' })}
+          </>
+        ) : (
+          <>
+            <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
+            {text ?? t(($) => $['common.run'], { ns: 'workflow' })}
+            <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} textColor="secondary" />
+          </>
+        )}
       </button>
 
       {isRunning && (

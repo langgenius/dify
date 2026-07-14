@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { updateAppModelConfig } from '@/service/apps'
 import { AppModeEnum, ModelModeType } from '@/types/app'
@@ -29,13 +29,6 @@ let mockTempStopState: string[] = []
 let mockCurrentModelFeatures = ['vision']
 let mockCurrentModelMode = ModelModeType.chat
 let mockAppPermissionKeys: string[] = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('ahooks', async () => {
   const actual = await vi.importActual<any>('ahooks')
 
@@ -103,7 +96,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateJotaiMock(importOriginal)
 })
@@ -121,18 +115,19 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: {
-      id: 'app-1',
-      model_config: {
-        updated_at: 1710000000,
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: {
+        id: 'app-1',
+        model_config: {
+          updated_at: 1710000000,
+        },
+        mode: AppModeEnum.CHAT,
+        permission_keys: mockAppPermissionKeys,
       },
-      mode: AppModeEnum.CHAT,
-      permission_keys: mockAppPermissionKeys,
-    },
-    showAppConfigureFeaturesModal: false,
-    setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
-  }),
+      showAppConfigureFeaturesModal: false,
+      setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
+    }),
 }))
 
 vi.mock('@/app/components/detail-sidebar/storage', () => ({
@@ -222,7 +217,8 @@ vi.mock('@/service/datasets', () => ({
 }))
 
 vi.mock('@/utils/completion-params', () => ({
-  fetchAndMergeValidCompletionParams: (...args: unknown[]) => mockFetchAndMergeValidCompletionParams(...args),
+  fetchAndMergeValidCompletionParams: (...args: unknown[]) =>
+    mockFetchAndMergeValidCompletionParams(...args),
 }))
 
 describe('useConfiguration', () => {
@@ -330,9 +326,11 @@ describe('useConfiguration', () => {
       await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
     })
 
-    expect(updateAppModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      url: '/apps/app-1/model-config',
-    }))
+    expect(updateAppModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/apps/app-1/model-config',
+      }),
+    )
   })
 
   it('should block publishing when app release permission is missing', async () => {
@@ -416,9 +414,11 @@ describe('useConfiguration', () => {
       await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
     })
 
-    expect(updateAppModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      url: '/apps/app-1/model-config',
-    }))
+    expect(updateAppModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/apps/app-1/model-config',
+      }),
+    )
   })
 
   it('should expose derived feature flags and imperative callbacks', async () => {
@@ -499,8 +499,15 @@ describe('useConfiguration', () => {
     act(() => {
       result.current.onFeaturesChange(undefined as never)
       result.current.onFeaturesChange({ moreLikeThis: { enabled: true } } as never)
-      result.current.onAutoAddPromptVariable([{ key: 'city', name: 'City', type: 'string', required: true } as never])
-      result.current.onAgentSettingChange({ enabled: true, max_iteration: 5, strategy: 'react', tools: [] } as never)
+      result.current.onAutoAddPromptVariable([
+        { key: 'city', name: 'City', type: 'string', required: true } as never,
+      ])
+      result.current.onAgentSettingChange({
+        enabled: true,
+        max_iteration: 5,
+        strategy: 'react',
+        tools: [],
+      } as never)
       result.current.onEnableMultipleModelDebug()
       result.current.setShowUseGPT4Confirm(true)
       result.current.onConfirmUseGPT4()

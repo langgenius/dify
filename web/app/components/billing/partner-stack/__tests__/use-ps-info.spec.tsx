@@ -22,15 +22,13 @@ function getPartnerStackGlobal(): PartnerStackGlobal {
 
 const ensureCookieMocks = () => {
   const globals = getPartnerStackGlobal()
-  if (!globals.__partnerStackCookieMocks)
-    throw new Error('Cookie mocks not initialized')
+  if (!globals.__partnerStackCookieMocks) throw new Error('Cookie mocks not initialized')
   return globals.__partnerStackCookieMocks
 }
 
 const ensureMutateAsync = () => {
   const globals = getPartnerStackGlobal()
-  if (!globals.__partnerStackMutateAsync)
-    throw new Error('Mutate mock not initialized')
+  if (!globals.__partnerStackMutateAsync) throw new Error('Mutate mock not initialized')
   return globals.__partnerStackMutateAsync
 }
 
@@ -128,10 +126,12 @@ describe('usePSInfo', () => {
       ps_xid: 'existing-click',
     })
     const { get } = ensureCookieMocks()
-    get.mockReturnValue(JSON.stringify({
-      partnerKey: 'existing',
-      clickId: 'existing-click',
-    }))
+    get.mockReturnValue(
+      JSON.stringify({
+        partnerKey: 'existing',
+        clickId: 'existing-click',
+      }),
+    )
 
     const { result } = renderHook(() => usePSInfo())
 
@@ -270,10 +270,12 @@ describe('usePSInfo', () => {
   // Fallback to cookie values: covers L19-20 right side of || operator
   it('should use cookie values when search params are absent', () => {
     const { get } = ensureCookieMocks()
-    get.mockReturnValue(JSON.stringify({
-      partnerKey: 'cookie-partner',
-      clickId: 'cookie-click',
-    }))
+    get.mockReturnValue(
+      JSON.stringify({
+        partnerKey: 'cookie-partner',
+        clickId: 'cookie-click',
+      }),
+    )
     setSearchParams({})
 
     const { result } = renderHook(() => usePSInfo())

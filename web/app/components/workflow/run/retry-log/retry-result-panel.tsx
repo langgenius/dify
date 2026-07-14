@@ -2,9 +2,7 @@
 
 import type { FC } from 'react'
 import type { NodeTracing } from '@/types/workflow'
-import {
-  RiArrowLeftLine,
-} from '@remixicon/react'
+import { RiArrowLeftLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import TracingPanel from '../tracing-panel'
@@ -14,10 +12,7 @@ type Props = {
   readonly onBack: () => void
 }
 
-const RetryResultPanel: FC<Props> = ({
-  list,
-  onBack,
-}) => {
+const RetryResultPanel: FC<Props> = ({ list, onBack }) => {
   const { t } = useTranslation()
 
   return (
@@ -31,12 +26,12 @@ const RetryResultPanel: FC<Props> = ({
         }}
       >
         <RiArrowLeftLine className="mr-1 size-4" />
-        {t('singleRun.back', { ns: 'workflow' })}
+        {t(($) => $['singleRun.back'], { ns: 'workflow' })}
       </div>
       <TracingPanel
         list={list.map((item, index) => ({
           ...item,
-          title: `${t('nodes.common.retry.retry', { ns: 'workflow' })} ${index + 1}`,
+          title: `${t(($) => $['nodes.common.retry.retry'], { ns: 'workflow' })} ${index + 1}`,
         }))}
         className="bg-background-section-burn"
       />

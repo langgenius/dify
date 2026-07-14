@@ -53,49 +53,49 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
 
   return {
     ...actual,
-    atomWithQuery: (createOptions: (get: Getter) => QueryOptions) => atom((get) => {
-      const options = createOptions(get)
-      const queryKey = Array.isArray(options.queryKey) ? options.queryKey[0] : undefined
-      const queryName = typeof queryKey === 'string' ? queryKey : 'unknown'
-      const queryResult = options.enabled === false
-        ? undefined
-        : mockQueryResults.current.get(queryName)
+    atomWithQuery: (createOptions: (get: Getter) => QueryOptions) =>
+      atom((get) => {
+        const options = createOptions(get)
+        const queryKey = Array.isArray(options.queryKey) ? options.queryKey[0] : undefined
+        const queryName = typeof queryKey === 'string' ? queryKey : 'unknown'
+        const queryResult =
+          options.enabled === false ? undefined : mockQueryResults.current.get(queryName)
 
-      mockQueryOptions.current.set(queryName, options)
+        mockQueryOptions.current.set(queryName, options)
 
-      return {
-        ...options,
-        data: undefined,
-        isError: false,
-        isFetching: false,
-        isLoading: false,
-        isSuccess: false,
-        ...queryResult,
-      }
-    }),
-    atomWithInfiniteQuery: (createOptions: (get: Getter) => InfiniteQueryOptions) => atom((get) => {
-      const options = createOptions(get)
-      const queryKey = Array.isArray(options.queryKey) ? options.queryKey[0] : undefined
-      const queryName = typeof queryKey === 'string' ? queryKey : 'unknown'
-      const queryResult = options.enabled === false
-        ? undefined
-        : mockQueryResults.current.get(queryName)
+        return {
+          ...options,
+          data: undefined,
+          isError: false,
+          isFetching: false,
+          isLoading: false,
+          isSuccess: false,
+          ...queryResult,
+        }
+      }),
+    atomWithInfiniteQuery: (createOptions: (get: Getter) => InfiniteQueryOptions) =>
+      atom((get) => {
+        const options = createOptions(get)
+        const queryKey = Array.isArray(options.queryKey) ? options.queryKey[0] : undefined
+        const queryName = typeof queryKey === 'string' ? queryKey : 'unknown'
+        const queryResult =
+          options.enabled === false ? undefined : mockQueryResults.current.get(queryName)
 
-      mockQueryOptions.current.set(queryName, options)
+        mockQueryOptions.current.set(queryName, options)
 
-      return {
-        ...options,
-        data: undefined,
-        hasNextPage: false,
-        isError: false,
-        isFetching: false,
-        isFetchingNextPage: false,
-        isLoading: false,
-        isPlaceholderData: false,
-        isSuccess: false,
-        ...queryResult,
-      }
-    }),
+        return {
+          ...options,
+          data: undefined,
+          hasNextPage: false,
+          isError: false,
+          isFetching: false,
+          isFetchingNextPage: false,
+          isLoading: false,
+          isPlaceholderData: false,
+          isSuccess: false,
+          ...queryResult,
+        }
+      }),
     atomWithMutation: () => atom(() => mockCreateReleaseMutation.current),
   }
 })
@@ -113,10 +113,12 @@ vi.mock('@/service/client', () => ({
     enterprise: {
       releaseService: {
         listReleaseSummaries: {
-          key: ({ input }: { input?: unknown } = {}) => input === undefined ? ['listReleaseSummaries'] : ['listReleaseSummaries', input],
+          key: ({ input }: { input?: unknown } = {}) =>
+            input === undefined ? ['listReleaseSummaries'] : ['listReleaseSummaries', input],
         },
         listReleases: {
-          key: ({ input }: { input?: unknown } = {}) => input === undefined ? ['listReleases'] : ['listReleases', input],
+          key: ({ input }: { input?: unknown } = {}) =>
+            input === undefined ? ['listReleases'] : ['listReleases', input],
         },
         precheckRelease: {
           queryOptions: (options: QueryOptions) => ({
@@ -157,11 +159,7 @@ async function mountedStore() {
 }
 
 function workflowDsl() {
-  return [
-    'app:',
-    '  mode: workflow',
-    '  name: Release source',
-  ].join('\n')
+  return ['app:', '  mode: workflow', '  name: Release source'].join('\n')
 }
 
 function setDslFileContentResult(overrides: QueryResult = {}) {
@@ -201,7 +199,9 @@ describe('create release state with DSL import enabled', () => {
     store.set(state.openCreateReleaseDialogAtom)
     store.set(state.createReleaseSourceAppSearchTextAtom, 'customer')
 
-    const sourceAppsQuery = store.get(state.createReleaseSourceAppsQueryAtom) as unknown as InfiniteQueryOptions
+    const sourceAppsQuery = store.get(
+      state.createReleaseSourceAppsQueryAtom,
+    ) as unknown as InfiniteQueryOptions
 
     expect(sourceAppsQuery.enabled).toBe(true)
     expect(sourceAppsQuery.input?.(2)).toEqual({

@@ -16,8 +16,7 @@ export async function deleteBuiltinToolCredential(
       response,
       `Delete built-in tool credential ${credentialId} for ${provider}`,
     )
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }

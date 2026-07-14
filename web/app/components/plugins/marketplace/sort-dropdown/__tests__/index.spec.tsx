@@ -1,30 +1,32 @@
-import type {
-  MouseEventHandler,
-  ReactNode,
-} from 'react'
+import type { MouseEventHandler, ReactNode } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SortDropdown from '../index'
 
-const mockTranslation = vi.fn((key: string, options?: { ns?: string }) => {
-  const fullKey = options?.ns ? `${options.ns}.${key}` : key
-  const translations: Record<string, string> = {
-    'plugin.marketplace.sortBy': 'Sort by',
-    'plugin.marketplace.sortOption.mostPopular': 'Most Popular',
-    'plugin.marketplace.sortOption.recentlyUpdated': 'Recently Updated',
-    'plugin.marketplace.sortOption.newlyReleased': 'Newly Released',
-    'plugin.marketplace.sortOption.firstReleased': 'First Released',
+const mockTranslation = vi.hoisted(() =>
+  vi.fn((key: string, options?: { ns?: string }) => {
+    const fullKey = options?.ns ? `${options.ns}.${key}` : key
+    const translations: Record<string, string> = {
+      'plugin.marketplace.sortBy': 'Sort by',
+      'plugin.marketplace.sortOption.mostPopular': 'Most Popular',
+      'plugin.marketplace.sortOption.recentlyUpdated': 'Recently Updated',
+      'plugin.marketplace.sortOption.newlyReleased': 'Newly Released',
+      'plugin.marketplace.sortOption.firstReleased': 'First Released',
+    }
+    return translations[fullKey] || key
+  }),
+)
+
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return {
+    useTranslation: () => ({
+      t: withSelectorKey(mockTranslation),
+    }),
   }
-  return translations[fullKey] || key
 })
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: mockTranslation,
-  }),
-}))
-
-let mockSort: { sortBy: string, sortOrder: string } = { sortBy: 'install_count', sortOrder: 'DESC' }
+let mockSort: { sortBy: string; sortOrder: string } = { sortBy: 'install_count', sortOrder: 'DESC' }
 const mockHandleSortChange = vi.fn()
 
 vi.mock('../../atoms', () => ({
@@ -33,24 +35,34 @@ vi.mock('../../atoms', () => ({
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const React = await import('react')
-  const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)
+  const DropdownMenuContext = React.createContext<{
+    open: boolean
+    setOpen: (open: boolean) => void
+  } | null>(null)
 
   const useDropdownMenuContext = () => {
     const context = React.use(DropdownMenuContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
     return context
   }
 
   return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+    DropdownMenu: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children: ReactNode
+      open: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => (
       <DropdownMenuContext value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
         <div data-testid="dropdown-wrapper" data-open={open}>
           {children}
         </div>
       </DropdownMenuContext>
     ),
-    DropdownMenuTrigger: ({ children, className }: { children: ReactNode, className?: string }) => {
+    DropdownMenuTrigger: ({ children, className }: { children: ReactNode; className?: string }) => {
       const { open, setOpen } = useDropdownMenuContext()
       return (
         <button

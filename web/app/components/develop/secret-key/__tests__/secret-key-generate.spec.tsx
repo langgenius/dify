@@ -56,7 +56,9 @@ describe('SecretKeyGenerateModal', () => {
     })
 
     it('should render InputCopy component', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('test-token-123')} />)
+      await renderModal(
+        <SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('test-token-123')} />,
+      )
       expect(screen.getByText('test-token-123')).toBeInTheDocument()
     })
   })
@@ -70,7 +72,9 @@ describe('SecretKeyGenerateModal', () => {
 
   describe('newKey prop', () => {
     it('should display the token when newKey is provided', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('sk-abc123xyz')} />)
+      await renderModal(
+        <SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('sk-abc123xyz')} />,
+      )
       expect(screen.getByText('sk-abc123xyz')).toBeInTheDocument()
     })
 
@@ -86,7 +90,9 @@ describe('SecretKeyGenerateModal', () => {
 
     it('should display long tokens correctly', async () => {
       const longToken = `sk-${'a'.repeat(100)}`
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey(longToken)} />)
+      await renderModal(
+        <SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey(longToken)} />,
+      )
       expect(screen.getByText(longToken)).toBeInTheDocument()
     })
   })
@@ -123,17 +129,13 @@ describe('SecretKeyGenerateModal', () => {
 
   describe('className prop', () => {
     it('should apply custom className', async () => {
-      await renderModal(
-        <SecretKeyGenerateModal {...defaultProps} className="custom-modal-class" />,
-      )
+      await renderModal(<SecretKeyGenerateModal {...defaultProps} className="custom-modal-class" />)
       const modal = document.body.querySelector('.custom-modal-class')
       expect(modal).toBeInTheDocument()
     })
 
     it('should apply shrink-0 class', async () => {
-      await renderModal(
-        <SecretKeyGenerateModal {...defaultProps} className="shrink-0" />,
-      )
+      await renderModal(<SecretKeyGenerateModal {...defaultProps} className="shrink-0" />)
       const modal = document.body.querySelector('.shrink-0')
       expect(modal).toBeInTheDocument()
     })
@@ -217,12 +219,16 @@ describe('SecretKeyGenerateModal', () => {
 
   describe('InputCopy section', () => {
     it('should render InputCopy with token value', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('test-token')} />)
+      await renderModal(
+        <SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('test-token')} />,
+      )
       expect(screen.getByText('test-token')).toBeInTheDocument()
     })
 
     it('should have w-full class on InputCopy', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('test')} />)
+      await renderModal(
+        <SecretKeyGenerateModal {...defaultProps} newKey={createMockApiKey('test')} />,
+      )
       const inputText = screen.getByText('test')
       const inputContainer = inputText.closest('.w-full')
       expect(inputContainer).toBeInTheDocument()

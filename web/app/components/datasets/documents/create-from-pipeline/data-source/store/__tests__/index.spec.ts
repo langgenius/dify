@@ -53,7 +53,7 @@ describe('createDataSourceStore', () => {
 describe('useDataSourceStoreWithSelector', () => {
   it('should throw when used outside provider', () => {
     expect(() => {
-      renderHook(() => useDataSourceStoreWithSelector(s => s.currentCredentialId))
+      renderHook(() => useDataSourceStoreWithSelector((s) => s.currentCredentialId))
     }).toThrow('Missing DataSourceContext.Provider in the tree')
   })
 
@@ -61,7 +61,7 @@ describe('useDataSourceStoreWithSelector', () => {
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(DataSourceProvider, null, children)
     const { result } = renderHook(
-      () => useDataSourceStoreWithSelector(s => s.currentCredentialId),
+      () => useDataSourceStoreWithSelector((s) => s.currentCredentialId),
       { wrapper },
     )
     expect(result.current).toBe('')
@@ -78,10 +78,7 @@ describe('useDataSourceStore', () => {
   it('should return store when used inside provider', () => {
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(DataSourceProvider, null, children)
-    const { result } = renderHook(
-      () => useDataSourceStore(),
-      { wrapper },
-    )
+    const { result } = renderHook(() => useDataSourceStore(), { wrapper })
     expect(result.current).toBeDefined()
     expect(typeof result.current.getState).toBe('function')
   })

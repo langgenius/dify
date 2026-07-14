@@ -28,6 +28,15 @@ describe('md.tsx components', () => {
         expect(link).toHaveAttribute('href', '#get-messages')
       })
 
+      it('should render a title action immediately after the title', () => {
+        render(<Heading {...defaultProps} titleAction={<button type="button">Upgrade</button>} />)
+
+        const heading = screen.getByRole('heading', { level: 2 })
+        expect(heading).toHaveClass('flex', 'items-center', 'gap-x-2')
+        expect(heading.children[0]).toBe(screen.getByRole('link', { name: 'Get Messages' }))
+        expect(heading.children[1]).toBe(screen.getByRole('button', { name: 'Upgrade' }))
+      })
+
       it('should render an anchor span with correct id', () => {
         const { container } = render(<Heading {...defaultProps} />)
         const anchor = container.querySelector('#get-messages')
@@ -322,89 +331,53 @@ describe('md.tsx components', () => {
     }
 
     it('should render name in code element', () => {
-      render(
-        <Property {...defaultProps}>
-          User identifier
-        </Property>,
-      )
+      render(<Property {...defaultProps}>User identifier</Property>)
       const code = screen.getByText('user_id')
       expect(code.tagName).toBe('CODE')
     })
 
     it('should render type', () => {
-      render(
-        <Property {...defaultProps}>
-          User identifier
-        </Property>,
-      )
+      render(<Property {...defaultProps}>User identifier</Property>)
       expect(screen.getByText('string')).toBeInTheDocument()
     })
 
     it('should render children as description', () => {
-      render(
-        <Property {...defaultProps}>
-          User identifier
-        </Property>,
-      )
+      render(<Property {...defaultProps}>User identifier</Property>)
       expect(screen.getByText('User identifier')).toBeInTheDocument()
     })
 
     it('should render as li element', () => {
-      const { container } = render(
-        <Property {...defaultProps}>
-          Description
-        </Property>,
-      )
+      const { container } = render(<Property {...defaultProps}>Description</Property>)
       expect(container.querySelector('li')).toBeInTheDocument()
     })
 
     it('should have m-0 class on li', () => {
-      const { container } = render(
-        <Property {...defaultProps}>
-          Description
-        </Property>,
-      )
+      const { container } = render(<Property {...defaultProps}>Description</Property>)
       const li = container.querySelector('li')!
       expect(li.className).toContain('m-0')
     })
 
     it('should have padding classes on li', () => {
-      const { container } = render(
-        <Property {...defaultProps}>
-          Description
-        </Property>,
-      )
+      const { container } = render(<Property {...defaultProps}>Description</Property>)
       const li = container.querySelector('li')!
       expect(li.className).toContain('px-0')
       expect(li.className).toContain('py-4')
     })
 
     it('should have first:pt-0 and last:pb-0 classes', () => {
-      const { container } = render(
-        <Property {...defaultProps}>
-          Description
-        </Property>,
-      )
+      const { container } = render(<Property {...defaultProps}>Description</Property>)
       const li = container.querySelector('li')!
       expect(li.className).toContain('first:pt-0')
       expect(li.className).toContain('last:pb-0')
     })
 
     it('should render dl element with proper structure', () => {
-      const { container } = render(
-        <Property {...defaultProps}>
-          Description
-        </Property>,
-      )
+      const { container } = render(<Property {...defaultProps}>Description</Property>)
       expect(container.querySelector('dl')).toBeInTheDocument()
     })
 
     it('should have sr-only dt elements for accessibility', () => {
-      const { container } = render(
-        <Property {...defaultProps}>
-          User identifier
-        </Property>,
-      )
+      const { container } = render(<Property {...defaultProps}>User identifier</Property>)
       const dtElements = container.querySelectorAll('dt')
       expect(dtElements.length).toBe(3)
       dtElements.forEach((dt) => {
@@ -413,11 +386,7 @@ describe('md.tsx components', () => {
     })
 
     it('should have font-mono class on type', () => {
-      render(
-        <Property {...defaultProps}>
-          Description
-        </Property>,
-      )
+      render(<Property {...defaultProps}>Description</Property>)
       const typeElement = screen.getByText('string')
       expect(typeElement.className).toContain('font-mono')
       expect(typeElement.className).toContain('text-xs')
@@ -432,87 +401,53 @@ describe('md.tsx components', () => {
     }
 
     it('should render name in code element', () => {
-      render(
-        <SubProperty {...defaultProps}>
-          Sub field description
-        </SubProperty>,
-      )
+      render(<SubProperty {...defaultProps}>Sub field description</SubProperty>)
       const code = screen.getByText('sub_field')
       expect(code.tagName).toBe('CODE')
     })
 
     it('should render type', () => {
-      render(
-        <SubProperty {...defaultProps}>
-          Sub field description
-        </SubProperty>,
-      )
+      render(<SubProperty {...defaultProps}>Sub field description</SubProperty>)
       expect(screen.getByText('number')).toBeInTheDocument()
     })
 
     it('should render children as description', () => {
-      render(
-        <SubProperty {...defaultProps}>
-          Sub field description
-        </SubProperty>,
-      )
+      render(<SubProperty {...defaultProps}>Sub field description</SubProperty>)
       expect(screen.getByText('Sub field description')).toBeInTheDocument()
     })
 
     it('should render as li element', () => {
-      const { container } = render(
-        <SubProperty {...defaultProps}>
-          Description
-        </SubProperty>,
-      )
+      const { container } = render(<SubProperty {...defaultProps}>Description</SubProperty>)
       expect(container.querySelector('li')).toBeInTheDocument()
     })
 
     it('should have m-0 class on li', () => {
-      const { container } = render(
-        <SubProperty {...defaultProps}>
-          Description
-        </SubProperty>,
-      )
+      const { container } = render(<SubProperty {...defaultProps}>Description</SubProperty>)
       const li = container.querySelector('li')!
       expect(li.className).toContain('m-0')
     })
 
     it('should have different padding than Property (py-1 vs py-4)', () => {
-      const { container } = render(
-        <SubProperty {...defaultProps}>
-          Description
-        </SubProperty>,
-      )
+      const { container } = render(<SubProperty {...defaultProps}>Description</SubProperty>)
       const li = container.querySelector('li')!
       expect(li.className).toContain('px-0')
       expect(li.className).toContain('py-1')
     })
 
     it('should have last:pb-0 class', () => {
-      const { container } = render(
-        <SubProperty {...defaultProps}>
-          Description
-        </SubProperty>,
-      )
+      const { container } = render(<SubProperty {...defaultProps}>Description</SubProperty>)
       const li = container.querySelector('li')!
       expect(li.className).toContain('last:pb-0')
     })
 
     it('should render dl element with proper structure', () => {
-      const { container } = render(
-        <SubProperty {...defaultProps}>
-          Description
-        </SubProperty>,
-      )
+      const { container } = render(<SubProperty {...defaultProps}>Description</SubProperty>)
       expect(container.querySelector('dl')).toBeInTheDocument()
     })
 
     it('should have sr-only dt elements for accessibility', () => {
       const { container } = render(
-        <SubProperty {...defaultProps}>
-          Sub field description
-        </SubProperty>,
+        <SubProperty {...defaultProps}>Sub field description</SubProperty>,
       )
       const dtElements = container.querySelectorAll('dt')
       expect(dtElements.length).toBe(3)
@@ -522,11 +457,7 @@ describe('md.tsx components', () => {
     })
 
     it('should have font-mono and text-xs on type', () => {
-      render(
-        <SubProperty {...defaultProps}>
-          Description
-        </SubProperty>,
-      )
+      render(<SubProperty {...defaultProps}>Description</SubProperty>)
       const typeElement = screen.getByText('number')
       expect(typeElement.className).toContain('font-mono')
       expect(typeElement.className).toContain('text-xs')

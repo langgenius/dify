@@ -26,16 +26,14 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
   const hasError = normalizedName.length === 0
   const isSaveDisabled = !isCurrentWorkspaceOwner || !hasChanges || hasError || isSubmitting
   const nameErrorMessage = useMemo(() => {
-    if (!hasError)
-      return ''
-    return t('errorMsg.fieldRequired', {
+    if (!hasError) return ''
+    return t(($) => $['errorMsg.fieldRequired'], {
       ns: 'common',
-      field: t('account.workspaceName', { ns: 'common' }),
+      field: t(($) => $['account.workspaceName'], { ns: 'common' }),
     })
   }, [hasError, t])
   const changeWorkspaceInfo = async () => {
-    if (isSaveDisabled)
-      return
+    if (isSaveDisabled) return
     setIsSubmitting(true)
     try {
       await updateWorkspaceInfo({
@@ -44,13 +42,11 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           name: normalizedName,
         },
       })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       location.assign(`${location.origin}`)
-    }
-    catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
-    }
-    finally {
+    } catch {
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    } finally {
       setIsSubmitting(false)
     }
   }
@@ -58,8 +54,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onCancel()
+        if (!open) onCancel()
       }}
     >
       <DialogContent backdropProps={{ forceRender: true }}>
@@ -73,29 +68,40 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           }}
         >
           <div className="mb-4 pr-8">
-            <DialogTitle className="text-xl font-semibold text-text-primary" data-testid="edit-workspace-title">
-              {t('account.editWorkspaceInfo', { ns: 'common' })}
+            <DialogTitle
+              className="text-xl font-semibold text-text-primary"
+              data-testid="edit-workspace-title"
+            >
+              {t(($) => $['account.editWorkspaceInfo'], { ns: 'common' })}
             </DialogTitle>
           </div>
 
           <div className="space-y-2">
             <label htmlFor={inputId} className="block text-sm font-medium text-text-primary">
-              {t('account.workspaceName', { ns: 'common' })}
+              {t(($) => $['account.workspaceName'], { ns: 'common' })}
             </label>
             <Input
               id={inputId}
               value={name}
-              placeholder={t('account.workspaceNamePlaceholder', { ns: 'common' })}
+              placeholder={t(($) => $['account.workspaceNamePlaceholder'], { ns: 'common' })}
               onChange={(e) => {
                 setName(e.target.value)
               }}
               aria-invalid={hasError}
               aria-describedby={hasError ? errorId : undefined}
-              className={cn(hasError && 'border-components-input-border-destructive bg-components-input-bg-destructive hover:border-components-input-border-destructive hover:bg-components-input-bg-destructive focus:border-components-input-border-destructive focus:bg-components-input-bg-destructive')}
+              className={cn(
+                hasError &&
+                  'border-components-input-border-destructive bg-components-input-bg-destructive hover:border-components-input-border-destructive hover:bg-components-input-bg-destructive focus:border-components-input-border-destructive focus:bg-components-input-bg-destructive',
+              )}
             />
             <div className="min-h-6">
               {hasError && (
-                <p id={errorId} data-testid="edit-workspace-error" className="system-xs-regular text-text-destructive" role="alert">
+                <p
+                  id={errorId}
+                  data-testid="edit-workspace-error"
+                  className="system-xs-regular text-text-destructive"
+                  role="alert"
+                >
                   {nameErrorMessage}
                 </p>
               )}
@@ -104,10 +110,16 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
 
           <div className="sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-end gap-x-2 bg-components-panel-bg px-2 pt-4">
             <Button size="large" type="button" onClick={onCancel}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
-            <Button size="large" type="submit" variant="primary" disabled={isSaveDisabled} loading={isSubmitting}>
-              {t(isSubmitting ? 'operation.saving' : 'operation.save', { ns: 'common' })}
+            <Button
+              size="large"
+              type="submit"
+              variant="primary"
+              disabled={isSaveDisabled}
+              loading={isSubmitting}
+            >
+              {t(($) => $[isSubmitting ? 'operation.saving' : 'operation.save'], { ns: 'common' })}
             </Button>
           </div>
         </form>

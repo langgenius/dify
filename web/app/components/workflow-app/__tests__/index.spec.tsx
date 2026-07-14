@@ -28,7 +28,7 @@ let workflowInitState: {
     graph: {
       nodes: Array<Record<string, unknown>>
       edges: Array<Record<string, unknown>>
-      viewport: { x: number, y: number, zoom: number }
+      viewport: { x: number; y: number; zoom: number }
     }
     features: Record<string, unknown>
   } | null
@@ -136,7 +136,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateJotaiMock(importOriginal)
 })
@@ -202,7 +203,11 @@ vi.mock('@/app/components/workflow', () => ({
     edges: Array<Record<string, unknown>>
     children: ReactNode
   }) => (
-    <div data-testid="workflow-default-context" data-nodes={JSON.stringify(nodes)} data-edges={JSON.stringify(edges)}>
+    <div
+      data-testid="workflow-default-context"
+      data-nodes={JSON.stringify(nodes)}
+      data-edges={JSON.stringify(edges)}
+    >
       {children}
     </div>
   ),
@@ -214,9 +219,7 @@ vi.mock('@/app/components/workflow/context', () => ({
   }: {
     injectWorkflowStoreSliceFn: unknown
     children: ReactNode
-  }) => (
-    <div data-testid="workflow-context-provider">{children}</div>
-  ),
+  }) => <div data-testid="workflow-context-provider">{children}</div>,
 }))
 
 vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
@@ -304,9 +307,18 @@ describe('WorkflowApp', () => {
     render(<WorkflowApp />)
 
     expect(screen.getByTestId('workflow-context-provider')).toBeInTheDocument()
-    expect(screen.getByTestId('workflow-default-context')).toHaveAttribute('data-nodes', JSON.stringify([{ id: 'node-1' }]))
-    expect(screen.getByTestId('workflow-default-context')).toHaveAttribute('data-edges', JSON.stringify([{ id: 'edge-1' }]))
-    expect(screen.getByTestId('workflow-app-main')).toHaveAttribute('data-viewport', JSON.stringify({ x: 1, y: 2, zoom: 3 }))
+    expect(screen.getByTestId('workflow-default-context')).toHaveAttribute(
+      'data-nodes',
+      JSON.stringify([{ id: 'node-1' }]),
+    )
+    expect(screen.getByTestId('workflow-default-context')).toHaveAttribute(
+      'data-edges',
+      JSON.stringify([{ id: 'edge-1' }]),
+    )
+    expect(screen.getByTestId('workflow-app-main')).toHaveAttribute(
+      'data-viewport',
+      JSON.stringify({ x: 1, y: 2, zoom: 3 }),
+    )
     expect(screen.getByTestId('features-provider')).toBeInTheDocument()
     expect(mockSetTriggerStatuses).toHaveBeenCalledWith({
       'trigger-enabled': 'enabled',
@@ -324,7 +336,8 @@ describe('WorkflowApp', () => {
   it('should replay workflow inputs from replayRunId and clean up workflow state on unmount', async () => {
     searchParamsValue = 'run-1'
     mockFetchRunDetail.mockResolvedValue({
-      inputs: '{"sys.query":"hidden","foo":"bar","count":2,"flag":true,"obj":{"nested":true},"nil":null}',
+      inputs:
+        '{"sys.query":"hidden","foo":"bar","count":2,"flag":true,"obj":{"nested":true},"nil":null}',
     })
 
     const { unmount } = render(<WorkflowApp />)

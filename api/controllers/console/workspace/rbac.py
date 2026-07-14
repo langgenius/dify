@@ -18,6 +18,7 @@ from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from services.enterprise import rbac_service as svc
+from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 
 class _RBACRoleList(svc.Paginated[svc.RBACRole]):
@@ -596,14 +597,15 @@ class RBACAppWhitelistApi(Resource):
     def put(self, app_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_ResourceAccessScopeRequest)
-        return _dump(
-            svc.RBACService.AppAccess.replace_whitelist(
-                tenant_id,
-                account_id,
-                str(app_id),
-                svc.ReplaceMemberBindings(scope=request.scope.value),
-            )
+        result = svc.RBACService.AppAccess.replace_whitelist(
+            tenant_id,
+            account_id,
+            str(app_id),
+            svc.ReplaceMemberBindings(scope=request.scope.value),
         )
+        if dify_config.RBAC_ENABLED and request.scope is RBACResourceWhitelistScope.ALL:
+            initialize_created_app_rbac_access_task.delay(tenant_id, account_id, str(app_id))
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/user-access-policies")
@@ -630,8 +632,8 @@ class RBACAppUserAccessPolicyAssignmentApi(Resource):
             svc.RBACService.AppAccess.replace_user_access_policies(
                 tenant_id,
                 account_id,
-                str(app_id),
-                str(target_account_id),
+                app_id,
+                target_account_id,
                 payload,
             )
         )

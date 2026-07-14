@@ -46,7 +46,9 @@ describe('permission', () => {
     it('keeps monitor, tracing config, and log/annotation permissions independent', () => {
       const monitorCapabilities = getAppACLCapabilities([AppACLPermission.Monitor])
       const tracingCapabilities = getAppACLCapabilities([AppACLPermission.TracingConfig])
-      const logAndAnnotationCapabilities = getAppACLCapabilities([AppACLPermission.LogAndAnnotation])
+      const logAndAnnotationCapabilities = getAppACLCapabilities([
+        AppACLPermission.LogAndAnnotation,
+      ])
 
       expect(monitorCapabilities.canMonitor).toBe(true)
       expect(monitorCapabilities.canConfigureTracing).toBe(false)
@@ -68,10 +70,9 @@ describe('permission', () => {
     })
 
     it('should return false when app ACL contains preview permission and another permission', () => {
-      expect(hasOnlyAppPreviewPermission([
-        AppACLPermission.Preview,
-        AppACLPermission.ViewLayout,
-      ])).toBe(false)
+      expect(
+        hasOnlyAppPreviewPermission([AppACLPermission.Preview, AppACLPermission.ViewLayout]),
+      ).toBe(false)
     })
   })
 
@@ -81,10 +82,12 @@ describe('permission', () => {
     })
 
     it('should return false when dataset ACL contains preview permission and another permission', () => {
-      expect(hasOnlyDatasetPreviewPermission([
-        DatasetACLPermission.Preview,
-        DatasetACLPermission.Readonly,
-      ])).toBe(false)
+      expect(
+        hasOnlyDatasetPreviewPermission([
+          DatasetACLPermission.Preview,
+          DatasetACLPermission.Readonly,
+        ]),
+      ).toBe(false)
     })
   })
 

@@ -28,15 +28,10 @@ import {
 const ROSTER_PAGE_SIZE = 30
 const isAgentPublished = (agent: AgentAppPartial) => agent.active_config_is_published === true
 
-const getFilteredRosterItems = (
-  agents: AgentAppPartial[],
-  filter: RosterFilterValue,
-) => {
-  if (filter === 'published')
-    return agents.filter(isAgentPublished)
+const getFilteredRosterItems = (agents: AgentAppPartial[], filter: RosterFilterValue) => {
+  if (filter === 'published') return agents.filter(isAgentPublished)
 
-  if (filter === 'drafts')
-    return agents.filter(agent => !isAgentPublished(agent))
+  if (filter === 'drafts') return agents.filter((agent) => !isAgentPublished(agent))
 
   return agents
 }
@@ -45,7 +40,10 @@ export default function RosterPage() {
   const { t } = useTranslation('agentV2')
   const [keyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
   const [rosterFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
-  const [createdByMe] = useQueryState(rosterQueryParamNames.createdByMe, rosterCreatedByMeQueryParser)
+  const [createdByMe] = useQueryState(
+    rosterQueryParamNames.createdByMe,
+    rosterCreatedByMeQueryParser,
+  )
   const [sortBy] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
 
@@ -66,19 +64,19 @@ export default function RosterPage() {
     error,
   } = useInfiniteQuery({
     ...consoleQuery.agent.get.infiniteOptions({
-      input: pageParam => ({
+      input: (pageParam) => ({
         query: {
           ...rosterQueryInput,
           page: Number(pageParam),
         },
       }),
-      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
   })
 
-  const rosterItems: AgentAppPartial[] = rosterPages?.pages.flatMap(page => page.data) ?? []
+  const rosterItems: AgentAppPartial[] = rosterPages?.pages.flatMap((page) => page.data) ?? []
   const publishedAgents = rosterItems.filter(isAgentPublished).length
   const draftAgents = Math.max(rosterItems.length - publishedAgents, 0)
   const filteredRosterItems = getFilteredRosterItems(rosterItems, rosterFilter)
@@ -98,15 +96,12 @@ export default function RosterPage() {
             rel="noreferrer"
             className="hidden shrink-0 items-center gap-0.5 rounded-md system-xs-regular text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:inline-flex"
           >
-            {t('roster.learnMore')}
+            {t(($) => $['roster.learnMore'])}
             <span aria-hidden className="i-ri-external-link-line size-3" />
           </a>
         </div>
         <div className="mt-3.5">
-          <RosterToolbar
-            draftAgents={draftAgents}
-            publishedAgents={publishedAgents}
-          />
+          <RosterToolbar draftAgents={draftAgents} publishedAgents={publishedAgents} />
         </div>
       </div>
 
@@ -122,7 +117,7 @@ export default function RosterPage() {
                 isFetching={isFetching}
                 isFetchingNextPage={isFetchingNextPage}
                 isPending={isPending}
-                label={t('roster.listLabel')}
+                label={t(($) => $['roster.listLabel'])}
                 onLoadMore={() => fetchNextPage()}
               />
             </ScrollAreaContent>

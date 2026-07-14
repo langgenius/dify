@@ -1,7 +1,6 @@
 import type { Credential } from '../../types'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { CredentialTypeEnum } from '../../types'
 import Item from '../item'
 
@@ -42,7 +41,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -112,11 +112,7 @@ describe('Item Component', () => {
       const credential = createCredential({ id: 'selected-id' })
 
       const { container } = render(
-        <Item
-          credential={credential}
-          showSelectedIcon={true}
-          selectedCredentialId="selected-id"
-        />,
+        <Item credential={credential} showSelectedIcon={true} selectedCredentialId="selected-id" />,
       )
 
       expect(container.querySelector('.i-ri-check-line')).toBeInTheDocument()
@@ -138,11 +134,7 @@ describe('Item Component', () => {
       cleanup()
 
       const { container: unselectedContainer } = render(
-        <Item
-          credential={credential}
-          showSelectedIcon={true}
-          selectedCredentialId="other-id"
-        />,
+        <Item credential={credential} showSelectedIcon={true} selectedCredentialId="other-id" />,
       )
       const unselectedIcon = unselectedContainer.querySelector('.i-ri-check-line')
 
@@ -161,7 +153,9 @@ describe('Item Component', () => {
       const onItemClick = vi.fn()
       const credential = createCredential()
 
-      const { container } = render(<Item credential={credential} onItemClick={onItemClick} disabled={true} />)
+      const { container } = render(
+        <Item credential={credential} onItemClick={onItemClick} disabled={true} />,
+      )
 
       fireEvent.click(container.firstElementChild!)
 
@@ -186,9 +180,7 @@ describe('Item Component', () => {
       const onItemClick = vi.fn()
       const credential = createCredential({ id: 'click-test-id' })
 
-      const { container } = render(
-        <Item credential={credential} onItemClick={onItemClick} />,
-      )
+      const { container } = render(<Item credential={credential} onItemClick={onItemClick} />)
 
       fireEvent.click(container.firstElementChild!)
 
@@ -199,9 +191,7 @@ describe('Item Component', () => {
       const onItemClick = vi.fn()
       const credential = createCredential({ id: '__workspace_default__' })
 
-      const { container } = render(
-        <Item credential={credential} onItemClick={onItemClick} />,
-      )
+      const { container } = render(<Item credential={credential} onItemClick={onItemClick} />)
 
       fireEvent.click(container.firstElementChild!)
 
@@ -384,7 +374,9 @@ describe('Item Component', () => {
         />,
       )
 
-      const editButton = container.querySelector('.i-ri-equalizer-2-line')?.closest('button') as HTMLElement
+      const editButton = container
+        .querySelector('.i-ri-equalizer-2-line')
+        ?.closest('button') as HTMLElement
       fireEvent.click(editButton)
       expect(onEdit).toHaveBeenCalledWith('edit-test-id', {
         api_key: 'secret',
@@ -448,7 +440,9 @@ describe('Item Component', () => {
         />,
       )
 
-      const deleteButton = container.querySelector('.i-ri-delete-bin-line')?.closest('button') as HTMLElement
+      const deleteButton = container
+        .querySelector('.i-ri-delete-bin-line')
+        ?.closest('button') as HTMLElement
       fireEvent.click(deleteButton)
       expect(onDelete).toHaveBeenCalledWith('delete-test-id')
     })
@@ -565,7 +559,9 @@ describe('Item Component', () => {
         />,
       )
 
-      const deleteButton = container.querySelector('.i-ri-delete-bin-line')?.closest('button') as HTMLElement
+      const deleteButton = container
+        .querySelector('.i-ri-delete-bin-line')
+        ?.closest('button') as HTMLElement
       fireEvent.click(deleteButton)
       expect(onDelete).toHaveBeenCalled()
     })

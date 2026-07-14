@@ -22,13 +22,13 @@ vi.mock('@/i18n-config/language', () => ({
 }))
 
 const mockCategoriesMap: Record<string, { label: string }> = {
-  'tool': { label: 'Tool' },
-  'model': { label: 'Model' },
-  'extension': { label: 'Extension' },
+  tool: { label: 'Tool' },
+  model: { label: 'Model' },
+  extension: { label: 'Extension' },
   'agent-strategy': { label: 'Agent' },
-  'datasource': { label: 'Datasource' },
-  'trigger': { label: 'Trigger' },
-  'bundle': { label: 'Bundle' },
+  datasource: { label: 'Datasource' },
+  trigger: { label: 'Trigger' },
+  bundle: { label: 'Bundle' },
 }
 
 vi.mock('../../hooks', () => ({
@@ -73,16 +73,24 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/utils/mcp', () => ({
-  shouldUseMcpIcon: (src: unknown) => typeof src === 'object' && src !== null && (src as { content?: string })?.content === '🔗',
+  shouldUseMcpIcon: (src: unknown) =>
+    typeof src === 'object' && src !== null && (src as { content?: string })?.content === '🔗',
 }))
 
 vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ icon, background, innerIcon, size, iconType }: {
+  default: ({
+    icon,
+    background,
+    innerIcon,
+    size,
+    iconType,
+  }: {
     icon?: string
     background?: string
     innerIcon?: React.ReactNode
@@ -103,28 +111,38 @@ vi.mock('@/app/components/base/app-icon', () => ({
 
 vi.mock('@/app/components/base/icons/src/vender/other', () => ({
   Mcp: ({ className }: { className?: string }) => (
-    <div data-testid="mcp-icon" className={className}>MCP</div>
+    <div data-testid="mcp-icon" className={className}>
+      MCP
+    </div>
   ),
   Group: ({ className }: { className?: string }) => (
-    <div data-testid="group-icon" className={className}>Group</div>
+    <div data-testid="group-icon" className={className}>
+      Group
+    </div>
   ),
 }))
 
 vi.mock('../../../base/icons/src/vender/plugin', () => ({
   LeftCorner: ({ className }: { className?: string }) => (
-    <div data-testid="left-corner" className={className}>LeftCorner</div>
+    <div data-testid="left-corner" className={className}>
+      LeftCorner
+    </div>
   ),
 }))
 
 vi.mock('../../base/badges/partner', () => ({
-  default: ({ className, text }: { className?: string, text?: string }) => (
-    <div data-testid="partner-badge" className={className} title={text}>Partner</div>
+  default: ({ className, text }: { className?: string; text?: string }) => (
+    <div data-testid="partner-badge" className={className} title={text}>
+      Partner
+    </div>
   ),
 }))
 
 vi.mock('../../base/badges/verified', () => ({
-  default: ({ className, text }: { className?: string, text?: string }) => (
-    <div data-testid="verified-badge" className={className} title={text}>Verified</div>
+  default: ({ className, text }: { className?: string; text?: string }) => (
+    <div data-testid="verified-badge" className={className} title={text}>
+      Verified
+    </div>
   ),
 }))
 
@@ -136,8 +154,10 @@ vi.mock('@/app/components/base/skeleton', () => ({
   SkeletonRectangle: ({ className }: { className?: string }) => (
     <div data-testid="skeleton-rectangle" className={className} />
   ),
-  SkeletonRow: ({ children, className }: { children: React.ReactNode, className?: string }) => (
-    <div data-testid="skeleton-row" className={className}>{children}</div>
+  SkeletonRow: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div data-testid="skeleton-row" className={className}>
+      {children}
+    </div>
   ),
 }))
 
@@ -310,9 +330,7 @@ describe('Card', () => {
   describe('Props', () => {
     it('should apply custom className', () => {
       const plugin = createMockPlugin()
-      const { container } = render(
-        <Card payload={plugin} className="custom-class" />,
-      )
+      const { container } = render(<Card payload={plugin} className="custom-class" />)
 
       expect(container.querySelector('.custom-class')).toBeInTheDocument()
     })
@@ -361,9 +379,7 @@ describe('Card', () => {
 
     it('should render titleLeft when provided', () => {
       const plugin = createMockPlugin()
-      render(
-        <Card payload={plugin} titleLeft={<span data-testid="title-left">v1.0</span>} />,
-      )
+      render(<Card payload={plugin} titleLeft={<span data-testid="title-left">v1.0</span>} />)
 
       expect(screen.getByTestId('title-left')).toBeInTheDocument()
     })
@@ -371,9 +387,7 @@ describe('Card', () => {
     it('should use custom descriptionLineRows', () => {
       const plugin = createMockPlugin()
 
-      const { container } = render(
-        <Card payload={plugin} descriptionLineRows={1} />,
-      )
+      const { container } = render(<Card payload={plugin} descriptionLineRows={1} />)
 
       // Check for h-4 truncate class when descriptionLineRows is 1
       expect(container.querySelector('.h-4.truncate')).toBeInTheDocument()

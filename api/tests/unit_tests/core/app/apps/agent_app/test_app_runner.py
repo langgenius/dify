@@ -37,6 +37,7 @@ from pydantic_ai.messages import (
 from clients.agent_backend import (
     AgentBackendError,
     AgentBackendRunEventAdapter,
+    AgentBackendRunFailedError,
     AgentBackendRunFailedInternalEvent,
     AgentBackendStreamInternalEvent,
     FakeAgentBackendRunClient,
@@ -1207,7 +1208,7 @@ def test_failed_run_raises_agent_backend_error():
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
-    with pytest.raises(AgentBackendError):
+    with pytest.raises(AgentBackendRunFailedError, match="fake failure .*agent_run_id=fake-run-1"):
         _run(_runner(client, store), qm)
     # No message-end on failure; no snapshot saved.
     assert not [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
@@ -1225,6 +1226,28 @@ def test_agent_backend_failure_to_exception_maps_rate_limit_reason():
 
     assert isinstance(err, InvokeRateLimitError)
     assert str(err) == "quota exceeded"
+
+
+def test_agent_backend_failure_to_exception_preserves_unknown_reason_context():
+    err = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            source_event_id="event-1",
+            error="Knowledge retrieval failed",
+            reason="knowledge_retrieve_failed",
+        )
+    )
+
+    assert isinstance(err, AgentBackendRunFailedError)
+    assert err.run_id == "run-1"
+    assert err.reason == "knowledge_retrieve_failed"
+    assert err.source_event_id == "event-1"
+    assert err.detail == {
+        "error": "Knowledge retrieval failed",
+        "reason": "knowledge_retrieve_failed",
+        "source_event_id": "event-1",
+    }
+    assert str(err) == "Knowledge retrieval failed (agent_run_id=run-1)"
 
 
 def test_stopped_task_cancels_agent_backend_run_and_skips_session_save():

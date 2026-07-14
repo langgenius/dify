@@ -3,7 +3,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import mocked service
 import { createExternalAPI } from '@/service/datasets'
-
 import AddExternalAPIModal from '../index'
 
 // Mock API service
@@ -101,7 +100,9 @@ describe('AddExternalAPIModal', () => {
       )
       expect(screen.getByText('dataset.editExternalAPIFormWarning.front'))!.toBeInTheDocument()
       // Verify the count is displayed in the warning section
-      const warningElement = screen.getByText('dataset.editExternalAPIFormWarning.front').parentElement
+      const warningElement = screen.getByText(
+        'dataset.editExternalAPIFormWarning.front',
+      ).parentElement
       expect(warningElement?.textContent).toContain('2')
     })
 
@@ -341,9 +342,7 @@ describe('AddExternalAPIModal', () => {
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'success' }),
-        )
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
       })
     })
 
@@ -422,7 +421,10 @@ describe('AddExternalAPIModal', () => {
     it('should render documentation link in encryption notice', () => {
       render(<AddExternalAPIModal {...defaultProps} />)
       const link = screen.getByRole('link', { name: 'PKCS1_OAEP' })
-      expect(link)!.toHaveAttribute('href', 'https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html')
+      expect(link)!.toHaveAttribute(
+        'href',
+        'https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html',
+      )
       expect(link)!.toHaveAttribute('target', '_blank')
     })
   })

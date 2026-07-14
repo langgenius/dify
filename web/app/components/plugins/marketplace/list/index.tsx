@@ -29,47 +29,32 @@ const List = ({
 }: ListProps) => {
   return (
     <PluginInstallPermissionProviderGuard canInstallPlugin={!!showInstallButton}>
-      {
-        !plugins && (
-          <ListWithCollection
-            marketplaceCollections={marketplaceCollections}
-            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
-            showInstallButton={showInstallButton}
-            cardContainerClassName={cardContainerClassName}
-            cardRender={cardRender}
-            onCollectionMoreClick={onCollectionMoreClick}
-          />
-        )
-      }
-      {
-        plugins && !!plugins.length && (
-          <div className={cn(
-            'grid grid-cols-4 gap-3',
-            cardContainerClassName,
-          )}
-          >
-            {
-              plugins.map((plugin) => {
-                if (cardRender)
-                  return cardRender(plugin)
+      {!plugins && (
+        <ListWithCollection
+          marketplaceCollections={marketplaceCollections}
+          marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+          showInstallButton={showInstallButton}
+          cardContainerClassName={cardContainerClassName}
+          cardRender={cardRender}
+          onCollectionMoreClick={onCollectionMoreClick}
+        />
+      )}
+      {plugins && !!plugins.length && (
+        <div className={cn('grid grid-cols-4 gap-3', cardContainerClassName)}>
+          {plugins.map((plugin) => {
+            if (cardRender) return cardRender(plugin)
 
-                return (
-                  <CardWrapper
-                    key={`${plugin.org}/${plugin.name}`}
-                    plugin={plugin}
-                    showInstallButton={showInstallButton}
-                  />
-                )
-              })
-            }
-          </div>
-        )
-      }
-      {
-        plugins && !plugins.length && (
-          <Empty className={emptyClassName} />
-        )
-      }
+            return (
+              <CardWrapper
+                key={`${plugin.org}/${plugin.name}`}
+                plugin={plugin}
+                showInstallButton={showInstallButton}
+              />
+            )
+          })}
+        </div>
+      )}
+      {plugins && !plugins.length && <Empty className={emptyClassName} />}
     </PluginInstallPermissionProviderGuard>
   )
 }

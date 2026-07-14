@@ -2,9 +2,7 @@ import type { Emitter, EventType, Handler, WildcardHandler } from 'mitt'
 import create from 'mitt'
 import { useEffect, useRef } from 'react'
 
-const merge = <T extends Record<string, any>>(
-  ...args: Array<T | undefined>
-): T => {
+const merge = <T extends Record<string, any>>(...args: Array<T | undefined>): T => {
   return Object.assign({}, ...args)
 }
 
@@ -24,11 +22,7 @@ type ExtendedOn<Events extends _Events> = {
     handler: Handler<Events[Key]>,
     options?: UseSubscribeOption,
   ): void
-  (
-    type: '*',
-    handler: WildcardHandler<Events>,
-    option?: UseSubscribeOption,
-  ): void
+  (type: '*', handler: WildcardHandler<Events>, option?: UseSubscribeOption): void
 }
 
 type UseMittReturn<Events extends _Events> = {
@@ -40,12 +34,9 @@ const defaultSubscribeOption: UseSubscribeOption = {
   enabled: true,
 }
 
-function useMitt<Events extends _Events>(
-  mitt?: Emitter<Events>,
-): UseMittReturn<Events> {
+function useMitt<Events extends _Events>(mitt?: Emitter<Events>): UseMittReturn<Events> {
   const emitterRef = useRef<Emitter<Events> | undefined>(undefined)
-  if (!emitterRef.current)
-    emitterRef.current = mitt ?? create<Events>()
+  if (!emitterRef.current) emitterRef.current = mitt ?? create<Events>()
 
   if (mitt && emitterRef.current !== mitt) {
     emitterRef.current.off('*')

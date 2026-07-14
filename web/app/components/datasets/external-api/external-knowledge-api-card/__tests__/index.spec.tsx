@@ -3,7 +3,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import mocked services
 import { checkUsageExternalAPI, deleteExternalAPI, fetchExternalAPI } from '@/service/datasets'
-
 import ExternalKnowledgeAPICard from '../index'
 
 // Mock API services
@@ -77,12 +76,9 @@ describe('ExternalKnowledgeAPICard', () => {
     })
 
     it('should hide edit and delete buttons when external knowledge API management is unavailable', () => {
-      const { container } = render((
-        <ExternalKnowledgeAPICard
-          {...defaultProps}
-          canManageExternalKnowledgeApi={false}
-        />
-      ))
+      const { container } = render(
+        <ExternalKnowledgeAPICard {...defaultProps} canManageExternalKnowledgeApi={false} />,
+      )
 
       expect(container.querySelectorAll('button').length).toBe(0)
     })
@@ -363,7 +359,12 @@ describe('ExternalKnowledgeAPICard', () => {
         ...mockApi,
         settings: { endpoint: '', api_key: 'key' },
       }
-      render(<ExternalKnowledgeAPICard api={apiWithEmptyEndpoint} canManageExternalKnowledgeApi={true} />)
+      render(
+        <ExternalKnowledgeAPICard
+          api={apiWithEmptyEndpoint}
+          canManageExternalKnowledgeApi={true}
+        />,
+      )
       expect(screen.getByText('Test External API'))!.toBeInTheDocument()
     })
 

@@ -1,18 +1,19 @@
 import type { DocLanguage } from '@/types/doc-paths'
 import data from './languages'
 
-export type I18nText = Record<typeof LanguagesSupported[number], string>
+export type I18nText = Record<(typeof LanguagesSupported)[number], string>
 
 export const languages = data.languages
 
 // for compatibility
-export type Locale = 'ja_JP' | 'zh_Hans' | 'en_US' | (typeof languages[number])['value']
+export type Locale = 'ja_JP' | 'zh_Hans' | 'en_US' | (typeof languages)[number]['value']
 
-export const LanguagesSupported: Locale[] = languages.filter(item => item.supported).map(item => item.value)
+export const LanguagesSupported: Locale[] = languages
+  .filter((item) => item.supported)
+  .map((item) => item.value)
 
 export const getLanguage = (locale: Locale): Locale => {
-  if (['zh-Hans', 'ja-JP'].includes(locale))
-    return locale.replace('-', '_') as Locale
+  if (['zh-Hans', 'ja-JP'].includes(locale)) return locale.replace('-', '_') as Locale
 
   return LanguagesSupported[0]!.replace('-', '_') as Locale
 }
@@ -33,16 +34,16 @@ const ACCESS_CONTROL_TEMPLATE_LANGUAGE: Record<string, AccessControlTemplateLang
 
 export const localeMap: Record<Locale, string> = {
   'en-US': 'en',
-  'en_US': 'en',
+  en_US: 'en',
   'zh-Hans': 'zh-cn',
-  'zh_Hans': 'zh-cn',
+  zh_Hans: 'zh-cn',
   'zh-Hant': 'zh-tw',
   'pt-BR': 'pt-br',
   'es-ES': 'es',
   'fr-FR': 'fr',
   'de-DE': 'de',
   'ja-JP': 'ja',
-  'ja_JP': 'ja',
+  ja_JP: 'ja',
   'ko-KR': 'ko',
   'ru-RU': 'ru',
   'it-IT': 'it',
@@ -129,7 +130,7 @@ export const NOTICE_I18N = {
     id_ID:
       'Sistem kami tidak akan tersedia dari 19:00 hingga 24:00 UTC pada 28 Agustus untuk pemutakhiran. Untuk pertanyaan, silakan hubungi tim dukungan kami (support@dify.ai). Kami menghargai kesabaran Anda.',
     tr_TR:
-      'Sistemimiz, 28 Ağustos\'ta 19:00 ile 24:00 UTC saatleri arasında güncelleme nedeniyle kullanılamayacaktır. Sorularınız için lütfen destek ekibimizle iletişime geçin (support@dify.ai). Sabrınız için teşekkür ederiz.',
+      "Sistemimiz, 28 Ağustos'ta 19:00 ile 24:00 UTC saatleri arasında güncelleme nedeniyle kullanılamayacaktır. Sorularınız için lütfen destek ekibimizle iletişime geçin (support@dify.ai). Sabrınız için teşekkür ederiz.",
     fa_IR:
       'سیستم ما از ساعت 19:00 تا 24:00 UTC در تاریخ 28 اوت برای ارتقاء در دسترس نخواهد بود. برای سؤالات، لطفاً با تیم پشتیبانی ما (support@dify.ai) تماس بگیرید. ما برای صبر شما ارزش قائلیم.',
     sl_SI:
