@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterator
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -60,10 +60,12 @@ from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
 from controllers.console.app.workflow_draft_variable import WorkflowDraftVariableUpdatePayload
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
-from models import Site
+from models import App, Site
 from models.account import Account, AccountStatus
+from models.engine import db
 from models.enums import CustomizeTokenStrategy
 from models.trigger import WorkflowWebhookTrigger
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -78,6 +80,31 @@ def _make_account() -> Account:
     )
     account.id = USER_ID
     return account
+
+
+def _make_app(
+    app_id: str = APP_ID,
+    *,
+    tenant_id: str = TENANT_ID,
+    icon_type: app_module.IconType | None = None,
+) -> App:
+    app = App()
+    app.id = app_id
+    app.tenant_id = tenant_id
+    app.icon_type = icon_type
+    return app
+
+
+@pytest.fixture
+def database_app() -> Iterator[Flask]:
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        Site.__table__.create(db.engine)
+        WorkflowWebhookTrigger.__table__.create(db.engine)
+        yield app
 
 
 class TestCompletionEndpoints:
@@ -189,7 +216,7 @@ class TestAppEndpoints:
             "icon_background": "#FFFFFF",
         }
         app_service = MagicMock()
-        app_service.update_app.return_value = SimpleNamespace()
+        app_service.update_app.return_value = _make_app()
         response_model = MagicMock()
         response_model.model_dump.return_value = {"id": "app-1"}
 
@@ -200,7 +227,7 @@ class TestAppEndpoints:
             app.test_request_context("/console/api/apps/app-1", method="PUT", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            response = method(api, app_model=SimpleNamespace(icon_type=app_module.IconType.EMOJI))
+            response = method(api, app_model=_make_app(icon_type=app_module.IconType.EMOJI))
 
         assert response == {"id": "app-1"}
         assert app_service.update_app.call_args.args[1]["icon_type"] is None
@@ -226,7 +253,7 @@ class TestAppEndpoints:
             "icon_background": "#FFFFFF",
         }
         app_service = MagicMock()
-        app_service.update_app_icon.return_value = SimpleNamespace()
+        app_service.update_app_icon.return_value = _make_app()
         response_model = MagicMock()
         response_model.model_dump.return_value = {"id": "app-1"}
 
@@ -237,7 +264,7 @@ class TestAppEndpoints:
             app.test_request_context("/console/api/apps/app-1/icon", method="POST", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            response = method(api, app_model=SimpleNamespace())
+            response = method(api, app_model=_make_app())
 
         assert response == {"id": "app-1"}
         assert app_service.update_app_icon.call_args.args[1:] == (
@@ -305,7 +332,7 @@ class TestOpsTraceEndpoints:
 
 class TestSiteEndpoints:
     @staticmethod
-    def _add_site(sqlite_session: Session) -> Site:
+    def _add_site(session: Session) -> Site:
         site = Site(
             app_id=APP_ID,
             title="My Site",
@@ -314,8 +341,8 @@ class TestSiteEndpoints:
             customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
             code="test-code",
         )
-        sqlite_session.add(site)
-        sqlite_session.commit()
+        session.add(site)
+        session.commit()
         return site
 
     def test_site_response_structure(self):
@@ -331,44 +358,37 @@ class TestSiteEndpoints:
         payload = AppSiteUpdatePayload(default_language="en-US")
         assert payload.default_language == "en-US"
 
-    @pytest.mark.parametrize("sqlite_session", [(Site,)], indirect=True)
     def test_app_site_update_post(
         self,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
+        database_app: Flask,
     ) -> None:
         api = site_module.AppSite()
         method = unwrap(api.post)
-        site = self._add_site(sqlite_session)
-        monkeypatch.setattr(site_module, "db", SimpleNamespace(session=sqlite_session))
+        site = self._add_site(db.session)
 
-        with app.test_request_context("/", json={"title": "My Site", "input_placeholder": "Ask me anything"}):
-            result = method(api, SimpleNamespace(id=USER_ID), app_model=SimpleNamespace(id=APP_ID))
+        with database_app.test_request_context("/", json={"title": "My Site", "input_placeholder": "Ask me anything"}):
+            result = method(api, _make_account(), app_model=_make_app())
 
-        sqlite_session.refresh(site)
+        db.session.refresh(site)
         assert isinstance(result, dict)
         assert result["title"] == "My Site"
         assert result["input_placeholder"] == "Ask me anything"
         assert site.input_placeholder == "Ask me anything"
 
-    @pytest.mark.parametrize("sqlite_session", [(Site,)], indirect=True)
     def test_app_site_access_token_reset(
         self,
-        app: Flask,
+        database_app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
     ) -> None:
         api = site_module.AppSiteAccessTokenReset()
         method = unwrap(api.post)
-        site = self._add_site(sqlite_session)
-        monkeypatch.setattr(site_module, "db", SimpleNamespace(session=sqlite_session))
+        site = self._add_site(db.session)
         monkeypatch.setattr(site_module.Site, "generate_code", lambda *_args, **_kwargs: "code")
 
-        with app.test_request_context("/"):
-            result = method(api, SimpleNamespace(id=USER_ID), app_model=SimpleNamespace(id=APP_ID))
+        with database_app.test_request_context("/"):
+            result = method(api, _make_account(), app_model=_make_app())
 
-        sqlite_session.refresh(site)
+        db.session.refresh(site)
         assert isinstance(result, dict)
         assert result["access_token"] == "code"
         assert site.code == "code"
@@ -393,13 +413,12 @@ class TestWorkflowAppLogEndpoints:
         query = WorkflowAppLogQuery(detail="true")
         assert query.detail is True
 
-    def test_workflow_app_log_api_get(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
+    def test_workflow_app_log_api_get(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = workflow_app_log_module.WorkflowAppLogApi()
         method = unwrap(api.get)
-        monkeypatch.setattr(workflow_app_log_module, "db", SimpleNamespace(engine=sqlite_engine))
 
         def fake_get_paginate(self, *, session: Session, **_kwargs):
-            assert session.get_bind() is sqlite_engine
+            assert session.get_bind() is db.engine
             return {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
         monkeypatch.setattr(
@@ -408,8 +427,8 @@ class TestWorkflowAppLogEndpoints:
             fake_get_paginate,
         )
 
-        with app.test_request_context("/?page=1&limit=20"):
-            result = method(api, app_model=SimpleNamespace(id="app-1"))
+        with database_app.test_request_context("/?page=1&limit=20"):
+            result = method(api, app_model=_make_app("app-1"))
 
         assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
@@ -419,24 +438,16 @@ class TestWorkflowDraftVariableEndpoints:
         payload = WorkflowDraftVariableUpdatePayload(name="var1", value="test")
         assert payload.name == "var1"
 
-    def test_workflow_variable_collection_get(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
-    ) -> None:
+    def test_workflow_variable_collection_get(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         api = workflow_draft_variable_module.WorkflowVariableCollectionApi()
         method = unwrap(api.get)
-        session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-        monkeypatch.setattr(
-            workflow_draft_variable_module,
-            "db",
-            SimpleNamespace(engine=sqlite_engine, session=session_factory),
-        )
 
         class DummyDraftService:
             def __init__(self, session: Session):
                 self.session = session
 
             def list_variables_without_values(self, **_kwargs):
-                assert self.session.get_bind() is sqlite_engine
+                assert self.session.get_bind() is db.engine
                 return {"items": [], "total": 0}
 
         class DummyWorkflowService:
@@ -446,8 +457,8 @@ class TestWorkflowDraftVariableEndpoints:
         monkeypatch.setattr(workflow_draft_variable_module, "WorkflowDraftVariableService", DummyDraftService)
         monkeypatch.setattr(workflow_draft_variable_module, "WorkflowService", DummyWorkflowService)
 
-        with app.test_request_context("/?page=1&limit=20"):
-            result = method(api, _make_account(), app_model=SimpleNamespace(id="app-1"))
+        with database_app.test_request_context("/?page=1&limit=20"):
+            result = method(api, _make_account(), app_model=_make_app("app-1"))
 
         assert result == {"items": [], "total": 0}
 
@@ -462,14 +473,19 @@ class TestWorkflowStatisticEndpoints:
         assert query.start is None
         assert query.end is None
 
-    def test_workflow_daily_runs_statistic(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
-    ) -> None:
-        monkeypatch.setattr(workflow_statistic_module, "db", SimpleNamespace(engine=sqlite_engine))
+    def test_workflow_daily_runs_statistic(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        repository = DifyAPISQLAlchemyWorkflowRunRepository(
+            session_maker=sessionmaker(bind=db.engine, expire_on_commit=False)
+        )
+        monkeypatch.setattr(
+            repository,
+            "get_daily_runs_statistics",
+            lambda **_kwargs: [{"date": "2024-01-01"}],
+        )
         monkeypatch.setattr(
             workflow_statistic_module.DifyAPIRepositoryFactory,
             "create_api_workflow_run_repository",
-            lambda *_args, **_kwargs: SimpleNamespace(get_daily_runs_statistics=lambda **_kw: [{"date": "2024-01-01"}]),
+            lambda *_args, **_kwargs: repository,
         )
         monkeypatch.setattr(
             workflow_statistic_module,
@@ -480,23 +496,26 @@ class TestWorkflowStatisticEndpoints:
         api = workflow_statistic_module.WorkflowDailyRunsStatistic()
         method = unwrap(api.get)
 
-        with app.test_request_context("/"):
-            response = method(
-                api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1")
-            )
+        with database_app.test_request_context("/"):
+            account = _make_account()
+            account.timezone = "UTC"
+            response = method(api, account, app_model=_make_app("app-1", tenant_id="t1"))
 
         assert response.get_json() == {"data": [{"date": "2024-01-01"}]}
 
-    def test_workflow_daily_terminals_statistic(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
-    ) -> None:
-        monkeypatch.setattr(workflow_statistic_module, "db", SimpleNamespace(engine=sqlite_engine))
+    def test_workflow_daily_terminals_statistic(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        repository = DifyAPISQLAlchemyWorkflowRunRepository(
+            session_maker=sessionmaker(bind=db.engine, expire_on_commit=False)
+        )
+        monkeypatch.setattr(
+            repository,
+            "get_daily_terminals_statistics",
+            lambda **_kwargs: [{"date": "2024-01-02"}],
+        )
         monkeypatch.setattr(
             workflow_statistic_module.DifyAPIRepositoryFactory,
             "create_api_workflow_run_repository",
-            lambda *_args, **_kwargs: SimpleNamespace(
-                get_daily_terminals_statistics=lambda **_kw: [{"date": "2024-01-02"}]
-            ),
+            lambda *_args, **_kwargs: repository,
         )
         monkeypatch.setattr(
             workflow_statistic_module,
@@ -507,10 +526,10 @@ class TestWorkflowStatisticEndpoints:
         api = workflow_statistic_module.WorkflowDailyTerminalsStatistic()
         method = unwrap(api.get)
 
-        with app.test_request_context("/"):
-            response = method(
-                api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(tenant_id="t1", id="app-1")
-            )
+        with database_app.test_request_context("/"):
+            account = _make_account()
+            account.timezone = "UTC"
+            response = method(api, account, app_model=_make_app("app-1", tenant_id="t1"))
 
         assert response.get_json() == {"data": [{"date": "2024-01-02"}]}
 
@@ -523,13 +542,9 @@ class TestWorkflowTriggerEndpoints:
         enable_payload = ParserEnable(trigger_id="trigger-1", enable_trigger=True)
         assert enable_payload.enable_trigger is True
 
-    @pytest.mark.parametrize("sqlite_session", [(WorkflowWebhookTrigger,)], indirect=True)
     def test_webhook_trigger_api_get(
         self,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
-        sqlite_session: Session,
+        database_app: Flask,
     ) -> None:
         api = workflow_trigger_module.WebhookTriggerApi()
         method = unwrap(api.get)
@@ -540,12 +555,11 @@ class TestWorkflowTriggerEndpoints:
             webhook_id="webhook-1",
             created_by=USER_ID,
         )
-        sqlite_session.add(trigger)
-        sqlite_session.commit()
-        monkeypatch.setattr(workflow_trigger_module, "db", SimpleNamespace(engine=sqlite_engine))
+        db.session.add(trigger)
+        db.session.commit()
 
-        with app.test_request_context("/?node_id=node-1"):
-            result = method(api, app_model=SimpleNamespace(id=APP_ID))
+        with database_app.test_request_context("/?node_id=node-1"):
+            result = method(api, app_model=_make_app())
 
         assert isinstance(result, dict)
         assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(result.keys())
