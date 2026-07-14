@@ -159,7 +159,7 @@ func (d *DB) ListJobs(statuses []JobStatusName) ([]*JobRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []*JobRow
 	for rows.Next() {

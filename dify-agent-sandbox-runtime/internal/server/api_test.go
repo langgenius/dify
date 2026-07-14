@@ -23,7 +23,9 @@ func TestWriteJSON(t *testing.T) {
 	}
 
 	var result HealthResponse
-	json.NewDecoder(w.Body).Decode(&result)
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
 	if result.Status != "ok" {
 		t.Errorf("expected status=ok, got %s", result.Status)
 	}
@@ -38,7 +40,9 @@ func TestWriteError(t *testing.T) {
 	}
 
 	var result ErrorResponse
-	json.NewDecoder(w.Body).Decode(&result)
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
 	if result.Error.Code != "bad_request" {
 		t.Errorf("expected code=bad_request, got %s", result.Error.Code)
 	}
@@ -57,7 +61,9 @@ func TestWriteServerError(t *testing.T) {
 	}
 
 	var result ErrorResponse
-	json.NewDecoder(w.Body).Decode(&result)
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
 	if result.Error.Code != "job_not_found" {
 		t.Errorf("expected code=job_not_found, got %s", result.Error.Code)
 	}
@@ -72,7 +78,9 @@ func TestWriteServerErrorGeneric(t *testing.T) {
 	}
 
 	var result ErrorResponse
-	json.NewDecoder(w.Body).Decode(&result)
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
 	if result.Error.Code != "internal_error" {
 		t.Errorf("expected code=internal_error, got %s", result.Error.Code)
 	}

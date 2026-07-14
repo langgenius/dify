@@ -82,7 +82,7 @@ func (s *Service) Shutdown() {
 		s.cancelMon()
 	}
 	if s.db != nil {
-		s.db.Close()
+		_ = s.db.Close()
 	}
 }
 
@@ -98,7 +98,7 @@ func (s *Service) StartBackgroundGC() {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				s.GCOnce()
+				_ = s.GCOnce()
 			}
 		}
 	}()
@@ -214,7 +214,7 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 	}
 
 	// Transition to starting
-	s.db.TransitionStatus(jobID, TransitionOpts{
+	_, _ = s.db.TransitionStatus(jobID, TransitionOpts{
 		AllowedFrom: []JobStatusName{StatusCreated},
 		Target:      StatusStarting,
 	})
@@ -226,7 +226,7 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 		log.Printf("RunJob [%s]: start failed: %v", jobID, startErr)
 		reason := "start_failed"
 		msg := startErr.Error()
-		s.db.TransitionStatus(jobID, TransitionOpts{
+		_, _ = s.db.TransitionStatus(jobID, TransitionOpts{
 			AllowedFrom: []JobStatusName{StatusCreated, StatusStarting, StatusRunning},
 			Target:      StatusFailed,
 			Reason:      &reason,
@@ -278,14 +278,14 @@ func (s *Service) startJob(jobID, jobDir, cwd string, cols, rows int) error {
 	}
 
 	// Transition to running
-	s.db.TransitionStatus(jobID, TransitionOpts{
+	_, _ = s.db.TransitionStatus(jobID, TransitionOpts{
 		AllowedFrom:         []JobStatusName{StatusStarting},
 		Target:              StatusRunning,
 		RequireExitCodeNull: true,
 	})
 
 	// Clean up ready file
-	os.Remove(pipeReadyPath)
+	_ = os.Remove(pipeReadyPath)
 	return nil
 }
 
@@ -504,13 +504,13 @@ func (s *Service) TerminateJob(jobID string, graceSeconds float64) (*JobStatusVi
 		return view, nil
 	}
 
-	s.db.TransitionStatus(jobID, TransitionOpts{
+	_, _ = s.db.TransitionStatus(jobID, TransitionOpts{
 		AllowedFrom:       []JobStatusName{StatusCreated, StatusStarting, StatusRunning},
 		AllowOverrideFrom: []JobStatusName{StatusExited},
 		Target:            StatusTerminated,
 	})
 
-	s.tmux.SendInterrupt(jobID)
+	_ = s.tmux.SendInterrupt(jobID)
 	if graceSeconds > 0 {
 		time.Sleep(time.Duration(graceSeconds * float64(time.Second)))
 	}
@@ -529,14 +529,14 @@ func (s *Service) DeleteJob(jobID string, force bool, graceSeconds float64) (*De
 		if !force {
 			return nil, NewServerError(409, "job_running", fmt.Sprintf("Job %s is still running", jobID))
 		}
-		s.TerminateJob(jobID, graceSeconds)
+		_, _ = s.TerminateJob(jobID, graceSeconds)
 	}
 
 	s.tmux.CleanupSession(jobID)
 	if err := s.db.DeleteJob(jobID); err != nil {
 		return nil, err
 	}
-	os.RemoveAll(filepath.Join(s.config.JobsDir(), jobID))
+	_ = os.RemoveAll(filepath.Join(s.config.JobsDir(), jobID))
 	return &DeleteJobResponse{JobID: jobID, Deleted: true}, nil
 }
 
@@ -587,8 +587,8 @@ func (s *Service) GCOnce() error {
 			continue
 		}
 		s.tmux.CleanupSession(row.JobID)
-		s.db.DeleteJob(row.JobID)
-		os.RemoveAll(filepath.Join(s.config.JobsDir(), row.JobID))
+		_ = s.db.DeleteJob(row.JobID)
+		_ = os.RemoveAll(filepath.Join(s.config.JobsDir(), row.JobID))
 	}
 	return nil
 }
@@ -597,7 +597,7 @@ func (s *Service) GCOnce() error {
 func (s *Service) CheckRunningJobsPipeHealth() {
 	rows, _ := s.db.ListJobs([]JobStatusName{StatusRunning})
 	for _, row := range rows {
-		s.GetJobStatus(row.JobID)
+		_, _ = s.GetJobStatus(row.JobID)
 	}
 }
 
@@ -613,7 +613,7 @@ func (s *Service) materializeStatusView(jobID string, sessionExists bool, pipeAc
 		// Ensure ended_at is set
 		if row.EndedAt == nil {
 			now := FormatTimestamp(time.Now())
-			s.db.TransitionStatus(jobID, TransitionOpts{
+			_, _ = s.db.TransitionStatus(jobID, TransitionOpts{
 				AllowedFrom: []JobStatusName{status},
 				Target:      status,
 				EndedAt:     now,
@@ -632,7 +632,7 @@ func (s *Service) materializeStatusView(jobID string, sessionExists bool, pipeAc
 		}
 	} else if exit := s.drainedNormalExitMetadata(jobID); exit != nil {
 		// Recover from drained exit artifacts
-		s.db.RecordRunnerExit(jobID, exit.exitCode, exit.endedAt)
+		_ = s.db.RecordRunnerExit(jobID, exit.exitCode, exit.endedAt)
 		if r, err := s.db.GetJob(jobID); err == nil {
 			row = r
 		}
@@ -675,7 +675,7 @@ func (s *Service) materializeStatusView(jobID string, sessionExists bool, pipeAc
 			s.mu.Lock()
 			isStarting := s.startingJobs[jobID]
 			s.mu.Unlock()
-			if !(isStarting && (status == StatusCreated || status == StatusStarting)) {
+			if !isStarting || (status != StatusCreated && status != StatusStarting) {
 				reason := "tmux_session_missing"
 				msg := "The dedicated tmux session is no longer present."
 				if r, err := s.db.TransitionStatus(jobID, TransitionOpts{
@@ -822,12 +822,12 @@ func (s *Service) cleanupStarting(jobID, jobDir string) {
 	s.mu.Lock()
 	delete(s.startingJobs, jobID)
 	s.mu.Unlock()
-	os.RemoveAll(jobDir)
+	_ = os.RemoveAll(jobDir)
 }
 
 func (s *Service) installRunner() {
 	script := s.runnerScriptSource()
-	os.WriteFile(s.config.RunnerPath(), []byte(script), 0755)
+	_ = os.WriteFile(s.config.RunnerPath(), []byte(script), 0755)
 }
 
 func (s *Service) runnerScriptSource() string {

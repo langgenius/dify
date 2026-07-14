@@ -28,7 +28,7 @@ func RecordRunnerExit(stateDir, jobID string, exitCode int, endedAt string, busy
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Check current status
 	var status string

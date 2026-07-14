@@ -9,7 +9,9 @@ import (
 func TestReadOutputWindowEmptyFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "output.log")
-	os.WriteFile(path, []byte{}, 0644)
+	if err := os.WriteFile(path, []byte{}, 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	w, err := ReadOutputWindow(path, 0, 1024)
 	if err != nil {
@@ -43,7 +45,9 @@ func TestReadOutputWindowFullContent(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "output.log")
 	content := "hello\nworld\n"
-	os.WriteFile(path, []byte(content), 0644)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	w, err := ReadOutputWindow(path, 0, 1024)
 	if err != nil {
@@ -61,7 +65,9 @@ func TestReadOutputWindowWithOffset(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "output.log")
 	content := "hello\nworld\n"
-	os.WriteFile(path, []byte(content), 0644)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	w, err := ReadOutputWindow(path, 6, 1024)
 	if err != nil {
@@ -79,7 +85,9 @@ func TestReadOutputWindowTruncated(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "output.log")
 	content := "0123456789"
-	os.WriteFile(path, []byte(content), 0644)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Read only 5 bytes
 	w, err := ReadOutputWindow(path, 0, 5)
@@ -100,7 +108,9 @@ func TestReadOutputWindowTruncated(t *testing.T) {
 func TestReadOutputWindowOffsetExceedsSize(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "output.log")
-	os.WriteFile(path, []byte("short"), 0644)
+	if err := os.WriteFile(path, []byte("short"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := ReadOutputWindow(path, 100, 1024)
 	if err == nil {
@@ -112,7 +122,9 @@ func TestReadOutputWindowOffsetAtEnd(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "output.log")
 	content := "hello"
-	os.WriteFile(path, []byte(content), 0644)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	w, err := ReadOutputWindow(path, len(content), 1024)
 	if err != nil {
@@ -130,7 +142,9 @@ func TestReadOutputWindowMultibyteUTF8(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "output.log")
 	content := "hello 世界\n"
-	os.WriteFile(path, []byte(content), 0644)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	w, err := ReadOutputWindow(path, 0, 1024)
 	if err != nil {
@@ -146,7 +160,9 @@ func TestReadOutputWindowMultibyteTruncated(t *testing.T) {
 	path := filepath.Join(dir, "output.log")
 	// "世" = 3 bytes (E4 B8 96), "界" = 3 bytes (E7 95 8C)
 	content := "世界"
-	os.WriteFile(path, []byte(content), 0644)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Read only 4 bytes — should not split a multibyte char
 	w, err := ReadOutputWindow(path, 0, 4)
@@ -166,7 +182,9 @@ func TestTailOutputWindow(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "output.log")
 	content := "line1\nline2\nline3\n"
-	os.WriteFile(path, []byte(content), 0644)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	w, err := TailOutputWindow(path, 100)
 	if err != nil {
@@ -181,7 +199,9 @@ func TestTailOutputWindowLimited(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "output.log")
 	content := "0123456789"
-	os.WriteFile(path, []byte(content), 0644)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	w, err := TailOutputWindow(path, 5)
 	if err != nil {
@@ -208,7 +228,9 @@ func TestTailOutputWindowNonexistent(t *testing.T) {
 func TestTailOutputWindowEmpty(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "empty.log")
-	os.WriteFile(path, []byte{}, 0644)
+	if err := os.WriteFile(path, []byte{}, 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	w, err := TailOutputWindow(path, 100)
 	if err != nil {

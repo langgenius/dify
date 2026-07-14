@@ -11,15 +11,23 @@ import (
 
 // createZipArchive creates a zip file at archivePath containing all files in dirPath,
 // excluding common transient directories and files.
-func createZipArchive(archivePath string, dirPath string) error {
+func createZipArchive(archivePath string, dirPath string) (retErr error) {
 	outFile, err := os.Create(archivePath)
 	if err != nil {
 		return fmt.Errorf("create archive file: %w", err)
 	}
-	defer outFile.Close()
+	defer func() {
+		if cErr := outFile.Close(); cErr != nil && retErr == nil {
+			retErr = cErr
+		}
+	}()
 
 	writer := zip.NewWriter(outFile)
-	defer writer.Close()
+	defer func() {
+		if cErr := writer.Close(); cErr != nil && retErr == nil {
+			retErr = cErr
+		}
+	}()
 
 	skipFiles := map[string]bool{".DS_Store": true, ".DIFY-SKILL-FULL.zip": true}
 
@@ -64,7 +72,7 @@ func createZipArchive(archivePath string, dirPath string) error {
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		_, err = io.Copy(w, file)
 		return err
@@ -77,7 +85,7 @@ func extractZip(archivePath string, targetDir string) error {
 	if err != nil {
 		return fmt.Errorf("open zip: %w", err)
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	absTarget, err := filepath.Abs(targetDir)
 	if err != nil {
@@ -94,7 +102,9 @@ func extractZip(archivePath string, targetDir string) error {
 		}
 
 		if f.FileInfo().IsDir() {
-			os.MkdirAll(destPath, 0o755)
+			if err := os.MkdirAll(destPath, 0o755); err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -109,15 +119,18 @@ func extractZip(archivePath string, targetDir string) error {
 
 		outFile, err := os.Create(destPath)
 		if err != nil {
-			rc.Close()
+			_ = rc.Close()
 			return err
 		}
 
 		_, err = io.Copy(outFile, rc)
-		outFile.Close()
-		rc.Close()
+		cErr := outFile.Close()
+		_ = rc.Close()
 		if err != nil {
 			return err
+		}
+		if cErr != nil {
+			return cErr
 		}
 	}
 	return nil

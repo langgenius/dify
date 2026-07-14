@@ -58,7 +58,7 @@ func TestConnect(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dial failed: %v", err)
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	result, err := c.Connect(context.Background(), 1, []string{"hello"}, `{"key":"val"}`)
 	if err != nil {
@@ -78,7 +78,7 @@ func TestCreateFileUpload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dial failed: %v", err)
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	result, err := c.CreateFileUpload(context.Background(), "test.txt", "text/plain")
 	if err != nil {
@@ -95,7 +95,7 @@ func TestCreateFileDownload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dial failed: %v", err)
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	ref := "dify-file-ref:abc123"
 	result, err := c.CreateFileDownload(context.Background(), "local_file", &ref, nil, false)

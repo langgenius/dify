@@ -44,7 +44,7 @@ func RunFileUpload(env *Environment, path string) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	// Step 1: Request a signed upload URL
 	uploadURL, err := client.CreateFileUploadURL(ctx, filename, mimetype)
@@ -100,7 +100,7 @@ func RunFileDownload(env *Environment, transferMethod string, referenceOrURL str
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	dlResp, err := client.CreateFileDownloadURL(ctx, transferMethod, reference, url, false)
 	if err != nil {

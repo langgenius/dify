@@ -15,7 +15,7 @@ func setupTestDB(t *testing.T, dir string) string {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err = db.Exec(`
 		CREATE TABLE jobs (
@@ -62,12 +62,17 @@ func TestRecordRunnerExitRunning(t *testing.T) {
 	}
 
 	// Verify the row was updated
-	db, _ := sql.Open("sqlite", "file:"+filepath.Join(dir, "shellctl.db"))
-	defer db.Close()
+	db, err := sql.Open("sqlite", "file:"+filepath.Join(dir, "shellctl.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
 
 	var status string
 	var exitCode int
-	db.QueryRow("SELECT status, exit_code FROM jobs WHERE job_id = ?", "test-job").Scan(&status, &exitCode)
+	if err := db.QueryRow("SELECT status, exit_code FROM jobs WHERE job_id = ?", "test-job").Scan(&status, &exitCode); err != nil {
+		t.Fatal(err)
+	}
 
 	if status != "exited" {
 		t.Errorf("expected status=exited, got %s", status)
@@ -86,11 +91,16 @@ func TestRecordRunnerExitNonZeroCode(t *testing.T) {
 		t.Fatalf("RecordRunnerExit: %v", err)
 	}
 
-	db, _ := sql.Open("sqlite", "file:"+filepath.Join(dir, "shellctl.db"))
-	defer db.Close()
+	db, err := sql.Open("sqlite", "file:"+filepath.Join(dir, "shellctl.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
 
 	var exitCode int
-	db.QueryRow("SELECT exit_code FROM jobs WHERE job_id = ?", "test-job").Scan(&exitCode)
+	if err := db.QueryRow("SELECT exit_code FROM jobs WHERE job_id = ?", "test-job").Scan(&exitCode); err != nil {
+		t.Fatal(err)
+	}
 
 	if exitCode != 42 {
 		t.Errorf("expected exit_code=42, got %d", exitCode)
@@ -121,22 +131,32 @@ func TestRecordRunnerExitTerminalIdempotent(t *testing.T) {
 	dbPath := setupTestDB(t, dir)
 
 	// Manually set job to terminal state
-	db, _ := sql.Open("sqlite", "file:"+dbPath)
-	db.Exec(`UPDATE jobs SET status='terminated', exit_code=137, ended_at='2025-01-01T00:01:00Z' WHERE job_id='test-job'`)
-	db.Close()
+	db, err := sql.Open("sqlite", "file:"+dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE jobs SET status='terminated', exit_code=137, ended_at='2025-01-01T00:01:00Z' WHERE job_id='test-job'`); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
 
 	// Should not overwrite
-	err := RecordRunnerExit(dir, "test-job", 0, "2025-01-15T12:00:00Z", 5000)
+	err = RecordRunnerExit(dir, "test-job", 0, "2025-01-15T12:00:00Z", 5000)
 	if err != nil {
 		t.Fatalf("RecordRunnerExit on terminal: %v", err)
 	}
 
-	db, _ = sql.Open("sqlite", "file:"+dbPath)
-	defer db.Close()
+	db, err = sql.Open("sqlite", "file:"+dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
 
 	var status string
 	var exitCode int
-	db.QueryRow("SELECT status, exit_code FROM jobs WHERE job_id = ?", "test-job").Scan(&status, &exitCode)
+	if err := db.QueryRow("SELECT status, exit_code FROM jobs WHERE job_id = ?", "test-job").Scan(&status, &exitCode); err != nil {
+		t.Fatal(err)
+	}
 
 	if status != "terminated" {
 		t.Errorf("expected status=terminated (preserved), got %s", status)

@@ -55,7 +55,7 @@ func (c *HTTPClient) postJSON(path string, payload any) ([]byte, int, error) {
 	if err != nil {
 		return nil, 0, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -84,7 +84,7 @@ func (c *HTTPClient) getJSON(path string, params map[string]string) ([]byte, int
 	if err != nil {
 		return nil, 0, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -116,7 +116,7 @@ func (c *HTTPClient) patchJSON(path string, payload any) ([]byte, int, error) {
 	if err != nil {
 		return nil, 0, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -143,7 +143,7 @@ func (c *HTTPClient) putJSON(path string, payload any) ([]byte, int, error) {
 	if err != nil {
 		return nil, 0, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -158,7 +158,7 @@ func (c *HTTPClient) uploadFile(uploadURL string, filePath string, filename stri
 	if err != nil {
 		return nil, fmt.Errorf("open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
@@ -172,7 +172,9 @@ func (c *HTTPClient) uploadFile(uploadURL string, filePath string, filename stri
 	if _, err := io.Copy(part, file); err != nil {
 		return nil, fmt.Errorf("copy file content: %w", err)
 	}
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("close multipart writer: %w", err)
+	}
 
 	uploadClient := &http.Client{Timeout: 120 * time.Second}
 	req, err := http.NewRequest("POST", uploadURL, &buf)
@@ -185,7 +187,7 @@ func (c *HTTPClient) uploadFile(uploadURL string, filePath string, filename stri
 	if err != nil {
 		return nil, fmt.Errorf("upload request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -204,7 +206,7 @@ func (c *HTTPClient) downloadFromURL(downloadURL string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("download request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)
@@ -222,7 +224,7 @@ func checkHTTPError(body []byte, statusCode int, operation string) error {
 		Detail any `json:"detail"`
 	}
 	if json.Unmarshal(body, &detail) == nil && detail.Detail != nil {
-		return fmt.Errorf("Agent Stub %s failed (HTTP %d): %v", operation, statusCode, detail.Detail)
+		return fmt.Errorf("agent stub %s failed (HTTP %d): %v", operation, statusCode, detail.Detail)
 	}
-	return fmt.Errorf("Agent Stub %s failed (HTTP %d): %s", operation, statusCode, string(body))
+	return fmt.Errorf("agent stub %s failed (HTTP %d): %s", operation, statusCode, string(body))
 }

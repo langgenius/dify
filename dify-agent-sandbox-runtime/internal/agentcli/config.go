@@ -16,7 +16,7 @@ func RunConfigManifest(env *Environment) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	body, err := client.GetConfigManifest(context.Background())
 	if err != nil {
@@ -32,7 +32,7 @@ func RunConfigSkillsPull(env *Environment, names []string, localDir string, json
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
@@ -129,7 +129,7 @@ func RunConfigFilesPull(env *Environment, names []string, localDir string, jsonO
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
@@ -205,7 +205,7 @@ func RunConfigSkillsPush(env *Environment, paths []string) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	type skillPushItem struct {
 		Name    string        `json:"name"`
@@ -232,7 +232,7 @@ func RunConfigSkillsPush(env *Environment, paths []string) error {
 		if err != nil {
 			return err
 		}
-		defer os.Remove(archivePath)
+		defer func() { _ = os.Remove(archivePath) }()
 
 		name := filepath.Base(absPath)
 		commitItem, err := uploadAndPrepareCommitItem(client, archivePath, name)
@@ -269,7 +269,7 @@ func RunConfigFilesPush(env *Environment, paths []string) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	type filePushItem struct {
 		Name    string        `json:"name"`
@@ -331,7 +331,7 @@ func RunConfigSkillsDelete(env *Environment, names []string) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	payload := map[string]any{
 		"skills": skills,
@@ -365,7 +365,7 @@ func RunConfigFilesDelete(env *Environment, names []string) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	payload := map[string]any{
 		"files":  files,
@@ -405,7 +405,7 @@ func RunConfigEnvPush(env *Environment, localPath string) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	body, err := client.PatchConfigEnv(context.Background(), envText)
 	if err != nil {
@@ -421,7 +421,7 @@ func RunConfigNotePull(env *Environment, localPath string) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	body, err := client.GetConfigManifest(context.Background())
 	if err != nil {
@@ -482,7 +482,7 @@ func RunConfigNotePush(env *Environment, localPath string) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	body, err := client.PutConfigNote(context.Background(), note)
 	if err != nil {

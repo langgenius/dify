@@ -39,7 +39,7 @@ func ReadOutputWindow(path string, offset, limit int) (*OutputWindow, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// Read up to limit+4 bytes to handle UTF-8 boundary
 	readSize := limit + 4
@@ -107,7 +107,7 @@ func TailOutputWindow(path string, limit int) (*OutputWindow, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	readLen := size - paddedStart
 	buf := make([]byte, readLen)

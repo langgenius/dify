@@ -92,9 +92,10 @@ func (s *PtySanitizer) consumeRune(r rune, out []byte) []byte {
 		return out
 
 	case stateOSC:
-		if r == '\x07' {
+		switch r {
+		case '\x07':
 			s.state = stateNormal
-		} else if r == '\x1b' {
+		case '\x1b':
 			s.state = stateOSCEsc
 		}
 		return out
@@ -155,13 +156,13 @@ func Run(readyFile string, stdin io.Reader, stdout io.Writer) error {
 		if err != nil {
 			return err
 		}
-		f.Close()
+		_ = f.Close()
 	}
 
 	sanitizer := New()
 	reader := bufio.NewReaderSize(stdin, 65536)
 	writer := bufio.NewWriter(stdout)
-	defer writer.Flush()
+	defer func() { _ = writer.Flush() }()
 
 	buf := make([]byte, 65536)
 	for {
@@ -172,7 +173,7 @@ func Run(readyFile string, stdin io.Reader, stdout io.Writer) error {
 				if _, werr := writer.Write(out); werr != nil {
 					return werr
 				}
-				writer.Flush()
+				_ = writer.Flush()
 			}
 		}
 		if err != nil {

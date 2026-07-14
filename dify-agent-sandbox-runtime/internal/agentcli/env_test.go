@@ -1,7 +1,6 @@
 package agentcli
 
 import (
-	"os"
 	"testing"
 )
 
@@ -134,8 +133,8 @@ func TestParseEndpoint_Invalid(t *testing.T) {
 }
 
 func TestReadEnvironment_Missing(t *testing.T) {
-	os.Unsetenv(EnvAPIBaseURL)
-	os.Unsetenv(EnvAuthJWE)
+	t.Setenv(EnvAPIBaseURL, "")
+	t.Setenv(EnvAuthJWE, "")
 
 	_, err := ReadEnvironment()
 	if err == nil {
@@ -160,7 +159,7 @@ func TestReadEnvironment_Valid(t *testing.T) {
 }
 
 func TestReadDriveBase_Default(t *testing.T) {
-	os.Unsetenv(EnvDriveBase)
+	t.Setenv(EnvDriveBase, "")
 	if got := ReadDriveBase(); got != DefaultDriveBase {
 		t.Errorf("ReadDriveBase() = %q, want %q", got, DefaultDriveBase)
 	}

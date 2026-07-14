@@ -57,7 +57,7 @@ func RunDriveList(env *Environment, pathPrefix string, jsonOutput bool) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	manifest, err := client.GetDriveManifest(context.Background(), pathPrefix, false)
 	if err != nil {
@@ -94,7 +94,7 @@ func RunDrivePull(env *Environment, targets []string, localBase string, jsonOutp
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	if localBase == "" {
 		localBase = ReadDriveBase()
@@ -174,7 +174,7 @@ func RunDrivePush(env *Environment, localPath string, drivePath string, kind str
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	if info.IsDir() {
 		if kind == "" {
@@ -259,7 +259,7 @@ func pushSkillDirectory(client StubClient, dirPath string, drivePath string) err
 	if err != nil {
 		return err
 	}
-	defer os.Remove(archivePath)
+	defer func() { _ = os.Remove(archivePath) }()
 
 	archiveItem, err := uploadAndPrepareCommitItem(client, archivePath, joinDriveKey(drivePath, ".DIFY-SKILL-FULL.zip"))
 	if err != nil {
@@ -343,10 +343,10 @@ func buildSkillArchive(dirPath string) (string, error) {
 		return "", fmt.Errorf("create temp archive: %w", err)
 	}
 	archivePath := tmpFile.Name()
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	if err := createZipArchive(archivePath, dirPath); err != nil {
-		os.Remove(archivePath)
+		_ = os.Remove(archivePath)
 		return "", err
 	}
 	return archivePath, nil

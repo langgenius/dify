@@ -20,7 +20,7 @@ func RunConnect(env *Environment, argv []string, jsonOutput bool) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	resp, err := client.Connect(context.Background(), argv, "{}")
 	if err != nil {

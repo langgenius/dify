@@ -80,7 +80,7 @@ func ReadDriveBase() string {
 func ParseEndpoint(rawURL string) (*Endpoint, error) {
 	stripped := strings.TrimSpace(rawURL)
 	if stripped == "" {
-		return nil, errors.New("Agent Stub URL must not be empty")
+		return nil, errors.New("agent stub URL must not be empty")
 	}
 
 	parsed, err := url.Parse(stripped)
@@ -94,26 +94,26 @@ func ParseEndpoint(rawURL string) (*Endpoint, error) {
 	case "grpc":
 		return parseGRPCEndpoint(parsed)
 	default:
-		return nil, errors.New("Agent Stub URL must use http, https, or grpc")
+		return nil, errors.New("agent stub URL must use http, https, or grpc")
 	}
 }
 
 func parseHTTPEndpoint(parsed *url.URL) (*Endpoint, error) {
 	if parsed.Host == "" {
-		return nil, errors.New("Agent Stub URL must include a host")
+		return nil, errors.New("agent stub URL must include a host")
 	}
 	if parsed.RawQuery != "" || parsed.Fragment != "" {
-		return nil, errors.New("Agent Stub URL must not include a query string or fragment")
+		return nil, errors.New("agent stub URL must not include a query string or fragment")
 	}
 	if parsed.User != nil {
-		return nil, errors.New("Agent Stub URL must not include user info")
+		return nil, errors.New("agent stub URL must not include user info")
 	}
 
 	path := strings.TrimRight(parsed.Path, "/")
 	if path == "" || path == "/" {
 		path = "/agent-stub"
 	} else if path != "/agent-stub" {
-		return nil, errors.New("HTTP Agent Stub API base URL path must be empty or /agent-stub")
+		return nil, errors.New("HTTP agent stub API base URL path must be empty or /agent-stub")
 	}
 
 	normalizedURL := fmt.Sprintf("%s://%s%s", parsed.Scheme, parsed.Host, path)
@@ -128,15 +128,15 @@ func parseHTTPEndpoint(parsed *url.URL) (*Endpoint, error) {
 
 func parseGRPCEndpoint(parsed *url.URL) (*Endpoint, error) {
 	if parsed.Host == "" {
-		return nil, errors.New("gRPC Agent Stub URL must include a host")
+		return nil, errors.New("gRPC agent stub URL must include a host")
 	}
 	path := strings.TrimRight(parsed.Path, "/")
 	if path != "" && path != "/" {
-		return nil, errors.New("gRPC Agent Stub URL must not include a path")
+		return nil, errors.New("gRPC agent stub URL must not include a path")
 	}
 	port := parsed.Port()
 	if port == "" {
-		return nil, errors.New("gRPC Agent Stub URL must include an explicit port")
+		return nil, errors.New("gRPC agent stub URL must include an explicit port")
 	}
 
 	normalizedURL := fmt.Sprintf("grpc://%s:%s", parsed.Hostname(), port)

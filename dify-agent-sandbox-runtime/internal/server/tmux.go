@@ -126,13 +126,15 @@ func (t *TmuxController) SendInput(jobID, text string) error {
 		return err
 	}
 	tmpPath := tmpFile.Name()
-	defer os.Remove(tmpPath)
+	defer func() { _ = os.Remove(tmpPath) }()
 
 	if _, err := tmpFile.WriteString(text); err != nil {
-		tmpFile.Close()
+		_ = tmpFile.Close()
 		return err
 	}
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		return err
+	}
 
 	// Load buffer
 	result, err := t.runTmuxNoCheck("load-buffer", "-b", bufferName, tmpPath)
@@ -152,7 +154,7 @@ func (t *TmuxController) SendInput(jobID, text string) error {
 		"paste-buffer", "-t", JobPaneTarget(jobID), "-b", bufferName,
 	)
 	// Always clean up buffer
-	t.runTmuxNoCheck("delete-buffer", "-b", bufferName)
+	_, _ = t.runTmuxNoCheck("delete-buffer", "-b", bufferName)
 
 	if err != nil {
 		return err
@@ -175,7 +177,7 @@ func (t *TmuxController) SendInterrupt(jobID string) error {
 
 // CleanupSession kills the tmux session for a job (best-effort).
 func (t *TmuxController) CleanupSession(jobID string) {
-	t.runTmuxNoCheck("kill-session", "-t", JobSessionName(jobID))
+	_, _ = t.runTmuxNoCheck("kill-session", "-t", JobSessionName(jobID))
 }
 
 func (t *TmuxController) buildPipeCommand(jobID, jobDir, readyFile string) string {

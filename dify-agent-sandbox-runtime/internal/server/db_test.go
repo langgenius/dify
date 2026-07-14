@@ -29,7 +29,7 @@ func TestOpenDBAndInitSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OpenDB: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	if err := db.InitSchema(); err != nil {
 		t.Fatalf("InitSchema: %v", err)
@@ -71,7 +71,7 @@ func TestOpenDBAndInitSchema(t *testing.T) {
 func TestGetJob(t *testing.T) {
 	dir := t.TempDir()
 	db := setupTestDB(t, dir)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	insertTestJob(t, db, "job-get-1", StatusCreated)
 
@@ -93,7 +93,7 @@ func TestGetJob(t *testing.T) {
 func TestGetJobNotFound(t *testing.T) {
 	dir := t.TempDir()
 	db := setupTestDB(t, dir)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	_, err := db.GetJob("nonexistent")
 	if err != ErrJobNotFound {
@@ -104,7 +104,7 @@ func TestGetJobNotFound(t *testing.T) {
 func TestListJobs(t *testing.T) {
 	dir := t.TempDir()
 	db := setupTestDB(t, dir)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	insertTestJob(t, db, "job-list-1", StatusRunning)
 	insertTestJob(t, db, "job-list-2", StatusExited)
@@ -135,7 +135,7 @@ func TestListJobs(t *testing.T) {
 func TestDeleteJob(t *testing.T) {
 	dir := t.TempDir()
 	db := setupTestDB(t, dir)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	insertTestJob(t, db, "job-del-1", StatusExited)
 
@@ -152,7 +152,7 @@ func TestDeleteJob(t *testing.T) {
 func TestDeleteJobNotFound(t *testing.T) {
 	dir := t.TempDir()
 	db := setupTestDB(t, dir)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	err := db.DeleteJob("nonexistent")
 	if err != ErrJobNotFound {
@@ -163,7 +163,7 @@ func TestDeleteJobNotFound(t *testing.T) {
 func TestTransitionStatus(t *testing.T) {
 	dir := t.TempDir()
 	db := setupTestDB(t, dir)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	insertTestJob(t, db, "job-trans-1", StatusCreated)
 
@@ -217,7 +217,7 @@ func TestTransitionStatus(t *testing.T) {
 func TestRecordRunnerExit(t *testing.T) {
 	dir := t.TempDir()
 	db := setupTestDB(t, dir)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	insertTestJob(t, db, "job-exit-1", StatusRunning)
 
@@ -237,7 +237,7 @@ func TestRecordRunnerExit(t *testing.T) {
 func TestRecordRunnerExitIdempotent(t *testing.T) {
 	dir := t.TempDir()
 	db := setupTestDB(t, dir)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	insertTestJob(t, db, "job-exit-2", StatusExited)
 	exitCode := 10
@@ -248,7 +248,7 @@ func TestRecordRunnerExitIdempotent(t *testing.T) {
 		CreatedAt: "2025-01-01T00:00:00Z", UpdatedAt: "2025-01-01T00:00:00Z",
 		EndedAt: strPtr("2025-01-01T00:01:00Z"),
 	}
-	db.db.Exec(`UPDATE jobs SET exit_code=?, ended_at=? WHERE job_id=?`,
+	_, _ = db.db.Exec(`UPDATE jobs SET exit_code=?, ended_at=? WHERE job_id=?`,
 		exitCode, "2025-01-01T00:01:00Z", "job-exit-2")
 	_ = row
 

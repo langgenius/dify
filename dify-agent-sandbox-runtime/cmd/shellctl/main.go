@@ -34,7 +34,9 @@ func run() error {
 		fmt.Fprintf(os.Stderr, "Usage: shellctl serve [flags]\n")
 		return nil
 	}
-	serveCmd.Parse(os.Args[2:])
+	if err := serveCmd.Parse(os.Args[2:]); err != nil {
+		return err
+	}
 
 	// Build config
 	config := server.DefaultConfig()
@@ -76,7 +78,7 @@ func run() error {
 		log.Println("shutting down...")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		srv.Shutdown(shutdownCtx)
+		_ = srv.Shutdown(shutdownCtx)
 	}()
 
 	log.Printf("shellctl serving on %s", config.Listen)

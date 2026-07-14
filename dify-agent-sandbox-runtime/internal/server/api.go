@@ -178,9 +178,7 @@ func handleTerminateJob(svc *Service, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		jobID := r.PathValue("job_id")
 		var req TerminateJobRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			// Allow empty body with defaults
-		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
 		graceSeconds := config.DefaultTerminateGraceSeconds
 		if req.GraceSeconds != nil {
 			graceSeconds = *req.GraceSeconds
@@ -269,7 +267,7 @@ func authMiddleware(token string) func(http.HandlerFunc) http.HandlerFunc {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	_ = json.NewEncoder(w).Encode(v)
 }
 
 func writeError(w http.ResponseWriter, status int, code, message string) {
