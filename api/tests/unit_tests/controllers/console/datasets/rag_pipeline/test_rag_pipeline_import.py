@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 
 from controllers.console import console_ns
-from controllers.console.datasets.rag_pipeline import rag_pipeline_import as module
 from controllers.console.datasets.rag_pipeline.rag_pipeline_import import (
     RagPipelineExportApi,
     RagPipelineImportApi,
@@ -19,13 +18,19 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_import import (
 )
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from models.dataset import Pipeline
+from models.engine import db
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineImportInfo
 
 
-@pytest.fixture(autouse=True)
-def _route_database_to_sqlite(monkeypatch: pytest.MonkeyPatch, sqlite_engine) -> None:
-    monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine))
+@pytest.fixture
+def app() -> Iterator[Flask]:
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        yield app
 
 
 class TestRagPipelineImportApi:
