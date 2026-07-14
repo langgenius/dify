@@ -94,7 +94,7 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
         data-carousel-control
         role="group"
         aria-label={t(($) => $['pagination.pageNumber'], { ns: 'common' })}
-        className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-2 py-1 @min-[996px]/banner:max-w-[600px] @min-[996px]/banner:min-w-60 @min-[996px]/banner:flex-[1_0_0] @min-[996px]/banner:pr-10"
+        className="pointer-events-auto flex h-7 min-w-0 shrink-0 items-center gap-2 @min-[996px]/banner:max-w-150 @min-[996px]/banner:min-w-60 @min-[996px]/banner:flex-[1_0_0] @min-[996px]/banner:pr-10"
         onFocusCapture={pauseRotationForFocus}
         onBlurCapture={resumeRotationAfterFocus}
       >
@@ -145,7 +145,7 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
       {hasFooter ? (
         <div className="pointer-events-none absolute right-4 bottom-6 left-8 z-40 flex min-w-0 items-center justify-between gap-4 @min-[720px]/banner:right-64 @min-[996px]/banner:right-60 @min-[996px]/banner:flex-wrap @min-[996px]/banner:justify-start @min-[996px]/banner:gap-1">
           {activeBanner?.link ? (
-            <div className="flex min-w-0 items-center gap-1.5 py-1 @min-[996px]/banner:max-w-[680px] @min-[996px]/banner:min-w-[480px] @min-[996px]/banner:flex-[1_0_0]">
+            <div className="flex min-w-0 items-center gap-1.5 py-1 @min-[996px]/banner:max-w-170 @min-[996px]/banner:min-w-120 @min-[996px]/banner:flex-[1_0_0]">
               <span className="flex size-4 items-center justify-center rounded-full bg-text-accent p-0.5">
                 <span
                   className="i-ri-arrow-right-line size-3 text-text-primary-on-surface"
