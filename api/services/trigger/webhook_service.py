@@ -792,7 +792,12 @@ class WebhookService:
 
     @classmethod
     def trigger_workflow_execution(
-        cls, webhook_trigger: WorkflowWebhookTrigger, webhook_data: RawWebhookDataDict, workflow: Workflow
+        cls,
+        webhook_trigger: WorkflowWebhookTrigger,
+        webhook_data: RawWebhookDataDict,
+        workflow: Workflow,
+        *,
+        session: Session | None = None,
     ) -> None:
         """Trigger workflow execution via AsyncWorkflowService.
 
@@ -800,6 +805,9 @@ class WebhookService:
             webhook_trigger: The webhook trigger object
             webhook_data: Processed webhook data for workflow inputs
             workflow: The workflow to execute
+            session: Optional externally owned session. The caller retains lifecycle ownership;
+                when omitted, this method opens and closes a session without wrapping it in a
+                transaction because async workflow dispatch manages its own commits.
 
         Raises:
             QuotaExceededError: If the tenant has exhausted its trigger or workflow execution quota
@@ -831,9 +839,12 @@ class WebhookService:
                 raise
 
             try:
-                # NOTE: don not use `with sessionmaker(bind=db.engine, expire_on_commit=False).begin()`
-                # trigger_workflow_async need to handle multipe session commits internally
-                with Session(db.engine, expire_on_commit=False) as session:
+                # Do not wrap dispatch in a transaction: trigger_workflow_async manages
+                # multiple commits internally.
+                if session is None:
+                    with Session(db.engine, expire_on_commit=False) as managed_session:
+                        AsyncWorkflowService.trigger_workflow_async(end_user, trigger_data, session=managed_session)
+                else:
                     AsyncWorkflowService.trigger_workflow_async(end_user, trigger_data, session=session)
                 quota_charge.commit()
             except Exception:

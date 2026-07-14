@@ -1,11 +1,11 @@
 import logging
 from io import BytesIO
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 import services.trigger.webhook_service as webhook_service_module
@@ -27,26 +27,27 @@ class TestWebhookServiceUnit:
         quota_charge = MagicMock()
         quota_error = QuotaExceededError(feature="workflow", tenant_id="tenant-123", required=1)
 
-        with (
-            patch(
-                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
-                return_value=MagicMock(id="end-user-123"),
-            ),
-            patch("services.trigger.webhook_service.QuotaService.reserve", return_value=quota_charge),
-            patch.object(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine)),
-            patch(
-                "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
-                side_effect=quota_error,
-            ),
-            patch("services.trigger.webhook_service.logger.info") as mock_log_info,
-            patch("services.trigger.webhook_service.logger.exception") as mock_log_exception,
-        ):
-            with pytest.raises(QuotaExceededError) as exc_info:
-                WebhookService.trigger_workflow_execution(
-                    webhook_trigger,
-                    {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
-                    workflow,
-                )
+        with Session(sqlite_engine, expire_on_commit=False) as session:
+            with (
+                patch(
+                    "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
+                    return_value=MagicMock(id="end-user-123"),
+                ),
+                patch("services.trigger.webhook_service.QuotaService.reserve", return_value=quota_charge),
+                patch(
+                    "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
+                    side_effect=quota_error,
+                ),
+                patch("services.trigger.webhook_service.logger.info") as mock_log_info,
+                patch("services.trigger.webhook_service.logger.exception") as mock_log_exception,
+            ):
+                with pytest.raises(QuotaExceededError) as exc_info:
+                    WebhookService.trigger_workflow_execution(
+                        webhook_trigger,
+                        {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
+                        workflow,
+                        session=session,
+                    )
 
         assert exc_info.value is quota_error
         quota_charge.refund.assert_called_once_with()
@@ -76,25 +77,28 @@ class TestWebhookServiceUnit:
             "files": {},
         }
 
-        with (
-            patch.object(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine)),
-            patch.object(
-                webhook_service_module.EndUserService,
-                "get_or_create_end_user_by_type",
-                return_value=end_user,
-            ),
-            patch.object(webhook_service_module.QuotaService, "reserve", return_value=quota_charge),
-            patch.object(
-                webhook_service_module.AsyncWorkflowService,
-                "trigger_workflow_async",
-            ) as mock_trigger,
-        ):
-            WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
+        with Session(sqlite_engine, expire_on_commit=False) as session:
+            with (
+                patch.object(
+                    webhook_service_module.EndUserService,
+                    "get_or_create_end_user_by_type",
+                    return_value=end_user,
+                ),
+                patch.object(webhook_service_module.QuotaService, "reserve", return_value=quota_charge),
+                patch.object(
+                    webhook_service_module.AsyncWorkflowService,
+                    "trigger_workflow_async",
+                ) as mock_trigger,
+            ):
+                WebhookService.trigger_workflow_execution(
+                    webhook_trigger, webhook_data, workflow, session=session
+                )
 
-        call_session = mock_trigger.call_args.kwargs["session"]
-        assert call_session.get_bind() is sqlite_engine
-        quota_charge.commit.assert_called_once_with()
-        quota_charge.refund.assert_not_called()
+            call_session = mock_trigger.call_args.kwargs["session"]
+            assert call_session is session
+            assert call_session.get_bind() is sqlite_engine
+            quota_charge.commit.assert_called_once_with()
+            quota_charge.refund.assert_not_called()
 
     def test_trigger_workflow_execution_end_user_service_failure(self) -> None:
         webhook_trigger = MagicMock(
