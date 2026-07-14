@@ -74,7 +74,6 @@ function isSafeName(name: unknown): name is string {
 
 const VALID_BUTTON_VARIANTS = new Set<string>([
   'primary',
-  'warning',
   'secondary',
   'secondary-accent',
   'ghost',
@@ -82,6 +81,8 @@ const VALID_BUTTON_VARIANTS = new Set<string>([
   'tertiary',
 ])
 const VALID_BUTTON_SIZES = new Set<string>(['small', 'medium', 'large'])
+
+const VALID_BUTTON_TONES = new Set<string>(['default', 'destructive'])
 
 type HastText = {
   type: 'text'
@@ -395,17 +396,23 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
         if (child.tagName === SUPPORTED_TAGS.BUTTON) {
           const rawVariant = str(child.properties.dataVariant)
           const rawSize = str(child.properties.dataSize)
+          const rawTone = str(child.properties.dataTone)
+
           const variant = VALID_BUTTON_VARIANTS.has(rawVariant)
             ? (rawVariant as ButtonProps['variant'])
             : undefined
           const size = VALID_BUTTON_SIZES.has(rawSize)
             ? (rawSize as ButtonProps['size'])
             : undefined
+          const tone = VALID_BUTTON_TONES.has(rawTone)
+            ? (rawTone as ButtonProps['tone'])
+            : undefined
 
           return (
             <Button
               variant={variant}
               size={size}
+              tone={tone}
               className="mt-4"
               key={key}
               disabled={isSubmitting}
