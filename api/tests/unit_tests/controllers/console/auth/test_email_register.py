@@ -1,11 +1,10 @@
-"""Testcontainers integration tests for email register controller endpoints."""
+"""Unit tests for email register controller endpoints."""
 
 from __future__ import annotations
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
 from flask import Flask
 
 from controllers.console.auth.email_register import (
@@ -13,12 +12,6 @@ from controllers.console.auth.email_register import (
     EmailRegisterResetApi,
     EmailRegisterSendEmailApi,
 )
-from services.account_service import AccountService
-
-
-@pytest.fixture
-def app(flask_app_with_containers: Flask):
-    return flask_app_with_containers
 
 
 class TestEmailRegisterSendEmailApi:
@@ -152,7 +145,6 @@ class TestEmailRegisterResetApi:
         mock_reset_login_rate.assert_called_once_with("invitee@example.com")
         mock_revoke_token.assert_called_once_with("token-123")
         mock_extract_ip.assert_called_once()
-
     @patch("controllers.console.auth.email_register.AccountService.reset_login_error_rate_limit")
     @patch("controllers.console.auth.email_register.AccountService.login")
     @patch("controllers.console.auth.email_register.EmailRegisterResetApi._create_new_account")
@@ -258,19 +250,3 @@ class TestEmailRegisterResetApi:
         mock_reset_login_rate.assert_called_once_with("invitee@example.com")
         mock_revoke_token.assert_called_once_with("token-123")
         mock_extract_ip.assert_called_once()
-
-
-def test_get_account_by_email_with_case_fallback_falls_back_to_lowercase():
-    """Test that case fallback tries lowercase when exact match fails."""
-    mock_session = MagicMock()
-    first_result = MagicMock()
-    first_result.scalar_one_or_none.return_value = None
-    expected_account = MagicMock()
-    second_result = MagicMock()
-    second_result.scalar_one_or_none.return_value = expected_account
-    mock_session.execute.side_effect = [first_result, second_result]
-
-    result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=mock_session)
-
-    assert result is expected_account
-    assert mock_session.execute.call_count == 2

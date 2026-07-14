@@ -2645,3 +2645,14 @@ class TestSessionInjectedGetters:
         assert row[0] is tenant
         assert row[1] is join
         assert TenantService.find_workspace_for_account("user-123", other_tenant.id, session=sqlite_session) is None
+
+
+@pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
+def test_get_account_by_email_with_case_fallback_uses_lowercase(sqlite_session: Session) -> None:
+    account = Account(name="Case User", email="case@test.com")
+    sqlite_session.add(account)
+    sqlite_session.commit()
+
+    result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=sqlite_session)
+
+    assert result is account
