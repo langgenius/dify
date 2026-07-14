@@ -1,6 +1,6 @@
 'use client'
 
-import type { KeyboardEvent, RefObject } from 'react'
+import type { KeyboardEvent } from 'react'
 import type { EmailRecipient } from './email-recipients'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -19,10 +19,7 @@ type EmailRecipientsFieldProps = {
   draft: string
   onRecipientsChange: (recipients: EmailRecipient[]) => void
   onDraftChange: (draft: string) => void
-  onChange?: () => void
-  error?: string
   disabled?: boolean
-  inputRef?: RefObject<HTMLInputElement | null>
 }
 
 function isRightToLeft(element: HTMLElement) {
@@ -34,17 +31,14 @@ export function EmailRecipientsField({
   draft,
   onRecipientsChange,
   onDraftChange,
-  onChange,
-  error,
   disabled = false,
-  inputRef: externalInputRef,
 }: EmailRecipientsFieldProps) {
   const { t } = useTranslation()
   const internalInputRef = useRef<HTMLInputElement>(null)
   const chipButtonRef = useRef<Array<HTMLButtonElement | null>>([])
   const selectDraftOnRenderRef = useRef(false)
   const [draftTouched, setDraftTouched] = useState(false)
-  const inputRef = externalInputRef ?? internalInputRef
+  const inputRef = internalInputRef
   const hasInvalidRecipient = recipients.some(({ isValid }) => !isValid)
   const draftRecipients = mergeEmailRecipients([], draft)
   const hasInvalidDraft = Boolean(
@@ -53,7 +47,7 @@ export function EmailRecipientsField({
   const fieldError =
     hasInvalidRecipient || hasInvalidDraft
       ? t(($) => $['members.emailInvalid'], { ns: 'common' })
-      : error
+      : null
 
   const validateRecipients = (value: unknown) => {
     const nextDraft = typeof value === 'string' ? value : draft
@@ -69,12 +63,10 @@ export function EmailRecipientsField({
 
   const updateRecipients = (nextRecipients: EmailRecipient[]) => {
     onRecipientsChange(nextRecipients)
-    onChange?.()
   }
 
   const updateDraft = (nextDraft: string) => {
     onDraftChange(nextDraft)
-    onChange?.()
   }
 
   const focusInput = (select = false) => {
@@ -320,7 +312,7 @@ export function EmailRecipientsField({
         <FieldError match>{fieldError}</FieldError>
       ) : (
         <>
-          <FieldError match="customError" />
+          <FieldError />
           <FieldDescription className="group-data-invalid/field:hidden">
             {t(($) => $['members.emailRecipientsTip'], { ns: 'common' })}
           </FieldDescription>

@@ -182,6 +182,12 @@ export type MemberInviteResponse = {
   tenant_id: string
 }
 
+export type MemberInviteErrorResponse = {
+  code: 'invalid_role' | 'limit_exceeded'
+  message: string
+  status: 400
+}
+
 export type OwnerTransferCheckPayload = {
   code: string
   token: string
@@ -2903,6 +2909,13 @@ export type PostWorkspacesCurrentMembersInviteEmailData = {
   query?: never
   url: '/workspaces/current/members/invite-email'
 }
+
+export type PostWorkspacesCurrentMembersInviteEmailErrors = {
+  400: MemberInviteErrorResponse
+}
+
+export type PostWorkspacesCurrentMembersInviteEmailError =
+  PostWorkspacesCurrentMembersInviteEmailErrors[keyof PostWorkspacesCurrentMembersInviteEmailErrors]
 
 export type PostWorkspacesCurrentMembersInviteEmailResponses = {
   201: MemberInviteResponse

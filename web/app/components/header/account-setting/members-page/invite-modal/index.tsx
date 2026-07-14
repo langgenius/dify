@@ -1,10 +1,8 @@
 'use client'
 
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { FormProps } from '@langgenius/dify-ui/form'
 import type { ReactElement } from 'react'
 import type { EmailRecipient } from './email-recipients'
-import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -16,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
@@ -35,12 +33,15 @@ type InviteModalProps = {
   onSend: (invitationResults: MemberInviteResponse['invitation_results']) => void
 }
 
-type SubmitError = {
-  target: 'emails' | 'role' | 'form'
-  message: string
-} | null
-
-type FormSubmitHandler = NonNullable<FormProps['onSubmit']>
+type InviteFieldName = 'emails' | 'role'
+type InviteFormValues = {
+  emails: string
+  role: string
+}
+type SubmissionError =
+  | { kind: 'fields'; errors: Partial<Record<InviteFieldName, string>> }
+  | { kind: 'form'; message: string }
+  | null
 
 type InviteFormProps = Omit<InviteModalProps, 'open' | 'trigger'>
 
@@ -52,90 +53,75 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   const refreshLicenseLimit = useProviderContextSelector((state) => state.refreshLicenseLimit)
   const [recipients, setRecipients] = useState<EmailRecipient[]>([])
   const [draft, setDraft] = useState('')
-  const [role, setRole] = useState<Role | null>(null)
-  const [submitError, setSubmitError] = useState<SubmitError>(null)
-  const emailInputRef = useRef<HTMLInputElement>(null)
-  const roleTriggerRef = useRef<HTMLButtonElement>(null)
-  const emailServerError = submitError?.target === 'emails' ? submitError.message : undefined
-  const roleError = submitError?.target === 'role' ? submitError.message : undefined
+  const [submissionError, setSubmissionError] = useState<SubmissionError>(null)
+  const fieldErrors = submissionError?.kind === 'fields' ? submissionError.errors : undefined
   const currentSize = licenseLimit.workspace_members.size ?? 0
   const memberLimit = licenseLimit.workspace_members.limit
   const remainingSeats = memberLimit > 0 ? Math.max(memberLimit - currentSize, 0) : null
   const effectiveRecipients = mergeEmailRecipients(recipients, draft)
   const validRecipientCount = effectiveRecipients.filter(({ isValid }) => isValid).length
   const exceedsRemainingSeats = remainingSeats !== null && validRecipientCount > remainingSeats
-  const formErrors = {
-    ...(emailServerError ? { emails: emailServerError } : {}),
-    ...(roleError ? { role: roleError } : {}),
-  }
 
-  const { mutateAsync, isPending } = useMutation(
+  const { mutate, isPending } = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
       context: { silent: true },
     }),
   )
 
-  const clearSubmitError = (target: 'emails' | 'role') => {
-    setSubmitError((error) => (error?.target === target ? null : error))
-  }
-
-  useEffect(() => {
-    if (submitError?.target === 'emails') emailInputRef.current?.focus()
-    if (submitError?.target === 'role') roleTriggerRef.current?.focus()
-  }, [submitError])
-
-  const handleSubmit: FormSubmitHandler = async (event) => {
-    event.preventDefault()
+  const handleSubmit = ({ role }: InviteFormValues) => {
     if (isPending) return
 
     setRecipients(effectiveRecipients)
     setDraft('')
-
-    if (!role) return
-
-    setSubmitError(null)
-    try {
-      const response = await mutateAsync({
+    setSubmissionError(null)
+    mutate(
+      {
         body: {
           emails: effectiveRecipients.map(({ value }) => value),
-          role: role.id,
+          role,
           language: locale,
         },
-      })
-
-      refreshLicenseLimit()
-      void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
-      onOpenChange(false)
-      onSend(response.invitation_results)
-    } catch (error) {
-      switch (getInviteErrorCode(error)) {
-        case 'limit_exceeded':
-          setSubmitError({
-            target: 'emails',
-            message: t(($) => $['members.inviteLimitExceeded'], { ns: 'common' }),
-          })
-          break
-        case 'invalid-role':
-          setSubmitError({
-            target: 'role',
-            message: t(($) => $['members.invalidRole'], { ns: 'common' }),
-          })
-          break
-        default:
-          setSubmitError({
-            target: 'form',
-            message: t(($) => $['members.inviteFailed'], { ns: 'common' }),
-          })
-      }
-    }
+      },
+      {
+        onSuccess: (response) => {
+          refreshLicenseLimit()
+          void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
+          onOpenChange(false)
+          onSend(response.invitation_results)
+        },
+        onError: (error) => {
+          switch (getInviteErrorCode(error)) {
+            case 'limit_exceeded':
+              setSubmissionError({
+                kind: 'fields',
+                errors: {
+                  emails: t(($) => $['members.inviteLimitExceeded'], { ns: 'common' }),
+                },
+              })
+              break
+            case 'invalid_role':
+              setSubmissionError({
+                kind: 'fields',
+                errors: { role: t(($) => $['members.invalidRole'], { ns: 'common' }) },
+              })
+              break
+            default:
+              setSubmissionError({
+                kind: 'form',
+                message: t(($) => $['members.inviteFailed'], { ns: 'common' }),
+              })
+          }
+        },
+      },
+    )
   }
 
   return (
-    <Form
+    <Form<InviteFormValues>
       aria-label={t(($) => $['members.inviteTeamMember'], { ns: 'common' })}
-      errors={formErrors}
+      errors={fieldErrors}
       className="grid gap-5 pt-5"
-      onSubmit={handleSubmit}
+      onFormSubmit={handleSubmit}
     >
       {!isEmailSetup && (
         <div className="flex items-start gap-1.5 rounded-lg bg-state-warning-hover p-2 text-text-warning">
@@ -150,19 +136,9 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
         draft={draft}
         onRecipientsChange={setRecipients}
         onDraftChange={setDraft}
-        onChange={() => clearSubmitError('emails')}
-        error={emailServerError}
         disabled={isPending}
-        inputRef={emailInputRef}
       />
-      <RoleSelector
-        value={role}
-        onChange={setRole}
-        onInteract={() => clearSubmitError('role')}
-        error={roleError}
-        disabled={isPending}
-        triggerRef={roleTriggerRef}
-      />
+      <RoleSelector hasServerError={Boolean(fieldErrors?.role)} disabled={isPending} />
       {exceedsRemainingSeats && (
         <div
           role="status"
@@ -179,9 +155,9 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
           </span>
         </div>
       )}
-      {submitError?.target === 'form' && (
+      {submissionError?.kind === 'form' && (
         <div role="alert" className="body-xs-regular text-text-destructive">
-          {submitError.message}
+          {submissionError.message}
         </div>
       )}
       <Button

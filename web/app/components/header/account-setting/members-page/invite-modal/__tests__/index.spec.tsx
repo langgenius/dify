@@ -61,9 +61,20 @@ describe('InviteModal', () => {
                 permission_keys: [],
                 role_tag: '',
               },
+              {
+                id: 'editor',
+                tenant_id: 'tenant-id',
+                type: 'workspace',
+                category: 'global_system_default',
+                name: 'Editor',
+                description: 'Can build and edit apps',
+                is_builtin: true,
+                permission_keys: [],
+                role_tag: '',
+              },
             ],
             pagination: {
-              total_count: 1,
+              total_count: 2,
               per_page: 20,
               current_page: 1,
               total_pages: 1,
@@ -503,7 +514,7 @@ describe('InviteModal', () => {
 
   it.each([
     ['limit_exceeded', /members\.inviteLimitExceeded/i, 'emails', 'textbox'],
-    ['invalid-role', /members\.invalidRole/i, 'role', 'combobox'],
+    ['invalid_role', /members\.invalidRole/i, 'role', 'combobox'],
   ])('maps %s server validation to the owning field', async (code, message, fieldName, role) => {
     const user = userEvent.setup()
     inviteMember.mockRejectedValue({
@@ -524,6 +535,29 @@ describe('InviteModal', () => {
       }),
     ).toHaveFocus()
     expect(onOpenChange).not.toHaveBeenCalled()
+  })
+
+  it('keeps a role server error visible when the user only opens the selector', async () => {
+    const user = userEvent.setup()
+    inviteMember.mockRejectedValue({
+      code: 'BAD_REQUEST',
+      data: { body: { code: 'invalid_role', message: 'Backend message' } },
+    })
+    renderModal()
+
+    await addRecipients(user, 'user@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    expect(await screen.findByText(/members\.invalidRole/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox', { name: /members\.role/i }))
+
+    expect(screen.getByText(/members\.invalidRole/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('option', { name: /Editor/i }))
+
+    expect(screen.queryByText(/members\.invalidRole/i)).not.toBeInTheDocument()
   })
 
   it('should clear an email server error when the user edits and successfully retries', async () => {

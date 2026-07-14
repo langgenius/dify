@@ -1,7 +1,6 @@
 import type { Role, RoleListResponse } from '@/models/access-control'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
 import { vi } from 'vitest'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { RoleSelector } from '../role-selector'
@@ -40,28 +39,27 @@ const createPage = (data: Role[]): RoleListResponse => ({
 const mockUseWorkspaceRoleList = ({
   data = roles,
   isLoading = false,
+  error = null,
   hasNextPage = false,
   fetchNextPage = vi.fn(),
 }: {
   data?: Role[]
   isLoading?: boolean
+  error?: Error | null
   hasNextPage?: boolean
   fetchNextPage?: () => void
 } = {}) => {
   vi.mocked(useWorkspaceRoleList).mockReturnValue({
     data: { pages: [createPage(data)], pageParams: [1] },
     isLoading,
-    error: null,
+    error,
     hasNextPage,
     isFetchingNextPage: false,
     fetchNextPage,
   } as unknown as ReturnType<typeof useWorkspaceRoleList>)
 }
 
-const RoleSelectorWrapper = ({ initialRole = null }: { initialRole?: Role | null }) => {
-  const [role, setRole] = useState<Role | null>(initialRole)
-  return <RoleSelector value={role} onChange={setRole} />
-}
+const RoleSelectorWrapper = () => <RoleSelector />
 
 const getTrigger = () => screen.getByRole('combobox', { name: /members\.role/i })
 const getListbox = () => screen.getByRole('listbox', { name: /members\.role/i })
@@ -128,6 +126,18 @@ describe('RoleSelector', () => {
     mockUseWorkspaceRoleList({ data: [] })
     rerender(<RoleSelectorWrapper />)
     expect(within(getListbox()).getByText(/dynamicSelect\.noData/i)).toBeInTheDocument()
+  })
+
+  it('shows an error instead of treating a failed role query as empty', async () => {
+    const user = userEvent.setup()
+    mockUseWorkspaceRoleList({ data: [], error: new Error('Failed to load roles') })
+    render(<RoleSelectorWrapper />)
+
+    await user.click(getTrigger())
+
+    expect(within(getListbox()).getByText(/dynamicSelect\.error/i)).toBeInTheDocument()
+    expect(within(getListbox()).queryByText(/dynamicSelect\.noData/i)).not.toBeInTheDocument()
+    expect(within(getListbox()).queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('loads another role page when the list sentinel becomes visible', async () => {

@@ -15,6 +15,7 @@ from controllers.console.auth.error import (
     OwnerTransferLimitError,
 )
 from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
+from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.workspace.members import (
     DatasetOperatorMemberListApi,
     MemberInviteEmailApi,
@@ -253,10 +254,10 @@ class TestMemberInviteEmailApi:
         }
 
         with app.test_request_context("/", json=payload):
-            result, status = method(api, MagicMock())
+            with pytest.raises(InvalidMemberRoleError) as exc_info:
+                method(api, MagicMock())
 
-        assert status == 400
-        assert result["code"] == "invalid-role"
+        assert exc_info.value.error_code == "invalid_role"
 
     def test_invite_generic_exception(self, app: Flask):
         api = MemberInviteEmailApi()
