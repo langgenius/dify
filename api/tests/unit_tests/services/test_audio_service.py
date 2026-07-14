@@ -61,9 +61,8 @@ import pytest
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
-from models.enums import ConversationFromSource, MessageStatus
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import MessageStatus
+from models.enums import ConversationFromSource, MessageStatus
 from models.model import App, AppMode, AppModelConfig, Message
 from models.workflow import Workflow
 from services.app_ref_service import MessageRef
