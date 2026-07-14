@@ -331,7 +331,13 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 	idleFlush := time.Duration(req.IdleFlushSeconds * float64(time.Second))
 
 	deadline := time.Now().Add(timeout)
+	lastSize := fileSize(outputPath)
+	sawOutput := lastSize > int64(req.Offset)
 	var lastGrowthAt *time.Time
+	if sawOutput {
+		now := time.Now()
+		lastGrowthAt = &now
+	}
 
 	for {
 		view, err := s.GetJobStatus(jobID)
@@ -341,9 +347,22 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 
 		currentSize := fileSize(outputPath)
 
-		if currentSize > int64(req.Offset) {
-			now := time.Now()
-			lastGrowthAt = &now
+		// Validate offset against current file size (mirror Python behavior).
+		if int64(req.Offset) > currentSize {
+			return nil, NewServerError(400, "invalid_offset",
+				fmt.Sprintf("offset %d exceeds current file size %d", req.Offset, currentSize))
+		}
+
+		// Only update lastGrowthAt when the file actually grows (not just
+		// when currentSize > offset).  Without this, lastGrowthAt resets on
+		// every poll and idle-flush can never fire.
+		if currentSize > lastSize {
+			lastSize = currentSize
+			if currentSize > int64(req.Offset) {
+				sawOutput = true
+				now := time.Now()
+				lastGrowthAt = &now
+			}
 		}
 
 		if view.Done {
@@ -362,7 +381,7 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 			if window.Truncated {
 				return s.jobResultFromView(view, row, window), nil
 			}
-			if lastGrowthAt != nil {
+			if sawOutput && lastGrowthAt != nil {
 				if time.Since(*lastGrowthAt) >= idleFlush {
 					return s.jobResultFromView(view, row, window), nil
 				}
@@ -813,8 +832,10 @@ func (s *Service) installRunner() {
 
 func (s *Service) runnerScriptSource() string {
 	// The runner script is a bash wrapper that waits for the start-gate,
-	// then exec's the user script via a Python bootstrap (matching the Python impl).
-	// For the Go version, we can simplify this to a pure bash/exec approach.
+	// then delegates env loading + exec to a Python bootstrap so that
+	// JSON env values (including multi-line strings) are applied verbatim.
+	// The Python helper exec's the target process so SIGINT semantics
+	// match running the script directly in the tmux pane.
 	return `#!/usr/bin/env bash
 set -uo pipefail
 
@@ -846,28 +867,48 @@ unset SHELLCTL_TMUX_SOCKET
 unset SHELLCTL_RUNNER
 unset SHELLCTL_AUTH_TOKEN
 
-cd "$CWD" || exit 111
+# Use Python bootstrap to load JSON env verbatim and exec the target.
+# This avoids depending on jq and correctly handles multi-line values.
+python3 -c '
+import json, os, stat, sys
+from pathlib import Path
 
-# Apply env from JSON if jq is available
-if command -v jq >/dev/null 2>&1 && [ -f "$ENV_PATH" ]; then
-  while IFS='=' read -r key value; do
-    export "$key=$value"
-  done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' "$ENV_PATH" 2>/dev/null)
-fi
+script_path = Path(sys.argv[1])
+cwd = sys.argv[2]
+env_path = Path(sys.argv[3])
+
+env = os.environ.copy()
+if env_path.exists():
+    env.update(json.loads(env_path.read_text(encoding="utf-8")))
+
+try:
+    os.chdir(cwd)
+except OSError:
+    raise SystemExit(111)
 
 # Ensure HOME directory exists (agent backend may set a per-agent HOME).
-if [ -n "$HOME" ] && [ ! -d "$HOME" ]; then
-  mkdir -p "$HOME" 2>/dev/null || true
-fi
+home = env.get("HOME", "")
+if home and not os.path.isdir(home):
+    os.makedirs(home, exist_ok=True)
 
-# Determine how to run the script
-first_line=$(head -n1 "$SCRIPT_PATH")
-if [[ "$first_line" == "#!"* ]]; then
-  chmod +x "$SCRIPT_PATH"
-  "$SCRIPT_PATH"
-else
-  sh "$SCRIPT_PATH"
-fi
+with script_path.open("r", encoding="utf-8") as handle:
+    first_line = handle.readline()
+
+if first_line.startswith("#!"):
+    script_path.chmod(script_path.stat().st_mode | stat.S_IXUSR)
+    argv = [str(script_path)]
+else:
+    argv = ["sh", str(script_path)]
+
+try:
+    os.execvpe(argv[0], argv, env)
+except FileNotFoundError as exc:
+    print(f"{argv[0]}: {exc.strerror}", file=sys.stderr)
+    raise SystemExit(127) from exc
+except OSError as exc:
+    print(f"{argv[0]}: {exc.strerror}", file=sys.stderr)
+    raise SystemExit(126) from exc
+' "$SCRIPT_PATH" "$CWD" "$ENV_PATH"
 EXIT_CODE=$?
 
 ENDED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"

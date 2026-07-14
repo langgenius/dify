@@ -36,7 +36,7 @@ type InputJobRequest struct {
 
 // TerminateJobRequest is the HTTP request body for POST /v1/jobs/{job_id}/terminate.
 type TerminateJobRequest struct {
-	GraceSeconds float64 `json:"grace_seconds,omitempty"`
+	GraceSeconds *float64 `json:"grace_seconds,omitempty"`
 }
 
 // JobResult is the unified response for output-oriented job APIs.

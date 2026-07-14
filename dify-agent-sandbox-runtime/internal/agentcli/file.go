@@ -148,6 +148,12 @@ func guessMIMEType(filename string) string {
 	if mimeType == "" {
 		return "application/octet-stream"
 	}
+	// Strip parameters (e.g. "; charset=utf-8") so the MIME type matches
+	// what Flask/Werkzeug returns via file.mimetype during signature
+	// verification on the Dify API upload endpoint.
+	if idx := strings.Index(mimeType, ";"); idx >= 0 {
+		mimeType = strings.TrimSpace(mimeType[:idx])
+	}
 	return mimeType
 }
 

@@ -19,11 +19,11 @@ func Handler(svc *Service, config *Config) http.Handler {
 
 	mux.HandleFunc("GET /healthz", handleHealthz)
 	mux.HandleFunc("POST /v1/jobs/run", auth(handleRunJob(svc)))
-	mux.HandleFunc("POST /v1/jobs/{job_id}/wait", auth(handleWaitJob(svc)))
+	mux.HandleFunc("POST /v1/jobs/{job_id}/wait", auth(handleWaitJob(svc, config)))
 	mux.HandleFunc("GET /v1/jobs/{job_id}/log/tail", auth(handleTailJob(svc, config)))
 	mux.HandleFunc("GET /v1/jobs/{job_id}", auth(handleJobStatus(svc)))
 	mux.HandleFunc("GET /v1/jobs", auth(handleListJobs(svc, config)))
-	mux.HandleFunc("POST /v1/jobs/{job_id}/input", auth(handleInputJob(svc)))
+	mux.HandleFunc("POST /v1/jobs/{job_id}/input", auth(handleInputJob(svc, config)))
 	mux.HandleFunc("POST /v1/jobs/{job_id}/terminate", auth(handleTerminateJob(svc, config)))
 	mux.HandleFunc("DELETE /v1/jobs/{job_id}", auth(handleDeleteJob(svc, config)))
 
@@ -72,13 +72,16 @@ func handleRunJob(svc *Service) http.HandlerFunc {
 	}
 }
 
-func handleWaitJob(svc *Service) http.HandlerFunc {
+func handleWaitJob(svc *Service, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		jobID := r.PathValue("job_id")
 		var req WaitJobRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeError(w, 400, "invalid_request", "Invalid JSON body")
 			return
+		}
+		if req.IdleFlushSeconds == 0 {
+			req.IdleFlushSeconds = DefaultIdleFlushSeconds
 		}
 		result, err := svc.WaitJob(jobID, &req)
 		if err != nil {
@@ -148,13 +151,19 @@ func handleListJobs(svc *Service, config *Config) http.HandlerFunc {
 	}
 }
 
-func handleInputJob(svc *Service) http.HandlerFunc {
+func handleInputJob(svc *Service, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		jobID := r.PathValue("job_id")
 		var req InputJobRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeError(w, 400, "invalid_request", "Invalid JSON body")
 			return
+		}
+		if req.IdleFlushSeconds == 0 {
+			req.IdleFlushSeconds = DefaultIdleFlushSeconds
+		}
+		if req.Timeout == 0 {
+			req.Timeout = DefaultTimeoutSeconds
 		}
 		result, err := svc.SendInput(jobID, &req)
 		if err != nil {
@@ -171,12 +180,12 @@ func handleTerminateJob(svc *Service, config *Config) http.HandlerFunc {
 		var req TerminateJobRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			// Allow empty body with defaults
-			req.GraceSeconds = config.DefaultTerminateGraceSeconds
 		}
-		if req.GraceSeconds == 0 {
-			req.GraceSeconds = config.DefaultTerminateGraceSeconds
+		graceSeconds := config.DefaultTerminateGraceSeconds
+		if req.GraceSeconds != nil {
+			graceSeconds = *req.GraceSeconds
 		}
-		view, err := svc.TerminateJob(jobID, req.GraceSeconds)
+		view, err := svc.TerminateJob(jobID, graceSeconds)
 		if err != nil {
 			writeServerError(w, err)
 			return
