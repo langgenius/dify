@@ -101,9 +101,7 @@ class TestSyncAccountDeletion:
             assert result is True
             mock_queue_task.assert_not_called()
 
-    def test_sync_account_deletion_multiple_workspaces(
-        self, sqlite_session: Session, mock_queue_task
-    ) -> None:
+    def test_sync_account_deletion_multiple_workspaces(self, sqlite_session: Session, mock_queue_task) -> None:
         account_id = str(uuid4())
         tenant_ids = [str(uuid4()) for _ in range(3)]
 
@@ -115,9 +113,7 @@ class TestSyncAccountDeletion:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
-            result = sync_account_deletion(
-                account_id=account_id, source="account_deleted", session=sqlite_session
-            )
+            result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
 
             assert result is True
             assert mock_queue_task.call_count == 3
@@ -125,22 +121,16 @@ class TestSyncAccountDeletion:
             queued_workspace_ids = {call.kwargs["workspace_id"] for call in mock_queue_task.call_args_list}
             assert queued_workspace_ids == set(tenant_ids)
 
-    def test_sync_account_deletion_no_workspaces(
-        self, sqlite_session: Session, mock_queue_task
-    ) -> None:
+    def test_sync_account_deletion_no_workspaces(self, sqlite_session: Session, mock_queue_task) -> None:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
-            result = sync_account_deletion(
-                account_id=str(uuid4()), source="account_deleted", session=sqlite_session
-            )
+            result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted", session=sqlite_session)
 
             assert result is True
             mock_queue_task.assert_not_called()
 
-    def test_sync_account_deletion_partial_failure(
-        self, sqlite_session: Session, mock_queue_task
-    ) -> None:
+    def test_sync_account_deletion_partial_failure(self, sqlite_session: Session, mock_queue_task) -> None:
         account_id = str(uuid4())
         tenant_ids = [str(uuid4()) for _ in range(3)]
         fail_tenant = tenant_ids[1]
@@ -158,16 +148,12 @@ class TestSyncAccountDeletion:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
-            result = sync_account_deletion(
-                account_id=account_id, source="account_deleted", session=sqlite_session
-            )
+            result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
 
             assert result is False
             assert mock_queue_task.call_count == 3
 
-    def test_sync_account_deletion_all_failures(
-        self, sqlite_session: Session, mock_queue_task
-    ) -> None:
+    def test_sync_account_deletion_all_failures(self, sqlite_session: Session, mock_queue_task) -> None:
         account_id = str(uuid4())
         tenant_id = str(uuid4())
 
@@ -180,9 +166,7 @@ class TestSyncAccountDeletion:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
 
-            result = sync_account_deletion(
-                account_id=account_id, source="account_deleted", session=sqlite_session
-            )
+            result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
 
             assert result is False
             mock_queue_task.assert_called_once()
