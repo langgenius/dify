@@ -1,5 +1,6 @@
 import type { Browser, Page } from '@playwright/test'
 import type { Buffer } from 'node:buffer'
+import type { CleanupTask } from '../../support/cleanup'
 import type { DifyWorld } from './world'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -8,6 +9,7 @@ import { After, AfterAll, Before, BeforeAll, setDefaultTimeout, Status } from '@
 import { chromium } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
 import { deleteTestApp } from '../../support/api'
+import { runCleanupTasks } from '../../support/cleanup'
 import { deleteTestDataset } from '../../support/datasets'
 import { getVoiceInputTestMaterialPath } from '../../support/test-materials'
 import { deleteBuiltinToolCredential } from '../../support/tools'
@@ -21,6 +23,9 @@ import {
 
 const e2eRoot = fileURLToPath(new URL('../..', import.meta.url))
 const artifactsDir = path.join(e2eRoot, 'cucumber-report', 'artifacts')
+const closeSessionHookTimeoutMs = 30_000
+const cleanupHookTimeoutMs = 120_000
+const diagnosticHookTimeoutMs = 60_000
 
 let browser: Browser | undefined
 let microphoneBrowserPromise: Promise<Browser> | undefined
@@ -83,14 +88,6 @@ const captureDiagnosticPage = async (
   return [screenshotPath, htmlPath]
 }
 
-const recordCleanup = async (errors: string[], label: string, cleanup: () => Promise<void>) => {
-  try {
-    await cleanup()
-  } catch (error) {
-    errors.push(`${label}: ${error instanceof Error ? error.message : String(error)}`)
-  }
-}
-
 BeforeAll({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async () => {
   await mkdir(artifactsDir, { recursive: true })
 
@@ -143,11 +140,78 @@ Before(async function (this: DifyWorld, { pickle }) {
   console.warn(`[e2e] start ${pickle.name}${tags ? ` ${tags}` : ''}`)
 })
 
-After(async function (this: DifyWorld, { pickle, result }) {
-  const elapsedMs = this.scenarioStartedAt ? Date.now() - this.scenarioStartedAt : undefined
-  const status = result?.status || Status.UNKNOWN
+// Cucumber runs After hooks in reverse registration order: diagnostics, cleanup, then close.
+After(
+  { name: 'Close browser session', timeout: closeSessionHookTimeoutMs },
+  async function (this: DifyWorld, { result }) {
+    const closeErrors = await runCleanupTasks([
+      { label: 'Close browser session', run: () => this.closeSession() },
+    ])
+    if (closeErrors.length === 0) return
 
-  if (diagnosticArtifactStatuses.has(status)) {
+    const message = `Cleanup errors:\n${closeErrors.join('\n')}`
+    this.attach(message, 'text/plain')
+    if (result?.status === Status.PASSED) throw new Error(message)
+  },
+)
+
+After(
+  { name: 'Clean up scenario resources', timeout: cleanupHookTimeoutMs },
+  async function (this: DifyWorld, { result }) {
+    const cleanupTasks: CleanupTask[] = [
+      ...this.createdAgentConfigSkills.toReversed().map((skill) => ({
+        label: `Delete Agent config skill ${skill.name}`,
+        run: () => deleteAgentConfigSkill(skill.agentId, skill.name),
+      })),
+      ...this.createdAgentConfigFiles.toReversed().map((file) => ({
+        label: `Delete Agent config file ${file.name}`,
+        run: () => deleteAgentConfigFile(file.agentId, file.name),
+      })),
+      ...this.createdAgentDriveFiles.toReversed().map((file) => ({
+        label: `Delete Agent drive file ${file.key}`,
+        run: () => deleteAgentDriveFile(file.agentId, file.key),
+      })),
+      ...this.createdAppIds.toReversed().map((id) => ({
+        label: `Delete app ${id}`,
+        run: () => deleteTestApp(id),
+      })),
+      ...this.createdAgentIds.toReversed().map((id) => ({
+        label: `Delete Agent ${id}`,
+        run: () => deleteTestAgent(id),
+      })),
+      ...this.createdDatasetIds.toReversed().map((id) => ({
+        label: `Delete dataset ${id}`,
+        run: () => deleteTestDataset(id),
+      })),
+      ...this.createdBuiltinToolCredentials.toReversed().map((credential) => ({
+        label: `Delete builtin tool credential ${credential.provider}/${credential.credentialId}`,
+        run: () => deleteBuiltinToolCredential(credential.provider, credential.credentialId),
+      })),
+    ]
+
+    const cleanupErrors = await runCleanupTasks(cleanupTasks)
+    cleanupErrors.push(...(await this.runRegisteredCleanups()))
+
+    if (cleanupErrors.length === 0) return
+
+    const message = `Cleanup errors:\n${cleanupErrors.join('\n')}`
+    this.attach(message, 'text/plain')
+    if (result?.status === Status.PASSED) throw new Error(message)
+  },
+)
+
+After(
+  { name: 'Capture scenario diagnostics', timeout: diagnosticHookTimeoutMs },
+  async function (this: DifyWorld, { pickle, result }) {
+    const elapsedMs = this.scenarioStartedAt ? Date.now() - this.scenarioStartedAt : undefined
+    const status = result?.status || Status.UNKNOWN
+
+    console.warn(
+      `[e2e] end ${pickle.name} status=${status}${elapsedMs ? ` durationMs=${elapsedMs}` : ''}`,
+    )
+
+    if (!diagnosticArtifactStatuses.has(status)) return
+
     const artifactPaths: string[] = []
     const artifactErrors: string[] = []
     const diagnosticPages = uniqueDiagnosticPages([
@@ -181,48 +245,8 @@ After(async function (this: DifyWorld, { pickle, result }) {
 
     if (artifactPaths.length > 0)
       this.attach(`Artifacts:\n${artifactPaths.join('\n')}`, 'text/plain')
-  }
-
-  console.warn(
-    `[e2e] end ${pickle.name} status=${status}${elapsedMs ? ` durationMs=${elapsedMs}` : ''}`,
-  )
-
-  const cleanupErrors: string[] = []
-
-  for (const skill of this.createdAgentConfigSkills.toReversed()) {
-    await recordCleanup(cleanupErrors, `Delete Agent config skill ${skill.name}`, () =>
-      deleteAgentConfigSkill(skill.agentId, skill.name),
-    )
-  }
-  for (const file of this.createdAgentConfigFiles.toReversed()) {
-    await recordCleanup(cleanupErrors, `Delete Agent config file ${file.name}`, () =>
-      deleteAgentConfigFile(file.agentId, file.name),
-    )
-  }
-  for (const file of this.createdAgentDriveFiles.toReversed()) {
-    await recordCleanup(cleanupErrors, `Delete Agent drive file ${file.key}`, () =>
-      deleteAgentDriveFile(file.agentId, file.key),
-    )
-  }
-  for (const id of this.createdAppIds)
-    await recordCleanup(cleanupErrors, `Delete app ${id}`, () => deleteTestApp(id))
-  for (const id of this.createdAgentIds)
-    await recordCleanup(cleanupErrors, `Delete Agent ${id}`, () => deleteTestAgent(id))
-  for (const id of this.createdDatasetIds)
-    await recordCleanup(cleanupErrors, `Delete dataset ${id}`, () => deleteTestDataset(id))
-  for (const credential of this.createdBuiltinToolCredentials.toReversed()) {
-    await recordCleanup(
-      cleanupErrors,
-      `Delete builtin tool credential ${credential.provider}/${credential.credentialId}`,
-      () => deleteBuiltinToolCredential(credential.provider, credential.credentialId),
-    )
-  }
-  if (cleanupErrors.length > 0)
-    this.attach(`Typed cleanup errors:\n${cleanupErrors.join('\n')}`, 'text/plain')
-  await this.runRegisteredCleanups()
-
-  await this.closeSession()
-})
+  },
+)
 
 AfterAll(async () => {
   const microphoneBrowser = await microphoneBrowserPromise?.catch(() => undefined)
