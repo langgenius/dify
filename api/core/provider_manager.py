@@ -1499,12 +1499,28 @@ class ProviderManager:
 
         for variable in secret_variables:
             if variable in credentials:
-                with contextlib.suppress(ValueError):
+                # NOTE: do NOT silently suppress ValueError here.
+                # When the RSA key pair is mismatched (e.g. after a
+                # container rebuild that regenerates privkeys), decrypt
+                # raises ValueError.  Swallowing it causes the *encrypted*
+                # ciphertext to be returned as the credential value, which
+                # is then sent to the model provider as the API key,
+                # producing cryptic "Authentication Fails" errors.
+                try:
                     credentials[variable] = encrypter.decrypt_token_with_decoding(
                         credentials.get(variable) or "",
                         self.decoding_rsa_key,
                         self.decoding_cipher_rsa,
                     )
+                except ValueError:
+                    logger.error(
+                        "Failed to decrypt credential variable %s for tenant %s; "
+                        "the RSA key pair may be out of sync. "
+                        "Run `flask reset-encrypt-key-pair` to fix.",
+                        variable,
+                        tenant_id,
+                    )
+                    credentials[variable] = None
 
         # Cache the decrypted credentials
         credentials_cache.set(credentials=credentials)
@@ -1654,7 +1670,13 @@ class ProviderManager:
                                     self.decoding_cipher_rsa,
                                 )
                             except ValueError:
-                                pass
+                                logger.error(
+                                    "Failed to decrypt provider credential variable %s for tenant %s; "
+                                    "the RSA key pair may be out of sync.",
+                                    variable,
+                                    tenant_id,
+                                )
+                                provider_credentials[variable] = None
 
                     current_using_credentials = provider_credentials or {}
 
@@ -1800,7 +1822,13 @@ class ProviderManager:
                                             self.decoding_cipher_rsa,
                                         )
                                     except ValueError:
-                                        pass
+                                        logger.error(
+                                            "Failed to decrypt model credential variable %s for tenant %s; "
+                                            "the RSA key pair may be out of sync.",
+                                            variable,
+                                            load_balancing_model_config.tenant_id,
+                                        )
+                                        provider_model_credentials[variable] = None
 
                             # cache provider model credentials
                             provider_model_credentials_cache.set(credentials=provider_model_credentials)
