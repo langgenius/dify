@@ -108,7 +108,7 @@ class MemberInviteResponse(ResponseModel):
 
 
 class MemberInviteErrorResponse(ResponseModel):
-    code: Literal["invalid_role", "limit_exceeded"]
+    code: Literal["invalid_param", "invalid_role", "limit_exceeded"]
     message: str
     status: Literal[400]
 

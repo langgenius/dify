@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from flask_restx import Resource
 
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -19,12 +20,14 @@ from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.workspace.members import (
     DatasetOperatorMemberListApi,
     MemberInviteEmailApi,
+    MemberInviteErrorResponse,
     MemberListApi,
     MemberUpdateRoleApi,
     OwnerTransfer,
     OwnerTransferCheckApi,
     SendOwnerTransferEmailApi,
 )
+from libs.external_api import ExternalApi
 from services.errors.account import AccountAlreadyInTenantError
 
 
@@ -258,6 +261,25 @@ class TestMemberInviteEmailApi:
                 method(api, MagicMock())
 
         assert exc_info.value.error_code == "invalid_role"
+
+    def test_invite_invalid_payload_matches_documented_error_response(self):
+        app = Flask(__name__)
+        api = ExternalApi(app)
+        method = unwrap(MemberInviteEmailApi.post)
+
+        @api.route("/workspaces/current/members/invite-email")
+        class MemberInviteValidationApi(Resource):
+            def post(self):
+                return method(MemberInviteEmailApi(), MagicMock())
+
+        response = app.test_client().post(
+            "/workspaces/current/members/invite-email",
+            json={"emails": [], "role": "normal"},
+        )
+
+        assert response.status_code == 400
+        error = MemberInviteErrorResponse.model_validate(response.get_json())
+        assert error.code == "invalid_param"
 
     def test_invite_generic_exception(self, app: Flask):
         api = MemberInviteEmailApi()

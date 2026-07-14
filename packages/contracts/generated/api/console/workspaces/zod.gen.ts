@@ -99,7 +99,7 @@ export const zMemberInvitePayload = z.object({
  * MemberInviteErrorResponse
  */
 export const zMemberInviteErrorResponse = z.object({
-  code: z.enum(['invalid_role', 'limit_exceeded']),
+  code: z.enum(['invalid_param', 'invalid_role', 'limit_exceeded']),
   message: z.string(),
   status: z.literal(400),
 })

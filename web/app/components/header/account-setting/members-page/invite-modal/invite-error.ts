@@ -2,7 +2,11 @@ import type { MemberInviteErrorResponse } from '@dify/contracts/api/console/work
 
 type InviteErrorCode = MemberInviteErrorResponse['code']
 
-const INVITE_ERROR_CODES = new Set<InviteErrorCode>(['invalid_role', 'limit_exceeded'])
+const INVITE_ERROR_CODES = new Set<InviteErrorCode>([
+  'invalid_param',
+  'invalid_role',
+  'limit_exceeded',
+])
 
 function getRecord(value: unknown) {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null

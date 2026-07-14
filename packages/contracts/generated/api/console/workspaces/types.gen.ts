@@ -183,7 +183,7 @@ export type MemberInviteResponse = {
 }
 
 export type MemberInviteErrorResponse = {
-  code: 'invalid_role' | 'limit_exceeded'
+  code: 'invalid_param' | 'invalid_role' | 'limit_exceeded'
   message: string
   status: 400
 }
