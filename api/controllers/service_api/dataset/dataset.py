@@ -27,7 +27,12 @@ from controllers.common.schema import (
 from controllers.console.app.wraps import with_session
 from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
-from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
+from controllers.service_api.dataset.error import (
+    DatasetIndexingInProgressError,
+    DatasetInUseError,
+    DatasetNameDuplicateError,
+    InvalidActionError,
+)
 from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
@@ -729,7 +734,9 @@ class DatasetApi(DatasetApiResource):
             404: "`not_found` : Dataset not found.",
             409: (
                 "`dataset_in_use` : The knowledge base is being used by some apps. Please remove it from the "
-                "apps before deleting."
+                "apps before deleting. "
+                "`dataset_indexing_in_progress` : Some documents are still being indexed. Wait for indexing "
+                "to finish or pause the documents before deleting."
             ),
         },
     )
@@ -741,7 +748,7 @@ class DatasetApi(DatasetApiResource):
             204: "Dataset deleted successfully",
             401: "Unauthorized - invalid API token",
             404: "Dataset not found",
-            409: "Conflict - dataset is in use",
+            409: "Conflict - dataset is in use or documents are still indexing",
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
@@ -772,6 +779,8 @@ class DatasetApi(DatasetApiResource):
                 raise NotFound("Dataset not found.")
         except services.errors.dataset.DatasetInUseError:
             raise DatasetInUseError()
+        except services.errors.dataset.DatasetIndexingInProgressError:
+            raise DatasetIndexingInProgressError()
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>")

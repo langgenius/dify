@@ -40,7 +40,12 @@ from controllers.service_api.dataset.dataset import (
     TagUnbindingPayload,
     TagUpdatePayload,
 )
-from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
+from controllers.service_api.dataset.error import (
+    DatasetIndexingInProgressError,
+    DatasetInUseError,
+    DatasetNameDuplicateError,
+    InvalidActionError,
+)
 from models.account import Account
 from models.dataset import Dataset, DatasetPermissionEnum
 from models.enums import TagType
@@ -814,6 +819,27 @@ class TestDatasetApiDelete:
         ):
             api = DatasetApi()
             with pytest.raises(DatasetInUseError):
+                unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+
+    @patch("controllers.service_api.dataset.dataset.current_user")
+    @patch("controllers.service_api.dataset.dataset.DatasetService")
+    def test_delete_dataset_indexing_in_progress(
+        self,
+        mock_dataset_svc,
+        mock_current_user,
+        app: Flask,
+        mock_dataset,
+    ):
+        from controllers.service_api.dataset.dataset import DatasetApi
+
+        mock_dataset_svc.delete_dataset.side_effect = services.errors.dataset.DatasetIndexingInProgressError()
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}",
+            method="DELETE",
+        ):
+            api = DatasetApi()
+            with pytest.raises(DatasetIndexingInProgressError):
                 unwrap(api.delete)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
 
 

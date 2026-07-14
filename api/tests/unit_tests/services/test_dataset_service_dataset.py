@@ -1,6 +1,7 @@
 """Unit tests for DatasetService and dataset-related collaborators."""
 
 from .dataset_service_test_helpers import (
+    DatasetIndexingInProgressError,
     DatasetNameDuplicateError,
     DatasetPermissionEnum,
     DatasetPermissionService,
@@ -1409,6 +1410,83 @@ class TestDatasetServicePermissionsAndLifecycle:
                 dataset=SimpleNamespace(id="dataset-1"),
                 session=session,
             )
+
+    @staticmethod
+    def _delete_dataset(*, has_active_indexing: bool):
+        """Run DatasetService.delete_dataset with the indexing-guard query mocked.
+
+        The guard's EXISTS query is the only `session.scalar` call in the flow,
+        so its return value directly simulates whether documents are indexing.
+        """
+        dataset = DatasetServiceUnitDataFactory.create_dataset_mock()
+        user = DatasetServiceUnitDataFactory.create_user_mock()
+        session = MagicMock()
+        session.scalar.return_value = has_active_indexing
+
+        with (
+            patch.object(DatasetService, "get_dataset", return_value=dataset),
+            patch.object(DatasetService, "check_dataset_permission"),
+            patch("services.dataset_service.dataset_was_deleted") as deleted_signal,
+        ):
+            result = DatasetService.delete_dataset(dataset.id, user, session)
+
+        return result, dataset, session, deleted_signal
+
+    def test_delete_dataset_blocks_while_documents_are_indexing(self):
+        # Deleting mid-indexing races the in-flight pipeline against cleanup and
+        # orphans segments/chunks/vector tables. See issue #38522.
+        with pytest.raises(DatasetIndexingInProgressError):
+            self._delete_dataset(has_active_indexing=True)
+
+    def test_delete_dataset_does_not_delete_or_signal_when_blocked(self):
+        dataset = DatasetServiceUnitDataFactory.create_dataset_mock()
+        user = DatasetServiceUnitDataFactory.create_user_mock()
+        session = MagicMock()
+        session.scalar.return_value = True
+
+        with (
+            patch.object(DatasetService, "get_dataset", return_value=dataset),
+            patch.object(DatasetService, "check_dataset_permission"),
+            patch("services.dataset_service.dataset_was_deleted") as deleted_signal,
+        ):
+            with pytest.raises(DatasetIndexingInProgressError):
+                DatasetService.delete_dataset(dataset.id, user, session)
+
+        deleted_signal.send.assert_not_called()
+        session.delete.assert_not_called()
+        session.commit.assert_not_called()
+
+    def test_delete_dataset_proceeds_when_no_documents_are_indexing(self):
+        result, dataset, session, deleted_signal = self._delete_dataset(has_active_indexing=False)
+
+        assert result is True
+        deleted_signal.send.assert_called_once_with(dataset)
+        session.delete.assert_called_once_with(dataset)
+        session.commit.assert_called_once_with()
+
+    def test_delete_dataset_guard_queries_active_unpaused_documents(self):
+        _, dataset, session, _ = self._delete_dataset(has_active_indexing=False)
+
+        statement = session.scalar.call_args.args[0]
+        compiled = statement.compile()
+        sql = str(compiled)
+
+        assert "EXISTS" in sql
+        assert "documents.dataset_id" in sql
+        # Paused documents must not block deletion: pausing is the escape hatch
+        # for datasets whose indexing is stuck. WAITING documents don't block
+        # either — their queued task no-ops once the dataset rows are gone, and
+        # the console has no pause control for queued documents.
+        assert "documents.is_paused IS NOT true" in sql
+        assert dataset.id in compiled.params.values()
+        status_lists = [value for value in compiled.params.values() if isinstance(value, list)]
+        assert len(status_lists) == 1
+        assert set(status_lists[0]) == {
+            "parsing",
+            "cleaning",
+            "splitting",
+            "indexing",
+        }
 
 
 class TestDatasetCollectionBindingService:

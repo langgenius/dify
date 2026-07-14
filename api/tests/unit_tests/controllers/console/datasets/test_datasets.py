@@ -30,7 +30,12 @@ from controllers.console.datasets.datasets import (
     DatasetRetrievalSettingMockApi,
     DatasetUseCheckApi,
 )
-from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
+from controllers.console.datasets.error import (
+    DatasetIndexingInProgressError,
+    DatasetInUseError,
+    DatasetNameDuplicateError,
+    IndexingEstimateError,
+)
 from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.provider_manager import ProviderManager
@@ -1153,6 +1158,24 @@ class TestDatasetApiDelete:
             ),
         ):
             with pytest.raises(DatasetInUseError):
+                method(api, user, dataset_id)
+
+    def test_delete_dataset_indexing_in_progress(self, app: Flask):
+        api = DatasetApi()
+        method = unwrap(api.delete)
+
+        dataset_id = "dataset-id"
+        user = make_account()
+
+        with (
+            app.test_request_context(f"/datasets/{dataset_id}"),
+            patch.object(
+                DatasetService,
+                "delete_dataset",
+                side_effect=services.errors.dataset.DatasetIndexingInProgressError(),
+            ),
+        ):
+            with pytest.raises(DatasetIndexingInProgressError):
                 method(api, user, dataset_id)
 
 
