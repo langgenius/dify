@@ -31,7 +31,7 @@ dependencies = [
     "gunicorn~=25.1.0",
     "httpx[socks]~=0.28.0",
     "jieba==0.42.1",
-    "json-repair>=0.55.1",
+    "json-repair>=0.60.1",
     "jsonschema>=4.25.1",
     "langfuse~=2.51.3",
     "langsmith>=0.8.18",
