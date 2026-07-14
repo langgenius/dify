@@ -13,6 +13,7 @@ import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import {
@@ -22,7 +23,7 @@ import {
 import { Plan } from '@/app/components/billing/type'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/storage'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
-import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import {
   StepByStepTourTestStateObserver,
@@ -465,14 +466,10 @@ const renderMainNav = (
   )
 }
 
-function GotoAnythingOpenProbe() {
-  const open = useGotoAnythingOpen()
-  return <div data-testid="goto-anything-open">{String(open)}</div>
-}
-
 describe('MainNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    gotoAnythingDialogHandle.close()
     localStorage.clear()
     mockPathname = '/apps'
     mockInstalledApps = []
@@ -896,14 +893,20 @@ describe('MainNav', () => {
     )
   })
 
-  it('opens goto anything from the search button', () => {
-    const store = createStore()
+  it('opens goto anything from the search button', async () => {
+    renderMainNav(undefined, {
+      extra: (
+        <Dialog handle={gotoAnythingDialogHandle}>
+          <DialogContent>
+            <DialogTitle>Goto Anything</DialogTitle>
+          </DialogContent>
+        </Dialog>
+      ),
+    })
 
-    renderMainNav(undefined, { store, extra: <GotoAnythingOpenProbe /> })
-    expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('false')
     fireEvent.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
-    expect(screen.getByTestId('goto-anything-open')).toHaveTextContent('true')
+    expect(await screen.findByRole('dialog', { name: 'Goto Anything' })).toBeInTheDocument()
   })
 
   it('shows Learn Dify switch in help menu and restores it from localStorage', async () => {

@@ -20,7 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import AppCard from '@/app/components/explore/app-card'
-import Banner from '@/app/components/explore/banner/banner'
+import { Banner } from '@/app/components/explore/banner/banner'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import {
   buildStepByStepTourScopedWorkspaceProperties,

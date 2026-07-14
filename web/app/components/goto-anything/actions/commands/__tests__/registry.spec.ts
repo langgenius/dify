@@ -225,7 +225,9 @@ describe('SlashCommandRegistry', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const handler = createHandler({
         name: 'broken',
-        search: vi.fn().mockRejectedValue(new Error('fail')),
+        search: vi.fn(() => {
+          throw new Error('fail')
+        }),
       })
       registry.register(handler)
 

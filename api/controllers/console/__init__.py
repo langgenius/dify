@@ -44,6 +44,7 @@ from . import (
     setup,
     spec,
     version,
+    workflow_run_archive,
 )
 from .agent import composer as agent_composer
 from .agent import roster as agent_roster
@@ -240,6 +241,7 @@ __all__ = [
     "workflow_draft_variable",
     "workflow_node_output_inspector",
     "workflow_run",
+    "workflow_run_archive",
     "workflow_statistic",
     "workflow_trigger",
     "workspace",

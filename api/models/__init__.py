@@ -145,6 +145,7 @@ from .workflow import (
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowPause,
     WorkflowRun,
+    WorkflowRunArchiveBundle,
     WorkflowType,
     resolve_workflow_kind,
 )
@@ -284,6 +285,7 @@ __all__ = [
     "WorkflowNodeExecutionTriggeredFrom",
     "WorkflowPause",
     "WorkflowRun",
+    "WorkflowRunArchiveBundle",
     "WorkflowRunTriggeredFrom",
     "WorkflowSchedulePlan",
     "WorkflowToolProvider",

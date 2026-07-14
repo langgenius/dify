@@ -1,11 +1,12 @@
 'use client'
 
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
-import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import ToggleButton from '../../app-sidebar/toggle-button'
@@ -20,7 +21,6 @@ const SEARCH_SHORTCUT = ['Mod', 'K']
 const SnippetDetailTop = ({ expand = true, onToggle }: SnippetDetailTopProps) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const setGotoAnythingOpen = useSetGotoAnythingOpen()
 
   if (!expand) {
     return (
@@ -68,14 +68,18 @@ const SnippetDetailTop = ({ expand = true, onToggle }: SnippetDetailTopProps) =>
       <Tooltip>
         <TooltipTrigger
           render={
-            <button
-              type="button"
-              aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
-              className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
-              onClick={() => setGotoAnythingOpen(true)}
-            >
-              <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
-            </button>
+            <DialogTrigger
+              handle={gotoAnythingDialogHandle}
+              render={
+                <button
+                  type="button"
+                  aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
+                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                >
+                  <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
+                </button>
+              }
+            />
           }
         />
         <TooltipContent

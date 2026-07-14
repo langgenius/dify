@@ -9,6 +9,7 @@ export const DialogTrigger = BaseDialog.Trigger
 export const DialogTitle = BaseDialog.Title
 export const DialogDescription = BaseDialog.Description
 export const DialogPortal = BaseDialog.Portal
+export const createDialogHandle = BaseDialog.createHandle
 
 type DialogBackdropProps = Omit<BaseDialog.Backdrop.Props, 'className'> & {
   className?: string

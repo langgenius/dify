@@ -654,7 +654,7 @@ class AppListApi(Resource):
                 app_id=str(app.id),
                 payload=enterprise_rbac_service.ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
             )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app.id)
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
             str(current_tenant_id),
             current_user.id,
