@@ -1,7 +1,6 @@
 import json
 from collections.abc import Iterator
 from datetime import datetime, timedelta
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,6 +21,7 @@ from models.account import (
 from models.dataset import Dataset
 from models.model import App, DifySetup
 from services.account_service import AccountService, RegisterService, TenantService
+from services.enterprise.rbac_service import MembersInRole, Paginated
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -666,30 +666,32 @@ class TestTenantService:
         sqlite_session.add(tenant_account_join)
         return tenant_account_join
 
-    def test_iter_member_account_id_batches_uses_offset_limit(self):
-        class FakeScalarResult:
-            def __init__(self, items: list[str]) -> None:
-                self.items = items
-
-            def all(self) -> list[str]:
-                return self.items
-
-        offsets: list[int] = []
-
-        def scalars(stmt):
-            offsets.append(stmt._offset_clause.value)
-            if len(offsets) == 1:
-                return FakeScalarResult(["acct-1", "acct-2"])
-            if len(offsets) == 2:
-                return FakeScalarResult(["acct-3"])
-            return FakeScalarResult([])
+    @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
+    def test_iter_member_account_id_batches_uses_offset_limit(self, sqlite_session: Session):
+        account_ids = [
+            "00000000-0000-0000-0000-000000000011",
+            "00000000-0000-0000-0000-000000000012",
+            "00000000-0000-0000-0000-000000000013",
+        ]
+        for index, account_id in enumerate(account_ids, start=1):
+            membership = TenantAccountJoin(
+                tenant_id="00000000-0000-0000-0000-000000000001",
+                account_id=account_id,
+                role=TenantAccountRole.NORMAL,
+            )
+            membership.id = f"00000000-0000-0000-0000-{index:012d}"
+            sqlite_session.add(membership)
+        sqlite_session.commit()
 
         batches = list(
-            TenantService.iter_member_account_id_batches("tenant-1", 2, session=SimpleNamespace(scalars=scalars))
+            TenantService.iter_member_account_id_batches(
+                "00000000-0000-0000-0000-000000000001",
+                2,
+                session=sqlite_session,
+            )
         )
 
-        assert batches == [["acct-1", "acct-2"], ["acct-3"]]
-        assert offsets == [0, 2, 4]
+        assert batches == [account_ids[:2], account_ids[2:]]
 
     # ==================== get_account_role_in_tenant Tests ====================
     # Backs the auth pipeline's `load_workspace_role`: None => non-member
@@ -1179,8 +1181,7 @@ class TestTenantService:
                 )
 
     def test_get_rbac_workspace_owner_account_id(self):
-        mock_roles = MagicMock()
-        mock_roles.data = [SimpleNamespace(account_id="owner-account")]
+        mock_roles = Paginated[MembersInRole](data=[MembersInRole(account_id="owner-account")])
         mock_rbac_roles = MagicMock()
         mock_rbac_roles.members.return_value = mock_roles
 
