@@ -23,12 +23,13 @@ var (
 func RecordRunnerExit(stateDir, jobID string, exitCode int, endedAt string, busyTimeoutMs int) error {
 	dbPath := filepath.Join(stateDir, "shellctl.db")
 
-	dsn := fmt.Sprintf("file:%s?_busy_timeout=%d", dbPath, busyTimeoutMs)
+	dsn := fmt.Sprintf("file:%s?_busy_timeout=%d&_journal_mode=WAL", dbPath, busyTimeoutMs)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
 	defer func() { _ = db.Close() }()
+	db.SetMaxOpenConns(1)
 
 	// Check current status
 	var status string
