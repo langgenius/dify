@@ -18654,7 +18654,7 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string, <br>**Available values:** "invalid_role", "limit_exceeded" | *Enum:* `"invalid_role"`, `"limit_exceeded"` | Yes |
+| code | string, <br>**Available values:** "invalid_param", "invalid_role", "limit_exceeded" | *Enum:* `"invalid_param"`, `"invalid_role"`, `"limit_exceeded"` | Yes |
 | message | string |  | Yes |
 | status | integer |  | Yes |
 
