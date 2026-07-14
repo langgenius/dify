@@ -10,7 +10,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 import controllers.web.human_input_form as human_input_module
@@ -19,7 +19,6 @@ from controllers.web.error import WebFormRateLimitExceededError
 from core.workflow.nodes.human_input.entities import ParagraphInputConfig, SelectInputConfig, StringListSource
 from core.workflow.nodes.human_input.enums import ValueSourceType
 from models import Tenant
-from models.base import TypeBase
 from models.enums import CustomizeTokenStrategy
 from models.human_input import RecipientType
 from models.model import App, AppMode, IconType, Site
@@ -28,6 +27,12 @@ from services.human_input_service import FormExpiredError
 
 HumanInputFormApi = human_input_module.HumanInputFormApi
 HumanInputFormUploadTokenApi = human_input_module.HumanInputFormUploadTokenApi
+
+SQLITE_MODELS = (Tenant, App, Site)
+pytestmark = [
+    pytest.mark.usefixtures("sqlite_session"),
+    pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True),
+]
 
 
 @pytest.fixture
@@ -40,18 +45,17 @@ def app() -> Flask:
 
 
 @pytest.fixture
-def database_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch):
-    models = (Tenant, App, Site)
-    tables = [model.metadata.tables[model.__tablename__] for model in models]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    database_session = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
-    database = SimpleNamespace(engine=sqlite_engine, session=database_session)
+def database_session(
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Session:
+    """Bind model/controller database access to the shared SQLite session."""
+
+    database = SimpleNamespace(engine=sqlite_engine, session=sqlite_session)
     monkeypatch.setattr(human_input_module, "db", database)
     monkeypatch.setattr("models.model.db", database)
-    try:
-        yield database_session()
-    finally:
-        database_session.remove()
+    return sqlite_session
 
 
 def _persist_app_site(session: Session, *, include_site: bool = True) -> tuple[Tenant, App, Site | None]:
@@ -311,7 +315,9 @@ def test_create_upload_token_returns_token_and_form_expiration(
     }
     repo_factory.assert_called_once()
     assert captured["workflow_run_repository"] is workflow_run_repository
-    assert captured["session_factory"].kw["bind"] is sqlite_engine
+    session_factory = captured["session_factory"]
+    assert isinstance(session_factory, sessionmaker)
+    assert session_factory.kw["bind"] is sqlite_engine
     service_mock.issue_upload_token.assert_called_once_with("token-1")
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
