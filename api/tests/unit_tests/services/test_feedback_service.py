@@ -180,9 +180,7 @@ class TestFeedbackService:
         assert "conversation_id" in csv_content
         assert len([line for line in csv_content.strip().splitlines() if line.strip()]) == 1
 
-    def test_export_feedbacks_invalid_date_format(
-        self, sqlite_session: Session, sample_data: FeedbackSample
-    ) -> None:
+    def test_export_feedbacks_invalid_date_format(self, sqlite_session: Session, sample_data: FeedbackSample) -> None:
         with pytest.raises(ValueError, match="Invalid start_date format"):
             FeedbackService.export_feedbacks(
                 app_id=APP_ID,
