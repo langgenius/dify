@@ -672,6 +672,7 @@ class TestOAuthCustomClient:
             ),
         ):
             assert method(api, "t", "provider") == {"result": "success"}
+
     def test_get_custom_client(self, app: Flask) -> None:
         api = ToolOAuthCustomClient()
         method = unwrap(api.get)
