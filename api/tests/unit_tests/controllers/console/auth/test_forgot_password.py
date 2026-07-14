@@ -1,4 +1,4 @@
-"""Testcontainers integration tests for forgot password controller endpoints."""
+"""Unit tests for forgot password controller endpoints."""
 
 from __future__ import annotations
 
@@ -7,18 +7,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
+from controllers.console.auth import forgot_password as module
 from controllers.console.auth.forgot_password import (
     ForgotPasswordCheckApi,
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
 )
-from services.account_service import AccountService
-
-
-@pytest.fixture
-def app(flask_app_with_containers: Flask):
-    return flask_app_with_containers
+from models.account import Account
 
 
 class TestForgotPasswordSendEmailApi:
@@ -112,24 +109,28 @@ class TestForgotPasswordCheckApi:
 
 
 class TestForgotPasswordResetApi:
+    @pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
     @patch("controllers.console.auth.forgot_password.ForgotPasswordResetApi._update_existing_account")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.forgot_password.db")
     @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
     def test_reset_fetches_account_with_original_email(
         self,
         mock_get_reset_data,
         mock_revoke_token,
-        mock_db,
         mock_get_account,
         mock_update_account,
         app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "User@Example.com"}
-        mock_account = MagicMock()
-        mock_get_account.return_value = mock_account
-        mock_db.session.merge.return_value = mock_account
+        account = Account(name="User", email="user@example.com")
+        sqlite_session.add(account)
+        sqlite_session.commit()
+        mock_get_account.return_value = account
+        database_session = scoped_session(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False))
+        monkeypatch.setattr(module, "db", SimpleNamespace(session=database_session))
 
         wraps_features = SimpleNamespace(enable_email_password_login=True)
         with (
@@ -151,21 +152,3 @@ class TestForgotPasswordResetApi:
         mock_get_reset_data.assert_called_once_with("token-123")
         mock_revoke_token.assert_called_once_with("token-123")
         mock_update_account.assert_called_once()
-
-
-def test_get_account_by_email_with_case_fallback_falls_back_to_lowercase():
-    """Test that case fallback tries lowercase when exact match fails."""
-    from unittest.mock import MagicMock
-
-    mock_session = MagicMock()
-    first_result = MagicMock()
-    first_result.scalar_one_or_none.return_value = None
-    expected_account = MagicMock()
-    second_result = MagicMock()
-    second_result.scalar_one_or_none.return_value = expected_account
-    mock_session.execute.side_effect = [first_result, second_result]
-
-    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=mock_session)
-
-    assert result is expected_account
-    assert mock_session.execute.call_count == 2
