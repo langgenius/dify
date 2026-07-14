@@ -1,5 +1,6 @@
 import { CodeGroup } from '../code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
+import WorkflowVersionApiUpgradeNotice from '../workflow-version-api-upgrade-notice.tsx'
 
 # 工作流编排对话型应用 API
 
@@ -71,7 +72,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='auto_generate_name' type='bool' key='auto_generate_name'>
       （选填）自动生成标题，默认 `true`。 若设置为 `false`，则可通过调用会话重命名接口并设置 `auto_generate` 为 `true` 实现异步生成标题。
       </Property>
-      <Property name='workflow_id' type='string' key='workflow_id'>
+      <Property name='workflow_id' type='string' key='workflow_id' nameAction={<WorkflowVersionApiUpgradeNotice />}>
       （选填）工作流ID，用于指定特定版本，如果不提供则使用默认的已发布版本。
       </Property>
       <Property name='trace_id' type='string' key='trace_id'>
@@ -248,6 +249,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - 400，`draft_workflow_error`，无法使用草稿工作流版本
     - 400，`workflow_id_format_error`，工作流ID格式错误，需要UUID格式
     - 400，`completion_request_error`，文本生成失败
+    - 403，`workflow_version_execution_not_allowed`，当前套餐不支持执行工作流版本，请升级至付费套餐
     - 500，服务内部异常
 
     </Properties>

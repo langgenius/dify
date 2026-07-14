@@ -1,5 +1,6 @@
 import { CodeGroup, Embed } from '../code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
+import WorkflowVersionApiUpgradeNotice from '../workflow-version-api-upgrade-notice.tsx'
 
 # Advanced Chat App API
 
@@ -74,7 +75,7 @@ Chat applications support session persistence, allowing previous chat history to
       Auto-generate title, default is `true`.
       If set to `false`, can achieve async title generation by calling the conversation rename API and setting `auto_generate` to `true`.
       </Property>
-      <Property name='workflow_id' type='string' key='workflow_id'>
+      <Property name='workflow_id' type='string' key='workflow_id' nameAction={<WorkflowVersionApiUpgradeNotice />}>
       (Optional) Workflow ID to specify a specific version, if not provided, uses the default published version.
       </Property>
       <Property name='trace_id' type='string' key='trace_id'>
@@ -250,6 +251,7 @@ Chat applications support session persistence, allowing previous chat history to
     - 400, `draft_workflow_error`, cannot use draft workflow version
     - 400, `workflow_id_format_error`, invalid workflow_id format, expected UUID format
     - 400, `completion_request_error`, text generation failed
+    - 403, `workflow_version_execution_not_allowed`, Workflow version execution is not available on your current plan. Please upgrade to a paid plan.
     - 500, internal server error
 
   </Col>
