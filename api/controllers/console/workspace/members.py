@@ -40,7 +40,7 @@ from libs.login import current_account_with_tenant, login_required
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.enterprise import rbac_service as enterprise_rbac_service
-from services.errors.account import AccountAlreadyInTenantError
+from services.errors.account import AccountAlreadyInTenantError, SeatsLimitExceededError
 from services.feature_service import FeatureService
 
 
@@ -324,6 +324,14 @@ class MemberInviteEmailApi(Resource):
                             status="already_member",
                             email=invitee_email,
                             message="Account already in workspace.",
+                        )
+                    )
+                except SeatsLimitExceededError:
+                    invitation_results.append(
+                        MemberInviteFailedResponse(
+                            status="failed",
+                            email=invitee_email,
+                            message="Licensed seats limit exceeded.",
                         )
                     )
                 except Exception as e:
