@@ -7653,6 +7653,7 @@ Initiate OAuth login process
 | provider | path | OAuth provider name (github/google) | Yes | string |
 | invite_token | query | Optional invitation token | No | string |
 | language | query | Preferred interface language | No | string |
+| redirect_url | query | Relative page to resume after login | No | string |
 | timezone | query | Preferred timezone | No | string |
 
 #### Responses
@@ -19226,6 +19227,7 @@ Coarse node-level status used by Inspector to pick a banner.
 | ---- | ---- | ----------- | -------- |
 | invite_token | string | Optional invitation token | No |
 | language | string | Preferred interface language | No |
+| redirect_url | string | Relative page to resume after login | No |
 | timezone | string | Preferred timezone | No |
 
 #### OAuthProviderAccountResponse
