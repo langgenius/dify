@@ -24,6 +24,7 @@ from controllers.console.auth.error import (
     OwnerTransferLimitError,
 )
 from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
+from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.wraps import (
     account_initialization_required,
     is_allow_transfer_owner,
@@ -106,6 +107,12 @@ class MemberInviteResponse(ResponseModel):
     tenant_id: str
 
 
+class MemberInviteErrorResponse(ResponseModel):
+    code: Literal["invalid_param", "invalid_role", "limit_exceeded"]
+    message: str
+    status: Literal[400]
+
+
 register_enum_models(console_ns, TenantAccountRole)
 register_schema_models(
     console_ns,
@@ -120,6 +127,7 @@ register_response_schema_models(
     AccountWithRoleResponse,
     AccountWithRoleListResponse,
     MemberActionResponse,
+    MemberInviteErrorResponse,
     MemberInviteResponse,
     MemberInviteSuccessResponse,
     MemberInviteAlreadyMemberResponse,
@@ -249,6 +257,11 @@ class MemberInviteEmailApi(Resource):
 
     @console_ns.expect(console_ns.models[MemberInvitePayload.__name__])
     @console_ns.response(HTTPStatus.CREATED, "Success", console_ns.models[MemberInviteResponse.__name__])
+    @console_ns.response(
+        HTTPStatus.BAD_REQUEST,
+        "Invalid role or workspace member limit exceeded",
+        console_ns.models[MemberInviteErrorResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -262,14 +275,14 @@ class MemberInviteEmailApi(Resource):
         interface_language = args.language
         if not dify_config.RBAC_ENABLED:
             if not TenantAccountRole.is_valid_role(invitee_role):
-                return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
+                raise InvalidMemberRoleError()
             if not TenantAccountRole.is_non_owner_role(TenantAccountRole(invitee_role)):
-                return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
+                raise InvalidMemberRoleError()
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
         if not _is_role_enabled(invitee_role, inviter.current_tenant.id):
-            return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
+            raise InvalidMemberRoleError()
 
         # Check workspace permission for member invitations
         from libs.workspace_permission import check_workspace_member_invite_permission
