@@ -33,6 +33,7 @@ from core.plugin.impl.exc import (
     PluginRuntimeError,
     PluginUniqueIdentifierError,
 )
+from core.plugin.impl.first_token_timeout import FirstTokenTimeoutError, first_token_timeout_ctx
 from core.trigger.errors import (
     EventIgnoreError,
     TriggerInvokeError,
@@ -93,6 +94,30 @@ def use_plugin_daemon_request_timeout(timeout_seconds: float) -> Generator[None,
 
 def _get_plugin_daemon_request_timeout() -> httpx.Timeout | None:
     return _plugin_daemon_request_timeout_override.get() or plugin_daemon_request_timeout
+
+
+def _resolve_stream_timeout(first_token_timeout: float | None) -> httpx.Timeout | None:
+    """Fold a first-token budget into the timeout a streaming daemon request uses.
+
+    The daemon withholds the response headers until the model's first token and sends no
+    heartbeat before it, so httpx's ``read`` timeout measures time-to-first-token. A
+    positive budget therefore replaces that component -- deliberately a replacement, so a
+    slow reasoning model may exceed ``PLUGIN_DAEMON_TIMEOUT``. A context-scoped override is
+    a ceiling its caller asked for, so it is only ever narrowed.
+    """
+    base = _get_plugin_daemon_request_timeout()
+    if not first_token_timeout or first_token_timeout <= 0:
+        return base
+
+    read = first_token_timeout
+    override = _plugin_daemon_request_timeout_override.get()
+    if override is not None and override.read is not None:
+        read = min(read, override.read)
+
+    if base is None:
+        return httpx.Timeout(None, read=read)
+    # ``httpx.Timeout(base, read=x)`` is rejected when ``base`` is a ``Timeout``.
+    return httpx.Timeout(connect=base.connect, read=read, write=base.write, pool=base.pool)
 
 
 def _normalize_plugin_daemon_response_for_type(json_response: Any, type_: type[object]) -> Any:
@@ -233,30 +258,48 @@ class BasePluginClient:
         """
         url, headers, prepared_data, params, files = self._prepare_request(path, headers, data, params, files)
 
+        first_token_timeout = first_token_timeout_ctx.get()
+        # Non-positive (None / 0 / negative) disables the gate; the read timeout stays default.
+        first_token_gate = bool(first_token_timeout and first_token_timeout > 0)
         stream_kwargs: dict[str, Any] = {
             "method": method,
             "url": url,
             "headers": headers,
             "params": params,
             "files": files,
-            "timeout": _get_plugin_daemon_request_timeout(),
+            "timeout": _resolve_stream_timeout(first_token_timeout),
         }
         if isinstance(prepared_data, dict):
             stream_kwargs["data"] = prepared_data
         elif prepared_data is not None:
             stream_kwargs["content"] = prepared_data
 
+        first_token_seen = False
+
         try:
             with _httpx_client.stream(**stream_kwargs) as response:
                 for raw_line in response.iter_lines():
+                    # Blank keep-alive frames don't count as the first token, but each is still a
+                    # successful read that refreshes httpx's read window -- first-token gating relies
+                    # on the daemon sending no keep-alive before the first token.
                     if not raw_line:
                         continue
                     line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
                     line = line.strip()
                     if line.startswith("data:"):
                         line = line[5:].strip()
-                    if line:
-                        yield line
+                    if not line:
+                        continue
+                    first_token_seen = True
+                    yield line
+        except httpx.ReadTimeout as e:
+            # Gate on: a read timeout before the first line means the first token was too slow.
+            # After the first line (inter-token stall), or with the gate off, it's a plain
+            # transport error.
+            if first_token_gate and not first_token_seen:
+                raise FirstTokenTimeoutError(f"The first token was not received within {first_token_timeout}s.") from e
+            logger.exception("Stream request to Plugin Daemon Service failed")
+            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
         except httpx.RequestError:
             logger.exception("Stream request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")

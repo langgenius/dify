@@ -1,0 +1,222 @@
+from collections.abc import Generator, Iterator
+
+import httpx
+import pytest
+from pytest_mock import MockerFixture
+
+from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
+from core.plugin.impl import base as base_mod
+from core.plugin.impl.base import use_plugin_daemon_request_timeout
+from core.plugin.impl.first_token_timeout import FirstTokenTimeoutError, first_token_timeout_ctx
+
+BasePluginClient = base_mod.BasePluginClient
+
+
+@pytest.fixture(autouse=True)
+def _isolate_ctx() -> Generator[None, None, None]:
+    """Keep the first-token-timeout ContextVar from leaking between tests."""
+    token = first_token_timeout_ctx.set(None)
+    try:
+        yield
+    finally:
+        first_token_timeout_ctx.reset(token)
+
+
+class _PlainStream:
+    """Fully buffered fake httpx stream context."""
+
+    def __init__(self, lines: list[object]) -> None:
+        self._lines = lines
+
+    def __enter__(self) -> "_PlainStream":
+        return self
+
+    def __exit__(self, *exc: object) -> bool:
+        return False
+
+    def iter_lines(self) -> Iterator[object]:
+        return iter(self._lines)
+
+
+class _RaiseOnEnterStream:
+    """Fake stream whose context entry raises — models a timeout while awaiting headers."""
+
+    def __init__(self, exc: BaseException) -> None:
+        self._exc = exc
+
+    def __enter__(self) -> "_RaiseOnEnterStream":
+        raise self._exc
+
+    def __exit__(self, *exc: object) -> bool:
+        return False
+
+
+class _LinesThenRaiseStream:
+    """Yields some lines, then raises — models a stall after the first token(s)."""
+
+    def __init__(self, lines: list[object], exc: BaseException) -> None:
+        self._lines = lines
+        self._exc = exc
+
+    def __enter__(self) -> "_LinesThenRaiseStream":
+        return self
+
+    def __exit__(self, *exc: object) -> bool:
+        return False
+
+    def iter_lines(self) -> Generator[object, None, None]:
+        yield from self._lines
+        raise self._exc
+
+
+# --- _resolve_stream_timeout ------------------------------------------------------------
+
+
+def _resolved(first_token_timeout: float | None) -> httpx.Timeout:
+    """Resolve where a concrete ``Timeout`` is guaranteed, narrowed off ``Timeout | None``."""
+    timeout = base_mod._resolve_stream_timeout(first_token_timeout)
+    assert timeout is not None
+    return timeout
+
+
+def test_resolve_stream_timeout_narrows_read_only() -> None:
+    base = base_mod.plugin_daemon_request_timeout
+    assert base is not None
+    timeout = _resolved(5.0)
+
+    assert timeout is not base
+    assert timeout.read == 5.0
+    # The other components are preserved from the default timeout.
+    assert timeout.connect == base.connect
+    assert timeout.write == base.write
+    assert timeout.pool == base.pool
+
+
+@pytest.mark.parametrize("disabled", [None, 0.0, -1.0])
+def test_resolve_stream_timeout_disabled_returns_base_unchanged(disabled: float | None) -> None:
+    assert base_mod._resolve_stream_timeout(disabled) is base_mod.plugin_daemon_request_timeout
+
+
+def test_resolve_stream_timeout_with_no_base_timeout(mocker: MockerFixture) -> None:
+    mocker.patch("core.plugin.impl.base.plugin_daemon_request_timeout", None)
+
+    timeout = _resolved(5.0)
+
+    assert timeout.read == 5.0
+    assert timeout.connect is None
+    assert timeout.write is None
+    assert timeout.pool is None
+
+
+def test_resolve_stream_timeout_narrows_to_an_active_override() -> None:
+    """An override is a ceiling its caller asked for, so a looser budget cannot widen it."""
+    with use_plugin_daemon_request_timeout(30.0):
+        assert _resolved(60.0).read == 30.0
+        assert _resolved(5.0).read == 5.0
+
+
+def test_resolve_stream_timeout_without_budget_returns_the_override() -> None:
+    with use_plugin_daemon_request_timeout(30.0):
+        assert _resolved(None).read == 30.0
+
+
+# --- _stream_request timeout wiring ------------------------------------------------------
+
+
+def test_stream_request_narrows_read_when_gate_enabled(mocker: MockerFixture) -> None:
+    client = BasePluginClient()
+    stream = mocker.patch("httpx.Client.stream", return_value=_PlainStream([b"data: hi"]))
+    first_token_timeout_ctx.set(1.5)
+
+    result = list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
+
+    assert result == ["hi"]
+    assert stream.call_args.kwargs["timeout"].read == 1.5
+
+
+@pytest.mark.parametrize("disabled", [None, 0.0])
+def test_stream_request_keeps_default_timeout_when_gate_disabled(mocker: MockerFixture, disabled: float | None) -> None:
+    client = BasePluginClient()
+    stream = mocker.patch("httpx.Client.stream", return_value=_PlainStream([b"data: hi"]))
+    first_token_timeout_ctx.set(disabled)
+
+    list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
+
+    assert stream.call_args.kwargs["timeout"] is base_mod.plugin_daemon_request_timeout
+
+
+def test_stream_request_forwards_all_lines(mocker: MockerFixture) -> None:
+    client = BasePluginClient()
+    mocker.patch("httpx.Client.stream", return_value=_PlainStream([b"", b"data: hello", "world"]))
+    first_token_timeout_ctx.set(1.0)
+
+    result = list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
+
+    assert result == ["hello", "world"]
+
+
+# --- _stream_request timeout semantics ---------------------------------------------------
+
+
+def test_read_timeout_before_first_line_raises_first_token_timeout(mocker: MockerFixture) -> None:
+    client = BasePluginClient()
+    mocker.patch("httpx.Client.stream", return_value=_RaiseOnEnterStream(httpx.ReadTimeout("headers")))
+    first_token_timeout_ctx.set(0.5)
+
+    with pytest.raises(FirstTokenTimeoutError):
+        list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
+
+
+def test_read_timeout_with_gate_disabled_is_transport_error(mocker: MockerFixture) -> None:
+    client = BasePluginClient()
+    mocker.patch("httpx.Client.stream", return_value=_RaiseOnEnterStream(httpx.ReadTimeout("headers")))
+    # ctx is None (autouse fixture) -> gate off -> a read timeout is just a transport error.
+
+    with pytest.raises(PluginDaemonInnerError):
+        list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
+
+
+def test_read_timeout_after_first_line_is_transport_error(mocker: MockerFixture) -> None:
+    client = BasePluginClient()
+    mocker.patch(
+        "httpx.Client.stream",
+        return_value=_LinesThenRaiseStream([b"data: hello"], httpx.ReadTimeout("inter-token")),
+    )
+    first_token_timeout_ctx.set(0.5)
+
+    # First token already seen -> a later read timeout is an inter-token stall, not a
+    # first-token timeout.
+    with pytest.raises(PluginDaemonInnerError):
+        list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
+
+
+def test_non_timeout_request_error_is_transport_error(mocker: MockerFixture) -> None:
+    client = BasePluginClient()
+    mocker.patch("httpx.Client.stream", return_value=_RaiseOnEnterStream(httpx.ConnectError("boom")))
+    first_token_timeout_ctx.set(0.5)
+
+    # Only a ReadTimeout maps to FirstTokenTimeoutError; other transport errors do not.
+    with pytest.raises(PluginDaemonInnerError):
+        list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
+
+
+def test_stream_request_honors_the_context_scoped_override(mocker: MockerFixture) -> None:
+    """Every model invocation streams, so the override must reach `_stream_request` too."""
+    client = BasePluginClient()
+    stream = mocker.patch("httpx.Client.stream", return_value=_PlainStream([b"data: hi"]))
+
+    with use_plugin_daemon_request_timeout(30.0):
+        list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
+
+    assert stream.call_args.kwargs["timeout"].read == 30.0
+
+
+def test_stream_request_takes_the_tighter_of_override_and_budget(mocker: MockerFixture) -> None:
+    client = BasePluginClient()
+    stream = mocker.patch("httpx.Client.stream", return_value=_PlainStream([b"data: hi"]))
+    first_token_timeout_ctx.set(60.0)
+
+    with use_plugin_daemon_request_timeout(30.0):
+        list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
+
+    assert stream.call_args.kwargs["timeout"].read == 30.0
