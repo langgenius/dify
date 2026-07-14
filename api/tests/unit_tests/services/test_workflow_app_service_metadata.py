@@ -2,23 +2,32 @@
 
 import json
 import uuid
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 
-from models.enums import AppTriggerType
+from models.enums import AppTriggerType, CreatorUserRole
+from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom
 from services.workflow_app_service import LogView, WorkflowAppService
 
 
 class TestLogView:
     def test_details_and_proxy_attributes(self) -> None:
-        log = SimpleNamespace(id="log-1", status="succeeded")
+        log = WorkflowAppLog(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_run_id="run-1",
+            created_from=WorkflowAppLogCreatedFrom.WEB_APP,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account-1",
+        )
+        log.id = "log-1"
 
         view = LogView(log=log, details={"trigger_metadata": {"type": "plugin"}})
 
         assert view.details == {"trigger_metadata": {"type": "plugin"}}
-        assert view.status == "succeeded"
+        assert view.id == "log-1"
 
 
 class TestHandleTriggerMetadata:
