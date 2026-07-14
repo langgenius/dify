@@ -1166,14 +1166,19 @@ class SummaryIndexService:
             except Exception as e:
                 # If vectorization fails, update status to error in current session.
                 # Return the record with error status so callers can still finish segment updates.
+                if not session.is_active:
+                    session.rollback()
+                summary_record.summary_content = summary_content
                 summary_record.status = SummaryStatus.ERROR
                 summary_record.error = f"Vectorization failed: {str(e)}"
+                session.add(summary_record)
                 session.commit()
                 logger.exception("Failed to vectorize summary for segment %s", segment.id)
                 return summary_record
 
         except Exception as e:
             logger.exception("Failed to update summary for segment %s", segment.id)
+            session.rollback()
             # Update summary record with error status if it exists
             summary_record = session.scalar(
                 select(DocumentSegmentSummary)

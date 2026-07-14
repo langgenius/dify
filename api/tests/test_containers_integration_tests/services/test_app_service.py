@@ -1595,13 +1595,13 @@ class TestAppService:
     def test_get_app_meta_returns_empty_when_workflow_missing(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """Test get_app_meta returns empty tool_icons when workflow is None."""
+        """Test get_app_meta returns empty tool_icons when the workflow ID is absent."""
         from types import SimpleNamespace
 
         from services.app_service import AppService
 
         app_service = AppService()
-        workflow_app = SimpleNamespace(mode="workflow", workflow=None)
+        workflow_app = SimpleNamespace(mode="workflow", workflow_id=None)
 
         meta = app_service.get_app_meta(workflow_app, session=db_session_with_containers)
         assert meta == {"tool_icons": {}}
@@ -1609,13 +1609,13 @@ class TestAppService:
     def test_get_app_meta_returns_empty_when_model_config_missing(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """Test get_app_meta returns empty tool_icons when app_model_config is None."""
+        """Test get_app_meta returns empty tool_icons when the model config ID is absent."""
         from types import SimpleNamespace
 
         from services.app_service import AppService
 
         app_service = AppService()
-        chat_app = SimpleNamespace(mode="chat", app_model_config=None)
+        chat_app = SimpleNamespace(mode="chat", app_model_config_id=None)
 
         meta = app_service.get_app_meta(chat_app, session=db_session_with_containers)
         assert meta == {"tool_icons": {}}

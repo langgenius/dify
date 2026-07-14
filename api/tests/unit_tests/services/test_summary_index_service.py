@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import create_engine, select
-from sqlalchemy.exc import PendingRollbackError
+from sqlalchemy.exc import SAWarning
 from sqlalchemy.orm import sessionmaker
 
 import services.summary_index_service as summary_module
@@ -983,14 +983,62 @@ def test_update_summary_for_segment_existing_vectorize_failure_returns_error_rec
     segment = _segment()
     record = _summary_record(summary_content="old", node_id="n1")
 
-    session = MagicMock()
+    session = MagicMock(is_active=True)
     session.scalar.return_value = record
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(side_effect=RuntimeError("boom")))
 
     out = SummaryIndexService.update_summary_for_segment(segment, dataset, "new", session=session)
+
     assert out is record
+    assert out.summary_content == "new"
     assert out.status == SummaryStatus.ERROR
     assert "Vectorization failed" in (out.error or "")
+    session.rollback.assert_not_called()
+    session.add.assert_called_with(record)
+    session.commit.assert_called_once()
+
+
+def test_update_summary_for_segment_failed_flush_persists_new_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    DocumentSegmentSummary.__table__.create(engine)
+    session_maker = sessionmaker(bind=engine, expire_on_commit=False)
+
+    with session_maker() as session:
+        record = DocumentSegmentSummary(
+            dataset_id="dataset-1",
+            document_id="doc-1",
+            chunk_id="seg-1",
+            summary_content="old",
+            status=SummaryStatus.COMPLETED,
+        )
+        record.id = "sum-1"
+        session.add(record)
+        session.commit()
+
+        def fail_flush(*_args, **_kwargs) -> None:
+            duplicate = DocumentSegmentSummary(
+                dataset_id="dataset-1",
+                document_id="doc-1",
+                chunk_id="seg-2",
+                summary_content="duplicate",
+            )
+            duplicate.id = record.id
+            session.add(duplicate)
+            session.flush()
+
+        segment = _segment()
+        segment.get_document.return_value = SimpleNamespace(doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        monkeypatch.setattr(SummaryIndexService, "vectorize_summary", fail_flush)
+
+        with pytest.warns(SAWarning, match="conflicts with persistent instance"):
+            out = SummaryIndexService.update_summary_for_segment(segment, _dataset(), "new", session=session)
+        session.expire_all()
+        persisted = session.get(DocumentSegmentSummary, record.id)
+
+        assert out is record
+        assert persisted is not None
+        assert persisted.summary_content == "new"
+        assert persisted.status == SummaryStatus.ERROR
 
 
 def test_update_summary_for_segment_new_record_success(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1021,6 +1069,7 @@ def test_update_summary_for_segment_outer_exception_sets_error_and_reraises(monk
         SummaryIndexService.update_summary_for_segment(segment, dataset, "new", session=session)
     assert record.status == SummaryStatus.ERROR
     assert record.error == "flush boom"
+    session.rollback.assert_called_once()
     session.commit.assert_called()
 
 
@@ -1080,18 +1129,19 @@ def test_update_summary_for_segment_creates_new_and_vectorize_fails_returns_erro
     dataset = _dataset()
     segment = _segment()
 
-    session = MagicMock()
+    session = MagicMock(is_active=False)
     session.scalar.return_value = None
 
     created = _summary_record(summary_content="new", node_id=None)
     monkeypatch.setattr(SummaryIndexService, "create_summary_record", MagicMock(return_value=created))
-
-    vectorize_mock = MagicMock(side_effect=RuntimeError("boom"))
-    monkeypatch.setattr(SummaryIndexService, "vectorize_summary", vectorize_mock)
+    monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(side_effect=RuntimeError("boom")))
 
     out = SummaryIndexService.update_summary_for_segment(segment, dataset, "new", session=session)
     assert out.status == SummaryStatus.ERROR
     assert "Vectorization failed" in (out.error or "")
+    session.rollback.assert_called_once()
+    session.add.assert_called_with(created)
+    session.commit.assert_called_once()
 
 
 def test_get_segments_summaries_empty_list() -> None:

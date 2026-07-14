@@ -16,7 +16,7 @@ since these test controller-level behavior.
 import uuid
 from contextlib import ExitStack
 from datetime import UTC, datetime
-from unittest.mock import ANY, Mock, PropertyMock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from flask import Flask
@@ -270,25 +270,25 @@ def mock_dataset():
 
 
 @pytest.fixture(autouse=True)
-def dataset_model_property_defaults():
-    properties: dict[str, object] = {
-        "app_count": 0,
-        "document_count": 0,
-        "word_count": 0,
-        "author_name": None,
-        "tags": [],
-        "doc_form": None,
-        "external_knowledge_info": None,
-        "doc_metadata": [],
-        "is_published": False,
-        "total_documents": 0,
-        "total_available_documents": 0,
+def dataset_model_getter_defaults():
+    getters: dict[str, object] = {
+        "get_app_count": 0,
+        "get_document_count": 0,
+        "get_word_count": 0,
+        "get_author_name": None,
+        "get_tags": [],
+        "get_doc_form": None,
+        "get_external_knowledge_info": None,
+        "get_doc_metadata": [],
+        "get_is_published": False,
+        "get_total_documents": 0,
+        "get_total_available_documents": 0,
     }
 
     with ExitStack() as stack:
-        for name, value in properties.items():
-            property_mock = stack.enter_context(patch.object(Dataset, name, new_callable=PropertyMock))
-            property_mock.return_value = value
+        for name, value in getters.items():
+            getter_mock = stack.enter_context(patch.object(Dataset, name, autospec=True))
+            getter_mock.return_value = value
         yield
 
 

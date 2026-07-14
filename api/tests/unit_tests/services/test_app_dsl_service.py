@@ -97,6 +97,39 @@ def test_create_or_update_app_loads_existing_model_config_with_service_session()
     session.get.assert_called_once_with(AppModelConfig, "config-1")
 
 
+def test_create_or_update_app_flushes_new_model_config_before_signal(monkeypatch: pytest.MonkeyPatch) -> None:
+    events: list[str] = []
+    session = Mock()
+    session.add.side_effect = lambda _config: events.append("add")
+    session.flush.side_effect = lambda: events.append("flush")
+    signal = Mock()
+    signal.send.side_effect = lambda *_args, **_kwargs: events.append("signal")
+    monkeypatch.setattr("services.app_dsl_service.app_model_config_was_updated", signal)
+    app = cast(
+        App,
+        SimpleNamespace(
+            id="app-1",
+            tenant_id="tenant-1",
+            app_model_config_id=None,
+            name="Existing app",
+            description="",
+            icon_type=IconType.EMOJI,
+            icon="robot",
+            icon_background="#FFFFFF",
+        ),
+    )
+
+    AppDslService(session=session)._create_or_update_app(
+        app=app,
+        data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
+        account=Mock(id="account-1"),
+    )
+
+    assert events == ["add", "flush", "signal"]
+    assert signal.send.call_args.kwargs["session"] is session
+    session.commit.assert_not_called()
+
+
 def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
