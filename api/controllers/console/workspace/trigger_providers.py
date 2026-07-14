@@ -4,13 +4,14 @@ from typing import Any
 from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, RootModel, model_validator
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
 from controllers.common.errors import NotFoundError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
@@ -21,7 +22,6 @@ from core.trigger.entities.api_entities import (
 )
 from core.trigger.entities.entities import RequestLog, SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from libs.login import login_required
@@ -485,23 +485,26 @@ class TriggerSubscriptionDeleteApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, tenant_id: str, subscription_id: str):
-        """Delete a subscription instance"""
+    @with_session
+    def post(self, session: Session, tenant_id: str, subscription_id: str):
+        """Delete a provider subscription and its plugin triggers in one transaction.
+
+        The request-scoped session owns commit and rollback. Service validation failures
+        are translated to ``BadRequest``; unexpected failures are logged and propagated.
+        """
 
         try:
-            with sessionmaker(db.engine).begin() as session:
-                # Delete trigger provider subscription
-                TriggerProviderService.delete_trigger_provider(
-                    session=session,
-                    tenant_id=tenant_id,
-                    subscription_id=subscription_id,
-                )
-                # Delete plugin triggers
-                TriggerSubscriptionOperatorService.delete_plugin_trigger_by_subscription(
-                    session=session,
-                    tenant_id=tenant_id,
-                    subscription_id=subscription_id,
-                )
+            # Both deletions must share the injected transaction so partial cleanup cannot commit.
+            TriggerProviderService.delete_trigger_provider(
+                session=session,
+                tenant_id=tenant_id,
+                subscription_id=subscription_id,
+            )
+            TriggerSubscriptionOperatorService.delete_plugin_trigger_by_subscription(
+                session=session,
+                tenant_id=tenant_id,
+                subscription_id=subscription_id,
+            )
             return SimpleResultResponse(result="success").model_dump(mode="json")
         except ValueError as e:
             raise BadRequest(str(e))
