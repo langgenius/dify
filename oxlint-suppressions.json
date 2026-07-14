@@ -3194,22 +3194,6 @@
       "count": 2
     }
   },
-  "web/app/components/explore/banner/__tests__/indicator-button.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/explore/banner/banner-item.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/explore/item-operation/__tests__/index.spec.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
