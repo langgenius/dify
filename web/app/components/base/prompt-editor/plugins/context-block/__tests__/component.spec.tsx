@@ -25,7 +25,7 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 // Helpers
-const defaultSetup = (overrides?: { isSelected?: boolean, open?: boolean }) => {
+const defaultSetup = (overrides?: { isSelected?: boolean; open?: boolean }) => {
   const triggerSetOpen = vi.fn()
   mockUseSelectOrDelete.mockReturnValue([{ current: null }, overrides?.isSelected ?? false])
   mockUseTrigger.mockReturnValue([{ current: null }, overrides?.open ?? false, triggerSetOpen])
@@ -53,37 +53,27 @@ describe('ContextBlockComponent', () => {
 
     it('should display the context title', () => {
       defaultSetup()
-      render(
-        <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
-      )
+      render(<ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />)
       expect(screen.getByText('common.promptEditor.context.item.title')).toBeInTheDocument()
     })
 
     it('should display the dataset count', () => {
       defaultSetup()
       render(
-        <ContextBlockComponent
-          nodeKey="test-key"
-          datasets={mockDatasets}
-          onAddContext={vi.fn()}
-        />,
+        <ContextBlockComponent nodeKey="test-key" datasets={mockDatasets} onAddContext={vi.fn()} />,
       )
       expect(screen.getByText('2')).toBeInTheDocument()
     })
 
     it('should display zero count when no datasets provided', () => {
       defaultSetup()
-      render(
-        <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
-      )
+      render(<ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />)
       expect(screen.getByText('0')).toBeInTheDocument()
     })
 
     it('should render the file icon', () => {
       defaultSetup()
-      render(
-        <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
-      )
+      render(<ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />)
       // File05 icon renders as an SVG
       const fileIcon = screen.getByTestId('file-icon')
       expect(fileIcon).toBeInTheDocument()
@@ -142,11 +132,7 @@ describe('ContextBlockComponent', () => {
     it('should show dataset list when dropdown is open', () => {
       defaultSetup({ open: true })
       render(
-        <ContextBlockComponent
-          nodeKey="test-key"
-          datasets={mockDatasets}
-          onAddContext={vi.fn()}
-        />,
+        <ContextBlockComponent nodeKey="test-key" datasets={mockDatasets} onAddContext={vi.fn()} />,
       )
       expect(screen.getByText('Dataset A')).toBeInTheDocument()
       expect(screen.getByText('Dataset B')).toBeInTheDocument()
@@ -155,53 +141,31 @@ describe('ContextBlockComponent', () => {
     it('should show modal title with dataset count when open', () => {
       defaultSetup({ open: true })
       render(
-        <ContextBlockComponent
-          nodeKey="test-key"
-          datasets={mockDatasets}
-          onAddContext={vi.fn()}
-        />,
+        <ContextBlockComponent nodeKey="test-key" datasets={mockDatasets} onAddContext={vi.fn()} />,
       )
-      expect(
-        screen.getByText(/common\.promptEditor\.context\.modal\.title/),
-      ).toBeInTheDocument()
+      expect(screen.getByText(/common\.promptEditor\.context\.modal\.title/)).toBeInTheDocument()
     })
 
     it('should show the add context button when open', () => {
       defaultSetup({ open: true })
       render(
-        <ContextBlockComponent
-          nodeKey="test-key"
-          datasets={mockDatasets}
-          onAddContext={vi.fn()}
-        />,
+        <ContextBlockComponent nodeKey="test-key" datasets={mockDatasets} onAddContext={vi.fn()} />,
       )
-      expect(
-        screen.getByText('common.promptEditor.context.modal.add'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('common.promptEditor.context.modal.add')).toBeInTheDocument()
     })
 
     it('should show the footer text when open', () => {
       defaultSetup({ open: true })
       render(
-        <ContextBlockComponent
-          nodeKey="test-key"
-          datasets={mockDatasets}
-          onAddContext={vi.fn()}
-        />,
+        <ContextBlockComponent nodeKey="test-key" datasets={mockDatasets} onAddContext={vi.fn()} />,
       )
-      expect(
-        screen.getByText('common.promptEditor.context.modal.footer'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('common.promptEditor.context.modal.footer')).toBeInTheDocument()
     })
 
     it('should render folder icon for each dataset', () => {
       defaultSetup({ open: true })
       render(
-        <ContextBlockComponent
-          nodeKey="test-key"
-          datasets={mockDatasets}
-          onAddContext={vi.fn()}
-        />,
+        <ContextBlockComponent nodeKey="test-key" datasets={mockDatasets} onAddContext={vi.fn()} />,
       )
       const folders = screen.getAllByTestId('folder-icon')
       expect(folders.length).toBeGreaterThanOrEqual(2)
@@ -219,9 +183,7 @@ describe('ContextBlockComponent', () => {
       )
       // Modal content should not be present
       expect(screen.queryByText('Dataset A')).not.toBeInTheDocument()
-      expect(
-        screen.queryByText('common.promptEditor.context.modal.add'),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText('common.promptEditor.context.modal.add')).not.toBeInTheDocument()
     })
   })
 
@@ -229,16 +191,12 @@ describe('ContextBlockComponent', () => {
     it('should keep the popover closed when the trigger prevents the default click', async () => {
       const user = userEvent.setup()
       const { triggerSetOpen } = defaultSetup()
-      render(
-        <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
-      )
+      render(<ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />)
 
       await user.click(screen.getByTestId('popover-trigger'))
 
       expect(triggerSetOpen).not.toHaveBeenCalled()
-      expect(
-        screen.queryByText('common.promptEditor.context.modal.add'),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText('common.promptEditor.context.modal.add')).not.toBeInTheDocument()
     })
 
     it('should call onAddContext when add button is clicked', async () => {
@@ -252,7 +210,9 @@ describe('ContextBlockComponent', () => {
         />,
       )
 
-      const addButton = screen.getByRole('button', { name: 'common.promptEditor.context.modal.add' })
+      const addButton = screen.getByRole('button', {
+        name: 'common.promptEditor.context.modal.add',
+      })
       await userEvent.click(addButton)
       expect(handleAddContext).toHaveBeenCalledTimes(1)
     })
@@ -260,11 +220,7 @@ describe('ContextBlockComponent', () => {
     it('should render the count badge with open styles when dropdown is open', () => {
       defaultSetup({ open: true })
       render(
-        <ContextBlockComponent
-          nodeKey="test-key"
-          datasets={mockDatasets}
-          onAddContext={vi.fn()}
-        />,
+        <ContextBlockComponent nodeKey="test-key" datasets={mockDatasets} onAddContext={vi.fn()} />,
       )
       const countBadge = screen.getByText('2')
       expect(countBadge).toHaveClass('bg-[#6938EF]')
@@ -274,11 +230,7 @@ describe('ContextBlockComponent', () => {
     it('should render the count badge with closed styles when dropdown is closed', () => {
       defaultSetup({ open: false })
       render(
-        <ContextBlockComponent
-          nodeKey="test-key"
-          datasets={mockDatasets}
-          onAddContext={vi.fn()}
-        />,
+        <ContextBlockComponent nodeKey="test-key" datasets={mockDatasets} onAddContext={vi.fn()} />,
       )
       const countBadge = screen.getByText('2')
       expect(countBadge).toHaveClass('bg-white/50')
@@ -288,26 +240,20 @@ describe('ContextBlockComponent', () => {
   describe('Event Emitter Subscription', () => {
     it('should subscribe to event emitter on mount', () => {
       defaultSetup()
-      render(
-        <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
-      )
+      render(<ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />)
       expect(mockUseSubscription).toHaveBeenCalled()
     })
 
     it('should update local datasets when UPDATE_DATASETS_EVENT_EMITTER event fires', () => {
       defaultSetup({ open: true })
       // Capture the subscription callback
-      let subscriptionCallback: (v: Record<string, unknown>) => void = () => { }
+      let subscriptionCallback: (v: Record<string, unknown>) => void = () => {}
       mockUseSubscription.mockImplementation((cb: (v: Record<string, unknown>) => void) => {
         subscriptionCallback = cb
       })
 
       const { rerender } = render(
-        <ContextBlockComponent
-          nodeKey="test-key"
-          datasets={[]}
-          onAddContext={vi.fn()}
-        />,
+        <ContextBlockComponent nodeKey="test-key" datasets={[]} onAddContext={vi.fn()} />,
       )
 
       // Initially no datasets
@@ -317,20 +263,12 @@ describe('ContextBlockComponent', () => {
       act(() => {
         subscriptionCallback({
           type: UPDATE_DATASETS_EVENT_EMITTER,
-          payload: [
-            { id: '3', name: 'New Dataset', type: 'text' },
-          ],
+          payload: [{ id: '3', name: 'New Dataset', type: 'text' }],
         })
       })
 
       // Re-render to see state updates
-      rerender(
-        <ContextBlockComponent
-          nodeKey="test-key"
-          datasets={[]}
-          onAddContext={vi.fn()}
-        />,
-      )
+      rerender(<ContextBlockComponent nodeKey="test-key" datasets={[]} onAddContext={vi.fn()} />)
 
       expect(screen.getByText('1')).toBeInTheDocument()
       expect(screen.getByText('New Dataset')).toBeInTheDocument()
@@ -338,17 +276,13 @@ describe('ContextBlockComponent', () => {
 
     it('should not update datasets when event type does not match', () => {
       defaultSetup({ open: true })
-      let subscriptionCallback: (v: Record<string, unknown>) => void = () => { }
+      let subscriptionCallback: (v: Record<string, unknown>) => void = () => {}
       mockUseSubscription.mockImplementation((cb: (v: Record<string, unknown>) => void) => {
         subscriptionCallback = cb
       })
 
       render(
-        <ContextBlockComponent
-          nodeKey="test-key"
-          datasets={mockDatasets}
-          onAddContext={vi.fn()}
-        />,
+        <ContextBlockComponent nodeKey="test-key" datasets={mockDatasets} onAddContext={vi.fn()} />,
       )
 
       // Fire a different event
@@ -366,17 +300,15 @@ describe('ContextBlockComponent', () => {
 
     it('should ignore string events from the event emitter', () => {
       defaultSetup({ open: true })
-      let subscriptionCallback: (v: Record<string, unknown> | string) => void = () => { }
-      mockUseSubscription.mockImplementation((cb: (v: Record<string, unknown> | string) => void) => {
-        subscriptionCallback = cb
-      })
+      let subscriptionCallback: (v: Record<string, unknown> | string) => void = () => {}
+      mockUseSubscription.mockImplementation(
+        (cb: (v: Record<string, unknown> | string) => void) => {
+          subscriptionCallback = cb
+        },
+      )
 
       render(
-        <ContextBlockComponent
-          nodeKey="test-key"
-          datasets={mockDatasets}
-          onAddContext={vi.fn()}
-        />,
+        <ContextBlockComponent nodeKey="test-key" datasets={mockDatasets} onAddContext={vi.fn()} />,
       )
 
       act(() => {
@@ -391,21 +323,13 @@ describe('ContextBlockComponent', () => {
   describe('Edge Cases', () => {
     it('should handle empty datasets array', () => {
       defaultSetup({ open: true })
-      render(
-        <ContextBlockComponent
-          nodeKey="test-key"
-          datasets={[]}
-          onAddContext={vi.fn()}
-        />,
-      )
+      render(<ContextBlockComponent nodeKey="test-key" datasets={[]} onAddContext={vi.fn()} />)
       expect(screen.getByText('0')).toBeInTheDocument()
     })
 
     it('should default datasets to empty array when undefined', () => {
       defaultSetup()
-      render(
-        <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
-      )
+      render(<ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />)
       expect(screen.getByText('0')).toBeInTheDocument()
     })
 

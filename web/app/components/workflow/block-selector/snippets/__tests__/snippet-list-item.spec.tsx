@@ -2,7 +2,9 @@ import type { PublishedSnippetListItem } from '../snippet-detail-card'
 import { fireEvent, render, screen } from '@testing-library/react'
 import SnippetListItem from '../snippet-list-item'
 
-const createSnippet = (overrides: Partial<PublishedSnippetListItem> = {}): PublishedSnippetListItem => ({
+const createSnippet = (
+  overrides: Partial<PublishedSnippetListItem> = {},
+): PublishedSnippetListItem => ({
   id: 'snippet-1',
   name: 'Customer Review',
   description: 'Snippet description',
@@ -15,6 +17,7 @@ const createSnippet = (overrides: Partial<PublishedSnippetListItem> = {}): Publi
   updated_at: 2,
   updated_by: 'user-1',
   ...overrides,
+  version: overrides.version ?? 1,
 })
 
 describe('SnippetListItem', () => {
@@ -41,7 +44,7 @@ describe('SnippetListItem', () => {
       render(
         <SnippetListItem
           snippet={createSnippet({
-            tags: [{ id: 'tag-1', name: 'Search', type: 'snippet', binding_count: 1 }],
+            tags: [{ id: 'tag-1', name: 'Search', type: 'snippet', binding_count: '' }],
           })}
           isHovered={false}
           onMouseEnter={vi.fn()}

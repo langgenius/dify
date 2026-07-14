@@ -7,7 +7,6 @@ import { useMutationClearTaskPlugin, usePluginTaskList } from '@/service/use-plu
 import PluginTaskList from '../components/plugin-task-list'
 import TaskStatusIndicator from '../components/task-status-indicator'
 import { usePluginTaskStatus } from '../hooks'
-
 import PluginTasks from '../index'
 
 // Mock external dependencies
@@ -21,11 +20,6 @@ vi.mock('@/app/components/plugins/install-plugin/base/use-get-icon', () => ({
     getIconUrl: (icon: string) => `https://example.com/${icon}`,
   }),
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en_US',
-}))
-
 // Helper to create mock plugin
 const createMockPlugin = (overrides: Partial<PluginStatus> = {}): PluginStatus => ({
   plugin_unique_identifier: `plugin-${Math.random().toString(36).substr(2, 9)}`,
@@ -48,9 +42,20 @@ const setupMocks = (plugins: PluginStatus[] = []) => {
   const mockHandleRefetch = vi.fn()
 
   vi.mocked(usePluginTaskList).mockReturnValue({
-    pluginTasks: plugins.length > 0
-      ? [{ id: 'task-1', plugins, created_at: '', updated_at: '', status: TaskStatus.running, total_plugins: plugins.length, completed_plugins: 0 }]
-      : [],
+    pluginTasks:
+      plugins.length > 0
+        ? [
+            {
+              id: 'task-1',
+              plugins,
+              created_at: '',
+              updated_at: '',
+              status: TaskStatus.running,
+              total_plugins: plugins.length,
+              completed_plugins: 0,
+            },
+          ]
+        : [],
     handleRefetch: mockHandleRefetch,
   } as unknown as ReturnType<typeof usePluginTaskList>)
 
@@ -87,7 +92,9 @@ describe('usePluginTaskStatus Hook', () => {
       render(<TestComponent />)
 
       expect(screen.getByTestId('running-count'))!.toHaveTextContent('1')
-      expect(screen.getByTestId('running-id'))!.toHaveTextContent(runningPlugin.plugin_unique_identifier)
+      expect(screen.getByTestId('running-id'))!.toHaveTextContent(
+        runningPlugin.plugin_unique_identifier,
+      )
     })
 
     it('should categorize success plugins correctly', () => {
@@ -107,7 +114,9 @@ describe('usePluginTaskStatus Hook', () => {
       render(<TestComponent />)
 
       expect(screen.getByTestId('success-count'))!.toHaveTextContent('1')
-      expect(screen.getByTestId('success-id'))!.toHaveTextContent(successPlugin.plugin_unique_identifier)
+      expect(screen.getByTestId('success-id'))!.toHaveTextContent(
+        successPlugin.plugin_unique_identifier,
+      )
     })
 
     it('should categorize error plugins correctly', () => {
@@ -127,7 +136,9 @@ describe('usePluginTaskStatus Hook', () => {
       render(<TestComponent />)
 
       expect(screen.getByTestId('error-count'))!.toHaveTextContent('1')
-      expect(screen.getByTestId('error-id'))!.toHaveTextContent(errorPlugin.plugin_unique_identifier)
+      expect(screen.getByTestId('error-id'))!.toHaveTextContent(
+        errorPlugin.plugin_unique_identifier,
+      )
     })
 
     it('should categorize mixed plugins correctly', () => {
@@ -139,7 +150,12 @@ describe('usePluginTaskStatus Hook', () => {
       setupMocks(plugins)
 
       const TestComponent = () => {
-        const { runningPluginsLength, successPluginsLength, errorPluginsLength, totalPluginsLength } = usePluginTaskStatus()
+        const {
+          runningPluginsLength,
+          successPluginsLength,
+          errorPluginsLength,
+          totalPluginsLength,
+        } = usePluginTaskStatus()
         return (
           <div>
             <span data-testid="running">{runningPluginsLength}</span>
@@ -164,7 +180,13 @@ describe('usePluginTaskStatus Hook', () => {
       setupMocks([createMockPlugin({ status: TaskStatus.running })])
 
       const TestComponent = () => {
-        const { isInstalling, isInstallingWithSuccess, isInstallingWithError, isSuccess, isFailed } = usePluginTaskStatus()
+        const {
+          isInstalling,
+          isInstallingWithSuccess,
+          isInstallingWithError,
+          isSuccess,
+          isFailed,
+        } = usePluginTaskStatus()
         return (
           <div>
             <span data-testid="isInstalling">{String(isInstalling)}</span>
@@ -254,11 +276,7 @@ describe('usePluginTaskStatus Hook', () => {
 
       const TestComponent = () => {
         const { handleClearErrorPlugin } = usePluginTaskStatus()
-        return (
-          <button onClick={() => handleClearErrorPlugin('task-1', 'plugin-1')}>
-            Clear
-          </button>
-        )
+        return <button onClick={() => handleClearErrorPlugin('task-1', 'plugin-1')}>Clear</button>
       }
 
       render(<TestComponent />)
@@ -375,14 +393,20 @@ describe('TaskStatusIndicator Component', () => {
         />,
       )
       const trigger = document.getElementById('plugin-task-trigger')
-      expect(trigger)!.toHaveClass('border-components-panel-border-subtle', 'bg-components-panel-bg')
+      expect(trigger)!.toHaveClass(
+        'border-components-panel-border-subtle',
+        'bg-components-panel-bg',
+      )
       expect(screen.getByTestId('task-status-success-badge')).toHaveClass('text-text-success')
     })
 
     it('should show error icon when failed', () => {
       render(<TaskStatusIndicator {...defaultProps} isFailed />)
       const trigger = document.getElementById('plugin-task-trigger')
-      expect(trigger)!.toHaveClass('border-components-button-destructive-secondary-border-hover', 'bg-state-destructive-hover')
+      expect(trigger)!.toHaveClass(
+        'border-components-button-destructive-secondary-border-hover',
+        'bg-state-destructive-hover',
+      )
       expect(screen.getByTestId('task-status-error-badge')).toHaveClass('text-text-destructive')
     })
   })
@@ -457,7 +481,9 @@ describe('PluginTaskList Component', () => {
     })
 
     it('should render error plugins section when plugins exist', () => {
-      const errorPlugins = [createMockPlugin({ status: TaskStatus.failed, message: 'Error occurred' })]
+      const errorPlugins = [
+        createMockPlugin({ status: TaskStatus.failed, message: 'Error occurred' }),
+      ]
       render(<PluginTaskList {...defaultProps} errorPlugins={errorPlugins} />)
 
       expect(screen.getByText('Error occurred'))!.toBeInTheDocument()
@@ -543,8 +569,14 @@ describe('PluginTaskList Component', () => {
 
     it('should display multiple plugins in each section', () => {
       const runningPlugins = [
-        createMockPlugin({ status: TaskStatus.running, labels: { en_US: 'Plugin A' } as Record<string, string> }),
-        createMockPlugin({ status: TaskStatus.running, labels: { en_US: 'Plugin B' } as Record<string, string> }),
+        createMockPlugin({
+          status: TaskStatus.running,
+          labels: { en_US: 'Plugin A' } as Record<string, string>,
+        }),
+        createMockPlugin({
+          status: TaskStatus.running,
+          labels: { en_US: 'Plugin B' } as Record<string, string>,
+        }),
       ]
 
       render(<PluginTaskList {...defaultProps} runningPlugins={runningPlugins} />)
@@ -636,7 +668,9 @@ describe('PluginTasks Component', () => {
 
       fireEvent.click(getTaskMenuTrigger())
 
-      expect(document.getElementById('plugin-task-trigger'))!.toHaveClass('bg-state-destructive-hover-alt')
+      expect(document.getElementById('plugin-task-trigger'))!.toHaveClass(
+        'bg-state-destructive-hover-alt',
+      )
     })
 
     it('should apply pointer cursor to the task menu trigger when it can open', () => {
@@ -795,9 +829,11 @@ describe('PluginTasks Component', () => {
     it('should handle many plugins', () => {
       const manyPlugins = Array.from({ length: 10 }, (_, i) =>
         createMockPlugin({
-          status: i % 3 === 0 ? TaskStatus.running : i % 3 === 1 ? TaskStatus.success : TaskStatus.failed,
+          status:
+            i % 3 === 0 ? TaskStatus.running : i % 3 === 1 ? TaskStatus.success : TaskStatus.failed,
           plugin_unique_identifier: `plugin-${i}`,
-        }))
+        }),
+      )
       setupMocks(manyPlugins)
 
       render(<PluginTasks />)

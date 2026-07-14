@@ -8,24 +8,13 @@ import { textControlVariants } from '../form-control-shared'
 
 export type InputSize = NonNullable<VariantProps<typeof textControlVariants>['size']>
 
-export type InputProps
-  = Omit<BaseInputNS.Props, 'className' | 'size'>
-    & VariantProps<typeof textControlVariants>
-    & {
-      className?: string
-    }
+export type InputProps = Omit<BaseInputNS.Props, 'className' | 'size'> &
+  VariantProps<typeof textControlVariants> & {
+    className?: string
+  }
 
 export type InputChangeEventDetails = BaseInputNS.ChangeEventDetails
 
-export function Input({
-  className,
-  size = 'medium',
-  ...props
-}: InputProps) {
-  return (
-    <BaseInput
-      className={cn(textControlVariants({ size }), className)}
-      {...props}
-    />
-  )
+export function Input({ className, size = 'medium', ...props }: InputProps) {
+  return <BaseInput className={cn(textControlVariants({ size }), className)} {...props} />
 }

@@ -1,5 +1,4 @@
-import type { PluginsSearchParams } from './types'
-import type { MarketPlaceInputs } from '@/contract/router'
+import type { MarketPlaceInputs, PluginsSearchParams } from '@dify/contracts/marketplace'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { marketplaceQuery } from '@/service/client'
 import { getMarketplaceCollectionsAndPlugins, getMarketplacePlugins } from './utils'
@@ -13,9 +12,7 @@ export function useMarketplaceCollectionsAndPlugins(
   })
 }
 
-export function useMarketplacePlugins(
-  queryParams: PluginsSearchParams | undefined,
-) {
+export function useMarketplacePlugins(queryParams: PluginsSearchParams | undefined) {
   return useInfiniteQuery({
     queryKey: marketplaceQuery.searchAdvanced.queryKey({
       input: {

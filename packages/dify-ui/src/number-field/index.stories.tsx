@@ -1,12 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { Button } from '../button'
-import {
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-  FieldRoot,
-} from '../field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '../field'
 import { Form } from '../form'
 import {
   NumberField,
@@ -25,7 +20,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound numeric input built on Base UI NumberField. Use it with FieldRoot for labelled, described, and validated form fields.',
+        component:
+          'Compound numeric input built on Base UI NumberField. Use it with Field for labelled, described, and validated form fields.',
       },
     },
   },
@@ -67,7 +63,7 @@ function NumberFieldExample({
 }: NumberFieldExampleProps) {
   return (
     <div className="grid w-80 gap-1">
-      <label htmlFor={id} className="text-text-secondary system-sm-medium">
+      <label htmlFor={id} className="system-sm-medium text-text-secondary">
         {label}
       </label>
       <NumberField
@@ -140,7 +136,7 @@ export const Sizes: Story = {
 export const States: Story = {
   render: () => (
     <div className="grid w-80 gap-3">
-      <FieldRoot name="placeholderState">
+      <Field name="placeholderState">
         <FieldLabel>Placeholder</FieldLabel>
         <NumberField min={0} max={100}>
           <NumberFieldGroup>
@@ -152,8 +148,8 @@ export const States: Story = {
             </NumberFieldControls>
           </NumberFieldGroup>
         </NumberField>
-      </FieldRoot>
-      <FieldRoot name="filledState">
+      </Field>
+      <Field name="filledState">
         <FieldLabel>Filled</FieldLabel>
         <NumberField defaultValue={85} min={0} max={100}>
           <NumberFieldGroup>
@@ -165,8 +161,8 @@ export const States: Story = {
             </NumberFieldControls>
           </NumberFieldGroup>
         </NumberField>
-      </FieldRoot>
-      <FieldRoot name="invalidState" invalid>
+      </Field>
+      <Field name="invalidState" invalid>
         <FieldLabel>Invalid</FieldLabel>
         <NumberField defaultValue={120} min={0} max={100}>
           <NumberFieldGroup>
@@ -179,8 +175,8 @@ export const States: Story = {
           </NumberFieldGroup>
         </NumberField>
         <FieldError match>Use a value from 0 to 100.</FieldError>
-      </FieldRoot>
-      <FieldRoot name="disabledState">
+      </Field>
+      <Field name="disabledState">
         <FieldLabel>Disabled</FieldLabel>
         <NumberField defaultValue={5} min={0} max={10} disabled>
           <NumberFieldGroup>
@@ -191,8 +187,8 @@ export const States: Story = {
             </NumberFieldControls>
           </NumberFieldGroup>
         </NumberField>
-      </FieldRoot>
-      <FieldRoot name="readonlyState">
+      </Field>
+      <Field name="readonlyState">
         <FieldLabel>Read-only</FieldLabel>
         <NumberField defaultValue={92} min={0} max={100} readOnly>
           <NumberFieldGroup>
@@ -204,21 +200,16 @@ export const States: Story = {
             </NumberFieldControls>
           </NumberFieldGroup>
         </NumberField>
-      </FieldRoot>
+      </Field>
     </div>
   ),
-  parameters: {
-    a11y: {
-      test: 'todo',
-    },
-  },
 }
 
 function ControlledDemo() {
   const [value, setValue] = React.useState<number | null>(0.82)
 
   return (
-    <FieldRoot name="controlledThreshold">
+    <Field name="controlledThreshold">
       <FieldLabel>Score threshold</FieldLabel>
       <NumberField
         value={value}
@@ -239,11 +230,9 @@ function ControlledDemo() {
         </NumberFieldGroup>
       </NumberField>
       <FieldDescription>
-        Current value:
-        {' '}
-        {value === null ? 'Empty' : value.toFixed(2)}
+        Current value: {value === null ? 'Empty' : value.toFixed(2)}
       </FieldDescription>
-    </FieldRoot>
+    </Field>
   )
 }
 
@@ -266,7 +255,7 @@ function FormDemo() {
         setSavedValue(String(values.topK ?? ''))
       }}
     >
-      <FieldRoot name="topK">
+      <Field name="topK">
         <FieldLabel>Top K</FieldLabel>
         <NumberField required defaultValue={3} min={1} max={10} step={1}>
           <NumberFieldGroup>
@@ -281,15 +270,15 @@ function FormDemo() {
         <FieldError match="valueMissing">Top K is required.</FieldError>
         <FieldError match="rangeUnderflow">Use at least 1.</FieldError>
         <FieldError match="rangeOverflow">Use 10 or fewer.</FieldError>
-      </FieldRoot>
+      </Field>
       <div className="flex justify-end">
-        <Button type="submit" variant="primary">Save Settings</Button>
+        <Button type="submit" variant="primary">
+          Save Settings
+        </Button>
       </div>
       {savedValue && (
-        <div className="rounded-lg bg-background-section px-3 py-2 text-text-secondary system-xs-regular">
-          Saved:
-          {' '}
-          {savedValue}
+        <div className="rounded-lg bg-background-section px-3 py-2 system-xs-regular text-text-secondary">
+          Saved: {savedValue}
         </div>
       )}
     </Form>
@@ -303,7 +292,7 @@ export const WithField: Story = {
 export const Formatting: Story = {
   render: () => (
     <div className="grid w-80 gap-3">
-      <FieldRoot name="currencyBudget">
+      <Field name="currencyBudget">
         <FieldLabel>Budget</FieldLabel>
         <NumberField
           defaultValue={1200}
@@ -323,8 +312,8 @@ export const Formatting: Story = {
             </NumberFieldControls>
           </NumberFieldGroup>
         </NumberField>
-      </FieldRoot>
-      <FieldRoot name="temperature">
+      </Field>
+      <Field name="temperature">
         <FieldLabel>Temperature</FieldLabel>
         <NumberField
           defaultValue={0.7}
@@ -343,7 +332,7 @@ export const Formatting: Story = {
             </NumberFieldControls>
           </NumberFieldGroup>
         </NumberField>
-      </FieldRoot>
+      </Field>
     </div>
   ),
 }

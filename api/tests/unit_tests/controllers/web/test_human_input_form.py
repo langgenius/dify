@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
@@ -15,8 +14,8 @@ from werkzeug.exceptions import Forbidden
 import controllers.web.human_input_form as human_input_module
 import controllers.web.site as site_module
 from controllers.web.error import WebFormRateLimitExceededError
-from graphon.nodes.human_input.entities import ParagraphInputConfig, SelectInputConfig, StringListSource
-from graphon.nodes.human_input.enums import ValueSourceType
+from core.workflow.nodes.human_input.entities import ParagraphInputConfig, SelectInputConfig, StringListSource
+from core.workflow.nodes.human_input.enums import ValueSourceType
 from models.human_input import RecipientType
 from services.feature_service import FeatureModel
 from services.human_input_service import FormExpiredError
@@ -107,12 +106,13 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
         icon="robot",
         icon_background="#fff",
         description="desc",
+        input_placeholder="Ask the app",
         default_language="en",
         chat_color_theme="light",
         chat_color_theme_inverted=False,
         copyright=None,
         privacy_policy=None,
-        custom_disclaimer=None,
+        custom_disclaimer="",
         prompt_public=False,
         show_workflow_steps=True,
         use_icon_as_answer_icon=False,
@@ -132,13 +132,13 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     monkeypatch.setattr(
         site_module.FeatureService,
         "get_features",
-        lambda tenant_id, **_kwargs: SimpleNamespace(can_replace_logo=True),
+        lambda tenant_id, **_kwargs: FeatureModel(can_replace_logo=True, webapp_copyright_enabled=True),
     )
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         response = HumanInputFormApi().get("token-1")
 
-    body = json.loads(response.get_data(as_text=True))
+    body = response
     assert set(body.keys()) == {
         "site",
         "form_content",
@@ -167,7 +167,8 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
             "description": "desc",
             "copyright": None,
             "privacy_policy": None,
-            "custom_disclaimer": None,
+            "input_placeholder": "Ask the app",
+            "custom_disclaimer": "",
             "default_language": "en",
             "prompt_public": False,
             "show_workflow_steps": True,
@@ -251,12 +252,13 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
         icon="robot",
         icon_background="#fff",
         description="desc",
+        input_placeholder="Ask the app",
         default_language="en",
         chat_color_theme="light",
         chat_color_theme_inverted=False,
         copyright=None,
         privacy_policy=None,
-        custom_disclaimer=None,
+        custom_disclaimer="",
         prompt_public=False,
         show_workflow_steps=True,
         use_icon_as_answer_icon=False,
@@ -277,7 +279,7 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         response = HumanInputFormApi().get("token-1")
 
-    body = json.loads(response.get_data(as_text=True))
+    body = response
     assert body["inputs"] == [input_config.model_dump(mode="json") for input_config in runtime_inputs]
     service_mock.resolve_form_inputs.assert_called_once_with(form)
 
@@ -375,12 +377,13 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
         icon="robot",
         icon_background="#fff",
         description="desc",
+        input_placeholder="Ask the app",
         default_language="en",
         chat_color_theme="light",
         chat_color_theme_inverted=False,
         copyright=None,
         privacy_policy=None,
-        custom_disclaimer=None,
+        custom_disclaimer="",
         prompt_public=False,
         show_workflow_steps=True,
         use_icon_as_answer_icon=False,
@@ -397,13 +400,13 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     monkeypatch.setattr(
         site_module.FeatureService,
         "get_features",
-        lambda tenant_id, **_kwargs: SimpleNamespace(can_replace_logo=True),
+        lambda tenant_id, **_kwargs: FeatureModel(can_replace_logo=True, webapp_copyright_enabled=True),
     )
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         response = HumanInputFormApi().get("token-1")
 
-    body = json.loads(response.get_data(as_text=True))
+    body = response
     assert set(body.keys()) == {
         "site",
         "form_content",
@@ -432,7 +435,8 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
             "description": "desc",
             "copyright": None,
             "privacy_policy": None,
-            "custom_disclaimer": None,
+            "input_placeholder": "Ask the app",
+            "custom_disclaimer": "",
             "default_language": "en",
             "prompt_public": False,
             "show_workflow_steps": True,

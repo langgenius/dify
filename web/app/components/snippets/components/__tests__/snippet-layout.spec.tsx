@@ -28,11 +28,7 @@ describe('SnippetLayout', () => {
   describe('Document title', () => {
     it('should set the document title to the snippet name when snippet detail is available', () => {
       render(
-        <SnippetLayout
-          snippetId="snippet-1"
-          snippet={createSnippet()}
-          section="orchestrate"
-        >
+        <SnippetLayout snippetId="snippet-1" snippet={createSnippet()} section="orchestrate">
           <div>content</div>
         </SnippetLayout>,
       )
@@ -42,19 +38,17 @@ describe('SnippetLayout', () => {
   })
 
   describe('Layout', () => {
-    it('should render the detail content without the app detail sidebar navigation', () => {
+    it('should render the detail content without owning sidebar navigation', () => {
       render(
-        <SnippetLayout
-          snippetId="snippet-1"
-          snippet={createSnippet()}
-          section="orchestrate"
-        >
+        <SnippetLayout snippetId="snippet-1" snippet={createSnippet()} section="orchestrate">
           <div>content</div>
         </SnippetLayout>,
       )
 
       expect(screen.getByText('content')).toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: 'snippet.sectionOrchestrate' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('link', { name: 'snippet.sectionOrchestrate' }),
+      ).not.toBeInTheDocument()
     })
   })
 })

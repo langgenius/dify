@@ -11,6 +11,7 @@ import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { intersectionBy } from 'es-toolkit/compat'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,8 +29,9 @@ import {
   getMultipleRetrievalConfig,
   getSelectedDatasetsMode,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import ConfigContext from '@/context/debug-configuration'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { AppModeEnum } from '@/types/app'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import FeaturePanel from '../base/feature-panel'
@@ -45,8 +47,8 @@ type Props = Readonly<{
 }>
 const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   const { t } = useTranslation()
-  const currentUserId = useAppContextSelector(s => s.userProfile?.id)
-  const workspacePermissionKeys = useAppContextSelector(s => s.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const {
     mode,
     dataSets: dataSet,
@@ -64,40 +66,40 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
 
   const hasData = dataSet.length > 0
 
-  const {
-    currentModel: currentRerankModel,
-    currentProvider: currentRerankProvider,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+  const { currentModel: currentRerankModel, currentProvider: currentRerankProvider } =
+    useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const onRemove = (id: string) => {
-    const filteredDataSets = dataSet.filter(item => item.id !== id)
+    const filteredDataSets = dataSet.filter((item) => item.id !== id)
     setDataSet(filteredDataSets)
     const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
-    const {
-      top_k,
-      score_threshold,
-      reranking_model,
-      reranking_mode,
-      weights,
-      reranking_enable,
-    } = restConfigs
+    const { top_k, score_threshold, reranking_model, reranking_mode, weights, reranking_enable } =
+      restConfigs
     const oldRetrievalConfig = {
       top_k,
       score_threshold,
-      reranking_model: (reranking_model && reranking_model.reranking_provider_name && reranking_model.reranking_model_name)
-        ? {
-            provider: reranking_model.reranking_provider_name,
-            model: reranking_model.reranking_model_name,
-          }
-        : undefined,
+      reranking_model:
+        reranking_model &&
+        reranking_model.reranking_provider_name &&
+        reranking_model.reranking_model_name
+          ? {
+              provider: reranking_model.reranking_provider_name,
+              model: reranking_model.reranking_model_name,
+            }
+          : undefined,
       reranking_mode,
       weights,
       reranking_enable,
     }
-    const retrievalConfig = getMultipleRetrievalConfig(oldRetrievalConfig, filteredDataSets, dataSet, {
-      provider: currentRerankProvider?.provider,
-      model: currentRerankModel?.model,
-    })
+    const retrievalConfig = getMultipleRetrievalConfig(
+      oldRetrievalConfig,
+      filteredDataSets,
+      dataSet,
+      {
+        provider: currentRerankProvider?.provider,
+        model: currentRerankModel?.model,
+      },
+    )
     setDatasetConfigs({
       ...datasetConfigsRef.current,
       ...retrievalConfig,
@@ -118,9 +120,9 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
     } = getSelectedDatasetsMode(filteredDataSets)
 
     if (
-      (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
-      || mixtureInternalAndExternal
-      || allExternal
+      (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)) ||
+      mixtureInternalAndExternal ||
+      allExternal
     ) {
       setRerankSettingModalOpen(true)
     }
@@ -128,7 +130,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   }
 
   const handleSave = (newDataset: DataSet) => {
-    const index = dataSet.findIndex(item => item.id === newDataset.id)
+    const index = dataSet.findIndex((item) => item.id === newDataset.id)
 
     const newDatasets = [...dataSet.slice(0, index), newDataset, ...dataSet.slice(index + 1)]
     setDataSet(newDatasets)
@@ -136,19 +138,19 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   }
 
   const promptVariables = modelConfig.configs.prompt_variables
-  const promptVariablesToSelect = promptVariables.map(item => ({
+  const promptVariablesToSelect = promptVariables.map((item) => ({
     name: item.name,
     type: item.type,
     value: item.key,
   }))
-  const selectedContextVar = promptVariables?.find(item => item.is_context_var)
+  const selectedContextVar = promptVariables?.find((item) => item.is_context_var)
   const handleSelectContextVar = (selectedValue: string) => {
     const newModelConfig = produce(modelConfig, (draft) => {
       draft.configs.prompt_variables = modelConfig.configs.prompt_variables.map((item) => {
-        return ({
+        return {
           ...item,
           is_context_var: item.key === selectedValue,
-        })
+        }
       })
     })
     setModelConfig(newModelConfig)
@@ -169,132 +171,156 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   }, [currentUserId, dataSet, workspacePermissionKeys])
 
   const metadataList = useMemo(() => {
-    return intersectionBy(...formattedDataset.filter((dataset) => {
-      return !!dataset.doc_metadata
-    }).map((dataset) => {
-      return dataset.doc_metadata!
-    }), 'name')
+    return intersectionBy(
+      ...formattedDataset
+        .filter((dataset) => {
+          return !!dataset.doc_metadata
+        })
+        .map((dataset) => {
+          return dataset.doc_metadata!
+        }),
+      'name',
+    )
   }, [formattedDataset])
 
-  const handleMetadataFilterModeChange = useCallback((newMode: MetadataFilteringModeEnum) => {
-    setDatasetConfigs(produce(datasetConfigsRef.current!, (draft) => {
-      draft.metadata_filtering_mode = newMode
-    }))
-  }, [setDatasetConfigs, datasetConfigsRef])
+  const handleMetadataFilterModeChange = useCallback(
+    (newMode: MetadataFilteringModeEnum) => {
+      setDatasetConfigs(
+        produce(datasetConfigsRef.current!, (draft) => {
+          draft.metadata_filtering_mode = newMode
+        }),
+      )
+    },
+    [setDatasetConfigs, datasetConfigsRef],
+  )
 
-  const handleAddCondition = useCallback<HandleAddCondition>(({ id, name, type }) => {
-    let operator: ComparisonOperator = ComparisonOperator.is
+  const handleAddCondition = useCallback<HandleAddCondition>(
+    ({ id, name, type }) => {
+      let operator: ComparisonOperator = ComparisonOperator.is
 
-    if (type === MetadataFilteringVariableType.number)
-      operator = ComparisonOperator.equal
+      if (type === MetadataFilteringVariableType.number) operator = ComparisonOperator.equal
 
-    const newCondition = {
-      id: uuid4(),
-      metadata_id: id, // Save metadata.id for reliable reference
-      name,
-      comparison_operator: operator,
-    }
-
-    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
-      if (draft.metadata_filtering_conditions) {
-        draft.metadata_filtering_conditions.conditions.push(newCondition)
+      const newCondition = {
+        id: uuid4(),
+        metadata_id: id, // Save metadata.id for reliable reference
+        name,
+        comparison_operator: operator,
       }
-      else {
-        draft.metadata_filtering_conditions = {
-          logical_operator: LogicalOperator.and,
-          conditions: [newCondition],
+
+      const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+        if (draft.metadata_filtering_conditions) {
+          draft.metadata_filtering_conditions.conditions.push(newCondition)
+        } else {
+          draft.metadata_filtering_conditions = {
+            logical_operator: LogicalOperator.and,
+            conditions: [newCondition],
+          }
         }
-      }
-    })
-    setDatasetConfigs(newInputs)
-  }, [setDatasetConfigs, datasetConfigsRef])
+      })
+      setDatasetConfigs(newInputs)
+    },
+    [setDatasetConfigs, datasetConfigsRef],
+  )
 
-  const handleRemoveCondition = useCallback<HandleRemoveCondition>((id) => {
-    const conditions = datasetConfigsRef.current!.metadata_filtering_conditions?.conditions || []
-    const index = conditions.findIndex(c => c.id === id)
-    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
-      if (index > -1)
-        draft.metadata_filtering_conditions?.conditions.splice(index, 1)
-    })
-    setDatasetConfigs(newInputs)
-  }, [setDatasetConfigs, datasetConfigsRef])
+  const handleRemoveCondition = useCallback<HandleRemoveCondition>(
+    (id) => {
+      const conditions = datasetConfigsRef.current!.metadata_filtering_conditions?.conditions || []
+      const index = conditions.findIndex((c) => c.id === id)
+      const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+        if (index > -1) draft.metadata_filtering_conditions?.conditions.splice(index, 1)
+      })
+      setDatasetConfigs(newInputs)
+    },
+    [setDatasetConfigs, datasetConfigsRef],
+  )
 
-  const handleUpdateCondition = useCallback<HandleUpdateCondition>((id, newCondition) => {
-    const conditions = datasetConfigsRef.current!.metadata_filtering_conditions?.conditions || []
-    const index = conditions.findIndex(c => c.id === id)
-    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
-      if (index > -1)
-        draft.metadata_filtering_conditions!.conditions[index] = newCondition
-    })
-    setDatasetConfigs(newInputs)
-  }, [setDatasetConfigs, datasetConfigsRef])
+  const handleUpdateCondition = useCallback<HandleUpdateCondition>(
+    (id, newCondition) => {
+      const conditions = datasetConfigsRef.current!.metadata_filtering_conditions?.conditions || []
+      const index = conditions.findIndex((c) => c.id === id)
+      const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+        if (index > -1) draft.metadata_filtering_conditions!.conditions[index] = newCondition
+      })
+      setDatasetConfigs(newInputs)
+    },
+    [setDatasetConfigs, datasetConfigsRef],
+  )
 
-  const handleToggleConditionLogicalOperator = useCallback<HandleToggleConditionLogicalOperator>(() => {
-    const oldLogicalOperator = datasetConfigsRef.current!.metadata_filtering_conditions?.logical_operator
-    const newLogicalOperator = oldLogicalOperator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
-    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
-      draft.metadata_filtering_conditions!.logical_operator = newLogicalOperator
-    })
-    setDatasetConfigs(newInputs)
-  }, [setDatasetConfigs, datasetConfigsRef])
+  const handleToggleConditionLogicalOperator =
+    useCallback<HandleToggleConditionLogicalOperator>(() => {
+      const oldLogicalOperator =
+        datasetConfigsRef.current!.metadata_filtering_conditions?.logical_operator
+      const newLogicalOperator =
+        oldLogicalOperator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
+      const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+        draft.metadata_filtering_conditions!.logical_operator = newLogicalOperator
+      })
+      setDatasetConfigs(newInputs)
+    }, [setDatasetConfigs, datasetConfigsRef])
 
-  const handleMetadataModelChange = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
-    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
-      draft.metadata_model_config = {
-        provider: model.provider,
-        name: model.modelId,
-        mode: model.mode || AppModeEnum.CHAT,
-        completion_params: draft.metadata_model_config?.completion_params || { temperature: 0.7 },
-      }
-    })
-    setDatasetConfigs(newInputs)
-  }, [setDatasetConfigs, datasetConfigsRef])
+  const handleMetadataModelChange = useCallback(
+    (model: { provider: string; modelId: string; mode?: string }) => {
+      const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+        draft.metadata_model_config = {
+          provider: model.provider,
+          name: model.modelId,
+          mode: model.mode || AppModeEnum.CHAT,
+          completion_params: draft.metadata_model_config?.completion_params || { temperature: 0.7 },
+        }
+      })
+      setDatasetConfigs(newInputs)
+    },
+    [setDatasetConfigs, datasetConfigsRef],
+  )
 
-  const handleMetadataCompletionParamsChange = useCallback((newParams: Record<string, unknown>) => {
-    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
-      draft.metadata_model_config = {
-        ...draft.metadata_model_config!,
-        completion_params: newParams,
-      }
-    })
-    setDatasetConfigs(newInputs)
-  }, [setDatasetConfigs, datasetConfigsRef])
+  const handleMetadataCompletionParamsChange = useCallback(
+    (newParams: Record<string, unknown>) => {
+      const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+        draft.metadata_model_config = {
+          ...draft.metadata_model_config!,
+          completion_params: newParams,
+        }
+      })
+      setDatasetConfigs(newInputs)
+    },
+    [setDatasetConfigs, datasetConfigsRef],
+  )
 
   return (
     <FeaturePanel
       className="mt-2"
-      title={t('feature.dataSet.title', { ns: 'appDebug' })}
-      headerRight={(
+      title={t(($) => $['feature.dataSet.title'], { ns: 'appDebug' })}
+      headerRight={
         !readonly && (
           <div className="flex items-center gap-1">
             {!isAgent && <ParamsConfig disabled={!hasData} selectedDatasets={dataSet} />}
             <OperationBtn type="add" onClick={showSelectDataSet} />
           </div>
         )
-      )}
+      }
       hasHeaderBottomBorder={!hasData}
       noBodySpacing
     >
-      {hasData
-        ? (
-            <div className={cn('mt-1 grid grid-cols-1 px-3 pb-3', readonly && 'grid-cols-2 gap-1')}>
-              {formattedDataset.map(item => (
-                <CardItem
-                  key={item.id}
-                  config={item}
-                  onRemove={onRemove}
-                  onSave={handleSave}
-                  editable={item.editable}
-                  readonly={readonly}
-                />
-              ))}
-            </div>
-          )
-        : (
-            <div className="mt-1 px-3 pb-3">
-              <div className="pt-2 pb-1 text-xs text-text-tertiary">{t('feature.dataSet.noData', { ns: 'appDebug' })}</div>
-            </div>
-          )}
+      {hasData ? (
+        <div className={cn('mt-1 grid grid-cols-1 px-3 pb-3', readonly && 'grid-cols-2 gap-1')}>
+          {formattedDataset.map((item) => (
+            <CardItem
+              key={item.id}
+              config={item}
+              onRemove={onRemove}
+              onSave={handleSave}
+              editable={item.editable}
+              readonly={readonly}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-1 px-3 pb-3">
+          <div className="pt-2 pb-1 text-xs text-text-tertiary">
+            {t(($) => $['feature.dataSet.noData'], { ns: 'appDebug' })}
+          </div>
+        </div>
+      )}
 
       {!hideMetadataFilter && (
         <div className="border-t border-t-divider-subtle py-2">
@@ -312,8 +338,14 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
             handleMetadataModelChange={handleMetadataModelChange}
             handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
             isCommonVariable
-            availableCommonStringVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.string || item.type === MetadataFilteringVariableType.select)}
-            availableCommonNumberVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.number)}
+            availableCommonStringVars={promptVariablesToSelect.filter(
+              (item) =>
+                item.type === MetadataFilteringVariableType.string ||
+                item.type === MetadataFilteringVariableType.select,
+            )}
+            availableCommonNumberVars={promptVariablesToSelect.filter(
+              (item) => item.type === MetadataFilteringVariableType.number,
+            )}
           />
         </div>
       )}

@@ -59,15 +59,18 @@ from unittest.mock import MagicMock, Mock, create_autospec, patch
 import pytest
 from werkzeug.datastructures import FileStorage
 
+from models.agent_config_entities import AgentSoulConfig
 from models.enums import MessageStatus
 from models.model import App, AppMode, AppModelConfig, Message
 from models.workflow import Workflow
+from services.app_ref_service import MessageRef
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
     ProviderNotSupportTextToSpeechServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -266,6 +269,117 @@ class TestAudioServiceASR:
         # Assert
         assert result == {"text": "Workflow transcribed text"}
 
+    @patch("services.audio_service.AgentRosterService", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_asr_success_published_agent_mode(
+        self,
+        mock_model_manager_class,
+        mock_roster_service_class,
+        factory: AudioServiceTestDataFactory,
+    ):
+        app = factory.create_app_mock(mode=AppMode.AGENT)
+        file = factory.create_file_storage_mock()
+        agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
+        mock_roster_service_class.return_value.get_published_agent_soul_for_app.return_value = agent_soul
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_speech2text.return_value = "Published Agent transcript"
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        result = AudioService.transcript_asr(app_model=app, file=file, end_user="end-user-1")
+
+        assert result == {"text": "Published Agent transcript"}
+        mock_roster_service_class.return_value.get_published_agent_soul_for_app.assert_called_once_with(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+        )
+
+    @patch("services.audio_service.AgentRosterService", autospec=True)
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_asr_legacy_agent_falls_back_to_app_model_config(
+        self,
+        mock_model_manager_class,
+        mock_roster_service_class,
+        factory: AudioServiceTestDataFactory,
+    ):
+        app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
+        app = factory.create_app_mock(mode=AppMode.AGENT, app_model_config=app_model_config)
+        file = factory.create_file_storage_mock()
+        mock_roster_service_class.return_value.get_published_agent_soul_for_app.return_value = None
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_speech2text.return_value = "Legacy Agent transcript"
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        result = AudioService.transcript_asr(app_model=app, file=file)
+
+        assert result == {"text": "Legacy Agent transcript"}
+
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_agent_asr_uses_agent_soul_feature(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
+        app = factory.create_app_mock(mode=AppMode.AGENT)
+        file = factory.create_file_storage_mock()
+        agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_speech2text.return_value = "Agent transcript"
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        result = AudioService.transcript_agent_asr(
+            app_model=app,
+            agent_soul=agent_soul,
+            file=file,
+            end_user="account-1",
+        )
+
+        assert result == {"text": "Agent transcript"}
+        mock_model_manager_class.assert_called_once_with(tenant_id=app.tenant_id, user_id="account-1")
+
+    @pytest.mark.parametrize(
+        "agent_soul",
+        [
+            AgentSoulConfig(),
+            AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": False}}}),
+        ],
+    )
+    def test_transcript_agent_asr_rejects_disabled_feature(
+        self, factory: AudioServiceTestDataFactory, agent_soul: AgentSoulConfig
+    ):
+        app = factory.create_app_mock(mode=AppMode.AGENT)
+        file = factory.create_file_storage_mock()
+
+        with pytest.raises(SpeechToTextDisabledServiceError):
+            AudioService.transcript_agent_asr(app_model=app, agent_soul=agent_soul, file=file)
+
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_agent_asr_preserves_legacy_feature_fallback(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
+        app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
+        app_model_config.to_dict.return_value = {"speech_to_text": {"enabled": True}}
+        app = factory.create_app_mock(mode=AppMode.AGENT, app_model_config=app_model_config)
+        file = factory.create_file_storage_mock()
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_speech2text.return_value = "Legacy feature transcript"
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        result = AudioService.transcript_agent_asr(
+            app_model=app,
+            agent_soul=AgentSoulConfig(),
+            file=file,
+        )
+
+        assert result == {"text": "Legacy feature transcript"}
+
+    def test_transcript_agent_asr_soul_disabled_overrides_legacy_feature(self, factory: AudioServiceTestDataFactory):
+        app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
+        app_model_config.to_dict.return_value = {"speech_to_text": {"enabled": True}}
+        app = factory.create_app_mock(mode=AppMode.AGENT, app_model_config=app_model_config)
+        file = factory.create_file_storage_mock()
+        agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": False}}})
+
+        with pytest.raises(SpeechToTextDisabledServiceError):
+            AudioService.transcript_agent_asr(app_model=app, agent_soul=agent_soul, file=file)
+
     def test_transcript_asr_raises_error_when_feature_disabled_chat_mode(self, factory: AudioServiceTestDataFactory):
         """Test that ASR raises error when speech-to-text is disabled in CHAT mode."""
         # Arrange
@@ -277,7 +391,7 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Speech to text is not enabled"):
+        with pytest.raises(SpeechToTextDisabledServiceError):
             AudioService.transcript_asr(app_model=app, file=file)
 
     def test_transcript_asr_raises_error_when_feature_disabled_workflow_mode(
@@ -293,7 +407,7 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Speech to text is not enabled"):
+        with pytest.raises(SpeechToTextDisabledServiceError):
             AudioService.transcript_asr(app_model=app, file=file)
 
     def test_transcript_asr_raises_error_when_workflow_missing(self, factory: AudioServiceTestDataFactory):
@@ -306,7 +420,7 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Speech to text is not enabled"):
+        with pytest.raises(SpeechToTextDisabledServiceError):
             AudioService.transcript_asr(app_model=app, file=file)
 
     def test_transcript_asr_raises_error_when_no_file_uploaded(self, factory: AudioServiceTestDataFactory):
@@ -398,6 +512,7 @@ class TestAudioServiceTTS:
         # Act
         result = AudioService.transcript_tts(
             app_model=app,
+            session=MagicMock(),
             text="Hello world",
             voice="en-US-Neural",
             end_user="user-123",
@@ -432,6 +547,7 @@ class TestAudioServiceTTS:
         # Act
         result = AudioService.transcript_tts(
             app_model=app,
+            session=MagicMock(),
             text="Test",
         )
 
@@ -465,6 +581,7 @@ class TestAudioServiceTTS:
         # Act
         result = AudioService.transcript_tts(
             app_model=app,
+            session=MagicMock(),
             text="Test",
         )
 
@@ -496,17 +613,71 @@ class TestAudioServiceTTS:
         mock_model_instance = MagicMock()
         mock_model_instance.invoke_tts.return_value = b"draft audio"
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
+        session = MagicMock()
 
         # Act
         result = AudioService.transcript_tts(
             app_model=app,
+            session=session,
             text="Draft test",
             is_draft=True,
         )
 
         # Assert
         assert result == b"draft audio"
-        mock_workflow_service.get_draft_workflow.assert_called_once_with(app_model=app)
+        mock_workflow_service.get_draft_workflow.assert_called_once_with(app_model=app, session=session)
+
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_tts_message_id_uses_provided_session(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
+        """Test TTS message lookup uses the injected session."""
+        # Arrange
+        app = factory.create_app_mock(mode=AppMode.CHAT)
+        message_id = "00000000-0000-0000-0000-000000000001"
+        message_ref = MessageRef(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            message_id=message_id,
+            end_user_id="end-user-1",
+            account_id="account-1",
+        )
+        message = factory.create_message_mock(message_id=message_id, answer="Message answer")
+        session = MagicMock()
+        session.scalar.return_value = message
+
+        mock_model_manager = mock_model_manager_class.return_value
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_tts.return_value = b"message audio"
+        mock_model_manager.get_default_model_instance.return_value = mock_model_instance
+
+        # Act
+        result = AudioService.transcript_tts(
+            app_model=app,
+            session=session,
+            message_ref=message_ref,
+            voice="message-voice",
+        )
+
+        # Assert
+        assert result == b"message audio"
+        session.scalar.assert_called_once()
+        session.get.assert_not_called()
+        stmt = session.scalar.call_args.args[0]
+        compiled = stmt.compile()
+        statement = str(compiled)
+        assert "messages.id" in statement
+        assert "messages.app_id" in statement
+        assert "messages.from_end_user_id" in statement
+        assert "messages.from_account_id" in statement
+        assert message_id in compiled.params.values()
+        assert app.id in compiled.params.values()
+        assert "end-user-1" in compiled.params.values()
+        assert "account-1" in compiled.params.values()
+        mock_model_instance.invoke_tts.assert_called_once_with(
+            content_text="Message answer",
+            voice="message-voice",
+        )
 
     def test_transcript_tts_raises_error_when_text_missing(self, factory: AudioServiceTestDataFactory):
         """Test that TTS raises error when text is missing."""
@@ -515,7 +686,7 @@ class TestAudioServiceTTS:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Text is required"):
-            AudioService.transcript_tts(app_model=app, text=None)
+            AudioService.transcript_tts(app_model=app, session=MagicMock(), text=None)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_raises_error_when_no_voices_available(
@@ -539,7 +710,7 @@ class TestAudioServiceTTS:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Sorry, no voice available"):
-            AudioService.transcript_tts(app_model=app, text="Test")
+            AudioService.transcript_tts(app_model=app, session=MagicMock(), text="Test")
 
 
 class TestAudioServiceTTSVoices:

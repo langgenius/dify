@@ -10,6 +10,7 @@ from typing_extensions import TypedDict
 from configs import dify_config
 from dify_app import DifyApp
 from extensions.redis_names import normalize_redis_key_prefix
+from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handler
 
 
 class _CelerySentinelKwargsDict(TypedDict):
@@ -147,12 +148,14 @@ def init_app(app: DifyApp) -> Celery:
 
     celery_app.set_default()
     app.extensions["celery"] = celery_app
+    setup_workflow_warm_shutdown_handler()
 
     imports = [
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
+        "tasks.initialize_created_app_rbac_access_task",  # app access initialization
         "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME

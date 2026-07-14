@@ -20,7 +20,6 @@ from constants import (
     VIDEO_EXTENSIONS,
 )
 from core.rag.extractor.extract_processor import ExtractProcessor
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import helpers as file_helpers
@@ -174,7 +173,7 @@ class FileService:
 
         return upload_file
 
-    def get_file_preview(self, file_id: str, tenant_id: str):
+    def get_file_preview(self, file_id: str, tenant_id: str) -> str:
         """
         Return a short text preview extracted from a document file.
         """
@@ -192,9 +191,7 @@ class FileService:
             raise UnsupportedFileTypeError()
 
         text = ExtractProcessor.load_from_upload_file(upload_file, return_text=True)
-        text = text[0:PREVIEW_WORDS_LIMIT] if text else ""
-
-        return text
+        return text[0:PREVIEW_WORDS_LIMIT] if text else ""
 
     def get_image_preview(self, file_id: str, timestamp: str, nonce: str, sign: str):
         result = file_helpers.verify_image_signature(
@@ -268,7 +265,9 @@ class FileService:
             session.delete(upload_file)
 
     @staticmethod
-    def get_upload_files_by_ids(tenant_id: str, upload_file_ids: Sequence[str]) -> dict[str, UploadFile]:
+    def get_upload_files_by_ids(
+        tenant_id: str, upload_file_ids: Sequence[str], *, session: Session
+    ) -> dict[str, UploadFile]:
         """
         Fetch `UploadFile` rows for a tenant in a single batch query.
 
@@ -282,7 +281,7 @@ class FileService:
         unique_upload_file_ids: list[str] = list(set(upload_file_id_list))
 
         # Fetch upload files in one query for efficient batch access.
-        upload_files: Sequence[UploadFile] = db.session.scalars(
+        upload_files: Sequence[UploadFile] = session.scalars(
             select(UploadFile).where(
                 UploadFile.tenant_id == tenant_id,
                 UploadFile.id.in_(unique_upload_file_ids),

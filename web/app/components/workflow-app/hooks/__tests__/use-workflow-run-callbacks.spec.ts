@@ -1,10 +1,10 @@
 import type AudioPlayer from '@/app/components/base/audio-btn/audio'
-import { createBaseWorkflowRunCallbacks, createFinalWorkflowRunCallbacks } from '../use-workflow-run-callbacks'
+import {
+  createBaseWorkflowRunCallbacks,
+  createFinalWorkflowRunCallbacks,
+} from '../use-workflow-run-callbacks'
 
-const {
-  mockSseGet,
-  mockResetMsgId,
-} = vi.hoisted(() => ({
+const { mockSseGet, mockResetMsgId } = vi.hoisted(() => ({
   mockSseGet: vi.fn(),
   mockResetMsgId: vi.fn(),
 }))
@@ -40,6 +40,7 @@ const createHandlers = () => ({
   handleWorkflowAgentLog: vi.fn(),
   handleWorkflowTextChunk: vi.fn(),
   handleWorkflowTextReplace: vi.fn(),
+  handleWorkflowReasoning: vi.fn(),
   handleWorkflowPaused: vi.fn(),
 })
 
@@ -128,7 +129,10 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(handlers.handleWorkflowFailed).toHaveBeenCalled()
     expect(userOnError).toHaveBeenCalled()
     expect(getWorkflowRunningData).toHaveBeenCalled()
-    expect(trackWorkflowRunFailed).toHaveBeenCalledWith({ error: 'failed', node_type: 'llm' }, workflowData)
+    expect(trackWorkflowRunFailed).toHaveBeenCalledWith(
+      { error: 'failed', node_type: 'llm' },
+      workflowData,
+    )
 
     callbacks.onTTSChunk?.('message-1', 'audio-chunk')
     expect(getOrCreatePlayer).toHaveBeenCalled()
@@ -252,6 +256,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     callbacks.onAgentLog?.({ node_id: 'node-1' } as never)
     callbacks.onTextChunk?.({ data: 'chunk' } as never)
     callbacks.onTextReplace?.({ text: 'replacement' } as never)
+    callbacks.onReasoning?.({ data: { reasoning: 'thinking', node_id: 'node-1' } } as never)
     callbacks.onHumanInputRequired?.({ node_id: 'node-1' } as never)
     callbacks.onHumanInputFormFilled?.({ node_id: 'node-1' } as never)
     callbacks.onHumanInputFormTimeout?.({ node_id: 'node-1' } as never)
@@ -295,6 +300,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(userCallbacks.onAgentLog).toHaveBeenCalled()
     expect(handlers.handleWorkflowTextChunk).toHaveBeenCalled()
     expect(handlers.handleWorkflowTextReplace).toHaveBeenCalled()
+    expect(handlers.handleWorkflowReasoning).toHaveBeenCalled()
     expect(handlers.handleWorkflowNodeHumanInputRequired).toHaveBeenCalled()
     expect(userCallbacks.onHumanInputRequired).toHaveBeenCalled()
     expect(handlers.handleWorkflowNodeHumanInputFormFilled).toHaveBeenCalled()
@@ -317,7 +323,10 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(handlers.handleWorkflowFailed).toHaveBeenCalled()
     expect(userCallbacks.onError).toHaveBeenCalledWith({ error: 'failed', node_type: 'llm' }, '500')
     expect(getWorkflowRunningData).toHaveBeenCalled()
-    expect(trackWorkflowRunFailed).toHaveBeenCalledWith({ error: 'failed', node_type: 'llm' }, workflowData)
+    expect(trackWorkflowRunFailed).toHaveBeenCalledWith(
+      { error: 'failed', node_type: 'llm' },
+      workflowData,
+    )
     expect(invalidateRunHistory).toHaveBeenCalledWith('/apps/app-1/workflow-runs')
   })
 
@@ -423,6 +432,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     finalCallbacks.onAgentLog?.({ node_id: 'node-1' } as never)
     finalCallbacks.onTextChunk?.({ data: 'chunk' } as never)
     finalCallbacks.onTextReplace?.({ text: 'replacement' } as never)
+    finalCallbacks.onReasoning?.({ data: { reasoning: 'thinking', node_id: 'node-1' } } as never)
     finalCallbacks.onHumanInputRequired?.({ node_id: 'node-1' } as never)
     finalCallbacks.onHumanInputFormFilled?.({ node_id: 'node-1' } as never)
     finalCallbacks.onHumanInputFormTimeout?.({ node_id: 'node-1' } as never)
@@ -461,6 +471,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(userCallbacks.onAgentLog).toHaveBeenCalled()
     expect(handlers.handleWorkflowTextChunk).toHaveBeenCalled()
     expect(handlers.handleWorkflowTextReplace).toHaveBeenCalled()
+    expect(handlers.handleWorkflowReasoning).toHaveBeenCalled()
     expect(handlers.handleWorkflowNodeHumanInputRequired).toHaveBeenCalled()
     expect(userCallbacks.onHumanInputRequired).toHaveBeenCalled()
     expect(handlers.handleWorkflowNodeHumanInputFormFilled).toHaveBeenCalled()

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PreviewContainer from '../container'
 
-// Tests for PreviewContainer - a layout wrapper with header and scrollable main area
+// Tests for PreviewContainer - a layout wrapper with header and scrollable content area
 describe('PreviewContainer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -17,11 +17,15 @@ describe('PreviewContainer', () => {
       expect(headerEl)!.toBeInTheDocument()
     })
 
-    it('should render children in a main element', () => {
-      render(<PreviewContainer header="Header">Main content</PreviewContainer>)
+    it('should render children in the content area', () => {
+      render(
+        <PreviewContainer header="Header" data-testid="inner-container">
+          Main content
+        </PreviewContainer>,
+      )
 
-      const mainEl = screen.getByRole('main')
-      expect(mainEl)!.toHaveTextContent('Main content')
+      const contentEl = screen.getByTestId('inner-container').lastElementChild
+      expect(contentEl)!.toHaveTextContent('Main content')
     })
 
     it('should render both header and children simultaneously', () => {
@@ -36,38 +40,43 @@ describe('PreviewContainer', () => {
     })
 
     it('should render without children', () => {
-      render(<PreviewContainer header="Header" />)
+      render(<PreviewContainer header="Header" data-testid="inner-container" />)
 
-      expect(screen.getByRole('main'))!.toBeInTheDocument()
-      expect(screen.getByRole('main').childElementCount).toBe(0)
+      const contentEl = screen.getByTestId('inner-container').lastElementChild
+      expect(contentEl)!.toBeInTheDocument()
+      expect(contentEl!.childElementCount).toBe(0)
     })
   })
 
   describe('Props', () => {
     it('should apply className to the outer wrapper div', () => {
       const { container } = render(
-        <PreviewContainer header="Header" className="outer-class">Content</PreviewContainer>,
+        <PreviewContainer header="Header" className="outer-class">
+          Content
+        </PreviewContainer>,
       )
 
       expect(container.firstElementChild)!.toHaveClass('outer-class')
     })
 
-    it('should apply mainClassName to the main element', () => {
+    it('should apply mainClassName to the content area', () => {
       render(
-        <PreviewContainer header="Header" mainClassName="custom-main">Content</PreviewContainer>,
+        <PreviewContainer header="Header" mainClassName="custom-main" data-testid="inner-container">
+          Content
+        </PreviewContainer>,
       )
 
-      const mainEl = screen.getByRole('main')
-      expect(mainEl)!.toHaveClass('custom-main')
-      // Default classes should still be present
-      // Default classes should still be present
-      expect(mainEl)!.toHaveClass('w-full', 'grow', 'overflow-y-auto', 'px-6', 'py-5')
+      const contentEl = screen.getByTestId('inner-container').lastElementChild
+      expect(contentEl)!.toHaveClass('custom-main')
+      expect(contentEl)!.toHaveClass('w-full', 'grow', 'overflow-y-auto', 'px-6', 'py-5')
     })
 
     it('should forward ref to the inner container div', () => {
       const ref = vi.fn()
       render(
-        <PreviewContainer header="Header" ref={ref}>Content</PreviewContainer>,
+        <PreviewContainer header="Header" ref={ref}>
+          Content
+        </PreviewContainer>,
       )
 
       expect(ref).toHaveBeenCalled()
@@ -88,7 +97,13 @@ describe('PreviewContainer', () => {
 
     it('should render ReactNode as header', () => {
       render(
-        <PreviewContainer header={<div data-testid="complex-header"><span>Complex</span></div>}>
+        <PreviewContainer
+          header={
+            <div data-testid="complex-header">
+              <span>Complex</span>
+            </div>
+          }
+        >
           Content
         </PreviewContainer>,
       )
@@ -109,17 +124,23 @@ describe('PreviewContainer', () => {
 
     it('should have inner div with flex column layout', () => {
       render(
-        <PreviewContainer header="Header" data-testid="inner">Content</PreviewContainer>,
+        <PreviewContainer header="Header" data-testid="inner">
+          Content
+        </PreviewContainer>,
       )
 
       const inner = screen.getByTestId('inner')
       expect(inner)!.toHaveClass('flex', 'h-full', 'w-full', 'flex-col')
     })
 
-    it('should have main with overflow-y-auto for scrolling', () => {
-      render(<PreviewContainer header="Header">Content</PreviewContainer>)
+    it('should have content area with overflow-y-auto for scrolling', () => {
+      render(
+        <PreviewContainer header="Header" data-testid="inner-container">
+          Content
+        </PreviewContainer>,
+      )
 
-      expect(screen.getByRole('main'))!.toHaveClass('overflow-y-auto')
+      expect(screen.getByTestId('inner-container').lastElementChild)!.toHaveClass('overflow-y-auto')
     })
   })
 
@@ -139,9 +160,13 @@ describe('PreviewContainer', () => {
     })
 
     it('should render with null children', () => {
-      render(<PreviewContainer header="Header">{null}</PreviewContainer>)
+      render(
+        <PreviewContainer header="Header" data-testid="inner-container">
+          {null}
+        </PreviewContainer>,
+      )
 
-      expect(screen.getByRole('main'))!.toBeInTheDocument()
+      expect(screen.getByTestId('inner-container').lastElementChild)!.toBeInTheDocument()
     })
 
     it('should render with multiple children', () => {
@@ -160,11 +185,15 @@ describe('PreviewContainer', () => {
 
     it('should not crash on re-render with different props', () => {
       const { rerender } = render(
-        <PreviewContainer header="First" className="a">Content A</PreviewContainer>,
+        <PreviewContainer header="First" className="a">
+          Content A
+        </PreviewContainer>,
       )
 
       rerender(
-        <PreviewContainer header="Second" className="b" mainClassName="new-main">Content B</PreviewContainer>,
+        <PreviewContainer header="Second" className="b" mainClassName="new-main">
+          Content B
+        </PreviewContainer>,
       )
 
       expect(screen.getByText('Second'))!.toBeInTheDocument()

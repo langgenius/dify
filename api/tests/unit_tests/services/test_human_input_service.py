@@ -1,4 +1,5 @@
 import dataclasses
+import logging
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
@@ -13,8 +14,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
     FormDefinition,
@@ -23,7 +23,8 @@ from graphon.nodes.human_input.entities import (
     StringListSource,
     UserActionConfig,
 )
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
@@ -259,7 +260,7 @@ def test_resolve_form_inputs_uses_runtime_select_options(
 
 
 def test_submit_form_by_token_calls_repository_and_enqueue(
-    sample_form_record, mock_session_factory, mocker: MockerFixture
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
 ):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
@@ -318,7 +319,7 @@ def test_submit_form_by_token_enqueues_agent_app_resume_for_conversation_form(
 
 
 def test_submit_form_by_token_skips_enqueue_for_delivery_test(
-    sample_form_record, mock_session_factory, mocker: MockerFixture
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
 ):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
@@ -343,7 +344,7 @@ def test_submit_form_by_token_skips_enqueue_for_delivery_test(
 
 
 def test_submit_form_by_token_passes_submission_user_id(
-    sample_form_record, mock_session_factory, mocker: MockerFixture
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
 ):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
@@ -528,7 +529,7 @@ def test_validate_human_input_submission_rejects_invalid_select_and_file_payload
     repo.mark_submitted.assert_not_called()
 
 
-def test_form_properties(sample_form_record):
+def test_form_properties(sample_form_record: HumanInputFormRecord):
     form = Form(sample_form_record)
     assert form.id == "form-id"
     assert form.workflow_run_id == "workflow-run-id"
@@ -672,7 +673,7 @@ def test_enqueue_resume_workflow_not_found(mocker: MockerFixture, mock_session_f
     assert "WorkflowRun not found" in str(excinfo.value)
 
 
-def test_enqueue_resume_app_not_found(mocker: MockerFixture, mock_session_factory):
+def test_enqueue_resume_app_not_found(mocker, mock_session_factory, caplog: pytest.LogCaptureFixture):
     session_factory, session = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -687,10 +688,10 @@ def test_enqueue_resume_app_not_found(mocker: MockerFixture, mock_session_factor
     )
 
     session.execute.return_value.scalar_one_or_none.return_value = None
-    logger_spy = mocker.patch("services.human_input_service.logger")
 
-    service.enqueue_resume("workflow-run-id")
-    logger_spy.error.assert_called_once()
+    with caplog.at_level(logging.ERROR, logger="services.human_input_service"):
+        service.enqueue_resume("workflow-run-id")
+        assert any(r.levelno >= logging.ERROR for r in caplog.records)
 
 
 def test_is_globally_expired_zero_timeout(

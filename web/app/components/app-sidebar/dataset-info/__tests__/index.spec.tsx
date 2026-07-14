@@ -1,12 +1,9 @@
 import type { DataSet } from '@/models/datasets'
-import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import {
-  ChunkingMode,
-  DatasetPermission,
-  DataSourceType,
-} from '@/models/datasets'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetInfo from '..'
@@ -23,6 +20,20 @@ const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
 const TestEditIcon = () => <span aria-hidden className="i-ri-edit-line" />
+let mockIsRbacEnabled = true
+const mockAppContextState = vi.hoisted(() => ({
+  current: {
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [] as string[],
+  },
+}))
+
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: {
+      rbac_enabled: mockIsRbacEnabled,
+    },
+  })
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -104,8 +115,36 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) => selector({ dataset: mockDataset }),
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) =>
+    selector({ dataset: mockDataset }),
 }))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   datasetDetailQueryKeyPrefix: ['dataset', 'detail'],
@@ -143,12 +182,15 @@ vi.mock('@/app/components/datasets/rename-modal', () => ({
     onClose: () => void
     onSuccess?: () => void
   }) => {
-    if (!show)
-      return null
+    if (!show) return null
     return (
       <div data-testid="rename-modal">
-        <button type="button" onClick={onSuccess}>Success</button>
-        <button type="button" onClick={onClose}>Close</button>
+        <button type="button" onClick={onSuccess}>
+          Success
+        </button>
+        <button type="button" onClick={onClose}>
+          Close
+        </button>
       </div>
     )
   },
@@ -162,6 +204,7 @@ const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
 describe('DatasetInfo', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsRbacEnabled = true
     mockDataset = createDataset()
   })
 
@@ -226,7 +269,7 @@ describe('MenuItem', () => {
       const handleClick = vi.fn()
 
       render(
-        <div onClick={parentClick}>
+        <div role="button" tabIndex={0} onClick={parentClick} onKeyDown={parentClick}>
           <MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />
         </div>,
       )
@@ -303,7 +346,9 @@ describe('Menu', () => {
 
       // Assert
       expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
-      expect(screen.queryByText('datasetPipeline.operations.exportPipeline')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('datasetPipeline.operations.exportPipeline'),
+      ).not.toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
   })
@@ -374,6 +419,7 @@ describe('Dropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createDataset({ pipeline_id: 'pipeline-1', runtime_mode: 'rag_pipeline' })
+    mockIsRbacEnabled = true
     mockExportPipeline.mockResolvedValue({ data: 'pipeline-content' })
     mockCheckIsUsedInApp.mockResolvedValue({ is_using: false })
     mockDeleteDataset.mockResolvedValue({})
@@ -399,10 +445,7 @@ describe('Dropdown', () => {
       mockDataset = createDataset({
         pipeline_id: 'pipeline-1',
         runtime_mode: 'rag_pipeline',
-        permission_keys: [
-          DatasetACLPermission.Edit,
-          DatasetACLPermission.ImportExportDSL,
-        ],
+        permission_keys: [DatasetACLPermission.Edit, DatasetACLPermission.ImportExportDSL],
       })
       render(<Dropdown expand />)
 
@@ -429,6 +472,24 @@ describe('Dropdown', () => {
       expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
       expect(screen.queryByText('common.operation.edit')).not.toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+    })
+
+    it('should hide resource access option when RBAC is disabled', async () => {
+      const user = userEvent.setup()
+      // Arrange
+      mockIsRbacEnabled = false
+      mockDataset = createDataset({
+        runtime_mode: 'general',
+        permission_keys: [DatasetACLPermission.AccessConfig, DatasetACLPermission.Delete],
+      })
+      render(<Dropdown expand />)
+
+      // Act
+      await openMenu(user)
+
+      // Assert
+      expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
+      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
     })
   })
 

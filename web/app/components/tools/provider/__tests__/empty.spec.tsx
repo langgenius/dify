@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import the mock to control it in tests
 import useTheme from '@/hooks/use-theme'
 import { ToolTypeEnum } from '../../../workflow/block-selector/types'
-
 import Empty from '../empty'
 
 // Mock useTheme hook
@@ -82,9 +81,18 @@ describe('Empty', () => {
       expect(screen.getByText('tools.workflowToolEmpty.step2')).toBeInTheDocument()
       expect(screen.getByText('tools.workflowToolEmpty.step3')).toBeInTheDocument()
 
-      expect(screen.getByRole('link', { name: /tools\.workflowToolEmpty\.goToStudio/i })).toHaveAttribute('href', '/apps')
-      expect(screen.getByRole('link', { name: /tools\.workflowToolEmpty\.learnMore/i })).toHaveAttribute('target', '_blank')
-      expect(screen.getByRole('link', { name: /tools\.workflowToolEmpty\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/tools#workflow-tool')
+      expect(
+        screen.getByRole('link', { name: /tools\.workflowToolEmpty\.goToStudio/i }),
+      ).toHaveAttribute('href', '/apps')
+      expect(
+        screen.getByRole('link', { name: /tools\.workflowToolEmpty\.learnMore/i }),
+      ).toHaveAttribute('target', '_blank')
+      expect(
+        screen.getByRole('link', { name: /tools\.workflowToolEmpty\.learnMore/i }),
+      ).toHaveAttribute(
+        'href',
+        'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#workflow',
+      )
     })
   })
 

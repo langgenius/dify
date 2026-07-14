@@ -2,6 +2,7 @@
 
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { useTranslation } from 'react-i18next'
 import { setPostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { useRouter } from '@/next/navigation'
 
@@ -24,6 +25,7 @@ type Props = {
  * generalises post-signin redirect to all methods.
  */
 const Chooser: FC<Props> = ({ userCode, ssoAvailable }) => {
+  const { t } = useTranslation('deviceFlow')
   const router = useRouter()
 
   const onAccount = () => {
@@ -37,24 +39,14 @@ const Chooser: FC<Props> = ({ userCode, ssoAvailable }) => {
 
   return (
     <div className="flex flex-col gap-3">
-      <Button
-        variant="primary"
-        size="large"
-        className="w-full gap-2"
-        onClick={onAccount}
-      >
+      <Button variant="primary" size="large" className="w-full gap-2" onClick={onAccount}>
         <span className="i-ri-user-3-line h-4 w-4" />
-        Sign in with Dify account
+        {t(($) => $['chooser.signInAccount'])}
       </Button>
       {ssoAvailable && (
-        <Button
-          variant="secondary"
-          size="large"
-          className="w-full gap-2"
-          onClick={onSSO}
-        >
+        <Button variant="secondary" size="large" className="w-full gap-2" onClick={onSSO}>
           <span className="i-ri-shield-line h-4 w-4" />
-          Sign in with SSO
+          {t(($) => $['chooser.signInSSO'])}
         </Button>
       )}
     </div>

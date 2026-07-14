@@ -13,6 +13,7 @@ from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
 from fields.file_fields import FileResponse
+from libs.helper import dump_response
 from models.model import App, EndUser
 from services.file_service import FileService
 
@@ -84,5 +85,4 @@ class FileApi(WebApiResource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        response = FileResponse.model_validate(upload_file, from_attributes=True)
-        return response.model_dump(mode="json"), 201
+        return dump_response(FileResponse, upload_file), 201

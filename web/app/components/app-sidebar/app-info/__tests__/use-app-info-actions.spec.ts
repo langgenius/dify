@@ -6,7 +6,9 @@ const toastMocks = vi.hoisted(() => {
   const call = vi.fn()
   return {
     call,
-    api: vi.fn((message: unknown, options?: Record<string, unknown>) => call({ message, ...options })),
+    api: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+      call({ message, ...options }),
+    ),
     dismiss: vi.fn(),
     update: vi.fn(),
     promise: vi.fn(),
@@ -45,10 +47,11 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: mockAppDetail,
-    setAppDetail: mockSetAppDetail,
-  }),
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: mockAppDetail,
+      setAppDetail: mockSetAppDetail,
+    }),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -69,6 +72,10 @@ vi.mock('@/service/use-apps', () => ({
 }))
 
 vi.mock('@tanstack/react-query', () => ({
+  queryOptions: <TOptions>(options: TOptions) => options,
+  useSuspenseQuery: () => ({
+    data: { rbac_enabled: true },
+  }),
   useQueryClient: () => ({
     setQueryData: mockSetQueryData,
   }),
@@ -104,10 +111,6 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   collaborationManager: {
     onAppMetaUpdate: (...args: unknown[]) => mockOnAppMetaUpdate(...args),
   },
-}))
-
-vi.mock('@/config', () => ({
-  NEED_REFRESH_APP_LIST_KEY: 'test-refresh-key',
 }))
 
 describe('useAppInfoActions', () => {
@@ -164,10 +167,9 @@ describe('useAppInfoActions', () => {
     })
 
     it('should reset app-scoped state when resetKey changes', () => {
-      const { result, rerender } = renderHook(
-        ({ resetKey }) => useAppInfoActions({ resetKey }),
-        { initialProps: { resetKey: 'app-1' } },
-      )
+      const { result, rerender } = renderHook(({ resetKey }) => useAppInfoActions({ resetKey }), {
+        initialProps: { resetKey: 'app-1' },
+      })
 
       act(() => {
         result.current.openModal('delete')
@@ -257,7 +259,7 @@ describe('useAppInfoActions', () => {
           use_icon_as_answer_icon: false,
         })
       })
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(mockGetSocket).toHaveBeenCalledWith('app-1')
       expect(socket.emit).toHaveBeenCalledWith(
@@ -324,7 +326,10 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockCopyApp).toHaveBeenCalled()
-      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
+      expect(toastMocks.call).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'app.newApp.appCreated',
+      })
       expect(mockOnPlanInfoChanged).toHaveBeenCalled()
     })
 
@@ -342,7 +347,10 @@ describe('useAppInfoActions', () => {
         })
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
+      expect(toastMocks.call).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'app.newApp.appCreateFailed',
+      })
     })
   })
 
@@ -593,7 +601,7 @@ describe('useAppInfoActions', () => {
       mockFetchAppDetail.mockResolvedValue(updated)
 
       const { unmount } = renderHook(() => useAppInfoActions({}))
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
       await act(async () => {
         await onUpdate?.()

@@ -8,8 +8,14 @@ const PipelineScreenShot = () => {
   return (
     <picture>
       <source media="(resolution: 1x)" srcSet={`${basePath}/screenshots/${theme}/Pipeline.png`} />
-      <source media="(resolution: 2x)" srcSet={`${basePath}/screenshots/${theme}/Pipeline@2x.png`} />
-      <source media="(resolution: 3x)" srcSet={`${basePath}/screenshots/${theme}/Pipeline@3x.png`} />
+      <source
+        media="(resolution: 2x)"
+        srcSet={`${basePath}/screenshots/${theme}/Pipeline@2x.png`}
+      />
+      <source
+        media="(resolution: 3x)"
+        srcSet={`${basePath}/screenshots/${theme}/Pipeline@3x.png`}
+      />
       <img
         src={`${basePath}/screenshots/${theme}/Pipeline.png`}
         alt="Pipeline Screenshot"

@@ -80,10 +80,9 @@ User-scoped operations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | limit | query |  | No | integer, <br>**Default:** 20 |
-| mode | query |  | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "channel", "chat", "completion", "rag-pipeline", "workflow" |
+| mode | query | App types the ``app`` usage face (``get app``) lists and filters.  A curated subset of :class:`AppMode`: the real, user-facing app categories. Excludes runtime-only mode tags that are not standalone apps (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the roster-owned ``agent`` type (surfaced through the roster, not this list).  Members reference ``AppMode.*.value`` so the subset relationship is type-checked: dropping a member from ``AppMode`` breaks this at import. This is the single source for the listable set — params, filters, and the generated CLI whitelist all derive from it. | No | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" |
 | name | query |  | No | string |
 | page | query |  | No | integer, <br>**Default:** 1 |
-| tag | query |  | No | string |
 | workspace_id | query |  | Yes | string |
 
 #### Responses
@@ -94,21 +93,7 @@ User-scoped operations
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [GET] /apps/{app_id}/check-dependencies
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Dependencies checked | **application/json**: [CheckDependenciesResult](#checkdependenciesresult)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [GET] /apps/{app_id}/describe
+### [GET] /apps/{app_id}
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -124,7 +109,21 @@ User-scoped operations
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [GET] /apps/{app_id}/export
+### [GET] /apps/{app_id}/dependencies:check
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Dependencies checked | **application/json**: [CheckDependenciesResult](#checkdependenciesresult)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/dsl
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -141,7 +140,7 @@ User-scoped operations
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /apps/{app_id}/files/upload
+### [POST] /apps/{app_id}/files
 Upload a file to use as an input variable when running the app
 
 #### Parameters
@@ -161,7 +160,7 @@ Upload a file to use as an input variable when running the app
 | 415 | Unsupported file type or blocked extension |  |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [GET] /apps/{app_id}/form/human_input/{form_token}
+### [GET] /apps/{app_id}/human-input-forms/{form_token}
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -175,7 +174,7 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Form definition | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
 
-### [POST] /apps/{app_id}/form/human_input/{form_token}
+### [POST] /apps/{app_id}/human-input-forms/{form_token}:submit
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -197,7 +196,38 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /apps/{app_id}/run
+### [GET] /apps/{app_id}/tasks/{task_id}/events
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| continue_on_pause | query | Whether to keep the event stream open on pause | No | boolean |
+| include_state_snapshot | query | Whether to include workflow state snapshots | No | boolean |
+| app_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+
+### [POST] /apps/{app_id}/tasks/{task_id}:stop
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Task stopped | **application/json**: [TaskStopResponse](#taskstopresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}:run
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -216,37 +246,6 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [GET] /apps/{app_id}/tasks/{task_id}/events
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| continue_on_pause | query | Whether to keep the event stream open on pause | No | boolean |
-| include_state_snapshot | query | Whether to include workflow state snapshots | No | boolean |
-| app_id | path |  | Yes | string |
-| task_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
-
-### [POST] /apps/{app_id}/tasks/{task_id}/stop
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-| task_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Task stopped | **application/json**: [TaskStopResponse](#taskstopresponse)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/approve
 #### Request Body
@@ -319,7 +318,7 @@ Upload a file to use as an input variable when running the app
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | limit | query |  | No | integer, <br>**Default:** 20 |
-| mode | query |  | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "channel", "chat", "completion", "rag-pipeline", "workflow" |
+| mode | query | App types the ``app`` usage face (``get app``) lists and filters.  A curated subset of :class:`AppMode`: the real, user-facing app categories. Excludes runtime-only mode tags that are not standalone apps (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the roster-owned ``agent`` type (surfaced through the roster, not this list).  Members reference ``AppMode.*.value`` so the subset relationship is type-checked: dropping a member from ``AppMode`` breaks this at import. This is the single source for the listable set — params, filters, and the generated CLI whitelist all derive from it. | No | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" |
 | name | query |  | No | string |
 | page | query |  | No | integer, <br>**Default:** 1 |
 
@@ -328,6 +327,22 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Permitted external apps list | **application/json**: [PermittedExternalAppsListResponse](#permittedexternalappslistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /permitted-external-apps/{app_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| fields | query |  | No | string |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Permitted external app description | **application/json**: [AppDescribeResponse](#appdescriberesponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -376,7 +391,7 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /workspaces/{workspace_id}/apps/imports/{import_id}/confirm
+### [POST] /workspaces/{workspace_id}/apps/imports/{import_id}:confirm
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -445,7 +460,7 @@ Upload a file to use as an input variable when running the app
 | 200 | Member removed | **application/json**: [MemberActionResponse](#memberactionresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [PUT] /workspaces/{workspace_id}/members/{member_id}/role
+### [PATCH] /workspaces/{workspace_id}/members/{member_id}
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -467,7 +482,7 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /workspaces/{workspace_id}/switch
+### [POST] /workspaces/{workspace_id}:switch
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -507,19 +522,17 @@ Upload a file to use as an input variable when running the app
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author | string |  | No |
 | description | string |  | No |
 | id | string |  | Yes |
 | is_agent | boolean |  | No |
 | mode | string |  | Yes |
 | name | string |  | Yes |
 | service_api_enabled | boolean |  | Yes |
-| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 | updated_at | string |  | No |
 
 #### AppDescribeQuery
 
-`?fields=` allow-list for GET /apps/<id>/describe.
+`?fields=` allow-list for GET /apps/<id>.
 
 Empty / omitted → all blocks. Unknown member → ValidationError → 422.
 
@@ -537,7 +550,7 @@ Empty / omitted → all blocks. Unknown member → ValidationError → 422.
 
 #### AppDslExportQuery
 
-Query parameters for GET /apps/<app_id>/export.
+Query parameters for GET /apps/<app_id>/dsl.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -568,28 +581,25 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | yaml_content | string | Inline YAML DSL string (required when mode is yaml-content) | No |
 | yaml_url | string | Remote URL to fetch YAML from (required when mode is yaml-url) | No |
 
-#### AppInfoResponse
+#### AppInfo
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author | string |  | No |
 | description | string |  | No |
 | id | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
-| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 
 #### AppListQuery
 
-mode is a closed enum.
+mode is a closed enum of listable app types.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | limit | integer, <br>**Default:** 20 |  | No |
-| mode | [AppMode](#appmode) |  | No |
+| mode | [SupportedAppType](#supportedapptype) |  | No |
 | name | string |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
-| tag | string |  | No |
 | workspace_id | string |  | Yes |
 
 #### AppListResponse
@@ -606,12 +616,10 @@ mode is a closed enum.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_by_name | string |  | No |
 | description | string |  | No |
 | id | string |  | Yes |
 | mode | [AppMode](#appmode) |  | Yes |
 | name | string |  | Yes |
-| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 | updated_at | string |  | No |
 | workspace_id | string |  | No |
 | workspace_name | string |  | No |
@@ -722,7 +730,7 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| loc | [  ], <br>**Default:**  |  | No |
+| loc | [ string<br>integer ] |  | No |
 | msg | string |  | Yes |
 | type | string |  | Yes |
 
@@ -754,7 +762,7 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 
 #### FormSubmitResponse
 
-Empty 200 body for POST /apps/<id>/form/human_input/<token>. `extra='forbid'`
+Empty 200 body for POST /apps/<id>/human-input-forms/<token>:submit. `extra='forbid'`
 pins `additionalProperties: false` so the generated contract is an exact `{}` rather
 than an under-annotated open object.
 
@@ -914,7 +922,7 @@ Strict (extra='forbid').
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | limit | integer, <br>**Default:** 20 |  | No |
-| mode | [AppMode](#appmode) |  | No |
+| mode | [SupportedAppType](#supportedapptype) |  | No |
 | name | string |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
 
@@ -933,8 +941,14 @@ Strict (extra='forbid').
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | current_identifier | string |  | No |
-| type | [Type](#type) |  | Yes |
+| type | [PluginDependencyType](#plugindependencytype) |  | Yes |
 | value | [Github](#github)<br>[Marketplace](#marketplace)<br>[Package](#package) |  | Yes |
+
+#### PluginDependencyType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginDependencyType | string |  |  |
 
 #### RevokeResponse
 
@@ -982,27 +996,39 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | last_used_at | string |  | No |
 | prefix | string |  | Yes |
 
-#### TagItem
+#### SimpleResultResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
+| result | string |  | Yes |
+
+#### SupportedAppType
+
+App types the ``app`` usage face (``get app``) lists and filters.
+
+A curated subset of :class:`AppMode`: the real, user-facing app categories.
+Excludes runtime-only mode tags that are not standalone apps
+(``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the
+roster-owned ``agent`` type (surfaced through the roster, not this list).
+
+Members reference ``AppMode.*.value`` so the subset relationship is
+type-checked: dropping a member from ``AppMode`` breaks this at import.
+This is the single source for the listable set — params, filters, and the
+generated CLI whitelist all derive from it.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SupportedAppType | string | App types the ``app`` usage face (``get app``) lists and filters.  A curated subset of :class:`AppMode`: the real, user-facing app categories. Excludes runtime-only mode tags that are not standalone apps (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the roster-owned ``agent`` type (surfaced through the roster, not this list).  Members reference ``AppMode.*.value`` so the subset relationship is type-checked: dropping a member from ``AppMode`` breaks this at import. This is the single source for the listable set — params, filters, and the generated CLI whitelist all derive from it. |  |
 
 #### TaskStopResponse
 
-200 body for POST /apps/<id>/tasks/<task_id>/stop. The handler always returns
+200 body for POST /apps/<id>/tasks/<task_id>:stop. The handler always returns
 {"result": "success"}, so `result` is required (no default) — the generated contract
 types it as a required `'success'` rather than an optional field.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
-
-#### Type
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| Type | string |  |  |
 
 #### UsageInfo
 

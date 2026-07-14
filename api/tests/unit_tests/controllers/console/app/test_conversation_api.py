@@ -30,7 +30,7 @@ def test_completion_conversation_list_returns_paginated_result(app: Flask, monke
     paginate_result.total = 0
     paginate_result.has_next = False
     paginate_result.items = []
-    monkeypatch.setattr(conversation_module.db, "paginate", lambda *_args, **_kwargs: paginate_result)
+    monkeypatch.setattr(conversation_module, "paginate_query", lambda *_args, **_kwargs: paginate_result)
 
     with app.test_request_context("/console/api/apps/app-1/completion-conversations", method="GET"):
         response = method(api, account, app_model=SimpleNamespace(id="app-1"))
@@ -71,7 +71,7 @@ def test_chat_conversation_list_advanced_chat_calls_paginate(app: Flask, monkeyp
     paginate_result.total = 0
     paginate_result.has_next = False
     paginate_result.items = []
-    monkeypatch.setattr(conversation_module.db, "paginate", lambda *_args, **_kwargs: paginate_result)
+    monkeypatch.setattr(conversation_module, "paginate_query", lambda *_args, **_kwargs: paginate_result)
 
     with app.test_request_context("/console/api/apps/app-1/chat-conversations", method="GET"):
         response = method(api, account, app_model=SimpleNamespace(id="app-1", mode=AppMode.ADVANCED_CHAT))

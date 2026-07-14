@@ -8,32 +8,83 @@ import { ConfigurationMethodEnum } from '../../declarations'
 import ProviderAddedCard from '../index'
 
 let mockIsCurrentWorkspaceManager = true
-let mockWorkspacePermissionKeys: string[] = ['plugin.manage', 'credential.manage', 'credential.use']
+let mockWorkspacePermissionKeys: string[] = [
+  'plugin.model_config',
+  'credential.use',
+  'credential.create',
+  'credential.manage',
+]
 const mockFetchModelProviderModels = vi.fn()
-const mockQueryOptions = vi.fn(({ input, ...options }: { input: { params: { provider: string } }, enabled?: boolean }) => ({
-  queryKey: ['console', 'modelProviders', 'models', input.params.provider],
-  queryFn: () => mockFetchModelProviderModels(input.params.provider),
-  ...options,
-}))
+const mockQueryOptions = vi.fn(
+  ({ input, ...options }: { input: { params: { provider: string } }; enabled?: boolean }) => ({
+    queryKey: ['console', 'modelProviders', 'models', input.params.provider],
+    queryFn: () => mockFetchModelProviderModels(input.params.provider),
+    ...options,
+  }),
+)
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    modelProviders: {
-      models: {
-        queryOptions: (options: { input: { params: { provider: string } }, enabled?: boolean }) => mockQueryOptions(options),
+    workspaces: {
+      current: {
+        modelProviders: {
+          byProvider: {
+            models: {
+              get: {
+                queryOptions: (options: {
+                  input: { params: { provider: string } }
+                  enabled?: boolean
+                }) => mockQueryOptions(options),
+              },
+            },
+          },
+        },
       },
     },
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
-  }),
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 // Mock internal components to simplify testing of the index file
 vi.mock('../credential-panel', () => ({
@@ -41,10 +92,20 @@ vi.mock('../credential-panel', () => ({
 }))
 
 vi.mock('../model-list', () => ({
-  default: ({ onCollapse, onChange }: { onCollapse: () => void, onChange: (provider: string) => void }) => (
+  default: ({
+    onCollapse,
+    onChange,
+  }: {
+    onCollapse: () => void
+    onChange: (provider: string) => void
+  }) => (
     <div data-testid="model-list">
-      <button type="button" onClick={onCollapse}>collapse list</button>
-      <button type="button" onClick={() => onChange('langgenius/openai/openai')}>refresh list</button>
+      <button type="button" onClick={onCollapse}>
+        collapse list
+      </button>
+      <button type="button" onClick={() => onChange('langgenius/openai/openai')}>
+        refresh list
+      </button>
     </div>
   ),
 }))
@@ -62,20 +123,19 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth'
   ManageCustomModelCredentials: () => <div data-testid="manage-custom-model" />,
 }))
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false, gcTime: 0 },
-  },
-})
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+    },
+  })
 
 const renderWithQueryClient = (node: ReactNode) => {
   const queryClient = createTestQueryClient()
   const store = createStore()
   return render(
     <JotaiProvider store={store}>
-      <QueryClientProvider client={queryClient}>
-        {node}
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{node}</QueryClientProvider>
     </JotaiProvider>,
   )
 }
@@ -84,14 +144,43 @@ const ExternalExpandControls = () => {
   const expandModelProviderList = useExpandModelProviderList()
   return (
     <>
-      <button type="button" data-testid="expand-other-provider" onClick={() => expandModelProviderList('langgenius/anthropic/anthropic')}>
+      <button
+        type="button"
+        data-testid="expand-other-provider"
+        onClick={() => expandModelProviderList('langgenius/anthropic/anthropic')}
+      >
         expand other
       </button>
-      <button type="button" data-testid="expand-current-provider" onClick={() => expandModelProviderList('langgenius/openai/openai')}>
+      <button
+        type="button"
+        data-testid="expand-current-provider"
+        onClick={() => expandModelProviderList('langgenius/openai/openai')}
+      >
         expand current
       </button>
     </>
   )
+}
+
+const modelProviderModelsResponse = {
+  data: [
+    {
+      model: 'gpt-4',
+      label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
+      model_type: 'llm',
+      features: [],
+      fetch_from: 'predefined-model',
+      status: 'active',
+      model_properties: {},
+      load_balancing_enabled: false,
+      provider: {
+        provider: 'langgenius/openai/openai',
+        label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+        supported_model_types: ['llm'],
+        tenant_id: 'tenant-id',
+      },
+    },
+  ],
 }
 
 describe('ProviderAddedCard', () => {
@@ -105,7 +194,12 @@ describe('ProviderAddedCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceManager = true
-    mockWorkspacePermissionKeys = ['plugin.manage', 'credential.manage', 'credential.use']
+    mockWorkspacePermissionKeys = [
+      'plugin.model_config',
+      'credential.use',
+      'credential.create',
+      'credential.manage',
+    ]
   })
 
   it('should render provider added card component', () => {
@@ -115,7 +209,7 @@ describe('ProviderAddedCard', () => {
   })
 
   it('should open, refresh and collapse model list', async () => {
-    mockFetchModelProviderModels.mockResolvedValue({ data: [{ model: 'gpt-4' }] })
+    mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
     renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
 
     const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
@@ -145,7 +239,7 @@ describe('ProviderAddedCard', () => {
   })
 
   it('should handle concurrent getModelList calls (loading state coverage)', async () => {
-    let resolveOuter: (value: unknown) => void = () => { }
+    let resolveOuter: (value: unknown) => void = () => {}
     const promise = new Promise((resolve) => {
       resolveOuter = resolve
     })
@@ -172,7 +266,7 @@ describe('ProviderAddedCard', () => {
   })
 
   it('should only react to external expansion for the matching provider', async () => {
-    mockFetchModelProviderModels.mockResolvedValue({ data: [{ model: 'gpt-4' }] })
+    mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
     renderWithQueryClient(
       <>
         <ProviderAddedCard provider={mockProvider} />
@@ -201,7 +295,7 @@ describe('ProviderAddedCard', () => {
     expect(screen.getByText('common.modelProvider.configureTip')).toBeInTheDocument()
   })
 
-  it('should render custom model actions when user can manage plugins', () => {
+  it('should render custom model actions when user can configure models', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
@@ -213,17 +307,17 @@ describe('ProviderAddedCard', () => {
 
     unmount()
     mockIsCurrentWorkspaceManager = false
-    mockWorkspacePermissionKeys = ['credential.manage', 'credential.use']
+    mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
     expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
   })
 
-  it('should render custom model actions when user can manage plugins without credential permissions', () => {
+  it('should render custom model actions when user can configure models without credential permissions', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
     } as unknown as ModelProvider
-    mockWorkspacePermissionKeys = ['plugin.manage']
+    mockWorkspacePermissionKeys = ['plugin.model_config']
 
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 

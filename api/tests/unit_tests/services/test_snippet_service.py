@@ -273,6 +273,45 @@ def test_sync_draft_workflow_updates_existing_draft_and_clears_variables(monkeyp
     session.commit.assert_called_once()
 
 
+def test_update_workflow_updates_marked_fields() -> None:
+    service = SnippetService.__new__(SnippetService)
+    workflow = SimpleNamespace(marked_name="", marked_comment="", updated_by=None, updated_at=None)
+    session = SimpleNamespace(scalar=Mock(return_value=workflow), add=Mock())
+    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    account = SimpleNamespace(id="account-1")
+
+    result = service.update_workflow(
+        session=session,
+        snippet=snippet,
+        workflow_id="workflow-1",
+        account=account,
+        data={"marked_name": "v1", "marked_comment": "first version", "ignored": "value"},
+    )
+
+    assert result is workflow
+    assert workflow.marked_name == "v1"
+    assert workflow.marked_comment == "first version"
+    assert workflow.updated_by == "account-1"
+    session.scalar.assert_called_once()
+    session.add.assert_called_once_with(workflow)
+
+
+def test_update_workflow_returns_none_when_missing() -> None:
+    service = SnippetService.__new__(SnippetService)
+    session = SimpleNamespace(scalar=Mock(return_value=None), add=Mock())
+
+    result = service.update_workflow(
+        session=session,
+        snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
+        workflow_id="missing-workflow",
+        account=SimpleNamespace(id="account-1"),
+        data={"marked_name": "v1"},
+    )
+
+    assert result is None
+    session.add.assert_not_called()
+
+
 def test_get_default_block_configs_skips_empty_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     node_with_default = SimpleNamespace(get_default_config=Mock(return_value={"type": "llm"}))
     node_without_default = SimpleNamespace(get_default_config=Mock(return_value=None))
@@ -529,7 +568,7 @@ def test_delete_snippet_removes_related_records() -> None:
     session.delete.assert_called_once_with(snippet)
 
 
-def test_delete_draft_variable_files_removes_storage_objects(monkeypatch) -> None:
+def test_delete_draft_variable_files_removes_storage_objects(monkeypatch: pytest.MonkeyPatch) -> None:
     from extensions.ext_storage import storage
 
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
@@ -554,7 +593,7 @@ def test_delete_draft_variable_files_removes_storage_objects(monkeypatch) -> Non
     assert "workflow_draft_variable_files" in executed_sql
 
 
-def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch) -> None:
+def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch: pytest.MonkeyPatch) -> None:
     from configs import dify_config
 
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")

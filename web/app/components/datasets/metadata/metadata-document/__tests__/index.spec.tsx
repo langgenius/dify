@@ -221,7 +221,9 @@ describe('MetadataDocument', () => {
     it('should render technical parameters section', () => {
       mockUseMetadataDocument.mockReturnValue({
         ...defaultHookReturn,
-        technicalParameters: [{ id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 }],
+        technicalParameters: [
+          { id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 },
+        ],
       })
 
       render(
@@ -242,7 +244,9 @@ describe('MetadataDocument', () => {
         builtInEnabled: true,
         builtList: [{ id: 'built-1', name: 'created_at', type: DataType.time, value: 1609459200 }],
         originInfo: [{ id: 'origin-1', name: 'source', type: DataType.string, value: 'upload' }],
-        technicalParameters: [{ id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 }],
+        technicalParameters: [
+          { id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 },
+        ],
       })
 
       render(
@@ -481,9 +485,7 @@ describe('MetadataDocument', () => {
 
     it('should pass onChange callback to InfoGroup', async () => {
       const setTempList = vi.fn()
-      const tempList = [
-        { id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' },
-      ]
+      const tempList = [{ id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' }]
       mockUseMetadataDocument.mockReturnValue({
         ...defaultHookReturn,
         isEdit: true,
@@ -531,8 +533,7 @@ describe('MetadataDocument', () => {
 
       if (deleteContainers.length > 0) {
         const deleteIcon = deleteContainers[0]!.querySelector('svg')
-        if (deleteIcon)
-          fireEvent.click(deleteIcon)
+        if (deleteIcon) fireEvent.click(deleteIcon)
 
         await waitFor(() => {
           expect(setTempList).toHaveBeenCalled()
@@ -824,9 +825,7 @@ describe('MetadataDocument', () => {
     it('should handle null values in metadata', () => {
       mockUseMetadataDocument.mockReturnValue({
         ...defaultHookReturn,
-        list: [
-          { id: '1', name: 'null_field', type: DataType.string, value: null },
-        ],
+        list: [{ id: '1', name: 'null_field', type: DataType.string, value: null }],
       })
 
       render(
@@ -844,7 +843,12 @@ describe('MetadataDocument', () => {
       mockUseMetadataDocument.mockReturnValue({
         ...defaultHookReturn,
         list: [
-          { id: '1', name: 'undefined_field', type: DataType.string, value: undefined as unknown as null },
+          {
+            id: '1',
+            name: 'undefined_field',
+            type: DataType.string,
+            value: undefined as unknown as null,
+          },
         ],
       })
 

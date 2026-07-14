@@ -1,12 +1,19 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AgentSoulConfig,
+  WorkflowAgentComposerResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { DefaultModelResponse } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
+import isEqual from 'fast-deep-equal'
 import { useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
-import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
+import {
+  agentSoulConfigToFormState,
+  formStateToAgentSoulConfig,
+} from '@/features/agent-v2/agent-composer/conversions'
 import {
   agentComposerDraftAtom,
   agentComposerOriginalConfigAtom,
@@ -21,8 +28,7 @@ const DRAFT_AUTOSAVE_WAIT = 5000
 function getModelProviderPluginId(provider: string) {
   const [organization, pluginName] = provider.split('/').filter(Boolean)
 
-  if (organization && pluginName)
-    return `${organization}/${pluginName}`
+  if (organization && pluginName) return `${organization}/${pluginName}`
 
   return provider ? `langgenius/${provider}` : ''
 }
@@ -35,8 +41,7 @@ export function getDefaultAgentSoul(defaultModel?: DefaultModelResponse): AgentS
     },
   }
 
-  if (!defaultModel)
-    return baseConfig
+  if (!defaultModel) return baseConfig
 
   const modelProvider = defaultModel.provider.provider
 
@@ -54,6 +59,8 @@ export function useWorkflowInlineAgentConfigureSync({
   nodeId,
   baseConfig,
   currentModel,
+  autoSaveEnabled = true,
+  onDraftSaved,
   enabled,
 }: {
   nodeId: string
@@ -63,10 +70,12 @@ export function useWorkflowInlineAgentConfigureSync({
     model: string
     plugin_id?: string
   }
+  autoSaveEnabled?: boolean
+  onDraftSaved?: (composerState: WorkflowAgentComposerResponse) => void
   enabled: boolean
 }) {
   const queryClient = useQueryClient()
-  const configsMap = useHooksStore(state => state.configsMap)
+  const configsMap = useHooksStore((state) => state.configsMap)
   const store = useJotaiStore()
   const setOriginalConfig = useSetAtom(agentComposerOriginalConfigAtom)
   const setOriginalDraft = useSetAtom(agentComposerOriginalDraftAtom)
@@ -74,6 +83,7 @@ export function useWorkflowInlineAgentConfigureSync({
   const baseConfigRef = useRef(baseConfig)
   const currentModelRef = useRef(currentModel)
   const enabledRef = useRef(enabled)
+  const onDraftSavedRef = useRef(onDraftSaved)
   const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
   const saveComposerMutation = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
@@ -82,63 +92,85 @@ export function useWorkflowInlineAgentConfigureSync({
   baseConfigRef.current = baseConfig
   currentModelRef.current = currentModel
   enabledRef.current = enabled
+  onDraftSavedRef.current = onDraftSaved
 
-  const getAgentSoulDraft = useCallback(() => formStateToAgentSoulConfig({
-    baseConfig: baseConfigRef.current,
-    formState: store.get(agentComposerDraftAtom),
-    currentModel: currentModelRef.current,
-  }), [store])
-
-  const saveComposer = useSerialAsyncCallback(async (configSnapshot: AgentSoulConfig) => {
-    if (!configsMap?.flowId || configsMap.flowType !== FlowType.appFlow)
-      return
-
-    const savedDraftKey = JSON.stringify(configSnapshot)
-    const composerState = await saveComposerMutation.mutateAsync({
-      params: {
-        app_id: configsMap.flowId,
-        node_id: nodeId,
-      },
-      body: {
-        variant: 'workflow',
-        save_strategy: 'node_job_only',
-        agent_soul: configSnapshot,
-      },
-    })
-
-    queryClient.setQueryData(
-      consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
-        input: {
-          params: {
-            app_id: configsMap.flowId,
-            node_id: nodeId,
-          },
-        },
+  const getAgentSoulDraft = useCallback(
+    () =>
+      formStateToAgentSoulConfig({
+        baseConfig: baseConfigRef.current,
+        formState: store.get(agentComposerDraftAtom),
+        currentModel: currentModelRef.current,
       }),
-      composerState,
-    )
-    setOriginalConfig(composerState.agent_soul)
-    setOriginalDraft(agentSoulConfigToFormState(composerState.agent_soul))
-    setDraftSavedAt(Date.now())
-    lastAutosavedDraftKeyRef.current = savedDraftKey
-  })
+    [store],
+  )
+
+  const saveComposer = useSerialAsyncCallback(
+    async (configSnapshot: AgentSoulConfig): Promise<WorkflowAgentComposerResponse | undefined> => {
+      if (!configsMap?.flowId || configsMap.flowType !== FlowType.appFlow) return
+
+      const savedDraftKey = JSON.stringify(configSnapshot)
+      const composerState = await saveComposerMutation.mutateAsync({
+        params: {
+          app_id: configsMap.flowId,
+          node_id: nodeId,
+        },
+        body: {
+          variant: 'workflow',
+          save_strategy: 'node_job_only',
+          agent_soul: configSnapshot,
+        },
+      })
+
+      queryClient.setQueryData(
+        consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+          input: {
+            params: {
+              app_id: configsMap.flowId,
+              node_id: nodeId,
+            },
+          },
+        }),
+        composerState,
+      )
+      setOriginalConfig(composerState.agent_soul)
+      setOriginalDraft(agentSoulConfigToFormState(composerState.agent_soul))
+      setDraftSavedAt(Date.now())
+      lastAutosavedDraftKeyRef.current = savedDraftKey
+      onDraftSavedRef.current?.(composerState)
+      return composerState
+    },
+  )
 
   const latestDraftSaveRef = useRef<() => void>(() => undefined)
   latestDraftSaveRef.current = () => {
     void saveComposer(getAgentSoulDraft())
   }
 
-  const debouncedSaveDraft = useMemo(() => debounce(() => {
-    latestDraftSaveRef.current()
-  }, DRAFT_AUTOSAVE_WAIT), [])
+  const debouncedSaveDraft = useMemo(
+    () =>
+      debounce(() => {
+        latestDraftSaveRef.current()
+      }, DRAFT_AUTOSAVE_WAIT),
+    [],
+  )
 
   const saveDraft = useCallback(async () => {
-    if (!enabledRef.current)
-      return
+    if (!enabledRef.current) return
 
+    const configSnapshot = getAgentSoulDraft()
+    const hasEffectiveModelChange = !isEqual(configSnapshot.model, baseConfigRef.current?.model)
     debouncedSaveDraft.cancel?.()
-    await saveComposer(getAgentSoulDraft())
-  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer])
+    if (!store.get(isAgentComposerDirtyAtom) && !hasEffectiveModelChange) return
+
+    return saveComposer(configSnapshot)
+  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])
+  const saveAgentSoulConfig = useCallback(
+    async (agentSoulConfig: AgentSoulConfig) => {
+      debouncedSaveDraft.cancel?.()
+      return saveComposer(agentSoulConfig)
+    },
+    [debouncedSaveDraft, saveComposer],
+  )
 
   useEffect(() => {
     return store.sub(agentComposerDraftAtom, () => {
@@ -146,25 +178,27 @@ export function useWorkflowInlineAgentConfigureSync({
       const agentSoulDraftKey = JSON.stringify(agentSoulDraft)
 
       if (
-        !enabledRef.current
-        || !store.get(isAgentComposerDirtyAtom)
-        || lastAutosavedDraftKeyRef.current === agentSoulDraftKey
+        !enabledRef.current ||
+        !autoSaveEnabled ||
+        !store.get(isAgentComposerDirtyAtom) ||
+        lastAutosavedDraftKeyRef.current === agentSoulDraftKey
       ) {
         return
       }
 
       debouncedSaveDraft()
     })
-  }, [debouncedSaveDraft, getAgentSoulDraft, store])
+  }, [autoSaveEnabled, debouncedSaveDraft, getAgentSoulDraft, store])
 
   useEffect(() => {
     return () => {
-      debouncedSaveDraft.flush?.()
+      if (autoSaveEnabled) debouncedSaveDraft.flush?.()
     }
-  }, [debouncedSaveDraft])
+  }, [autoSaveEnabled, debouncedSaveDraft])
 
   return {
     draftSavedAt,
+    saveAgentSoulConfig,
     saveDraft,
   }
 }

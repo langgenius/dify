@@ -5,25 +5,26 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { inputVarTypeToVarType } from '../../data-source/utils'
 
-export const SNIPPET_INPUT_FIELD_NODE_ID = 'start'
+const SNIPPET_INPUT_FIELD_NODE_ID = 'start'
 
 export const isSnippetCanvas = () => {
-  if (typeof globalThis.location === 'undefined')
-    return false
+  if (typeof globalThis.location === 'undefined') return false
 
   return /^\/snippets\/[^/]+\/orchestrate/.test(globalThis.location.pathname)
 }
 
-export const filterSnippetSystemVars = (availableVars: NodeOutPutVar[], isSnippetFlow = isSnippetCanvas()) => {
-  if (!isSnippetFlow)
-    return availableVars
+export const filterSnippetSystemVars = (
+  availableVars: NodeOutPutVar[],
+  isSnippetFlow = isSnippetCanvas(),
+) => {
+  if (!isSnippetFlow) return availableVars
 
   return availableVars
-    .map(nodeVar => ({
+    .map((nodeVar) => ({
       ...nodeVar,
-      vars: nodeVar.vars.filter(variable => !variable.variable.startsWith('sys.')),
+      vars: nodeVar.vars.filter((variable) => !variable.variable.startsWith('sys.')),
     }))
-    .filter(nodeVar => nodeVar.vars.length > 0)
+    .filter((nodeVar) => nodeVar.vars.length > 0)
 }
 
 const toWorkflowInputType = (type: SnippetInputField['type']) => type as unknown as InputVarType
@@ -32,10 +33,9 @@ const buildSnippetInputFieldNode = (
   fields: SnippetInputField[],
   title: string,
 ): Node | undefined => {
-  const variables = fields.filter(field => !!field.variable)
+  const variables = fields.filter((field) => !!field.variable)
 
-  if (!variables.length)
-    return undefined
+  if (!variables.length) return undefined
 
   return {
     id: SNIPPET_INPUT_FIELD_NODE_ID,
@@ -47,7 +47,7 @@ const buildSnippetInputFieldNode = (
       title,
       desc: '',
       type: BlockEnum.Start,
-      variables: variables.map(field => ({
+      variables: variables.map((field) => ({
         type: toWorkflowInputType(field.type),
         label: field.label,
         variable: field.variable,
@@ -70,8 +70,8 @@ const buildSnippetInputFieldVars = (
   title: string,
 ): NodeOutPutVar | undefined => {
   const vars = fields
-    .filter(field => !!field.variable)
-    .map(field => ({
+    .filter((field) => !!field.variable)
+    .map((field) => ({
       variable: field.variable,
       type: inputVarTypeToVarType(field.type as PipelineInputVarType),
       isParagraph: field.type === PipelineInputVarType.paragraph,
@@ -81,8 +81,7 @@ const buildSnippetInputFieldVars = (
       des: field.label,
     }))
 
-  if (!vars.length)
-    return undefined
+  if (!vars.length) return undefined
 
   return {
     nodeId: SNIPPET_INPUT_FIELD_NODE_ID,
@@ -98,17 +97,19 @@ export const appendSnippetInputFieldVars = ({
   title,
 }: {
   availableNodes: Node[]
-  fields: SnippetInputField[]
+  fields?: SnippetInputField[]
   title: string
 }) => {
-  const shouldAppendSnippetInputFields = isSnippetCanvas()
-    && fields.length > 0
-    && !availableNodes.some(node => node.data.type === BlockEnum.Start)
+  const inputFields = fields ?? []
+  const shouldAppendSnippetInputFields =
+    isSnippetCanvas() &&
+    inputFields.length > 0 &&
+    !availableNodes.some((node) => node.data.type === BlockEnum.Start)
   const snippetInputFieldNode = shouldAppendSnippetInputFields
-    ? buildSnippetInputFieldNode(fields, title)
+    ? buildSnippetInputFieldNode(inputFields, title)
     : undefined
   const snippetInputFieldVars = shouldAppendSnippetInputFields
-    ? buildSnippetInputFieldVars(fields, title)
+    ? buildSnippetInputFieldVars(inputFields, title)
     : undefined
 
   return {

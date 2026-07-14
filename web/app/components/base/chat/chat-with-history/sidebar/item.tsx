@@ -2,10 +2,7 @@ import type { FC } from 'react'
 import type { ConversationItem } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHover } from 'ahooks'
-import {
-  memo,
-  useRef,
-} from 'react'
+import { memo, useRef } from 'react'
 import Operation from '@/app/components/base/chat/chat-with-history/sidebar/operation'
 
 type ItemProps = {
@@ -36,9 +33,11 @@ const Item: FC<ItemProps> = ({
       )}
       onClick={() => onChangeConversation(item.id)}
     >
-      <div className="grow truncate p-1 pl-0" title={item.name}>{item.name}</div>
+      <div className="grow truncate p-1 pl-0" title={item.name}>
+        {item.name}
+      </div>
       {item.id !== '' && (
-        <div className="shrink-0" onClick={e => e.stopPropagation()}>
+        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <Operation
             isActive={isSelected}
             isPinned={!!isPin}

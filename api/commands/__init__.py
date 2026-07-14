@@ -22,9 +22,10 @@ from .plugin import (
     setup_system_trigger_oauth_client,
     transform_datasource_credentials,
 )
-from .rbac import migrate_member_roles_to_rbac
+from .rbac import migrate_dataset_permissions_to_rbac, migrate_member_roles_to_rbac
 from .retention import (
     archive_workflow_runs,
+    archive_workflow_runs_plan,
     clean_expired_messages,
     clean_workflow_runs,
     cleanup_orphaned_draft_variables,
@@ -51,6 +52,7 @@ from .vector import (
 __all__ = [
     "add_qdrant_index",
     "archive_workflow_runs",
+    "archive_workflow_runs_plan",
     "backfill_plugin_auto_upgrade",
     "clean_expired_messages",
     "clean_workflow_runs",
@@ -74,6 +76,7 @@ __all__ = [
     "legacy_model_types",
     "migrate_annotation_vector_database",
     "migrate_data_for_plugin",
+    "migrate_dataset_permissions_to_rbac",
     "migrate_knowledge_vector_database",
     "migrate_member_roles_to_rbac",
     "migrate_oss",

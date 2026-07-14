@@ -11,12 +11,12 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        'primary': [
-          'border-components-button-primary-border bg-components-button-primary-bg text-components-button-primary-text shadow',
+        primary: [
+          'border-components-button-primary-border bg-components-button-primary-bg text-components-button-primary-text shadow-sm',
           'hover:border-components-button-primary-border-hover hover:bg-components-button-primary-bg-hover',
           'data-[disabled]:border-components-button-primary-border-disabled data-[disabled]:bg-components-button-primary-bg-disabled data-[disabled]:text-components-button-primary-text-disabled data-[disabled]:shadow-none',
         ],
-        'secondary': [
+        secondary: [
           'border-[0.5px] shadow-xs backdrop-blur-[5px]',
           'border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text',
           'hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover',
@@ -28,12 +28,12 @@ const buttonVariants = cva(
           'hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover',
           'data-[disabled]:border-components-button-secondary-border-disabled data-[disabled]:bg-components-button-secondary-bg-disabled data-[disabled]:text-components-button-secondary-accent-text-disabled',
         ],
-        'tertiary': [
+        tertiary: [
           'bg-components-button-tertiary-bg text-components-button-tertiary-text',
           'hover:bg-components-button-tertiary-bg-hover',
           'data-[disabled]:bg-components-button-tertiary-bg-disabled data-[disabled]:text-components-button-tertiary-text-disabled',
         ],
-        'ghost': [
+        ghost: [
           'text-components-button-ghost-text',
           'hover:bg-components-button-ghost-bg-hover',
           'data-[disabled]:text-components-button-ghost-text-disabled',
@@ -100,12 +100,11 @@ const buttonVariants = cva(
   },
 )
 
-export type ButtonProps
-  = Omit<BaseButtonNS.Props, 'className'>
-    & VariantProps<typeof buttonVariants> & {
-      loading?: boolean
-      className?: string
-    }
+export type ButtonProps = Omit<BaseButtonNS.Props, 'className'> &
+  VariantProps<typeof buttonVariants> & {
+    loading?: boolean
+    className?: string
+  }
 
 export function Button({
   className,
@@ -125,13 +124,12 @@ export function Button({
       className={cn(buttonVariants({ variant, size, tone, className }))}
       disabled={disabled || loading}
       focusableWhenDisabled={focusableWhenDisabled ?? loading}
-      aria-busy={loading || undefined}
       {...props}
     >
       {children}
       {loading && (
         <i
-          className="ml-1 i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
+          className="ms-1 i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
           aria-hidden="true"
         />
       )}

@@ -25,7 +25,7 @@ from libs.token import (
 from models import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
-from services.errors.account import AccountNotFoundError, AccountRegisterError
+from services.errors.account import AccountNotFoundError, AccountRegisterError, SeatsLimitExceededError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 from services.feature_service import FeatureService
 
@@ -182,6 +182,8 @@ class OAuthCallback(Resource):
                 f"{dify_config.CONSOLE_WEB_URL}/signin"
                 "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
             )
+        except SeatsLimitExceededError:
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Licensed seats limit exceeded.")
         except AccountRegisterError as e:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
 
@@ -195,7 +197,7 @@ class OAuthCallback(Resource):
             db.session.commit()
 
         try:
-            TenantService.create_owner_tenant_if_not_exist(account)
+            TenantService.create_owner_tenant_if_not_exist(account, session=db.session())
         except Unauthorized:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found.")
         except WorkSpaceNotAllowedCreateError:
@@ -206,6 +208,7 @@ class OAuthCallback(Resource):
 
         token_pair = AccountService.login(
             account=account,
+            session=db.session(),
             ip_address=extract_remote_ip(request),
         )
 
@@ -224,7 +227,7 @@ def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> 
     account: Account | None = Account.get_by_openid(provider, user_info.id)
 
     if not account:
-        account = AccountService.get_account_by_email_with_case_fallback(user_info.email)
+        account = AccountService.get_account_by_email_with_case_fallback(user_info.email, session=db.session())
 
     return account
 
@@ -240,13 +243,13 @@ def _generate_account(
     oauth_new_user = False
 
     if account:
-        tenants = TenantService.get_join_tenants(account)
+        tenants = TenantService.get_join_tenants(account, session=db.session())
         if not tenants:
             if not FeatureService.get_system_features().is_allow_create_workspace:
                 raise WorkSpaceNotAllowedCreateError()
             else:
-                new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                TenantService.create_tenant_member(new_tenant, account, role="owner")
+                new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session())
+                TenantService.create_tenant_member(new_tenant, account, db.session(), role="owner")
                 account.current_tenant = new_tenant
                 tenant_was_created.send(new_tenant)
 
@@ -272,9 +275,10 @@ def _generate_account(
             provider=provider,
             language=interface_language,
             timezone=timezone,
+            session=db.session(),
         )
 
     # Link account
-    AccountService.link_account_integrate(provider, user_info.id, account)
+    AccountService.link_account_integrate(provider, user_info.id, account, session=db.session())
 
     return account, oauth_new_user

@@ -2,13 +2,16 @@
 
 import type { ResourceOpenScope } from '@/models/access-control'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import Loading from '@/app/components/base/loading'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useLocale } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { datasetRbacEnabledAtom } from '@/context/system-features-state'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {
   useDatasetAccessRules,
@@ -27,19 +30,25 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
   const { t } = useTranslation()
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
-  const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canAccessConfig = useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+  const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
+  const canAccessConfig = getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,
     resourceMaintainer: dataset?.maintainer,
     workspacePermissionKeys,
-  }).canAccessConfig, [currentUserId, dataset?.maintainer, dataset?.permission_keys, workspacePermissionKeys])
-  const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } = useDatasetAccessRules(datasetId, language, { enabled: canAccessConfig })
-  const { data: datasetUserAccessSettingsResponse, isLoading: isLoadingDatasetUserAccessSettings } = useDatasetUserAccessSettings(datasetId, language, { enabled: canAccessConfig })
-  const { mutate: updateDatasetOpenScope, isPending: isUpdatingDatasetOpenScope } = useUpdateDatasetOpenScope(datasetId)
+    isRbacEnabled,
+  }).canAccessConfig
+  const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } =
+    useDatasetAccessRules(datasetId, language, { enabled: canAccessConfig })
+  const { data: datasetUserAccessSettingsResponse, isLoading: isLoadingDatasetUserAccessSettings } =
+    useDatasetUserAccessSettings(datasetId, language, { enabled: canAccessConfig })
+  const { mutate: updateDatasetOpenScope, isPending: isUpdatingDatasetOpenScope } =
+    useUpdateDatasetOpenScope(datasetId)
   const { mutate: updateDatasetUserAccessSettings } = useUpdateDatasetUserAccessSettings(datasetId)
-  const { mutate: removeDatasetAccessPolicyMemberBindings } = useRemoveDatasetAccessPolicyMemberBindings(datasetId)
+  const { mutate: removeDatasetAccessPolicyMemberBindings } =
+    useRemoveDatasetAccessPolicyMemberBindings(datasetId)
   const [optimisticOpenScope, setOptimisticOpenScope] = useState<ResourceOpenScope | null>(null)
   const [updatingAccountId, setUpdatingAccountId] = useState<string | null>(null)
 
@@ -47,43 +56,47 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
   const datasetUserAccessSettings = datasetUserAccessSettingsResponse?.data || []
   const openScope = optimisticOpenScope || datasetUserAccessSettingsResponse?.scope
 
-  const handleOpenScopeChange = useCallback((nextOpenScope: ResourceOpenScope) => {
-    if (!canAccessConfig)
-      return
-    if (nextOpenScope === openScope)
-      return
+  const handleOpenScopeChange = useCallback(
+    (nextOpenScope: ResourceOpenScope) => {
+      if (!canAccessConfig) return
+      if (nextOpenScope === openScope) return
 
-    const previousOptimisticOpenScope = optimisticOpenScope
-    setOptimisticOpenScope(nextOpenScope)
-    updateDatasetOpenScope(nextOpenScope, {
-      onError: () => setOptimisticOpenScope(previousOptimisticOpenScope),
-    })
-  }, [canAccessConfig, openScope, optimisticOpenScope, updateDatasetOpenScope])
+      const previousOptimisticOpenScope = optimisticOpenScope
+      setOptimisticOpenScope(nextOpenScope)
+      updateDatasetOpenScope(nextOpenScope, {
+        onError: () => setOptimisticOpenScope(previousOptimisticOpenScope),
+      })
+    },
+    [canAccessConfig, openScope, optimisticOpenScope, updateDatasetOpenScope],
+  )
 
-  const handleUserAccessPoliciesChange = useCallback((accountId: string, accessPolicyIds: string[]) => {
-    if (!canAccessConfig)
-      return
+  const handleUserAccessPoliciesChange = useCallback(
+    (accountId: string, accessPolicyIds: string[]) => {
+      if (!canAccessConfig) return
 
-    setUpdatingAccountId(accountId)
-    updateDatasetUserAccessSettings(
-      { accountId, accessPolicyIds },
-      { onSettled: () => setUpdatingAccountId(null) },
-    )
-  }, [canAccessConfig, updateDatasetUserAccessSettings])
+      setUpdatingAccountId(accountId)
+      updateDatasetUserAccessSettings(
+        { accountId, accessPolicyIds },
+        { onSettled: () => setUpdatingAccountId(null) },
+      )
+    },
+    [canAccessConfig, updateDatasetUserAccessSettings],
+  )
 
-  const handleRemoveAccessPolicyMemberBinding = useCallback((accountId: string, accessPolicyId: string) => {
-    if (!canAccessConfig)
-      return
+  const handleRemoveAccessPolicyMemberBinding = useCallback(
+    (accountId: string, accessPolicyId: string) => {
+      if (!canAccessConfig) return
 
-    setUpdatingAccountId(accountId)
-    removeDatasetAccessPolicyMemberBindings(
-      { accessPolicyId, accountIds: [accountId] },
-      { onSettled: () => setUpdatingAccountId(null) },
-    )
-  }, [canAccessConfig, removeDatasetAccessPolicyMemberBindings])
+      setUpdatingAccountId(accountId)
+      removeDatasetAccessPolicyMemberBindings(
+        { accessPolicyId, accountIds: [accountId] },
+        { onSettled: () => setUpdatingAccountId(null) },
+      )
+    },
+    [canAccessConfig, removeDatasetAccessPolicyMemberBindings],
+  )
 
-  if (!canAccessConfig)
-    return <Loading type="app" />
+  if (!canAccessConfig) return <Loading type="app" />
 
   return (
     <ScrollArea
@@ -91,9 +104,11 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
       slotClassNames={{ viewport: 'overscroll-contain' }}
     >
       <header className="flex min-h-15.5 flex-col justify-center px-6 py-3">
-        <h1 className="system-sm-semibold text-text-primary">{t('settings.resourceAccess', { ns: 'common' })}</h1>
+        <h1 className="system-sm-semibold text-text-primary">
+          {t(($) => $['settings.resourceAccess'], { ns: 'common' })}
+        </h1>
         <p className="mt-0.5 system-xs-regular text-text-tertiary">
-          {t('accessRule.datasetDescription', { ns: 'permission' })}
+          {t(($) => $['accessRule.datasetDescription'], { ns: 'permission' })}
         </p>
       </header>
       <main className="w-full px-6 pt-8 pb-10">

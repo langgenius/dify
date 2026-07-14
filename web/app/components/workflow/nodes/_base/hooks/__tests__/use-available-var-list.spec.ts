@@ -12,8 +12,9 @@ const mockFlowType = vi.hoisted(() => ({
   value: undefined as FlowType | undefined,
 }))
 
-vi.mock('@/app/components/snippets/store', () => ({
-  useSnippetDetailStore: (selector: (state: { fields: unknown[] }) => unknown) => selector({ fields: [] }),
+vi.mock('@/app/components/snippets/draft-store', () => ({
+  useSnippetDraftStore: (selector: (state: { inputFields: unknown[] }) => unknown) =>
+    selector({ inputFields: [] }),
 }))
 
 vi.mock('@/app/components/workflow/hooks', () => ({
@@ -29,15 +30,17 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { ragPipelineVariables: unknown[] }) => unknown) => selector({ ragPipelineVariables: [] }),
+  useStore: (selector: (state: { ragPipelineVariables: unknown[] }) => unknown) =>
+    selector({ ragPipelineVariables: [] }),
 }))
 
 vi.mock('@/app/components/workflow/hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) => selector({
-    configsMap: {
-      flowType: mockFlowType.value,
-    },
-  }),
+  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) =>
+    selector({
+      configsMap: {
+        flowType: mockFlowType.value,
+      },
+    }),
 }))
 
 vi.mock('../use-node-info', () => ({
@@ -46,17 +49,18 @@ vi.mock('../use-node-info', () => ({
   }),
 }))
 
-const createNode = (overrides: Partial<Node> = {}): Node => ({
-  id: 'node-1',
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  data: {
-    type: BlockEnum.LLM,
-    title: 'Node',
-    desc: '',
-  },
-  ...overrides,
-} as Node)
+const createNode = (overrides: Partial<Node> = {}): Node =>
+  ({
+    id: 'node-1',
+    type: 'custom',
+    position: { x: 0, y: 0 },
+    data: {
+      type: BlockEnum.LLM,
+      title: 'Node',
+      desc: '',
+    },
+    ...overrides,
+  }) as Node
 
 const outputVarsWithSystemVars: NodeOutPutVar[] = [
   {
@@ -76,10 +80,12 @@ const outputVarsWithSystemVars: NodeOutPutVar[] = [
   {
     nodeId: 'global',
     title: 'SYSTEM',
-    vars: [{
-      variable: 'sys.user_id',
-      type: VarType.string,
-    }] satisfies Var[],
+    vars: [
+      {
+        variable: 'sys.user_id',
+        type: VarType.string,
+      },
+    ] satisfies Var[],
   },
 ]
 
@@ -97,24 +103,32 @@ describe('useAvailableVarList', () => {
   it('filters system variables on snippet canvases', () => {
     globalThis.history.pushState({}, '', '/snippets/snippet-1/orchestrate')
 
-    const { result } = renderHook(() => useAvailableVarList('node-1', {
-      filterVar: () => true,
-    }))
+    const { result } = renderHook(() =>
+      useAvailableVarList('node-1', {
+        filterVar: () => true,
+      }),
+    )
 
-    expect(result.current.availableVars).toEqual([{
-      nodeId: 'vars-node',
-      title: 'Vars',
-      vars: [{
-        variable: 'answer',
-        type: VarType.string,
-      }],
-    }])
+    expect(result.current.availableVars).toEqual([
+      {
+        nodeId: 'vars-node',
+        title: 'Vars',
+        vars: [
+          {
+            variable: 'answer',
+            type: VarType.string,
+          },
+        ],
+      },
+    ])
   })
 
   it('keeps system variables outside snippet canvases', () => {
-    const { result } = renderHook(() => useAvailableVarList('node-1', {
-      filterVar: () => true,
-    }))
+    const { result } = renderHook(() =>
+      useAvailableVarList('node-1', {
+        filterVar: () => true,
+      }),
+    )
 
     expect(result.current.availableVars).toEqual(outputVarsWithSystemVars)
   })
@@ -122,17 +136,23 @@ describe('useAvailableVarList', () => {
   it('filters system variables when the current flow is a snippet', () => {
     mockFlowType.value = FlowType.snippet
 
-    const { result } = renderHook(() => useAvailableVarList('node-1', {
-      filterVar: () => true,
-    }))
+    const { result } = renderHook(() =>
+      useAvailableVarList('node-1', {
+        filterVar: () => true,
+      }),
+    )
 
-    expect(result.current.availableVars).toEqual([{
-      nodeId: 'vars-node',
-      title: 'Vars',
-      vars: [{
-        variable: 'answer',
-        type: VarType.string,
-      }],
-    }])
+    expect(result.current.availableVars).toEqual([
+      {
+        nodeId: 'vars-node',
+        title: 'Vars',
+        vars: [
+          {
+            variable: 'answer',
+            type: VarType.string,
+          },
+        ],
+      },
+    ])
   })
 })

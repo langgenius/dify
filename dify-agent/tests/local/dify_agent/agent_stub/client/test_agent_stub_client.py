@@ -66,7 +66,9 @@ def test_connect_agent_stub_sync_posts_connections_request_with_authorization() 
 
 
 def test_connect_agent_stub_sync_rejects_invalid_base_url() -> None:
-    with pytest.raises(AgentStubValidationError, match="invalid DIFY_AGENT_STUB_URL|invalid Agent Stub base URL"):
+    with pytest.raises(
+        AgentStubValidationError, match="invalid DIFY_AGENT_STUB_API_BASE_URL|invalid Agent Stub base URL"
+    ):
         _ = connect_agent_stub_sync(
             url="https://agent.example.com/agent-stub?x=1",
             auth_jwe="test-jwe",
@@ -155,7 +157,7 @@ def test_request_agent_stub_file_download_sync_posts_download_request() -> None:
         assert request.method == "POST"
         assert str(request.url) == "https://agent.example.com/agent-stub/files/download-request"
         assert json.loads(request.content) == {
-            "file": {"transfer_method": "tool_file", "reference": _reference("tool-file-1")}
+            "file": {"transfer_method": "tool_file", "reference": _reference("tool-file-1")},
         }
         return httpx.Response(
             200,
@@ -181,6 +183,39 @@ def test_request_agent_stub_file_download_sync_posts_download_request() -> None:
     assert response.download_url == "https://files.example.com/download"
 
 
+def test_request_agent_stub_file_download_sync_posts_internal_download_request() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert str(request.url) == "https://agent.example.com/agent-stub/files/download-request"
+        assert json.loads(request.content) == {
+            "file": {"transfer_method": "tool_file", "reference": _reference("tool-file-1")},
+            "for_external": False,
+        }
+        return httpx.Response(
+            200,
+            json={
+                "filename": "report.pdf",
+                "mime_type": "application/pdf",
+                "size": 123,
+                "download_url": "http://internal-files/report.pdf",
+            },
+        )
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    try:
+        response = request_agent_stub_file_download_sync(
+            url="https://agent.example.com/agent-stub",
+            auth_jwe="test-jwe",
+            file=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1")),
+            for_external=False,
+            sync_http_client=http_client,
+        )
+    finally:
+        http_client.close()
+
+    assert response.download_url == "http://internal-files/report.pdf"
+
+
 def test_request_agent_stub_drive_manifest_sync_gets_manifest_request() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.method == "GET"
@@ -194,6 +229,7 @@ def test_request_agent_stub_drive_manifest_sync_gets_manifest_request() -> None:
                 "items": [
                     {
                         "key": "skills/example/SKILL.md",
+                        "name": "SKILL.md",
                         "size": 12,
                         "hash": "sha256:abc",
                         "mime_type": "text/markdown",
@@ -218,6 +254,7 @@ def test_request_agent_stub_drive_manifest_sync_gets_manifest_request() -> None:
         http_client.close()
 
     assert response.items[0].key == "skills/example/SKILL.md"
+    assert response.items[0].model_extra == {"name": "SKILL.md"}
 
 
 def test_request_agent_stub_drive_commit_sync_posts_commit_request() -> None:
@@ -452,12 +489,14 @@ def test_request_agent_stub_file_download_sync_dispatches_grpc_urls(monkeypatch:
         url="grpc://agent.example.com:9091",
         auth_jwe="token",
         file=file_mapping,
+        for_external=False,
     )
 
     assert captured == {
         "url": "grpc://agent.example.com:9091",
         "auth_jwe": "token",
         "file": file_mapping,
+        "for_external": False,
         "timeout": 30.0,
     }
     assert response.download_url == "https://files.example.com/download"
@@ -609,7 +648,10 @@ def test_request_agent_stub_file_download_grpc_sync_maps_grpc_errors(monkeypatch
         grpc_module,
         "_require_conversions",
         lambda: SimpleNamespace(
-            proto_file_download_request=lambda _pb2, *, file: {"file": file},
+            proto_file_download_request=lambda _pb2, *, file, for_external: {
+                "file": file,
+                "for_external": for_external,
+            },
             file_download_response_from_proto=lambda response: response,
         ),
     )

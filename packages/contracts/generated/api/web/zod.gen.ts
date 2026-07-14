@@ -47,62 +47,9 @@ export const zAppPermissionQuery = z.object({
 })
 
 /**
- * AppSiteModelConfigResponse
+ * AudioToTextResponse
  */
-export const zAppSiteModelConfigResponse = z.object({
-  model: z.unknown(),
-  more_like_this: z.unknown(),
-  opening_statement: z.string().nullish(),
-  pre_prompt: z.string().nullish(),
-  suggested_questions: z.unknown(),
-  suggested_questions_after_answer: z.unknown(),
-  user_input_form: z.unknown(),
-})
-
-/**
- * AppSiteResponse
- */
-export const zAppSiteResponse = z.object({
-  chat_color_theme: z.string().nullish(),
-  chat_color_theme_inverted: z.boolean().nullish(),
-  copyright: z.string().nullish(),
-  custom_disclaimer: z.string().nullish(),
-  default_language: z.string().nullish(),
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  icon_url: z.string().nullish(),
-  privacy_policy: z.string().nullish(),
-  prompt_public: z.boolean().nullish(),
-  show_workflow_steps: z.boolean().nullish(),
-  title: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
-})
-
-/**
- * AppSiteInfoResponse
- */
-export const zAppSiteInfoResponse = z.object({
-  app_id: z.string(),
-  can_replace_logo: z.boolean(),
-  custom_config: z.record(z.string(), z.unknown()).nullish(),
-  enable_site: z.boolean(),
-  end_user_id: z.string().nullish(),
-  model_config: zAppSiteModelConfigResponse.nullish(),
-  plan: z.string().nullish(),
-  site: zAppSiteResponse,
-})
-
-/**
- * AudioBinaryResponse
- */
-export const zAudioBinaryResponse = z.custom<Blob | File>()
-
-/**
- * AudioTranscriptResponse
- */
-export const zAudioTranscriptResponse = z.object({
+export const zAudioToTextResponse = z.object({
   text: z.string(),
 })
 
@@ -321,21 +268,9 @@ export const zHumanInputFileUploadFormPayload = z.object({
 })
 
 /**
- * HumanInputFormDefinitionResponse
- */
-export const zHumanInputFormDefinitionResponse = z.object({
-  expiration_time: z.int(),
-  form_content: z.unknown(),
-  inputs: z.unknown(),
-  resolved_default_values: z.record(z.string(), z.string()),
-  site: z.record(z.string(), z.unknown()).nullish(),
-  user_actions: z.unknown(),
-})
-
-/**
  * HumanInputFormSubmitResponse
  */
-export const zHumanInputFormSubmitResponse = z.record(z.string(), z.never())
+export const zHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
 
 /**
  * HumanInputUploadTokenResponse
@@ -362,6 +297,7 @@ export const zJsonValue = z
  * AgentThought
  */
 export const zAgentThought = z.object({
+  answer: z.string().nullish(),
   chain_id: z.string().nullish(),
   created_at: z.int().nullish(),
   files: z.array(z.string()),
@@ -427,6 +363,11 @@ export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive
  */
 export const zLicenseModel = z.object({
   expired_at: z.string().default(''),
+  seats: zLicenseLimitationModel.default({
+    enabled: false,
+    limit: 0,
+    size: 0,
+  }),
   status: zLicenseStatus.default('none'),
   workspaces: zLicenseLimitationModel.default({
     enabled: false,
@@ -496,6 +437,13 @@ export const zMessageListQuery = z.object({
  */
 export const zMessageMoreLikeThisQuery = z.object({
   response_mode: z.enum(['blocking', 'streaming']),
+})
+
+/**
+ * PassportAccessTokenResponse
+ */
+export const zPassportAccessTokenResponse = z.object({
+  access_token: z.string(),
 })
 
 /**
@@ -840,6 +788,7 @@ export const zSystemFeatureModel = z.object({
   enable_email_code_login: z.boolean().default(false),
   enable_email_password_login: z.boolean().default(true),
   enable_explore_banner: z.boolean().default(false),
+  enable_learn_app: z.boolean().default(true),
   enable_marketplace: z.boolean().default(false),
   enable_social_oauth_login: z.boolean().default(false),
   enable_trial_app: z.boolean().default(false),
@@ -848,6 +797,11 @@ export const zSystemFeatureModel = z.object({
   is_email_setup: z.boolean().default(false),
   license: zLicenseModel.default({
     expired_at: '',
+    seats: {
+      enabled: false,
+      limit: 0,
+      size: 0,
+    },
     status: 'none',
     workspaces: {
       enabled: false,
@@ -874,24 +828,41 @@ export const zSystemFeatureModel = z.object({
 })
 
 /**
+ * WebAppCustomConfigResponse
+ */
+export const zWebAppCustomConfigResponse = z.object({
+  remove_webapp_brand: z.boolean(),
+  replace_webapp_logo: z.string().nullish(),
+})
+
+/**
  * WebMessageListItem
  */
 export const zWebMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
+  answer_tokens: z.int().optional().default(0),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
+  currency: z.string().nullish(),
   error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
   feedback: zSimpleFeedback.nullish(),
   id: z.string(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
   metadata: zJsonValueType.nullish(),
   parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
   status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
+    .nullish(),
+  total_tokens: z.int().readonly(),
 })
 
 /**
@@ -901,6 +872,67 @@ export const zWebMessageInfiniteScrollPagination = z.object({
   data: z.array(zWebMessageListItem),
   has_more: z.boolean(),
   limit: z.int(),
+})
+
+/**
+ * WebModelConfigResponse
+ */
+export const zWebModelConfigResponse = z.object({
+  model: z.unknown().optional(),
+  more_like_this: z.unknown().optional(),
+  opening_statement: z.string().nullish(),
+  pre_prompt: z.string().nullish(),
+  suggested_questions: z.unknown().optional(),
+  suggested_questions_after_answer: z.unknown().optional(),
+  user_input_form: z.unknown().optional(),
+})
+
+/**
+ * WebSiteResponse
+ */
+export const zWebSiteResponse = z.object({
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string().nullish(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  icon_url: z.string().nullable(),
+  input_placeholder: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  prompt_public: z.boolean().nullish(),
+  show_workflow_steps: z.boolean().nullish(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+})
+
+/**
+ * WebAppSiteResponse
+ */
+export const zWebAppSiteResponse = z.object({
+  app_id: z.string(),
+  can_replace_logo: z.boolean(),
+  custom_config: zWebAppCustomConfigResponse.nullish(),
+  enable_site: z.boolean(),
+  end_user_id: z.string().nullish(),
+  model_config: zWebModelConfigResponse.nullish(),
+  plan: z.string(),
+  site: zWebSiteResponse,
+})
+
+/**
+ * HumanInputFormDefinitionResponse
+ */
+export const zHumanInputFormDefinitionResponse = z.object({
+  expiration_time: z.int(),
+  form_content: z.string(),
+  inputs: z.array(zFormInputConfig),
+  resolved_default_values: z.record(z.string(), z.string()),
+  site: zWebAppSiteResponse.nullish(),
+  user_actions: z.array(zUserActionConfig),
 })
 
 /**
@@ -921,9 +953,104 @@ export const zWorkflowRunPayload = z.object({
 })
 
 /**
+ * GeneratedAppResponse
+ */
+export const zGeneratedAppResponseWritable = zJsonValue
+
+/**
+ * HumanInputFormSubmitResponse
+ */
+export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.unknown())
+
+/**
+ * WebMessageListItem
+ */
+export const zWebMessageListItemWritable = z.object({
+  agent_thoughts: z.array(zAgentThought),
+  answer: z.string(),
+  answer_tokens: z.int().optional().default(0),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  currency: z.string().nullish(),
+  error: z.string().nullish(),
+  extra_contents: z.array(zHumanInputContent),
+  feedback: zSimpleFeedback.nullish(),
+  id: z.string(),
+  inputs: z.record(z.string(), zJsonValueType),
+  message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
+  metadata: zJsonValueType.nullish(),
+  parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().optional().default(0),
+  query: z.string(),
+  retriever_resources: z.array(zRetrieverResource),
+  status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
+    .nullish(),
+})
+
+/**
+ * WebMessageInfiniteScrollPagination
+ */
+export const zWebMessageInfiniteScrollPaginationWritable = z.object({
+  data: z.array(zWebMessageListItemWritable),
+  has_more: z.boolean(),
+  limit: z.int(),
+})
+
+/**
+ * WebSiteResponse
+ */
+export const zWebSiteResponseWritable = z.object({
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string().nullish(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  input_placeholder: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  prompt_public: z.boolean().nullish(),
+  show_workflow_steps: z.boolean().nullish(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+})
+
+/**
+ * WebAppSiteResponse
+ */
+export const zWebAppSiteResponseWritable = z.object({
+  app_id: z.string(),
+  can_replace_logo: z.boolean(),
+  custom_config: zWebAppCustomConfigResponse.nullish(),
+  enable_site: z.boolean(),
+  end_user_id: z.string().nullish(),
+  model_config: zWebModelConfigResponse.nullish(),
+  plan: z.string(),
+  site: zWebSiteResponseWritable,
+})
+
+/**
+ * HumanInputFormDefinitionResponse
+ */
+export const zHumanInputFormDefinitionResponseWritable = z.object({
+  expiration_time: z.int(),
+  form_content: z.string(),
+  inputs: z.array(zFormInputConfig),
+  resolved_default_values: z.record(z.string(), z.string()),
+  site: zWebAppSiteResponseWritable.nullish(),
+  user_actions: z.array(zUserActionConfig),
+})
+
+/**
  * Success
  */
-export const zPostAudioToTextResponse = zAudioTranscriptResponse
+export const zPostAudioToTextResponse = zAudioToTextResponse
 
 export const zPostChatMessagesBody = zChatMessagePayload
 
@@ -1060,7 +1187,7 @@ export const zGetFormHumanInputByFormTokenPath = z.object({
 })
 
 /**
- * Success
+ * Form retrieved successfully
  */
 export const zGetFormHumanInputByFormTokenResponse = zHumanInputFormDefinitionResponse
 
@@ -1071,7 +1198,7 @@ export const zPostFormHumanInputByFormTokenPath = z.object({
 })
 
 /**
- * Success
+ * Form submitted successfully
  */
 export const zPostFormHumanInputByFormTokenResponse = zHumanInputFormSubmitResponse
 
@@ -1080,7 +1207,7 @@ export const zPostFormHumanInputByFormTokenUploadTokenPath = z.object({
 })
 
 /**
- * Success
+ * Upload token issued successfully
  */
 export const zPostFormHumanInputByFormTokenUploadTokenResponse = zHumanInputUploadTokenResponse
 
@@ -1177,7 +1304,7 @@ export const zGetPassportQuery = z.object({
 /**
  * Passport retrieved successfully
  */
-export const zGetPassportResponse = zAccessTokenData
+export const zGetPassportResponse = zPassportAccessTokenResponse
 
 export const zPostRemoteFilesUploadBody = zRemoteFileUploadPayload
 
@@ -1228,7 +1355,7 @@ export const zDeleteSavedMessagesByMessageIdResponse = z.void()
 /**
  * Success
  */
-export const zGetSiteResponse = zAppSiteInfoResponse
+export const zGetSiteResponse = zWebAppSiteResponse
 
 /**
  * System features retrieved successfully
@@ -1240,7 +1367,7 @@ export const zPostTextToAudioBody = zTextToAudioPayload
 /**
  * Success
  */
-export const zPostTextToAudioResponse = zAudioBinaryResponse
+export const zPostTextToAudioResponse = z.record(z.string(), z.unknown())
 
 export const zGetWebappAccessModeQuery = z.object({
   appCode: z.string().optional(),

@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "Aggiorna per caricare più documenti contemporaneamente",
   "upgrade.workflowRestore.description": "Il ripristino delle versioni del workflow non è disponibile nel tuo piano attuale.",
   "upgrade.workflowRestore.title": "Esegui l'upgrade per ripristinare le versioni del workflow",
+  "upgrade.workflowVersionRun.description": "L’esecuzione di una versione specifica del workflow tramite il relativo ID non è disponibile nel tuo piano attuale.",
+  "upgrade.workflowVersionRun.title": "Esegui l’upgrade per avviare versioni specifiche del workflow",
   "upgradeBtn.encourage": "Aggiorna Ora",
   "upgradeBtn.encourageShort": "Aggiorna",
   "upgradeBtn.plain": "Aggiorna Piano",

@@ -14,7 +14,7 @@ from uuid import uuid4
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, select
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column, scoped_session
 
 from configs import dify_config
 from core.rag.entities import ParentMode, Rule
@@ -209,7 +209,7 @@ class Dataset(Base):
     pipeline_id = mapped_column(StringUUID, nullable=True)
     chunk_structure = mapped_column(sa.String(255), nullable=True)
     enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    is_multimodal = mapped_column(sa.Boolean, default=False, nullable=False, server_default=db.text("false"))
+    is_multimodal = mapped_column(sa.Boolean, default=False, nullable=False, server_default=sa.text("false"))
 
     @property
     def total_documents(self):
@@ -1670,7 +1670,7 @@ class Pipeline(TypeBase):
         init=False,
     )
 
-    def retrieve_dataset(self, session: Session):
+    def retrieve_dataset(self, session: Session | scoped_session):
         return session.scalar(select(Dataset).where(Dataset.pipeline_id == self.id))
 
 

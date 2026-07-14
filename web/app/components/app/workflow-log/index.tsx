@@ -37,7 +37,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),
-    select: data => data.profile.timezone ?? undefined,
+    select: (data) => data.profile.timezone ?? undefined,
   })
   const [queryParams, setQueryParams] = useState<QueryParam>({ status: 'all', period: '2' })
   const [currPage, setCurrPage] = React.useState<number>(0)
@@ -50,9 +50,13 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     limit,
     ...(debouncedQueryParams.status !== 'all' ? { status: debouncedQueryParams.status } : {}),
     ...(debouncedQueryParams.keyword ? { keyword: debouncedQueryParams.keyword } : {}),
-    ...((debouncedQueryParams.period !== '9')
+    ...(debouncedQueryParams.period !== '9'
       ? {
-          created_at__after: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period]!.value, 'day').startOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
+          created_at__after: dayjs()
+            .subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period]!.value, 'day')
+            .startOf('day')
+            .tz(timezone)
+            .format('YYYY-MM-DDTHH:mm:ssZ'),
           created_at__before: dayjs().endOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
         }
       : {}),
@@ -69,40 +73,41 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   return (
     <div className="flex h-full flex-col">
       <PageTitle
-        title={t('workflowTitle', { ns: 'appLog' })}
-        description={t('workflowSubtitle', { ns: 'appLog' })}
+        title={t(($) => $.workflowTitle, { ns: 'appLog' })}
+        description={t(($) => $.workflowSubtitle, { ns: 'appLog' })}
       />
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
         {/* workflow log */}
-        {total === undefined
-          ? <Loading type="app" />
-          : total > 0
-            ? <List logs={workflowLogs} appDetail={appDetail} onRefresh={mutate} />
-            : <EmptyElement appDetail={appDetail} />}
+        {total === undefined ? (
+          <Loading type="app" />
+        ) : total > 0 ? (
+          <List logs={workflowLogs} appDetail={appDetail} onRefresh={mutate} />
+        ) : (
+          <EmptyElement appDetail={appDetail} />
+        )}
         {/* Show Pagination only if the total is more than the limit */}
-        {(total && total > APP_PAGE_LIMIT)
-          ? (
-              <Pagination
-                page={currPage + 1}
-                totalPages={totalPages}
-                onPageChange={page => setCurrPage(page - 1)}
-                labels={{
-                  previous: t('pagination.previous', { ns: 'common' }),
-                  next: t('pagination.next', { ns: 'common' }),
-                  editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
-                  pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
-                }}
-                pageSize={{
-                  value: limit,
-                  options: [10, 25, 50],
-                  onValueChange: setLimit,
-                  label: t('pagination.perPage', { ns: 'common' }),
-                  ariaLabel: t('pagination.perPage', { ns: 'common' }),
-                }}
-              />
-            )
-          : null}
+        {total && total > APP_PAGE_LIMIT ? (
+          <Pagination
+            page={currPage + 1}
+            totalPages={totalPages}
+            onPageChange={(page) => setCurrPage(page - 1)}
+            labels={{
+              previous: t(($) => $['pagination.previous'], { ns: 'common' }),
+              next: t(($) => $['pagination.next'], { ns: 'common' }),
+              editPageNumber: (page, totalPages) =>
+                t(($) => $['pagination.editPageNumber'], { ns: 'common', page, totalPages }),
+              pageNumberInput: t(($) => $['pagination.pageNumber'], { ns: 'common' }),
+            }}
+            pageSize={{
+              value: limit,
+              options: [10, 25, 50],
+              onValueChange: setLimit,
+              label: t(($) => $['pagination.perPage'], { ns: 'common' }),
+              ariaLabel: t(($) => $['pagination.perPage'], { ns: 'common' }),
+            }}
+          />
+        ) : null}
       </div>
     </div>
   )

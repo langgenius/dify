@@ -363,7 +363,10 @@ class FileAccessConfig(BaseSettings):
     INTERNAL_FILES_URL: str = Field(
         description="Internal base URL for file access within Docker network,"
         " used for plugin daemon and internal service communication."
-        " Falls back to FILES_URL if not specified.",
+        " Explicit INTERNAL_FILES_URL takes precedence; otherwise SERVER_CONSOLE_API_URL is used,"
+        " then FILES_URL.",
+        validation_alias=AliasChoices("INTERNAL_FILES_URL", "SERVER_CONSOLE_API_URL"),
+        alias_priority=1,
         default="",
     )
 
@@ -1073,6 +1076,12 @@ class MailConfig(BaseSettings):
         default=None,
     )
 
+
+class HomepageConfig(BaseSettings):
+    """
+    Configuration for homepage feature toggles exposed through system features.
+    """
+
     ENABLE_TRIAL_APP: bool = Field(
         description="Enable trial app",
         default=False,
@@ -1081,6 +1090,11 @@ class MailConfig(BaseSettings):
     ENABLE_EXPLORE_BANNER: bool = Field(
         description="Enable explore banner",
         default=False,
+    )
+
+    ENABLE_LEARN_APP: bool = Field(
+        description="Enable Learn App",
+        default=True,
     )
 
 
@@ -1489,6 +1503,7 @@ class FeatureConfig(
     EndpointConfig,
     FileAccessConfig,
     FileUploadConfig,
+    HomepageConfig,
     HttpConfig,
     InnerAPIConfig,
     IndexingConfig,

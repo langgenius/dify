@@ -28,7 +28,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
   }),
 }))
 
-vi.mock('@/utils/var', async importOriginal => ({
+vi.mock('@/utils/var', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/utils/var')>()),
   getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
 }))
@@ -70,15 +70,19 @@ describe('AllTools', () => {
         searchText=""
         tags={[]}
         onSelect={vi.fn()}
-        buildInTools={[createToolProvider({
-          id: 'provider-built-in',
-          label: { en_US: 'Built In Provider', zh_Hans: 'Built In Provider' },
-        })]}
-        customTools={[createToolProvider({
-          id: 'provider-custom',
-          type: 'custom',
-          label: { en_US: 'Custom Provider', zh_Hans: 'Custom Provider' },
-        })]}
+        buildInTools={[
+          createToolProvider({
+            id: 'provider-built-in',
+            label: { en_US: 'Built In Provider', zh_Hans: 'Built In Provider' },
+          }),
+        ]}
+        customTools={[
+          createToolProvider({
+            id: 'provider-custom',
+            type: 'custom',
+            label: { en_US: 'Custom Provider', zh_Hans: 'Custom Provider' },
+          }),
+        ]}
         workflowTools={[]}
         mcpTools={[]}
       />,
@@ -101,25 +105,33 @@ describe('AllTools', () => {
         searchText=""
         tags={[]}
         onSelect={vi.fn()}
-        buildInTools={[createToolProvider({
-          id: 'provider-built-in',
-          label: { en_US: 'Built In Provider', zh_Hans: 'Built In Provider' },
-        })]}
-        customTools={[createToolProvider({
-          id: 'provider-custom',
-          type: CollectionType.custom,
-          label: { en_US: 'Swagger Provider', zh_Hans: 'Swagger Provider' },
-        })]}
-        workflowTools={[createToolProvider({
-          id: 'provider-workflow',
-          type: CollectionType.workflow,
-          label: { en_US: 'Workflow Provider', zh_Hans: 'Workflow Provider' },
-        })]}
-        mcpTools={[createToolProvider({
-          id: 'provider-mcp',
-          type: CollectionType.mcp,
-          label: { en_US: 'MCP Provider', zh_Hans: 'MCP Provider' },
-        })]}
+        buildInTools={[
+          createToolProvider({
+            id: 'provider-built-in',
+            label: { en_US: 'Built In Provider', zh_Hans: 'Built In Provider' },
+          }),
+        ]}
+        customTools={[
+          createToolProvider({
+            id: 'provider-custom',
+            type: CollectionType.custom,
+            label: { en_US: 'Swagger Provider', zh_Hans: 'Swagger Provider' },
+          }),
+        ]}
+        workflowTools={[
+          createToolProvider({
+            id: 'provider-workflow',
+            type: CollectionType.workflow,
+            label: { en_US: 'Workflow Provider', zh_Hans: 'Workflow Provider' },
+          }),
+        ]}
+        mcpTools={[
+          createToolProvider({
+            id: 'provider-mcp',
+            type: CollectionType.mcp,
+            label: { en_US: 'MCP Provider', zh_Hans: 'MCP Provider' },
+          }),
+        ]}
       />,
     )
 

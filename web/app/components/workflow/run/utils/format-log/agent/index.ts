@@ -6,8 +6,7 @@ const supportedAgentLogNodes = [BlockEnum.Agent, BlockEnum.Tool]
 
 const remove = (node: AgentLogItemWithChildren, removeId: string) => {
   let { children } = node
-  if (!children || children.length === 0)
-    return
+  if (!children || children.length === 0) return
 
   const hasCircle = !!children.find((c) => {
     const childId = c.message_id || (c as any).id
@@ -28,8 +27,7 @@ const remove = (node: AgentLogItemWithChildren, removeId: string) => {
 }
 
 const removeRepeatedSiblings = (list: AgentLogItemWithChildren[]) => {
-  if (!list || list.length === 0)
-    return []
+  if (!list || list.length === 0) return []
 
   const result: AgentLogItemWithChildren[] = []
   const addedItemIds: string[] = []
@@ -47,8 +45,7 @@ const removeCircleLogItem = (log: AgentLogItemWithChildren) => {
   const newLog = cloneDeep(log)
 
   // If no children, return as is
-  if (!newLog.children || newLog.children.length === 0)
-    return newLog
+  if (!newLog.children || newLog.children.length === 0) return newLog
 
   newLog.children = removeRepeatedSiblings(newLog.children)
   const id = newLog.message_id || (newLog as any).id
@@ -76,8 +73,7 @@ const removeCircleLogItem = (log: AgentLogItemWithChildren) => {
 }
 
 const listToTree = (logs: AgentLogItem[]) => {
-  if (!logs || logs.length === 0)
-    return []
+  if (!logs || logs.length === 0) return []
 
   // First pass: identify all unique items and track parent-child relationships
   const itemsById = new Map<string, any>()
@@ -87,17 +83,14 @@ const listToTree = (logs: AgentLogItem[]) => {
     const itemId = item.message_id || (item as any).id
 
     // Only add to itemsById if not already there (keep first occurrence)
-    if (itemId && !itemsById.has(itemId))
-      itemsById.set(itemId, item)
+    if (itemId && !itemsById.has(itemId)) itemsById.set(itemId, item)
 
     // Initialize children array for this ID if needed
-    if (itemId && !childrenById.has(itemId))
-      childrenById.set(itemId, [])
+    if (itemId && !childrenById.has(itemId)) childrenById.set(itemId, [])
 
     // If this item has a parent, add it to parent's children list
     if (item.parent_id) {
-      if (!childrenById.has(item.parent_id))
-        childrenById.set(item.parent_id, [])
+      if (!childrenById.has(item.parent_id)) childrenById.set(item.parent_id, [])
 
       childrenById.get(item.parent_id)!.push(item)
     }
@@ -112,8 +105,7 @@ const listToTree = (logs: AgentLogItem[]) => {
     if (!hasParent) {
       const itemId = item.message_id || (item as any).id
       const children = childrenById.get(itemId)
-      if (children && children.length > 0)
-        item.children = children
+      if (children && children.length > 0) item.children = children
 
       tree.push(item as AgentLogItemWithChildren)
     }
@@ -123,8 +115,7 @@ const listToTree = (logs: AgentLogItem[]) => {
   itemsById.forEach((item) => {
     const itemId = item.message_id || (item as any).id
     const children = childrenById.get(itemId)
-    if (children && children.length > 0)
-      item.children = children
+    if (children && children.length > 0) item.children = children
   })
 
   return tree
@@ -134,10 +125,14 @@ const format = (list: NodeTracing[]): NodeTracing[] => {
   const result: NodeTracing[] = list.map((item) => {
     let treeList: AgentLogItemWithChildren[] = []
     let removedCircleTree: AgentLogItemWithChildren[] = []
-    if (supportedAgentLogNodes.includes(item.node_type) && item.execution_metadata?.agent_log && item.execution_metadata?.agent_log.length > 0)
+    if (
+      supportedAgentLogNodes.includes(item.node_type) &&
+      item.execution_metadata?.agent_log &&
+      item.execution_metadata?.agent_log.length > 0
+    )
       treeList = listToTree(item.execution_metadata.agent_log)
     // console.log(JSON.stringify(treeList))
-    removedCircleTree = treeList.length > 0 ? treeList.map(t => removeCircleLogItem(t)) : []
+    removedCircleTree = treeList.length > 0 ? treeList.map((t) => removeCircleLogItem(t)) : []
     item.agentLog = removedCircleTree
 
     return item

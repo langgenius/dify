@@ -22,9 +22,7 @@ type Props = Readonly<{
   onHide?: () => void
 }>
 
-const GotoAnythingDialog: FC<Props> = ({
-  onHide,
-}) => {
+const GotoAnythingDialog: FC<Props> = ({ onHide }) => {
   const { t } = useTranslation()
   const { isWorkflowPage, isRagPipelinePage } = useGotoAnythingContext()
   const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
@@ -44,19 +42,14 @@ const GotoAnythingDialog: FC<Props> = ({
   } = useGotoAnythingSearch()
 
   // Modal state management
-  const {
-    open,
-    onOpenChange,
-    inputRef,
-  } = useGotoAnythingModal()
+  const { open, onOpenChange, inputRef } = useGotoAnythingModal()
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (open && !prevShowRef.current) {
       // Modal just opened - reset search
       setSearchQuery('')
-    }
-    else if (!open && prevShowRef.current) {
+    } else if (!open && prevShowRef.current) {
       // Modal just closed
       setSearchQuery('')
       clearSelection()
@@ -66,13 +59,7 @@ const GotoAnythingDialog: FC<Props> = ({
   }, [open, setSearchQuery, clearSelection, onHide])
 
   // Results fetching and processing
-  const {
-    dedupedResults,
-    groupedResults,
-    isLoading,
-    isError,
-    error,
-  } = useGotoAnythingResults({
+  const { dedupedResults, groupedResults, isLoading, isError, error } = useGotoAnythingResults({
     searchQueryDebouncedValue,
     searchMode,
     isCommandsMode,
@@ -84,69 +71,64 @@ const GotoAnythingDialog: FC<Props> = ({
   })
 
   // Navigation handlers
-  const {
-    handleCommandSelect,
-    handleNavigate,
-    activePlugin,
-    setActivePlugin,
-  } = useGotoAnythingNavigation({
-    Actions,
-    setSearchQuery,
-    clearSelection,
-    inputRef,
-    onClose: () => onOpenChange(false),
-  })
+  const { handleCommandSelect, handleNavigate, activePlugin, setActivePlugin } =
+    useGotoAnythingNavigation({
+      Actions,
+      setSearchQuery,
+      clearSelection,
+      inputRef,
+      onClose: () => onOpenChange(false),
+    })
 
   // Handle search input change
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchQuery(value)
-    if (!value.startsWith('@') && !value.startsWith('/'))
-      clearSelection()
-  }, [setSearchQuery, clearSelection])
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchQuery(value)
+      if (!value.startsWith('@') && !value.startsWith('/')) clearSelection()
+    },
+    [setSearchQuery, clearSelection],
+  )
 
   // Handle search input keydown for slash commands
-  const handleSearchKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      const query = searchQuery.trim()
-      // Check if it's a complete slash command
-      if (query.startsWith('/')) {
-        const commandName = query.substring(1).split(' ')[0]
-        const handler = slashCommandRegistry.findCommand(commandName!)
+  const handleSearchKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        const query = searchQuery.trim()
+        // Check if it's a complete slash command
+        if (query.startsWith('/')) {
+          const commandName = query.substring(1).split(' ')[0]
+          const handler = slashCommandRegistry.findCommand(commandName!)
 
-        // If it's a direct mode command, execute immediately
-        const isAvailable = handler?.isAvailable?.() ?? true
-        if (handler?.mode === 'direct' && handler.execute && isAvailable) {
-          e.preventDefault()
-          handler.execute()
-          onOpenChange(false)
-          setSearchQuery('')
+          // If it's a direct mode command, execute immediately
+          const isAvailable = handler?.isAvailable?.() ?? true
+          if (handler?.mode === 'direct' && handler.execute && isAvailable) {
+            e.preventDefault()
+            handler.execute()
+            onOpenChange(false)
+            setSearchQuery('')
+          }
         }
       }
-    }
-  }, [searchQuery, onOpenChange, setSearchQuery])
+    },
+    [searchQuery, onOpenChange, setSearchQuery],
+  )
 
   // Determine which empty state to show
   const emptyStateVariant = useMemo(() => {
-    if (isLoading)
-      return 'loading'
-    if (isError)
-      return 'error'
+    if (isLoading) return 'loading'
+    if (isError) return 'error'
     if (!searchQuery.trim()) {
       // Show default hint only when there are no recent items to display
       return dedupedResults.length === 0 ? 'default' : null
     }
-    if (dedupedResults.length === 0 && !isCommandsMode)
-      return 'no-results'
+    if (dedupedResults.length === 0 && !isCommandsMode) return 'no-results'
     return null
   }, [isLoading, isError, searchQuery, dedupedResults.length, isCommandsMode])
 
   return (
     <>
       <SlashCommandProvider />
-      <Dialog
-        open={open}
-        onOpenChange={onOpenChange}
-      >
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="w-[480px]! overflow-hidden p-0!">
           <Command
             className="outline-hidden"
@@ -161,44 +143,31 @@ const GotoAnythingDialog: FC<Props> = ({
               onChange={handleSearchChange}
               onKeyDown={handleSearchKeyDown}
               searchMode={searchMode}
-              placeholder={t('gotoAnything.searchPlaceholder', { ns: 'app' })}
+              placeholder={t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' })}
             />
 
             <Command.List className="h-[240px] overflow-y-auto">
-              {emptyStateVariant === 'loading' && (
-                <EmptyState variant="loading" />
-              )}
+              {emptyStateVariant === 'loading' && <EmptyState variant="loading" />}
 
-              {emptyStateVariant === 'error' && (
-                <EmptyState variant="error" error={error} />
-              )}
+              {emptyStateVariant === 'error' && <EmptyState variant="error" error={error} />}
 
               {!isLoading && !isError && (
                 <>
-                  {isCommandsMode
-                    ? (
-                        <CommandSelector
-                          actions={Actions}
-                          onCommandSelect={handleCommandSelect}
-                          searchFilter={searchQuery.trim().substring(1)}
-                          commandValue={cmdVal}
-                          onCommandValueChange={setCmdVal}
-                          originalQuery={searchQuery.trim()}
-                        />
-                      )
-                    : (
-                        <ResultList
-                          groupedResults={groupedResults}
-                          onSelect={handleNavigate}
-                        />
-                      )}
+                  {isCommandsMode ? (
+                    <CommandSelector
+                      actions={Actions}
+                      onCommandSelect={handleCommandSelect}
+                      searchFilter={searchQuery.trim().substring(1)}
+                      commandValue={cmdVal}
+                      onCommandValueChange={setCmdVal}
+                      originalQuery={searchQuery.trim()}
+                    />
+                  ) : (
+                    <ResultList groupedResults={groupedResults} onSelect={handleNavigate} />
+                  )}
 
                   {!isCommandsMode && emptyStateVariant === 'no-results' && (
-                    <EmptyState
-                      variant="no-results"
-                      searchMode={searchMode}
-                      Actions={Actions}
-                    />
+                    <EmptyState variant="no-results" searchMode={searchMode} Actions={Actions} />
                   )}
 
                   {!isCommandsMode && emptyStateVariant === 'default' && (

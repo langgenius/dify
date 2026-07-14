@@ -169,10 +169,10 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     ).all()
                     segment_ids = [segment.id for segment in segments]
                     if segment_ids:
-                        SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
+                        SummaryIndexService.delete_summaries_for_segments(dataset=dataset, segment_ids=segment_ids)
             else:
                 # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None)
+                SummaryIndexService.delete_summaries_for_segments(dataset=dataset, segment_ids=None)
 
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             delete_child_chunks = kwargs.get("delete_child_chunks") or False
@@ -291,7 +291,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     attachments.append(file_document)
                 doc.attachments = attachments
             else:
-                account = AccountService.load_user(document.created_by)
+                account = AccountService.load_user(document.created_by, db.session())
                 if not account:
                     raise ValueError("Invalid account")
                 doc.attachments = self._get_content_files(doc, current_user=account)

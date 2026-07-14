@@ -49,6 +49,8 @@ def make_message():
     msg.query = "hello"
     msg.re_sign_file_url_answer = ""
     msg.user_feedback = MagicMock(rating=None)
+    msg.total_price = None
+    msg.currency = None
     msg.status = "normal"
     msg.error = None
     return msg
@@ -200,7 +202,7 @@ class TestMessageMoreLikeThisApi:
                 return_value=("ok", 200),
             ),
         ):
-            resp = method(MagicMock(), installed_app, "mid")
+            resp = method(MagicMock(), MagicMock(), installed_app, "mid")
 
         assert resp == ("ok", 200)
 
@@ -212,7 +214,7 @@ class TestMessageMoreLikeThisApi:
         installed_app.app = MagicMock(mode="chat")
 
         with pytest.raises(NotCompletionAppError):
-            method(MagicMock(), installed_app, "mid")
+            method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_more_like_this_disabled(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
@@ -233,7 +235,7 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(AppMoreLikeThisDisabledError):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_message_not_exists_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
@@ -254,7 +256,7 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_provider_not_init_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
@@ -275,7 +277,7 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_quota_exceeded_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
@@ -296,7 +298,7 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(ProviderQuotaExceededError):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_model_not_support_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
@@ -317,7 +319,7 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_invoke_error_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
@@ -338,7 +340,7 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(CompletionRequestError):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
     def test_unexpected_error_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
@@ -359,7 +361,7 @@ class TestMessageMoreLikeThisApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(MagicMock(), installed_app, "mid")
+                method(MagicMock(), MagicMock(), installed_app, "mid")
 
 
 class TestMessageSuggestedQuestionApi:

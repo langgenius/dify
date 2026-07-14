@@ -1,7 +1,7 @@
 import type { SnippetInputField } from '@/models/snippet'
 import { act, renderHook } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
-import { useSnippetDetailStore } from '../../store'
+import { useSnippetDraftStore } from '../../draft-store'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
@@ -38,10 +38,10 @@ vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-serial-async-callback', () => ({
-  useSerialAsyncCallback: (fn: (...args: unknown[]) => Promise<void>, checkFn?: () => boolean) =>
+  useSerialAsyncCallback:
+    (fn: (...args: unknown[]) => Promise<void>, checkFn?: () => boolean) =>
     (...args: unknown[]) => {
-      if (checkFn?.())
-        return
+      if (checkFn?.()) return
 
       if (deferSerialCallbacks) {
         queuedSerialCallbacks.push(() => fn(...args))
@@ -61,7 +61,13 @@ vi.mock('@/app/components/workflow/store', () => ({
 vi.mock('@/service/client', () => ({
   consoleClient: {
     snippets: {
-      syncDraftWorkflow: (...args: unknown[]) => mockSyncDraftWorkflow(...args),
+      bySnippetId: {
+        workflows: {
+          draft: {
+            post: (...args: unknown[]) => mockSyncDraftWorkflow(...args),
+          },
+        },
+      },
     },
   },
 }))
@@ -112,9 +118,7 @@ describe('snippet/use-nodes-sync-draft', () => {
     mockSetSyncWorkflowDraftHash.mockImplementation((hash: string) => {
       workflowStoreState.syncWorkflowDraftHash = hash
     })
-    useSnippetDetailStore.setState({
-      fields: [createInputField('topic')],
-    })
+    useSnippetDraftStore.getState().setInputFields([createInputField('topic')])
   })
 
   it('should include current input_fields when syncing the draft graph', async () => {
@@ -125,7 +129,7 @@ describe('snippet/use-nodes-sync-draft', () => {
     })
 
     expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
-      params: { snippetId: 'snippet-1' },
+      params: { snippet_id: 'snippet-1' },
       body: {
         graph: {
           nodes: [{ id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Start' } }],
@@ -139,6 +143,21 @@ describe('snippet/use-nodes-sync-draft', () => {
     expect(mockUseNodesReadOnlyByCanEdit).toHaveBeenCalledWith(true)
   })
 
+  it('should keep draft input_fields when the navigation store is reset during route leave', () => {
+    const { result } = renderHook(() => useNodesSyncDraft('snippet-1'))
+
+    act(() => {
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockPostWithKeepalive).toHaveBeenCalledWith(
+      '/api/snippets/snippet-1/workflows/draft',
+      expect.objectContaining({
+        input_fields: [createInputField('topic')],
+      }),
+    )
+  })
+
   it('should snapshot graph before queued draft sync executes', async () => {
     deferSerialCallbacks = true
     const { result } = renderHook(() => useNodesSyncDraft('snippet-1'))
@@ -150,15 +169,17 @@ describe('snippet/use-nodes-sync-draft', () => {
     mockGetNodes.mockReturnValue([
       { id: 'late-node', position: { x: 9, y: 9 }, data: { title: 'Late' } },
     ])
-    reactFlowState.edges = [{ id: 'late-edge', source: 'late-node', target: 'late-target', data: { stable: false } }]
+    reactFlowState.edges = [
+      { id: 'late-edge', source: 'late-node', target: 'late-target', data: { stable: false } },
+    ]
     reactFlowState.transform = [99, 88, 0.5]
 
     await act(async () => {
-      await Promise.all(queuedSerialCallbacks.map(run => run()))
+      await Promise.all(queuedSerialCallbacks.map((run) => run()))
     })
 
     expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
-      params: { snippetId: 'snippet-1' },
+      params: { snippet_id: 'snippet-1' },
       body: {
         graph: {
           nodes: [{ id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Start' } }],
@@ -180,7 +201,7 @@ describe('snippet/use-nodes-sync-draft', () => {
     })
 
     expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
-      params: { snippetId: 'snippet-1' },
+      params: { snippet_id: 'snippet-1' },
       body: {
         graph: {
           nodes: [{ id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Start' } }],
@@ -215,13 +236,13 @@ describe('snippet/use-nodes-sync-draft', () => {
     })
 
     expect(mockSyncDraftWorkflow).toHaveBeenNthCalledWith(1, {
-      params: { snippetId: 'snippet-1' },
+      params: { snippet_id: 'snippet-1' },
       body: expect.objectContaining({
         hash: 'draft-hash',
       }),
     })
     expect(mockSyncDraftWorkflow).toHaveBeenNthCalledWith(2, {
-      params: { snippetId: 'snippet-1' },
+      params: { snippet_id: 'snippet-1' },
       body: expect.objectContaining({
         hash: 'hash-after-first-sync',
       }),

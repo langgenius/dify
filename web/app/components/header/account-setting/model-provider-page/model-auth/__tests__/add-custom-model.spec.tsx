@@ -8,7 +8,12 @@ const mockHandleOpenModalForAddNewCustomModel = vi.fn()
 const mockHandleOpenModalForAddCustomModelToModelList = vi.fn()
 
 vi.mock('../hooks/use-auth', () => ({
-  useAuth: (_provider: unknown, _configMethod: unknown, _fixedFields: unknown, options: { mode: string }) => {
+  useAuth: (
+    _provider: unknown,
+    _configMethod: unknown,
+    _fixedFields: unknown,
+    options: { mode: string },
+  ) => {
     if (options.mode === 'config-custom-model') {
       return { handleOpenModal: mockHandleOpenModalForAddNewCustomModel }
     }
@@ -19,16 +24,51 @@ vi.mock('../hooks/use-auth', () => ({
   },
 }))
 
-let mockCanAddedModels: { model: string, model_type: string }[] = []
+let mockCanAddedModels: { model: string; model_type: string }[] = []
 vi.mock('../hooks/use-custom-models', () => ({
   useCanAddedModels: () => mockCanAddedModels,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: ['credential.manage', 'credential.use'],
-  }),
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['credential.use', 'credential.create', 'credential.manage'],
 }))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 // Mock components
 vi.mock('../../model-icon', () => ({
@@ -42,9 +82,7 @@ vi.mock('@remixicon/react', () => ({
 
 vi.mock('@langgenius/dify-ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="tooltip-mock">
-      {children}
-    </div>
+    <div data-testid="tooltip-mock">{children}</div>
   ),
   TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
   TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -60,6 +98,7 @@ describe('AddCustomModel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.value = ['credential.use', 'credential.create', 'credential.manage']
     mockCanAddedModels = []
   })
 
@@ -118,6 +157,31 @@ describe('AddCustomModel', () => {
     fireEvent.click(screen.getByText('gpt-4'))
 
     expect(mockHandleOpenModalForAddCustomModelToModelList).toHaveBeenCalledWith(undefined, model)
+  })
+
+  it('should show existing model rows as disabled for create-only users', () => {
+    const model = { model: 'gpt-4', model_type: 'llm' }
+    mockWorkspacePermissionKeys.value = ['credential.create']
+    mockCanAddedModels = [model]
+
+    render(
+      <AddCustomModel
+        provider={mockProvider}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('popover-trigger'))
+
+    const modelRow = screen.getByText('gpt-4').closest('[aria-disabled]')
+    expect(modelRow).toHaveAttribute('aria-disabled', 'true')
+    expect(modelRow).toHaveClass('cursor-not-allowed')
+
+    fireEvent.click(screen.getByText('gpt-4'))
+    expect(mockHandleOpenModalForAddCustomModelToModelList).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText(/modelProvider.auth.addNewModel/))
+    expect(mockHandleOpenModalForAddNewCustomModel).toHaveBeenCalled()
   })
 
   it('should call handleOpenModalForAddNewCustomModel when clicking "Add New Model" in list', () => {

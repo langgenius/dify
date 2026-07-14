@@ -8,7 +8,7 @@ import { ReadmeEntrance } from '../entrance'
 import ReadmePanel from '../index'
 import { useReadmePanelStore } from '../store'
 
-(
+;(
   globalThis as typeof globalThis & {
     BASE_UI_ANIMATIONS_DISABLED: boolean
   }
@@ -16,7 +16,8 @@ import { useReadmePanelStore } from '../store'
 
 const mockUsePluginReadme = vi.fn()
 vi.mock('@/service/use-plugins', () => ({
-  usePluginReadme: (params: { plugin_unique_identifier: string, language?: string }) => mockUsePluginReadme(params),
+  usePluginReadme: (params: { plugin_unique_identifier: string; language?: string }) =>
+    mockUsePluginReadme(params),
 }))
 
 let mockLanguage = 'en-US'
@@ -25,7 +26,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('../../plugin-detail-panel/detail-header', () => ({
-  default: ({ detail, isReadmeView }: { detail: PluginDetail, isReadmeView: boolean }) => (
+  default: ({ detail, isReadmeView }: { detail: PluginDetail; isReadmeView: boolean }) => (
     <div data-testid="detail-header" data-is-readme-view={isReadmeView}>
       {detail.name}
     </div>
@@ -89,21 +90,18 @@ const createMockPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDe
   ...overrides,
 })
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
     },
-  },
-})
+  })
 
 const renderWithQueryClient = (ui: ReactElement) => {
   const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
 const openReadmePanel = (
@@ -200,9 +198,11 @@ describe('ReadmePanel', () => {
   })
 
   it('should call usePluginReadme with the plugin identifier and selected language', () => {
-    openReadmePanel(createMockPluginDetail({
-      plugin_unique_identifier: 'custom-plugin@2.0.0',
-    }))
+    openReadmePanel(
+      createMockPluginDetail({
+        plugin_unique_identifier: 'custom-plugin@2.0.0',
+      }),
+    )
 
     renderWithQueryClient(<ReadmePanel />)
 
@@ -214,9 +214,11 @@ describe('ReadmePanel', () => {
 
   it('should pass undefined language for zh-Hans locale', () => {
     mockLanguage = 'zh-Hans'
-    openReadmePanel(createMockPluginDetail({
-      plugin_unique_identifier: 'zh-plugin@1.0.0',
-    }))
+    openReadmePanel(
+      createMockPluginDetail({
+        plugin_unique_identifier: 'zh-plugin@1.0.0',
+      }),
+    )
 
     renderWithQueryClient(<ReadmePanel />)
 

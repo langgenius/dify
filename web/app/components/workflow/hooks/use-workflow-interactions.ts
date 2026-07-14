@@ -1,5 +1,4 @@
-/* eslint-disable no-barrel-files/no-barrel-files */
+/* oxlint-disable no-barrel-files/no-barrel-files */
 export { useWorkflowOrganize } from './use-workflow-organize'
 export { useWorkflowInteractions, useWorkflowMoveMode } from './use-workflow-panel-interactions'
 export { useWorkflowUpdate } from './use-workflow-update'
-export { useWorkflowZoom } from './use-workflow-zoom'

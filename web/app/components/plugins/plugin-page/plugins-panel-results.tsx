@@ -31,16 +31,12 @@ const BuiltinMarketplacePanel = ({
   keywords,
   tagFilterValue,
 }: BuiltinMarketplacePanelProps) => {
-  const {
-    isMarketplaceArrowVisible,
-    marketplaceContext,
-    showMarketplacePanel,
-    toolListTailRef,
-  } = useToolMarketplacePanel({
-    containerRef,
-    keywords,
-    tagFilterValue,
-  })
+  const { isMarketplaceArrowVisible, marketplaceContext, showMarketplacePanel, toolListTailRef } =
+    useToolMarketplacePanel({
+      containerRef,
+      keywords,
+      tagFilterValue,
+    })
 
   return (
     <>
@@ -58,7 +54,7 @@ const BuiltinMarketplacePanel = ({
 }
 
 type PluginsPanelResultsProps = {
-  canManagePlugin: boolean
+  canDeletePlugin: boolean
   canUpdatePlugin: boolean
   containerRef: RefObject<HTMLDivElement | null>
   contentFrameClassName: string
@@ -80,7 +76,7 @@ type PluginsPanelResultsProps = {
 }
 
 const PluginsPanelResults = ({
-  canManagePlugin,
+  canDeletePlugin,
   canUpdatePlugin,
   containerRef,
   contentFrameClassName,
@@ -115,18 +111,16 @@ const PluginsPanelResults = ({
         className="overscroll-contain"
         role={scrollAreaLabel ? 'region' : undefined}
       >
-        <ScrollAreaContent className={cn(
-          'flex min-h-full flex-col',
-          isAgentStrategyIntegrationPage && 'pt-2',
-        )}
+        <ScrollAreaContent
+          className={cn('flex min-h-full flex-col', isAgentStrategyIntegrationPage && 'pt-2')}
         >
           {(hasVisiblePlugins || hasVisibleBuiltinTools) && (
             <List
               pluginList={filteredList}
-              canManagePlugin={canManagePlugin}
+              canDeletePlugin={canDeletePlugin}
               canUpdatePlugin={canUpdatePlugin}
             >
-              {filteredBuiltinTools.map(collection => (
+              {filteredBuiltinTools.map((collection) => (
                 <button
                   key={collection.id}
                   type="button"
@@ -145,13 +139,13 @@ const PluginsPanelResults = ({
           )}
           {!isLastPage && (
             <div className="flex w-full justify-center py-4">
-              {isFetching
-                ? <Loading className="size-8" />
-                : (
-                    <Button onClick={loadNextPage}>
-                      {t('common.loadMore', { ns: 'workflow' })}
-                    </Button>
-                  )}
+              {isFetching ? (
+                <Loading className="size-8" />
+              ) : (
+                <Button onClick={loadNextPage}>
+                  {t(($) => $['common.loadMore'], { ns: 'workflow' })}
+                </Button>
+              )}
             </div>
           )}
           {hasToolMarketplacePanel && (
@@ -164,7 +158,7 @@ const PluginsPanelResults = ({
           )}
         </ScrollAreaContent>
       </ScrollAreaViewport>
-      <ScrollAreaScrollbar className="data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+      <ScrollAreaScrollbar>
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
     </ScrollAreaRoot>

@@ -63,8 +63,7 @@ const getZoomControls = () => {
   const zoomOutIcon = document.querySelector('.i-ri-zoom-out-line')
   const zoomInIcon = document.querySelector('.i-ri-zoom-in-line')
 
-  if (!label || !zoomOutIcon || !zoomInIcon)
-    throw new Error('Missing zoom controls')
+  if (!label || !zoomOutIcon || !zoomInIcon) throw new Error('Missing zoom controls')
 
   return {
     zoomOutTrigger: zoomOutIcon.parentElement as HTMLElement,
@@ -145,12 +144,7 @@ describe('workflow zoom controls', () => {
   })
 
   it('keeps the show-user-comments action disabled in comment mode', () => {
-    renderZoomInOut(
-      <ZoomInOut
-        isCommentMode
-        onToggleUserComments={mockToggleUserComments}
-      />,
-    )
+    renderZoomInOut(<ZoomInOut isCommentMode onToggleUserComments={mockToggleUserComments} />)
 
     const menu = openZoomMenu()
     fireEvent.click(menu.getByText('workflow.operator.showUserComments'))

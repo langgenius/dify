@@ -14,7 +14,17 @@ import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webho
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { docPathProductAvailability } from '@/types/doc-paths'
 import { useIsChatMode } from './use-is-chat-mode'
+
+const getNodeHelpLinkPath = (helpLinkUri?: string): DocPathWithoutLang | undefined => {
+  if (!helpLinkUri) return undefined
+
+  const helpLinkPath = `/use-dify/nodes/${helpLinkUri}`
+  if (!docPathProductAvailability[helpLinkPath]) return undefined
+
+  return helpLinkPath as DocPathWithoutLang
+}
 
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
@@ -22,62 +32,79 @@ export const useAvailableNodesMetaData = () => {
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
 
-  const startNodeMetaData = useMemo(() => ({
-    ...StartDefault,
-    metaData: {
-      ...StartDefault.metaData,
-      isUndeletable: isChatMode, // start node is undeletable in chat mode, @use-nodes-interactions: handleNodeDelete function
-    },
-  }), [isChatMode])
+  const startNodeMetaData = useMemo(
+    () => ({
+      ...StartDefault,
+      metaData: {
+        ...StartDefault.metaData,
+        isUndeletable: isChatMode, // start node is undeletable in chat mode, @use-nodes-interactions: handleNodeDelete function
+      },
+    }),
+    [isChatMode],
+  )
 
   const mergedNodesMetaData = useMemo(() => {
-    const commonNodes = WORKFLOW_COMMON_NODES.filter(node =>
+    const commonNodes = WORKFLOW_COMMON_NODES.filter((node) =>
       agentV2Enabled
         ? node.metaData.type !== BlockEnum.Agent
-        : node.metaData.type !== BlockEnum.AgentV2)
+        : node.metaData.type !== BlockEnum.AgentV2,
+    )
 
     return [
       ...commonNodes,
       startNodeMetaData,
-      ...(
-        isChatMode
-          ? [AnswerDefault]
-          : [
-              StartPlaceholderDefault,
-              EndDefault,
-              TriggerWebhookDefault,
-              TriggerScheduleDefault,
-              TriggerPluginDefault,
-            ]
-      ),
+      ...(isChatMode
+        ? [AnswerDefault]
+        : [
+            StartPlaceholderDefault,
+            EndDefault,
+            TriggerWebhookDefault,
+            TriggerScheduleDefault,
+            TriggerPluginDefault,
+          ]),
     ]
   }, [agentV2Enabled, isChatMode, startNodeMetaData])
 
-  const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
-    const { metaData } = node
-    const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
-    const description = t(`blocksAbout.${metaData.type}` as I18nKeysWithPrefix<'workflow', 'blocksAbout.'>, { ns: 'workflow' })
-    const helpLinkPath = `/use-dify/nodes/${metaData.helpLinkUri}` as DocPathWithoutLang
-    return {
-      ...node,
-      metaData: {
-        ...metaData,
-        title,
-        description,
-        helpLinkUri: docLink(helpLinkPath),
-      },
-      defaultValue: {
-        ...node.defaultValue,
-        type: metaData.type === BlockEnum.AgentV2 ? BlockEnum.Agent : metaData.type,
-        title,
-      },
-    }
-  }), [mergedNodesMetaData, t, docLink])
+  const availableNodesMetaData = useMemo(
+    () =>
+      mergedNodesMetaData.map((node) => {
+        const { metaData } = node
+        const title = t(($) => $[`blocks.${metaData.type}`], { ns: 'workflow' })
+        const description = t(
+          ($) =>
+            $[`blocksAbout.${metaData.type}` as I18nKeysWithPrefix<'workflow', 'blocksAbout.'>],
+          { ns: 'workflow' },
+        )
+        const helpLinkPath = getNodeHelpLinkPath(metaData.helpLinkUri)
+        return {
+          ...node,
+          metaData: {
+            ...metaData,
+            title,
+            description,
+            helpLinkUri: helpLinkPath ? docLink(helpLinkPath) : undefined,
+          },
+          defaultValue: {
+            ...node.defaultValue,
+            type: metaData.type === BlockEnum.AgentV2 ? BlockEnum.Agent : metaData.type,
+            title,
+          },
+        }
+      }),
+    [mergedNodesMetaData, t, docLink],
+  )
 
-  const availableNodesMetaDataMap = useMemo(() => availableNodesMetaData.reduce((acc, node) => {
-    acc![node.metaData.type] = node
-    return acc
-  }, {} as AvailableNodesMetaData['nodesMap']), [availableNodesMetaData])
+  const availableNodesMetaDataMap = useMemo(
+    () =>
+      availableNodesMetaData.reduce(
+        (acc, node) => {
+          acc![node.metaData.type] = node
+          return acc
+        },
+        {} as AvailableNodesMetaData['nodesMap'],
+      ),
+    [availableNodesMetaData],
+  )
 
   return useMemo(() => {
     return {
