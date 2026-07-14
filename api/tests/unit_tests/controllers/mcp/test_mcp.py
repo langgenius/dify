@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import types
+from collections.abc import Iterator
 from inspect import unwrap
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -12,7 +13,19 @@ from flask import Flask, Response
 from pydantic import ValidationError
 
 import controllers.mcp.mcp as module
+from models.engine import db
 from models.model import EndUser
+
+
+@pytest.fixture
+def app() -> Iterator[Flask]:
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        EndUser.__table__.create(db.engine)
+        yield app
 
 
 @pytest.fixture(autouse=True)
@@ -21,12 +34,6 @@ def mock_mcp_ns():
     fake_ns.payload = None
     fake_ns.models = {}
     module.mcp_ns = fake_ns
-
-
-@pytest.fixture(autouse=True)
-def _route_database_to_sqlite(monkeypatch: pytest.MonkeyPatch, sqlite_engine) -> None:
-    EndUser.__table__.create(sqlite_engine)
-    monkeypatch.setattr(module, "db", types.SimpleNamespace(engine=sqlite_engine))
 
 
 @pytest.fixture
