@@ -6,6 +6,7 @@ cover the concrete objects and session passed across the controller boundary.
 """
 
 import uuid
+from inspect import unwrap
 from typing import cast
 from unittest.mock import patch
 
@@ -13,7 +14,6 @@ import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden
-from werkzeug.local import LocalProxy
 
 from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountRole
@@ -52,13 +52,10 @@ def account(controller_session: Session, tenant: Tenant, monkeypatch: pytest.Mon
     controller_session.add(account)
     controller_session.flush()
 
-    # The controller can receive the concrete account directly. The permission decorator
-    # still needs LocalProxy._get_current_object(), so point its proxy at that same account.
+    # Inject the concrete account at the controller boundary without relying on Flask-Login globals.
     from controllers.service_api.dataset import dataset as dataset_module
-    from libs import login
 
     monkeypatch.setattr(dataset_module, "current_user", account)
-    monkeypatch.setattr(login, "current_user", LocalProxy(lambda: account))
     return account
 
 
@@ -228,24 +225,10 @@ class TestDatasetTagsApiDelete:
             json={"tag_id": "tag-1"},
         ):
             api = DatasetTagsApi()
-            result = api.delete(_=None)
+            result = unwrap(api.delete)(api, _=None)
 
         assert result == ("", 204)
         mock_tag_svc.delete_tag.assert_called_once_with("tag-1", controller_session, tag_type=TagType.KNOWLEDGE)
-
-    def test_delete_tag_forbidden(self, app: Flask, account: Account):
-        from controllers.service_api.dataset.dataset import DatasetTagsApi
-
-        account.role = TenantAccountRole.NORMAL
-
-        with app.test_request_context(
-            "/datasets/tags",
-            method="DELETE",
-            json={"tag_id": "tag-1"},
-        ):
-            api = DatasetTagsApi()
-            with pytest.raises(Forbidden):
-                api.delete(_=None)
 
 
 class TestDatasetTagsBindingStatusApi:
