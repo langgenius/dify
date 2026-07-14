@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from copy import deepcopy
 from typing import Any
 
@@ -13,6 +14,8 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.nodes.llm.entities import ModelConfig
 from graphon.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
 from graphon.nodes.llm.protocols import CredentialsProvider
+
+logger = logging.getLogger(__name__)
 
 
 class DifyCredentialsProvider:
@@ -155,6 +158,8 @@ def _normalize_completion_params(
     first_token_timeout: float | None = None
     if isinstance(raw_timeout_ms, (int, float)) and not isinstance(raw_timeout_ms, bool) and raw_timeout_ms > 0:
         first_token_timeout = float(raw_timeout_ms) / 1000
+    elif raw_timeout_ms is not None:
+        logger.debug("Ignoring invalid first_token_timeout_ms in completion_params: %r", raw_timeout_ms)
 
     return normalized_parameters, stop, first_token_timeout
 

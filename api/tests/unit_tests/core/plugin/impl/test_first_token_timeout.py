@@ -162,9 +162,24 @@ def test_read_timeout_after_first_line_is_transport_error(mocker: MockerFixture)
     first_token_timeout_ctx.set(0.5)
 
     # First token already seen -> a later read timeout is an inter-token stall, not a
-    # first-token timeout.
-    with pytest.raises(PluginDaemonInnerError):
+    # first-token timeout. With the gate on, the message names the configured window so
+    # the stall is traceable to the user's setting.
+    with pytest.raises(PluginDaemonInnerError) as exc_info:
         list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
+    assert "0.5s first-token timeout window" in exc_info.value.message
+
+
+def test_read_timeout_after_first_line_with_gate_off_keeps_plain_message(mocker: MockerFixture) -> None:
+    client = BasePluginClient()
+    mocker.patch(
+        "httpx.Client.stream",
+        return_value=_LinesThenRaiseStream([b"data: hello"], httpx.ReadTimeout("inter-token")),
+    )
+    # ctx is None (autouse fixture) -> gate off -> no window hint in the message.
+
+    with pytest.raises(PluginDaemonInnerError) as exc_info:
+        list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
+    assert "first-token timeout window" not in exc_info.value.message
 
 
 def test_non_timeout_request_error_is_transport_error(mocker: MockerFixture) -> None:
@@ -175,3 +190,31 @@ def test_non_timeout_request_error_is_transport_error(mocker: MockerFixture) -> 
     # Only a ReadTimeout maps to FirstTokenTimeoutError; other transport errors do not.
     with pytest.raises(PluginDaemonInnerError):
         list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
+
+
+# --- graphon error-transform contract -----------------------------------------------------
+
+
+def test_first_token_timeout_error_survives_graphon_invoke_error_transform() -> None:
+    """Pin the graphon behavior the error_type contract depends on.
+
+    Workflow observability surfaces error_type == "FirstTokenTimeoutError" only because
+    graphon's ``AIModel._transform_invoke_error`` returns the original exception unchanged:
+    ``InvokeError`` subclasses ``ValueError`` and the default mapping carries a
+    ``ValueError -> [ValueError]`` passthrough entry. If a graphon bump changes either
+    fact, the error type silently degrades to a generic ``InvokeError`` and per-type
+    error handling / observability breaks — this test turns that into a loud failure.
+    """
+    from graphon.model_runtime.errors.invoke import InvokeError
+    from graphon.model_runtime.model_providers.base.ai_model import AIModel
+
+    class _ProbeModel:
+        _invoke_error_mapping = AIModel._invoke_error_mapping
+        provider_display_name = "probe"
+
+    assert issubclass(InvokeError, ValueError)
+
+    error = FirstTokenTimeoutError("The first token was not received within 1.5s.")
+    transformed = AIModel._transform_invoke_error(_ProbeModel(), error)  # type: ignore[arg-type]
+
+    assert transformed is error

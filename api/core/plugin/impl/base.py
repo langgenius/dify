@@ -57,13 +57,15 @@ match _plugin_daemon_timeout_config:
 
 
 def _read_timeout_for(first_token_timeout: float | None) -> httpx.Timeout | None:
-    """Narrow the daemon request timeout's ``read`` component to the first-token budget.
+    """Replace the daemon request timeout's ``read`` component with the first-token budget.
 
     The daemon withholds the response headers until the model's first token and sends no
     heartbeat before it, so httpx's ``read`` timeout (which covers both the header wait and
-    each body read) measures time-to-first-token. A non-positive budget disables the gate
-    and keeps the default timeout. ``httpx.Timeout(base, read=x)`` is rejected when ``base``
-    is a ``Timeout``, so the other components are copied explicitly.
+    each body read) measures time-to-first-token. The budget replaces the operator-level
+    read timeout outright rather than narrowing it — deliberately, so slow reasoning models
+    can be granted more headroom than ``PLUGIN_DAEMON_TIMEOUT``. A non-positive budget
+    disables the gate and keeps the default timeout. ``httpx.Timeout(base, read=x)`` is
+    rejected when ``base`` is a ``Timeout``, so the other components are copied explicitly.
     """
     base = plugin_daemon_request_timeout
     if not first_token_timeout or first_token_timeout <= 0:
@@ -243,7 +245,12 @@ class BasePluginClient:
             if first_token_gate and not first_token_seen:
                 raise FirstTokenTimeoutError(f"The first token was not received within {first_token_timeout}s.") from e
             logger.exception("Stream request to Plugin Daemon Service failed")
-            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
+            message = "Request to Plugin Daemon Service failed"
+            if first_token_gate:
+                # The narrowed read window also bounds inter-token gaps; name the setting
+                # so a mid-stream stall is traceable to the user's configuration.
+                message += f" (stream stalled beyond the {first_token_timeout}s first-token timeout window)"
+            raise PluginDaemonInnerError(code=-500, message=message)
         except httpx.RequestError:
             logger.exception("Stream request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
