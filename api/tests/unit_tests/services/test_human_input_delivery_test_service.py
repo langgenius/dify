@@ -1,3 +1,5 @@
+"""Unit tests for human-input test delivery with SQLite-backed member lookup."""
+
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -5,7 +7,6 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from flask import Flask
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -90,8 +91,11 @@ class TestDeliveryTestRegistry:
         with pytest.raises(DeliveryTestUnsupportedError, match="Delivery method does not support test send."):
             registry.dispatch(context=context, method=method)
 
-    def test_default(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
+    def test_default(self, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(service_module, "db", SimpleNamespace(engine=sqlite_engine))
+
         registry = DeliveryTestRegistry.default()
+
         assert len(registry._handlers) == 1
         assert isinstance(registry._handlers[0], EmailDeliveryTestHandler)
 
@@ -112,24 +116,24 @@ class TestEmailDeliveryTestHandler:
         handler = EmailDeliveryTestHandler(session_factory=engine)
         assert handler._session_factory.kw["bind"] == engine
 
-    def test_supports(self):
-        handler = EmailDeliveryTestHandler(session_factory=MagicMock())
+    def test_supports(self, sqlite_engine: Engine) -> None:
+        handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         method = EmailDeliveryMethod(config=_make_valid_email_config())
         assert handler.supports(method) is True
         assert handler.supports(MagicMock()) is False
 
-    def test_send_test_unsupported_method(self):
-        handler = EmailDeliveryTestHandler(session_factory=MagicMock())
+    def test_send_test_unsupported_method(self, sqlite_engine: Engine) -> None:
+        handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         with pytest.raises(DeliveryTestUnsupportedError):
             handler.send_test(context=MagicMock(), method=MagicMock())
 
-    def test_send_test_feature_disabled(self, monkeypatch: pytest.MonkeyPatch):
+    def test_send_test_feature_disabled(self, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
             lambda _tenant_id, **_kwargs: SimpleNamespace(human_input_email_delivery_enabled=False),
         )
-        handler = EmailDeliveryTestHandler(session_factory=MagicMock())
+        handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         context = DeliveryTestContext(
             tenant_id="t1", app_id="a1", node_id="n1", node_title="title", rendered_content="content"
         )
@@ -138,7 +142,7 @@ class TestEmailDeliveryTestHandler:
         with pytest.raises(DeliveryTestError, match="Email delivery is not available"):
             handler.send_test(context=context, method=method)
 
-    def test_send_test_mail_not_inited(self, monkeypatch: pytest.MonkeyPatch):
+    def test_send_test_mail_not_inited(self, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
@@ -146,7 +150,7 @@ class TestEmailDeliveryTestHandler:
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: False)
 
-        handler = EmailDeliveryTestHandler(session_factory=MagicMock())
+        handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         context = DeliveryTestContext(
             tenant_id="t1", app_id="a1", node_id="n1", node_title="title", rendered_content="content"
         )
@@ -155,7 +159,7 @@ class TestEmailDeliveryTestHandler:
         with pytest.raises(DeliveryTestError, match="Mail client is not initialized."):
             handler.send_test(context=context, method=method)
 
-    def test_send_test_no_recipients(self, monkeypatch: pytest.MonkeyPatch):
+    def test_send_test_no_recipients(self, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
@@ -163,7 +167,7 @@ class TestEmailDeliveryTestHandler:
         )
         monkeypatch.setattr(service_module.mail, "is_inited", lambda: True)
 
-        handler = EmailDeliveryTestHandler(session_factory=MagicMock())
+        handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         handler._resolve_recipients = MagicMock(return_value=[])
 
         context = DeliveryTestContext(
@@ -174,7 +178,7 @@ class TestEmailDeliveryTestHandler:
         with pytest.raises(DeliveryTestError, match="No recipients configured"):
             handler.send_test(context=context, method=method)
 
-    def test_send_test_success(self, monkeypatch: pytest.MonkeyPatch):
+    def test_send_test_success(self, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
@@ -185,7 +189,7 @@ class TestEmailDeliveryTestHandler:
         monkeypatch.setattr(service_module.mail, "send", mock_mail_send)
         monkeypatch.setattr(service_module, "render_email_template", lambda t, s: f"RENDERED_{t}")
 
-        handler = EmailDeliveryTestHandler(session_factory=MagicMock())
+        handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         handler._resolve_recipients = MagicMock(return_value=["test@example.com"])
 
         variable_pool = VariablePool()
@@ -210,7 +214,7 @@ class TestEmailDeliveryTestHandler:
         assert kwargs["to"] == "test@example.com"
         assert "RENDERED_Subj" in kwargs["subject"]
 
-    def test_send_test_sanitizes_subject(self, monkeypatch: pytest.MonkeyPatch):
+    def test_send_test_sanitizes_subject(self, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
@@ -225,7 +229,7 @@ class TestEmailDeliveryTestHandler:
             lambda template, substitutions: template.replace("{{ recipient_email }}", substitutions["recipient_email"]),
         )
 
-        handler = EmailDeliveryTestHandler(session_factory=MagicMock())
+        handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         handler._resolve_recipients = MagicMock(return_value=["test@example.com"])
 
         context = DeliveryTestContext(
@@ -249,8 +253,8 @@ class TestEmailDeliveryTestHandler:
         _, kwargs = mock_mail_send.call_args
         assert kwargs["subject"] == "Notice BCC:test@example.com"
 
-    def test_resolve_recipients_external(self):
-        handler = EmailDeliveryTestHandler(session_factory=MagicMock())
+    def test_resolve_recipients_external(self, sqlite_engine: Engine) -> None:
+        handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         method = EmailDeliveryMethod(
             config=EmailDeliveryConfig(
                 recipients=EmailRecipients(
@@ -262,19 +266,18 @@ class TestEmailDeliveryTestHandler:
         )
         assert handler._resolve_recipients(tenant_id="t1", method=method) == ["ext@example.com"]
 
-    def test_resolve_recipients_member(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
+    @pytest.mark.parametrize("sqlite_session", [(Account, TenantAccountJoin)], indirect=True)
+    def test_resolve_recipients_member(self, sqlite_engine: Engine, sqlite_session: Session) -> None:
         tenant_id = str(uuid4())
         account = Account(name="Test User", email="member@example.com")
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        sqlite_session.add(account)
+        sqlite_session.commit()
 
         join = TenantAccountJoin(tenant_id=tenant_id, account_id=account.id)
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        sqlite_session.add(join)
+        sqlite_session.commit()
 
-        from extensions.ext_database import db
-
-        handler = EmailDeliveryTestHandler(session_factory=db.engine)
+        handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         method = EmailDeliveryMethod(
             config=EmailDeliveryConfig(
                 recipients=EmailRecipients(items=[MemberRecipient(reference_id=account.id)], include_bound_group=False),
@@ -284,23 +287,22 @@ class TestEmailDeliveryTestHandler:
         )
         assert handler._resolve_recipients(tenant_id=tenant_id, method=method) == ["member@example.com"]
 
+    @pytest.mark.parametrize("sqlite_session", [(Account, TenantAccountJoin)], indirect=True)
     def test_resolve_recipients_whole_workspace(
-        self, flask_app_with_containers: Flask, db_session_with_containers: Session
-    ):
+        self, sqlite_engine: Engine, sqlite_session: Session
+    ) -> None:
         tenant_id = str(uuid4())
         account1 = Account(name="User 1", email=f"u1-{uuid4()}@example.com")
         account2 = Account(name="User 2", email=f"u2-{uuid4()}@example.com")
-        db_session_with_containers.add_all([account1, account2])
-        db_session_with_containers.commit()
+        sqlite_session.add_all([account1, account2])
+        sqlite_session.commit()
 
         for acc in [account1, account2]:
             join = TenantAccountJoin(tenant_id=tenant_id, account_id=acc.id)
-            db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+            sqlite_session.add(join)
+        sqlite_session.commit()
 
-        from extensions.ext_database import db
-
-        handler = EmailDeliveryTestHandler(session_factory=db.engine)
+        handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         method = EmailDeliveryMethod(
             config=EmailDeliveryConfig(
                 recipients=EmailRecipients(items=[], include_bound_group=True),
@@ -311,8 +313,8 @@ class TestEmailDeliveryTestHandler:
         recipients = handler._resolve_recipients(tenant_id=tenant_id, method=method)
         assert set(recipients) == {account1.email, account2.email}
 
-    def test_query_workspace_member_emails_empty_ids(self):
-        handler = EmailDeliveryTestHandler(session_factory=MagicMock())
+    def test_query_workspace_member_emails_empty_ids(self, sqlite_engine: Engine) -> None:
+        handler = EmailDeliveryTestHandler(session_factory=sqlite_engine)
         assert handler._query_workspace_member_emails(tenant_id="t1", user_ids=[]) == {}
 
     def test_build_substitutions(self):
