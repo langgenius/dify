@@ -11,7 +11,6 @@ CLIENT_SHARED_DTO_DEPENDENCIES = {
     "httpx2>=2.5.0,<3.0.0",
     "pydantic>=2.12.5,<2.13",
     "pydantic-ai-slim>=1.102.0,<2.0.0",
-    "typer>=0.16.1,<0.17",
     "typing-extensions>=4.12.2,<5.0.0",
 }
 
@@ -72,8 +71,8 @@ def test_project_declares_console_scripts() -> None:
     pyproject = _read_pyproject()
     scripts = pyproject["project"]["scripts"]
 
-    assert scripts["dify-agent"] == "dify_agent.agent_stub.cli.main:main"
     assert scripts["dify-agent-stub-server"] == "dify_agent.agent_stub.server.cli:main"
+    assert "dify-agent" not in scripts
     assert "shellctl" not in scripts
     assert "shellctl-sanitize-pty" not in scripts
     assert "shellctl-runner-exit" not in scripts

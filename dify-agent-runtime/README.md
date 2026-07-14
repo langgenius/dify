@@ -48,6 +48,14 @@ docker run -d --name dify-agent-runtime \
   dify-agent-runtime:latest
 ```
 
+## Help text generation
+
+Cli help can be generated and injected to dify-agent's system prompt.
+
+```sh
+make gen-cli-help
+```
+
 ## Testing
 
 ```bash

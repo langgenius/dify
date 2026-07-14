@@ -9,324 +9,430 @@ import (
 	"strings"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/agentcli"
+	"github.com/spf13/cobra"
 )
 
+// knownRootCommands mirrors the Python CLI's _KNOWN_ROOT_COMMANDS. Anything else
+// on the command line is treated as argv forwarded to an implicit connect.
+var knownRootCommands = map[string]struct{}{
+	"config":  {},
+	"connect": {},
+	"drive":   {},
+	"file":    {},
+}
+
 func main() {
-	if err := run(os.Args[1:]); err != nil {
+	if err := runCLI(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "dify-agent: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(args []string) error {
-	if len(args) == 0 {
-		return printUsage()
+//go:generate sh -c "go run . __dump-cli-help > ../../../dify-agent/src/dify_agent/layers/_agent_cli_help.json"
+
+func runCLI(args []string) error {
+	// Hidden developer intercept: emit the JSON help snapshot from the cobra
+	// tree. Not registered as a cobra command, so the visible command surface
+	// stays identical to the Python CLI. See dumphelp.go.
+	if len(args) == 1 && args[0] == "__dump-cli-help" {
+		return dumpCLIHelp(os.Stdout)
 	}
 
-	command := args[0]
-	rest := args[1:]
-
-	switch command {
-	case "connect":
-		return handleConnect(rest)
-	case "file":
-		return handleFile(rest)
-	case "drive":
-		return handleDrive(rest)
-	case "config":
-		return handleConfig(rest)
-	case "--help", "-h", "help":
-		return printUsage()
-	default:
-		// Unknown commands are treated as argv to connect (like the Python CLI)
-		return handleConnectImplicit(args)
-	}
-}
-
-func printUsage() error {
-	fmt.Print(`Usage: dify-agent <command> [options]
-
-Commands:
-  connect   Connect to the Agent Stub server
-  file      File upload/download operations
-  drive     Drive list/pull/push operations
-  config    Config manifest/skills/files/env/note operations
-  help      Show this help message
-
-Environment Variables:
-  DIFY_AGENT_STUB_API_BASE_URL   Agent Stub server URL (http/https/grpc)
-  DIFY_AGENT_STUB_AUTH_JWE       Bearer JWE token for authentication
-  DIFY_AGENT_STUB_DRIVE_BASE     Local drive base directory (default: /mnt/drive)
-`)
-	return nil
-}
-
-func requireEnv() (*agentcli.Environment, error) {
-	return agentcli.ReadEnvironment()
-}
-
-// --- connect ---
-
-func handleConnect(args []string) error {
-	jsonOutput := removeFlag(&args, "--json")
-	env, err := requireEnv()
-	if err != nil {
-		return err
-	}
-	return agentcli.RunConnect(env, args, jsonOutput)
-}
-
-func handleConnectImplicit(args []string) error {
-	jsonOutput := removeFlag(&args, "--json")
-	env, err := requireEnv()
-	if err != nil {
-		return err
-	}
-	return agentcli.RunConnect(env, args, jsonOutput)
-}
-
-// --- file ---
-
-func handleFile(args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("usage: dify-agent file <upload|download> [options]")
+	// `connect` forwards its argv verbatim, so bypass flag parsing unless the
+	// user explicitly asked for help (which should render connect's help).
+	if len(args) >= 1 && args[0] == "connect" && !isHelpRequest(args[1:]) {
+		jsonOutput, forwarded := parseConnectArgs(args[1:])
+		return runConnect(forwarded, jsonOutput)
 	}
 
-	env, err := requireEnv()
-	if err != nil {
-		return err
-	}
-
-	switch args[0] {
-	case "upload":
-		if len(args) < 2 {
-			return fmt.Errorf("usage: dify-agent file upload <path>")
+	jsonOutput, forwarded := extractRootJSONFlag(args)
+	if isUnknownBareCommand(forwarded) {
+		// Match Python: surface root help when the environment is missing, then
+		// still attempt connect so the missing-env error is reported.
+		if !agentcli.HasEnvironment() {
+			_ = newRootCommand().Help()
 		}
-		return agentcli.RunFileUpload(env, args[1])
-
-	case "download":
-		if len(args) < 3 {
-			return fmt.Errorf("usage: dify-agent file download <transfer_method> <reference_or_url> [--to <dir>]")
-		}
-		transferMethod := args[1]
-		referenceOrURL := args[2]
-		localDir := extractOption(args[3:], "--to")
-		return agentcli.RunFileDownload(env, transferMethod, referenceOrURL, localDir)
-
-	default:
-		return fmt.Errorf("unknown file subcommand: %s", args[0])
+		return runConnect(forwarded, jsonOutput)
 	}
+
+	root := newRootCommand()
+	root.SetArgs(args)
+	return root.Execute()
 }
 
-// --- drive ---
+// --- command tree ---
 
-func handleDrive(args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("usage: dify-agent drive <list|pull|push> [options]")
+func newRootCommand() *cobra.Command {
+	root := &cobra.Command{
+		Use:           "dify-agent",
+		Short:         "Forward shell-visible dify-agent commands to the Dify Agent Stub server.",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
-
-	env, err := requireEnv()
-	if err != nil {
-		return err
-	}
-
-	switch args[0] {
-	case "list":
-		rest := args[1:]
-		jsonOutput := removeFlag(&rest, "--json")
-		prefix := ""
-		if len(rest) > 0 {
-			prefix = rest[0]
-		}
-		return agentcli.RunDriveList(env, prefix, jsonOutput)
-
-	case "pull":
-		rest := args[1:]
-		jsonOutput := removeFlag(&rest, "--json")
-		localBase := extractOption(rest, "--to")
-		rest = removeOptionPair(rest, "--to")
-		return agentcli.RunDrivePull(env, rest, localBase, jsonOutput)
-
-	case "push":
-		rest := args[1:]
-		if len(rest) < 2 {
-			return fmt.Errorf("usage: dify-agent drive push <local_path> <remote_path> [--kind <file|skill|dir>]")
-		}
-		localPath := rest[0]
-		remotePath := rest[1]
-		kind := extractOption(rest[2:], "--kind")
-		return agentcli.RunDrivePush(env, localPath, remotePath, kind)
-
-	default:
-		return fmt.Errorf("unknown drive subcommand: %s", args[0])
-	}
+	root.CompletionOptions.DisableDefaultCmd = true
+	// The Python CLI exposes no `help` command; hide cobra's auto-added one so
+	// the visible command surface stays identical.
+	root.SetHelpCommand(&cobra.Command{Hidden: true})
+	root.AddCommand(
+		newConnectCommand(),
+		newFileCommand(),
+		newDriveCommand(),
+		newConfigCommand(),
+	)
+	return root
 }
 
-// --- config ---
-
-func handleConfig(args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("usage: dify-agent config <manifest|skills|files|env|note> [options]")
+func newConnectCommand() *cobra.Command {
+	var jsonOutput bool
+	// connect is normally intercepted in runCLI; this definition exists so
+	// `dify-agent connect --help` renders framework help for the command.
+	cmd := &cobra.Command{
+		Use:   "connect [ARGV]...",
+		Short: "Establish one Agent Stub connection using the current environment.",
+		RunE: func(_ *cobra.Command, args []string) error {
+			return runConnect(args, jsonOutput)
+		},
 	}
-
-	env, err := requireEnv()
-	if err != nil {
-		return err
-	}
-
-	switch args[0] {
-	case "manifest":
-		return agentcli.RunConfigManifest(env)
-
-	case "skills":
-		return handleConfigSkills(env, args[1:])
-
-	case "files":
-		return handleConfigFiles(env, args[1:])
-
-	case "env":
-		return handleConfigEnv(env, args[1:])
-
-	case "note":
-		return handleConfigNote(env, args[1:])
-
-	default:
-		return fmt.Errorf("unknown config subcommand: %s", args[0])
-	}
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Emit the connection response as JSON.")
+	return cmd
 }
 
-func handleConfigSkills(env *agentcli.Environment, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("usage: dify-agent config skills <pull|push|delete> [options]")
+func newFileCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "file",
+		Short: "Upload or download workflow files through the Agent Stub.",
 	}
 
-	switch args[0] {
-	case "pull":
-		rest := args[1:]
-		jsonOutput := removeFlag(&rest, "--json")
-		localDir := extractOption(rest, "--to")
-		rest = removeOptionPair(rest, "--to")
-		return agentcli.RunConfigSkillsPull(env, rest, localDir, jsonOutput)
-
-	case "push":
-		return agentcli.RunConfigSkillsPush(env, args[1:])
-
-	case "delete":
-		return agentcli.RunConfigSkillsDelete(env, args[1:])
-
-	default:
-		return fmt.Errorf("unknown config skills subcommand: %s", args[0])
+	upload := &cobra.Command{
+		Use:   "upload PATH",
+		Short: "Upload one sandbox-local file as a ToolFile output reference.",
+		Args:  cobra.ExactArgs(1),
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			return agentcli.RunFileUpload(env, args[0])
+		}),
 	}
+
+	var downloadTo string
+	download := &cobra.Command{
+		Use:   "download TRANSFER_METHOD REFERENCE_OR_URL",
+		Short: "Download one workflow file mapping into the local sandbox directory.",
+		Args:  cobra.ExactArgs(2),
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			return agentcli.RunFileDownload(env, args[0], args[1], downloadTo)
+		}),
+	}
+	download.Flags().StringVar(&downloadTo, "to", "", "Local directory for the downloaded file.")
+
+	cmd.AddCommand(upload, download)
+	return cmd
 }
 
-func handleConfigFiles(env *agentcli.Environment, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("usage: dify-agent config files <pull|push|delete> [options]")
+func newDriveCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "drive",
+		Short: "List, pull, or push agent drive files through the Agent Stub.",
 	}
 
-	switch args[0] {
-	case "pull":
-		rest := args[1:]
-		jsonOutput := removeFlag(&rest, "--json")
-		localDir := extractOption(rest, "--to")
-		rest = removeOptionPair(rest, "--to")
-		return agentcli.RunConfigFilesPull(env, rest, localDir, jsonOutput)
-
-	case "push":
-		return agentcli.RunConfigFilesPush(env, args[1:])
-
-	case "delete":
-		return agentcli.RunConfigFilesDelete(env, args[1:])
-
-	default:
-		return fmt.Errorf("unknown config files subcommand: %s", args[0])
-	}
-}
-
-func handleConfigEnv(env *agentcli.Environment, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("usage: dify-agent config env push <path|->")
-	}
-	if args[0] != "push" {
-		return fmt.Errorf("unknown config env subcommand: %s", args[0])
-	}
-	if len(args) < 2 {
-		return fmt.Errorf("usage: dify-agent config env push <path|->")
-	}
-	return agentcli.RunConfigEnvPush(env, args[1])
-}
-
-func handleConfigNote(env *agentcli.Environment, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("usage: dify-agent config note <pull|push> [options]")
-	}
-
-	switch args[0] {
-	case "pull":
-		localPath := ""
-		if len(args) > 1 {
-			localPath = extractOption(args[1:], "--to")
-			if localPath == "" && len(args) > 1 {
-				localPath = args[1]
+	var listJSON bool
+	list := &cobra.Command{
+		Use:   "list [REMOTE_PREFIX]",
+		Short: "List drive files visible to the current sandbox execution.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			prefix := ""
+			if len(args) > 0 {
+				prefix = args[0]
 			}
-		}
-		return agentcli.RunConfigNotePull(env, localPath)
-
-	case "push":
-		localPath := ""
-		if len(args) > 1 {
-			localPath = args[1]
-		}
-		return agentcli.RunConfigNotePush(env, localPath)
-
-	default:
-		return fmt.Errorf("unknown config note subcommand: %s", args[0])
+			return agentcli.RunDriveList(env, prefix, listJSON)
+		}),
 	}
+	list.Flags().BoolVar(&listJSON, "json", false, "Emit the drive manifest as JSON.")
+
+	var pullTo string
+	var pullJSON bool
+	pull := &cobra.Command{
+		Use:   "pull [REMOTE]...",
+		Short: "Pull one or more drive keys/prefixes into one local directory tree.",
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			localBase := pullTo
+			if localBase == "" {
+				localBase = agentcli.ReadDriveBase()
+			}
+			return agentcli.RunDrivePull(env, args, localBase, pullJSON)
+		}),
+	}
+	pull.Flags().StringVar(&pullTo, "to", "", "Local base directory for pulled drive files.")
+	pull.Flags().BoolVar(&pullJSON, "json", false, "Emit the pull result as JSON.")
+
+	var pushKind string
+	var pushJSON bool
+	push := &cobra.Command{
+		Use:   "push LOCAL_PATH REMOTE_PATH",
+		Short: "Upload one local file or directory into the agent drive.",
+		Args:  cobra.ExactArgs(2),
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			return agentcli.RunDrivePush(env, args[0], args[1], pushKind)
+		}),
+	}
+	push.Flags().StringVar(&pushKind, "kind", "", "Directory upload kind: skill or dir.")
+	push.Flags().BoolVar(&pushJSON, "json", false, "Accepted for consistency; drive push output is already emitted as JSON.")
+
+	cmd.AddCommand(list, pull, push)
+	return cmd
 }
 
-// --- helpers ---
+func newConfigCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "config",
+		Short: "Inspect or update Agent Soul-backed config assets through the Agent Stub.",
+	}
 
-// removeFlag removes a boolean flag from args and returns whether it was present.
-func removeFlag(args *[]string, flag string) bool {
-	for i, a := range *args {
-		if a == flag {
-			*args = append((*args)[:i], (*args)[i+1:]...)
+	manifest := &cobra.Command{
+		Use:   "manifest",
+		Short: "Show the current visible Agent config manifest as JSON.",
+		Args:  cobra.NoArgs,
+		RunE: withEnv(func(env *agentcli.Environment, _ []string, _ *cobra.Command) error {
+			return agentcli.RunConfigManifest(env)
+		}),
+	}
+
+	cmd.AddCommand(
+		manifest,
+		newConfigSkillsCommand(),
+		newConfigSkillPullAliasCommand(),
+		newConfigFilesCommand(),
+		newConfigFilePullAliasCommand(),
+		newConfigEnvCommand(),
+		newConfigNoteCommand(),
+	)
+	return cmd
+}
+
+func newConfigSkillsPullCommand() *cobra.Command {
+	var to string
+	var jsonOutput bool
+	cmd := &cobra.Command{
+		Use:   "pull [NAME]...",
+		Short: "Pull one or all visible config skills into ./.dify_conf/skills by default.",
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			return agentcli.RunConfigSkillsPull(env, args, to, jsonOutput)
+		}),
+	}
+	cmd.Flags().StringVar(&to, "to", "", "Local directory for pulled config skills.")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Emit the pull result as JSON.")
+	return cmd
+}
+
+func newConfigSkillsCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "skills",
+		Short: "Pull or update config skills through the Agent Stub.",
+	}
+
+	push := &cobra.Command{
+		Use:   "push PATH...",
+		Short: "Upload one or more local skill directories into the current config manifest.",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			return agentcli.RunConfigSkillsPush(env, args)
+		}),
+	}
+
+	del := &cobra.Command{
+		Use:   "delete NAME...",
+		Short: "Delete one or more config skills by name without touching local directories.",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			return agentcli.RunConfigSkillsDelete(env, args)
+		}),
+	}
+
+	cmd.AddCommand(newConfigSkillsPullCommand(), push, del)
+	return cmd
+}
+
+// newConfigSkillPullAliasCommand mirrors the hidden singular `config skill pull`
+// alias, which is intentionally pull-only.
+func newConfigSkillPullAliasCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "skill",
+		Short:  "Pull config skills through the Agent Stub.",
+		Hidden: true,
+	}
+	cmd.AddCommand(newConfigSkillsPullCommand())
+	return cmd
+}
+
+func newConfigFilesPullCommand() *cobra.Command {
+	var to string
+	var jsonOutput bool
+	cmd := &cobra.Command{
+		Use:   "pull [NAME]...",
+		Short: "Pull one or all visible config files into ./.dify_conf/files by default.",
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			return agentcli.RunConfigFilesPull(env, args, to, jsonOutput)
+		}),
+	}
+	cmd.Flags().StringVar(&to, "to", "", "Local directory for pulled config files.")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Emit the pull result as JSON.")
+	return cmd
+}
+
+func newConfigFilesCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "files",
+		Short: "Pull or update config files through the Agent Stub.",
+	}
+
+	push := &cobra.Command{
+		Use:   "push PATH...",
+		Short: "Upload one or more local files into the current config manifest.",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			return agentcli.RunConfigFilesPush(env, args)
+		}),
+	}
+
+	del := &cobra.Command{
+		Use:   "delete NAME...",
+		Short: "Delete one or more config files by name without touching local files.",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			return agentcli.RunConfigFilesDelete(env, args)
+		}),
+	}
+
+	cmd.AddCommand(newConfigFilesPullCommand(), push, del)
+	return cmd
+}
+
+// newConfigFilePullAliasCommand mirrors the hidden singular `config file pull`
+// alias, which is intentionally pull-only.
+func newConfigFilePullAliasCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "file",
+		Short:  "Pull config files through the Agent Stub.",
+		Hidden: true,
+	}
+	cmd.AddCommand(newConfigFilesPullCommand())
+	return cmd
+}
+
+func newConfigEnvCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "env",
+		Short: "Update config env variables visible to the current run.",
+	}
+	push := &cobra.Command{
+		Use:   "push PATH|-",
+		Short: "Set or delete config env entries from one local dotenv file or stdin.",
+		Args:  cobra.ExactArgs(1),
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			return agentcli.RunConfigEnvPush(env, args[0])
+		}),
+	}
+	cmd.AddCommand(push)
+	return cmd
+}
+
+func newConfigNoteCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "note",
+		Short: "Pull or update the current config note.",
+	}
+
+	var pullTo string
+	pull := &cobra.Command{
+		Use:   "pull",
+		Short: "Export the current config note into ./.dify_conf/note.md by default.",
+		Args:  cobra.NoArgs,
+		RunE: withEnv(func(env *agentcli.Environment, _ []string, _ *cobra.Command) error {
+			return agentcli.RunConfigNotePull(env, pullTo)
+		}),
+	}
+	pull.Flags().StringVar(&pullTo, "to", "", "Local markdown file path.")
+
+	push := &cobra.Command{
+		Use:   "push [PATH|-]",
+		Short: "Replace the current config note from one local text file or stdin.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			localPath := ""
+			if len(args) > 0 {
+				localPath = args[0]
+			}
+			return agentcli.RunConfigNotePush(env, localPath)
+		}),
+	}
+
+	cmd.AddCommand(pull, push)
+	return cmd
+}
+
+// --- connect dispatch helpers (mirror the Python CLI) ---
+
+func runConnect(argv []string, jsonOutput bool) error {
+	env, err := agentcli.ReadEnvironment()
+	if err != nil {
+		return err
+	}
+	return agentcli.RunConnect(env, argv, jsonOutput)
+}
+
+// parseConnectArgs strips a leading `--json` flag and an optional `--`
+// separator, matching Python's _parse_connect_args.
+func parseConnectArgs(argv []string) (bool, []string) {
+	jsonOutput := false
+	remaining := append([]string{}, argv...)
+	if len(remaining) >= 1 && remaining[0] == "--json" {
+		jsonOutput = true
+		remaining = remaining[1:]
+	}
+	if len(remaining) >= 1 && remaining[0] == "--" {
+		remaining = remaining[1:]
+	}
+	return jsonOutput, remaining
+}
+
+// extractRootJSONFlag consumes a leading root `--json` flag only when it
+// precedes an unknown bare command, matching Python's _extract_root_json_flag.
+func extractRootJSONFlag(argv []string) (bool, []string) {
+	if len(argv) >= 2 && argv[0] == "--json" && !isKnownRootCommand(argv[1]) {
+		return true, argv[1:]
+	}
+	return false, argv
+}
+
+func isUnknownBareCommand(argv []string) bool {
+	if len(argv) == 0 {
+		return false
+	}
+	first := argv[0]
+	return !isKnownRootCommand(first) && !strings.HasPrefix(first, "-")
+}
+
+func isKnownRootCommand(name string) bool {
+	_, ok := knownRootCommands[name]
+	return ok
+}
+
+func isHelpRequest(argv []string) bool {
+	for _, v := range argv {
+		if v == "--help" || v == "-h" {
 			return true
 		}
 	}
 	return false
 }
 
-// extractOption extracts the value for a key-value flag like --to <value>.
-func extractOption(args []string, key string) string {
-	for i, a := range args {
-		if a == key && i+1 < len(args) {
-			return args[i+1]
+// withEnv adapts a command handler that needs a validated Agent Stub
+// environment into a cobra RunE, resolving the environment before dispatch.
+func withEnv(fn func(env *agentcli.Environment, args []string, cmd *cobra.Command) error) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		env, err := agentcli.ReadEnvironment()
+		if err != nil {
+			return err
 		}
-		if strings.HasPrefix(a, key+"=") {
-			return strings.TrimPrefix(a, key+"=")
-		}
+		return fn(env, args, cmd)
 	}
-	return ""
-}
-
-// removeOptionPair removes a key-value flag pair from args.
-func removeOptionPair(args []string, key string) []string {
-	var result []string
-	skip := false
-	for i, a := range args {
-		if skip {
-			skip = false
-			continue
-		}
-		if a == key && i+1 < len(args) {
-			skip = true
-			continue
-		}
-		if strings.HasPrefix(a, key+"=") {
-			continue
-		}
-		result = append(result, a)
-	}
-	return result
 }

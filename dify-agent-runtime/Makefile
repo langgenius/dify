@@ -1,9 +1,10 @@
-.PHONY: build clean test lint proto integration integration-up integration-test integration-down
+.PHONY: build clean test lint proto gen-cli-help integration integration-up integration-test integration-down
 BIN_DIR := bin
 PROTO_SRC := ../dify-agent/proto/dify/agent/stub/v1/agent_stub.proto
 PROTO_OUT := gen
+AGENT_CLI_HELP_JSON := ../dify-agent/src/dify_agent/layers/_agent_cli_help.json
 
-build: $(BIN_DIR)/shellctl $(BIN_DIR)/shellctl-sanitize-pty $(BIN_DIR)/shellctl-runner-exit $(BIN_DIR)/dify-agent
+build: $(BIN_DIR)/shellctl $(BIN_DIR)/shellctl-sanitize-pty $(BIN_DIR)/shellctl-runner-exit $(BIN_DIR)/dify-agent gen-cli-help
 
 $(BIN_DIR)/shellctl: $(shell find cmd/shellctl internal -name '*.go')
 	go build -o $@ ./cmd/shellctl
@@ -16,6 +17,11 @@ $(BIN_DIR)/shellctl-runner-exit: $(shell find cmd/runner-exit internal/runner_ex
 
 $(BIN_DIR)/dify-agent: $(shell find cmd/dify-agent-cli internal/agentcli internal/stubclient -name '*.go') $(shell find gen -name '*.go' 2>/dev/null)
 	go build -o $@ ./cmd/dify-agent-cli
+
+# Regenerate the JSON help snapshot from the Go command tree. Runs as part of
+# `build` so the checked-in data never drifts from the CLI.
+gen-cli-help: $(BIN_DIR)/dify-agent
+	$(BIN_DIR)/dify-agent __dump-cli-help > $(AGENT_CLI_HELP_JSON)
 
 test: lint
 	go test ./...

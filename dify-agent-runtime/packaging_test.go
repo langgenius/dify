@@ -36,7 +36,7 @@ func TestGoModDeclares(t *testing.T) {
 	if !strings.Contains(content, "module github.com/langgenius/dify/dify-agent-runtime") {
 		t.Error("go.mod module path mismatch")
 	}
-	if !strings.Contains(content, "require modernc.org/sqlite") {
+	if !strings.Contains(content, "modernc.org/sqlite") {
 		t.Error("go.mod must depend on modernc.org/sqlite")
 	}
 }

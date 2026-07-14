@@ -9,12 +9,10 @@ dependencies = [
     "httpx2>=2.5.0,<3.0.0",
     "pydantic>=2.12.5,<2.13",
     "pydantic-ai-slim>=1.102.0,<2.0.0",
-    "typer>=0.16.1,<0.17",
     "typing-extensions>=4.12.2,<5.0.0",
 ]
 
 [project.scripts]
-dify-agent = "dify_agent.agent_stub.cli.main:main"
 dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
 
 
@@ -35,6 +33,9 @@ server = [
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["agenton*", "agenton_collections*", "dify_agent*", "shellctl*"]
+
+[tool.setuptools.package-data]
+"dify_agent.layers" = ["_agent_cli_help.json"]
 
 [tool.pyright]
 include = ["src", "examples", "tests"]
