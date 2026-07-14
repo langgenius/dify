@@ -104,7 +104,7 @@ export function Property({ name, type, nameAction, children }: IProperty) {
         <dt className="sr-only">Name</dt>
         <dd>
           <code>{name}</code>
-          {nameAction && <span className="ml-2 inline-flex align-middle">{nameAction}</span>}
+          {nameAction ? <span className="ml-2 inline-flex align-middle">{nameAction}</span> : null}
         </dd>
         <dt className="sr-only">Type</dt>
         <dd className="font-mono text-xs text-zinc-400 dark:text-zinc-500">{type}</dd>
