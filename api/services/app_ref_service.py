@@ -59,8 +59,10 @@ class AppRefService:
 
     @staticmethod
     def create_annotation_ref(app_ref: AppRef, annotation_id: str) -> AnnotationRef:
+        """Bind a candidate annotation ID; ownership is enforced when the ref is consumed."""
         return AnnotationRef(app=app_ref, annotation_id=annotation_id)
 
     @staticmethod
     def create_mcp_server_ref(app_ref: AppRef, server_id: str) -> AppMCPServerRef:
+        """Bind a candidate MCP server ID; ownership is enforced when the ref is consumed."""
         return AppMCPServerRef(app=app_ref, server_id=server_id)

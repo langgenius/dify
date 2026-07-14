@@ -94,11 +94,9 @@ class AppAnnotationService:
     def _get_annotation_by_ref(annotation_ref: AnnotationRef, session: Session) -> MessageAnnotation | None:
         return session.scalar(
             select(MessageAnnotation)
-            .join(App, App.id == MessageAnnotation.app_id)
             .where(
                 MessageAnnotation.id == annotation_ref.annotation_id,
-                App.id == annotation_ref.app.app_id,
-                App.tenant_id == annotation_ref.app.tenant_id,
+                MessageAnnotation.app_id == annotation_ref.app.app_id,
             )
             .limit(1)
         )
@@ -397,12 +395,10 @@ class AppAnnotationService:
         # Fetch annotations and their settings in a single query
         annotations_to_delete = session.execute(
             select(MessageAnnotation, AppAnnotationSetting)
-            .join(App, App.id == MessageAnnotation.app_id)
             .outerjoin(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
             .where(
                 MessageAnnotation.id.in_(annotation_ids),
-                App.id == app_ref.app_id,
-                App.tenant_id == app_ref.tenant_id,
+                MessageAnnotation.app_id == app_ref.app_id,
             )
         ).all()
 

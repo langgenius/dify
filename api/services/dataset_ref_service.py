@@ -50,6 +50,7 @@ class DatasetRefService:
 
     @staticmethod
     def create_segment_ref(document_ref: DocumentRef, segment_id: str) -> SegmentRef:
+        """Bind a candidate segment ID; ownership is enforced when the ref is consumed."""
         return SegmentRef(document=document_ref, segment_id=segment_id)
 
     @staticmethod

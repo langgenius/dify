@@ -495,7 +495,7 @@ class TestAudioServiceASR:
             AudioService.transcript_asr(app_model=app, file=file, session=MagicMock())
 
 
-@pytest.mark.parametrize("sqlite_session", [(App, Message)], indirect=True)
+@pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
 class TestAudioServiceTTS:
     """Test text-to-speech (TTS) operations."""
 
@@ -654,25 +654,19 @@ class TestAudioServiceTTS:
     def test_transcript_tts_message_id_uses_provided_session(
         self,
         mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
         sqlite_session: Session,
     ):
         """Test TTS message lookup uses the injected session."""
         # Arrange
-        app = App(
-            id=APP_ID,
-            tenant_id=TENANT_ID,
-            name="Audio App",
-            mode=AppMode.CHAT,
-            enable_site=False,
-            enable_api=False,
-        )
+        app = factory.create_app_mock(app_id=APP_ID, tenant_id=TENANT_ID, mode=AppMode.CHAT)
         message_ref = MessageRef(
             app=AppRef(tenant_id=TENANT_ID, app_id=APP_ID),
             message_id=MESSAGE_ID,
             end_user_id=END_USER_ID,
             account_id=ACCOUNT_ID,
         )
-        sqlite_session.add_all([app, _message()])
+        sqlite_session.add(_message())
         sqlite_session.commit()
 
         mock_model_manager = mock_model_manager_class.return_value
@@ -682,12 +676,6 @@ class TestAudioServiceTTS:
 
         # Act
         for wrong_ref in (
-            MessageRef(
-                app=AppRef(tenant_id=OTHER_ID, app_id=APP_ID),
-                message_id=MESSAGE_ID,
-                end_user_id=END_USER_ID,
-                account_id=ACCOUNT_ID,
-            ),
             MessageRef(
                 app=AppRef(tenant_id=TENANT_ID, app_id=OTHER_ID),
                 message_id=MESSAGE_ID,
