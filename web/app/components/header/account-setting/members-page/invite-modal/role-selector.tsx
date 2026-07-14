@@ -164,7 +164,7 @@ export function RoleSelector({ hasServerError = false, disabled = false }: RoleS
             <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
               {t(($) => $.loading, { ns: 'common' })}
             </div>
-          ) : rolesError ? (
+          ) : rolesError && roles.length === 0 ? (
             <div className="px-3 py-6 text-center system-sm-regular text-text-destructive-secondary">
               {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
             </div>

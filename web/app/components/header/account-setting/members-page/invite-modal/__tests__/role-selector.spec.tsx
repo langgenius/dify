@@ -140,6 +140,17 @@ describe('RoleSelector', () => {
     expect(within(getListbox()).queryByRole('button')).not.toBeInTheDocument()
   })
 
+  it('keeps loaded roles available when a later request fails', async () => {
+    const user = userEvent.setup()
+    mockUseWorkspaceRoleList({ error: new Error('Failed to load another role page') })
+    render(<RoleSelectorWrapper />)
+
+    await user.click(getTrigger())
+
+    expect(within(getListbox()).getByRole('option', { name: /Admin/i })).toBeInTheDocument()
+    expect(within(getListbox()).queryByText(/dynamicSelect\.error/i)).not.toBeInTheDocument()
+  })
+
   it('loads another role page when the list sentinel becomes visible', async () => {
     const user = userEvent.setup()
     const fetchNextPage = vi.fn()
