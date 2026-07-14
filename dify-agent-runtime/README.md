@@ -26,10 +26,10 @@ make build
 ```
 
 Produces three binaries in `bin/`:
+
 - `shellctl` — the main server (`shellctl serve --listen 0.0.0.0:5004`)
 - `shellctl-sanitize-pty` — PTY sanitizer for tmux pipe-pane
 - `shellctl-runner-exit` — exit state writer
-
 
 ### Building docker image
 
@@ -63,6 +63,7 @@ make test
 ## Migration from Python
 
 The Go binaries are drop-in replacements for the Python console scripts:
+
 - `shellctl-sanitize-pty` replaces the Python `shellctl-sanitize-pty` entrypoint
 - `shellctl-runner-exit` replaces the Python `shellctl-runner-exit` entrypoint
 - `shellctl serve` replaces the Python `shellctl serve` (FastAPI/uvicorn)
