@@ -16862,6 +16862,7 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | expired_at | string |  | Yes |
+| seats | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 | status | [LicenseStatus](#licensestatus) |  | Yes |
 | workspaces | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 

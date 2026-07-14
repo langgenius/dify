@@ -23,9 +23,9 @@ from libs.password import valid_password
 from models import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
-from services.errors.account import AccountRegisterError
+from services.errors.account import AccountRegisterError, SeatsLimitExceededError
 
-from ..error import AccountInFreezeError, EmailSendIpLimitError
+from ..error import AccountInFreezeError, EmailSendIpLimitError, SeatsLimitExceeded
 from ..wraps import email_password_login_enabled, email_register_enabled, setup_required
 
 
@@ -208,5 +208,7 @@ class EmailRegisterResetApi(Resource):
                 timezone=timezone,
                 session=db.session,
             )
+        except SeatsLimitExceededError:
+            raise SeatsLimitExceeded()
         except AccountRegisterError:
             raise AccountInFreezeError()

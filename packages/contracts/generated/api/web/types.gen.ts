@@ -352,6 +352,7 @@ export type LicenseLimitationModel = {
 
 export type LicenseModel = {
   expired_at: string
+  seats: LicenseLimitationModel
   status: LicenseStatus
   workspaces: LicenseLimitationModel
 }

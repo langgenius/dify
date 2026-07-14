@@ -48,6 +48,7 @@ from services.errors.account import (
     MemberNotInTenantError,
     NoPermissionError,
     RoleAlreadyAssignedError,
+    SeatsLimitExceededError,
 )
 from services.feature_service import FeatureService
 
@@ -190,6 +191,8 @@ class WorkspaceMembersApi(Resource):
             raise BadRequest(str(exc))
         except NoPermissionError as exc:
             raise BadRequest(str(exc))
+        except SeatsLimitExceededError:
+            raise BadRequest("licensed seats limit exceeded")
         except AccountRegisterError as exc:
             raise BadRequest(str(exc))
 
