@@ -72,11 +72,10 @@ const getSetCookieHeaders = (headers: Headers) => {
 const createRedirectResponse = (pathname: string, setCookies: string[] = []) => {
   const headers = new Headers({
     'Cache-Control': 'no-store',
-    'Location': pathname,
+    Location: pathname,
   })
 
-  for (const cookie of setCookies)
-    headers.append('Set-Cookie', cookie)
+  for (const cookie of setCookies) headers.append('Set-Cookie', cookie)
 
   return new Response(null, {
     status: 303,

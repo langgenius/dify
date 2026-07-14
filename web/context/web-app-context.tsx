@@ -36,7 +36,7 @@ type WebAppStore = {
   updateEmbeddedConversationId: (conversationId: string | null) => void
 }
 
-export const useWebAppStore = create<WebAppStore>(set => ({
+export const useWebAppStore = create<WebAppStore>((set) => ({
   shareCode: null,
   updateShareCode: (shareCode: string | null) => set(() => ({ shareCode })),
   appInfo: null,
@@ -62,17 +62,16 @@ const getShareCodeFromRedirectUrl = (redirectUrl: string | null): string | null 
 }
 const getShareCodeFromPathname = (pathname: string): string | null => {
   const code = pathname.split('/').pop() || null
-  if (code === 'webapp-signin')
-    return null
+  if (code === 'webapp-signin') return null
   return code
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   const { isPending: isGlobalPending } = useQuery(systemFeaturesQueryOptions())
-  const updateWebAppAccessMode = useWebAppStore(state => state.updateWebAppAccessMode)
-  const updateShareCode = useWebAppStore(state => state.updateShareCode)
-  const updateEmbeddedUserId = useWebAppStore(state => state.updateEmbeddedUserId)
-  const updateEmbeddedConversationId = useWebAppStore(state => state.updateEmbeddedConversationId)
+  const updateWebAppAccessMode = useWebAppStore((state) => state.updateWebAppAccessMode)
+  const updateShareCode = useWebAppStore((state) => state.updateShareCode)
+  const updateEmbeddedUserId = useWebAppStore((state) => state.updateEmbeddedUserId)
+  const updateEmbeddedConversationId = useWebAppStore((state) => state.updateEmbeddedConversationId)
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const redirectUrlParam = searchParams.get('redirect_url')
@@ -95,8 +94,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
           updateEmbeddedUserId(user_id || null)
           updateEmbeddedConversationId(conversation_id || null)
         }
-      }
-      catch {
+      } catch {
         if (!cancelled) {
           updateEmbeddedUserId(null)
           updateEmbeddedConversationId(null)
@@ -112,8 +110,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   const { isLoading, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
 
   useEffect(() => {
-    if (accessModeResult?.accessMode)
-      updateWebAppAccessMode(accessModeResult.accessMode)
+    if (accessModeResult?.accessMode) updateWebAppAccessMode(accessModeResult.accessMode)
   }, [accessModeResult, updateWebAppAccessMode, shareCode])
 
   if (isGlobalPending || isLoading) {
@@ -123,10 +120,6 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
       </div>
     )
   }
-  return (
-    <>
-      {children}
-    </>
-  )
+  return <>{children}</>
 }
 export default WebAppStoreProvider

@@ -24,9 +24,9 @@ import { basePath } from '@/utils/var'
 
 function Splash({ children }: PropsWithChildren) {
   const { t } = useTranslation()
-  const shareCode = useWebAppStore(s => s.shareCode)
-  const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
-  const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
+  const shareCode = useWebAppStore((s) => s.shareCode)
+  const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
+  const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -82,7 +82,7 @@ function Splash({ children }: PropsWithChildren) {
       setIsLoading(false)
     }
 
-    (async () => {
+    ;(async () => {
       // if access mode is public, user login is always true, but the app login(passport) may be expired
       const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(
         effectiveShareCode,
@@ -90,14 +90,11 @@ function Splash({ children }: PropsWithChildren) {
       )
       if (userLoggedIn && appLoggedIn) {
         redirectOrFinish()
-      }
-      else if (!userLoggedIn && !appLoggedIn) {
+      } else if (!userLoggedIn && !appLoggedIn) {
         proceedToAuth()
-      }
-      else if (!userLoggedIn && appLoggedIn) {
+      } else if (!userLoggedIn && appLoggedIn) {
         redirectOrFinish()
-      }
-      else if (userLoggedIn && !appLoggedIn) {
+      } else if (userLoggedIn && !appLoggedIn) {
         try {
           const { access_token } = await fetchAccessToken({
             appCode: effectiveShareCode,
@@ -125,8 +122,16 @@ function Splash({ children }: PropsWithChildren) {
   if (message) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-y-4">
-        <AppUnavailable className="size-auto" code={code || t('common.appUnavailable', { ns: 'share' })} unknownReason={message} />
-        <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>{code === '403' ? t('userProfile.logout', { ns: 'common' }) : t('login.backToHome', { ns: 'share' })}</span>
+        <AppUnavailable
+          className="size-auto"
+          code={code || t('common.appUnavailable', { ns: 'share' })}
+          unknownReason={message}
+        />
+        <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>
+          {code === '403'
+            ? t('userProfile.logout', { ns: 'common' })
+            : t('login.backToHome', { ns: 'share' })}
+        </span>
       </div>
     )
   }

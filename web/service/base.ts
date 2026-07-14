@@ -30,9 +30,18 @@ import type {
 } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
-import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import {
+  API_PREFIX,
+  CSRF_COOKIE_NAME,
+  CSRF_HEADER_NAME,
+  IS_CE_EDITION,
+  PASSPORT_HEADER_NAME,
+  PUBLIC_API_PREFIX,
+  WEB_APP_SHARE_CODE_HEADER_NAME,
+} from '@/config'
 import { asyncRunSafe } from '@/utils'
 import { isClient } from '@/utils/client'
+import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
@@ -80,7 +89,9 @@ type IOHumanInputRequired = (humanInputRequired: HumanInputRequiredResponse) => 
 type IOnHumanInputFormFilled = (humanInputFormFilled: HumanInputFormFilledResponse) => void
 type IOnHumanInputFormTimeout = (humanInputFormTimeout: HumanInputFormTimeoutResponse) => void
 type IOWorkflowPaused = (workflowPaused: WorkflowPausedResponse) => void
-type IOnDataSourceNodeProcessing = (dataSourceNodeProcessing: DataSourceNodeProcessingResponse) => void
+type IOnDataSourceNodeProcessing = (
+  dataSourceNodeProcessing: DataSourceNodeProcessingResponse,
+) => void
 type IOnDataSourceNodeCompleted = (dataSourceNodeCompleted: DataSourceNodeCompletedResponse) => void
 type IOnDataSourceNodeError = (dataSourceNodeError: DataSourceNodeErrorResponse) => void
 
@@ -136,31 +147,39 @@ export type IOtherOptions = {
 }
 
 function jumpTo(url: string) {
-  if (!url || !isClient)
-    return
+  if (!url || !isClient) return
   const targetPath = new URL(url, window.location.origin).pathname
-  if (targetPath === window.location.pathname)
-    return
+  if (targetPath === window.location.pathname) return
   window.location.href = url
 }
 
 const OAUTH_AUTHORIZE_PATH = '/account/oauth/authorize'
+const SIGNIN_PATH = '/signin'
 
 export const buildSigninUrlWithRedirect = (): string => {
   const loginUrl = `${isClient ? window.location.origin : ''}${basePath}/signin`
+  if (!isClient) return loginUrl
 
-  // Only preserve redirect URL for OAuth authorize pages
-  if (isClient && window.location.pathname.includes(OAUTH_AUTHORIZE_PATH)) {
+  const signinPath = `${basePath}${SIGNIN_PATH}`
+  if (window.location.pathname === signinPath || window.location.pathname === `${signinPath}/`)
+    return loginUrl
+
+  if (window.location.pathname.includes(OAUTH_AUTHORIZE_PATH)) {
     const currentUrl = window.location.href
     return `${loginUrl}?redirect_url=${encodeURIComponent(currentUrl)}`
   }
 
-  return loginUrl
+  const currentTarget = resolveLoginRedirectTarget(
+    `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    { allowSameOriginAbsolute: false },
+  )
+  if (!currentTarget || currentTarget.kind !== 'internal') return loginUrl
+
+  return `${loginUrl}?redirect_url=${encodeURIComponent(currentTarget.href)}`
 }
 
 function unicodeToChar(text: string) {
-  if (!text)
-    return ''
+  if (!text) return ''
 
   return text.replace(/\\u([0-9a-f]{4})/g, (_match, p1) => {
     return String.fromCharCode(Number.parseInt(p1, 16))
@@ -191,8 +210,7 @@ export function buildWebAppSigninUrlWithRedirect(
 }
 
 function requiredWebSSOLogin(message?: string, code?: number) {
-  if (!isClient)
-    return
+  if (!isClient) return
 
   // prevent redirect loop
   if (isWebAppSigninPath(window.location.pathname)) return
@@ -208,8 +226,7 @@ function requiredWebSSOLogin(message?: string, code?: number) {
 
 function formatURL(url: string, isPublicAPI: boolean) {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  if (url.startsWith('http://') || url.startsWith('https://'))
-    return url
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
   const urlWithoutProtocol = url.startsWith('/') ? url : `/${url}`
   return `${urlPrefix}${urlWithoutProtocol}`
 }
@@ -249,8 +266,7 @@ export const handleStream = (
   onDataSourceNodeError?: IOnDataSourceNodeError,
   onReasoning?: IOnReasoning,
 ) => {
-  if (!response.ok)
-    throw new Error('Network response was not ok')
+  if (!response.ok) throw new Error('Network response was not ok')
 
   const reader = response.body?.getReader()
   const decoder = new TextDecoder('utf-8')
@@ -268,11 +284,11 @@ export const handleStream = (
       const lines = buffer.split('\n')
       try {
         lines.forEach((message) => {
-          if (message.startsWith('data: ')) { // check if it starts with data:
+          if (message.startsWith('data: ')) {
+            // check if it starts with data:
             try {
-              bufferObj = JSON.parse(message.substring(6)) as Record<string, any>// remove data: and parse as json
-            }
-            catch {
+              bufferObj = JSON.parse(message.substring(6)) as Record<string, any> // remove data: and parse as json
+            } catch {
               // mute handle message cut off
               onData('', isFirstMessage, {
                 conversationId: bufferObj?.conversation_id,
@@ -310,105 +326,73 @@ export const handleStream = (
                 messageId: bufferObj.id,
               })
               isFirstMessage = false
-            }
-            else if (bufferObj.event === 'agent_thought') {
+            } else if (bufferObj.event === 'agent_thought') {
               onThought?.(bufferObj as ThoughtItem)
-            }
-            else if (bufferObj.event === 'message_file') {
+            } else if (bufferObj.event === 'message_file') {
               onFile?.(bufferObj as VisionFile)
-            }
-            else if (bufferObj.event === 'message_end') {
+            } else if (bufferObj.event === 'message_end') {
               onMessageEnd?.(bufferObj as MessageEnd)
-            }
-            else if (bufferObj.event === 'message_replace') {
+            } else if (bufferObj.event === 'message_replace') {
               onMessageReplace?.(bufferObj as MessageReplace)
-            }
-            else if (bufferObj.event === 'workflow_started') {
+            } else if (bufferObj.event === 'workflow_started') {
               onWorkflowStarted?.(bufferObj as WorkflowStartedResponse)
-            }
-            else if (bufferObj.event === 'workflow_finished') {
+            } else if (bufferObj.event === 'workflow_finished') {
               onWorkflowFinished?.(bufferObj as WorkflowFinishedResponse)
-            }
-            else if (bufferObj.event === 'node_started') {
+            } else if (bufferObj.event === 'node_started') {
               onNodeStarted?.(bufferObj as NodeStartedResponse)
-            }
-            else if (bufferObj.event === 'node_finished') {
+            } else if (bufferObj.event === 'node_finished') {
               onNodeFinished?.(bufferObj as NodeFinishedResponse)
-            }
-            else if (bufferObj.event === 'iteration_started') {
+            } else if (bufferObj.event === 'iteration_started') {
               onIterationStart?.(bufferObj as IterationStartedResponse)
-            }
-            else if (bufferObj.event === 'iteration_next') {
+            } else if (bufferObj.event === 'iteration_next') {
               onIterationNext?.(bufferObj as IterationNextResponse)
-            }
-            else if (bufferObj.event === 'iteration_completed') {
+            } else if (bufferObj.event === 'iteration_completed') {
               onIterationFinish?.(bufferObj as IterationFinishedResponse)
-            }
-            else if (bufferObj.event === 'loop_started') {
+            } else if (bufferObj.event === 'loop_started') {
               onLoopStart?.(bufferObj as LoopStartedResponse)
-            }
-            else if (bufferObj.event === 'loop_next') {
+            } else if (bufferObj.event === 'loop_next') {
               onLoopNext?.(bufferObj as LoopNextResponse)
-            }
-            else if (bufferObj.event === 'loop_completed') {
+            } else if (bufferObj.event === 'loop_completed') {
               onLoopFinish?.(bufferObj as LoopFinishedResponse)
-            }
-            else if (bufferObj.event === 'node_retry') {
+            } else if (bufferObj.event === 'node_retry') {
               onNodeRetry?.(bufferObj as NodeFinishedResponse)
-            }
-            else if (bufferObj.event === 'parallel_branch_started') {
+            } else if (bufferObj.event === 'parallel_branch_started') {
               onParallelBranchStarted?.(bufferObj as ParallelBranchStartedResponse)
-            }
-            else if (bufferObj.event === 'parallel_branch_finished') {
+            } else if (bufferObj.event === 'parallel_branch_finished') {
               onParallelBranchFinished?.(bufferObj as ParallelBranchFinishedResponse)
-            }
-            else if (bufferObj.event === 'text_chunk') {
+            } else if (bufferObj.event === 'text_chunk') {
               onTextChunk?.(bufferObj as TextChunkResponse)
-            }
-            else if (bufferObj.event === 'reasoning_chunk') {
+            } else if (bufferObj.event === 'reasoning_chunk') {
               onReasoning?.(bufferObj as ReasoningChunkResponse)
-            }
-            else if (bufferObj.event === 'text_replace') {
+            } else if (bufferObj.event === 'text_replace') {
               onTextReplace?.(bufferObj as TextReplaceResponse)
-            }
-            else if (bufferObj.event === 'agent_log') {
+            } else if (bufferObj.event === 'agent_log') {
               onAgentLog?.(bufferObj as AgentLogResponse)
-            }
-            else if (bufferObj.event === 'tts_message') {
+            } else if (bufferObj.event === 'tts_message') {
               onTTSChunk?.(bufferObj.message_id, bufferObj.audio, bufferObj.audio_type)
-            }
-            else if (bufferObj.event === 'tts_message_end') {
+            } else if (bufferObj.event === 'tts_message_end') {
               onTTSEnd?.(bufferObj.message_id, bufferObj.audio)
-            }
-            else if (bufferObj.event === 'human_input_required') {
+            } else if (bufferObj.event === 'human_input_required') {
               onHumanInputRequired?.(bufferObj as HumanInputRequiredResponse)
-            }
-            else if (bufferObj.event === 'human_input_form_filled') {
+            } else if (bufferObj.event === 'human_input_form_filled') {
               onHumanInputFormFilled?.(bufferObj as HumanInputFormFilledResponse)
-            }
-            else if (bufferObj.event === 'human_input_form_timeout') {
+            } else if (bufferObj.event === 'human_input_form_timeout') {
               onHumanInputFormTimeout?.(bufferObj as HumanInputFormTimeoutResponse)
-            }
-            else if (bufferObj.event === 'workflow_paused') {
+            } else if (bufferObj.event === 'workflow_paused') {
               onWorkflowPaused?.(bufferObj as WorkflowPausedResponse)
-            }
-            else if (bufferObj.event === 'datasource_processing') {
+            } else if (bufferObj.event === 'datasource_processing') {
               onDataSourceNodeProcessing?.(bufferObj as DataSourceNodeProcessingResponse)
-            }
-            else if (bufferObj.event === 'datasource_completed') {
+            } else if (bufferObj.event === 'datasource_completed') {
               onDataSourceNodeCompleted?.(bufferObj as DataSourceNodeCompletedResponse)
-            }
-            else if (bufferObj.event === 'datasource_error') {
+            } else if (bufferObj.event === 'datasource_error') {
               onDataSourceNodeError?.(bufferObj as DataSourceNodeErrorResponse)
-            }
-            else {
+            } else {
               console.warn(`Unknown event: ${bufferObj.event}`, bufferObj)
             }
           }
         })
         buffer = lines[lines.length - 1]!
-      }
-      catch (e) {
+      } catch (e) {
         onData('', false, {
           conversationId: undefined,
           messageId: '',
@@ -418,8 +402,7 @@ export const handleStream = (
         onCompleted?.(true, e as string)
         return
       }
-      if (!hasError)
-        read()
+      if (!hasError) read()
     })
   }
   read()
@@ -441,7 +424,12 @@ type UploadResponse = {
   [key: string]: unknown
 }
 
-export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<UploadResponse> => {
+export const upload = async (
+  options: UploadOptions,
+  isPublicAPI?: boolean,
+  url?: string,
+  searchParams?: string,
+): Promise<UploadResponse> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
   const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
   const defaultOptions = {
@@ -462,21 +450,17 @@ export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?
   return new Promise((resolve, reject) => {
     const xhr = mergedOptions.xhr
     xhr.open(mergedOptions.method, mergedOptions.url)
-    for (const key in mergedOptions.headers)
-      xhr.setRequestHeader(key, mergedOptions.headers[key]!)
+    for (const key in mergedOptions.headers) xhr.setRequestHeader(key, mergedOptions.headers[key]!)
 
     xhr.withCredentials = true
     xhr.responseType = 'json'
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) {
-        if (xhr.status === 201)
-          resolve(xhr.response)
-        else
-          reject(xhr)
+        if (xhr.status === 201) resolve(xhr.response)
+        else reject(xhr)
       }
     }
-    if (mergedOptions.onprogress)
-      xhr.upload.onprogress = mergedOptions.onprogress
+    if (mergedOptions.onprogress) xhr.upload.onprogress = mergedOptions.onprogress
     xhr.send(mergedOptions.data)
   })
 }
@@ -529,56 +513,57 @@ export const ssePost = async (
 
   const baseOptions = getBaseOptions()
   const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]!
-  const options = Object.assign({}, baseOptions, {
-    method: 'POST',
-    signal: abortController.signal,
-    headers: new Headers({
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
-      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
-    }),
-  } as RequestInit, fetchOptions)
+  const options = Object.assign(
+    {},
+    baseOptions,
+    {
+      method: 'POST',
+      signal: abortController.signal,
+      headers: new Headers({
+        [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
+        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
+        [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
+      }),
+    } as RequestInit,
+    fetchOptions,
+  )
   options.headers = new Headers(options.headers)
 
   const contentType = (options.headers as Headers).get('Content-Type')
-  if (!contentType)
-    (options.headers as Headers).set('Content-Type', ContentType.json)
+  if (!contentType) (options.headers as Headers).set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
   const urlWithPrefix = formatURL(url, isPublicAPI)
 
   const { body } = options
-  if (body)
-    options.body = JSON.stringify(body)
+  if (body) options.body = JSON.stringify(body)
 
-  globalThis.fetch(urlWithPrefix, options as RequestInit)
+  globalThis
+    .fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string, message?: string }) => {
+            res.json().then((data: { code?: string; message?: string }) => {
               if (isPublicAPI) {
-                if (data.code === 'web_app_access_denied')
-                  requiredWebSSOLogin(data.message, 403)
+                if (data.code === 'web_app_access_denied') requiredWebSSOLogin(data.message, 403)
 
-                if (data.code === 'web_sso_auth_required')
-                  requiredWebSSOLogin()
+                if (data.code === 'web_sso_auth_required') requiredWebSSOLogin()
 
-                if (data.code === 'unauthorized')
-                  requiredWebSSOLogin()
+                if (data.code === 'unauthorized') requiredWebSSOLogin()
               }
             })
+          } else {
+            refreshAccessTokenOrReLogin(TIME_OUT)
+              .then(() => {
+                ssePost(url, fetchOptions, otherOptions)
+              })
+              .catch((err) => {
+                console.error(err)
+              })
           }
-          else {
-            refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
-              ssePost(url, fetchOptions, otherOptions)
-            }).catch((err) => {
-              console.error(err)
-            })
-          }
-        }
-        else {
+        } else {
           res.json().then((data) => {
             toast.error(data.message || 'Server Error')
           })
@@ -592,7 +577,10 @@ export const ssePost = async (
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-            if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
+            if (
+              moreInfo.errorMessage !== 'AbortError: The user aborted a request.' &&
+              !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property')
+            )
               toast.error(moreInfo.errorMessage)
             return
           }
@@ -632,7 +620,10 @@ export const ssePost = async (
       )
     })
     .catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
+      if (
+        e.toString() !== 'AbortError: The user aborted a request.' &&
+        !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property')
+      )
         toast.error(String(e))
       onError?.(e)
     })
@@ -684,51 +675,53 @@ export const sseGet = async (
 
   const baseOptions = getBaseOptions()
   const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]!
-  const options = Object.assign({}, baseOptions, {
-    signal: abortController.signal,
-    headers: new Headers({
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
-      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
-    }),
-  } as RequestInit, fetchOptions)
+  const options = Object.assign(
+    {},
+    baseOptions,
+    {
+      signal: abortController.signal,
+      headers: new Headers({
+        [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
+        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
+        [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
+      }),
+    } as RequestInit,
+    fetchOptions,
+  )
   options.headers = new Headers(options.headers)
 
   const contentType = (options.headers as Headers).get('Content-Type')
-  if (!contentType)
-    (options.headers as Headers).set('Content-Type', ContentType.json)
+  if (!contentType) (options.headers as Headers).set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
   const urlWithPrefix = formatURL(url, isPublicAPI)
 
-  globalThis.fetch(urlWithPrefix, options as RequestInit)
+  globalThis
+    .fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string, message?: string }) => {
+            res.json().then((data: { code?: string; message?: string }) => {
               if (isPublicAPI) {
-                if (data.code === 'web_app_access_denied')
-                  requiredWebSSOLogin(data.message, 403)
+                if (data.code === 'web_app_access_denied') requiredWebSSOLogin(data.message, 403)
 
-                if (data.code === 'web_sso_auth_required')
-                  requiredWebSSOLogin()
+                if (data.code === 'web_sso_auth_required') requiredWebSSOLogin()
 
-                if (data.code === 'unauthorized')
-                  requiredWebSSOLogin()
+                if (data.code === 'unauthorized') requiredWebSSOLogin()
               }
             })
+          } else {
+            refreshAccessTokenOrReLogin(TIME_OUT)
+              .then(() => {
+                sseGet(url, fetchOptions, otherOptions)
+              })
+              .catch((err) => {
+                console.error(err)
+              })
           }
-          else {
-            refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
-              sseGet(url, fetchOptions, otherOptions)
-            }).catch((err) => {
-              console.error(err)
-            })
-          }
-        }
-        else {
+        } else {
           res.json().then((data) => {
             toast.error(data.message || 'Server Error')
           })
@@ -742,7 +735,10 @@ export const sseGet = async (
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
             // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-            if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
+            if (
+              moreInfo.errorMessage !== 'AbortError: The user aborted a request.' &&
+              !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property')
+            )
               toast.error(moreInfo.errorMessage)
             return
           }
@@ -782,32 +778,31 @@ export const sseGet = async (
       )
     })
     .catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
+      if (
+        e.toString() !== 'AbortError: The user aborted a request.' &&
+        !e.toString().includes('TypeError: Cannot assign to read only property')
+      )
         toast.error(String(e))
       onError?.(e)
     })
 }
 
 // base request
-export const request = async<T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+export const request = async <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   try {
     const otherOptionsForBaseFetch = otherOptions || {}
     const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
-    if (err === null)
-      return resp
+    if (err === null) return resp
     const errResp: Response = err as any
     if (errResp.status === 401) {
-      if (!isClient)
-        return Promise.reject(err)
+      if (!isClient) return Promise.reject(err)
 
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
-      const loginUrl = `${window.location.origin}${basePath}/signin`
       if (parseErr) {
-        window.location.href = loginUrl
+        window.location.href = buildSigninUrlWithRedirect()
         return Promise.reject(err)
       }
-      if (/\/login/.test(url))
-        return Promise.reject(errRespData)
+      if (/\/login/.test(url)) return Promise.reject(errRespData)
       // special code
       const { code, message } = errRespData
       // webapp sso
@@ -824,10 +819,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         window.location.reload()
         return Promise.reject(err)
       }
-      const {
-        isPublicAPI = false,
-        silent,
-      } = otherOptionsForBaseFetch
+      const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
       if (isPublicAPI && code === 'unauthorized') {
         requiredWebSSOLogin()
         return Promise.reject(err)
@@ -847,13 +839,11 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
 
       // refresh token
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
-      if (refreshErr === null)
-        return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      if (refreshErr === null) return baseFetch<T>(url, options, otherOptionsForBaseFetch)
       // /device is the device-flow chooser; logged-out is a valid state
       // there. Redirecting to /signin loses the user_code context and
       // the post-login flow lands on /apps instead of returning here.
-      if (window.location.pathname === `${basePath}/device`)
-        return Promise.reject(err)
+      if (window.location.pathname === `${basePath}/device`) return Promise.reject(err)
       if (window.location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
         jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
@@ -864,12 +854,10 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       }
       jumpTo(buildSigninUrlWithRedirect())
       return Promise.reject(err)
-    }
-    else {
+    } else {
       return Promise.reject(err)
     }
-  }
-  catch (error) {
+  } catch (error) {
     console.error(error)
     return Promise.reject(error)
   }

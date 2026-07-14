@@ -51,7 +51,9 @@ const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
 const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
 const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
 const mockUseMailRegister = useMailRegister as unknown as MockedFunction<typeof useMailRegister>
-const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<typeof getBrowserTimezone>
+const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<
+  typeof getBrowserTimezone
+>
 
 const renderWithQueryClient = (ui: ReactElement) => {
   const queryClient = new QueryClient({
@@ -60,11 +62,7 @@ const renderWithQueryClient = (ui: ReactElement) => {
       mutations: { retry: false },
     },
   })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
 describe('Signup Set Password Page', () => {
@@ -72,8 +70,12 @@ describe('Signup Set Password Page', () => {
     vi.clearAllMocks()
     Cookies.remove('utm_info')
     mockUseLocale.mockReturnValue('zh-Hans')
-    mockUseSearchParams.mockReturnValue(new URLSearchParams('token=register-token') as unknown as ReturnType<typeof useSearchParams>)
-    mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<typeof useRouter>)
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams('token=register-token') as unknown as ReturnType<typeof useSearchParams>,
+    )
+    mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<
+      typeof useRouter
+    >)
     mockUseMailRegister.mockReturnValue({
       mutateAsync: mockRegister,
       isPending: false,
@@ -135,6 +137,22 @@ describe('Signup Set Password Page', () => {
         method: 'email',
       })
       expect(mockReplace).toHaveBeenCalledWith('/')
+    })
+
+    it('should return to the requested console page when registration succeeds', async () => {
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams(
+          'token=register-token&redirect_url=%2Fapps%3Ftag%3Dworkflow',
+        ) as unknown as ReturnType<typeof useSearchParams>,
+      )
+      mockRegister.mockResolvedValue({ result: 'success', data: {} })
+
+      renderWithQueryClient(<ChangePasswordForm />)
+      fillAndSubmit()
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/apps?tag=workflow')
+      })
     })
 
     it('should remember the utm event and clear the utm cookie when a utm_info cookie is present', async () => {

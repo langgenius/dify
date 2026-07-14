@@ -27,12 +27,18 @@ function NormalForm() {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryString = searchParams.toString()
+  const signupHref = queryString ? `/signup?${queryString}` : '/signup'
   // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
   // other errors throw to error.tsx. jumpTo same-pathname guard in service/base.ts
   // prevents the redirect loop on 401.
-  const { isPending: isCheckLoading, data: userResp, error: probeError } = useQuery({
+  const {
+    isPending: isCheckLoading,
+    data: userResp,
+    error: probeError,
+  } = useQuery({
     ...userProfileQueryOptions(),
-    throwOnError: err => !isLegacyBase401(err),
+    throwOnError: (err) => !isLegacyBase401(err),
     refetchOnWindowFocus: false,
   })
   const isLoggedIn = !!userResp && !probeError
@@ -42,14 +48,19 @@ function NormalForm() {
   const [selectedAuthType, setSelectedAuthType] = useState<AuthType | null>(null)
 
   const isInviteLink = Boolean(inviteToken && inviteToken !== 'null')
-  const { data: invitationCheckResp, isPending: isInviteCheckLoading, isError: isInviteCheckError } = useQuery({
+  const {
+    data: invitationCheckResp,
+    isPending: isInviteCheckLoading,
+    isError: isInviteCheckError,
+  } = useQuery({
     queryKey: ['signin', 'invite-check', inviteToken],
-    queryFn: () => invitationCheck({
-      url: '/activate/check',
-      params: {
-        token: inviteToken,
-      },
-    }),
+    queryFn: () =>
+      invitationCheck({
+        url: '/activate/check',
+        params: {
+          token: inviteToken,
+        },
+      }),
     enabled: isInviteLink,
     retry: false,
     refetchOnWindowFocus: false,
@@ -62,19 +73,20 @@ function NormalForm() {
   const hasEmailPasswordLogin = systemFeatures.enable_email_password_login
   const hasEmailLogin = hasEmailCodeLogin || hasEmailPasswordLogin
   const defaultAuthType: AuthType = hasEmailPasswordLogin ? 'password' : 'code'
-  const authType = selectedAuthType === 'password' && hasEmailPasswordLogin
-    ? 'password'
-    : selectedAuthType === 'code' && hasEmailCodeLogin
-      ? 'code'
-      : defaultAuthType
+  const authType =
+    selectedAuthType === 'password' && hasEmailPasswordLogin
+      ? 'password'
+      : selectedAuthType === 'code' && hasEmailCodeLogin
+        ? 'code'
+        : defaultAuthType
   const showORLine = (hasSocialLogin || hasSsoLogin) && hasEmailLogin
-  const noLoginMethodsConfigured = !hasSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
+  const noLoginMethodsConfigured =
+    !hasSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
   const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
   const isLoading = isCheckLoading || isLoggedIn || (isInviteLink && isInviteCheckLoading)
 
   useEffect(() => {
-    if (!isLoggedIn)
-      return
+    if (!isLoggedIn) return
 
     if (isInviteLink) {
       router.replace(`/signin/invite-settings?${searchParams.toString()}`)
@@ -85,19 +97,17 @@ function NormalForm() {
   }, [isInviteLink, isLoggedIn, router, searchParams])
 
   useEffect(() => {
-    if (message)
-      toast.error(message)
+    if (message) toast.error(message)
   }, [message])
 
   if (isLoading) {
     return (
-      <div className={
-        cn(
+      <div
+        className={cn(
           'flex w-full grow flex-col items-center justify-center',
           'px-6',
           'md:px-[108px]',
-        )
-      }
+        )}
       >
         <Loading type="area" />
       </div>
@@ -112,8 +122,12 @@ function NormalForm() {
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t('licenseLost', { ns: 'login' })}</p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseLostTip', { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">
+              {t('licenseLost', { ns: 'login' })}
+            </p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">
+              {t('licenseLostTip', { ns: 'login' })}
+            </p>
           </div>
         </div>
       </div>
@@ -128,8 +142,12 @@ function NormalForm() {
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t('licenseExpired', { ns: 'login' })}</p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseExpiredTip', { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">
+              {t('licenseExpired', { ns: 'login' })}
+            </p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">
+              {t('licenseExpiredTip', { ns: 'login' })}
+            </p>
           </div>
         </div>
       </div>
@@ -144,8 +162,12 @@ function NormalForm() {
               <RiContractLine className="size-5" />
               <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t('licenseInactive', { ns: 'login' })}</p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseInactiveTip', { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">
+              {t('licenseInactive', { ns: 'login' })}
+            </p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">
+              {t('licenseInactiveTip', { ns: 'login' })}
+            </p>
           </div>
         </div>
       </div>
@@ -155,28 +177,32 @@ function NormalForm() {
   return (
     <>
       <div className="mx-auto mt-8 w-full">
-        {isInviteLink
-          ? (
-              <div className="mx-auto w-full">
-                <h2 className="title-4xl-semi-bold text-text-primary">
-                  {t('join', { ns: 'login' })}
-                  {workspaceName}
-                </h2>
-                {!systemFeatures.branding.enabled && (
-                  <p className="mt-2 body-md-regular text-text-tertiary">
-                    {t('joinTipStart', { ns: 'login' })}
-                    {workspaceName}
-                    {t('joinTipEnd', { ns: 'login' })}
-                  </p>
-                )}
-              </div>
-            )
-          : (
-              <div className="mx-auto w-full">
-                <h2 className="title-4xl-semi-bold text-text-primary">{systemFeatures.branding.enabled ? t('pageTitleForE', { ns: 'login' }) : t('pageTitle', { ns: 'login' })}</h2>
-                <p className="mt-2 body-md-regular text-text-tertiary">{t('welcome', { ns: 'login' })}</p>
-              </div>
+        {isInviteLink ? (
+          <div className="mx-auto w-full">
+            <h2 className="title-4xl-semi-bold text-text-primary">
+              {t('join', { ns: 'login' })}
+              {workspaceName}
+            </h2>
+            {!systemFeatures.branding.enabled && (
+              <p className="mt-2 body-md-regular text-text-tertiary">
+                {t('joinTipStart', { ns: 'login' })}
+                {workspaceName}
+                {t('joinTipEnd', { ns: 'login' })}
+              </p>
             )}
+          </div>
+        ) : (
+          <div className="mx-auto w-full">
+            <h2 className="title-4xl-semi-bold text-text-primary">
+              {systemFeatures.branding.enabled
+                ? t('pageTitleForE', { ns: 'login' })
+                : t('pageTitle', { ns: 'login' })}
+            </h2>
+            <p className="mt-2 body-md-regular text-text-tertiary">
+              {t('welcome', { ns: 'login' })}
+            </p>
+          </div>
+        )}
         <div className="relative">
           <div className="mt-6 flex flex-col gap-3">
             {hasSocialLogin && <SocialAuth />}
@@ -191,54 +217,62 @@ function NormalForm() {
             <div className="relative mt-6">
               <div className="flex items-center">
                 <div className="h-px flex-1 bg-linear-to-r from-background-gradient-mask-transparent to-divider-regular"></div>
-                <span className="px-3 system-xs-medium-uppercase text-text-tertiary">{t('or', { ns: 'login' })}</span>
+                <span className="px-3 system-xs-medium-uppercase text-text-tertiary">
+                  {t('or', { ns: 'login' })}
+                </span>
                 <div className="h-px flex-1 bg-linear-to-l from-background-gradient-mask-transparent to-divider-regular"></div>
               </div>
             </div>
           )}
-          {
-            hasEmailLogin && (
-              <>
-                {hasEmailCodeLogin && authType === 'code' && (
-                  <>
-                    <MailAndCodeAuth isInvite={isInviteLink} />
-                    {hasEmailPasswordLogin && (
-                      <button
-                        type="button"
-                        className="w-full cursor-pointer py-1 text-center"
-                        onClick={() => { setSelectedAuthType('password') }}
-                      >
-                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t('usePassword', { ns: 'login' })}</span>
-                      </button>
-                    )}
-                  </>
-                )}
-                {hasEmailPasswordLogin && authType === 'password' && (
-                  <>
-                    <MailAndPasswordAuth isInvite={isInviteLink} isEmailSetup={systemFeatures.is_email_setup} />
-                    {hasEmailCodeLogin && (
-                      <button
-                        type="button"
-                        className="w-full cursor-pointer py-1 text-center"
-                        onClick={() => { setSelectedAuthType('code') }}
-                      >
-                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t('useVerificationCode', { ns: 'login' })}</span>
-                      </button>
-                    )}
-                  </>
-                )}
-                <Split className="mt-4 mb-5" />
-              </>
-            )
-          }
+          {hasEmailLogin && (
+            <>
+              {hasEmailCodeLogin && authType === 'code' && (
+                <>
+                  <MailAndCodeAuth isInvite={isInviteLink} />
+                  {hasEmailPasswordLogin && (
+                    <button
+                      type="button"
+                      className="w-full cursor-pointer py-1 text-center"
+                      onClick={() => {
+                        setSelectedAuthType('password')
+                      }}
+                    >
+                      <span className="system-xs-medium text-components-button-secondary-accent-text">
+                        {t('usePassword', { ns: 'login' })}
+                      </span>
+                    </button>
+                  )}
+                </>
+              )}
+              {hasEmailPasswordLogin && authType === 'password' && (
+                <>
+                  <MailAndPasswordAuth
+                    isInvite={isInviteLink}
+                    isEmailSetup={systemFeatures.is_email_setup}
+                  />
+                  {hasEmailCodeLogin && (
+                    <button
+                      type="button"
+                      className="w-full cursor-pointer py-1 text-center"
+                      onClick={() => {
+                        setSelectedAuthType('code')
+                      }}
+                    >
+                      <span className="system-xs-medium text-components-button-secondary-accent-text">
+                        {t('useVerificationCode', { ns: 'login' })}
+                      </span>
+                    </button>
+                  )}
+                </>
+              )}
+              <Split className="mt-4 mb-5" />
+            </>
+          )}
 
           {systemFeatures.is_allow_register && authType === 'password' && (
             <div className="mb-3 text-[13px] leading-4 font-medium text-text-secondary">
               <span>{t('signup.noAccount', { ns: 'login' })}</span>
-              <Link
-                className="text-text-accent"
-                href="/signup"
-              >
+              <Link className="text-text-accent" href={signupHref}>
                 {t('signup.signUp', { ns: 'login' })}
               </Link>
             </div>
@@ -249,8 +283,12 @@ function NormalForm() {
                 <div className="shadows-shadow-lg mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
                   <RiDoorLockLine className="size-5" />
                 </div>
-                <p className="system-sm-medium text-text-primary">{t('noLoginMethod', { ns: 'login' })}</p>
-                <p className="mt-1 system-xs-regular text-text-tertiary">{t('noLoginMethodTip', { ns: 'login' })}</p>
+                <p className="system-sm-medium text-text-primary">
+                  {t('noLoginMethod', { ns: 'login' })}
+                </p>
+                <p className="mt-1 system-xs-regular text-text-tertiary">
+                  {t('noLoginMethodTip', { ns: 'login' })}
+                </p>
               </div>
               <div className="relative my-2 py-2">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -263,7 +301,7 @@ function NormalForm() {
             <>
               <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
                 {t('tosDesc', { ns: 'login' })}
-              &nbsp;
+                &nbsp;
                 <Link
                   className="system-xs-medium text-text-secondary hover:underline"
                   target="_blank"
@@ -272,7 +310,7 @@ function NormalForm() {
                 >
                   {t('tos', { ns: 'login' })}
                 </Link>
-              &nbsp;&&nbsp;
+                &nbsp;&&nbsp;
                 <Link
                   className="system-xs-medium text-text-secondary hover:underline"
                   target="_blank"
@@ -285,7 +323,7 @@ function NormalForm() {
               {IS_CE_EDITION && (
                 <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
                   {t('goToInit', { ns: 'login' })}
-              &nbsp;
+                  &nbsp;
                   <Link
                     className="system-xs-medium text-text-secondary hover:underline"
                     href="/install"

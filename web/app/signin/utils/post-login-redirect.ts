@@ -24,15 +24,12 @@ function validateDeviceRedirect(target: string): string | null {
     const url = new URL(safeTarget.href, window.location.origin)
     if (url.origin !== window.location.origin) return null
     const allowedKeys = ALLOWED[url.pathname]
-    if (!allowedKeys)
-      return null
+    if (!allowedKeys) return null
     for (const key of url.searchParams.keys()) {
-      if (!allowedKeys.has(key))
-        return null
+      if (!allowedKeys.has(key)) return null
     }
     return url.pathname + (url.search || '')
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -46,31 +43,26 @@ export function setPostLoginRedirect(value: string | null) {
   if (value === null) {
     try {
       sessionStorage.removeItem(DEVICE_REDIRECT_KEY)
-    }
-    catch {}
+    } catch {}
     return
   }
   const safe = validateDeviceRedirect(value)
   if (!safe) return
   try {
     sessionStorage.setItem(DEVICE_REDIRECT_KEY, JSON.stringify({ target: safe, ts: Date.now() }))
-  }
-  catch {}
+  } catch {}
 }
 
 function getDeviceRedirect(): string | null {
-  if (typeof window === 'undefined')
-    return null
+  if (typeof window === 'undefined') return null
   let raw: string | null = null
   try {
     raw = sessionStorage.getItem(DEVICE_REDIRECT_KEY)
     sessionStorage.removeItem(DEVICE_REDIRECT_KEY)
-  }
-  catch {
+  } catch {
     return null
   }
-  if (!raw)
-    return null
+  if (!raw) return null
   try {
     const parsed = JSON.parse(raw)
     if (typeof parsed?.target !== 'string' || typeof parsed?.ts !== 'number') return null
