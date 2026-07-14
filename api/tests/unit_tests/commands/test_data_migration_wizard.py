@@ -394,8 +394,8 @@ def test_import_options_prompts_explain_secrets_reuse_and_conflicts(monkeypatch)
     assert prompt_calls[0][0] == "Import ID strategy. Enter one of: preserve-id, generate-new-id"
     assert prompt_calls[0][1]["default"] == "preserve-id"
     assert prompt_calls[0][1]["show_default"] is True
-    assert prompt_calls[0][1]["type"].choices == ID_STRATEGY_CHOICES
+    assert list(prompt_calls[0][1]["type"].choices) == ID_STRATEGY_CHOICES
     assert prompt_calls[1][0] == "Import conflict strategy. Enter one of: fail, skip, update"
     assert prompt_calls[1][1]["default"] == "update"
     assert prompt_calls[1][1]["show_default"] is True
-    assert prompt_calls[1][1]["type"].choices == CONFLICT_STRATEGY_CHOICES
+    assert list(prompt_calls[1][1]["type"].choices) == CONFLICT_STRATEGY_CHOICES
