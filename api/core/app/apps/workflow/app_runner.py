@@ -15,6 +15,7 @@ from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, Workfl
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
 from core.workflow.nodes.agent_v2.session_cleanup_layer import build_workflow_agent_session_cleanup_layer
+from core.workflow.secret_scrub import collect_workflow_secret_values
 from core.workflow.snippet_start import get_compatible_start_aliases
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
@@ -190,6 +191,10 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 workflow_type=WorkflowType(self._workflow.type),
                 version=self._workflow.version,
                 graph_data=self._workflow.graph_dict,
+                secret_values=collect_workflow_secret_values(
+                    self._workflow.environment_variables,
+                    self._workflow.conversation_variables,
+                ),
             ),
             workflow_execution_repository=self._workflow_execution_repository,
             workflow_node_execution_repository=self._workflow_node_execution_repository,

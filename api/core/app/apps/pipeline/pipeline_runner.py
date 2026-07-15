@@ -18,6 +18,7 @@ from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, Workfl
 from core.db.session_factory import create_session
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
+from core.workflow.secret_scrub import collect_workflow_secret_values
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -225,6 +226,10 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow_type=WorkflowType(workflow.type),
                 version=workflow.version,
                 graph_data=workflow.graph_dict,
+                secret_values=collect_workflow_secret_values(
+                    workflow.environment_variables,
+                    workflow.conversation_variables,
+                ),
             ),
             workflow_execution_repository=self._workflow_execution_repository,
             workflow_node_execution_repository=self._workflow_node_execution_repository,
