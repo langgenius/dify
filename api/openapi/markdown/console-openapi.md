@@ -23887,6 +23887,7 @@ Lifecycle state for an asynchronous archive download request.
 | predecessor_node_id | string |  | No |
 | process_data |  |  | No |
 | process_data_truncated | boolean |  | No |
+| retry_index | integer |  | No |
 | status | string |  | No |
 | title | string |  | No |
 
