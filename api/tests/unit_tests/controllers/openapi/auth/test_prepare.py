@@ -1,4 +1,5 @@
 import uuid
+from contextlib import nullcontext
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -152,10 +153,14 @@ def test_load_account_skips_when_already_set():
 def test_load_account_sets_current_tenant_when_tenant_present():
     account = MagicMock()
     tenant = MagicMock()
+    session = MagicMock()
     data = _make_auth_data(account_id=uuid.uuid4(), tenant=tenant)
-    with patch("controllers.openapi.auth.prepare.AccountService.get_account_by_id", return_value=account):
+    with (
+        patch("controllers.openapi.auth.prepare.AccountService.get_account_by_id", return_value=account),
+        patch("controllers.openapi.auth.prepare.session_factory.create_session", return_value=nullcontext(session)),
+    ):
         load_account(data)
-    assert account.current_tenant is tenant
+    account.set_current_tenant_with_session.assert_called_once_with(tenant, session=session)
 
 
 def test_load_account_raises_unauthorized_when_not_found():

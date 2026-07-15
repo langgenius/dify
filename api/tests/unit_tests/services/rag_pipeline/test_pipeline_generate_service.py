@@ -82,6 +82,7 @@ def test_generate_updates_document_status_and_returns_event_stream(mocker: Mocke
 
     assert result == "stream-events"
     update_status_mock.assert_called_once_with("doc-1", session=session_mock)
+    assert generator_instance.generate.call_args.kwargs["session"] is session_mock
 
 
 def test_update_document_status_updates_existing_document(mocker: MockerFixture) -> None:
@@ -126,6 +127,7 @@ def test_generate_single_iteration_delegates(mocker: MockerFixture) -> None:
 
     assert result == "stream-iter"
     generator_instance.single_iteration_generate.assert_called_once()
+    assert generator_instance.single_iteration_generate.call_args.kwargs["session"] is session
 
 
 # --- generate_single_loop ---
@@ -147,3 +149,4 @@ def test_generate_single_loop_delegates(mocker: MockerFixture) -> None:
 
     assert result == "stream-loop"
     generator_instance.single_loop_generate.assert_called_once()
+    assert generator_instance.single_loop_generate.call_args.kwargs["session"] is session

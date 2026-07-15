@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy.orm import Session
+
 from models.agent_config_entities import AgentSoulConfig
 
 
@@ -26,7 +28,7 @@ def list_agent_soul_knowledge_dataset_ids(agent_soul: AgentSoulConfig) -> list[s
     return dataset_ids
 
 
-def get_tenant_knowledge_dataset_rows(*, tenant_id: str, dataset_ids: list[str]) -> dict[str, Any]:
+def get_tenant_knowledge_dataset_rows(*, session: Session, tenant_id: str, dataset_ids: list[str]) -> dict[str, Any]:
     """Return tenant-scoped dataset rows for normalized knowledge dataset ids.
 
     Knowledge ids come from user-editable config. Malformed ids can never match
@@ -46,11 +48,13 @@ def get_tenant_knowledge_dataset_rows(*, tenant_id: str, dataset_ids: list[str])
     if not valid_ids:
         return {}
 
-    rows, _ = DatasetService.get_datasets_by_ids(valid_ids, tenant_id)
+    rows, _ = DatasetService.get_datasets_by_ids(valid_ids, tenant_id, session=session)
     return {str(row.id): row for row in rows}
 
 
-def list_missing_tenant_knowledge_dataset_ids(*, tenant_id: str, agent_soul: AgentSoulConfig | None) -> list[str]:
+def list_missing_tenant_knowledge_dataset_ids(
+    *, session: Session, tenant_id: str, agent_soul: AgentSoulConfig | None
+) -> list[str]:
     """Return normalized knowledge dataset ids missing from the tenant scope."""
     if agent_soul is None:
         return []
@@ -59,5 +63,5 @@ def list_missing_tenant_knowledge_dataset_ids(*, tenant_id: str, agent_soul: Age
     if not dataset_ids:
         return []
 
-    rows = get_tenant_knowledge_dataset_rows(tenant_id=tenant_id, dataset_ids=dataset_ids)
+    rows = get_tenant_knowledge_dataset_rows(session=session, tenant_id=tenant_id, dataset_ids=dataset_ids)
     return [dataset_id for dataset_id in dataset_ids if dataset_id not in rows]

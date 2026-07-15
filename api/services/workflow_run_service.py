@@ -82,12 +82,13 @@ class WorkflowRunService:
         run_ids = [workflow_run.id for workflow_run in workflow_runs]
         messages_by_run_id: dict[str, Message] = {}
         if run_ids:
-            messages = db.session.scalars(
-                select(Message).where(
-                    Message.app_id == app_model.id,
-                    Message.workflow_run_id.in_(run_ids),
-                )
-            ).all()
+            with self._session_factory() as session:
+                messages = session.scalars(
+                    select(Message).where(
+                        Message.app_id == app_model.id,
+                        Message.workflow_run_id.in_(run_ids),
+                    )
+                ).all()
             for loaded_message in messages:
                 run_id = loaded_message.workflow_run_id
                 if run_id is None:

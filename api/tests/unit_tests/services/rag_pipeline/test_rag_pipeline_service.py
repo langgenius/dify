@@ -2424,3 +2424,16 @@ def test_get_pipeline_returns_pipeline_when_found(
     result = rag_pipeline_service.service.get_pipeline("t1", "d1")
 
     assert result is pipeline
+
+
+def test_get_pipeline_by_id_uses_provided_session() -> None:
+    pipeline = _make_pipeline()
+    session = Mock()
+    session.scalar.return_value = pipeline
+
+    result = RagPipelineService.get_pipeline_by_id("p1", "t1", session=session)
+
+    assert result is pipeline
+    statement = session.scalar.call_args.args[0]
+    where_clauses = statement.whereclause.clauses
+    assert [clause.right.value for clause in where_clauses] == ["p1", "t1"]
