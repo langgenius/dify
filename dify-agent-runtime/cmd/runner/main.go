@@ -26,6 +26,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/langgenius/dify/dify-agent-runtime/internal/cmdutil"
 	"github.com/langgenius/dify/dify-agent-runtime/internal/landlock"
 )
 
@@ -41,8 +42,7 @@ func main() {
 // Args: shellctl-runner <job_dir> <job_id> <cwd>
 func parentMode() {
 	if len(os.Args) < 4 {
-		fmt.Fprintf(os.Stderr, "usage: shellctl-runner <job_dir> <job_id> <cwd>\n")
-		os.Exit(125)
+		cmdutil.HandleError(fmt.Errorf("bad args"), 125, "usage: shellctl-runner <job_dir> <job_id> <cwd>")
 	}
 
 	jobDir := os.Args[1]
@@ -81,13 +81,13 @@ func parentMode() {
 	// Ensure HOME exists.
 	home := envGet(env, "HOME")
 	if home != "" {
-		os.MkdirAll(home, 0755)
+		cmdutil.HandleError(os.MkdirAll(home, 0755), 125, "mkdir HOME %s", home)
 	}
 
 	// Create a per-workspace temp directory under cwd and inject TMPDIR.
 	// This avoids granting RW access to the shared /tmp.
 	agentTmp := filepath.Join(cwd, ".tmp")
-	os.MkdirAll(agentTmp, 0755)
+	cmdutil.HandleError(os.MkdirAll(agentTmp, 0755), 125, "mkdir TMPDIR %s", agentTmp)
 	env = setEnvIfEmpty(env, "TMPDIR", agentTmp)
 	env = setEnvIfEmpty(env, "TMP", agentTmp)
 	env = setEnvIfEmpty(env, "TEMP", agentTmp)
@@ -118,7 +118,7 @@ func parentMode() {
 	go func() {
 		for sig := range sigCh {
 			if cmd.Process != nil {
-				cmd.Process.Signal(sig)
+				_ = cmd.Process.Signal(sig)
 			}
 		}
 	}()
@@ -154,28 +154,21 @@ func childMode() {
 	}
 
 	if len(args) < 2 {
-		fmt.Fprintf(os.Stderr, "shellctl-runner --exec: missing script_path and cwd\n")
-		os.Exit(125)
+		cmdutil.HandleError(fmt.Errorf("bad args"), 125, "--exec: missing script_path and cwd")
 	}
 
 	scriptPath := args[0]
 	cwd := args[1]
 
 	// chdir
-	if err := os.Chdir(cwd); err != nil {
-		fmt.Fprintf(os.Stderr, "shellctl-runner: chdir %s: %v\n", cwd, err)
-		os.Exit(111)
-	}
+	cmdutil.HandleError(os.Chdir(cwd), 111, "chdir %s", cwd)
 
 	// Determine argv for exec.
 	argv := buildExecArgv(scriptPath)
 
 	// Resolve binary before Landlock (PATH search).
 	binary, err := exec.LookPath(argv[0])
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "shellctl-runner: %s: not found\n", argv[0])
-		os.Exit(127)
-	}
+	cmdutil.HandleError(err, 127, "%s: not found", argv[0])
 
 	// Apply Landlock if requested.
 	if applyLandlockFlag {
@@ -186,17 +179,13 @@ func childMode() {
 			if errors.Is(err, landlock.ErrNotSupported) {
 				fmt.Fprintf(os.Stderr, "shellctl-runner: WARNING: %v — running without filesystem isolation\n", err)
 			} else {
-				fmt.Fprintf(os.Stderr, "shellctl-runner: landlock restrict: %v\n", err)
-				os.Exit(125)
+				cmdutil.HandleError(err, 125, "landlock restrict")
 			}
 		}
 	}
 
 	// exec replaces the current process.
-	if err := syscall.Exec(binary, argv, os.Environ()); err != nil {
-		fmt.Fprintf(os.Stderr, "shellctl-runner: exec %s: %v\n", binary, err)
-		os.Exit(126)
-	}
+	cmdutil.HandleError(syscall.Exec(binary, argv, os.Environ()), 126, "exec %s", binary)
 }
 
 // buildExecArgv determines whether the script has a shebang or needs sh.
@@ -205,13 +194,13 @@ func buildExecArgv(scriptPath string) []string {
 	if err != nil {
 		return []string{"sh", scriptPath}
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	buf := make([]byte, 2)
 	n, _ := f.Read(buf)
 	if n == 2 && string(buf) == "#!" {
 		// Has shebang — make executable and run directly.
-		os.Chmod(scriptPath, 0755)
+		_ = os.Chmod(scriptPath, 0755)
 		return []string{scriptPath}
 	}
 	return []string{"sh", scriptPath}
@@ -290,7 +279,10 @@ func setEnvIfEmpty(env []string, key, value string) []string {
 func writeAtomic(dest, value string) {
 	tmp := fmt.Sprintf("%s.tmp.%d", dest, os.Getpid())
 	if err := os.WriteFile(tmp, []byte(value+"\n"), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "shellctl-runner: write %s: %v\n", tmp, err)
 		return
 	}
-	os.Rename(tmp, dest)
+	if err := os.Rename(tmp, dest); err != nil {
+		fmt.Fprintf(os.Stderr, "shellctl-runner: rename %s -> %s: %v\n", tmp, dest, err)
+	}
 }

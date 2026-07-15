@@ -869,9 +869,9 @@ func (s *Service) installEnablePathIsolation() {
 	// environment.  Since tmux inherits the shellctl server env, we ensure
 	// the variable is set in the server's own environment so it propagates.
 	if s.config.EnablePathIsolation {
-		os.Setenv(landlock.EnvEnablePathIsolation, "true")
+		_ = os.Setenv(landlock.EnvEnablePathIsolation, "true")
 	} else {
-		os.Setenv(landlock.EnvEnablePathIsolation, "false")
+		_ = os.Setenv(landlock.EnvEnablePathIsolation, "false")
 	}
 }
 

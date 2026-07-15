@@ -5,9 +5,9 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 
+	"github.com/langgenius/dify/dify-agent-runtime/internal/cmdutil"
 	"github.com/langgenius/dify/dify-agent-runtime/internal/sanitize"
 )
 
@@ -15,8 +15,5 @@ func main() {
 	readyFile := flag.String("ready-file", "", "path to touch before reading stdin")
 	flag.Parse()
 
-	if err := sanitize.Run(*readyFile, os.Stdin, os.Stdout); err != nil {
-		fmt.Fprintf(os.Stderr, "shellctl-sanitize-pty: %v\n", err)
-		os.Exit(1)
-	}
+	cmdutil.HandleError(sanitize.Run(*readyFile, os.Stdin, os.Stdout), 1, "sanitize-pty")
 }
