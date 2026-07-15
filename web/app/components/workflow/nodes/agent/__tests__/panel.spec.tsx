@@ -21,9 +21,12 @@ vi.mock('../use-config', () => ({
 }))
 
 vi.mock('../../../store', () => ({
-  useStore: (selector: (state: { setControlPromptEditorRerenderKey: typeof mockResetEditor }) => unknown) => selector({
-    setControlPromptEditorRerenderKey: mockResetEditor,
-  }),
+  useStore: (
+    selector: (state: { setControlPromptEditorRerenderKey: typeof mockResetEditor }) => unknown,
+  ) =>
+    selector({
+      setControlPromptEditorRerenderKey: mockResetEditor,
+    }),
 }))
 
 vi.mock('../../_base/components/agent-strategy', () => ({
@@ -36,7 +39,7 @@ vi.mock('../../_base/components/agent-strategy', () => ({
       plugin_unique_identifier: string
       meta?: AgentNodeType['meta']
     }
-    formSchema: Array<{ variable: string, tooltip?: StrategyParamItem['help'] }>
+    formSchema: Array<{ variable: string; tooltip?: StrategyParamItem['help'] }>
     formValue: Record<string, unknown>
     onStrategyChange: (strategy: {
       agent_strategy_provider_name: string
@@ -53,27 +56,32 @@ vi.mock('../../_base/components/agent-strategy', () => ({
       <div>
         <button
           type="button"
-          onClick={() => props.onStrategyChange({
-            agent_strategy_provider_name: 'provider/updated',
-            agent_strategy_name: 'updated',
-            agent_strategy_label: 'Updated Strategy',
-            agent_output_schema: {
-              properties: {
-                structured: {
-                  type: 'string',
-                  description: 'structured output',
+          onClick={() =>
+            props.onStrategyChange({
+              agent_strategy_provider_name: 'provider/updated',
+              agent_strategy_name: 'updated',
+              agent_strategy_label: 'Updated Strategy',
+              agent_output_schema: {
+                properties: {
+                  structured: {
+                    type: 'string',
+                    description: 'structured output',
+                  },
                 },
               },
-            },
-            plugin_unique_identifier: 'provider/updated:1.0.0',
-            meta: {
-              version: '2.0.0',
-            } as AgentNodeType['meta'],
-          })}
+              plugin_unique_identifier: 'provider/updated:1.0.0',
+              meta: {
+                version: '2.0.0',
+              } as AgentNodeType['meta'],
+            })
+          }
         >
           change-strategy
         </button>
-        <button type="button" onClick={() => props.onFormValueChange({ instruction: 'Use the tool' })}>
+        <button
+          type="button"
+          onClick={() => props.onFormValueChange({ instruction: 'Use the tool' })}
+        >
           change-form
         </button>
       </div>
@@ -92,13 +100,15 @@ vi.mock('../../_base/components/memory-config', () => ({
     return (
       <button
         type="button"
-        onClick={() => props.onChange({
-          window: {
-            enabled: true,
-            size: 8,
-          },
-          query_prompt_template: 'history',
-        } as AgentNodeType['memory'])}
+        onClick={() =>
+          props.onChange({
+            window: {
+              enabled: true,
+              size: 8,
+            },
+            query_prompt_template: 'history',
+          } as AgentNodeType['memory'])
+        }
       >
         change-memory
       </button>
@@ -109,7 +119,7 @@ vi.mock('../../_base/components/memory-config', () => ({
 vi.mock('../../_base/components/output-vars', () => ({
   __esModule: true,
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type, description }: { name: string, type: string, description?: string }) => (
+  VarItem: ({ name, type, description }: { name: string; type: string; description?: string }) => (
     <div>{`${name}:${type}:${description || ''}`}</div>
   ),
 }))
@@ -156,7 +166,9 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   setInputs: vi.fn(),
@@ -194,11 +206,13 @@ const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {
   pluginDetail: undefined,
   availableVars: [],
   availableNodesWithParent: [],
-  outputSchema: [{
-    name: 'summary',
-    type: 'String',
-    description: 'summary output',
-  }],
+  outputSchema: [
+    {
+      name: 'summary',
+      type: 'String',
+      description: 'summary output',
+    },
+  ],
   handleMemoryChange: vi.fn(),
   isChatMode: true,
   ...overrides,
@@ -218,60 +232,72 @@ describe('agent/panel', () => {
     const onFormChange = vi.fn()
     const handleMemoryChange = vi.fn()
 
-    mockUseConfig.mockReturnValue(createConfigResult({
-      setInputs,
-      onFormChange,
-      handleMemoryChange,
-    }))
-
-    render(
-      <Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
+    mockUseConfig.mockReturnValue(
+      createConfigResult({
+        setInputs,
+        onFormChange,
+        handleMemoryChange,
+      }),
     )
 
+    render(<Panel id="agent-node" data={createData()} panelProps={panelProps} />)
+
     expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
-    expect(screen.queryByText('reasoning_content:String:workflow.nodes.llm.outputVars.reasoning_content')).not.toBeInTheDocument()
-    expect(screen.getByText('usage:object:workflow.nodes.agent.outputVars.usage')).toBeInTheDocument()
-    expect(screen.getByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
-    expect(screen.getByText('json:Array[Object]:workflow.nodes.agent.outputVars.json')).toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        'reasoning_content:String:workflow.nodes.llm.outputVars.reasoning_content',
+      ),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText('usage:object:workflow.nodes.agent.outputVars.usage'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('json:Array[Object]:workflow.nodes.agent.outputVars.json'),
+    ).toBeInTheDocument()
     expect(screen.getByText('summary:String:summary output')).toBeInTheDocument()
-    expect(mockAgentStrategy).toHaveBeenCalledWith(expect.objectContaining({
-      formSchema: expect.arrayContaining([
-        expect.objectContaining({
-          variable: 'instruction',
-          tooltip: { en_US: 'Instruction help' },
-        }),
-        expect.objectContaining({
-          variable: 'modelParam',
-        }),
-      ]),
-      formValue: {
-        instruction: 'Plan and answer',
-      },
-    }))
+    expect(mockAgentStrategy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        formSchema: expect.arrayContaining([
+          expect.objectContaining({
+            variable: 'instruction',
+            tooltip: { en_US: 'Instruction help' },
+          }),
+          expect.objectContaining({
+            variable: 'modelParam',
+          }),
+        ]),
+        formValue: {
+          instruction: 'Plan and answer',
+        },
+      }),
+    )
 
     await user.click(screen.getByRole('button', { name: 'change-strategy' }))
     await user.click(screen.getByRole('button', { name: 'change-form' }))
     await user.click(screen.getByRole('button', { name: 'change-memory' }))
 
-    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
-      agent_strategy_provider_name: 'provider/updated',
-      agent_strategy_name: 'updated',
-      agent_strategy_label: 'Updated Strategy',
-      plugin_unique_identifier: 'provider/updated:1.0.0',
-      output_schema: expect.objectContaining({
-        properties: expect.objectContaining({
-          structured: expect.any(Object),
+    expect(setInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent_strategy_provider_name: 'provider/updated',
+        agent_strategy_name: 'updated',
+        agent_strategy_label: 'Updated Strategy',
+        plugin_unique_identifier: 'provider/updated:1.0.0',
+        output_schema: expect.objectContaining({
+          properties: expect.objectContaining({
+            structured: expect.any(Object),
+          }),
         }),
       }),
-    }))
+    )
     expect(onFormChange).toHaveBeenCalledWith({ instruction: 'Use the tool' })
-    expect(handleMemoryChange).toHaveBeenCalledWith(expect.objectContaining({
-      query_prompt_template: 'history',
-    }))
+    expect(handleMemoryChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query_prompt_template: 'history',
+      }),
+    )
     expect(mockResetEditor).toHaveBeenCalledTimes(1)
   })
 
@@ -279,12 +305,14 @@ describe('agent/panel', () => {
     const user = userEvent.setup()
     const setInputs = vi.fn()
 
-    mockUseConfig.mockReturnValue(createConfigResult({
-      inputs: createData({
-        reasoning_format: 'separated',
+    mockUseConfig.mockReturnValue(
+      createConfigResult({
+        inputs: createData({
+          reasoning_format: 'separated',
+        }),
+        setInputs,
       }),
-      setInputs,
-    }))
+    )
 
     render(
       <Panel
@@ -294,31 +322,31 @@ describe('agent/panel', () => {
       />,
     )
 
-    expect(screen.getByText('reasoning_content:String:workflow.nodes.llm.outputVars.reasoning_content')).toBeInTheDocument()
+    expect(
+      screen.getByText('reasoning_content:String:workflow.nodes.llm.outputVars.reasoning_content'),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('switch'))
 
-    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
-      reasoning_format: 'tagged',
-    }))
+    expect(setInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reasoning_format: 'tagged',
+      }),
+    )
   })
 
   it('hides memory config when chat mode support is unavailable', () => {
-    mockUseConfig.mockReturnValue(createConfigResult({
-      isChatMode: false,
-      currentStrategy: {
-        ...createConfigResult().currentStrategy!,
-        features: [],
-      },
-    }))
-
-    render(
-      <Panel
-        id="agent-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
+    mockUseConfig.mockReturnValue(
+      createConfigResult({
+        isChatMode: false,
+        currentStrategy: {
+          ...createConfigResult().currentStrategy!,
+          features: [],
+        },
+      }),
     )
+
+    render(<Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
     expect(screen.queryByRole('button', { name: 'change-memory' })).not.toBeInTheDocument()
     expect(mockMemoryConfig).not.toHaveBeenCalled()

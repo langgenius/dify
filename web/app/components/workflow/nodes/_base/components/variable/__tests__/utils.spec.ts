@@ -73,9 +73,7 @@ describe('variable utils', () => {
         expect.arrayContaining([
           expect.objectContaining({
             nodeId: 'node-1',
-            vars: expect.arrayContaining([
-              { variable: 'reasoning_content', type: VarType.string },
-            ]),
+            vars: expect.arrayContaining([{ variable: 'reasoning_content', type: VarType.string }]),
           }),
         ]),
       )

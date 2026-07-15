@@ -107,10 +107,12 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
         <Split />
         <ReasoningFormatConfig
           value={inputs.reasoning_format || 'tagged'}
-          onChange={reasoningFormat => setInputs({
-            ...inputs,
-            reasoning_format: reasoningFormat,
-          })}
+          onChange={(reasoningFormat) =>
+            setInputs({
+              ...inputs,
+              reasoning_format: reasoningFormat,
+            })
+          }
           readonly={readOnly}
         />
       </div>
