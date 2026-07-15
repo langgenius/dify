@@ -492,6 +492,52 @@ class TestBatchProcessing:
             assert doc.indexing_status == "error"
             assert "does not support batch upload" in doc.error
 
+    def test_missing_documents_are_logged_with_warning(
+        self, dataset_id, caplog, mock_db_session, mock_dataset, mock_indexing_runner
+    ):
+        """
+        Documents requested but not found after indexing should be logged as warnings.
+
+        Regression test for the dead `else: logger.warning(...document.id)` branch
+        that was never reachable after the SQLAlchemy 2.0 refactor (#34968). The
+        "not found" intent should now be emitted once per missing id before the
+        indexing loop runs.
+        """
+        # Arrange: request 3 ids, only 2 are present in the DB.
+        present_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
+        missing_id = str(uuid.uuid4())
+        all_ids = [*present_ids, missing_id]
+
+        present_docs = []
+        for doc_id in present_ids:
+            doc = MagicMock(spec=Document)
+            doc.id = doc_id
+            doc.dataset_id = dataset_id
+            doc.indexing_status = "waiting"
+            doc.error = None
+            doc.stopped_at = None
+            doc.processing_started_at = None
+            present_docs.append(doc)
+
+        mock_db_session._shared_data["dataset"] = mock_dataset
+        mock_db_session._shared_data["documents"] = present_docs
+
+        with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
+            mock_features.return_value.billing.enabled = False
+
+            # Act
+            with caplog.at_level(logging.WARNING, logger="tasks.document_indexing_task"):
+                _document_indexing(dataset_id, all_ids)
+
+        # Assert: exactly one warning per missing id (and only those ids).
+        warning_messages = [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING]
+        assert any(missing_id in msg for msg in warning_messages), (
+            f"Expected a warning for missing id {missing_id!r}, got: {warning_messages}"
+        )
+        assert not any(present_ids[0] in msg for msg in warning_messages), (
+            "Should not warn for documents that were actually found"
+        )
+
     def test_batch_processing_empty_document_list(
         self, dataset_id, mock_db_session, mock_dataset, mock_indexing_runner
     ):
