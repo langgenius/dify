@@ -31,8 +31,11 @@ export function ReleaseSourceSection() {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <label id="release-source-mode-label" className="system-xs-medium-uppercase text-text-tertiary">
-          {t('versions.releaseSourceLabel')}
+        <label
+          id="release-source-mode-label"
+          className="system-xs-medium-uppercase text-text-tertiary"
+        >
+          {t(($) => $['versions.releaseSourceLabel'])}
         </label>
         {isDeploymentDslImportEnabled && (
           <SegmentedControl<ReleaseSourceMode>
@@ -40,8 +43,7 @@ export function ReleaseSourceSection() {
             value={[releaseSourceMode]}
             onValueChange={(value) => {
               const nextMode = selectedReleaseSourceMode(value)
-              if (!nextMode || nextMode === releaseSourceMode)
-                return
+              if (!nextMode || nextMode === releaseSourceMode) return
 
               selectReleaseSourceMode(nextMode)
             }}
@@ -49,20 +51,18 @@ export function ReleaseSourceSection() {
           >
             <SegmentedControlItem value="sourceApp" className="gap-1.5">
               <span className="i-ri-apps-2-line size-4 shrink-0" aria-hidden="true" />
-              <span>{t('versions.sourceAppOption')}</span>
+              <span>{t(($) => $['versions.sourceAppOption'])}</span>
             </SegmentedControlItem>
             <SegmentedControlItem value="dsl" className="gap-1.5">
               <span className="i-ri-upload-cloud-2-line size-4 shrink-0" aria-hidden="true" />
-              <span>{t('versions.manualDslOption')}</span>
+              <span>{t(($) => $['versions.manualDslOption'])}</span>
             </SegmentedControlItem>
           </SegmentedControl>
         )}
       </div>
 
       <div className="min-h-12">
-        {releaseSourceMode === 'sourceApp'
-          ? <SourceAppField />
-          : <DslFileField />}
+        {releaseSourceMode === 'sourceApp' ? <SourceAppField /> : <DslFileField />}
       </div>
     </div>
   )
@@ -75,11 +75,7 @@ function SourceAppField() {
 
   return (
     <div className="flex min-h-12 items-center">
-      <SourceAppPicker
-        value={sourceApp}
-        onChange={updateSourceApp}
-        disabled={sourceAppLocked}
-      />
+      <SourceAppPicker value={sourceApp} onChange={updateSourceApp} disabled={sourceAppLocked} />
     </div>
   )
 }
@@ -102,12 +98,12 @@ function DslFileField() {
       />
       {isReadingDsl && (
         <div role="status" className="system-xs-regular text-text-tertiary">
-          {t('versions.dslReading')}
+          {t(($) => $['versions.dslReading'])}
         </div>
       )}
       {dslReadError && (
         <div role="alert" className="system-xs-regular text-util-colors-red-red-600">
-          {t('versions.dslReadFailed')}
+          {t(($) => $['versions.dslReadFailed'])}
         </div>
       )}
       <DslUnsupportedModeError />
@@ -119,12 +115,11 @@ function DslUnsupportedModeError() {
   const { t } = useTranslation('deployments')
   const hasUnsupportedDslMode = useAtomValue(createReleaseHasUnsupportedDslModeAtom)
 
-  if (!hasUnsupportedDslMode)
-    return null
+  if (!hasUnsupportedDslMode) return null
 
   return (
     <div role="alert" className="system-xs-regular text-util-colors-red-red-600">
-      {t('versions.dslUnsupportedMode')}
+      {t(($) => $['versions.dslUnsupportedMode'])}
     </div>
   )
 }

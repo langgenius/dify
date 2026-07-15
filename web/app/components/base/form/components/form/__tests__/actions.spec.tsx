@@ -11,10 +11,12 @@ const mockFormState = vi.hoisted(() => ({
 }))
 
 vi.mock('@tanstack/react-form', async () => {
-  const actual = await vi.importActual<typeof import('@tanstack/react-form')>('@tanstack/react-form')
+  const actual =
+    await vi.importActual<typeof import('@tanstack/react-form')>('@tanstack/react-form')
   return {
     ...actual,
-    useStore: (_store: unknown, selector: (state: typeof mockFormState) => unknown) => selector(mockFormState),
+    useStore: (_store: unknown, selector: (state: typeof mockFormState) => unknown) =>
+      selector(mockFormState),
   }
 })
 
@@ -71,21 +73,23 @@ describe('Actions', () => {
 
   it('should render custom actions when provided', () => {
     const customActionsSpy = vi.fn(({ isSubmitting, canSubmit }: CustomActionsProps) => (
-      <div>
-        {`custom-${String(isSubmitting)}-${String(canSubmit)}`}
-      </div>
+      <div>{`custom-${String(isSubmitting)}-${String(canSubmit)}`}</div>
     ))
 
     renderWithForm({
       CustomActions: customActionsSpy,
     })
 
-    expect(screen.queryByRole('button', { name: 'common.operation.submit' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.submit' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByText('custom-false-true')).toBeInTheDocument()
-    expect(customActionsSpy).toHaveBeenCalledWith(expect.objectContaining({
-      form: expect.any(Object),
-      isSubmitting: false,
-      canSubmit: true,
-    }))
+    expect(customActionsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        form: expect.any(Object),
+        isSubmitting: false,
+        canSubmit: true,
+      }),
+    )
   })
 })

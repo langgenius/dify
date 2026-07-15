@@ -113,7 +113,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                     ).all()
                 )
                 for document in documents:
-                    if document:
+                    if document is not None:
                         document.indexing_status = IndexingStatus.ERROR
                         document.error = str(e)
                         document.stopped_at = naive_utc_now()
@@ -141,25 +141,36 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                     index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
 
                     # delete from vector index
-                    index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
+                    index_processor.clean(
+                        dataset,
+                        index_node_ids,
+                        with_keywords=True,
+                        delete_child_chunks=True,
+                        session=session,
+                    )
 
                     segment_ids = [segment.id for segment in segments]
-                    segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
-                    session.execute(segment_delete_stmt)
+                    if segment_ids:
+                        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+                        session.execute(segment_delete_stmt)
                     session.commit()
 
                 document.indexing_status = IndexingStatus.PARSING
                 document.processing_started_at = naive_utc_now()
                 session.add(document)
+            # Do not keep segment deletions or parsing status changes open during extraction.
             session.commit()
 
             indexing_runner = IndexingRunner()
-            indexing_runner.run(list(documents))
+            indexing_runner.run(list(documents), session)
+            session.commit()
             end_at = time.perf_counter()
             logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
         except DocumentIsPausedError as ex:
+            session.rollback()
             logger.info(click.style(str(ex), fg="yellow"))
         except Exception:
+            session.rollback()
             logger.exception("duplicate_document_indexing_task failed, dataset_id: %s", dataset_id)
 
 

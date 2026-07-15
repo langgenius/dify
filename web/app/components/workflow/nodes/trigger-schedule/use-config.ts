@@ -11,7 +11,7 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
 
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),
-    select: data => data.profile.timezone ?? undefined,
+    select: (data) => data.profile.timezone ?? undefined,
   })
 
   const frontendPayload = useMemo(() => {
@@ -29,74 +29,92 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
 
   const { inputs, setInputs } = useNodeCrud<ScheduleTriggerNodeType>(id, frontendPayload)
 
-  const handleModeChange = useCallback((mode: ScheduleMode) => {
-    const newInputs = {
-      ...inputs,
-      mode,
-    }
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const handleModeChange = useCallback(
+    (mode: ScheduleMode) => {
+      const newInputs = {
+        ...inputs,
+        mode,
+      }
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
 
-  const handleFrequencyChange = useCallback((frequency: ScheduleFrequency) => {
-    const newInputs = {
-      ...inputs,
-      frequency,
-      visual_config: {
-        ...inputs.visual_config,
-        ...(frequency === 'hourly') && {
-          on_minute: inputs.visual_config?.on_minute ?? 0,
+  const handleFrequencyChange = useCallback(
+    (frequency: ScheduleFrequency) => {
+      const newInputs = {
+        ...inputs,
+        frequency,
+        visual_config: {
+          ...inputs.visual_config,
+          ...(frequency === 'hourly' && {
+            on_minute: inputs.visual_config?.on_minute ?? 0,
+          }),
         },
-      },
-      cron_expression: undefined,
-    }
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+        cron_expression: undefined,
+      }
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
 
-  const handleCronExpressionChange = useCallback((value: string) => {
-    const newInputs = {
-      ...inputs,
-      cron_expression: value,
-      frequency: undefined,
-      visual_config: undefined,
-    }
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const handleCronExpressionChange = useCallback(
+    (value: string) => {
+      const newInputs = {
+        ...inputs,
+        cron_expression: value,
+        frequency: undefined,
+        visual_config: undefined,
+      }
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
 
-  const handleWeekdaysChange = useCallback((weekdays: string[]) => {
-    const newInputs = {
-      ...inputs,
-      visual_config: {
-        ...inputs.visual_config,
-        weekdays,
-      },
-      cron_expression: undefined,
-    }
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const handleWeekdaysChange = useCallback(
+    (weekdays: string[]) => {
+      const newInputs = {
+        ...inputs,
+        visual_config: {
+          ...inputs.visual_config,
+          weekdays,
+        },
+        cron_expression: undefined,
+      }
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
 
-  const handleTimeChange = useCallback((time: string) => {
-    const newInputs = {
-      ...inputs,
-      visual_config: {
-        ...inputs.visual_config,
-        time,
-      },
-      cron_expression: undefined,
-    }
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const handleTimeChange = useCallback(
+    (time: string) => {
+      const newInputs = {
+        ...inputs,
+        visual_config: {
+          ...inputs.visual_config,
+          time,
+        },
+        cron_expression: undefined,
+      }
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
 
-  const handleOnMinuteChange = useCallback((on_minute: number) => {
-    const newInputs = {
-      ...inputs,
-      visual_config: {
-        ...inputs.visual_config,
-        on_minute,
-      },
-      cron_expression: undefined,
-    }
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const handleOnMinuteChange = useCallback(
+    (on_minute: number) => {
+      const newInputs = {
+        ...inputs,
+        visual_config: {
+          ...inputs.visual_config,
+          on_minute,
+        },
+        cron_expression: undefined,
+      }
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
 
   return {
     readOnly,

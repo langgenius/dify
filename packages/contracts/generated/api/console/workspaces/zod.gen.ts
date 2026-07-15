@@ -56,9 +56,9 @@ export const zEndpointCreatePayload = z.object({
 })
 
 /**
- * EndpointCreateResponse
+ * SuccessResponse
  */
-export const zEndpointCreateResponse = z.object({
+export const zSuccessResponse = z.object({
   success: z.boolean(),
 })
 
@@ -70,54 +70,12 @@ export const zEndpointIdPayload = z.object({
 })
 
 /**
- * EndpointDeleteResponse
- */
-export const zEndpointDeleteResponse = z.object({
-  success: z.boolean(),
-})
-
-/**
- * EndpointDisableResponse
- */
-export const zEndpointDisableResponse = z.object({
-  success: z.boolean(),
-})
-
-/**
- * EndpointEnableResponse
- */
-export const zEndpointEnableResponse = z.object({
-  success: z.boolean(),
-})
-
-/**
- * EndpointListResponse
- */
-export const zEndpointListResponse = z.object({
-  endpoints: z.array(z.record(z.string(), z.unknown())),
-})
-
-/**
- * PluginEndpointListResponse
- */
-export const zPluginEndpointListResponse = z.object({
-  endpoints: z.array(z.record(z.string(), z.unknown())),
-})
-
-/**
  * LegacyEndpointUpdatePayload
  */
 export const zLegacyEndpointUpdatePayload = z.object({
   endpoint_id: z.string(),
   name: z.string().min(1),
   settings: z.record(z.string(), z.unknown()),
-})
-
-/**
- * EndpointUpdateResponse
- */
-export const zEndpointUpdateResponse = z.object({
-  success: z.boolean(),
 })
 
 /**
@@ -132,9 +90,18 @@ export const zEndpointUpdatePayload = z.object({
  * MemberInvitePayload
  */
 export const zMemberInvitePayload = z.object({
-  emails: z.array(z.string()).optional(),
+  emails: z.array(z.string()).min(1),
   language: z.string().nullish(),
   role: z.string(),
+})
+
+/**
+ * MemberInviteErrorResponse
+ */
+export const zMemberInviteErrorResponse = z.object({
+  code: z.enum(['invalid_param', 'invalid_role', 'limit_exceeded']),
+  message: z.string(),
+  status: z.literal(400),
 })
 
 /**
@@ -170,9 +137,9 @@ export const zSimpleResultDataResponse = z.object({
 })
 
 /**
- * MemberActionTenantResponse
+ * MemberActionResponse
  */
-export const zMemberActionTenantResponse = z.object({
+export const zMemberActionResponse = z.object({
   result: z.string(),
   tenant_id: z.string(),
 })
@@ -206,9 +173,9 @@ export const zParserCredentialDelete = z.object({
 })
 
 /**
- * ProviderCredentialResponse
+ * ProviderCredentialsResponse
  */
-export const zProviderCredentialResponse = z.object({
+export const zProviderCredentialsResponse = z.object({
   credentials: z.record(z.string(), z.unknown()).nullish(),
 })
 
@@ -244,19 +211,11 @@ export const zParserCredentialValidate = z.object({
 })
 
 /**
- * ProviderCredentialValidateResponse
+ * ValidationResultResponse
  */
-export const zProviderCredentialValidateResponse = z.object({
+export const zValidationResultResponse = z.object({
   error: z.string().nullish(),
   result: z.enum(['error', 'success']),
-})
-
-/**
- * ModelCredentialValidateResponse
- */
-export const zModelCredentialValidateResponse = z.object({
-  error: z.string().nullish(),
-  result: z.string(),
 })
 
 /**
@@ -297,26 +256,12 @@ export const zPluginAutoUpgradeChangeResponse = z.object({
 })
 
 /**
- * SuccessResponse
- */
-export const zSuccessResponse = z.object({
-  success: z.boolean(),
-})
-
-/**
  * PluginDebuggingKeyResponse
  */
 export const zPluginDebuggingKeyResponse = z.object({
   host: z.string(),
   key: z.string(),
   port: z.int(),
-})
-
-/**
- * PluginManifestResponse
- */
-export const zPluginManifestResponse = z.object({
-  manifest: z.unknown(),
 })
 
 /**
@@ -330,11 +275,6 @@ export const zParserGithubInstall = z.object({
 })
 
 /**
- * PluginDaemonOperationResponse
- */
-export const zPluginDaemonOperationResponse = z.unknown()
-
-/**
  * ParserPluginIdentifiers
  */
 export const zParserPluginIdentifiers = z.object({
@@ -342,25 +282,10 @@ export const zParserPluginIdentifiers = z.object({
 })
 
 /**
- * PluginListResponse
- */
-export const zPluginListResponse = z.object({
-  plugins: z.unknown(),
-  total: z.int(),
-})
-
-/**
  * ParserLatest
  */
 export const zParserLatest = z.object({
   plugin_ids: z.array(z.string()),
-})
-
-/**
- * PluginDynamicOptionsResponse
- */
-export const zPluginDynamicOptionsResponse = z.object({
-  options: z.unknown(),
 })
 
 /**
@@ -380,20 +305,6 @@ export const zParserDynamicOptionsWithCredentials = z.object({
  */
 export const zPluginReadmeResponse = z.object({
   readme: z.string(),
-})
-
-/**
- * PluginTasksResponse
- */
-export const zPluginTasksResponse = z.object({
-  tasks: z.unknown(),
-})
-
-/**
- * PluginTaskResponse
- */
-export const zPluginTaskResponse = z.object({
-  task: z.unknown(),
 })
 
 /**
@@ -468,6 +379,7 @@ export const zDeleteMemberBindingsRequest = z.object({
  */
 export const zReplaceUserAccessPolicies = z.object({
   access_policy_ids: z.array(z.string()).optional(),
+  account_ids: z.array(z.string()).optional(),
 })
 
 /**
@@ -523,15 +435,17 @@ export const zReplaceBindingsRequest = z.object({
 })
 
 /**
- * ToolProviderOpaqueResponse
- */
-export const zToolProviderOpaqueResponse = z.unknown()
-
-/**
  * ApiToolProviderDeletePayload
  */
 export const zApiToolProviderDeletePayload = z.object({
   provider: z.string(),
+})
+
+/**
+ * ApiProviderRemoteSchemaResponse
+ */
+export const zApiProviderRemoteSchemaResponse = z.object({
+  schema: z.string(),
 })
 
 /**
@@ -554,16 +468,6 @@ export const zBuiltinProviderDefaultCredentialPayload = z.object({
 export const zBuiltinToolCredentialDeletePayload = z.object({
   credential_id: z.string(),
 })
-
-/**
- * ToolOAuthClientSchemaResponse
- */
-export const zToolOAuthClientSchemaResponse = z.array(z.record(z.string(), z.unknown()))
-
-/**
- * ToolOAuthCustomClientResponse
- */
-export const zToolOAuthCustomClientResponse = z.record(z.string(), z.unknown())
 
 /**
  * ToolOAuthCustomClientPayload
@@ -598,6 +502,14 @@ export const zMcpAuthPayload = z.object({
 })
 
 /**
+ * MCPAuthResponse
+ */
+export const zMcpAuthResponse = z.object({
+  authorization_url: z.string().nullish(),
+  result: z.literal('success').nullish(),
+})
+
+/**
  * WorkflowToolDeletePayload
  */
 export const zWorkflowToolDeletePayload = z.object({
@@ -623,11 +535,6 @@ export const zTriggerSubscriptionBuilderUpdatePayload = z.object({
 })
 
 /**
- * TriggerProviderOpaqueResponse
- */
-export const zTriggerProviderOpaqueResponse = z.unknown()
-
-/**
  * TriggerSubscriptionBuilderCreatePayload
  */
 export const zTriggerSubscriptionBuilderCreatePayload = z.object({
@@ -642,10 +549,17 @@ export const zTriggerSubscriptionBuilderVerifyPayload = z.object({
 })
 
 /**
- * TriggerSubscriptionBuilderVerifyResponse
+ * TriggerVerificationResponse
  */
-export const zTriggerSubscriptionBuilderVerifyResponse = z.object({
+export const zTriggerVerificationResponse = z.object({
   verified: z.boolean(),
+})
+
+/**
+ * TriggerProviderErrorResponse
+ */
+export const zTriggerProviderErrorResponse = z.object({
+  error: z.string(),
 })
 
 /**
@@ -684,6 +598,7 @@ export const zTenantListItemResponse = z.object({
   created_at: z.int().nullish(),
   current: z.boolean(),
   id: z.string(),
+  last_opened_at: z.int().nullish(),
   name: z.string().nullish(),
   plan: z.string().nullish(),
   status: z.string().nullish(),
@@ -723,9 +638,9 @@ export const zTenantInfoResponse = z.object({
 })
 
 /**
- * WorkspaceMutationResponse
+ * WorkspaceTenantResultResponse
  */
-export const zWorkspaceMutationResponse = z.object({
+export const zWorkspaceTenantResultResponse = z.object({
   result: z.string(),
   tenant: zTenantInfoResponse,
 })
@@ -792,9 +707,9 @@ export const zCreateSnippetPayload = z.object({
 })
 
 /**
- * SnippetAccountResponse
+ * SimpleAccountResponse
  */
-export const zSnippetAccountResponse = z.object({
+export const zSimpleAccountResponse = z.object({
   email: z.string(),
   id: z.string(),
   name: z.string(),
@@ -821,7 +736,7 @@ export const zSnippetType = z.enum(['group', 'node'])
  */
 export const zSnippetResponse = z.object({
   created_at: z.int(),
-  created_by: zSnippetAccountResponse.nullable(),
+  created_by: zSimpleAccountResponse.nullable(),
   description: z.string().nullable(),
   graph: z.record(z.string(), z.unknown()),
   icon_info: z.record(z.string(), z.unknown()).nullable(),
@@ -832,7 +747,7 @@ export const zSnippetResponse = z.object({
   tags: z.array(zSnippetTagResponse),
   type: zSnippetType,
   updated_at: z.int(),
-  updated_by: zSnippetAccountResponse.nullable(),
+  updated_by: zSimpleAccountResponse.nullable(),
   use_count: z.int(),
   version: z.int(),
 })
@@ -874,6 +789,18 @@ export const zSnippetPaginationResponse = z.object({
 export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'failed', 'pending'])
 
 /**
+ * DslImportWarning
+ *
+ * Portable DSL reference that could not be restored in the target workspace.
+ */
+export const zDslImportWarning = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  path: z.string(),
+})
+
+/**
  * SnippetImportResponse
  */
 export const zSnippetImportResponse = z.object({
@@ -883,12 +810,13 @@ export const zSnippetImportResponse = z.object({
   imported_dsl_version: z.string(),
   snippet_id: z.string().nullable(),
   status: zImportStatus,
+  warnings: z.array(zDslImportWarning),
 })
 
 /**
- * AccountWithRole
+ * AccountWithRoleResponse
  */
-export const zAccountWithRole = z.object({
+export const zAccountWithRoleResponse = z.object({
   avatar: z.string().nullish(),
   avatar_url: z.string().nullable(),
   created_at: z.int().nullish(),
@@ -903,28 +831,63 @@ export const zAccountWithRole = z.object({
 })
 
 /**
- * AccountWithRoleList
+ * AccountWithRoleListResponse
  */
-export const zAccountWithRoleList = z.object({
-  accounts: z.array(zAccountWithRole),
+export const zAccountWithRoleListResponse = z.object({
+  accounts: z.array(zAccountWithRoleResponse),
 })
 
 /**
- * MemberInviteResultResponse
+ * MemberInviteSuccessResponse
  */
-export const zMemberInviteResultResponse = z.object({
+export const zMemberInviteSuccessResponse = z.object({
   email: z.string(),
-  message: z.string().nullish(),
-  status: z.string(),
-  url: z.string().nullish(),
+  status: z.literal('success'),
+  url: z.string(),
+})
+
+/**
+ * MemberInviteAlreadyMemberResponse
+ */
+export const zMemberInviteAlreadyMemberResponse = z.object({
+  email: z.string(),
+  message: z.string(),
+  status: z.literal('already_member'),
+})
+
+/**
+ * MemberInviteFailedResponse
+ */
+export const zMemberInviteFailedResponse = z.object({
+  email: z.string(),
+  message: z.string(),
+  status: z.literal('failed'),
 })
 
 /**
  * MemberInviteResponse
  */
 export const zMemberInviteResponse = z.object({
-  invitation_results: z.array(zMemberInviteResultResponse),
-  result: z.string(),
+  invitation_results: z.array(
+    z.union([
+      z
+        .object({
+          status: z.literal('success'),
+        })
+        .and(zMemberInviteSuccessResponse),
+      z
+        .object({
+          status: z.literal('already_member'),
+        })
+        .and(zMemberInviteAlreadyMemberResponse),
+      z
+        .object({
+          status: z.literal('failed'),
+        })
+        .and(zMemberInviteFailedResponse),
+    ]),
+  ),
+  result: z.literal('success'),
   tenant_id: z.string(),
 })
 
@@ -1053,28 +1016,9 @@ export const zCredentialConfiguration = z.object({
 })
 
 /**
- * ModelCredentialLoadBalancingResponse
+ * TenantPluginAutoUpgradeCategory
  */
-export const zModelCredentialLoadBalancingResponse = z.object({
-  configs: z.array(z.record(z.string(), z.unknown())).optional(),
-  enabled: z.boolean(),
-})
-
-/**
- * ModelCredentialResponse
- */
-export const zModelCredentialResponse = z.object({
-  available_credentials: z.array(zCredentialConfiguration),
-  credentials: z.record(z.string(), z.unknown()).optional(),
-  current_credential_id: z.string().nullish(),
-  current_credential_name: z.string().nullish(),
-  load_balancing: zModelCredentialLoadBalancingResponse,
-})
-
-/**
- * PluginCategory
- */
-export const zPluginCategory = z.enum([
+export const zTenantPluginAutoUpgradeCategory = z.enum([
   'agent-strategy',
   'datasource',
   'extension',
@@ -1087,7 +1031,7 @@ export const zPluginCategory = z.enum([
  * ParserExcludePlugin
  */
 export const zParserExcludePlugin = z.object({
-  category: zPluginCategory,
+  category: zTenantPluginAutoUpgradeCategory,
   plugin_id: z.string(),
 })
 
@@ -1111,29 +1055,29 @@ export const zPluginVersionsResponse = z.object({
 })
 
 /**
- * DebugPermission
+ * TenantPluginDebugPermission
  */
-export const zDebugPermission = z.enum(['admins', 'everyone', 'noone'])
+export const zTenantPluginDebugPermission = z.enum(['admins', 'everyone', 'noone'])
 
 /**
- * InstallPermission
+ * TenantPluginInstallPermission
  */
-export const zInstallPermission = z.enum(['admins', 'everyone', 'noone'])
+export const zTenantPluginInstallPermission = z.enum(['admins', 'everyone', 'noone'])
 
 /**
  * ParserPermissionChange
  */
 export const zParserPermissionChange = z.object({
-  debug_permission: zDebugPermission.optional().default('everyone'),
-  install_permission: zInstallPermission.optional().default('everyone'),
+  debug_permission: zTenantPluginDebugPermission.optional().default('everyone'),
+  install_permission: zTenantPluginInstallPermission.optional().default('everyone'),
 })
 
 /**
  * PluginPermissionResponse
  */
 export const zPluginPermissionResponse = z.object({
-  debug_permission: zDebugPermission,
-  install_permission: zInstallPermission,
+  debug_permission: zTenantPluginDebugPermission,
+  install_permission: zTenantPluginInstallPermission,
 })
 
 /**
@@ -1298,6 +1242,14 @@ export const zWorkspaceAccessMatrix = z.object({
 })
 
 /**
+ * ToolEmojiIcon
+ */
+export const zToolEmojiIcon = z.object({
+  background: z.string(),
+  content: z.string(),
+})
+
+/**
  * ApiProviderSchemaType
  *
  * Enum class for api provider schema type.
@@ -1315,7 +1267,7 @@ export const zApiProviderSchemaType = z.enum([
 export const zApiToolProviderAddPayload = z.object({
   credentials: z.record(z.string(), z.unknown()),
   custom_disclaimer: z.string().optional().default(''),
-  icon: z.record(z.string(), z.unknown()),
+  icon: zToolEmojiIcon,
   labels: z.array(z.string()).nullish(),
   privacy_policy: z.string().nullish(),
   provider: z.string(),
@@ -1341,7 +1293,7 @@ export const zApiToolTestPayload = z.object({
 export const zApiToolProviderUpdatePayload = z.object({
   credentials: z.record(z.string(), z.unknown()),
   custom_disclaimer: z.string().optional().default(''),
-  icon: z.record(z.string(), z.unknown()),
+  icon: zToolEmojiIcon,
   labels: z.array(z.string()).nullish(),
   original_provider: z.string(),
   privacy_policy: z.string().nullish(),
@@ -1349,6 +1301,19 @@ export const zApiToolProviderUpdatePayload = z.object({
   schema: z.string(),
   schema_type: zApiProviderSchemaType,
 })
+
+/**
+ * ApiToolPreviewResult
+ */
+export const zApiToolPreviewResult = z.object({
+  error: z.string().optional(),
+  result: z.string().optional(),
+})
+
+/**
+ * ApiToolPreviewResponse
+ */
+export const zApiToolPreviewResponse = zApiToolPreviewResult
 
 /**
  * CredentialType
@@ -1396,6 +1361,111 @@ export const zTriggerOAuthAuthorizeResponse = z.object({
 })
 
 /**
+ * ToolProviderCredentialApiEntity
+ */
+export const zToolProviderCredentialApiEntity = z.object({
+  created_by: z.string().optional().default(''),
+  credential_type: zCredentialType,
+  credentials: z.record(z.string(), z.unknown()).optional(),
+  from_other_member: z.boolean().optional().default(false),
+  id: z.string(),
+  is_default: z.boolean().optional().default(false),
+  name: z.string(),
+  partial_member_list: z.array(z.string()).optional(),
+  provider: z.string(),
+  visibility: z.string().optional().default('all_team_members'),
+})
+
+/**
+ * ToolProviderCredentialInfoApiEntity
+ */
+export const zToolProviderCredentialInfoApiEntity = z.object({
+  credentials: z.array(zToolProviderCredentialApiEntity),
+  is_oauth_custom_client_enabled: z.boolean().optional().default(false),
+  supported_credential_types: z.array(zCredentialType),
+})
+
+/**
+ * ToolProviderCredentialListResponse
+ */
+export const zToolProviderCredentialListResponse = z.array(zToolProviderCredentialApiEntity)
+
+/**
+ * MCPAuthentication
+ */
+export const zMcpAuthentication = z.object({
+  client_id: z.string(),
+  client_secret: z.string().nullish(),
+})
+
+/**
+ * MCPConfiguration
+ */
+export const zMcpConfiguration = z.object({
+  sse_read_timeout: z.number().optional().default(300),
+  timeout: z.number().optional().default(30),
+})
+
+/**
+ * I18nObject
+ *
+ * Model class for i18n object.
+ */
+export const zI18nObject = z.object({
+  en_US: z.string(),
+  ja_JP: z.string().nullish(),
+  pt_BR: z.string().nullish(),
+  zh_Hans: z.string().nullish(),
+})
+
+/**
+ * PluginParameterOption
+ */
+export const zPluginParameterOption = z.object({
+  icon: z.string().nullish(),
+  label: zI18nObject,
+  value: z.string(),
+})
+
+/**
+ * PluginDynamicOptionsResponse
+ */
+export const zPluginDynamicOptionsResponse = z.object({
+  options: z.array(zPluginParameterOption),
+})
+
+/**
+ * ToolLabel
+ *
+ * Tool label
+ */
+export const zToolLabel = z.object({
+  icon: z.string(),
+  label: zI18nObject,
+  name: z.string(),
+})
+
+/**
+ * ToolLabelListResponse
+ */
+export const zToolLabelListResponse = z.array(zToolLabel)
+
+/**
+ * ToolProviderType
+ *
+ * Enum class for tool provider
+ */
+export const zToolProviderType = z.enum([
+  'api',
+  'app',
+  'builtin',
+  'dataset-retrieval',
+  'mcp',
+  'plugin',
+  'workflow',
+])
+
+/**
  * IdentityMode
  *
  * How Dify forwards the end-user's identity to an MCP server.
@@ -1406,9 +1476,9 @@ export const zIdentityMode = z.enum(['idp_token', 'off'])
  * MCPProviderCreatePayload
  */
 export const zMcpProviderCreatePayload = z.object({
-  authentication: z.record(z.string(), z.unknown()).nullish(),
-  configuration: z.record(z.string(), z.unknown()).nullish(),
-  headers: z.record(z.string(), z.unknown()).nullish(),
+  authentication: zMcpAuthentication.nullish(),
+  configuration: zMcpConfiguration.nullish(),
+  headers: z.record(z.string(), z.string()).nullish(),
   icon: z.string(),
   icon_background: z.string().optional().default(''),
   icon_type: z.string(),
@@ -1422,9 +1492,9 @@ export const zMcpProviderCreatePayload = z.object({
  * MCPProviderUpdatePayload
  */
 export const zMcpProviderUpdatePayload = z.object({
-  authentication: z.record(z.string(), z.unknown()).nullish(),
-  configuration: z.record(z.string(), z.unknown()).nullish(),
-  headers: z.record(z.string(), z.unknown()).nullish(),
+  authentication: zMcpAuthentication.nullish(),
+  configuration: zMcpConfiguration.nullish(),
+  headers: z.record(z.string(), z.string()).nullish(),
   icon: z.string(),
   icon_background: z.string().optional().default(''),
   icon_type: z.string(),
@@ -1433,18 +1503,6 @@ export const zMcpProviderUpdatePayload = z.object({
   provider_id: z.string(),
   server_identifier: z.string(),
   server_url: z.string(),
-})
-
-/**
- * I18nObject
- *
- * Model class for i18n object.
- */
-export const zI18nObject = z.object({
-  en_US: z.string(),
-  ja_JP: z.string().nullish(),
-  pt_BR: z.string().nullish(),
-  zh_Hans: z.string().nullish(),
 })
 
 /**
@@ -1486,14 +1544,16 @@ export const zTriggerProviderSubscriptionApiEntity = z.object({
 })
 
 /**
- * TriggerSubscriptionListResponse
+ * TriggerProviderSubscriptionListResponse
  */
-export const zTriggerSubscriptionListResponse = z.array(zTriggerProviderSubscriptionApiEntity)
+export const zTriggerProviderSubscriptionListResponse = z.array(
+  zTriggerProviderSubscriptionApiEntity,
+)
 
 /**
- * Type
+ * PluginDependencyType
  */
-export const zType = z.enum(['github', 'marketplace', 'package'])
+export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package'])
 
 /**
  * Github
@@ -1526,7 +1586,7 @@ export const zPackage = z.object({
  */
 export const zPluginDependency = z.object({
   current_identifier: z.string().nullish(),
-  type: zType,
+  type: zPluginDependencyType,
   value: z.union([zGithub, zMarketplace, zPackage]),
 })
 
@@ -1608,6 +1668,38 @@ export const zModelStatus = z.enum([
 ])
 
 /**
+ * ModelLoadBalancingConfigResponse
+ */
+export const zModelLoadBalancingConfigResponse = z.object({
+  credential_id: z.string().nullish(),
+  credentials: z.record(z.string(), z.unknown()),
+  enabled: z.boolean(),
+  id: z.string(),
+  in_cooldown: z.boolean(),
+  name: z.string(),
+  ttl: z.int(),
+})
+
+/**
+ * ModelLoadBalancingResponse
+ */
+export const zModelLoadBalancingResponse = z.object({
+  configs: z.array(zModelLoadBalancingConfigResponse),
+  enabled: z.boolean(),
+})
+
+/**
+ * ModelCredentialResponse
+ */
+export const zModelCredentialResponse = z.object({
+  available_credentials: z.array(zCredentialConfiguration),
+  credentials: z.record(z.string(), z.unknown()),
+  current_credential_id: z.string().nullish(),
+  current_credential_name: z.string().nullish(),
+  load_balancing: zModelLoadBalancingResponse,
+})
+
+/**
  * I18nObject
  *
  * Model class for i18n object.
@@ -1654,9 +1746,9 @@ export const zParameterRule = z.object({
 })
 
 /**
- * ModelParameterRulesResponse
+ * ModelParameterRuleListResponse
  */
-export const zModelParameterRulesResponse = z.object({
+export const zModelParameterRuleListResponse = z.object({
   data: z.array(zParameterRule),
 })
 
@@ -1701,21 +1793,21 @@ export const zProviderWithModelsResponse = z.object({
 })
 
 /**
- * ProviderWithModelsDataResponse
+ * AvailableModelListResponse
  */
-export const zProviderWithModelsDataResponse = z.object({
+export const zAvailableModelListResponse = z.object({
   data: z.array(zProviderWithModelsResponse),
 })
 
 /**
- * StrategySetting
+ * TenantPluginAutoUpgradeStrategySetting
  */
-export const zStrategySetting = z.enum(['disabled', 'fix_only', 'latest'])
+export const zTenantPluginAutoUpgradeStrategySetting = z.enum(['disabled', 'fix_only', 'latest'])
 
 /**
- * UpgradeMode
+ * TenantPluginAutoUpgradeMode
  */
-export const zUpgradeMode = z.enum(['all', 'exclude', 'partial'])
+export const zTenantPluginAutoUpgradeMode = z.enum(['all', 'exclude', 'partial'])
 
 /**
  * PluginAutoUpgradeSettingsPayload
@@ -1723,8 +1815,8 @@ export const zUpgradeMode = z.enum(['all', 'exclude', 'partial'])
 export const zPluginAutoUpgradeSettingsPayload = z.object({
   exclude_plugins: z.array(z.string()).optional(),
   include_plugins: z.array(z.string()).optional(),
-  strategy_setting: zStrategySetting.optional().default('fix_only'),
-  upgrade_mode: zUpgradeMode.optional().default('exclude'),
+  strategy_setting: zTenantPluginAutoUpgradeStrategySetting.optional().default('fix_only'),
+  upgrade_mode: zTenantPluginAutoUpgradeMode.optional().default('exclude'),
   upgrade_time_of_day: z.int().optional().default(0),
 })
 
@@ -1733,7 +1825,7 @@ export const zPluginAutoUpgradeSettingsPayload = z.object({
  */
 export const zParserAutoUpgradeChange = z.object({
   auto_upgrade: zPluginAutoUpgradeSettingsPayload,
-  category: zPluginCategory,
+  category: zTenantPluginAutoUpgradeCategory,
 })
 
 /**
@@ -1742,8 +1834,8 @@ export const zParserAutoUpgradeChange = z.object({
 export const zPluginAutoUpgradeSettingsResponseModel = z.object({
   exclude_plugins: z.array(z.string()),
   include_plugins: z.array(z.string()),
-  strategy_setting: zStrategySetting,
-  upgrade_mode: zUpgradeMode,
+  strategy_setting: zTenantPluginAutoUpgradeStrategySetting,
+  upgrade_mode: zTenantPluginAutoUpgradeMode,
   upgrade_time_of_day: z.int(),
 })
 
@@ -1752,13 +1844,20 @@ export const zPluginAutoUpgradeSettingsResponseModel = z.object({
  */
 export const zPluginAutoUpgradeFetchResponse = z.object({
   auto_upgrade: zPluginAutoUpgradeSettingsResponseModel,
-  category: zPluginCategory,
+  category: zTenantPluginAutoUpgradeCategory,
 })
 
 /**
- * PluginInstallationSource
+ * PluginCategory
  */
-export const zPluginInstallationSource = z.enum(['github', 'marketplace', 'package', 'remote'])
+export const zPluginCategory = z.enum([
+  'agent-strategy',
+  'datasource',
+  'extension',
+  'model',
+  'tool',
+  'trigger',
+])
 
 /**
  * I18nObject
@@ -1773,6 +1872,116 @@ export const zCoreToolsEntitiesCommonEntitiesI18nObject = z.object({
 })
 
 /**
+ * Meta
+ */
+export const zMeta = z.object({
+  minimum_dify_version: z.string().nullish(),
+  version: z.string().nullish(),
+})
+
+/**
+ * Plugins
+ */
+export const zPlugins = z.object({
+  datasources: z.array(z.string()).nullish(),
+  endpoints: z.array(z.string()).nullish(),
+  models: z.array(z.string()).nullish(),
+  tools: z.array(z.string()).nullish(),
+  triggers: z.array(z.string()).nullish(),
+})
+
+/**
+ * PluginInstallTaskStatus
+ */
+export const zPluginInstallTaskStatus = z.enum(['failed', 'pending', 'running', 'success'])
+
+/**
+ * PluginInstallTaskPluginStatus
+ */
+export const zPluginInstallTaskPluginStatus = z.object({
+  icon: z.string(),
+  labels: zI18nObject,
+  message: z.string(),
+  plugin_id: z.string(),
+  plugin_unique_identifier: z.string(),
+  source: z.string().nullish(),
+  status: zPluginInstallTaskStatus,
+})
+
+/**
+ * PluginInstallTask
+ */
+export const zPluginInstallTask = z.object({
+  completed_plugins: z.int(),
+  created_at: z.iso.datetime(),
+  id: z.string(),
+  plugins: z.array(zPluginInstallTaskPluginStatus),
+  status: zPluginInstallTaskStatus,
+  total_plugins: z.int(),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * PluginInstallTaskStartResponse
+ */
+export const zPluginInstallTaskStartResponse = z.object({
+  all_installed: z.boolean(),
+  task: zPluginInstallTask.nullish(),
+  task_id: z.string(),
+})
+
+/**
+ * PluginTasksResponse
+ */
+export const zPluginTasksResponse = z.object({
+  tasks: z.array(zPluginInstallTask),
+})
+
+/**
+ * PluginTaskResponse
+ */
+export const zPluginTaskResponse = z.object({
+  task: zPluginInstallTask,
+})
+
+/**
+ * PluginInstallationSource
+ */
+export const zPluginInstallationSource = z.enum(['github', 'marketplace', 'package', 'remote'])
+
+/**
+ * PluginBundleDependencyType
+ */
+export const zPluginBundleDependencyType = z.enum(['github', 'marketplace', 'package'])
+
+/**
+ * PluginBundleDependency
+ */
+export const zPluginBundleDependency = z.object({
+  type: zPluginBundleDependencyType,
+  value: z.union([zGithub, zMarketplace, zPackage]),
+})
+
+/**
+ * PluginBundleUploadResponse
+ */
+export const zPluginBundleUploadResponse = z.array(zPluginBundleDependency)
+
+/**
+ * AuthorizedCategory
+ */
+export const zAuthorizedCategory = z.enum(['community', 'langgenius', 'partner'])
+
+/**
+ * PluginVerification
+ *
+ * Verification of the plugin.
+ */
+export const zPluginVerification = z.object({
+  authorized_category: zAuthorizedCategory,
+})
+
+/**
  * PluginCategoryBuiltinToolResponse
  */
 export const zPluginCategoryBuiltinToolResponse = z.object({
@@ -1784,21 +1993,6 @@ export const zPluginCategoryBuiltinToolResponse = z.object({
   output_schema: z.record(z.string(), z.unknown()),
   parameters: z.array(z.record(z.string(), z.unknown())).nullish(),
 })
-
-/**
- * ToolProviderType
- *
- * Enum class for tool provider
- */
-export const zToolProviderType = z.enum([
-  'api',
-  'app',
-  'builtin',
-  'dataset-retrieval',
-  'mcp',
-  'plugin',
-  'workflow',
-])
 
 /**
  * PluginCategoryBuiltinToolProviderResponse
@@ -1900,62 +2094,6 @@ export const zPermissionCatalogResponse = z.object({
 })
 
 /**
- * ToolParameterForm
- */
-export const zToolParameterForm = z.enum(['form', 'llm', 'schema'])
-
-/**
- * WorkflowToolParameterConfiguration
- *
- * Workflow tool configuration
- */
-export const zWorkflowToolParameterConfiguration = z.object({
-  description: z.string(),
-  form: zToolParameterForm,
-  name: z.string(),
-})
-
-/**
- * WorkflowToolCreatePayload
- */
-export const zWorkflowToolCreatePayload = z.object({
-  description: z.string(),
-  icon: z.record(z.string(), z.unknown()),
-  label: z.string(),
-  labels: z.array(z.string()).nullish(),
-  name: z.string(),
-  parameters: z.array(zWorkflowToolParameterConfiguration).optional(),
-  privacy_policy: z.string().nullish().default(''),
-  workflow_app_id: z.string(),
-})
-
-/**
- * WorkflowToolUpdatePayload
- */
-export const zWorkflowToolUpdatePayload = z.object({
-  description: z.string(),
-  icon: z.record(z.string(), z.unknown()),
-  label: z.string(),
-  labels: z.array(z.string()).nullish(),
-  name: z.string(),
-  parameters: z.array(zWorkflowToolParameterConfiguration).optional(),
-  privacy_policy: z.string().nullish().default(''),
-  workflow_tool_id: z.string(),
-})
-
-/**
- * EventIdentity
- *
- * The identity of the event
- */
-export const zEventIdentity = z.object({
-  author: z.string(),
-  label: zI18nObject,
-  name: z.string(),
-  provider: z.string().nullish(),
-})
-
-/**
  * Option
  */
 export const zOption = z.object({
@@ -1987,9 +2125,9 @@ export const zModelSelectorScope = z.enum([
 export const zToolSelectorScope = z.enum(['all', 'builtin', 'custom', 'workflow'])
 
 /**
- * Type
+ * ProviderConfigType
  */
-export const zCoreEntitiesProviderEntitiesBasicProviderConfigType = z.enum([
+export const zProviderConfigType = z.enum([
   'app-selector',
   'array[tools]',
   'boolean',
@@ -2014,8 +2152,93 @@ export const zProviderConfig = z.object({
   placeholder: zI18nObject.nullish(),
   required: z.boolean().optional().default(false),
   scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
-  type: zCoreEntitiesProviderEntitiesBasicProviderConfigType,
+  type: zProviderConfigType,
   url: z.string().nullish(),
+})
+
+/**
+ * ProviderConfigListResponse
+ */
+export const zProviderConfigListResponse = z.array(zProviderConfig)
+
+/**
+ * BuiltinProviderOAuthClientSchemaResponse
+ */
+export const zBuiltinProviderOAuthClientSchemaResponse = z.object({
+  client_params: z.record(z.string(), z.unknown()).nullish(),
+  is_oauth_custom_client_enabled: z.boolean(),
+  is_system_oauth_params_exists: z.boolean(),
+  redirect_uri: z.string(),
+  schema: z.array(zProviderConfig),
+})
+
+/**
+ * TriggerOAuthClientResponse
+ */
+export const zTriggerOAuthClientResponse = z.object({
+  configured: z.boolean(),
+  custom_configured: z.boolean(),
+  custom_enabled: z.boolean(),
+  oauth_client_schema: z.array(zProviderConfig),
+  params: z.record(z.string(), z.unknown()),
+  redirect_uri: z.string(),
+  system_configured: z.boolean(),
+})
+
+/**
+ * ToolParameterForm
+ */
+export const zToolParameterForm = z.enum(['form', 'llm', 'schema'])
+
+/**
+ * WorkflowToolParameterConfiguration
+ *
+ * Workflow tool configuration
+ */
+export const zWorkflowToolParameterConfiguration = z.object({
+  description: z.string(),
+  form: zToolParameterForm,
+  name: z.string(),
+})
+
+/**
+ * WorkflowToolCreatePayload
+ */
+export const zWorkflowToolCreatePayload = z.object({
+  description: z.string(),
+  icon: zToolEmojiIcon,
+  label: z.string(),
+  labels: z.array(z.string()).nullish(),
+  name: z.string(),
+  parameters: z.array(zWorkflowToolParameterConfiguration).optional(),
+  privacy_policy: z.string().nullish().default(''),
+  workflow_app_id: z.string(),
+})
+
+/**
+ * WorkflowToolUpdatePayload
+ */
+export const zWorkflowToolUpdatePayload = z.object({
+  description: z.string(),
+  icon: zToolEmojiIcon,
+  label: z.string(),
+  labels: z.array(z.string()).nullish(),
+  name: z.string(),
+  parameters: z.array(zWorkflowToolParameterConfiguration).optional(),
+  privacy_policy: z.string().nullish().default(''),
+  workflow_tool_id: z.string(),
+})
+
+/**
+ * EventIdentity
+ *
+ * The identity of the event
+ */
+export const zEventIdentity = z.object({
+  author: z.string(),
+  label: zI18nObject,
+  name: z.string(),
+  provider: z.string().nullish(),
 })
 
 /**
@@ -2029,49 +2252,12 @@ export const zOAuthSchema = z.object({
 })
 
 /**
- * TriggerProviderConfigOptionResponse
+ * EndpointDeclarationResponse
  */
-export const zTriggerProviderConfigOptionResponse = z.object({
-  label: zI18nObject,
-  value: z.string(),
-})
-
-/**
- * TriggerProviderConfigResponse
- */
-export const zTriggerProviderConfigResponse = z.object({
-  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
-  help: zI18nObject.nullish(),
-  label: zI18nObject.nullish(),
-  multiple: z.boolean().optional().default(false),
-  name: z.string(),
-  options: z.array(zTriggerProviderConfigOptionResponse).nullish(),
-  placeholder: zI18nObject.nullish(),
-  required: z.boolean().optional().default(false),
-  scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
-  type: z.enum([
-    'app-selector',
-    'array[tools]',
-    'boolean',
-    'model-selector',
-    'secret-input',
-    'select',
-    'text-input',
-  ]),
-  url: z.string().nullish(),
-})
-
-/**
- * TriggerOAuthClientResponse
- */
-export const zTriggerOAuthClientResponse = z.object({
-  configured: z.boolean(),
-  custom_configured: z.boolean(),
-  custom_enabled: z.boolean(),
-  oauth_client_schema: z.array(zTriggerProviderConfigResponse),
-  params: z.record(z.string(), z.unknown()),
-  redirect_uri: z.string(),
-  system_configured: z.boolean(),
+export const zEndpointDeclarationResponse = z.object({
+  hidden: z.boolean().optional().default(false),
+  method: z.string(),
+  path: z.string(),
 })
 
 /**
@@ -2127,12 +2313,51 @@ export const zFieldModelSchema = z.object({
 export const zProviderQuotaType = z.enum(['free', 'paid', 'trial'])
 
 /**
- * PluginParameterOption
+ * DatasourceProviderType
+ *
+ * Enum class for datasource provider
  */
-export const zPluginParameterOption = z.object({
+export const zDatasourceProviderType = z.enum([
+  'local_file',
+  'online_document',
+  'online_drive',
+  'website_crawl',
+])
+
+/**
+ * EndpointDeclaration
+ *
+ * declaration of an endpoint
+ */
+export const zEndpointDeclaration = z.object({
+  hidden: z.boolean().optional().default(false),
+  method: z.string(),
+  path: z.string(),
+})
+
+/**
+ * EndpointProviderDeclaration
+ *
+ * declaration of an endpoint group
+ */
+export const zEndpointProviderDeclaration = z.object({
+  endpoints: z.array(zEndpointDeclaration).nullish(),
+  settings: z.array(zProviderConfig).optional(),
+})
+
+/**
+ * TriggerProviderIdentity
+ *
+ * The identity of the trigger provider
+ */
+export const zTriggerProviderIdentity = z.object({
+  author: z.string(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
   icon: z.string().nullish(),
-  label: zI18nObject,
-  value: z.string(),
+  icon_dark: z.string().nullish(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  name: z.string(),
+  tags: z.array(z.string()).optional(),
 })
 
 /**
@@ -2141,6 +2366,29 @@ export const zPluginParameterOption = z.object({
 export const zPluginParameterTemplate = z.object({
   enabled: z.boolean().optional().default(false),
 })
+
+/**
+ * ToolParameterType
+ *
+ * removes TOOLS_SELECTOR from PluginParameterType
+ */
+export const zToolParameterType = z.enum([
+  'any',
+  'app-selector',
+  'array',
+  'boolean',
+  'checkbox',
+  'dynamic-select',
+  'file',
+  'files',
+  'model-selector',
+  'number',
+  'object',
+  'secret-input',
+  'select',
+  'string',
+  'system-files',
+])
 
 /**
  * EventParameterType
@@ -2169,12 +2417,12 @@ export const zEventParameterType = z.enum([
  */
 export const zPriceConfigResponse = z.object({
   currency: z.string(),
-  input: z.string().regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/),
+  input: z.string().regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/),
   output: z
     .string()
-    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
     .nullish(),
-  unit: z.string().regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/),
+  unit: z.string().regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/),
 })
 
 /**
@@ -2246,10 +2494,97 @@ export const zModelWithProviderEntityResponse = z.object({
 })
 
 /**
- * ModelWithProviderListResponse
+ * ProviderModelListResponse
  */
-export const zModelWithProviderListResponse = z.object({
+export const zProviderModelListResponse = z.object({
   data: z.array(zModelWithProviderEntityResponse),
+})
+
+/**
+ * EndpointProviderConfigI18nResponse
+ */
+export const zEndpointProviderConfigI18nResponse = z.object({
+  en_US: z.string(),
+  ja_JP: z.string().nullish(),
+  pt_BR: z.string().nullish(),
+  zh_Hans: z.string().nullish(),
+})
+
+/**
+ * EndpointProviderConfigOptionResponse
+ */
+export const zEndpointProviderConfigOptionResponse = z.object({
+  label: zEndpointProviderConfigI18nResponse,
+  value: z.string(),
+})
+
+/**
+ * EndpointProviderConfigScope
+ */
+export const zEndpointProviderConfigScope = z.enum([
+  'all',
+  'builtin',
+  'chat',
+  'completion',
+  'custom',
+  'llm',
+  'moderation',
+  'rerank',
+  'speech2text',
+  'text-embedding',
+  'tts',
+  'vision',
+  'workflow',
+])
+
+/**
+ * EndpointProviderConfigResponse
+ */
+export const zEndpointProviderConfigResponse = z.object({
+  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
+  help: zEndpointProviderConfigI18nResponse.nullish(),
+  label: zEndpointProviderConfigI18nResponse.nullish(),
+  multiple: z.boolean().optional().default(false),
+  name: z.string(),
+  options: z.array(zEndpointProviderConfigOptionResponse).nullish(),
+  placeholder: zEndpointProviderConfigI18nResponse.nullish(),
+  required: z.boolean().optional().default(false),
+  scope: zEndpointProviderConfigScope.nullish(),
+  type: zProviderConfigType,
+  url: z.string().nullish(),
+})
+
+/**
+ * EndpointProviderDeclarationResponse
+ */
+export const zEndpointProviderDeclarationResponse = z.object({
+  endpoints: z.array(zEndpointDeclarationResponse).nullish(),
+  settings: z.array(zEndpointProviderConfigResponse).optional(),
+})
+
+/**
+ * EndpointListItemResponse
+ */
+export const zEndpointListItemResponse = z.object({
+  created_at: z.iso.datetime(),
+  declaration: zEndpointProviderDeclarationResponse.optional(),
+  enabled: z.boolean(),
+  expired_at: z.iso.datetime(),
+  hook_id: z.string(),
+  id: z.string(),
+  name: z.string(),
+  plugin_id: z.string(),
+  settings: z.record(z.string(), z.unknown()),
+  tenant_id: z.string(),
+  updated_at: z.iso.datetime(),
+  url: z.string(),
+})
+
+/**
+ * EndpointListResponse
+ */
+export const zEndpointListResponse = z.object({
+  endpoints: z.array(zEndpointListItemResponse),
 })
 
 /**
@@ -2493,18 +2828,379 @@ export const zModelProviderListResponse = z.object({
 })
 
 /**
- * Type
+ * ToolLabelEnum
  */
-export const zCorePluginEntitiesParametersPluginParameterAutoGenerateType = z.enum([
-  'prompt_instruction',
+export const zToolLabelEnum = z.enum([
+  'business',
+  'design',
+  'education',
+  'entertainment',
+  'finance',
+  'image',
+  'medical',
+  'news',
+  'other',
+  'productivity',
+  'rag',
+  'search',
+  'social',
+  'travel',
+  'utilities',
+  'videos',
+  'weather',
 ])
+
+/**
+ * AgentStrategyProviderIdentity
+ *
+ * Inherits from ToolProviderIdentity, without any additional fields.
+ */
+export const zAgentStrategyProviderIdentity = z.object({
+  author: z.string(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  icon: z.string(),
+  icon_dark: z.string().nullish(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  name: z.string(),
+  tags: z.array(zToolLabelEnum).nullish().default([]),
+})
+
+/**
+ * AgentStrategyProviderEntity
+ */
+export const zAgentStrategyProviderEntity = z.object({
+  identity: zAgentStrategyProviderIdentity,
+  plugin_id: z.string().nullish(),
+})
+
+/**
+ * DatasourceProviderIdentity
+ */
+export const zDatasourceProviderIdentity = z.object({
+  author: z.string(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  icon: z.string(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  name: z.string(),
+  tags: z.array(zToolLabelEnum).nullish().default([]),
+})
+
+/**
+ * DatasourceProviderEntity
+ *
+ * Datasource provider entity
+ */
+export const zDatasourceProviderEntity = z.object({
+  credentials_schema: z.array(zProviderConfig).optional(),
+  identity: zDatasourceProviderIdentity,
+  oauth_schema: zOAuthSchema.nullish(),
+  provider_type: zDatasourceProviderType,
+})
+
+/**
+ * ToolProviderIdentity
+ */
+export const zToolProviderIdentity = z.object({
+  author: z.string(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  icon: z.string(),
+  icon_dark: z.string().nullish(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  name: z.string(),
+  tags: z.array(zToolLabelEnum).nullish().default([]),
+})
+
+/**
+ * ToolProviderEntity
+ */
+export const zToolProviderEntity = z.object({
+  credentials_schema: z.array(zProviderConfig).optional(),
+  identity: zToolProviderIdentity,
+  oauth_schema: zOAuthSchema.nullish(),
+  plugin_id: z.string().nullish(),
+})
+
+/**
+ * PriceConfig
+ *
+ * Model class for pricing info.
+ */
+export const zPriceConfig = z.object({
+  currency: z.string(),
+  input: z.string().regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/),
+  output: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
+    .nullish(),
+  unit: z.string().regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/),
+})
+
+/**
+ * AIModelEntity
+ *
+ * Model class for AI model.
+ */
+export const zAiModelEntity = z.object({
+  deprecated: z.boolean().optional().default(false),
+  features: z.array(zModelFeature).nullish(),
+  fetch_from: zFetchFrom,
+  label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
+  model: z.string(),
+  model_properties: z.record(z.string(), z.unknown()),
+  model_type: zModelType,
+  parameter_rules: z.array(zParameterRule).optional().default([]),
+  pricing: zPriceConfig.nullish(),
+})
+
+/**
+ * ProviderEntity
+ *
+ * Runtime-native provider schema.
+ *
+ * `provider` is the canonical runtime identifier. `provider_name` is a
+ * compatibility alias for callers that still resolve providers by short name and
+ * is empty when no alias exists.
+ */
+export const zProviderEntity = z.object({
+  background: z.string().nullish(),
+  configurate_methods: z.array(zConfigurateMethod),
+  description: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  help: zProviderHelpEntity.nullish(),
+  icon_small: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  icon_small_dark: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
+  model_credential_schema: zModelCredentialSchema.nullish(),
+  models: z.array(zAiModelEntity).optional(),
+  position: z.record(z.string(), z.array(z.string())).nullish().default({}),
+  provider: z.string(),
+  provider_credential_schema: zProviderCredentialSchema.nullish(),
+  provider_name: z.string().optional().default(''),
+  supported_model_types: z.array(zModelType),
+})
+
+/**
+ * Endpoint
+ */
+export const zEndpoint = z.object({
+  enabled: z.boolean().nullish().default(false),
+})
+
+/**
+ * Model
+ */
+export const zModel = z.object({
+  enabled: z.boolean().nullish().default(false),
+  llm: z.boolean().nullish().default(false),
+  moderation: z.boolean().nullish().default(false),
+  rerank: z.boolean().nullish().default(false),
+  speech2text: z.boolean().nullish().default(false),
+  text_embedding: z.boolean().nullish().default(false),
+  tts: z.boolean().nullish().default(false),
+})
+
+/**
+ * Node
+ */
+export const zNode = z.object({
+  enabled: z.boolean().nullish().default(false),
+})
+
+/**
+ * Storage
+ */
+export const zStorage = z.object({
+  enabled: z.boolean().nullish().default(false),
+  size: z.int().gte(1024).lte(1073741824).optional().default(1048576),
+})
+
+/**
+ * Tool
+ */
+export const zTool = z.object({
+  enabled: z.boolean().nullish().default(false),
+})
+
+/**
+ * Permission
+ */
+export const zPermission = z.object({
+  endpoint: zEndpoint.nullish(),
+  model: zModel.nullish(),
+  node: zNode.nullish(),
+  storage: zStorage.nullish(),
+  tool: zTool.nullish(),
+})
+
+/**
+ * PluginResourceRequirements
+ */
+export const zPluginResourceRequirements = z.object({
+  memory: z.int(),
+  permission: zPermission.nullish(),
+})
+
+/**
+ * PluginParameterAutoGenerateType
+ */
+export const zPluginParameterAutoGenerateType = z.enum(['prompt_instruction'])
 
 /**
  * PluginParameterAutoGenerate
  */
 export const zPluginParameterAutoGenerate = z.object({
-  type: zCorePluginEntitiesParametersPluginParameterAutoGenerateType,
+  type: zPluginParameterAutoGenerateType,
 })
+
+/**
+ * ToolParameter
+ *
+ * Overrides type
+ */
+export const zToolParameter = z.object({
+  auto_generate: zPluginParameterAutoGenerate.nullish(),
+  default: z
+    .union([
+      z.number(),
+      z.int(),
+      z.string(),
+      z.boolean(),
+      z.array(z.unknown()),
+      z.record(z.string(), z.unknown()),
+    ])
+    .nullish(),
+  form: zToolParameterForm,
+  human_description: zI18nObject.nullish(),
+  input_schema: z.record(z.string(), z.unknown()).nullish(),
+  label: zI18nObject,
+  llm_description: z.string().nullish(),
+  max: z.union([z.number(), z.int()]).nullish(),
+  min: z.union([z.number(), z.int()]).nullish(),
+  name: z.string(),
+  options: z.array(zPluginParameterOption).optional(),
+  placeholder: zI18nObject.nullish(),
+  precision: z.int().nullish(),
+  required: z.boolean().optional().default(false),
+  scope: z.string().nullish(),
+  template: zPluginParameterTemplate.nullish(),
+  type: zToolParameterType,
+})
+
+/**
+ * ApiToolBundle
+ *
+ * This class is used to store the schema information of an api based tool.
+ * such as the url, the method, the parameters, etc.
+ */
+export const zApiToolBundle = z.object({
+  author: z.string(),
+  icon: z.string().nullish(),
+  method: z.string(),
+  openapi: z.record(z.string(), z.unknown()),
+  operation_id: z.string().nullish(),
+  output_schema: z.record(z.string(), z.unknown()).optional(),
+  parameters: z.array(zToolParameter).nullish(),
+  server_url: z.string(),
+  summary: z.string().nullish(),
+})
+
+/**
+ * ApiProviderDetailResponse
+ */
+export const zApiProviderDetailResponse = z.object({
+  credentials: z.record(z.string(), z.unknown()).optional(),
+  custom_disclaimer: z.string().nullish(),
+  description: z.string().nullish(),
+  icon: zToolEmojiIcon,
+  labels: z.array(z.string()).optional(),
+  privacy_policy: z.string().nullish(),
+  schema: z.string(),
+  schema_type: zApiProviderSchemaType,
+  tools: z.array(zApiToolBundle),
+})
+
+/**
+ * ApiSchemaParseResponse
+ */
+export const zApiSchemaParseResponse = z.object({
+  credentials_schema: z.array(zProviderConfig),
+  parameters_schema: z.array(zApiToolBundle),
+  schema_type: zApiProviderSchemaType,
+  warning: z.record(z.string(), z.string()),
+})
+
+/**
+ * ToolApiEntity
+ */
+export const zToolApiEntity = z.object({
+  author: z.string(),
+  description: zI18nObject,
+  label: zI18nObject,
+  labels: z.array(z.string()).optional(),
+  name: z.string(),
+  output_schema: z.record(z.string(), z.unknown()).optional(),
+  parameters: z.array(zToolParameter).nullish(),
+})
+
+/**
+ * ToolApiListResponse
+ */
+export const zToolApiListResponse = z.array(zToolApiEntity)
+
+/**
+ * ToolProviderApiEntityResponse
+ */
+export const zToolProviderApiEntityResponse = z.object({
+  allow_delete: z.boolean().optional().default(true),
+  authentication: zMcpAuthentication.nullish(),
+  author: z.string(),
+  configuration: zMcpConfiguration.nullish(),
+  description: zI18nObject,
+  icon: z.union([z.string(), z.record(z.string(), z.string())]),
+  icon_dark: z
+    .union([z.string(), z.record(z.string(), z.string())])
+    .optional()
+    .default(''),
+  id: z.string(),
+  identity_mode: z.string().optional().default('off'),
+  is_dynamic_registration: z.boolean().optional().default(true),
+  is_team_authorization: z.boolean().optional().default(false),
+  label: zI18nObject,
+  labels: z.array(z.string()).optional(),
+  masked_headers: z.record(z.string(), z.string()).nullish(),
+  name: z.string(),
+  original_headers: z.record(z.string(), z.string()).nullish(),
+  plugin_id: z.string().nullish().default(''),
+  plugin_unique_identifier: z.string().nullish().default(''),
+  server_identifier: z.string().nullish().default(''),
+  server_url: z.string().nullish().default(''),
+  team_credentials: z.record(z.string(), z.unknown()).optional(),
+  tools: z.array(zToolApiEntity).optional(),
+  type: zToolProviderType,
+  updated_at: z.int().optional(),
+  workflow_app_id: z.string().nullish(),
+})
+
+/**
+ * WorkflowToolDetailResponse
+ */
+export const zWorkflowToolDetailResponse = z.object({
+  description: z.string(),
+  icon: zToolEmojiIcon,
+  label: z.string(),
+  name: z.string(),
+  output_schema: z.record(z.string(), z.unknown()).optional(),
+  parameters: z.array(zWorkflowToolParameterConfiguration),
+  privacy_policy: z.string().nullish(),
+  synced: z.boolean(),
+  tool: zToolApiEntity,
+  workflow_app_id: z.string(),
+  workflow_tool_id: z.string(),
+})
+
+/**
+ * ToolProviderListResponse
+ */
+export const zToolProviderListResponse = z.array(zToolProviderApiEntityResponse)
 
 /**
  * EventParameter
@@ -2575,9 +3271,109 @@ export const zTriggerProviderApiEntity = z.object({
 export const zTriggerProviderListResponse = z.array(zTriggerProviderApiEntity)
 
 /**
- * AccountWithRole
+ * EventEntity
+ *
+ * The configuration of an event
  */
-export const zAccountWithRoleWritable = z.object({
+export const zEventEntity = z.object({
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  identity: zEventIdentity,
+  output_schema: z.record(z.string(), z.unknown()).nullish(),
+  parameters: z.array(zEventParameter).optional(),
+})
+
+/**
+ * TriggerProviderEntity
+ *
+ * The configuration of a trigger provider
+ */
+export const zTriggerProviderEntity = z.object({
+  events: z.array(zEventEntity).optional(),
+  identity: zTriggerProviderIdentity,
+  subscription_constructor: zSubscriptionConstructor.nullish(),
+  subscription_schema: z.array(zProviderConfig).optional(),
+})
+
+/**
+ * PluginDeclaration
+ */
+export const zPluginDeclaration = z.object({
+  agent_strategy: zAgentStrategyProviderEntity.nullish(),
+  author: z
+    .string()
+    .regex(/^[a-zA-Z0-9_-]{1,64}$/)
+    .nullable(),
+  category: zPluginCategory,
+  created_at: z.iso.datetime(),
+  datasource: zDatasourceProviderEntity.nullish(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  endpoint: zEndpointProviderDeclaration.nullish(),
+  icon: z.string(),
+  icon_dark: z.string().nullish(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  meta: zMeta,
+  model: zProviderEntity.nullish(),
+  name: z.string().regex(/^[a-z0-9_-]{1,128}$/),
+  plugins: zPlugins,
+  repo: z.string().nullish(),
+  resource: zPluginResourceRequirements,
+  tags: z.array(z.string()).optional(),
+  tool: zToolProviderEntity.nullish(),
+  trigger: zTriggerProviderEntity.nullish(),
+  verified: z.boolean().optional().default(false),
+  version: z.string(),
+})
+
+/**
+ * PluginManifestResponse
+ */
+export const zPluginManifestResponse = z.object({
+  manifest: zPluginDeclaration,
+})
+
+/**
+ * PluginDecodeResponse
+ */
+export const zPluginDecodeResponse = z.object({
+  manifest: zPluginDeclaration,
+  unique_identifier: z.string(),
+  verification: zPluginVerification.nullish(),
+})
+
+/**
+ * PluginEntity
+ */
+export const zPluginEntity = z.object({
+  checksum: z.string(),
+  created_at: z.iso.datetime(),
+  declaration: zPluginDeclaration,
+  endpoints_active: z.int(),
+  endpoints_setups: z.int(),
+  id: z.string(),
+  installation_id: z.string(),
+  meta: z.record(z.string(), z.unknown()),
+  name: z.string(),
+  plugin_id: z.string(),
+  plugin_unique_identifier: z.string(),
+  runtime_type: z.string(),
+  source: zPluginInstallationSource,
+  tenant_id: z.string(),
+  updated_at: z.iso.datetime(),
+  version: z.string(),
+})
+
+/**
+ * PluginListResponse
+ */
+export const zPluginListResponse = z.object({
+  plugins: z.array(zPluginEntity),
+  total: z.int(),
+})
+
+/**
+ * AccountWithRoleResponse
+ */
+export const zAccountWithRoleResponseWritable = z.object({
   avatar: z.string().nullish(),
   created_at: z.int().nullish(),
   email: z.string(),
@@ -2591,10 +3387,10 @@ export const zAccountWithRoleWritable = z.object({
 })
 
 /**
- * AccountWithRoleList
+ * AccountWithRoleListResponse
  */
-export const zAccountWithRoleListWritable = z.object({
-  accounts: z.array(zAccountWithRoleWritable),
+export const zAccountWithRoleListResponseWritable = z.object({
+  accounts: z.array(zAccountWithRoleResponseWritable),
 })
 
 /**
@@ -2656,8 +3452,8 @@ export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmPat
 /**
  * Import confirmed successfully
  */
-export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponse
-  = zSnippetImportResponse
+export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponse =
+  zSnippetImportResponse
 
 export const zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
   snippet_id: z.uuid(),
@@ -2695,8 +3491,8 @@ export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependencies
 /**
  * Dependencies checked successfully
  */
-export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponse
-  = zSnippetDependencyCheckResponse
+export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponse =
+  zSnippetDependencyCheckResponse
 
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportPath = z.object({
   snippet_id: z.uuid(),
@@ -2718,20 +3514,20 @@ export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncremen
 /**
  * Use count incremented successfully
  */
-export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponse
-  = zSnippetUseCountResponse
+export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponse =
+  zSnippetUseCountResponse
 
 /**
  * Success
  */
-export const zGetWorkspacesCurrentDatasetOperatorsResponse = zAccountWithRoleList
+export const zGetWorkspacesCurrentDatasetOperatorsResponse = zAccountWithRoleListResponse
 
 export const zGetWorkspacesCurrentDefaultModelQuery = z.object({
   model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
 })
 
 /**
- * Success
+ * Default model retrieved successfully
  */
 export const zGetWorkspacesCurrentDefaultModelResponse = zDefaultModelDataResponse
 
@@ -2747,35 +3543,35 @@ export const zPostWorkspacesCurrentEndpointsBody = zEndpointCreatePayload
 /**
  * Endpoint created successfully
  */
-export const zPostWorkspacesCurrentEndpointsResponse = zEndpointCreateResponse
+export const zPostWorkspacesCurrentEndpointsResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentEndpointsCreateBody = zEndpointCreatePayload
 
 /**
  * Endpoint created successfully
  */
-export const zPostWorkspacesCurrentEndpointsCreateResponse = zEndpointCreateResponse
+export const zPostWorkspacesCurrentEndpointsCreateResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentEndpointsDeleteBody = zEndpointIdPayload
 
 /**
  * Endpoint deleted successfully
  */
-export const zPostWorkspacesCurrentEndpointsDeleteResponse = zEndpointDeleteResponse
+export const zPostWorkspacesCurrentEndpointsDeleteResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentEndpointsDisableBody = zEndpointIdPayload
 
 /**
  * Endpoint disabled successfully
  */
-export const zPostWorkspacesCurrentEndpointsDisableResponse = zEndpointDisableResponse
+export const zPostWorkspacesCurrentEndpointsDisableResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentEndpointsEnableBody = zEndpointIdPayload
 
 /**
  * Endpoint enabled successfully
  */
-export const zPostWorkspacesCurrentEndpointsEnableResponse = zEndpointEnableResponse
+export const zPostWorkspacesCurrentEndpointsEnableResponse = zSuccessResponse
 
 export const zGetWorkspacesCurrentEndpointsListQuery = z.object({
   page: z.int().gte(1),
@@ -2796,14 +3592,14 @@ export const zGetWorkspacesCurrentEndpointsListPluginQuery = z.object({
 /**
  * Success
  */
-export const zGetWorkspacesCurrentEndpointsListPluginResponse = zPluginEndpointListResponse
+export const zGetWorkspacesCurrentEndpointsListPluginResponse = zEndpointListResponse
 
 export const zPostWorkspacesCurrentEndpointsUpdateBody = zLegacyEndpointUpdatePayload
 
 /**
  * Endpoint updated successfully
  */
-export const zPostWorkspacesCurrentEndpointsUpdateResponse = zEndpointUpdateResponse
+export const zPostWorkspacesCurrentEndpointsUpdateResponse = zSuccessResponse
 
 export const zDeleteWorkspacesCurrentEndpointsByIdPath = z.object({
   id: z.string(),
@@ -2812,7 +3608,7 @@ export const zDeleteWorkspacesCurrentEndpointsByIdPath = z.object({
 /**
  * Endpoint deleted successfully
  */
-export const zDeleteWorkspacesCurrentEndpointsByIdResponse = zEndpointDeleteResponse
+export const zDeleteWorkspacesCurrentEndpointsByIdResponse = zSuccessResponse
 
 export const zPatchWorkspacesCurrentEndpointsByIdBody = zEndpointUpdatePayload
 
@@ -2823,12 +3619,12 @@ export const zPatchWorkspacesCurrentEndpointsByIdPath = z.object({
 /**
  * Endpoint updated successfully
  */
-export const zPatchWorkspacesCurrentEndpointsByIdResponse = zEndpointUpdateResponse
+export const zPatchWorkspacesCurrentEndpointsByIdResponse = zSuccessResponse
 
 /**
  * Success
  */
-export const zGetWorkspacesCurrentMembersResponse = zAccountWithRoleList
+export const zGetWorkspacesCurrentMembersResponse = zAccountWithRoleListResponse
 
 export const zPostWorkspacesCurrentMembersInviteEmailBody = zMemberInvitePayload
 
@@ -2844,14 +3640,14 @@ export const zPostWorkspacesCurrentMembersOwnerTransferCheckBody = zOwnerTransfe
  */
 export const zPostWorkspacesCurrentMembersOwnerTransferCheckResponse = zVerificationTokenResponse
 
-export const zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailBody
-  = zOwnerTransferEmailPayload
+export const zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailBody =
+  zOwnerTransferEmailPayload
 
 /**
  * Success
  */
-export const zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponse
-  = zSimpleResultDataResponse
+export const zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponse =
+  zSimpleResultDataResponse
 
 export const zDeleteWorkspacesCurrentMembersByMemberIdPath = z.object({
   member_id: z.uuid(),
@@ -2860,7 +3656,7 @@ export const zDeleteWorkspacesCurrentMembersByMemberIdPath = z.object({
 /**
  * Success
  */
-export const zDeleteWorkspacesCurrentMembersByMemberIdResponse = zMemberActionTenantResponse
+export const zDeleteWorkspacesCurrentMembersByMemberIdResponse = zMemberActionResponse
 
 export const zPostWorkspacesCurrentMembersByMemberIdOwnerTransferBody = zOwnerTransferPayload
 
@@ -2891,7 +3687,7 @@ export const zGetWorkspacesCurrentModelProvidersQuery = z.object({
 })
 
 /**
- * Success
+ * Model providers retrieved successfully
  */
 export const zGetWorkspacesCurrentModelProvidersResponse = zModelProviderListResponse
 
@@ -2900,13 +3696,13 @@ export const zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlPath = z.ob
 })
 
 /**
- * Success
+ * Model provider checkout URL retrieved successfully
  */
-export const zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse
-  = zModelProviderPaymentCheckoutUrlResponse
+export const zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse =
+  zModelProviderPaymentCheckoutUrlResponse
 
-export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsBody
-  = zParserCredentialDelete
+export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsBody =
+  zParserCredentialDelete
 
 export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath = z.object({
   provider: z.string(),
@@ -2926,10 +3722,10 @@ export const zGetWorkspacesCurrentModelProvidersByProviderCredentialsQuery = z.o
 })
 
 /**
- * Success
+ * Provider credentials retrieved successfully
  */
-export const zGetWorkspacesCurrentModelProvidersByProviderCredentialsResponse
-  = zProviderCredentialResponse
+export const zGetWorkspacesCurrentModelProvidersByProviderCredentialsResponse =
+  zProviderCredentialsResponse
 
 export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsBody = zParserCredentialCreate
 
@@ -2940,8 +3736,8 @@ export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsPath = z.o
 /**
  * Credential created successfully
  */
-export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsResponse
-  = zSimpleResultResponse
+export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsResponse =
+  zSimpleResultResponse
 
 export const zPutWorkspacesCurrentModelProvidersByProviderCredentialsBody = zParserCredentialUpdate
 
@@ -2952,11 +3748,11 @@ export const zPutWorkspacesCurrentModelProvidersByProviderCredentialsPath = z.ob
 /**
  * Credential updated successfully
  */
-export const zPutWorkspacesCurrentModelProvidersByProviderCredentialsResponse
-  = zSimpleResultResponse
+export const zPutWorkspacesCurrentModelProvidersByProviderCredentialsResponse =
+  zSimpleResultResponse
 
-export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchBody
-  = zParserCredentialSwitch
+export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchBody =
+  zParserCredentialSwitch
 
 export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchPath = z.object({
   provider: z.string(),
@@ -2965,21 +3761,21 @@ export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchPath
 /**
  * Success
  */
-export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchResponse
-  = zSimpleResultResponse
+export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchResponse =
+  zSimpleResultResponse
 
-export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidateBody
-  = zParserCredentialValidate
+export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidateBody =
+  zParserCredentialValidate
 
 export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidatePath = z.object({
   provider: z.string(),
 })
 
 /**
- * Credential validation result
+ * Provider credentials validated successfully
  */
-export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponse
-  = zProviderCredentialValidateResponse
+export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponse =
+  zValidationResultResponse
 
 export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsBody = zParserDeleteModels
 
@@ -2997,10 +3793,10 @@ export const zGetWorkspacesCurrentModelProvidersByProviderModelsPath = z.object(
 })
 
 /**
- * Success
+ * Provider models retrieved successfully
  */
-export const zGetWorkspacesCurrentModelProvidersByProviderModelsResponse
-  = zModelWithProviderListResponse
+export const zGetWorkspacesCurrentModelProvidersByProviderModelsResponse =
+  zProviderModelListResponse
 
 export const zPostWorkspacesCurrentModelProvidersByProviderModelsBody = zParserPostModels
 
@@ -3009,12 +3805,12 @@ export const zPostWorkspacesCurrentModelProvidersByProviderModelsPath = z.object
 })
 
 /**
- * Success
+ * Model updated successfully
  */
 export const zPostWorkspacesCurrentModelProvidersByProviderModelsResponse = zSimpleResultResponse
 
-export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody
-  = zParserDeleteCredential
+export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody =
+  zParserDeleteCredential
 
 export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath = z.object({
   provider: z.string(),
@@ -3037,39 +3833,39 @@ export const zGetWorkspacesCurrentModelProvidersByProviderModelsCredentialsQuery
 })
 
 /**
- * Success
+ * Model credentials retrieved successfully
  */
-export const zGetWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse
-  = zModelCredentialResponse
+export const zGetWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse =
+  zModelCredentialResponse
 
-export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody
-  = zParserCreateCredential
+export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody =
+  zParserCreateCredential
 
 export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Credential created successfully
+ * Model credential created successfully
  */
-export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse
-  = zSimpleResultResponse
+export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse =
+  zSimpleResultResponse
 
-export const zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody
-  = zParserUpdateCredential
+export const zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody =
+  zParserUpdateCredential
 
 export const zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Credential updated successfully
+ * Model credential updated successfully
  */
-export const zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse
-  = zSimpleResultResponse
+export const zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse =
+  zSimpleResultResponse
 
-export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchBody
-  = zParserSwitch
+export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchBody =
+  zParserSwitch
 
 export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchPath = z.object({
   provider: z.string(),
@@ -3078,11 +3874,11 @@ export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwit
 /**
  * Success
  */
-export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchResponse
-  = zSimpleResultResponse
+export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchResponse =
+  zSimpleResultResponse
 
-export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateBody
-  = zParserValidate
+export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateBody =
+  zParserValidate
 
 export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidatePath = z.object(
   {
@@ -3091,10 +3887,10 @@ export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsVali
 )
 
 /**
- * Credential validation result
+ * Model credentials validated successfully
  */
-export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateResponse
-  = zModelCredentialValidateResponse
+export const zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateResponse =
+  zValidationResultResponse
 
 export const zPatchWorkspacesCurrentModelProvidersByProviderModelsDisableBody = zParserDeleteModels
 
@@ -3105,8 +3901,8 @@ export const zPatchWorkspacesCurrentModelProvidersByProviderModelsDisablePath = 
 /**
  * Success
  */
-export const zPatchWorkspacesCurrentModelProvidersByProviderModelsDisableResponse
-  = zSimpleResultResponse
+export const zPatchWorkspacesCurrentModelProvidersByProviderModelsDisableResponse =
+  zSimpleResultResponse
 
 export const zPatchWorkspacesCurrentModelProvidersByProviderModelsEnableBody = zParserDeleteModels
 
@@ -3117,28 +3913,28 @@ export const zPatchWorkspacesCurrentModelProvidersByProviderModelsEnablePath = z
 /**
  * Success
  */
-export const zPatchWorkspacesCurrentModelProvidersByProviderModelsEnableResponse
-  = zSimpleResultResponse
+export const zPatchWorkspacesCurrentModelProvidersByProviderModelsEnableResponse =
+  zSimpleResultResponse
 
-export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateBody
-  = zLoadBalancingCredentialPayload
+export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateBody =
+  zLoadBalancingCredentialPayload
 
-export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidatePath
-  = z.object({
+export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidatePath =
+  z.object({
     provider: z.string(),
   })
 
 /**
  * Credential validation result
  */
-export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateResponse
-  = zLoadBalancingCredentialValidateResponse
+export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateResponse =
+  zLoadBalancingCredentialValidateResponse
 
-export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateBody
-  = zLoadBalancingCredentialPayload
+export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateBody =
+  zLoadBalancingCredentialPayload
 
-export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidatePath
-  = z.object({
+export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidatePath =
+  z.object({
     config_id: z.string(),
     provider: z.string(),
   })
@@ -3146,8 +3942,8 @@ export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingCo
 /**
  * Credential validation result
  */
-export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateResponse
-  = zLoadBalancingCredentialValidateResponse
+export const zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateResponse =
+  zLoadBalancingCredentialValidateResponse
 
 export const zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesPath = z.object({
   provider: z.string(),
@@ -3158,13 +3954,13 @@ export const zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesQu
 })
 
 /**
- * Success
+ * Model parameter rules retrieved successfully
  */
-export const zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse
-  = zModelParameterRulesResponse
+export const zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse =
+  zModelParameterRuleListResponse
 
-export const zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeBody
-  = zParserPreferredProviderType
+export const zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeBody =
+  zParserPreferredProviderType
 
 export const zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypePath = z.object({
   provider: z.string(),
@@ -3173,18 +3969,17 @@ export const zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderType
 /**
  * Success
  */
-export const zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponse
-  = zSimpleResultResponse
+export const zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponse =
+  zSimpleResultResponse
 
 export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
   model_type: z.string(),
 })
 
 /**
- * Success
+ * Available models retrieved successfully
  */
-export const zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse
-  = zProviderWithModelsDataResponse
+export const zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse = zAvailableModelListResponse
 
 /**
  * Success
@@ -3206,8 +4001,8 @@ export const zPostWorkspacesCurrentPluginAutoUpgradeChangeBody = zParserAutoUpgr
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginAutoUpgradeChangeResponse
-  = zPluginAutoUpgradeChangeResponse
+export const zPostWorkspacesCurrentPluginAutoUpgradeChangeResponse =
+  zPluginAutoUpgradeChangeResponse
 
 export const zPostWorkspacesCurrentPluginAutoUpgradeExcludeBody = zParserExcludePlugin
 
@@ -3254,21 +4049,22 @@ export const zPostWorkspacesCurrentPluginInstallGithubBody = zParserGithubInstal
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginInstallGithubResponse = zPluginDaemonOperationResponse
+export const zPostWorkspacesCurrentPluginInstallGithubResponse = zPluginInstallTaskStartResponse
 
 export const zPostWorkspacesCurrentPluginInstallMarketplaceBody = zParserPluginIdentifiers
 
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginInstallMarketplaceResponse = zPluginDaemonOperationResponse
+export const zPostWorkspacesCurrentPluginInstallMarketplaceResponse =
+  zPluginInstallTaskStartResponse
 
 export const zPostWorkspacesCurrentPluginInstallPkgBody = zParserPluginIdentifiers
 
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginInstallPkgResponse = zPluginDaemonOperationResponse
+export const zPostWorkspacesCurrentPluginInstallPkgResponse = zPluginInstallTaskStartResponse
 
 export const zGetWorkspacesCurrentPluginListQuery = z.object({
   page: z.int().gte(1).optional().default(1),
@@ -3315,17 +4111,17 @@ export const zGetWorkspacesCurrentPluginParametersDynamicOptionsQuery = z.object
 /**
  * Success
  */
-export const zGetWorkspacesCurrentPluginParametersDynamicOptionsResponse
-  = zPluginDynamicOptionsResponse
+export const zGetWorkspacesCurrentPluginParametersDynamicOptionsResponse =
+  zPluginDynamicOptionsResponse
 
-export const zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsBody
-  = zParserDynamicOptionsWithCredentials
+export const zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsBody =
+  zParserDynamicOptionsWithCredentials
 
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponse
-  = zPluginDynamicOptionsResponse
+export const zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponse =
+  zPluginDynamicOptionsResponse
 
 export const zPostWorkspacesCurrentPluginPermissionChangeBody = zParserPermissionChange
 
@@ -3404,31 +4200,32 @@ export const zPostWorkspacesCurrentPluginUpgradeGithubBody = zParserGithubUpgrad
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginUpgradeGithubResponse = zPluginDaemonOperationResponse
+export const zPostWorkspacesCurrentPluginUpgradeGithubResponse = zPluginInstallTaskStartResponse
 
 export const zPostWorkspacesCurrentPluginUpgradeMarketplaceBody = zParserMarketplaceUpgrade
 
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginUpgradeMarketplaceResponse = zPluginDaemonOperationResponse
+export const zPostWorkspacesCurrentPluginUpgradeMarketplaceResponse =
+  zPluginInstallTaskStartResponse
 
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginUploadBundleResponse = zPluginDaemonOperationResponse
+export const zPostWorkspacesCurrentPluginUploadBundleResponse = zPluginBundleUploadResponse
 
 export const zPostWorkspacesCurrentPluginUploadGithubBody = zParserGithubUpload
 
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginUploadGithubResponse = zPluginDaemonOperationResponse
+export const zPostWorkspacesCurrentPluginUploadGithubResponse = zPluginDecodeResponse
 
 /**
  * Success
  */
-export const zPostWorkspacesCurrentPluginUploadPkgResponse = zPluginDaemonOperationResponse
+export const zPostWorkspacesCurrentPluginUploadPkgResponse = zPluginDecodeResponse
 
 export const zGetWorkspacesCurrentPluginByCategoryListPath = z.object({
   category: z.string(),
@@ -3497,8 +4294,8 @@ export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockPath = 
 /**
  * Success
  */
-export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse
-  = zAccessPolicyBindingState
+export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse =
+  zAccessPolicyBindingState
 
 export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockPath = z.object({
   binding_id: z.uuid(),
@@ -3507,14 +4304,14 @@ export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockPath 
 /**
  * Success
  */
-export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse
-  = zAccessPolicyBindingState
+export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse =
+  zAccessPolicyBindingState
 
-export const zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsBody
-  = zDeleteMemberBindingsRequest
+export const zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsBody =
+  zDeleteMemberBindingsRequest
 
-export const zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsPath
-  = z.object({
+export const zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsPath =
+  z.object({
     app_id: z.uuid(),
     policy_id: z.string(),
   })
@@ -3522,11 +4319,11 @@ export const zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemb
 /**
  * Success
  */
-export const zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse
-  = zMemberBindingsResponse
+export const zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse =
+  zMemberBindingsResponse
 
-export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsPath
-  = z.object({
+export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsPath =
+  z.object({
     app_id: z.uuid(),
     policy_id: z.string(),
   })
@@ -3534,11 +4331,11 @@ export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberB
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse
-  = zMemberBindingsResponse
+export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse =
+  zMemberBindingsResponse
 
-export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsPath
-  = z.object({
+export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsPath =
+  z.object({
     app_id: z.uuid(),
     policy_id: z.uuid(),
   })
@@ -3546,8 +4343,8 @@ export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBin
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponse
-  = zRoleBindingsResponse
+export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponse =
+  zRoleBindingsResponse
 
 export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyPath = z.object({
   app_id: z.uuid(),
@@ -3573,14 +4370,14 @@ export const zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesQuery = z.obj
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponse
-  = zResourceUserAccessPoliciesResponse
+export const zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponse =
+  zResourceUserAccessPoliciesResponse
 
-export const zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesBody
-  = zReplaceUserAccessPolicies
+export const zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesBody =
+  zReplaceUserAccessPolicies
 
-export const zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesPath
-  = z.object({
+export const zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesPath =
+  z.object({
     app_id: z.uuid(),
     target_account_id: z.uuid(),
   })
@@ -3588,8 +4385,8 @@ export const zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPol
 /**
  * Success
  */
-export const zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesResponse
-  = zReplaceUserAccessPoliciesResponse
+export const zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesResponse =
+  zReplaceUserAccessPoliciesResponse
 
 export const zGetWorkspacesCurrentRbacAppsByAppIdWhitelistPath = z.object({
   app_id: z.uuid(),
@@ -3611,11 +4408,11 @@ export const zPutWorkspacesCurrentRbacAppsByAppIdWhitelistPath = z.object({
  */
 export const zPutWorkspacesCurrentRbacAppsByAppIdWhitelistResponse = zResourceWhitelist
 
-export const zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsBody
-  = zDeleteMemberBindingsRequest
+export const zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsBody =
+  zDeleteMemberBindingsRequest
 
-export const zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsPath
-  = z.object({
+export const zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsPath =
+  z.object({
     dataset_id: z.uuid(),
     policy_id: z.string(),
   })
@@ -3623,11 +4420,11 @@ export const zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPoli
 /**
  * Success
  */
-export const zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse
-  = zMemberBindingsResponse
+export const zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse =
+  zMemberBindingsResponse
 
-export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsPath
-  = z.object({
+export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsPath =
+  z.object({
     dataset_id: z.uuid(),
     policy_id: z.string(),
   })
@@ -3635,11 +4432,11 @@ export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyI
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse
-  = zMemberBindingsResponse
+export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse =
+  zMemberBindingsResponse
 
-export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsPath
-  = z.object({
+export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsPath =
+  z.object({
     dataset_id: z.uuid(),
     policy_id: z.uuid(),
   })
@@ -3647,8 +4444,8 @@ export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyI
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponse
-  = zRoleBindingsResponse
+export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponse =
+  zRoleBindingsResponse
 
 export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyPath = z.object({
   dataset_id: z.uuid(),
@@ -3674,14 +4471,14 @@ export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesQuery
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponse
-  = zResourceUserAccessPoliciesResponse
+export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponse =
+  zResourceUserAccessPoliciesResponse
 
-export const zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesBody
-  = zReplaceUserAccessPolicies
+export const zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesBody =
+  zReplaceUserAccessPolicies
 
-export const zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesPath
-  = z.object({
+export const zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesPath =
+  z.object({
     dataset_id: z.uuid(),
     target_account_id: z.uuid(),
   })
@@ -3689,8 +4486,8 @@ export const zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdA
 /**
  * Success
  */
-export const zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesResponse
-  = zReplaceUserAccessPoliciesResponse
+export const zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesResponse =
+  zReplaceUserAccessPoliciesResponse
 
 export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath = z.object({
   dataset_id: z.uuid(),
@@ -3750,8 +4547,8 @@ export const zGetWorkspacesCurrentRbacRolePermissionsCatalogAppResponse = zPermi
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse
-  = zPermissionCatalogResponse
+export const zGetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse =
+  zPermissionCatalogResponse
 
 /**
  * Success
@@ -3808,8 +4605,8 @@ export const zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath = z.object({
  */
 export const zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse = zMembersInRoleList
 
-export const zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsBody
-  = zReplaceBindingsRequest
+export const zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsBody =
+  zReplaceBindingsRequest
 
 export const zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsPath = z.object({
   policy_id: z.uuid(),
@@ -3818,71 +4615,71 @@ export const zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindi
 /**
  * Success
  */
-export const zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponse
-  = zAccessMatrixItem
+export const zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponse =
+  zAccessMatrixItem
 
-export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsPath
-  = z.object({
+export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsPath =
+  z.object({
     policy_id: z.uuid(),
   })
 
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponse
-  = zMemberBindingsResponse
+export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponse =
+  zMemberBindingsResponse
 
-export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsPath
-  = z.object({
+export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsPath =
+  z.object({
     policy_id: z.uuid(),
   })
 
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponse
-  = zRoleBindingsResponse
+export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponse =
+  zRoleBindingsResponse
 
 /**
  * Success
  */
 export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponse = zWorkspaceAccessMatrix
 
-export const zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsBody
-  = zReplaceBindingsRequest
+export const zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsBody =
+  zReplaceBindingsRequest
 
-export const zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsPath
-  = z.object({
+export const zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsPath =
+  z.object({
     policy_id: z.uuid(),
   })
 
 /**
  * Success
  */
-export const zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponse
-  = zAccessMatrixItem
+export const zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponse =
+  zAccessMatrixItem
 
-export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsPath
-  = z.object({
+export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsPath =
+  z.object({
     policy_id: z.uuid(),
   })
 
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponse
-  = zMemberBindingsResponse
+export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponse =
+  zMemberBindingsResponse
 
-export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsPath
-  = z.object({
+export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsPath =
+  z.object({
     policy_id: z.uuid(),
   })
 
 /**
  * Success
  */
-export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponse
-  = zRoleBindingsResponse
+export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponse =
+  zRoleBindingsResponse
 
 /**
  * Success
@@ -3890,71 +4687,71 @@ export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdR
 export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse = zWorkspaceAccessMatrix
 
 /**
- * Success
+ * Tool labels retrieved successfully
  */
-export const zGetWorkspacesCurrentToolLabelsResponse = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolLabelsResponse = zToolLabelListResponse
 
 export const zPostWorkspacesCurrentToolProviderApiAddBody = zApiToolProviderAddPayload
 
 /**
- * Success
+ * API provider added successfully
  */
-export const zPostWorkspacesCurrentToolProviderApiAddResponse = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderApiAddResponse = zSimpleResultResponse
 
 export const zPostWorkspacesCurrentToolProviderApiDeleteBody = zApiToolProviderDeletePayload
 
 /**
- * Success
+ * API provider deleted successfully
  */
-export const zPostWorkspacesCurrentToolProviderApiDeleteResponse = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderApiDeleteResponse = zSimpleResultResponse
 
 export const zGetWorkspacesCurrentToolProviderApiGetQuery = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * API provider retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProviderApiGetResponse = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolProviderApiGetResponse = zApiProviderDetailResponse
 
 export const zGetWorkspacesCurrentToolProviderApiRemoteQuery = z.object({
   url: z.url().min(1).max(2083),
 })
 
 /**
- * Success
+ * Remote API provider schema retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProviderApiRemoteResponse = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolProviderApiRemoteResponse = zApiProviderRemoteSchemaResponse
 
 export const zPostWorkspacesCurrentToolProviderApiSchemaBody = zApiToolSchemaPayload
 
 /**
- * Success
+ * API schema parsed successfully
  */
-export const zPostWorkspacesCurrentToolProviderApiSchemaResponse = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderApiSchemaResponse = zApiSchemaParseResponse
 
 export const zPostWorkspacesCurrentToolProviderApiTestPreBody = zApiToolTestPayload
 
 /**
- * Success
+ * API tool test preview completed successfully
  */
-export const zPostWorkspacesCurrentToolProviderApiTestPreResponse = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderApiTestPreResponse = zApiToolPreviewResponse
 
 export const zGetWorkspacesCurrentToolProviderApiToolsQuery = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * API provider tools retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProviderApiToolsResponse = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolProviderApiToolsResponse = zToolApiListResponse
 
 export const zPostWorkspacesCurrentToolProviderApiUpdateBody = zApiToolProviderUpdatePayload
 
 /**
- * Success
+ * API provider updated successfully
  */
-export const zPostWorkspacesCurrentToolProviderApiUpdateResponse = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderApiUpdateResponse = zSimpleResultResponse
 
 export const zPostWorkspacesCurrentToolProviderBuiltinByProviderAddBody = zBuiltinToolAddPayload
 
@@ -3963,10 +4760,9 @@ export const zPostWorkspacesCurrentToolProviderBuiltinByProviderAddPath = z.obje
 })
 
 /**
- * Success
+ * Builtin provider added successfully
  */
-export const zPostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse
-  = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse = zSimpleResultResponse
 
 export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoPath = z.object({
   provider: z.string(),
@@ -3977,22 +4773,22 @@ export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoQue
 })
 
 /**
- * Success
+ * Builtin provider credential info retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoResponse
-  = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoResponse =
+  zToolProviderCredentialInfoApiEntity
 
-export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypePath
-  = z.object({
+export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypePath =
+  z.object({
     credential_type: z.string(),
     provider: z.string(),
   })
 
 /**
- * Success
+ * Builtin provider credential schema retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeResponse
-  = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeResponse =
+  zProviderConfigListResponse
 
 export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsPath = z.object({
   provider: z.string(),
@@ -4003,121 +4799,125 @@ export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsQuery 
 })
 
 /**
- * Success
+ * Builtin provider credentials retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsResponse
-  = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsResponse =
+  zToolProviderCredentialListResponse
 
-export const zPostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialBody
-  = zBuiltinProviderDefaultCredentialPayload
+export const zPostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialBody =
+  zBuiltinProviderDefaultCredentialPayload
 
 export const zPostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Default credential set successfully
  */
-export const zPostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialResponse
-  = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialResponse =
+  zSimpleResultResponse
 
-export const zPostWorkspacesCurrentToolProviderBuiltinByProviderDeleteBody
-  = zBuiltinToolCredentialDeletePayload
+export const zPostWorkspacesCurrentToolProviderBuiltinByProviderDeleteBody =
+  zBuiltinToolCredentialDeletePayload
 
 export const zPostWorkspacesCurrentToolProviderBuiltinByProviderDeletePath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Builtin provider credential deleted successfully
  */
-export const zPostWorkspacesCurrentToolProviderBuiltinByProviderDeleteResponse
-  = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderBuiltinByProviderDeleteResponse =
+  zSimpleResultResponse
 
 export const zGetWorkspacesCurrentToolProviderBuiltinByProviderIconPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Builtin provider icon
  */
-export const zGetWorkspacesCurrentToolProviderBuiltinByProviderIconResponse = zBinaryFileResponse
+export const zGetWorkspacesCurrentToolProviderBuiltinByProviderIconResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zGetWorkspacesCurrentToolProviderBuiltinByProviderInfoPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Builtin provider info retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProviderBuiltinByProviderInfoResponse
-  = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolProviderBuiltinByProviderInfoResponse =
+  zToolProviderApiEntityResponse
 
 export const zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Builtin provider OAuth client schema retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaResponse
-  = zToolOAuthClientSchemaResponse
+export const zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaResponse =
+  zBuiltinProviderOAuthClientSchemaResponse
 
 export const zDeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Custom OAuth client deleted successfully
  */
-export const zDeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse
-  = zSimpleResultResponse
+export const zDeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse =
+  zSimpleResultResponse
 
 export const zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Custom OAuth client retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse
-  = zToolOAuthCustomClientResponse
+export const zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
-export const zPostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientBody
-  = zToolOAuthCustomClientPayload
+export const zPostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientBody =
+  zToolOAuthCustomClientPayload
 
 export const zPostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Custom OAuth client saved successfully
  */
-export const zPostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse
-  = zSimpleResultResponse
+export const zPostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse =
+  zSimpleResultResponse
 
 export const zGetWorkspacesCurrentToolProviderBuiltinByProviderToolsPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Builtin provider tools retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProviderBuiltinByProviderToolsResponse
-  = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolProviderBuiltinByProviderToolsResponse = zToolApiListResponse
 
-export const zPostWorkspacesCurrentToolProviderBuiltinByProviderUpdateBody
-  = zBuiltinToolUpdatePayload
+export const zPostWorkspacesCurrentToolProviderBuiltinByProviderUpdateBody =
+  zBuiltinToolUpdatePayload
 
 export const zPostWorkspacesCurrentToolProviderBuiltinByProviderUpdatePath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Builtin provider updated successfully
  */
-export const zPostWorkspacesCurrentToolProviderBuiltinByProviderUpdateResponse
-  = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderBuiltinByProviderUpdateResponse =
+  zSimpleResultResponse
 
 export const zDeleteWorkspacesCurrentToolProviderMcpBody = zMcpProviderDeletePayload
 
@@ -4129,57 +4929,57 @@ export const zDeleteWorkspacesCurrentToolProviderMcpResponse = zSimpleResultResp
 export const zPostWorkspacesCurrentToolProviderMcpBody = zMcpProviderCreatePayload
 
 /**
- * Success
+ * MCP provider created successfully
  */
-export const zPostWorkspacesCurrentToolProviderMcpResponse = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderMcpResponse = zToolProviderApiEntityResponse
 
 export const zPutWorkspacesCurrentToolProviderMcpBody = zMcpProviderUpdatePayload
 
 /**
- * Success
+ * MCP provider updated successfully
  */
 export const zPutWorkspacesCurrentToolProviderMcpResponse = zSimpleResultResponse
 
 export const zPostWorkspacesCurrentToolProviderMcpAuthBody = zMcpAuthPayload
 
 /**
- * Success
+ * MCP provider authorized successfully
  */
-export const zPostWorkspacesCurrentToolProviderMcpAuthResponse = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderMcpAuthResponse = zMcpAuthResponse
 
 export const zGetWorkspacesCurrentToolProviderMcpToolsByProviderIdPath = z.object({
   provider_id: z.string(),
 })
 
 /**
- * Success
+ * MCP provider retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProviderMcpToolsByProviderIdResponse
-  = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolProviderMcpToolsByProviderIdResponse =
+  zToolProviderApiEntityResponse
 
 export const zGetWorkspacesCurrentToolProviderMcpUpdateByProviderIdPath = z.object({
   provider_id: z.string(),
 })
 
 /**
- * Success
+ * MCP provider tools refreshed successfully
  */
-export const zGetWorkspacesCurrentToolProviderMcpUpdateByProviderIdResponse
-  = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolProviderMcpUpdateByProviderIdResponse =
+  zToolProviderApiEntityResponse
 
 export const zPostWorkspacesCurrentToolProviderWorkflowCreateBody = zWorkflowToolCreatePayload
 
 /**
- * Success
+ * Workflow tool created successfully
  */
-export const zPostWorkspacesCurrentToolProviderWorkflowCreateResponse = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderWorkflowCreateResponse = zSimpleResultResponse
 
 export const zPostWorkspacesCurrentToolProviderWorkflowDeleteBody = zWorkflowToolDeletePayload
 
 /**
- * Success
+ * Workflow tool deleted successfully
  */
-export const zPostWorkspacesCurrentToolProviderWorkflowDeleteResponse = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderWorkflowDeleteResponse = zSimpleResultResponse
 
 export const zGetWorkspacesCurrentToolProviderWorkflowGetQuery = z.object({
   workflow_app_id: z.string().optional(),
@@ -4187,70 +4987,73 @@ export const zGetWorkspacesCurrentToolProviderWorkflowGetQuery = z.object({
 })
 
 /**
- * Success
+ * Workflow tool retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProviderWorkflowGetResponse = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolProviderWorkflowGetResponse = zWorkflowToolDetailResponse
 
 export const zGetWorkspacesCurrentToolProviderWorkflowToolsQuery = z.object({
   workflow_tool_id: z.string(),
 })
 
 /**
- * Success
+ * Workflow provider tools retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProviderWorkflowToolsResponse = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolProviderWorkflowToolsResponse = zToolApiListResponse
 
 export const zPostWorkspacesCurrentToolProviderWorkflowUpdateBody = zWorkflowToolUpdatePayload
 
 /**
- * Success
+ * Workflow tool updated successfully
  */
-export const zPostWorkspacesCurrentToolProviderWorkflowUpdateResponse = zToolProviderOpaqueResponse
+export const zPostWorkspacesCurrentToolProviderWorkflowUpdateResponse = zSimpleResultResponse
 
 export const zGetWorkspacesCurrentToolProvidersQuery = z.object({
   type: z.enum(['api', 'builtin', 'mcp', 'model', 'workflow']).optional(),
 })
 
 /**
- * Success
+ * Tool providers retrieved successfully
  */
-export const zGetWorkspacesCurrentToolProvidersResponse = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolProvidersResponse = zToolProviderListResponse
 
 /**
- * Success
+ * API tools retrieved successfully
  */
-export const zGetWorkspacesCurrentToolsApiResponse = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolsApiResponse = zToolProviderListResponse
 
 /**
- * Success
+ * Builtin tools retrieved successfully
  */
-export const zGetWorkspacesCurrentToolsBuiltinResponse = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolsBuiltinResponse = zToolProviderListResponse
 
 /**
- * Success
+ * MCP tools retrieved successfully
  */
-export const zGetWorkspacesCurrentToolsMcpResponse = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolsMcpResponse = zToolProviderListResponse
 
 /**
- * Success
+ * Workflow tools retrieved successfully
  */
-export const zGetWorkspacesCurrentToolsWorkflowResponse = zToolProviderOpaqueResponse
+export const zGetWorkspacesCurrentToolsWorkflowResponse = zToolProviderListResponse
 
 export const zGetWorkspacesCurrentTriggerProviderByProviderIconPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Trigger provider icon
  */
-export const zGetWorkspacesCurrentTriggerProviderByProviderIconResponse = zBinaryFileResponse
+export const zGetWorkspacesCurrentTriggerProviderByProviderIconResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zGetWorkspacesCurrentTriggerProviderByProviderInfoPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Trigger provider retrieved successfully
  */
 export const zGetWorkspacesCurrentTriggerProviderByProviderInfoResponse = zTriggerProviderApiEntity
 
@@ -4259,180 +5062,180 @@ export const zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientPath = 
 })
 
 /**
- * Success
+ * Trigger OAuth client deleted successfully
  */
-export const zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponse
-  = zSimpleResultResponse
+export const zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponse =
+  zSimpleResultResponse
 
 export const zGetWorkspacesCurrentTriggerProviderByProviderOauthClientPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Trigger OAuth client retrieved successfully
  */
-export const zGetWorkspacesCurrentTriggerProviderByProviderOauthClientResponse
-  = zTriggerOAuthClientResponse
+export const zGetWorkspacesCurrentTriggerProviderByProviderOauthClientResponse =
+  zTriggerOAuthClientResponse
 
-export const zPostWorkspacesCurrentTriggerProviderByProviderOauthClientBody
-  = zTriggerOAuthClientPayload
+export const zPostWorkspacesCurrentTriggerProviderByProviderOauthClientBody =
+  zTriggerOAuthClientPayload
 
 export const zPostWorkspacesCurrentTriggerProviderByProviderOauthClientPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Trigger OAuth client saved successfully
  */
-export const zPostWorkspacesCurrentTriggerProviderByProviderOauthClientResponse
-  = zSimpleResultResponse
+export const zPostWorkspacesCurrentTriggerProviderByProviderOauthClientResponse =
+  zSimpleResultResponse
 
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdBody
-  = zTriggerSubscriptionBuilderUpdatePayload
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdBody =
+  zTriggerSubscriptionBuilderUpdatePayload
 
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdPath
-  = z.object({
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdPath =
+  z.object({
     provider: z.string(),
     subscription_builder_id: z.string(),
   })
 
 /**
- * Success
+ * Trigger subscription builder built successfully
  */
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdResponse
-  = zTriggerProviderOpaqueResponse
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdResponse =
+  zSimpleResultResponse
 
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateBody
-  = zTriggerSubscriptionBuilderCreatePayload
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateBody =
+  zTriggerSubscriptionBuilderCreatePayload
 
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreatePath
-  = z.object({
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreatePath =
+  z.object({
     provider: z.string(),
   })
 
 /**
- * Success
+ * Trigger subscription builder created successfully
  */
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateResponse
-  = zTriggerSubscriptionBuilderCreateResponse
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateResponse =
+  zTriggerSubscriptionBuilderCreateResponse
 
-export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdPath
-  = z.object({
-    provider: z.string(),
-    subscription_builder_id: z.string(),
-  })
-
-/**
- * Success
- */
-export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdResponse
-  = zTriggerSubscriptionBuilderLogsResponse
-
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdBody
-  = zTriggerSubscriptionBuilderUpdatePayload
-
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdPath
-  = z.object({
+export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdPath =
+  z.object({
     provider: z.string(),
     subscription_builder_id: z.string(),
   })
 
 /**
- * Success
+ * Trigger subscription builder logs retrieved successfully
  */
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdResponse
-  = zSubscriptionBuilderApiEntity
+export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdResponse =
+  zTriggerSubscriptionBuilderLogsResponse
 
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdBody
-  = zTriggerSubscriptionBuilderVerifyPayload
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdBody =
+  zTriggerSubscriptionBuilderUpdatePayload
 
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdPath
-  = z.object({
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdPath =
+  z.object({
     provider: z.string(),
     subscription_builder_id: z.string(),
   })
 
 /**
- * Success
+ * Trigger subscription builder updated successfully
  */
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdResponse
-  = zTriggerSubscriptionBuilderVerifyResponse
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdResponse =
+  zSubscriptionBuilderApiEntity
 
-export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdPath
-  = z.object({
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdBody =
+  zTriggerSubscriptionBuilderVerifyPayload
+
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdPath =
+  z.object({
     provider: z.string(),
     subscription_builder_id: z.string(),
   })
 
 /**
- * Success
+ * Trigger subscription builder verified successfully
  */
-export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdResponse
-  = zSubscriptionBuilderApiEntity
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdResponse =
+  zTriggerVerificationResponse
+
+export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdPath =
+  z.object({
+    provider: z.string(),
+    subscription_builder_id: z.string(),
+  })
+
+/**
+ * Trigger subscription builder retrieved successfully
+ */
+export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdResponse =
+  zSubscriptionBuilderApiEntity
 
 export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Success
+ * Trigger subscriptions retrieved successfully
  */
-export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListResponse
-  = zTriggerSubscriptionListResponse
+export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListResponse =
+  zTriggerProviderSubscriptionListResponse
 
-export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizePath
-  = z.object({
+export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizePath =
+  z.object({
     provider: z.string(),
   })
 
 /**
- * Authorization URL retrieved successfully
+ * Trigger OAuth authorization URL generated successfully
  */
-export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse
-  = zTriggerOAuthAuthorizeResponse
+export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse =
+  zTriggerOAuthAuthorizeResponse
 
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdBody
-  = zTriggerSubscriptionBuilderVerifyPayload
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdBody =
+  zTriggerSubscriptionBuilderVerifyPayload
 
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdPath
-  = z.object({
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdPath =
+  z.object({
     provider: z.string(),
     subscription_id: z.string(),
   })
 
 /**
- * Success
+ * Trigger subscription verified successfully
  */
-export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponse
-  = zTriggerSubscriptionBuilderVerifyResponse
+export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponse =
+  zTriggerVerificationResponse
 
-export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeletePath
-  = z.object({
+export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeletePath =
+  z.object({
     subscription_id: z.string(),
   })
 
 /**
  * Success
  */
-export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse
-  = zSimpleResultResponse
+export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse =
+  zSimpleResultResponse
 
-export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateBody
-  = zTriggerSubscriptionBuilderUpdatePayload
+export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateBody =
+  zTriggerSubscriptionBuilderUpdatePayload
 
-export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdatePath
-  = z.object({
+export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdatePath =
+  z.object({
     subscription_id: z.string(),
   })
 
 /**
- * Success
+ * Trigger subscription updated successfully
  */
-export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse
-  = zTriggerProviderOpaqueResponse
+export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse =
+  zSimpleResultResponse
 
 /**
- * Success
+ * Trigger providers retrieved successfully
  */
 export const zGetWorkspacesCurrentTriggersResponse = zTriggerProviderListResponse
 
@@ -4441,7 +5244,11 @@ export const zPostWorkspacesCustomConfigBody = zWorkspaceCustomConfigPayload
 /**
  * Success
  */
-export const zPostWorkspacesCustomConfigResponse = zWorkspaceMutationResponse
+export const zPostWorkspacesCustomConfigResponse = zWorkspaceTenantResultResponse
+
+export const zPostWorkspacesCustomConfigWebappLogoUploadBody = z.object({
+  file: z.custom<Blob | File>(),
+})
 
 /**
  * Logo uploaded
@@ -4453,7 +5260,7 @@ export const zPostWorkspacesInfoBody = zWorkspaceInfoPayload
 /**
  * Success
  */
-export const zPostWorkspacesInfoResponse = zWorkspaceMutationResponse
+export const zPostWorkspacesInfoResponse = zWorkspaceTenantResultResponse
 
 export const zPostWorkspacesSwitchBody = zSwitchWorkspacePayload
 
@@ -4470,7 +5277,9 @@ export const zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangPat
 })
 
 /**
- * Success
+ * Model provider icon
  */
-export const zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponse
-  = zBinaryFileResponse
+export const zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponse = z.record(
+  z.string(),
+  z.unknown(),
+)

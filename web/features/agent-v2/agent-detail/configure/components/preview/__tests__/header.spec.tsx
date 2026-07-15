@@ -10,6 +10,7 @@ function renderHeader({
   onOpenWorkingDirectory = vi.fn(),
   onRefresh = vi.fn(),
   refreshDisabled = false,
+  showWorkingDirectoryAction = false,
 }: {
   mode?: 'build' | 'preview'
   previewEnabled?: boolean
@@ -18,6 +19,7 @@ function renderHeader({
   onOpenWorkingDirectory?: () => void
   onRefresh?: () => void
   refreshDisabled?: boolean
+  showWorkingDirectoryAction?: boolean
 } = {}) {
   render(
     <AgentPreviewHeader
@@ -29,6 +31,7 @@ function renderHeader({
       onOpenWorkingDirectory={onOpenWorkingDirectory}
       onRefresh={onRefresh}
       refreshDisabled={refreshDisabled}
+      showWorkingDirectoryAction={showWorkingDirectoryAction}
     />,
   )
 }
@@ -38,12 +41,23 @@ describe('AgentPreviewHeader', () => {
     vi.clearAllMocks()
   })
 
-  it('should emit refresh from the restart button', async () => {
+  it('should confirm before emitting refresh from the restart button', async () => {
     const user = userEvent.setup()
     const onRefresh = vi.fn()
     renderHeader({ mode: 'build', onRefresh })
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.restart' }))
+    await user.click(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.restart' }),
+    )
+
+    expect(onRefresh).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('alertdialog', {
+        name: 'agentV2.agentDetail.configure.clearSessionConfirm.title',
+      }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(onRefresh).toHaveBeenCalledTimes(1)
   })
@@ -53,7 +67,9 @@ describe('AgentPreviewHeader', () => {
     const onRefresh = vi.fn()
     renderHeader({ mode: 'build', onRefresh, refreshDisabled: true })
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.restart' }))
+    await user.click(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.restart' }),
+    )
 
     expect(onRefresh).not.toHaveBeenCalled()
   })
@@ -63,7 +79,9 @@ describe('AgentPreviewHeader', () => {
     const onToggleChatFeatures = vi.fn()
     renderHeader({ mode: 'build', onToggleChatFeatures })
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.chatFeatures' }))
+    await user.click(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.chatFeatures' }),
+    )
 
     expect(onToggleChatFeatures).toHaveBeenCalledTimes(1)
   })
@@ -71,11 +89,26 @@ describe('AgentPreviewHeader', () => {
   it('should open the working directory from the build header', async () => {
     const user = userEvent.setup()
     const onOpenWorkingDirectory = vi.fn()
-    renderHeader({ mode: 'build', onOpenWorkingDirectory })
+    renderHeader({ mode: 'build', onOpenWorkingDirectory, showWorkingDirectoryAction: true })
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.workingDirectory.open' }))
+    const fileSystemButton = screen.getByRole('button', {
+      name: 'agentV2.agentDetail.configure.workingDirectory.open',
+    })
+    expect(fileSystemButton).toHaveTextContent(
+      'agentV2.agentDetail.configure.workingDirectory.fileSystem',
+    )
+
+    await user.click(fileSystemButton)
 
     expect(onOpenWorkingDirectory).toHaveBeenCalledTimes(1)
+  })
+
+  it('should hide the working directory action when unavailable', () => {
+    renderHeader({ mode: 'build' })
+
+    expect(
+      screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.workingDirectory.open' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should disable preview mode when preview is unavailable', async () => {
@@ -87,10 +120,32 @@ describe('AgentPreviewHeader', () => {
       onModeChange,
     })
 
-    const modeControl = screen.getByRole('group', { name: 'agentV2.agentDetail.configure.rightPanel.modeLabel' })
+    const modeControl = screen.getByRole('group', {
+      name: 'agentV2.agentDetail.configure.rightPanel.modeLabel',
+    })
 
-    await user.click(within(modeControl).getByRole('button', { name: /agentV2\.agentDetail\.configure\.rightPanel\.preview/ }))
+    await user.click(
+      within(modeControl).getByRole('button', {
+        name: 'agentV2.agentDetail.configure.rightPanel.preview',
+      }),
+    )
 
     expect(onModeChange).not.toHaveBeenCalled()
+  })
+
+  it('should explain disabled preview mode on hover', async () => {
+    const user = userEvent.setup()
+    renderHeader({
+      mode: 'build',
+      previewEnabled: false,
+    })
+
+    await user.hover(
+      screen.getByLabelText('agentV2.agentDetail.configure.rightPanel.previewDisabledTip'),
+    )
+
+    expect(
+      await screen.findByText('agentV2.agentDetail.configure.rightPanel.previewDisabledTip'),
+    ).toBeInTheDocument()
   })
 })

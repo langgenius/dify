@@ -30,7 +30,9 @@ const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
 
 let enableMarketplaceForRender = false
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: enableMarketplaceForRender } })
+  renderWithSystemFeatures(ui, {
+    systemFeatures: { enable_marketplace: enableMarketplaceForRender },
+  })
 
 type UseMarketplacePluginsReturn = ReturnType<typeof useMarketplacePlugins>
 
@@ -94,23 +96,20 @@ describe('DataSources', () => {
       const user = userEvent.setup()
       const onSelect = vi.fn()
 
-      render(
-        <DataSources
-          searchText=""
-          onSelect={onSelect}
-          dataSources={[createToolProvider()]}
-        />,
-      )
+      render(<DataSources searchText="" onSelect={onSelect} dataSources={[createToolProvider()]} />)
 
       await user.click(screen.getByText('File Source'))
       await user.click(screen.getByText('Local File'))
 
-      expect(onSelect).toHaveBeenCalledWith(BlockEnum.DataSource, expect.objectContaining({
-        provider_name: 'file',
-        datasource_name: 'local-file',
-        datasource_label: 'Local File',
-        fileExtensions: expect.arrayContaining(['txt', 'pdf', 'md']),
-      }))
+      expect(onSelect).toHaveBeenCalledWith(
+        BlockEnum.DataSource,
+        expect.objectContaining({
+          provider_name: 'file',
+          datasource_name: 'local-file',
+          datasource_label: 'Local File',
+          fileExtensions: expect.arrayContaining(['txt', 'pdf', 'md']),
+        }),
+      )
     })
 
     it('should filter providers by search text', () => {
@@ -123,15 +122,17 @@ describe('DataSources', () => {
               id: 'searchable-provider',
               name: 'searchable-provider',
               label: { en_US: 'Searchable Source', zh_Hans: '可搜索源' },
-              tools: [{
-                name: 'searchable-tool',
-                author: 'Dify',
-                label: { en_US: 'Searchable Tool', zh_Hans: '可搜索工具' },
-                description: { en_US: 'desc', zh_Hans: '描述' },
-                parameters: [],
-                labels: [],
-                output_schema: {},
-              }],
+              tools: [
+                {
+                  name: 'searchable-tool',
+                  author: 'Dify',
+                  label: { en_US: 'Searchable Tool', zh_Hans: '可搜索工具' },
+                  description: { en_US: 'desc', zh_Hans: '描述' },
+                  parameters: [],
+                  labels: [],
+                  output_schema: {},
+                },
+              ],
             }),
             createToolProvider({
               id: 'other-provider',
@@ -152,17 +153,13 @@ describe('DataSources', () => {
     it('should query marketplace plugins for datasource search results', async () => {
       const queryPluginsWithDebounced = vi.fn()
       enableMarketplaceForRender = true
-      mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock({
-        queryPluginsWithDebounced,
-      }))
-
-      render(
-        <DataSources
-          searchText="invoice"
-          onSelect={vi.fn()}
-          dataSources={[]}
-        />,
+      mockUseMarketplacePlugins.mockReturnValue(
+        createMarketplacePluginsMock({
+          queryPluginsWithDebounced,
+        }),
       )
+
+      render(<DataSources searchText="invoice" onSelect={vi.fn()} dataSources={[]} />)
 
       await waitFor(() => {
         expect(queryPluginsWithDebounced).toHaveBeenCalledWith({

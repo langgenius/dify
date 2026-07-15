@@ -41,8 +41,10 @@ vi.mock('../state', async (importOriginal) => {
 
   return {
     ...actual,
-    deployReleaseMenuEnvironmentDeploymentsQueryAtom: atom(environmentDeploymentsErrorResult()),
-    deployReleaseMenuAppInstanceQueryAtom: atom(appInstanceResult()),
+    deployReleaseMenuEnvironmentDeploymentsAtom: atom(undefined),
+    deployReleaseMenuEnvironmentDeploymentsIsErrorAtom: atom(true),
+    deployReleaseMenuEnvironmentDeploymentsIsLoadingAtom: atom(false),
+    deployReleaseMenuAppInstanceNameAtom: atom('Deployment 1'),
   }
 })
 
@@ -55,9 +57,8 @@ vi.mock('../delete-release-dialog', async () => {
   const { deleteReleaseDialogOpenAtom } = await import('../state')
 
   return {
-    DeleteReleaseDialog: () => useAtomValue(deleteReleaseDialogOpenAtom)
-      ? <div role="dialog">delete confirm</div>
-      : null,
+    DeleteReleaseDialog: () =>
+      useAtomValue(deleteReleaseDialogOpenAtom) ? <div role="dialog">delete confirm</div> : null,
   }
 })
 
@@ -82,24 +83,6 @@ function createRelease(): Release {
   }
 }
 
-function environmentDeploymentsErrorResult() {
-  return {
-    isError: true,
-    isLoading: false,
-    data: undefined,
-  }
-}
-
-function appInstanceResult() {
-  return {
-    data: {
-      appInstance: {
-        displayName: 'Deployment 1',
-      },
-    },
-  }
-}
-
 describe('DeployReleaseMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -108,12 +91,7 @@ describe('DeployReleaseMenu', () => {
   it('should disable release deletion when deployment usage cannot be checked', () => {
     const release = createRelease()
 
-    render(
-      <DeployReleaseMenu
-        releaseId={release.id}
-        releaseRows={[release]}
-      />,
-    )
+    render(<DeployReleaseMenu releaseId={release.id} releaseRows={[release]} />)
 
     fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
     const deleteItem = screen.getByRole('menuitem', { name: 'deployments.versions.deleteRelease' })

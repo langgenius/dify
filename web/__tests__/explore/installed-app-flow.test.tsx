@@ -12,7 +12,12 @@ import InstalledApp from '@/app/components/explore/installed-app'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams, useGetInstalledApps } from '@/service/use-explore'
+import {
+  useGetInstalledAppAccessModeByAppId,
+  useGetInstalledAppMeta,
+  useGetInstalledAppParams,
+  useGetInstalledApps,
+} from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 
 vi.mock('@/context/web-app-context', () => ({
@@ -41,11 +46,7 @@ vi.mock('@/app/components/share/text-generation', () => ({
 
 vi.mock('@/app/components/base/chat/chat-with-history', () => ({
   default: ({ installedAppInfo }: { installedAppInfo?: InstalledAppModel }) => (
-    <div data-testid="chat-with-history">
-      Chat -
-      {' '}
-      {installedAppInfo?.app.name}
-    </div>
+    <div data-testid="chat-with-history">Chat - {installedAppInfo?.app.name}</div>
   ),
 }))
 
@@ -80,11 +81,11 @@ describe('Installed App Flow', () => {
   }
 
   type MockOverrides = {
-    installedApps?: { apps?: InstalledAppModel[], isPending?: boolean, isFetching?: boolean }
-    accessMode?: { isPending?: boolean, data?: unknown, error?: unknown }
-    params?: { isPending?: boolean, data?: unknown, error?: unknown }
-    meta?: { isPending?: boolean, data?: unknown, error?: unknown }
-    userAccess?: { data?: unknown, error?: unknown }
+    installedApps?: { apps?: InstalledAppModel[]; isPending?: boolean; isFetching?: boolean }
+    accessMode?: { isPending?: boolean; data?: unknown; error?: unknown }
+    params?: { isPending?: boolean; data?: unknown; error?: unknown }
+    meta?: { isPending?: boolean; data?: unknown; error?: unknown }
+    userAccess?: { data?: unknown; error?: unknown }
   }
 
   const setupDefaultMocks = (app?: InstalledAppModel, overrides: MockOverrides = {}) => {
@@ -97,15 +98,17 @@ describe('Installed App Flow', () => {
       ...overrides.installedApps,
     })
 
-    ;(useWebAppStore as unknown as Mock).mockImplementation((selector: (state: Record<string, Mock>) => unknown) => {
-      return selector({
-        updateAppInfo: mockUpdateAppInfo,
-        updateWebAppAccessMode: mockUpdateWebAppAccessMode,
-        updateAppParams: mockUpdateAppParams,
-        updateWebAppMeta: mockUpdateWebAppMeta,
-        updateUserCanAccessApp: mockUpdateUserCanAccessApp,
-      })
-    })
+    ;(useWebAppStore as unknown as Mock).mockImplementation(
+      (selector: (state: Record<string, Mock>) => unknown) => {
+        return selector({
+          updateAppInfo: mockUpdateAppInfo,
+          updateWebAppAccessMode: mockUpdateWebAppAccessMode,
+          updateAppParams: mockUpdateAppParams,
+          updateWebAppMeta: mockUpdateWebAppMeta,
+          updateUserCanAccessApp: mockUpdateUserCanAccessApp,
+        })
+      },
+    )
 
     ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
       isPending: false,

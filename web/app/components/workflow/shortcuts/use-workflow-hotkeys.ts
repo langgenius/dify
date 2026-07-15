@@ -1,9 +1,5 @@
-import type {
-  HotkeyCallback,
-  UseHotkeyDefinition,
-  UseHotkeyOptions,
-} from '@tanstack/react-hotkeys'
-import type { WorkflowCanvasHotkeyMeta, WorkflowCanvasShortcutDefinition } from './definitions'
+import type { HotkeyCallback, UseHotkeyDefinition, UseHotkeyOptions } from '@tanstack/react-hotkeys'
+import type { WorkflowCanvasHotkeyDefinition, WorkflowCanvasHotkeyMeta } from './definitions'
 import { useHotkeys, useKeyHold } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
@@ -22,21 +18,22 @@ const workflowHotkeyOptions = {
 } satisfies UseHotkeyOptions
 
 const isInputLikeElement = (element: Element | null) => {
-  if (!element)
-    return false
+  if (!element) return false
 
-  return element instanceof HTMLInputElement
-    || element instanceof HTMLTextAreaElement
-    || element instanceof HTMLSelectElement
-    || (element instanceof HTMLElement && element.isContentEditable)
+  return (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement ||
+    element instanceof HTMLSelectElement ||
+    (element instanceof HTMLElement && element.isContentEditable)
+  )
 }
 
 const toHotkeyDefinitions = (
-  shortcut: WorkflowCanvasShortcutDefinition,
+  shortcut: WorkflowCanvasHotkeyDefinition,
   callback: HotkeyCallback,
   options?: UseHotkeyOptions,
 ): UseHotkeyDefinition[] => {
-  return shortcut.hotkeys.map(hotkey => ({
+  return shortcut.hotkeys.map((hotkey) => ({
     hotkey,
     callback,
     options: {
@@ -64,23 +61,14 @@ export const useWorkflowHotkeys = (): void => {
   } = useNodesInteractions()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleEdgeDelete } = useEdgesInteractions()
-  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
-  const historyShortcutsEnabled = useStore(s => s.historyShortcutsEnabled)
-  const {
-    handleModeHand,
-    handleModePointer,
-    handleModeComment,
-    isCommentModeAvailable,
-  } = useWorkflowMoveMode()
+  const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
+  const historyShortcutsEnabled = useStore((s) => s.historyShortcutsEnabled)
+  const { handleModeHand, handleModePointer, handleModeComment, isCommentModeAvailable } =
+    useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
 
-  const {
-    zoomTo,
-    getZoom,
-    fitView,
-    getNodes,
-  } = useReactFlow()
-  const isShiftHeld = useKeyHold('Shift')
+  const { zoomTo, getZoom, fitView, getNodes } = useReactFlow()
+  const isShiftHeld = useKeyHold(WORKFLOW_CANVAS_SHORTCUTS['workflow.dim-other-nodes'].holdKey)
   const shiftDimmedRef = useRef(false)
   const undimAllNodesRef = useRef(undimAllNodes)
   undimAllNodesRef.current = undimAllNodes
@@ -98,126 +86,143 @@ export const useWorkflowHotkeys = (): void => {
   }, [getZoom, zoomTo])
 
   const shouldHandleCopy = useCallback(() => {
-    if (getNodes().some(node => node.data._isBundled))
-      return true
+    if (getNodes().some((node) => node.data._isBundled)) return true
 
     const selection = document.getSelection()
     return !selection || selection.isCollapsed || !selection.rangeCount
   }, [getNodes])
 
-  const handleCopy = useCallback<HotkeyCallback>((event) => {
-    if (!shouldHandleCopy())
-      return
+  const handleCopy = useCallback<HotkeyCallback>(
+    (event) => {
+      if (!shouldHandleCopy()) return
 
-    event.preventDefault()
-    event.stopPropagation()
-    handleNodesCopy()
-  }, [handleNodesCopy, shouldHandleCopy])
+      event.preventDefault()
+      event.stopPropagation()
+      handleNodesCopy()
+    },
+    [handleNodesCopy, shouldHandleCopy],
+  )
 
-  const hotkeys = useMemo<UseHotkeyDefinition[]>(() => [
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.delete'], () => {
-      handleNodesDelete()
-      handleEdgeDelete()
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.copy'], handleCopy, {
-      preventDefault: false,
-      stopPropagation: false,
-      enabled: !showDebugAndPreviewPanel,
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.paste'], () => {
-      handleNodesPaste()
-    }, {
-      enabled: !showDebugAndPreviewPanel,
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.duplicate'], () => {
-      handleNodesDuplicate()
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.undo'], () => {
-      handleHistoryBack()
-    }, {
-      enabled: !showDebugAndPreviewPanel && historyShortcutsEnabled,
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.redo'], () => {
-      handleHistoryForward()
-    }, {
-      enabled: !showDebugAndPreviewPanel && historyShortcutsEnabled,
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.hand-mode'], () => {
-      handleModeHand()
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.pointer-mode'], () => {
-      handleModePointer()
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.comment-mode'], () => {
-      handleModeComment()
-    }, {
-      enabled: isCommentModeAvailable,
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.organize'], () => {
-      handleLayout()
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-to-fit'], () => {
-      fitView()
-      handleSyncWorkflowDraft()
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-to-100'], () => {
-      zoomTo(1)
-      handleSyncWorkflowDraft()
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-to-50'], () => {
-      zoomTo(0.5)
-      handleSyncWorkflowDraft()
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-out'], () => {
-      constrainedZoomOut()
-      handleSyncWorkflowDraft()
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-in'], () => {
-      constrainedZoomIn()
-      handleSyncWorkflowDraft()
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.download-import-log'], () => {
-      collaborationManager.downloadGraphImportLog()
-    }),
-  ], [
-    constrainedZoomIn,
-    constrainedZoomOut,
-    fitView,
-    handleCopy,
-    handleEdgeDelete,
-    handleHistoryBack,
-    handleHistoryForward,
-    handleLayout,
-    handleModeComment,
-    handleModeHand,
-    handleModePointer,
-    handleNodesDelete,
-    handleNodesDuplicate,
-    handleNodesPaste,
-    handleSyncWorkflowDraft,
-    historyShortcutsEnabled,
-    isCommentModeAvailable,
-    showDebugAndPreviewPanel,
-    zoomTo,
-  ])
+  const hotkeys = useMemo<UseHotkeyDefinition[]>(
+    () => [
+      ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.delete'], () => {
+        handleNodesDelete()
+        handleEdgeDelete()
+      }),
+      ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.copy'], handleCopy, {
+        preventDefault: false,
+        stopPropagation: false,
+        enabled: !showDebugAndPreviewPanel,
+      }),
+      ...toHotkeyDefinitions(
+        WORKFLOW_CANVAS_SHORTCUTS['workflow.paste'],
+        () => {
+          handleNodesPaste()
+        },
+        {
+          enabled: !showDebugAndPreviewPanel,
+        },
+      ),
+      ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.duplicate'], () => {
+        handleNodesDuplicate()
+      }),
+      ...toHotkeyDefinitions(
+        WORKFLOW_CANVAS_SHORTCUTS['workflow.undo'],
+        () => {
+          handleHistoryBack()
+        },
+        {
+          enabled: !showDebugAndPreviewPanel && historyShortcutsEnabled,
+        },
+      ),
+      ...toHotkeyDefinitions(
+        WORKFLOW_CANVAS_SHORTCUTS['workflow.redo'],
+        () => {
+          handleHistoryForward()
+        },
+        {
+          enabled: !showDebugAndPreviewPanel && historyShortcutsEnabled,
+        },
+      ),
+      ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.hand-mode'], () => {
+        handleModeHand()
+      }),
+      ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.pointer-mode'], () => {
+        handleModePointer()
+      }),
+      ...toHotkeyDefinitions(
+        WORKFLOW_CANVAS_SHORTCUTS['workflow.comment-mode'],
+        () => {
+          handleModeComment()
+        },
+        {
+          enabled: isCommentModeAvailable,
+        },
+      ),
+      ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.organize'], () => {
+        handleLayout()
+      }),
+      ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-to-fit'], () => {
+        fitView()
+        handleSyncWorkflowDraft()
+      }),
+      ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-to-100'], () => {
+        zoomTo(1)
+        handleSyncWorkflowDraft()
+      }),
+      ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-to-50'], () => {
+        zoomTo(0.5)
+        handleSyncWorkflowDraft()
+      }),
+      ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-out'], () => {
+        constrainedZoomOut()
+        handleSyncWorkflowDraft()
+      }),
+      ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-in'], () => {
+        constrainedZoomIn()
+        handleSyncWorkflowDraft()
+      }),
+      ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.download-import-log'], () => {
+        collaborationManager.downloadGraphImportLog()
+      }),
+    ],
+    [
+      constrainedZoomIn,
+      constrainedZoomOut,
+      fitView,
+      handleCopy,
+      handleEdgeDelete,
+      handleHistoryBack,
+      handleHistoryForward,
+      handleLayout,
+      handleModeComment,
+      handleModeHand,
+      handleModePointer,
+      handleNodesDelete,
+      handleNodesDuplicate,
+      handleNodesPaste,
+      handleSyncWorkflowDraft,
+      historyShortcutsEnabled,
+      isCommentModeAvailable,
+      showDebugAndPreviewPanel,
+      zoomTo,
+    ],
+  )
 
   useHotkeys(hotkeys, workflowHotkeyOptions)
 
   useEffect(() => {
     if (isShiftHeld) {
-      if (shiftDimmedRef.current)
-        return
+      if (shiftDimmedRef.current) return
 
-      if (isInputLikeElement(document.activeElement))
-        return
+      if (isInputLikeElement(document.activeElement)) return
 
       shiftDimmedRef.current = true
       dimOtherNodes()
       return
     }
 
-    if (!shiftDimmedRef.current)
-      return
+    if (!shiftDimmedRef.current) return
 
     shiftDimmedRef.current = false
     undimAllNodes()
@@ -225,8 +230,7 @@ export const useWorkflowHotkeys = (): void => {
 
   useEffect(() => {
     return () => {
-      if (shiftDimmedRef.current)
-        undimAllNodesRef.current()
+      if (shiftDimmedRef.current) undimAllNodesRef.current()
     }
   }, [])
 }

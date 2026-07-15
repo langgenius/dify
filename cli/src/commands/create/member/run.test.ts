@@ -17,7 +17,7 @@ function active(): ActiveContext {
 
 function fakeClient() {
   return {
-    invite: vi.fn((_ws: string, body: { email: string, role: string }) =>
+    invite: vi.fn((_ws: string, body: { email: string; role: string }) =>
       Promise.resolve({
         result: 'success' as const,
         email: body.email.toLowerCase(),
@@ -25,7 +25,8 @@ function fakeClient() {
         member_id: 'acct-new',
         invite_url: 'https://console.example.com/activate?email=x&token=tok',
         tenant_id: '550e8400-e29b-41d4-a716-446655440000',
-      })),
+      }),
+    ),
   }
 }
 
@@ -41,7 +42,10 @@ describe('runCreateMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.invite).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440000', { email: 'new@example.com', role: 'normal' })
+    expect(client.invite).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440000', {
+      email: 'new@example.com',
+      role: 'normal',
+    })
     expect(result.data.text()).toMatch(/Invited new@example\.com as normal/)
     expect(result.data.name()).toBe('acct-new')
     expect(result.data.json()).toMatchObject({
@@ -89,7 +93,11 @@ describe('runCreateMember', () => {
   it('-w flag overrides resolved workspace', async () => {
     const client = fakeClient()
     await runCreateMember(
-      { email: 'new@example.com', role: 'admin', workspace: '550e8400-e29b-41d4-a716-446655440008' },
+      {
+        email: 'new@example.com',
+        role: 'admin',
+        workspace: '550e8400-e29b-41d4-a716-446655440008',
+      },
       {
         active: active(),
         http: {} as HttpClient,
@@ -97,6 +105,9 @@ describe('runCreateMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.invite).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440008', { email: 'new@example.com', role: 'admin' })
+    expect(client.invite).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440008', {
+      email: 'new@example.com',
+      role: 'admin',
+    })
   })
 })

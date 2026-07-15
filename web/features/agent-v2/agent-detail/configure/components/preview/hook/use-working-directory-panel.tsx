@@ -22,13 +22,15 @@ export function invalidateAgentWorkingDirectoryFiles({
 }) {
   if (appId && nodeId) {
     void queryClient.invalidateQueries({
-      queryKey: consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.get.key({ type: 'query' }),
+      queryKey:
+        consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.get.key(
+          { type: 'query' },
+        ),
     })
     return
   }
 
-  if (!conversationId)
-    return
+  if (!conversationId) return
 
   void queryClient.invalidateQueries({
     queryKey: consoleQuery.agent.byAgentId.sandbox.files.get.key({ type: 'query' }),
@@ -53,31 +55,26 @@ export function useAgentWorkingDirectoryPanel({
   panel: ReactNode
 } {
   const [open, setOpen] = useState(false)
-  const source: AgentWorkingDirectorySource = appId && nodeId
-    ? {
-        type: 'workflow-node',
-        appId,
-        conversationId,
-        nodeId,
-        workflowRunId,
-      }
-    : {
-        type: 'agent',
-        agentId,
-        conversationId,
-      }
+  const source: AgentWorkingDirectorySource =
+    appId && nodeId
+      ? {
+          type: 'workflow-node',
+          appId,
+          conversationId,
+          nodeId,
+          workflowRunId,
+        }
+      : {
+          type: 'agent',
+          agentId,
+          conversationId,
+        }
 
   return {
     closeWorkingDirectory: () => setOpen(false),
     openWorkingDirectory: () => setOpen(true),
-    panel: open
-      ? (
-          <AgentWorkingDirectoryPanel
-            source={source}
-            open={open}
-            onOpenChange={setOpen}
-          />
-        )
-      : null,
+    panel: open ? (
+      <AgentWorkingDirectoryPanel source={source} open={open} onOpenChange={setOpen} />
+    ) : null,
   }
 }

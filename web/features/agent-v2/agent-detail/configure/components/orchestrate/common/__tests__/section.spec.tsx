@@ -33,24 +33,34 @@ describe('ConfigureSection', () => {
   it('should show a build draft change dot when Skills changed', () => {
     renderSection({ section: 'skills', changedKeys: ['skills'] })
 
-    expect(screen.getByRole('heading', { name: 'Skills' }).querySelector('.bg-text-warning-secondary')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Skills' }).querySelector('.bg-text-warning-secondary'),
+    ).toBeInTheDocument()
   })
 
   it('should show a build draft change dot when Files changed', () => {
     renderSection({ section: 'files', changedKeys: ['files'] })
 
-    expect(screen.getByRole('heading', { name: 'Files' }).querySelector('.bg-text-warning-secondary')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Files' }).querySelector('.bg-text-warning-secondary'),
+    ).toBeInTheDocument()
   })
 
   it('should show a build draft change dot when Advanced Settings changed', () => {
     renderSection({ section: 'advancedSettings', changedKeys: ['envVariables'] })
 
-    expect(screen.getByRole('heading', { name: 'Advanced Settings' }).querySelector('.bg-text-warning-secondary')).toBeInTheDocument()
+    expect(
+      screen
+        .getByRole('heading', { name: 'Advanced Settings' })
+        .querySelector('.bg-text-warning-secondary'),
+    ).toBeInTheDocument()
   })
 
   it('should not show a build draft change dot when only another key changed', () => {
     renderSection({ section: 'skills', changedKeys: ['prompt'] })
 
-    expect(screen.getByRole('heading', { name: 'Skills' }).querySelector('.bg-text-warning-secondary')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Skills' }).querySelector('.bg-text-warning-secondary'),
+    ).not.toBeInTheDocument()
   })
 })

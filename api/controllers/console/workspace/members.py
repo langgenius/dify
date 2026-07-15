@@ -1,10 +1,13 @@
+from http import HTTPStatus
+from typing import Annotated, Literal
 from urllib import parse
 from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
+from werkzeug.exceptions import NotFound
 
 import services
 from configs import dify_config
@@ -21,6 +24,7 @@ from controllers.console.auth.error import (
     OwnerTransferLimitError,
 )
 from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
+from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.wraps import (
     account_initialization_required,
     is_allow_transfer_owner,
@@ -30,20 +34,25 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
-from fields.member_fields import AccountWithRole, AccountWithRoleList
-from libs.helper import extract_remote_ip
+from fields.member_fields import AccountWithRoleListResponse, AccountWithRoleResponse
+from libs.helper import dump_response, extract_remote_ip
 from libs.login import current_account_with_tenant, login_required
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.enterprise import rbac_service as enterprise_rbac_service
-from services.errors.account import AccountAlreadyInTenantError
+from services.errors.account import AccountAlreadyInTenantError, SeatsLimitExceededError
 from services.feature_service import FeatureService
 
 
 class MemberInvitePayload(BaseModel):
-    emails: list[str] = Field(default_factory=list)
+    emails: list[str] = Field(min_length=1)
     role: str
     language: str | None = None
+
+    @field_validator("emails")
+    @classmethod
+    def normalize_emails(cls, emails: list[str]) -> list[str]:
+        return list(dict.fromkeys(email.lower() for email in emails))
 
 
 class MemberRoleUpdatePayload(BaseModel):
@@ -63,22 +72,45 @@ class OwnerTransferPayload(BaseModel):
     token: str
 
 
-class MemberInviteResultResponse(ResponseModel):
-    status: str
+class MemberInviteSuccessResponse(ResponseModel):
+    status: Literal["success"]
     email: str
-    url: str | None = None
-    message: str | None = None
+    url: str
+
+
+class MemberInviteAlreadyMemberResponse(ResponseModel):
+    status: Literal["already_member"]
+    email: str
+    message: str
+
+
+class MemberInviteFailedResponse(ResponseModel):
+    status: Literal["failed"]
+    email: str
+    message: str
+
+
+MemberInviteResultResponse = Annotated[
+    MemberInviteSuccessResponse | MemberInviteAlreadyMemberResponse | MemberInviteFailedResponse,
+    Field(discriminator="status"),
+]
+
+
+class MemberActionResponse(ResponseModel):
+    result: str
+    tenant_id: str
 
 
 class MemberInviteResponse(ResponseModel):
-    result: str
+    result: Literal["success"]
     invitation_results: list[MemberInviteResultResponse]
     tenant_id: str
 
 
-class MemberActionTenantResponse(ResponseModel):
-    result: str
-    tenant_id: str
+class MemberInviteErrorResponse(ResponseModel):
+    code: Literal["invalid_param", "invalid_role", "limit_exceeded"]
+    message: str
+    status: Literal[400]
 
 
 register_enum_models(console_ns, TenantAccountRole)
@@ -92,13 +124,17 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
-    AccountWithRole,
-    AccountWithRoleList,
+    AccountWithRoleResponse,
+    AccountWithRoleListResponse,
+    MemberActionResponse,
+    MemberInviteErrorResponse,
+    MemberInviteResponse,
+    MemberInviteSuccessResponse,
+    MemberInviteAlreadyMemberResponse,
+    MemberInviteFailedResponse,
     SimpleResultDataResponse,
     SimpleResultResponse,
     VerificationTokenResponse,
-    MemberInviteResponse,
-    MemberActionTenantResponse,
 )
 
 
@@ -124,14 +160,10 @@ def _normalize_enum_value(value: object) -> str:
     return str(normalized) if normalized is not None else ""
 
 
-def _normalize_invitee_emails(emails: list[str]) -> list[str]:
-    return list(dict.fromkeys(email.lower() for email in emails))
-
-
 def _count_new_member_invites(tenant_id: str, emails: list[str]) -> int:
     new_member_count = 0
     for email in emails:
-        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
+        account = AccountService.get_account_by_email_with_case_fallback(email, session=db.session())
         if not account:
             new_member_count += 1
             continue
@@ -179,14 +211,14 @@ class MemberListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountWithRoleList.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountWithRoleListResponse.__name__])
     @with_current_user
     def get(self, current_user: Account | None = None):
         if current_user is None:
             current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        members = TenantService.get_tenant_members(current_user.current_tenant, session=db.session)
+        members = TenantService.get_tenant_members(current_user.current_tenant, session=db.session())
         if dify_config.RBAC_ENABLED:
             member_ids = [member.id for member in members]
             member_roles = enterprise_rbac_service.RBACService.MemberRoles.batch_get(
@@ -216,9 +248,7 @@ class MemberListApi(Resource):
                 }
             )
 
-        member_models = TypeAdapter(list[AccountWithRole]).validate_python(serialized_members)
-        response = AccountWithRoleList(accounts=member_models)
-        return response.model_dump(mode="json"), 200
+        return dump_response(AccountWithRoleListResponse, {"accounts": serialized_members}), HTTPStatus.OK
 
 
 @console_ns.route("/workspaces/current/members/invite-email")
@@ -226,7 +256,12 @@ class MemberInviteEmailApi(Resource):
     """Invite a new member by email."""
 
     @console_ns.expect(console_ns.models[MemberInvitePayload.__name__])
-    @console_ns.response(201, "Success", console_ns.models[MemberInviteResponse.__name__])
+    @console_ns.response(HTTPStatus.CREATED, "Success", console_ns.models[MemberInviteResponse.__name__])
+    @console_ns.response(
+        HTTPStatus.BAD_REQUEST,
+        "Invalid role or workspace member limit exceeded",
+        console_ns.models[MemberInviteErrorResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -235,26 +270,26 @@ class MemberInviteEmailApi(Resource):
         payload = console_ns.payload or {}
         args = MemberInvitePayload.model_validate(payload)
 
-        invitee_emails = _normalize_invitee_emails(args.emails)
+        invitee_emails = args.emails
         invitee_role = args.role
         interface_language = args.language
         if not dify_config.RBAC_ENABLED:
             if not TenantAccountRole.is_valid_role(invitee_role):
-                return {"code": "invalid-role", "message": "Invalid role"}, 400
+                raise InvalidMemberRoleError()
             if not TenantAccountRole.is_non_owner_role(TenantAccountRole(invitee_role)):
-                return {"code": "invalid-role", "message": "Invalid role"}, 400
+                raise InvalidMemberRoleError()
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
         if not _is_role_enabled(invitee_role, inviter.current_tenant.id):
-            return {"code": "invalid-role", "message": "Invalid role"}, 400
+            raise InvalidMemberRoleError()
 
         # Check workspace permission for member invitations
         from libs.workspace_permission import check_workspace_member_invite_permission
 
         check_workspace_member_invite_permission(inviter.current_tenant.id)
 
-        invitation_results = []
+        invitation_results: list[MemberInviteResultResponse] = []
         console_web_url = dify_config.CONSOLE_WEB_URL
 
         tenant_id = inviter.current_tenant.id
@@ -273,67 +308,83 @@ class MemberInviteEmailApi(Resource):
                         language=interface_language,
                         role=invitee_role,
                         inviter=inviter,
-                        session=db.session,
+                        session=db.session(),
                     )
                     encoded_invitee_email = parse.quote(invitee_email)
                     invitation_results.append(
-                        {
-                            "status": "success",
-                            "email": invitee_email,
-                            "url": f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
-                        }
+                        MemberInviteSuccessResponse(
+                            status="success",
+                            email=invitee_email,
+                            url=f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
+                        )
                     )
                 except AccountAlreadyInTenantError:
                     invitation_results.append(
-                        {
-                            "status": "already_member",
-                            "email": invitee_email,
-                            "message": "Account already in workspace.",
-                        }
+                        MemberInviteAlreadyMemberResponse(
+                            status="already_member",
+                            email=invitee_email,
+                            message="Account already in workspace.",
+                        )
+                    )
+                except SeatsLimitExceededError:
+                    invitation_results.append(
+                        MemberInviteFailedResponse(
+                            status="failed",
+                            email=invitee_email,
+                            message="Licensed seats limit exceeded.",
+                        )
                     )
                 except Exception as e:
-                    invitation_results.append({"status": "failed", "email": invitee_email, "message": str(e)})
+                    invitation_results.append(
+                        MemberInviteFailedResponse(status="failed", email=invitee_email, message=str(e))
+                    )
 
-        return {
-            "result": "success",
-            "invitation_results": invitation_results,
-            "tenant_id": str(inviter.current_tenant.id) if inviter.current_tenant else "",
-        }, 201
+        return (
+            dump_response(
+                MemberInviteResponse,
+                {
+                    "result": "success",
+                    "invitation_results": invitation_results,
+                    "tenant_id": inviter.current_tenant.id if inviter.current_tenant else "",
+                },
+            ),
+            HTTPStatus.CREATED,
+        )
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>")
 class MemberCancelInviteApi(Resource):
     """Cancel an invitation by member id."""
 
-    @console_ns.response(200, "Success", console_ns.models[MemberActionTenantResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[MemberActionResponse.__name__])
     @with_current_user
     def delete(self, current_user: Account, member_id: UUID):
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         member = db.session.get(Account, str(member_id))
         if member is None:
-            abort(404)
+            abort(HTTPStatus.NOT_FOUND)
         else:
             try:
                 TenantService.remove_member_from_tenant(
-                    current_user.current_tenant, member, current_user, session=db.session
+                    current_user.current_tenant, member, current_user, session=db.session()
                 )
             except services.errors.account.CannotOperateSelfError as e:
-                return {"code": "cannot-operate-self", "message": str(e)}, 400
+                return {"code": "cannot-operate-self", "message": str(e)}, HTTPStatus.BAD_REQUEST
             except services.errors.account.NoPermissionError as e:
-                return {"code": "forbidden", "message": str(e)}, 403
+                return {"code": "forbidden", "message": str(e)}, HTTPStatus.FORBIDDEN
             except services.errors.account.MemberNotInTenantError as e:
-                return {"code": "member-not-found", "message": str(e)}, 404
+                return {"code": "member-not-found", "message": str(e)}, HTTPStatus.NOT_FOUND
             except Exception as e:
                 raise ValueError(str(e))
 
-        return {
-            "result": "success",
-            "tenant_id": str(current_user.current_tenant.id) if current_user.current_tenant else "",
-        }, 200
+        return MemberActionResponse(
+            result="success",
+            tenant_id=current_user.current_tenant.id if current_user.current_tenant else "",
+        ).model_dump(mode="json"), HTTPStatus.OK
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/update-role")
@@ -341,7 +392,7 @@ class MemberUpdateRoleApi(Resource):
     """Update member role."""
 
     @console_ns.expect(console_ns.models[MemberRoleUpdatePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -352,32 +403,32 @@ class MemberUpdateRoleApi(Resource):
         new_role = args.role
 
         if not TenantAccountRole.is_valid_role(new_role):
-            return {"code": "invalid-role", "message": "Invalid role"}, 400
+            return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         if not _is_role_enabled(new_role, current_user.current_tenant.id):
-            return {"code": "invalid-role", "message": "Invalid role"}, 400
+            return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
         member = db.session.get(Account, str(member_id))
         if not member:
-            abort(404)
+            abort(HTTPStatus.NOT_FOUND)
 
         try:
             assert member is not None, "Member not found"
             TenantService.update_member_role(
-                current_user.current_tenant, member, new_role, current_user, session=db.session
+                current_user.current_tenant, member, new_role, current_user, session=db.session()
             )
         except services.errors.account.CannotOperateSelfError as e:
-            return {"code": "cannot-operate-self", "message": str(e)}, 400
+            return {"code": "cannot-operate-self", "message": str(e)}, HTTPStatus.BAD_REQUEST
         except services.errors.account.NoPermissionError as e:
-            return {"code": "forbidden", "message": str(e)}, 403
+            return {"code": "forbidden", "message": str(e)}, HTTPStatus.FORBIDDEN
         except services.errors.account.MemberNotInTenantError as e:
-            return {"code": "member-not-found", "message": str(e)}, 404
+            return {"code": "member-not-found", "message": str(e)}, HTTPStatus.NOT_FOUND
         except services.errors.account.RoleAlreadyAssignedError as e:
-            return {"code": "role-already-assigned", "message": str(e)}, 400
+            return {"code": "role-already-assigned", "message": str(e)}, HTTPStatus.BAD_REQUEST
         except Exception as e:
             raise ValueError(str(e))
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/dataset-operators")
@@ -387,15 +438,13 @@ class DatasetOperatorMemberListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountWithRoleList.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountWithRoleListResponse.__name__])
     @with_current_user
     def get(self, current_user: Account):
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        members = TenantService.get_dataset_operator_members(current_user.current_tenant, session=db.session)
-        member_models = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
-        response = AccountWithRoleList(accounts=member_models)
-        return response.model_dump(mode="json"), 200
+        members = TenantService.get_dataset_operator_members(current_user.current_tenant, session=db.session())
+        return dump_response(AccountWithRoleListResponse, {"accounts": members}), HTTPStatus.OK
 
 
 @console_ns.route("/workspaces/current/members/send-owner-transfer-confirm-email")
@@ -403,7 +452,7 @@ class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
     @console_ns.expect(console_ns.models[OwnerTransferEmailPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -418,7 +467,7 @@ class SendOwnerTransferEmailApi(Resource):
         # check if the current user is the owner of the workspace
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        if not TenantService.is_owner(current_user, current_user.current_tenant, session=db.session):
+        if not TenantService.is_owner(current_user, current_user.current_tenant, session=db.session()):
             raise NotOwnerError()
 
         if args.language is not None and args.language == "zh-Hans":
@@ -435,13 +484,13 @@ class SendOwnerTransferEmailApi(Resource):
             workspace_name=current_user.current_tenant.name if current_user.current_tenant else "",
         )
 
-        return {"result": "success", "data": token}
+        return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/members/owner-transfer-check")
 class OwnerTransferCheckApi(Resource):
     @console_ns.expect(console_ns.models[OwnerTransferCheckPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -453,7 +502,7 @@ class OwnerTransferCheckApi(Resource):
         # check if the current user is the owner of the workspace
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        if not TenantService.is_owner(current_user, current_user.current_tenant, session=db.session):
+        if not TenantService.is_owner(current_user, current_user.current_tenant, session=db.session()):
             raise NotOwnerError()
 
         user_email = current_user.email
@@ -480,13 +529,13 @@ class OwnerTransferCheckApi(Resource):
         _, new_token = AccountService.generate_owner_transfer_token(user_email, code=args.code, additional_data={})
 
         AccountService.reset_owner_transfer_error_rate_limit(user_email)
-        return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
+        return VerificationTokenResponse(is_valid=True, email=user_email, token=new_token).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
 class OwnerTransfer(Resource):
     @console_ns.expect(console_ns.models[OwnerTransferPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -499,7 +548,7 @@ class OwnerTransfer(Resource):
         # check if the current user is the owner of the workspace
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        if not TenantService.is_owner(current_user, current_user.current_tenant, session=db.session):
+        if not TenantService.is_owner(current_user, current_user.current_tenant, session=db.session()):
             raise NotOwnerError()
 
         if current_user.id == str(member_id):
@@ -516,18 +565,17 @@ class OwnerTransfer(Resource):
 
         member = db.session.get(Account, str(member_id))
         if not member:
-            abort(404)
-            return  # Never reached, but helps type checker
+            raise NotFound()
 
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        if not TenantService.is_member(member, current_user.current_tenant, session=db.session):
+        if not TenantService.is_member(member, current_user.current_tenant, session=db.session()):
             raise MemberNotInTenantError()
 
         try:
             assert member is not None, "Member not found"
             TenantService.update_member_role(
-                current_user.current_tenant, member, "owner", current_user, session=db.session
+                current_user.current_tenant, member, "owner", current_user, session=db.session()
             )
 
             AccountService.send_new_owner_transfer_notify_email(
@@ -546,4 +594,4 @@ class OwnerTransfer(Resource):
         except Exception as e:
             raise ValueError(str(e))
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")

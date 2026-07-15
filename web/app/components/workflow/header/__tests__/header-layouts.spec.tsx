@@ -25,6 +25,39 @@ const mockViewHistory = vi.fn()
 
 let mockNodesReadOnly = false
 let mockTheme: 'light' | 'dark' = 'light'
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
+    id: '',
+    name: '',
+  },
+}))
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('reactflow', () => ({
   useNodes: () => mockUseNodes(),
@@ -95,11 +128,15 @@ vi.mock('../online-users', () => ({
 }))
 
 vi.mock('../env-button', () => ({
-  default: ({ disabled }: { disabled: boolean }) => <div data-testid="env-button">{`${disabled}`}</div>,
+  default: ({ disabled }: { disabled: boolean }) => (
+    <div data-testid="env-button">{`${disabled}`}</div>
+  ),
 }))
 
 vi.mock('../global-variable-button', () => ({
-  default: ({ disabled }: { disabled: boolean }) => <div data-testid="global-variable-button">{`${disabled}`}</div>,
+  default: ({ disabled }: { disabled: boolean }) => (
+    <div data-testid="global-variable-button">{`${disabled}`}</div>
+  ),
 }))
 
 vi.mock('../run-and-history', () => ({
@@ -110,7 +147,7 @@ vi.mock('../run-and-history', () => ({
 }))
 
 vi.mock('../version-history-button', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
+  VersionHistoryButton: ({ onClick }: { onClick: () => void }) => (
     <button type="button" onClick={onClick}>
       version-history
     </button>
@@ -246,22 +283,19 @@ describe('Header layout components', () => {
 
   describe('HeaderInRestoring', () => {
     it('should cancel restoring mode and reopen the editor state', () => {
-      const { store } = renderWorkflowComponent(
-        <HeaderInRestoring />,
-        {
-          initialStoreState: {
-            isRestoring: true,
-            showWorkflowVersionHistoryPanel: true,
-          },
-          hooksStoreProps: {
-            configsMap: {
-              flowType: FlowType.appFlow,
-              flowId: 'flow-1',
-              fileSettings: {},
-            },
+      const { store } = renderWorkflowComponent(<HeaderInRestoring />, {
+        initialStoreState: {
+          isRestoring: true,
+          showWorkflowVersionHistoryPanel: true,
+        },
+        hooksStoreProps: {
+          configsMap: {
+            flowType: FlowType.appFlow,
+            flowId: 'flow-1',
+            fileSettings: {},
           },
         },
-      )
+      })
 
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.exitVersions' }))
 
@@ -328,29 +362,28 @@ describe('Header layout components', () => {
     it('should restore rag pipeline versions without emitting collaboration events', async () => {
       const currentVersion = createCurrentVersion()
 
-      renderWorkflowComponent(
-        <HeaderInRestoring />,
-        {
-          initialStoreState: {
-            isRestoring: true,
-            showWorkflowVersionHistoryPanel: true,
-            backupDraft: createBackupDraft(),
-            currentVersion,
-          },
-          hooksStoreProps: {
-            configsMap: {
-              flowType: FlowType.ragPipeline,
-              flowId: 'pipeline-1',
-              fileSettings: {},
-            },
+      renderWorkflowComponent(<HeaderInRestoring />, {
+        initialStoreState: {
+          isRestoring: true,
+          showWorkflowVersionHistoryPanel: true,
+          backupDraft: createBackupDraft(),
+          currentVersion,
+        },
+        hooksStoreProps: {
+          configsMap: {
+            flowType: FlowType.ragPipeline,
+            flowId: 'pipeline-1',
+            fileSettings: {},
           },
         },
-      )
+      })
 
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith('/rag/pipelines/pipeline-1/workflows/version-1/restore')
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith(
+          '/rag/pipelines/pipeline-1/workflows/version-1/restore',
+        )
         expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
       })
       expect(mockEmitRestoreIntent).not.toHaveBeenCalled()
@@ -361,29 +394,28 @@ describe('Header layout components', () => {
     it('should restore snippet versions through snippet routes without emitting collaboration events', async () => {
       const currentVersion = createCurrentVersion()
 
-      renderWorkflowComponent(
-        <HeaderInRestoring />,
-        {
-          initialStoreState: {
-            isRestoring: true,
-            showWorkflowVersionHistoryPanel: true,
-            backupDraft: createBackupDraft(),
-            currentVersion,
-          },
-          hooksStoreProps: {
-            configsMap: {
-              flowType: FlowType.snippet,
-              flowId: 'snippet-1',
-              fileSettings: {},
-            },
+      renderWorkflowComponent(<HeaderInRestoring />, {
+        initialStoreState: {
+          isRestoring: true,
+          showWorkflowVersionHistoryPanel: true,
+          backupDraft: createBackupDraft(),
+          currentVersion,
+        },
+        hooksStoreProps: {
+          configsMap: {
+            flowType: FlowType.snippet,
+            flowId: 'snippet-1',
+            fileSettings: {},
           },
         },
-      )
+      })
 
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith('/snippets/snippet-1/workflows/version-1/restore')
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith(
+          '/snippets/snippet-1/workflows/version-1/restore',
+        )
         expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
       })
       expect(mockEmitRestoreIntent).not.toHaveBeenCalled()
@@ -412,9 +444,11 @@ describe('Header layout components', () => {
 
       expect(mockHandleLoadBackupDraft).toHaveBeenCalledTimes(1)
       expect(store.getState().historyWorkflowData).toBeUndefined()
-      expect(mockViewHistory).toHaveBeenCalledWith(expect.objectContaining({
-        withText: true,
-      }))
+      expect(mockViewHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          withText: true,
+        }),
+      )
     })
   })
 })

@@ -20,7 +20,9 @@ describe('tool/copy-id', () => {
   it('should copy content and reset copied state when mouse leaves', () => {
     const { container } = render(<CopyId content="tool-123" />)
 
-    const trigger = screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' })
+    const trigger = screen.getByRole('button', {
+      name: 'appOverview.overview.appInfo.embedded.copy',
+    })
     const wrapper = container.querySelector('.inline-flex') as HTMLElement
 
     act(() => {

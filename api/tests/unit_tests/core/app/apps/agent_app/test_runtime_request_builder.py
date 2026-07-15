@@ -57,7 +57,6 @@ class TestBuildForAgentApp:
             "llm",
         ]
         assert "workflow_node_job_prompt" not in names
-        assert request.purpose == "agent_app"
         # Agent App keeps layers alive across turns by default.
         assert request.on_exit.default.value == "suspend"
 
@@ -143,6 +142,7 @@ def _ctx(
     *,
     query: str = "hello",
     agent_config_version_kind: str = "snapshot",
+    suspend_on_exit: bool = True,
 ) -> AgentAppRuntimeBuildContext:
     dify_context = SimpleNamespace(
         tenant_id="tenant-1",
@@ -160,6 +160,7 @@ def _ctx(
         user_query=query,
         idempotency_key="msg-1",
         agent_config_version_kind=agent_config_version_kind,  # type: ignore[arg-type]
+        suspend_on_exit=suspend_on_exit,
     )
 
 
@@ -185,12 +186,13 @@ class TestAgentAppRuntimeRequestBuilder:
         result = builder.build(_ctx(_soul_with_model()))
 
         req = result.request
-        assert req.purpose == "agent_app"
         names = [layer.name for layer in req.composition.layers]
         assert names == [
             "agent_soul_prompt",
             "agent_app_user_prompt",
             "execution_context",
+            DIFY_SHELL_LAYER_ID,
+            DIFY_CONFIG_LAYER_ID,
             "history",
             "llm",
         ]
@@ -205,9 +207,51 @@ class TestAgentAppRuntimeRequestBuilder:
         assert exec_ctx.config.user_from == "end-user"
         assert exec_ctx.config.invoke_from == "web-app"
         assert exec_ctx.config.agent_mode == "agent_app"
+        assert req.on_exit.default.value == "suspend"
         # credentials are redacted in the log-safe view.
         assert result.redacted_request["composition"]["layers"][-1]["config"]["credentials"] == "[REDACTED]"
         assert result.metadata["conversation_id"] == "conv-1"
+
+    def test_build_wraps_agent_soul_prompt_for_build_draft(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model(), agent_config_version_kind="build_draft"))
+
+        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+        assert prompt_layer.config.prefix != _soul_with_model().prompt
+        assert prompt_layer.config.prefix.startswith("You are running in build mode.")
+        assert "```text\nYou are Iris.\n```" in prompt_layer.config.prefix
+
+    def test_build_propagates_draft_version_kind_without_wrapping_prompt(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model(), agent_config_version_kind="draft"))
+
+        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+        execution_context = next(
+            layer for layer in result.request.composition.layers if layer.name == "execution_context"
+        )
+        config_layer = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
+
+        assert prompt_layer.config.prefix == "You are Iris."
+        assert execution_context.config.agent_config_version_kind == "draft"
+        assert config_layer.config.config_version.kind == "draft"
+
+    def test_build_uses_delete_on_exit_when_requested(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model(), suspend_on_exit=False))
+
+        assert result.request.on_exit.default.value == "delete"
 
     def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_draft(self):
         soul = _soul_with_model()
@@ -394,10 +438,7 @@ def _soul_with_model_and_skill() -> AgentSoulConfig:
 
 
 class TestAgentAppConfigLayer:
-    def test_config_layer_injected_when_flag_enabled(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-        )
+    def test_config_layer_injected(self):
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
@@ -423,10 +464,7 @@ class TestAgentAppConfigLayer:
         assert names.index(DIFY_SHELL_LAYER_ID) == names.index("execution_context") + 1
         assert names.index(DIFY_CONFIG_LAYER_ID) == names.index(DIFY_SHELL_LAYER_ID) + 1
 
-    def test_no_config_layer_when_agent_soul_has_no_config_assets(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-        )
+    def test_config_layer_present_when_agent_soul_has_no_config_assets(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
@@ -436,14 +474,20 @@ class TestAgentAppConfigLayer:
         result = builder.build(_ctx(_soul_with_model()))
 
         layers = {layer.name: layer for layer in result.request.composition.layers}
-        assert DIFY_CONFIG_LAYER_ID not in layers
+        assert layers[DIFY_CONFIG_LAYER_ID].config.model_dump(mode="json") == {
+            "agent_id": "agent-1",
+            "config_version": {"id": "snap-1", "kind": "snapshot", "writable": False},
+            "skills": [],
+            "files": [],
+            "env_keys": [],
+            "note": "",
+            "mentioned_skill_names": [],
+            "mentioned_file_names": [],
+        }
         assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": "execution_context"}
         assert layers[DIFY_SHELL_LAYER_ID].config.agent_stub_drive_ref is None
 
-    def test_config_layer_for_build_draft_marks_config_writable(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-        )
+    def test_config_layer_for_build_draft_marks_config_writable(self):
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
@@ -470,17 +514,6 @@ class TestAgentAppConfigLayer:
             "mentioned_file_names": [],
         }
 
-    def test_no_config_layer_when_flag_disabled(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
-        )
-        builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
-            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
-        )
-        result = builder.build(_ctx(_soul_with_model_and_skill()))
-        assert all(layer.name != DIFY_CONFIG_LAYER_ID for layer in result.request.composition.layers)
-
     @pytest.mark.parametrize(
         ("system_prompt", "expected_prefix"),
         [
@@ -496,13 +529,9 @@ class TestAgentAppConfigLayer:
     )
     def test_agent_app_runtime_expands_config_mentions_in_agent_soul_prompt(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         system_prompt: str,
         expected_prefix: str,
     ):
-        monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-        )
         soul = _soul_with_model_and_skill()
         soul.prompt.system_prompt = system_prompt
         builder = AgentAppRuntimeRequestBuilder(
@@ -518,11 +547,7 @@ class TestAgentAppConfigLayer:
 
     def test_agent_app_runtime_missing_config_mentions_fall_back_without_marker_leak(
         self,
-        monkeypatch: pytest.MonkeyPatch,
     ):
-        monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-        )
         soul = _soul_with_model()
         soul.prompt.system_prompt = (
             "Use [§skill:ghost-skill:Ghost Skill§], [§file:ghost.txt:Ghost File§], and [§file:no-label.txt§]."
@@ -537,3 +562,8 @@ class TestAgentAppConfigLayer:
         prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
         assert prompt_layer.config.prefix == "Use Ghost Skill, Ghost File, and no-label.txt."
         assert "[§" not in prompt_layer.config.prefix
+        assert [warning["code"] for warning in result.metadata["runtime_support"]["unsupported_runtime_warnings"]] == [
+            "mention_target_missing",
+            "mention_target_missing",
+            "mention_target_missing",
+        ]

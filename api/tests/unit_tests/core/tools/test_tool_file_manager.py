@@ -60,6 +60,37 @@ def test_create_file_by_raw_stores_file_and_persists_record() -> None:
     session.refresh.assert_called_once_with(file_model)
 
 
+def test_create_file_by_raw_prefers_filename_extension_over_mimetype() -> None:
+    manager = ToolFileManager()
+    session = Mock()
+    session.refresh.side_effect = lambda model: setattr(model, "id", "tf-docx")
+
+    def tool_file_factory(**kwargs):
+        return SimpleNamespace(**kwargs)
+
+    with (
+        patch("core.tools.tool_file_manager.storage") as storage,
+        patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
+        patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="abc")),
+        _patch_session_factory(session),
+    ):
+        file_model = manager.create_file_by_raw(
+            user_id="u1",
+            tenant_id="t1",
+            conversation_id="c1",
+            file_binary=b"docx",
+            mimetype="application/octet-stream",
+            filename="report.docx",
+        )
+
+    assert file_model.name == "report.docx"
+    assert file_model.file_key == "tools/t1/abc.docx"
+    storage.save.assert_called_once_with("tools/t1/abc.docx", b"docx")
+    session.add.assert_called_once_with(file_model)
+    session.commit.assert_called_once()
+    session.refresh.assert_called_once_with(file_model)
+
+
 def test_create_file_by_url_downloads_and_persists_record() -> None:
     manager = ToolFileManager()
     response = Mock()
@@ -86,6 +117,32 @@ def test_create_file_by_url_downloads_and_persists_record() -> None:
     session.add.assert_called_once_with(file_model)
     session.commit.assert_called_once()
     session.refresh.assert_called_once_with(file_model)
+
+
+def test_create_file_by_url_prefers_url_extension_over_mimetype() -> None:
+    manager = ToolFileManager()
+    response = Mock()
+    response.content = b"docx"
+    response.headers = {"Content-Type": "application/octet-stream"}
+    response.raise_for_status.return_value = None
+    session = Mock()
+
+    def tool_file_factory(**kwargs):
+        return SimpleNamespace(**kwargs)
+
+    session.refresh.side_effect = lambda model: setattr(model, "id", "tf-docx")
+    with (
+        patch("core.tools.tool_file_manager.storage") as storage,
+        patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
+        patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="urlabc")),
+        _patch_session_factory(session),
+        patch("core.tools.tool_file_manager.remote_fetcher.make_request", return_value=response),
+    ):
+        file_model = manager.create_file_by_url("u1", "t1", "https://example.com/report.docx?download=1", "c1")
+
+    assert file_model.file_key == "tools/t1/urlabc.docx"
+    assert file_model.name == "urlabc.docx"
+    storage.save.assert_called_once_with("tools/t1/urlabc.docx", b"docx")
 
 
 def test_create_file_by_url_raises_on_timeout() -> None:

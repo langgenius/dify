@@ -15,6 +15,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
+    ConversationResponseSource,
     ResultResponse,
     SimpleConversation,
 )
@@ -80,7 +81,13 @@ class ConversationListApi(WebApiResource):
                     sort_by=query.sort_by,
                 )
                 adapter = TypeAdapter(SimpleConversation)
-                conversations = [adapter.validate_python(item, from_attributes=True) for item in pagination.data]
+                conversations = [
+                    adapter.validate_python(
+                        ConversationResponseSource(item, session=session),
+                        from_attributes=True,
+                    )
+                    for item in pagination.data
+                ]
                 return ConversationInfiniteScrollPagination(
                     limit=pagination.limit,
                     has_more=pagination.has_more,
@@ -112,7 +119,7 @@ class ConversationApi(WebApiResource):
 
         conversation_id = str(c_id)
         try:
-            ConversationService.delete(app_model, conversation_id, end_user)
+            ConversationService.delete(app_model, conversation_id, end_user, session=db.session())
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         return "", 204
@@ -156,12 +163,13 @@ class ConversationRenameApi(WebApiResource):
         payload = ConversationRenamePayload.model_validate(web_ns.payload or {})
 
         try:
+            session = db.session()
             conversation = ConversationService.rename(
-                app_model, conversation_id, end_user, payload.name, payload.auto_generate
+                app_model, conversation_id, end_user, payload.name, payload.auto_generate, session=session
             )
             return (
                 TypeAdapter(SimpleConversation)
-                .validate_python(conversation, from_attributes=True)
+                .validate_python(ConversationResponseSource(conversation, session=session), from_attributes=True)
                 .model_dump(mode="json")
             )
         except ConversationNotExistsError:
@@ -192,7 +200,7 @@ class ConversationPinApi(WebApiResource):
         conversation_id = str(c_id)
 
         try:
-            WebConversationService.pin(app_model, conversation_id, end_user)
+            WebConversationService.pin(app_model, conversation_id, end_user, db.session())
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
@@ -221,6 +229,6 @@ class ConversationUnPinApi(WebApiResource):
             raise NotChatAppError()
 
         conversation_id = str(c_id)
-        WebConversationService.unpin(app_model, conversation_id, end_user)
+        WebConversationService.unpin(app_model, conversation_id, end_user, db.session())
 
         return ResultResponse(result="success").model_dump(mode="json")

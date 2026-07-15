@@ -1,7 +1,11 @@
+import type { SelectorKey } from 'i18next'
 import type { AccessPolicyResourceType } from '@/models/access-control'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppPermissionCatalog, useDatasetPermissionCatalog } from '@/service/access-control/use-permission-catalog'
+import {
+  useAppPermissionCatalog,
+  useDatasetPermissionCatalog,
+} from '@/service/access-control/use-permission-catalog'
 
 export const usePermissionsGroups = (resourceType: AccessPolicyResourceType) => {
   const { t } = useTranslation()
@@ -11,27 +15,29 @@ export const usePermissionsGroups = (resourceType: AccessPolicyResourceType) => 
   const permissionCatalog = resourceType === 'app' ? appPermissionCatalog : datasetPermissionCatalog
 
   const groups = useMemo(() => {
-    return (permissionCatalog?.groups || []).map(group => ({
+    // Permission keys come from the catalog API, so this is a reviewed open-key boundary with a server-provided fallback.
+    const translatePermissionName = (key: string, defaultValue: string) =>
+      t(key as SelectorKey, {
+        ns: 'permissionKeys',
+        defaultValue,
+      })
+
+    return (permissionCatalog?.groups || []).map((group) => ({
       ...group,
-      group_name: t(`group.${resourceType}_acl`, {
+      group_name: t(($) => $[`group.${resourceType}_acl`], {
         ns: 'permission',
         defaultValue: group.group_name,
       }),
-      permissions: group.permissions.map(permission => ({
+      permissions: group.permissions.map((permission) => ({
         ...permission,
-        name: t(permission.key, {
-          ns: 'permissionKeys',
-          defaultValue: permission.name,
-        }),
+        name: translatePermissionName(permission.key, permission.name),
       })),
     }))
   }, [permissionCatalog?.groups, resourceType, t])
 
-  const allPermissions = groups.flatMap(g => g.permissions) || []
+  const allPermissions = groups.flatMap((g) => g.permissions) || []
 
-  const permissionMap = Object.fromEntries(
-    allPermissions.map(p => [p.key, p]),
-  )
+  const permissionMap = Object.fromEntries(allPermissions.map((p) => [p.key, p]))
 
   return {
     groups,

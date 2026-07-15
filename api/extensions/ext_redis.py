@@ -1,6 +1,8 @@
 import functools
 import logging
+import socket
 import ssl
+import sys
 from collections.abc import Callable
 from datetime import timedelta
 from typing import Any, Union, cast
@@ -12,6 +14,7 @@ from redis.cache import CacheConfig
 from redis.client import PubSub
 from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
+from redis.exceptions import ConnectionError, TimeoutError
 from redis.retry import Retry
 from redis.sentinel import Sentinel
 from typing_extensions import TypedDict
@@ -168,6 +171,12 @@ class RedisClientWrapper:
     def hgetall(self, name: str | bytes) -> Any:
         return self._require_client().hgetall(_serialize_redis_name_arg(name, self._get_prefix()))
 
+    def hkeys(self, name: str | bytes) -> Any:
+        return self._require_client().hkeys(_serialize_redis_name_arg(name, self._get_prefix()))
+
+    def hexists(self, name: str | bytes, key: str | bytes) -> Any:
+        return self._require_client().hexists(_serialize_redis_name_arg(name, self._get_prefix()), key)
+
     def hdel(self, name: str | bytes, *keys: str | bytes) -> Any:
         return self._require_client().hdel(_serialize_redis_name_arg(name, self._get_prefix()), *keys)
 
@@ -228,12 +237,16 @@ class RedisHealthParamsDict(TypedDict):
     socket_timeout: float | None
     socket_connect_timeout: float | None
     health_check_interval: int | None
+    socket_keepalive: bool
+    socket_keepalive_options: dict[int, int]
 
 
 class RedisClusterHealthParamsDict(TypedDict):
     retry: Retry
     socket_timeout: float | None
     socket_connect_timeout: float | None
+    socket_keepalive: bool
+    socket_keepalive_options: dict[int, int]
 
 
 class RedisBaseParamsDict(TypedDict):
@@ -249,6 +262,8 @@ class RedisBaseParamsDict(TypedDict):
     socket_timeout: float | None
     socket_connect_timeout: float | None
     health_check_interval: int | None
+    socket_keepalive: bool
+    socket_keepalive_options: dict[int, int]
 
 
 def _get_ssl_configuration() -> tuple[type[Union[Connection, SSLConnection]], dict[str, Any]]:
@@ -293,16 +308,32 @@ def _get_retry_policy() -> Retry:
             cap=dify_config.REDIS_RETRY_BACKOFF_CAP,
         ),
         retries=dify_config.REDIS_RETRY_RETRIES,
+        supported_errors=(
+            ConnectionError,
+            TimeoutError,
+            BrokenPipeError,
+            OSError,
+        ),
     )
 
 
 def _get_connection_health_params() -> RedisHealthParamsDict:
     """Get connection health and retry parameters for standalone and Sentinel Redis clients."""
+    socket_keepalive_options: dict[int, int] = {}
+    if sys.platform == "linux":
+        socket_keepalive_options[socket.TCP_KEEPIDLE] = dify_config.REDIS_KEEPALIVE_IDLE
+        socket_keepalive_options[socket.TCP_KEEPINTVL] = dify_config.REDIS_KEEPALIVE_INTERVAL
+        socket_keepalive_options[socket.TCP_KEEPCNT] = dify_config.REDIS_KEEPALIVE_COUNT
+    elif sys.platform == "darwin":
+        socket_keepalive_options[socket.TCP_KEEPALIVE] = dify_config.REDIS_KEEPALIVE_IDLE
+
     return RedisHealthParamsDict(
         retry=_get_retry_policy(),
         socket_timeout=dify_config.REDIS_SOCKET_TIMEOUT,
         socket_connect_timeout=dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
         health_check_interval=dify_config.REDIS_HEALTH_CHECK_INTERVAL,
+        socket_keepalive=dify_config.REDIS_KEEPALIVE,
+        socket_keepalive_options=socket_keepalive_options,
     )
 
 
@@ -319,6 +350,8 @@ def _get_cluster_connection_health_params() -> RedisClusterHealthParamsDict:
         "retry": health_params["retry"],
         "socket_timeout": health_params["socket_timeout"],
         "socket_connect_timeout": health_params["socket_connect_timeout"],
+        "socket_keepalive": health_params["socket_keepalive"],
+        "socket_keepalive_options": health_params["socket_keepalive_options"],
     }
     return result
 
@@ -348,10 +381,14 @@ def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Re
 
     sentinel_hosts = [(node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")]
 
+    health_params = _get_connection_health_params()
+
     sentinel_kwargs = {
         "socket_timeout": dify_config.REDIS_SENTINEL_SOCKET_TIMEOUT,
         "username": dify_config.REDIS_SENTINEL_USERNAME,
         "password": dify_config.REDIS_SENTINEL_PASSWORD,
+        "socket_keepalive": health_params["socket_keepalive"],
+        "socket_keepalive_options": health_params["socket_keepalive_options"],
     }
 
     if dify_config.REDIS_MAX_CONNECTIONS:

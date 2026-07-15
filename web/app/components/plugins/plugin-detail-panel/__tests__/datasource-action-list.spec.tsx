@@ -3,9 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DatasourceActionList from '../datasource-action-list'
 
-const mockDataSourceList = [
-  { plugin_id: 'test-plugin', name: 'Data Source 1' },
-]
+const mockDataSourceList = [{ plugin_id: 'test-plugin', name: 'Data Source 1' }]
 
 let mockDataSourceListData: typeof mockDataSourceList | undefined
 
@@ -62,7 +60,9 @@ describe('DatasourceActionList', () => {
       render(<DatasourceActionList detail={createPluginDetail()} />)
 
       // The component always shows "0 action" because data is hardcoded as empty array
-      expect(screen.getByText('plugin.detailPanel.actionNum:{"num":0,"action":"action"}')).toBeInTheDocument()
+      expect(
+        screen.getByText('plugin.detailPanel.actionNum:{"num":0,"action":"action"}'),
+      ).toBeInTheDocument()
     })
 
     it('should return null when no provider found', () => {
@@ -88,7 +88,9 @@ describe('DatasourceActionList', () => {
 
       render(<DatasourceActionList detail={detail} />)
 
-      expect(screen.getByText('plugin.detailPanel.actionNum:{"num":0,"action":"action"}')).toBeInTheDocument()
+      expect(
+        screen.getByText('plugin.detailPanel.actionNum:{"num":0,"action":"action"}'),
+      ).toBeInTheDocument()
     })
   })
 })

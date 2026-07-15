@@ -26,9 +26,7 @@ function isWorkspacePlan(plan: string | null | undefined): plan is Plan {
   return !!plan && workspacePlans.has(plan)
 }
 
-const WorkplaceSelectorItem = memo(({
-  workspace,
-}: WorkplaceSelectorItemProps) => {
+const WorkplaceSelectorItem = memo(({ workspace }: WorkplaceSelectorItemProps) => {
   const workspaceName = workspace.name || workspace.id
   const workspacePlan = isWorkspacePlan(workspace.plan) ? workspace.plan : Plan.sandbox
 
@@ -46,23 +44,25 @@ const WorkplaceSelectorItem = memo(({
 })
 WorkplaceSelectorItem.displayName = 'WorkplaceSelectorItem'
 
-export const WorkplaceSelectorContent = memo(({
-  workspaces,
-  popupClassName = 'w-[280px] transition-none data-starting-style:scale-100 data-starting-style:opacity-100 data-ending-style:scale-100 data-ending-style:opacity-100',
-}: WorkplaceSelectorContentProps) => {
-  const { t } = useTranslation()
+export const WorkplaceSelectorContent = memo(
+  ({
+    workspaces,
+    popupClassName = 'w-[280px] transition-none data-starting-style:scale-100 data-starting-style:opacity-100 data-ending-style:scale-100 data-ending-style:opacity-100',
+  }: WorkplaceSelectorContentProps) => {
+    const { t } = useTranslation()
 
-  return (
-    <SelectContent popupClassName={popupClassName}>
-      <SelectGroup>
-        <SelectGroupLabel>
-          {t('userProfile.workspace', { ns: 'common' })}
-        </SelectGroupLabel>
-        {workspaces.map(workspace => (
-          <WorkplaceSelectorItem key={workspace.id} workspace={workspace} />
-        ))}
-      </SelectGroup>
-    </SelectContent>
-  )
-})
+    return (
+      <SelectContent popupClassName={popupClassName}>
+        <SelectGroup>
+          <SelectGroupLabel>
+            {t(($) => $['userProfile.workspace'], { ns: 'common' })}
+          </SelectGroupLabel>
+          {workspaces.map((workspace) => (
+            <WorkplaceSelectorItem key={workspace.id} workspace={workspace} />
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    )
+  },
+)
 WorkplaceSelectorContent.displayName = 'WorkplaceSelectorContent'

@@ -29,13 +29,16 @@ When a run includes `dify.shell`, the Dify Agent server must construct its layer
 providers with a non-empty shellctl entrypoint:
 
 ```python
+from dify_agent.adapters.shell.shellctl import ShellctlProvider
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 
 layer_providers = create_default_layer_providers(
     plugin_daemon_url="http://localhost:5002",
     plugin_daemon_api_key="replace-with-plugin-daemon-key",
-    shellctl_entrypoint="http://127.0.0.1:5004",
-    shellctl_auth_token="replace-with-shellctl-token",  # optional; defaults to no token
+    shell_provider=ShellctlProvider(
+        entrypoint="http://127.0.0.1:5004",
+        token="replace-with-shellctl-token",  # optional; defaults to empty string
+    ),
 )
 ```
 
@@ -45,29 +48,39 @@ In the FastAPI server, these values are read from environment-backed
 ```env
 DIFY_AGENT_SHELLCTL_ENTRYPOINT=http://127.0.0.1:5004
 DIFY_AGENT_SHELLCTL_AUTH_TOKEN=replace-with-shellctl-token
+DIFY_AGENT_SHELL_HOME_ROOT=/tmp/dify-agent-home
 ```
 
 `DIFY_AGENT_SHELLCTL_AUTH_TOKEN` defaults to `None`/empty, which keeps the shell
 client on the no-token path. Set it only when the shellctl server is started with
 bearer authentication.
 
+`DIFY_AGENT_SHELL_HOME_ROOT` defaults to `/home`, matching Linux and container
+deployments. For local macOS development, set it to a writable directory such as
+`/tmp/dify-agent-home`; the shell layer creates per-Agent home directories under
+that root.
+
 To let commands inside user-visible shell jobs call back to the Dify Agent server
 with `dify-agent ...`, also enable the Agent Stub:
 
 ```env
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
-DIFY_AGENT_SERVER_SECRET_KEY=replace-with-base64url-32-byte-secret
+# This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
+# Replace this development default in production.
+# Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'
+DIFY_AGENT_SERVER_SECRET_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
 ```
 
 HTTP `DIFY_AGENT_STUB_API_BASE_URL` may be either the service root or the
 explicit `/agent-stub` API root; the server normalizes the service root to
 `/agent-stub`. Other HTTP paths are rejected at startup.
 
-`DIFY_AGENT_SERVER_SECRET_KEY` must be unpadded base64url text for exactly 32
-decoded bytes. One way to generate it is:
+The supplied Docker and `.example.env` configs use a development
+`DIFY_AGENT_SERVER_SECRET_KEY`. Override it in production with unpadded base64url
+text for exactly 32 decoded bytes. One way to generate it is:
 
 ```bash
-python -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode())'
+python -c 'import secrets; print(secrets.token_urlsafe(32))'
 ```
 
 ## Client request shape
@@ -230,12 +243,11 @@ The provided `docker/local-sandbox/Dockerfile` installs:
 - `tmux`, required by `shellctl` to manage shell jobs;
 - common shell workspace tools: `git`, `openssh-client`, `jq`, `ripgrep`,
   `unzip`, `zip`, `file`, `procps`, and `less`;
-- `shell-session-manager==2.3.0` as a standalone uv tool, which provides the
-  `shellctl` CLI/server;
+- `dify-agent[grpc,shellctl-server]` as a standalone uv tool, which provides
+  both the Agent Stub client CLI and the built-in `shellctl` CLI/server;
 - `uv`, so uv shebang scripts with PEP 723 metadata can run inside the shell
   workspace and Python CLI tools can be installed with isolated tool
   environments;
 - `node==22.22.1` and `pnpm==11.9.0`, so JavaScript and TypeScript tooling can
   run inside the shell workspace without per-job installation;
-- the `dify-agent[grpc]` Agent Stub client CLI as a standalone uv tool;
 - a non-root default user named `dify`.

@@ -5,32 +5,33 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import PluginTypeSwitch from '../plugin-type-switch'
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const map: Record<string, string> = {
-        'category.all': 'All',
-        'marketplace.allPlugins': 'All plugins',
-        'category.models': 'Models',
-        'category.tools': 'Tools',
-        'category.datasources': 'Data Sources',
-        'category.triggers': 'Triggers',
-        'category.agents': 'Agents',
-        'category.extensions': 'Extensions',
-        'category.bundles': 'Bundles',
-      }
-      return map[key] || key
-    },
-  }),
-}))
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return {
+    useTranslation: () => ({
+      t: withSelectorKey((key: string) => {
+        const map: Record<string, string> = {
+          'category.all': 'All',
+          'marketplace.allPlugins': 'All plugins',
+          'category.models': 'Models',
+          'category.tools': 'Tools',
+          'category.datasources': 'Data Sources',
+          'category.triggers': 'Triggers',
+          'category.agents': 'Agents',
+          'category.extensions': 'Extensions',
+          'category.bundles': 'Bundles',
+        }
+        return map[key] || key
+      }),
+    }),
+  }
+})
 
 const createWrapper = (searchParams = '') => {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider>
-      <NuqsWrapper>
-        {children}
-      </NuqsWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
     </JotaiProvider>
   )
   return { Wrapper }
@@ -98,7 +99,9 @@ describe('PluginTypeSwitch', () => {
 
   it('should apply custom className', () => {
     const { Wrapper } = createWrapper()
-    const { container } = render(<PluginTypeSwitch className="custom-class" />, { wrapper: Wrapper })
+    const { container } = render(<PluginTypeSwitch className="custom-class" />, {
+      wrapper: Wrapper,
+    })
 
     const outerDiv = container.firstChild as HTMLElement
     expect(outerDiv.className).toContain('custom-class')
@@ -148,7 +151,16 @@ describe('PluginTypeSwitch', () => {
     const { Wrapper } = createWrapper('?category=all')
     render(<PluginTypeSwitch />, { wrapper: Wrapper })
 
-    const categories = ['All', 'Models', 'Tools', 'Data Sources', 'Triggers', 'Agents', 'Extensions', 'Bundles']
+    const categories = [
+      'All',
+      'Models',
+      'Tools',
+      'Data Sources',
+      'Triggers',
+      'Agents',
+      'Extensions',
+      'Bundles',
+    ]
     categories.forEach((category) => {
       fireEvent.click(screen.getByText(category))
 
