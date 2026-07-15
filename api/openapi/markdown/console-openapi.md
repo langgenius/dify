@@ -1151,7 +1151,7 @@ Commit an uploaded file into the Agent App drive under files/<name>
 | sort_by | query | Sort by created_at or updated_at | No | string, <br>**Default:** updated_at |
 | sort_order | query | Sort order: asc or desc | No | string, <br>**Default:** desc |
 | source | query | Deprecated single source filter | No | string |
-| sources | query | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>:<workflow_id>:<version>:<node_id> | No | [ string ] |
+| sources | query | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>. Exact workflow:<app_id>:<workflow_id>:<version>:<node_id> IDs remain supported. | No | [ string ] |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 | status | query | Deprecated single status filter | No | string |
 | statuses | query | Filter by one or more of success, failed, paused | No | [ string ] |
@@ -1175,7 +1175,7 @@ Commit an uploaded file into the Agent App drive under files/<name>
 | sort_by | query | Sort by created_at or updated_at | No | string, <br>**Default:** updated_at |
 | sort_order | query | Sort order: asc or desc | No | string, <br>**Default:** desc |
 | source | query | Deprecated single source filter | No | string |
-| sources | query | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>:<workflow_id>:<version>:<node_id> | No | [ string ] |
+| sources | query | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>. Exact workflow:<app_id>:<workflow_id>:<version>:<node_id> IDs remain supported. | No | [ string ] |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 | status | query | Deprecated single status filter | No | string |
 | statuses | query | Filter by one or more of success, failed, paused | No | [ string ] |
@@ -1372,7 +1372,7 @@ Infer CLI tool + ENV suggestions from a standardized Agent App skill
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
-| source | query | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No | string |
+| source | query | Filter by a structured webapp:<app_id> or workflow:<app_id> source ID. Legacy invoke sources and exact workflow version/node source IDs remain supported. | No | string |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 | agent_id | path |  | Yes | string (uuid) |
 
@@ -14386,7 +14386,7 @@ section may be empty, which is how callers express "no knowledge layer".
 | sort_by | string, <br>**Default:** updated_at | Sort by created_at or updated_at | No |
 | sort_order | string, <br>**Default:** desc | Sort order: asc or desc | No |
 | source | string | Deprecated single source filter | No |
-| sources | [ string ] | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>:<workflow_id>:<version>:<node_id> | No |
+| sources | [ string ] | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>. Exact workflow:<app_id>:<workflow_id>:<version>:<node_id> IDs remain supported. | No |
 | start | string | Start date (YYYY-MM-DD HH:MM) | No |
 | status | string | Deprecated single status filter | No |
 | statuses | [ string ] | Filter by one or more of success, failed, paused | No |
@@ -14835,7 +14835,7 @@ Origin that created or imported the Agent.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | end | string | End date (YYYY-MM-DD HH:MM) | No |
-| source | string | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No |
+| source | string | Filter by a structured webapp:<app_id> or workflow:<app_id> source ID. Legacy invoke sources and exact workflow version/node source IDs remain supported. | No |
 | start | string | Start date (YYYY-MM-DD HH:MM) | No |
 
 #### AgentStatus
