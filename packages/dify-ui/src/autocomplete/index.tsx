@@ -8,10 +8,10 @@ import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { textControlCompoundFocusClassName } from '../form-control-shared'
 import {
-  overlayIndicatorClassName,
-  overlayLabelClassName,
-  overlayPopupAnimationClassName,
-  overlaySeparatorClassName,
+  floatingGroupLabelClassName,
+  floatingItemIndicatorClassName,
+  floatingPopupAnimationClassName,
+  floatingSeparatorClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
@@ -276,7 +276,11 @@ export function AutocompleteContent({
         {...positionerProps}
       >
         <BaseAutocomplete.Popup
-          className={cn(autocompletePopupClassName, overlayPopupAnimationClassName, popupClassName)}
+          className={cn(
+            autocompletePopupClassName,
+            floatingPopupAnimationClassName,
+            popupClassName,
+          )}
           {...popupProps}
         >
           {children}
@@ -303,12 +307,17 @@ export function AutocompleteItemText({ className, ...props }: AutocompleteItemTe
 }
 
 export function AutocompleteGroupLabel({ className, ...props }: BaseAutocomplete.GroupLabel.Props) {
-  return <BaseAutocomplete.GroupLabel className={cn(overlayLabelClassName, className)} {...props} />
+  return (
+    <BaseAutocomplete.GroupLabel
+      className={cn(floatingGroupLabelClassName, className)}
+      {...props}
+    />
+  )
 }
 
 export function AutocompleteSeparator({ className, ...props }: BaseAutocomplete.Separator.Props) {
   return (
-    <BaseAutocomplete.Separator className={cn(overlaySeparatorClassName, className)} {...props} />
+    <BaseAutocomplete.Separator className={cn(floatingSeparatorClassName, className)} {...props} />
   )
 }
 
@@ -339,7 +348,7 @@ export function AutocompleteItemIndicator({
   ...props
 }: React.ComponentProps<'span'>) {
   return (
-    <span className={cn(overlayIndicatorClassName, className)} {...props}>
+    <span className={cn(floatingItemIndicatorClassName, className)} {...props}>
       {children ?? <span className="i-ri-arrow-right-line size-4" aria-hidden="true" />}
     </span>
   )
