@@ -1,5 +1,4 @@
 import type { LoginRedirectTarget } from '@/utils/login-redirect'
-import { IS_CLOUD_EDITION } from '@/config'
 import { resolveServerConsoleApiUrl } from '@/service/server'
 import { getServerLoginFallback, resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
@@ -38,7 +37,7 @@ const addBasePathToInternalTarget = (target: LoginRedirectTarget): LoginRedirect
 const resolveSafeRedirectTarget = (request: Request): LoginRedirectTarget => {
   const requestUrl = new URL(request.url)
   const redirectUrl = requestUrl.searchParams.get('redirect_url')
-  const fallback = getServerLoginFallback(IS_CLOUD_EDITION, basePath)
+  const fallback = getServerLoginFallback(basePath)
 
   if (!redirectUrl) return fallback
 
