@@ -49,7 +49,6 @@ export default defineConfig({
             provider: playwright(),
             instances: [{ browser: 'chromium' }],
             headless: true,
-            testerHtmlPath: './vitest.tester.html',
           },
         },
       },
