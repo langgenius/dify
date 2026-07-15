@@ -26,7 +26,7 @@ const { mockSetShowAnnotationFullModal, mockProviderContext, mockT, mockAddAnnot
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  default: { notify: vi.fn() },
+  toast: { success: vi.fn() },
 }))
 
 vi.mock('@/context/modal-context', () => ({
@@ -125,7 +125,11 @@ vi.mock(
 )
 
 vi.mock('@/app/components/base/new-audio-button', () => ({
-  default: () => <button data-testid="audio-btn">Play</button>,
+  default: ({ value }: { value: string }) => (
+    <button data-testid="audio-btn" data-value={value}>
+      Play
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/base/chat/chat/log', () => ({
@@ -209,6 +213,29 @@ const baseItem: ChatItem = {
   isAnswer: true,
 }
 
+const createInterruptedItem = (messages: string[]): ChatItem => {
+  const thought = {
+    id: '1',
+    thought: 'internal thought should not be used',
+    tool: '',
+    tool_input: '',
+    observation: '',
+    message_id: '',
+    conversation_id: '',
+    position: 0,
+  }
+
+  return {
+    ...baseItem,
+    content: '',
+    agent_response_parts: [
+      { type: 'thought', thought },
+      ...messages.map((content) => ({ type: 'message' as const, content })),
+    ],
+    agent_thoughts: [thought],
+  }
+}
+
 const baseProps: OperationProps = {
   item: baseItem,
   question: 'What is this?',
@@ -279,6 +306,26 @@ describe('Operation', () => {
       expect(screen.getByTestId('annotation-ctrl'))!.toBeInTheDocument()
     })
 
+    it('should hide content-dependent actions for an interrupted response without public content', () => {
+      mockContextValue.config = makeChatConfig({
+        text_to_speech: { enabled: true },
+        supportAnnotation: true,
+        annotation_reply: {
+          id: 'ar-1',
+          score_threshold: 0.5,
+          embedding_model: { embedding_provider_name: '', embedding_model_name: '' },
+          enabled: true,
+        },
+      })
+
+      renderOperation({ ...baseProps, item: createInterruptedItem([]) })
+
+      expect(screen.queryByTestId('audio-btn')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'operation.copy' })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('annotation-ctrl')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'operation.regenerate' })).toBeInTheDocument()
+    })
+
     it('should hide annotation button when chat is readonly', () => {
       mockContextValue.readonly = true
       mockContextValue.config = makeChatConfig({
@@ -344,11 +391,11 @@ describe('Operation', () => {
       expect(copy).toHaveBeenCalledWith('Hello world')
     })
 
-    it('should aggregate agent_thoughts for copy content', async () => {
+    it('should copy the visible answer instead of agent thought summaries', async () => {
       const user = userEvent.setup()
       const item: ChatItem = {
         ...baseItem,
-        content: 'ignored',
+        content: 'Final answer',
         agent_thoughts: [
           {
             id: '1',
@@ -374,7 +421,39 @@ describe('Operation', () => {
       }
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('Hello World')
+      expect(copy).toHaveBeenCalledWith('Final answer')
+    })
+
+    it('should copy public response parts after an interrupted response', async () => {
+      const user = userEvent.setup()
+      const item = createInterruptedItem(['First public update', 'Second public update'])
+      renderOperation({ ...baseProps, item })
+      await user.click(screen.getByRole('button', { name: 'operation.copy' }))
+      expect(copy).toHaveBeenCalledWith('First public update\n\nSecond public update')
+    })
+
+    it('should copy public thought answers for legacy messages without content', async () => {
+      const user = userEvent.setup()
+      const item: ChatItem = {
+        ...baseItem,
+        content: '',
+        agent_thoughts: [
+          {
+            id: '1',
+            thought: 'internal thought should not be copied',
+            answer: 'Public legacy answer',
+            tool: '',
+            tool_input: '',
+            observation: '',
+            message_id: '',
+            conversation_id: '',
+            position: 0,
+          },
+        ],
+      }
+      renderOperation({ ...baseProps, item })
+      await user.click(screen.getByRole('button', { name: 'operation.copy' }))
+      expect(copy).toHaveBeenCalledWith('Public legacy answer')
     })
   })
 
@@ -911,6 +990,22 @@ describe('Operation', () => {
       )
     })
 
+    it('should annotate public response parts instead of internal thoughts', async () => {
+      const user = userEvent.setup()
+      const item = createInterruptedItem(['Public interrupted answer'])
+
+      renderOperation({ ...baseProps, item })
+      await user.click(screen.getByTestId('annotation-add-btn'))
+
+      expect(mockContextValue.onAnnotationAdded).toHaveBeenCalledWith(
+        'ann-new',
+        'Test User',
+        'What is this?',
+        'Public interrupted answer',
+        0,
+      )
+    })
+
     it('should show annotation full modal when limit reached', async () => {
       const user = userEvent.setup()
       mockProviderContext.enableBilling = true
@@ -998,6 +1093,17 @@ describe('Operation', () => {
     it('should show audio play button when TTS enabled', () => {
       renderOperation()
       expect(screen.getByTestId('audio-btn'))!.toBeInTheDocument()
+    })
+
+    it('should send public response parts to TTS instead of internal thoughts', () => {
+      const item = createInterruptedItem(['Public interrupted answer'])
+
+      renderOperation({ ...baseProps, item })
+
+      expect(screen.getByTestId('audio-btn')).toHaveAttribute(
+        'data-value',
+        'Public interrupted answer',
+      )
     })
 
     it('should not show audio button for humanInputFormDataList', () => {
