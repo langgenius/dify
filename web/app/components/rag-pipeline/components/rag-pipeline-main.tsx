@@ -133,7 +133,6 @@ const RagPipelineMain = ({
       invalidateConversationVarValues,
       accessControl: {
         canEdit: datasetACLCapabilities.canEdit,
-        canComment: datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit,
         canRun: datasetACLCapabilities.canPipelineTest,
         canImportExportDSL: datasetACLCapabilities.canImportExportDSL,
         canReleaseAndVersion: datasetACLCapabilities.canPipelineRelease,
