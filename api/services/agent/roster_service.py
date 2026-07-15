@@ -95,6 +95,7 @@ class AgentRosterService:
         active_version: AgentConfigSnapshot | None = None,
         published_references: list[AgentReferencingWorkflow] | None = None,
         active_config_is_published: bool | None = None,
+        reference_count: int | None = None,
     ) -> dict[str, Any]:
         published_references = published_references or []
         return {
@@ -126,6 +127,7 @@ class AgentRosterService:
             "archived_at": to_timestamp(agent.archived_at),
             "created_at": to_timestamp(agent.created_at),
             "updated_at": to_timestamp(agent.updated_at),
+            "reference_count": len(published_references) if reference_count is None else reference_count,
             "published_reference_count": len(published_references),
             "published_node_reference_count": sum(len(item["node_ids"]) for item in published_references),
             "published_references": published_references,
@@ -188,6 +190,10 @@ class AgentRosterService:
             tenant_id=tenant_id,
             agent_ids=[agent.id for agent in agents],
         )
+        reference_counts_by_agent_id = self._load_reference_counts_by_agent_id(
+            tenant_id=tenant_id,
+            agent_ids=[agent.id for agent in agents],
+        )
         active_config_is_published_by_agent_id = self.load_active_config_is_published_by_agent_id(
             tenant_id=tenant_id,
             agents=agents,
@@ -204,6 +210,7 @@ class AgentRosterService:
                     active_version,
                     published_references_by_agent_id.get(agent.id, []),
                     active_config_is_published_by_agent_id.get(agent.id, False),
+                    reference_counts_by_agent_id.get(agent.id, 0),
                 )
             )
 
@@ -230,6 +237,10 @@ class AgentRosterService:
             tenant_id=tenant_id,
             agent_ids=[agent.id for agent in agents],
         )
+        reference_counts_by_agent_id = self._load_reference_counts_by_agent_id(
+            tenant_id=tenant_id,
+            agent_ids=[agent.id for agent in agents],
+        )
         active_config_is_published_by_agent_id = self.load_active_config_is_published_by_agent_id(
             tenant_id=tenant_id,
             agents=agents,
@@ -240,6 +251,7 @@ class AgentRosterService:
                 versions_by_id.get(agent.active_config_snapshot_id) if agent.active_config_snapshot_id else None,
                 published_references_by_agent_id.get(agent.id, []),
                 active_config_is_published_by_agent_id.get(agent.id, False),
+                reference_counts_by_agent_id.get(agent.id, 0),
             )
             for agent in agents
         ]
@@ -1067,12 +1079,20 @@ class AgentRosterService:
         """Return published workflow references grouped by roster Agent id."""
         return self._load_published_references_by_agent_id(tenant_id=tenant_id, agent_ids=agent_ids)
 
+    def load_reference_counts_by_agent_id(self, *, tenant_id: str, agent_ids: list[str]) -> dict[str, int]:
+        """Return current draft or published workflow app references by roster Agent id."""
+        return self._load_reference_counts_by_agent_id(tenant_id=tenant_id, agent_ids=agent_ids)
+
     def get_roster_agent_detail(self, *, tenant_id: str, agent_id: str) -> dict[str, Any]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
         active_version = self._get_version(
             tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
         )
         published_references_by_agent_id = self._load_published_references_by_agent_id(
+            tenant_id=tenant_id,
+            agent_ids=[agent.id],
+        )
+        reference_counts_by_agent_id = self._load_reference_counts_by_agent_id(
             tenant_id=tenant_id,
             agent_ids=[agent.id],
         )
@@ -1085,6 +1105,7 @@ class AgentRosterService:
             active_version,
             published_references_by_agent_id.get(agent.id, []),
             active_config_is_published_by_agent_id.get(agent.id, False),
+            reference_counts_by_agent_id.get(agent.id, 0),
         )
 
     def update_roster_agent(
@@ -1418,6 +1439,60 @@ class AgentRosterService:
             references.sort(key=lambda item: (-(item["app_updated_at"] or 0), item["app_name"].lower()))
             result[agent_id] = references
         return result
+
+    def _load_reference_counts_by_agent_id(self, *, tenant_id: str, agent_ids: list[str]) -> dict[str, int]:
+        if not agent_ids:
+            return {}
+
+        bindings = list(
+            self._session.scalars(
+                select(WorkflowAgentNodeBinding).where(
+                    WorkflowAgentNodeBinding.tenant_id == tenant_id,
+                    WorkflowAgentNodeBinding.agent_id.in_(agent_ids),
+                    WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT,
+                )
+            ).all()
+        )
+        if not bindings:
+            return {}
+
+        app_ids = {binding.app_id for binding in bindings}
+        apps = {
+            app.id: app
+            for app in self._session.scalars(
+                select(App).where(
+                    App.tenant_id == tenant_id,
+                    App.id.in_(app_ids),
+                    App.status == AppStatus.NORMAL,
+                )
+            ).all()
+        }
+        workflow_ids = {binding.workflow_id for binding in bindings}
+        workflows = {
+            workflow.id: workflow
+            for workflow in self._session.scalars(
+                select(Workflow).where(
+                    Workflow.tenant_id == tenant_id,
+                    Workflow.id.in_(workflow_ids),
+                )
+            ).all()
+        }
+
+        referenced_app_ids_by_agent_id: dict[str, set[str]] = {}
+        for binding in bindings:
+            if not binding.agent_id:
+                continue
+            app = apps.get(binding.app_id)
+            workflow = workflows.get(binding.workflow_id)
+            if app is None or workflow is None or workflow.app_id != binding.app_id:
+                continue
+            if workflow.version != binding.workflow_version:
+                continue
+            if workflow.version != Workflow.VERSION_DRAFT and app.workflow_id != workflow.id:
+                continue
+            referenced_app_ids_by_agent_id.setdefault(binding.agent_id, set()).add(binding.app_id)
+
+        return {agent_id: len(app_ids) for agent_id, app_ids in referenced_app_ids_by_agent_id.items()}
 
     def _load_versions_by_id(self, version_ids: list[str]) -> dict[str, AgentConfigSnapshot]:
         if not version_ids:

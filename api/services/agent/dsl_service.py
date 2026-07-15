@@ -427,7 +427,7 @@ class AgentDslService:
         app.updated_by = account.id
         self.session.add(app)
         self.session.flush()
-        app_was_created.send(app, account=account)
+        app_was_created.send(app, account=account, session=self.session)
         self._configure_visible_agent_app_after_commit(
             tenant_id=tenant_id,
             app_id=app.id,
