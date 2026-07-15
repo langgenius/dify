@@ -16,7 +16,8 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Filter chip with dropdown panel and optional left icon. Commonly used for status pickers in toolbars.',
+        component:
+          'Filter chip with dropdown panel and optional left icon. Commonly used for status pickers in toolbars.',
       },
     },
   },
@@ -42,20 +43,18 @@ const ChipDemo = (props: React.ComponentProps<typeof Chip>) => {
       <Chip
         {...props}
         value={selection}
-        onSelect={item => setSelection(item.value)}
+        onSelect={(item) => setSelection(item.value)}
         onClear={() => setSelection('all')}
       />
       <div className="rounded-lg border border-divider-subtle bg-components-panel-bg p-3 text-xs text-text-secondary">
-        Current value:
-        {' '}
-        <span className="font-mono text-text-primary">{selection}</span>
+        Current value: <span className="font-mono text-text-primary">{selection}</span>
       </div>
     </div>
   )
 }
 
 export const Playground: Story = {
-  render: args => <ChipDemo {...args} />,
+  render: (args) => <ChipDemo {...args} />,
   parameters: {
     docs: {
       source: {
@@ -83,12 +82,7 @@ export const WithoutLeftIcon: Story = {
 
     onClear: () => {},
   },
-  render: args => (
-    <ChipDemo
-      {...args}
-      showLeftIcon={false}
-    />
-  ),
+  render: (args) => <ChipDemo {...args} showLeftIcon={false} />,
   parameters: {
     docs: {
       source: {

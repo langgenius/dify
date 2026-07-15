@@ -6,11 +6,6 @@ import Header from '../_header'
 vi.mock('@tanstack/react-query', () => ({
   useSuspenseQuery: vi.fn(),
 }))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('@/i18n-config', () => ({
   setLocaleOnClient: vi.fn(),
 }))

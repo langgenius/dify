@@ -19,8 +19,9 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import ExtraInfo from '@/app/components/datasets/extra-info'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
@@ -37,9 +38,7 @@ type DatasetDetailSectionProps = {
   expand?: boolean
 }
 
-const DatasetDetailSection = ({
-  expand = true,
-}: DatasetDetailSectionProps) => {
+const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
@@ -48,65 +47,74 @@ const DatasetDetailSection = ({
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { data: datasetRes, refetch: mutateDatasetRes } = useDatasetDetail(datasetId ?? '')
-  const { data: relatedApps } = useDatasetRelatedApps(datasetId ?? '', { enabled: !!datasetId && !!datasetRes })
-  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(datasetRes?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: datasetRes?.maintainer,
-    workspacePermissionKeys,
-    isRbacEnabled,
-  }), [currentUserId, datasetRes?.maintainer, datasetRes?.permission_keys, isRbacEnabled, workspacePermissionKeys])
+  const { data: relatedApps } = useDatasetRelatedApps(datasetId ?? '', {
+    enabled: !!datasetId && !!datasetRes,
+  })
+  const datasetACLCapabilities = useMemo(
+    () =>
+      getDatasetACLCapabilities(datasetRes?.permission_keys, {
+        currentUserId,
+        resourceMaintainer: datasetRes?.maintainer,
+        workspacePermissionKeys,
+        isRbacEnabled,
+      }),
+    [
+      currentUserId,
+      datasetRes?.maintainer,
+      datasetRes?.permission_keys,
+      isRbacEnabled,
+      workspacePermissionKeys,
+    ],
+  )
 
   const isButtonDisabledWithPipeline = useMemo(() => {
-    if (!datasetRes)
-      return true
-    if (datasetRes.provider === 'external')
-      return false
-    if (datasetRes.runtime_mode === 'general')
-      return false
+    if (!datasetRes) return true
+    if (datasetRes.provider === 'external') return false
+    if (datasetRes.runtime_mode === 'general') return false
     return !datasetRes.is_published
   }, [datasetRes])
 
   const navigation = useMemo(() => {
-    if (!datasetId)
-      return []
+    if (!datasetId) return []
 
     const baseNavigation = [
       {
-        name: t('datasetMenus.hitTesting', { ns: 'common' }),
+        name: t(($) => $['datasetMenus.hitTesting'], { ns: 'common' }),
         href: `/datasets/${datasetId}/hitTesting`,
         icon: RiFocus2Line,
         selectedIcon: RiFocus2Fill,
         disabled: isButtonDisabledWithPipeline || !datasetACLCapabilities.canRetrievalRecall,
       },
       {
-        name: t('datasetMenus.settings', { ns: 'common' }),
+        name: t(($) => $['datasetMenus.settings'], { ns: 'common' }),
         href: `/datasets/${datasetId}/settings`,
         icon: RiEqualizer2Line,
         selectedIcon: RiEqualizer2Fill,
         disabled: false,
       },
       ...(datasetACLCapabilities.canAccessConfig
-        ? [{
-            name: t('settings.resourceAccess', { ns: 'common' }),
-            href: `/datasets/${datasetId}/access-config`,
-            icon: RiLock2Line,
-            selectedIcon: RiLock2Fill,
-            disabled: false,
-          }]
-        : []
-      ),
+        ? [
+            {
+              name: t(($) => $['settings.resourceAccess'], { ns: 'common' }),
+              href: `/datasets/${datasetId}/access-config`,
+              icon: RiLock2Line,
+              selectedIcon: RiLock2Fill,
+              disabled: false,
+            },
+          ]
+        : []),
     ]
 
     if (datasetRes?.provider !== 'external') {
       baseNavigation.unshift({
-        name: t('datasetMenus.pipeline', { ns: 'common' }),
+        name: t(($) => $['datasetMenus.pipeline'], { ns: 'common' }),
         href: `/datasets/${datasetId}/pipeline`,
         icon: PipelineLine as RemixiconComponentType,
         selectedIcon: PipelineFill as RemixiconComponentType,
         disabled: false,
       })
       baseNavigation.unshift({
-        name: t('datasetMenus.documents', { ns: 'common' }),
+        name: t(($) => $['datasetMenus.documents'], { ns: 'common' }),
         href: `/datasets/${datasetId}/documents`,
         icon: RiFileTextLine,
         selectedIcon: RiFileTextFill,
@@ -117,15 +125,15 @@ const DatasetDetailSection = ({
     return baseNavigation
   }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetACLCapabilities])
 
-  if (!datasetRes)
-    return null
+  if (!datasetRes) return null
 
   return (
-    <DatasetDetailContext.Provider value={{
-      indexingTechnique: datasetRes.indexing_technique,
-      dataset: datasetRes,
-      mutateDatasetRes,
-    }}
+    <DatasetDetailContext.Provider
+      value={{
+        indexingTechnique: datasetRes.indexing_technique,
+        dataset: datasetRes,
+        mutateDatasetRes,
+      }}
     >
       <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
         {!expand && (
@@ -141,7 +149,7 @@ const DatasetDetailSection = ({
           <DatasetInfo expand={expand} />
         </div>
         <nav className={cn('mt-3 flex flex-col gap-y-0.5 pb-2', expand ? 'px-1' : 'px-3')}>
-          {navigation.map(item => (
+          {navigation.map((item) => (
             <NavLink
               key={item.href}
               mode={expand ? 'expand' : 'collapse'}

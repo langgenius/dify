@@ -26,7 +26,9 @@ describe('enforceDifyVersion', () => {
     const store = fakeStore()
     const probe = vi.fn(async () => server('1.5.0'))
 
-    await expect(enforceDifyVersion(HOST, { store, probe })).rejects.toMatchObject({ code: ErrorCode.VersionSkew })
+    await expect(enforceDifyVersion(HOST, { store, probe })).rejects.toMatchObject({
+      code: ErrorCode.VersionSkew,
+    })
     expect(store.marked).toHaveLength(0)
   })
 
@@ -60,9 +62,9 @@ describe('enforceDifyVersion', () => {
     const store = fakeStore(true)
     const probe = vi.fn(async () => server('1.5.0'))
 
-    await expect(enforceDifyVersion(HOST, { store, probe, forceFresh: true }))
-      .rejects
-      .toMatchObject({ code: ErrorCode.VersionSkew })
+    await expect(
+      enforceDifyVersion(HOST, { store, probe, forceFresh: true }),
+    ).rejects.toMatchObject({ code: ErrorCode.VersionSkew })
     expect(probe).toHaveBeenCalledOnce()
   })
 

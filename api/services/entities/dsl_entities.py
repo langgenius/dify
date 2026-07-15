@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -15,6 +16,15 @@ class ImportStatus(StrEnum):
     COMPLETED_WITH_WARNINGS = "completed-with-warnings"
     PENDING = "pending"
     FAILED = "failed"
+
+
+class DslImportWarning(BaseModel):
+    """Portable DSL reference that could not be restored in the target workspace."""
+
+    code: str
+    path: str
+    message: str
+    details: dict[str, Any] = Field(default_factory=dict)
 
 
 class CheckDependenciesResult(BaseModel):

@@ -12,7 +12,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 
+from controllers.inner_api.plugin import plugin as plugin_module
 from controllers.inner_api.plugin.plugin import (
     PluginDownloadFileRequestApi,
     PluginFetchAppInfoApi,
@@ -32,6 +34,7 @@ from controllers.inner_api.plugin.plugin import (
     PluginUploadFileRequestApi,
 )
 from core.workflow.file_reference import build_file_reference
+from models import Tenant
 
 
 def _extract_raw_post(cls):
@@ -300,12 +303,26 @@ class TestPluginDownloadFileRequestApi:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
+    @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
     @patch("controllers.inner_api.plugin.plugin.FileRequestService")
-    @patch("controllers.inner_api.plugin.plugin.db")
-    def test_post_returns_signed_download_url(self, mock_db, mock_service_cls, api_instance, app: Flask):
-        mock_tenant = MagicMock()
-        mock_tenant.id = "tenant-id"
-        mock_db.session.get.return_value = mock_tenant
+    def test_post_returns_signed_download_url(
+        self,
+        mock_service_cls,
+        api_instance,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+    ):
+        tenant = Tenant(
+            name="Plugin Tenant",
+            encrypt_public_key=None,
+            plan="basic",
+            custom_config=None,
+        )
+        tenant.id = "49a99e46-bc2c-4885-91fa-47615f6192b5"
+        sqlite_session.add(tenant)
+        sqlite_session.commit()
+        monkeypatch.setattr(plugin_module.db, "session", sqlite_session)
         mock_service = mock_service_cls.return_value
         mock_service.request_download_url.return_value = MagicMock(
             filename="report.pdf",
@@ -314,10 +331,11 @@ class TestPluginDownloadFileRequestApi:
             download_url="https://files.example.com/download",
         )
         mock_payload = MagicMock()
-        mock_payload.tenant_id = "tenant-id"
+        mock_payload.tenant_id = tenant.id
         mock_payload.user_id = "user-id"
         mock_payload.user_from = "account"
         mock_payload.invoke_from = "debugger"
+        mock_payload.for_external = False
         reference = build_file_reference(record_id="tool-file-1")
         mock_payload.file.model_dump.return_value = {
             "transfer_method": "tool_file",
@@ -328,11 +346,12 @@ class TestPluginDownloadFileRequestApi:
         result = raw_post(api_instance, payload=mock_payload)
 
         mock_service.request_download_url.assert_called_once_with(
-            tenant_id="tenant-id",
+            tenant_id=tenant.id,
             user_id="user-id",
             user_from="account",
             invoke_from="debugger",
             file_mapping={"transfer_method": "tool_file", "reference": reference},
+            for_external=False,
         )
         assert result["data"] == {
             "filename": "report.pdf",

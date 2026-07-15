@@ -45,6 +45,7 @@ from models.dataset import DatasetPermissionEnum
 from models.enums import TagType
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
+from services.enterprise.rbac_service import RBACResourceWhitelistScope, RBACService, ReplaceMemberBindings
 from services.entities.knowledge_entities.knowledge_entities import (
     ExternalRetrievalModel,
     KnowledgeProvider,
@@ -60,6 +61,7 @@ from services.tag_service import (
 from services.tag_service import (
     UpdateTagPayload as UpdateTagServicePayload,
 )
+from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 
@@ -527,6 +529,15 @@ class DatasetListApi(DatasetApiResource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
+        if payload.permission == DatasetPermissionEnum.ALL_TEAM and dify_config.RBAC_ENABLED:
+            RBACService.DatasetAccess.replace_whitelist(
+                tenant_id,
+                current_user.id,
+                dataset.id,
+                ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
+            )
+            initialize_created_app_rbac_access_task.delay(tenant_id, current_user.id, dataset_id=dataset.id)
+
         return _dump_service_dataset_detail(dataset), 200
 
 
@@ -845,7 +856,7 @@ class DocumentStatusApi(DatasetApiResource):
         except ValueError as e:
             raise InvalidActionError(str(e))
 
-        return dump_response(SimpleResultResponse, {"result": "success"}), 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @service_api_ns.route("/datasets/tags")
@@ -911,11 +922,8 @@ class DatasetTagsApi(DatasetApiResource):
         payload = TagCreatePayload.model_validate(service_api_ns.payload or {})
         tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=TagType.KNOWLEDGE), db.session())
 
-        response = dump_response(
-            KnowledgeTagResponse,
-            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0},
-        )
-        return response, 200
+        response = KnowledgeTagResponse(id=tag.id, name=tag.name, type=tag.type, binding_count="0")
+        return response.model_dump(mode="json"), 200
 
     @service_api_ns.doc(
         summary="Update Knowledge Tag",
@@ -953,11 +961,8 @@ class DatasetTagsApi(DatasetApiResource):
 
         binding_count = TagService.get_tag_binding_count(tag_id, db.session(), tag_type=TagType.KNOWLEDGE)
 
-        response = dump_response(
-            KnowledgeTagResponse,
-            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count},
-        )
-        return response, 200
+        response = KnowledgeTagResponse(id=tag.id, name=tag.name, type=tag.type, binding_count=str(binding_count))
+        return response.model_dump(mode="json"), 200
 
     @service_api_ns.doc(
         summary="Delete Knowledge Tag",
@@ -1088,5 +1093,8 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
         tags = TagService.get_tags_by_target_id(
             "knowledge", current_user.current_tenant_id, str(dataset_id), db.session()
         )
-        tags_list = [{"id": tag.id, "name": tag.name} for tag in tags]
-        return dump_response(DatasetBoundTagListResponse, {"data": tags_list, "total": len(tags)}), 200
+        response = DatasetBoundTagListResponse(
+            data=[DatasetBoundTagResponse(id=tag.id, name=tag.name) for tag in tags],
+            total=len(tags),
+        )
+        return response.model_dump(mode="json"), 200

@@ -18,6 +18,7 @@ from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
 )
 from controllers.console.explore.error import (
     NotChatAppError,
@@ -35,6 +36,7 @@ from models import Account
 from models.account import TenantStatus
 from models.model import AppMode
 from services.app_ref_service import MessageRef
+from services.errors.audio import SpeechToTextDisabledServiceError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
 
@@ -782,6 +784,24 @@ class TestTrialChatAudioApi:
             ),
         ):
             with pytest.raises(module.ProviderNotSupportSpeechToTextError):
+                method(api, account, trial_app_chat)
+
+    def test_speech_to_text_disabled(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+        api = module.TrialChatAudioApi()
+        method = unwrap(api.post)
+        file_data = _file_data()
+
+        with (
+            app.test_request_context(
+                "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
+            ),
+            patch.object(
+                module.AudioService,
+                "transcript_asr",
+                side_effect=SpeechToTextDisabledServiceError(),
+            ),
+        ):
+            with pytest.raises(SpeechToTextDisabledError):
                 method(api, account, trial_app_chat)
 
     def test_provider_not_init(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:

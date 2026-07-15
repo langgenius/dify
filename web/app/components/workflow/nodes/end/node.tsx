@@ -2,20 +2,11 @@ import type { FC } from 'react'
 import type { EndNodeType } from './types'
 import type { NodeProps, Variable } from '@/app/components/workflow/types'
 import * as React from 'react'
-import {
-  useIsChatMode,
-  useWorkflow,
-  useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
-import {
-  VariableLabelInNode,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { useIsChatMode, useWorkflow, useWorkflowVariables } from '@/app/components/workflow/hooks'
+import { VariableLabelInNode } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-const Node: FC<NodeProps<EndNodeType>> = ({
-  id,
-  data,
-}) => {
+const Node: FC<NodeProps<EndNodeType>> = ({ id, data }) => {
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const availableNodes = getBeforeNodesInSameBranch(id)
   const { getCurrentVariableType } = useWorkflowVariables()
@@ -26,14 +17,15 @@ const Node: FC<NodeProps<EndNodeType>> = ({
   })
 
   const getNode = (id: string) => {
-    return availableNodes.find(node => node.id === id) || startNode
+    return availableNodes.find((node) => node.id === id) || startNode
   }
 
   const { outputs } = data
-  const filteredOutputs = (outputs as Variable[]).filter(({ value_selector }) => value_selector.length > 0)
+  const filteredOutputs = (outputs as Variable[]).filter(
+    ({ value_selector }) => value_selector.length > 0,
+  )
 
-  if (!filteredOutputs.length)
-    return null
+  if (!filteredOutputs.length) return null
 
   return (
     <div className="mb-1 space-y-0.5 px-3 py-1">
@@ -55,7 +47,6 @@ const Node: FC<NodeProps<EndNodeType>> = ({
           />
         )
       })}
-
     </div>
   )
 }

@@ -2,10 +2,7 @@ import { createStore } from 'jotai'
 import { describe, expect, it } from 'vitest'
 import { defaultAgentSoulConfigFormState } from '../../form-state'
 import { agentComposerDraftAtom } from '../../store'
-import {
-  removeAgentSkillAtom,
-  upsertAgentSkillAtom,
-} from '../skills'
+import { removeAgentSkillAtom, upsertAgentSkillAtom } from '../skills'
 
 describe('agent composer skills store', () => {
   it('should upsert and remove skills from the latest draft state', () => {

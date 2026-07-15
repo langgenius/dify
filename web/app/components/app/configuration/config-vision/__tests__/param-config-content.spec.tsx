@@ -35,7 +35,7 @@ const setupFeatureStore = (fileOverrides: Partial<FileUpload> = {}) => {
     setShowFeaturesModal: vi.fn(),
   } as unknown as FeatureStoreState
 
-  mockUseFeatures.mockImplementation(selector => selector(featureStoreState))
+  mockUseFeatures.mockImplementation((selector) => selector(featureStoreState))
   mockUseFeaturesStore.mockReturnValue({
     getState: () => featureStoreState,
   })

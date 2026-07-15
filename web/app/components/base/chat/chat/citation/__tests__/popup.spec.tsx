@@ -2,7 +2,6 @@ import type { Resources } from '../index'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useDocumentDownload } from '@/service/knowledge/use-document'
-
 import { downloadUrl } from '@/utils/download'
 import Popup from '../popup'
 
@@ -25,8 +24,10 @@ vi.mock('../progress-tooltip', () => ({
 }))
 
 vi.mock('../tooltip', () => ({
-  default: ({ text, data }: { text: string, data: number | string }) => (
-    <div data-testid="citation-tooltip" data-text={text}>{data}</div>
+  default: ({ text, data }: { text: string; data: number | string }) => (
+    <div data-testid="citation-tooltip" data-text={text}>
+      {data}
+    </div>
   ),
 }))
 
@@ -34,21 +35,24 @@ const mockDownloadDocument = vi.fn()
 const mockUseDocumentDownload = vi.mocked(useDocumentDownload)
 const mockDownloadUrl = vi.mocked(downloadUrl)
 
-const makeSource = (overrides: Partial<Resources['sources'][number]> = {}): Resources['sources'][number] => ({
-  dataset_id: 'ds-1',
-  dataset_name: 'Test Dataset',
-  document_id: 'doc-1',
-  segment_id: 'seg-1',
-  segment_position: 1,
-  content: 'Source content here',
-  word_count: 120,
-  hit_count: 3,
-  index_node_hash: 'abcdef1234567',
-  score: 0.85,
-  data_source_type: 'upload_file',
-  document_name: 'test.pdf',
-  ...overrides,
-} as Resources['sources'][number])
+const makeSource = (
+  overrides: Partial<Resources['sources'][number]> = {},
+): Resources['sources'][number] =>
+  ({
+    dataset_id: 'ds-1',
+    dataset_name: 'Test Dataset',
+    document_id: 'doc-1',
+    segment_id: 'seg-1',
+    segment_position: 1,
+    content: 'Source content here',
+    word_count: 120,
+    hit_count: 3,
+    index_node_hash: 'abcdef1234567',
+    score: 0.85,
+    data_source_type: 'upload_file',
+    document_name: 'test.pdf',
+    ...overrides,
+  }) as Resources['sources'][number]
 
 const makeData = (overrides: Partial<Resources> = {}): Resources => ({
   documentId: 'doc-1',
@@ -85,7 +89,9 @@ describe('Popup', () => {
     })
 
     it('should pass the extracted file extension to FileIcon for non-notion sources', () => {
-      render(<Popup data={makeData({ documentName: 'report.pdf', dataSourceType: 'upload_file' })} />)
+      render(
+        <Popup data={makeData({ documentName: 'report.pdf', dataSourceType: 'upload_file' })} />,
+      )
       expect(screen.getAllByTestId('file-icon')[0])!.toHaveAttribute('data-type', 'pdf')
     })
 
@@ -95,7 +101,9 @@ describe('Popup', () => {
     })
 
     it('should pass empty string as fileType when document has no extension', () => {
-      render(<Popup data={makeData({ documentName: 'nodotfile', dataSourceType: 'upload_file' })} />)
+      render(
+        <Popup data={makeData({ documentName: 'nodotfile', dataSourceType: 'upload_file' })} />,
+      )
       expect(screen.getAllByTestId('file-icon')[0])!.toHaveAttribute('data-type', '')
     })
 
@@ -150,10 +158,11 @@ describe('Popup', () => {
     it('should render download button in header for file dataSourceType with dataset_id', async () => {
       const user = userEvent.setup()
       render(
-        <Popup data={makeData({
-          dataSourceType: 'file',
-          sources: [makeSource({ data_source_type: 'file', dataset_id: 'ds-1' })],
-        })}
+        <Popup
+          data={makeData({
+            dataSourceType: 'file',
+            sources: [makeSource({ data_source_type: 'file', dataset_id: 'ds-1' })],
+          })}
         />,
       )
 
@@ -165,11 +174,12 @@ describe('Popup', () => {
     it('should render plain document name in header (no button) for notion type', async () => {
       const user = userEvent.setup()
       render(
-        <Popup data={makeData({
-          documentName: 'Notion Doc',
-          dataSourceType: 'notion',
-          sources: [makeSource({ dataset_id: 'ds-1' })],
-        })}
+        <Popup
+          data={makeData({
+            documentName: 'Notion Doc',
+            dataSourceType: 'notion',
+            sources: [makeSource({ dataset_id: 'ds-1' })],
+          })}
         />,
       )
 
@@ -181,10 +191,11 @@ describe('Popup', () => {
     it('should render plain document name in header when dataset_id is absent', async () => {
       const user = userEvent.setup()
       render(
-        <Popup data={makeData({
-          dataSourceType: 'upload_file',
-          sources: [makeSource({ dataset_id: '' })],
-        })}
+        <Popup
+          data={makeData({
+            dataSourceType: 'upload_file',
+            sources: [makeSource({ dataset_id: '' })],
+          })}
         />,
       )
 
@@ -210,7 +221,9 @@ describe('Popup', () => {
   describe('Source Items', () => {
     it('should render one source item per source entry', async () => {
       const user = userEvent.setup()
-      render(<Popup data={makeData({ sources: [makeSource(), makeSource({ segment_id: 'seg-2' })] })} />)
+      render(
+        <Popup data={makeData({ sources: [makeSource(), makeSource({ segment_id: 'seg-2' })] })} />,
+      )
 
       await openPopup(user)
 
@@ -219,7 +232,9 @@ describe('Popup', () => {
 
     it('should render source content text', async () => {
       const user = userEvent.setup()
-      render(<Popup data={makeData({ sources: [makeSource({ content: 'Unique content text' })] })} />)
+      render(
+        <Popup data={makeData({ sources: [makeSource({ content: 'Unique content text' })] })} />,
+      )
 
       await openPopup(user)
 
@@ -249,9 +264,14 @@ describe('Popup', () => {
     it('should render a divider between multiple sources', async () => {
       const user = userEvent.setup()
       render(
-        <Popup data={makeData({
-          sources: [makeSource(), makeSource({ segment_id: 'seg-2' }), makeSource({ segment_id: 'seg-3' })],
-        })}
+        <Popup
+          data={makeData({
+            sources: [
+              makeSource(),
+              makeSource({ segment_id: 'seg-2' }),
+              makeSource({ segment_id: 'seg-3' }),
+            ],
+          })}
         />,
       )
 
@@ -272,14 +292,15 @@ describe('Popup', () => {
     it('should render exactly n-1 dividers for n sources', async () => {
       const user = userEvent.setup()
       render(
-        <Popup data={makeData({
-          sources: [
-            makeSource({ segment_id: 's1' }),
-            makeSource({ segment_id: 's2' }),
-            makeSource({ segment_id: 's3' }),
-            makeSource({ segment_id: 's4' }),
-          ],
-        })}
+        <Popup
+          data={makeData({
+            sources: [
+              makeSource({ segment_id: 's1' }),
+              makeSource({ segment_id: 's2' }),
+              makeSource({ segment_id: 's3' }),
+              makeSource({ segment_id: 's4' }),
+            ],
+          })}
         />,
       )
 
@@ -380,7 +401,9 @@ describe('Popup', () => {
 
     it('should render ProgressTooltip when source score is greater than 0', async () => {
       const user = userEvent.setup()
-      render(<Popup data={makeData({ sources: [makeSource({ score: 0.9 })] })} showHitInfo={true} />)
+      render(
+        <Popup data={makeData({ sources: [makeSource({ score: 0.9 })] })} showHitInfo={true} />,
+      )
 
       await openPopup(user)
 
@@ -398,7 +421,9 @@ describe('Popup', () => {
 
     it('should pass score rounded-sm to 2 decimal places to ProgressTooltip', async () => {
       const user = userEvent.setup()
-      render(<Popup data={makeData({ sources: [makeSource({ score: 0.856 })] })} showHitInfo={true} />)
+      render(
+        <Popup data={makeData({ sources: [makeSource({ score: 0.856 })] })} showHitInfo={true} />,
+      )
 
       await openPopup(user)
 
@@ -407,7 +432,12 @@ describe('Popup', () => {
 
     it('should pass word_count to the characters Tooltip', async () => {
       const user = userEvent.setup()
-      render(<Popup data={makeData({ sources: [makeSource({ word_count: 250 })] })} showHitInfo={true} />)
+      render(
+        <Popup
+          data={makeData({ sources: [makeSource({ word_count: 250 })] })}
+          showHitInfo={true}
+        />,
+      )
 
       await openPopup(user)
 
@@ -417,7 +447,9 @@ describe('Popup', () => {
 
     it('should pass hit_count to the hitCount Tooltip', async () => {
       const user = userEvent.setup()
-      render(<Popup data={makeData({ sources: [makeSource({ hit_count: 7 })] })} showHitInfo={true} />)
+      render(
+        <Popup data={makeData({ sources: [makeSource({ hit_count: 7 })] })} showHitInfo={true} />,
+      )
 
       await openPopup(user)
 
@@ -427,7 +459,12 @@ describe('Popup', () => {
 
     it('should pass truncated index_node_hash (first 7 chars) to vectorHash Tooltip', async () => {
       const user = userEvent.setup()
-      render(<Popup data={makeData({ sources: [makeSource({ index_node_hash: 'abcdef1234567' })] })} showHitInfo={true} />)
+      render(
+        <Popup
+          data={makeData({ sources: [makeSource({ index_node_hash: 'abcdef1234567' })] })}
+          showHitInfo={true}
+        />,
+      )
 
       await openPopup(user)
 
@@ -462,8 +499,14 @@ describe('Popup', () => {
       await user.click(getDownloadButton())
 
       await waitFor(() => {
-        expect(mockDownloadDocument).toHaveBeenCalledWith({ datasetId: 'ds-1', documentId: 'doc-1' })
-        expect(mockDownloadUrl).toHaveBeenCalledWith({ url: 'https://example.com/file.pdf', fileName: 'report.pdf' })
+        expect(mockDownloadDocument).toHaveBeenCalledWith({
+          datasetId: 'ds-1',
+          documentId: 'doc-1',
+        })
+        expect(mockDownloadUrl).toHaveBeenCalledWith({
+          url: 'https://example.com/file.pdf',
+          fileName: 'report.pdf',
+        })
       })
     })
 
@@ -482,10 +525,11 @@ describe('Popup', () => {
     it('should not call downloadDocument when dataSourceType is not upload_file or file', async () => {
       const user = userEvent.setup()
       render(
-        <Popup data={makeData({
-          dataSourceType: 'notion',
-          sources: [makeSource({ dataset_id: 'ds-1' })],
-        })}
+        <Popup
+          data={makeData({
+            dataSourceType: 'notion',
+            sources: [makeSource({ dataset_id: 'ds-1' })],
+          })}
         />,
       )
 
@@ -513,11 +557,12 @@ describe('Popup', () => {
       mockDownloadDocument.mockResolvedValue({ url: 'https://example.com/file.pdf' })
       const user = userEvent.setup()
       render(
-        <Popup data={makeData({
-          documentId: 'primary-doc-id',
-          dataSourceType: 'upload_file',
-          sources: [makeSource({ document_id: 'fallback-doc-id', dataset_id: 'ds-1' })],
-        })}
+        <Popup
+          data={makeData({
+            documentId: 'primary-doc-id',
+            dataSourceType: 'upload_file',
+            sources: [makeSource({ document_id: 'fallback-doc-id', dataset_id: 'ds-1' })],
+          })}
         />,
       )
 
@@ -525,7 +570,10 @@ describe('Popup', () => {
       await user.click(getDownloadButton())
 
       await waitFor(() => {
-        expect(mockDownloadDocument).toHaveBeenCalledWith({ datasetId: 'ds-1', documentId: 'primary-doc-id' })
+        expect(mockDownloadDocument).toHaveBeenCalledWith({
+          datasetId: 'ds-1',
+          documentId: 'primary-doc-id',
+        })
       })
     })
 
@@ -533,10 +581,11 @@ describe('Popup', () => {
       mockDownloadDocument.mockResolvedValue({ url: 'https://example.com/file.pdf' })
       const user = userEvent.setup()
       render(
-        <Popup data={makeData({
-          dataSourceType: 'file',
-          sources: [makeSource({ data_source_type: 'file', dataset_id: 'ds-1' })],
-        })}
+        <Popup
+          data={makeData({
+            dataSourceType: 'file',
+            sources: [makeSource({ data_source_type: 'file', dataset_id: 'ds-1' })],
+          })}
         />,
       )
 
@@ -552,11 +601,12 @@ describe('Popup', () => {
     it('should not call downloadDocument when both data.documentId and sources[0].document_id are empty', async () => {
       const user = userEvent.setup()
       render(
-        <Popup data={makeData({
-          documentId: '',
-          dataSourceType: 'upload_file',
-          sources: [makeSource({ document_id: '', dataset_id: 'ds-1' })],
-        })}
+        <Popup
+          data={makeData({
+            documentId: '',
+            dataSourceType: 'upload_file',
+            sources: [makeSource({ document_id: '', dataset_id: 'ds-1' })],
+          })}
         />,
       )
 
@@ -639,7 +689,7 @@ describe('Popup', () => {
         expect(screen.getByTestId('popup-source-item'))!.toBeInTheDocument()
       })
 
-      it('should fallback to \'doc\' when all ids are missing', async () => {
+      it("should fallback to 'doc' when all ids are missing", async () => {
         const user = userEvent.setup()
         render(
           <Popup

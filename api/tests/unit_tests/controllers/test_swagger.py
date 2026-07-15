@@ -574,6 +574,38 @@ def test_console_account_avatar_query_param_renders_as_query(monkeypatch: pytest
     assert params["avatar"]["required"] is True
 
 
+def test_console_member_invite_documents_bad_request_response(monkeypatch: pytest.MonkeyPatch):
+    from configs import dify_config
+    from controllers.console import bp as console_bp
+
+    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    operation = payload["paths"]["/workspaces/current/members/invite-email"]["post"]
+    response_schema = operation["responses"]["400"]["content"]["application/json"]["schema"]
+
+    assert response_schema["$ref"] == "#/components/schemas/MemberInviteErrorResponse"
+    assert payload["components"]["schemas"]["MemberInviteErrorResponse"] == {
+        "properties": {
+            "code": {
+                "enum": ["invalid_param", "invalid_role", "limit_exceeded"],
+                "title": "Code",
+                "type": "string",
+            },
+            "message": {"title": "Message", "type": "string"},
+            "status": {"const": 400, "title": "Status", "type": "integer"},
+        },
+        "required": ["code", "message", "status"],
+        "title": "MemberInviteErrorResponse",
+        "type": "object",
+    }
+
+
 def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path):
     from dev.generate_swagger_specs import generate_specs
 

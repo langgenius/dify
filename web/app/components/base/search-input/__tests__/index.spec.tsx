@@ -15,7 +15,10 @@ describe('SearchInput', () => {
 
     it('renders custom placeholder', () => {
       render(<SearchInput value="" onValueChange={() => {}} placeholder="Custom Placeholder" />)
-      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveAttribute('placeholder', 'Custom Placeholder')
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveAttribute(
+        'placeholder',
+        'Custom Placeholder',
+      )
     })
 
     it('uses custom aria label', () => {
@@ -144,7 +147,9 @@ describe('SearchInput', () => {
 
   describe('Style', () => {
     it('applies custom className', () => {
-      const { container } = render(<SearchInput value="" onValueChange={() => {}} className="custom-test" />)
+      const { container } = render(
+        <SearchInput value="" onValueChange={() => {}} className="custom-test" />,
+      )
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveClass('custom-test')
     })

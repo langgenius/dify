@@ -52,18 +52,16 @@ function AppIconPicker({
 }: AppIconPickerProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {open
-        ? (
-            <AppIconPickerContent
-              key={`${initialEmoji?.icon ?? ''}:${initialEmoji?.background ?? ''}`}
-              initialEmoji={initialEmoji}
-              enableImageUpload={enableImageUpload}
-              className={className}
-              onOpenChange={onOpenChange}
-              onSelect={onSelect}
-            />
-          )
-        : null}
+      {open ? (
+        <AppIconPickerContent
+          key={`${initialEmoji?.icon ?? ''}:${initialEmoji?.background ?? ''}`}
+          initialEmoji={initialEmoji}
+          enableImageUpload={enableImageUpload}
+          className={className}
+          onOpenChange={onOpenChange}
+          onSelect={onSelect}
+        />
+      ) : null}
     </Dialog>
   )
 }
@@ -89,15 +87,22 @@ function AppIconPickerContent({
   const { t } = useTranslation()
 
   const tabs = [
-    { key: 'emoji', label: t('iconPicker.emoji', { ns: 'app' }), icon: <span className="text-lg">🤖</span> },
-    { key: 'image', label: t('iconPicker.image', { ns: 'app' }), icon: <RiImageCircleAiLine className="size-4" /> },
+    {
+      key: 'emoji',
+      label: t(($) => $['iconPicker.emoji'], { ns: 'app' }),
+      icon: <span className="text-lg">🤖</span>,
+    },
+    {
+      key: 'image',
+      label: t(($) => $['iconPicker.image'], { ns: 'app' }),
+      icon: <RiImageCircleAiLine className="size-4" />,
+    },
   ]
   const [activeTab, setActiveTab] = useState<AppIconType>('emoji')
   const showImageUpload = enableImageUpload && !DISABLE_UPLOAD_IMAGE_AS_ICON
 
-  const [emoji, setEmoji] = useState<{ emoji: string, background: string } | undefined>(() => {
-    if (!initialEmoji?.icon)
-      return undefined
+  const [emoji, setEmoji] = useState<{ emoji: string; background: string } | undefined>(() => {
+    if (!initialEmoji?.icon) return undefined
 
     return {
       emoji: initialEmoji.icon,
@@ -123,13 +128,24 @@ function AppIconPickerContent({
     },
   })
 
-  type InputImageInfo = { file: File } | { tempUrl: string, croppedAreaPixels: Area, fileName: string }
+  type InputImageInfo =
+    | { file: File }
+    | { tempUrl: string; croppedAreaPixels: Area; fileName: string }
   const [inputImageInfo, setInputImageInfo] = useState<InputImageInfo>()
 
-  const handleImageInput: OnImageInput = async (isCropped: boolean, fileOrTempUrl: string | File, croppedAreaPixels?: Area, fileName?: string) => {
+  const handleImageInput: OnImageInput = async (
+    isCropped: boolean,
+    fileOrTempUrl: string | File,
+    croppedAreaPixels?: Area,
+    fileName?: string,
+  ) => {
     setInputImageInfo(
       isCropped
-        ? { tempUrl: fileOrTempUrl as string, croppedAreaPixels: croppedAreaPixels!, fileName: fileName! }
+        ? {
+            tempUrl: fileOrTempUrl as string,
+            croppedAreaPixels: croppedAreaPixels!,
+            fileName: fileName!,
+          }
         : { file: fileOrTempUrl as File },
     )
   }
@@ -144,43 +160,51 @@ function AppIconPickerContent({
         })
         onOpenChange(false)
       }
-    }
-    else {
-      if (!inputImageInfo)
-        return
+    } else {
+      if (!inputImageInfo) return
       setUploading(true)
       if ('file' in inputImageInfo) {
         handleLocalFileUpload(inputImageInfo.file)
         return
       }
-      const blob = await getCroppedImg(inputImageInfo.tempUrl, inputImageInfo.croppedAreaPixels, inputImageInfo.fileName)
+      const blob = await getCroppedImg(
+        inputImageInfo.tempUrl,
+        inputImageInfo.croppedAreaPixels,
+        inputImageInfo.fileName,
+      )
       const file = new File([blob], inputImageInfo.fileName, { type: blob.type })
       handleLocalFileUpload(file)
     }
   }
 
   return (
-    <DialogContent className={cn('w-full overflow-hidden! border-none text-left align-middle', s.container, 'h-[min(462px,calc(100dvh-2rem))]! max-h-none! w-[362px]! p-0!', className)}>
+    <DialogContent
+      className={cn(
+        'w-full overflow-hidden! border-none text-left align-middle',
+        s.container,
+        'h-[min(462px,calc(100dvh-2rem))]! max-h-none! w-[362px]! p-0!',
+        className,
+      )}
+    >
       <DialogTitle className="sr-only">
-        {t('iconPicker.emoji', { ns: 'app' })}
+        {t(($) => $['iconPicker.emoji'], { ns: 'app' })}
       </DialogTitle>
 
       {showImageUpload && (
         <div className="w-full p-2 pb-0">
           <div className="flex items-center justify-center gap-2 rounded-xl bg-background-body p-1 text-text-primary">
-            {tabs.map(tab => (
+            {tabs.map((tab) => (
               <button
                 type="button"
                 key={tab.key}
                 className={cn(
                   'flex h-8 flex-1 shrink-0 items-center justify-center rounded-lg p-2 system-sm-medium text-text-tertiary',
-                  activeTab === tab.key && 'bg-components-main-nav-nav-button-bg-active text-text-accent shadow-md',
+                  activeTab === tab.key &&
+                    'bg-components-main-nav-nav-button-bg-active text-text-accent shadow-md',
                 )}
                 onClick={() => setActiveTab(tab.key as AppIconType)}
               >
-                {tab.icon}
-                {' '}
-&nbsp;
+                {tab.icon} &nbsp;
                 {tab.label}
               </button>
             ))}
@@ -196,16 +220,24 @@ function AppIconPickerContent({
           onSelect={(emoji, background) => setEmoji({ emoji, background })}
         />
       )}
-      {activeTab === 'image' && <ImageInput className={cn('flex-1 overflow-hidden')} onImageInput={handleImageInput} />}
+      {activeTab === 'image' && (
+        <ImageInput className={cn('flex-1 overflow-hidden')} onImageInput={handleImageInput} />
+      )}
 
       <Divider className="m-0" />
       <div className="flex w-full items-center justify-center gap-2 p-3">
         <Button className="w-full" onClick={() => onOpenChange(false)}>
-          {t('iconPicker.cancel', { ns: 'app' })}
+          {t(($) => $['iconPicker.cancel'], { ns: 'app' })}
         </Button>
 
-        <Button variant="primary" className="w-full" disabled={uploading} loading={uploading} onClick={handleSelect}>
-          {t('iconPicker.ok', { ns: 'app' })}
+        <Button
+          variant="primary"
+          className="w-full"
+          disabled={uploading}
+          loading={uploading}
+          onClick={handleSelect}
+        >
+          {t(($) => $['iconPicker.ok'], { ns: 'app' })}
         </Button>
       </div>
     </DialogContent>

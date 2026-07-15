@@ -6,15 +6,15 @@ export type PreseededResource = NonNullable<
   DifyWorld['agentBuilder']['preflight']['preseededResources'][string]
 >
 
-export type E2EResourcePrecondition
-  = | {
-    ok: true
-    value: string
-  }
+export type E2EResourcePrecondition =
   | {
-    ok: false
-    reason: string
-  }
+      ok: true
+      value: string
+    }
+  | {
+      ok: false
+      reason: string
+    }
 
 export type NamedResource = {
   id: string
@@ -35,8 +35,7 @@ export const readRequiredEnvResource = (
   description: string,
 ): E2EResourcePrecondition => {
   const value = process.env[envName]?.trim()
-  if (value)
-    return { ok: true, value }
+  if (value) return { ok: true, value }
 
   return {
     ok: false,
@@ -53,7 +52,9 @@ export function skipBlockedPrecondition(
   } = {},
 ): 'skipped' {
   const owner = options.owner ?? 'seed/product'
-  const remediation = options.remediation ?? 'Seed the required resource or align the product capability before running this scenario.'
+  const remediation =
+    options.remediation ??
+    'Seed the required resource or align the product capability before running this scenario.'
   const message = `Blocked precondition: ${reason} Owner: ${owner}. Remediation: ${remediation}`
   console.warn(`[e2e] ${message}`)
   world.attach(message, 'text/plain')
@@ -66,8 +67,7 @@ export function skipMissingEnvResource(
   description: string,
 ): 'skipped' | string {
   const resource = readRequiredEnvResource(envName, description)
-  if (resource.ok)
-    return resource.value
+  if (resource.ok) return resource.value
 
   return skipBlockedPrecondition(world, resource.reason)
 }
@@ -101,9 +101,8 @@ export const findConsoleResourceByName = async <T extends NamedResource = NamedR
     await expectApiResponseOK(response, action)
     const body = (await response.json()) as NamedResourceCollection<T>
 
-    return body.data.find(item => item.name === resourceName)
-  }
-  finally {
+    return body.data.find((item) => item.name === resourceName)
+  } finally {
     await ctx.dispose()
   }
 }
@@ -129,5 +128,5 @@ export const hasNamedOrKeyedEntry = (items: unknown[], expectedName: string) =>
       asString,
     )
 
-    return values.some(value => value === expectedName || value.endsWith(`/${expectedName}`))
+    return values.some((value) => value === expectedName || value.endsWith(`/${expectedName}`))
   })

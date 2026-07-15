@@ -9,11 +9,7 @@ import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-feat
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
-import {
-  initialLangGeniusVersionInfo,
-  initialWorkspaceInfo,
-  userProfilePlaceholder,
-} from '@/context/app-context-defaults'
+import { initialLangGeniusVersionInfo, initialWorkspaceInfo } from '@/context/app-context-defaults'
 import { useProviderContext } from '@/context/provider-context'
 import { updateCurrentWorkspace } from '@/service/common'
 import useWebAppBrand from '../use-web-app-brand'
@@ -54,7 +50,39 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('@/service/common', () => ({
   updateCurrentWorkspace: vi.fn(),
 }))
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    ...appContextStateRef.value,
+    refreshCurrentWorkspace: appContextStateRef.value?.mutateCurrentWorkspace,
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    ...appContextStateRef.value,
+    refreshCurrentWorkspace: appContextStateRef.value?.mutateCurrentWorkspace,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    ...appContextStateRef.value,
+    refreshCurrentWorkspace: appContextStateRef.value?.mutateCurrentWorkspace,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    ...appContextStateRef.value,
+    refreshCurrentWorkspace: appContextStateRef.value?.mutateCurrentWorkspace,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateAtomMock(importOriginal, () => ({
@@ -63,7 +91,8 @@ vi.mock('@/context/app-context-state', async (importOriginal) => {
   }))
 })
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateJotaiMock(importOriginal)
 })
@@ -79,6 +108,15 @@ const mockUpdateCurrentWorkspace = vi.mocked(updateCurrentWorkspace)
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockImageUpload = vi.mocked(imageUpload)
 const mockGetImageUploadErrorMessage = vi.mocked(getImageUploadErrorMessage)
+
+const testUserProfile = {
+  id: '',
+  name: '',
+  email: '',
+  avatar: '',
+  avatar_url: '',
+  is_password_set: false,
+}
 
 const createProviderContext = ({
   enableBilling = false,
@@ -96,9 +134,12 @@ const createProviderContext = ({
   })
 }
 
-const createAppContextValue = (overrides: Partial<AppContextStateMockState> = {}): AppContextStateMockState => {
+const createAppContextValue = (
+  overrides: Partial<AppContextStateMockState> = {},
+): AppContextStateMockState => {
   const { currentWorkspace: currentWorkspaceOverride, ...restOverrides } = overrides
-  const workspaceOverrides: Partial<AppContextStateMockState['currentWorkspace']> = currentWorkspaceOverride ?? {}
+  const workspaceOverrides: Partial<AppContextStateMockState['currentWorkspace']> =
+    currentWorkspaceOverride ?? {}
   const currentWorkspace = {
     ...initialWorkspaceInfo,
     ...workspaceOverrides,
@@ -110,7 +151,7 @@ const createAppContextValue = (overrides: Partial<AppContextStateMockState> = {}
   }
 
   return {
-    userProfile: userProfilePlaceholder,
+    userProfile: testUserProfile,
     mutateUserProfile: vi.fn(),
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
@@ -138,7 +179,9 @@ describe('useWebAppBrand', () => {
     setAppContextValue(createAppContextValue())
     currentBrandingOverrides = {}
 
-    mockUpdateCurrentWorkspace.mockResolvedValue(appContextValue.currentWorkspace as ICurrentWorkspace)
+    mockUpdateCurrentWorkspace.mockResolvedValue(
+      appContextValue.currentWorkspace as ICurrentWorkspace,
+    )
     mockUseAppContext.mockImplementation(() => appContextValue)
     mockUseProviderContext.mockReturnValue(createProviderContext())
     mockGetImageUploadErrorMessage.mockReturnValue('upload error')
@@ -157,10 +200,12 @@ describe('useWebAppBrand', () => {
     })
 
     it('should disable uploads when customization management permission is missing', () => {
-      setAppContextValue(createAppContextValue({
-        workspacePermissionKeys: [],
-        isCurrentWorkspaceManager: true,
-      }))
+      setAppContextValue(
+        createAppContextValue({
+          workspacePermissionKeys: [],
+          isCurrentWorkspaceManager: true,
+        }),
+      )
 
       const { result } = renderHook(() => useWebAppBrand())
 
@@ -169,10 +214,12 @@ describe('useWebAppBrand', () => {
     })
 
     it('should allow uploads for non-manager users with customization management permission', () => {
-      setAppContextValue(createAppContextValue({
-        workspacePermissionKeys: ['customization.manage'],
-        isCurrentWorkspaceManager: false,
-      }))
+      setAppContextValue(
+        createAppContextValue({
+          workspacePermissionKeys: ['customization.manage'],
+          isCurrentWorkspaceManager: false,
+        }),
+      )
 
       const { result } = renderHook(() => useWebAppBrand())
 
@@ -181,19 +228,23 @@ describe('useWebAppBrand', () => {
     })
 
     it('should disable uploads in sandbox workspaces and when branding is removed', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.sandbox,
-      }))
-      setAppContextValue(createAppContextValue({
-        currentWorkspace: {
-          ...initialWorkspaceInfo,
-          custom_config: {
-            replace_webapp_logo: 'https://example.com/replace.png',
-            remove_webapp_brand: true,
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: true,
+          planType: Plan.sandbox,
+        }),
+      )
+      setAppContextValue(
+        createAppContextValue({
+          currentWorkspace: {
+            ...initialWorkspaceInfo,
+            custom_config: {
+              replace_webapp_logo: 'https://example.com/replace.png',
+              remove_webapp_brand: true,
+            },
           },
-        },
-      }))
+        }),
+      )
 
       const { result } = renderHook(() => useWebAppBrand())
 
@@ -319,9 +370,11 @@ describe('useWebAppBrand', () => {
 
     it('should persist the selected logo and reset transient state on apply', async () => {
       const mutateCurrentWorkspace = vi.fn()
-      setAppContextValue(createAppContextValue({
-        mutateCurrentWorkspace,
-      }))
+      setAppContextValue(
+        createAppContextValue({
+          mutateCurrentWorkspace,
+        }),
+      )
       mockImageUpload.mockImplementation(({ onSuccessCallback }) => {
         onSuccessCallback({ id: 'new-logo' })
       })
@@ -356,9 +409,11 @@ describe('useWebAppBrand', () => {
 
     it('should restore the default branding configuration', async () => {
       const mutateCurrentWorkspace = vi.fn()
-      setAppContextValue(createAppContextValue({
-        mutateCurrentWorkspace,
-      }))
+      setAppContextValue(
+        createAppContextValue({
+          mutateCurrentWorkspace,
+        }),
+      )
 
       const { result } = renderHook(() => useWebAppBrand())
 
@@ -378,9 +433,11 @@ describe('useWebAppBrand', () => {
 
     it('should persist brand removal changes', async () => {
       const mutateCurrentWorkspace = vi.fn()
-      setAppContextValue(createAppContextValue({
-        mutateCurrentWorkspace,
-      }))
+      setAppContextValue(
+        createAppContextValue({
+          mutateCurrentWorkspace,
+        }),
+      )
 
       const { result } = renderHook(() => useWebAppBrand())
 

@@ -1,7 +1,6 @@
 import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { useProviderContext } from '@/context/provider-context'
@@ -65,7 +64,9 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
 }))
 vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ onClick }: { onClick: () => void }) => (
-    <button type="button" onClick={onClick}>open-icon-picker</button>
+    <button type="button" onClick={onClick}>
+      open-icon-picker
+    </button>
   ),
 }))
 vi.mock('@/utils/app-redirection', () => ({
@@ -74,13 +75,34 @@ vi.mock('@/utils/app-redirection', () => ({
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
 })
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateJotaiMock(importOriginal)
 })
@@ -162,7 +184,11 @@ describe('CreateAppModal', () => {
   })
 
   it('creates an app, notifies success, and fires callbacks', async () => {
-    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT, maintainer: 'user-1' }
+    const mockApp: Partial<App> = {
+      id: 'app-1',
+      mode: AppModeEnum.ADVANCED_CHAT,
+      maintainer: 'user-1',
+    }
     mockCreateApp.mockResolvedValue(mockApp as App)
     const { onClose, onSuccess } = renderModal()
 
@@ -170,16 +196,21 @@ describe('CreateAppModal', () => {
     fireEvent.change(nameInput, { target: { value: 'My App' } })
     fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
-    await waitFor(() => expect(mockCreateApp).toHaveBeenCalledWith({
-      name: 'My App',
-      description: '',
-      icon_type: 'emoji',
-      icon: '🤖',
-      icon_background: '#FFEAD5',
-      mode: AppModeEnum.ADVANCED_CHAT,
-    }))
+    await waitFor(() =>
+      expect(mockCreateApp).toHaveBeenCalledWith({
+        name: 'My App',
+        description: '',
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#FFEAD5',
+        mode: AppModeEnum.ADVANCED_CHAT,
+      }),
+    )
 
-    expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_blank', appMode: AppModeEnum.ADVANCED_CHAT })
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({
+      source: 'studio_blank',
+      appMode: AppModeEnum.ADVANCED_CHAT,
+    })
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onSuccess).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
@@ -193,6 +224,41 @@ describe('CreateAppModal', () => {
         isRbacEnabled: false,
       }),
     )
+  })
+
+  it('waits for create_app tracking before redirecting after blank app creation', async () => {
+    const mockApp: Partial<App> = {
+      id: 'app-1',
+      mode: AppModeEnum.ADVANCED_CHAT,
+      maintainer: 'user-1',
+    }
+    let resolveTracking: (() => void) | undefined
+    mockCreateApp.mockResolvedValue(mockApp as App)
+    mockTrackCreateApp.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveTracking = resolve
+      }),
+    )
+    renderModal()
+
+    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
+      target: { value: 'Tracked App' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
+
+    await waitFor(() => {
+      expect(mockTrackCreateApp).toHaveBeenCalledWith({
+        source: 'studio_blank',
+        appMode: AppModeEnum.ADVANCED_CHAT,
+      })
+    })
+    expect(mockGetRedirection).not.toHaveBeenCalled()
+
+    resolveTracking?.()
+
+    await waitFor(() => {
+      expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, expect.any(Object))
+    })
   })
 
   it('shows error toast when creation fails', async () => {
@@ -323,18 +389,23 @@ describe('CreateAppModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => {
-      expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'Completion App',
-        mode: AppModeEnum.COMPLETION,
-      }))
+      expect(mockCreateApp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Completion App',
+          mode: AppModeEnum.COMPLETION,
+        }),
+      )
     })
   })
 
   it('should ignore duplicate create clicks while a request is in flight', async () => {
     let resolveCreate: ((value: App) => void) | undefined
-    mockCreateApp.mockImplementation(() => new Promise((resolve) => {
-      resolveCreate = resolve as (value: App) => void
-    }))
+    mockCreateApp.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCreate = resolve as (value: App) => void
+        }),
+    )
     renderModal()
 
     fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {

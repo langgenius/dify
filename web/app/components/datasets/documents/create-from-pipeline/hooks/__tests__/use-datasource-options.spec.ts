@@ -18,20 +18,19 @@ vi.mock('@/app/components/workflow/types', async () => {
 const { useDatasourceOptions } = await import('../use-datasource-options')
 
 describe('useDatasourceOptions', () => {
-  const createNode = (id: string, title: string, type: string): Node<DataSourceNodeType> => ({
-    id,
-    position: { x: 0, y: 0 },
-    data: {
-      type,
-      title,
-      provider_type: 'local_file',
-    },
-  } as unknown as Node<DataSourceNodeType>)
+  const createNode = (id: string, title: string, type: string): Node<DataSourceNodeType> =>
+    ({
+      id,
+      position: { x: 0, y: 0 },
+      data: {
+        type,
+        title,
+        provider_type: 'local_file',
+      },
+    }) as unknown as Node<DataSourceNodeType>
 
   it('should return empty array for no datasource nodes', () => {
-    const nodes = [
-      createNode('n1', 'LLM Node', 'llm'),
-    ]
+    const nodes = [createNode('n1', 'LLM Node', 'llm')]
     const { result } = renderHook(() => useDatasourceOptions(nodes))
     expect(result.current).toEqual([])
   })

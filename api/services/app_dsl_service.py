@@ -39,9 +39,11 @@ from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
+from services.agent.dsl_service import AgentDslService, AgentPackage
+from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
-from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
+from services.entities.dsl_entities import CheckDependenciesResult, DslImportWarning, ImportMode, ImportStatus
 from services.errors.app import WorkflowNotFoundError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
@@ -64,6 +66,7 @@ class Import(BaseModel):
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
+    warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
 class PendingData(BaseModel):
@@ -83,8 +86,11 @@ class CheckDependenciesPendingData(BaseModel):
 
 
 class AppDslService:
+    _warnings: list[DslImportWarning]
+
     def __init__(self, session: Session):
         self._session = session
+        self._warnings = []
 
     def import_app(
         self,
@@ -102,6 +108,7 @@ class AppDslService:
         import_app_id: str | None = None,
     ) -> Import:
         """Import an app from YAML content or URL."""
+        self._warnings = []
         import_id = str(uuid.uuid4())
 
         # Validate import mode
@@ -277,12 +284,14 @@ class AppDslService:
 
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
             draft_var_srv.delete_app_workflow_variables(app_id=app.id)
+            result_status = self._status_with_warnings(status)
             return Import(
                 id=import_id,
-                status=status,
+                status=result_status,
                 app_id=app.id,
                 app_mode=app.mode,
                 imported_dsl_version=imported_version,
+                warnings=self._warnings,
             )
 
         except yaml.YAMLError as e:
@@ -304,6 +313,7 @@ class AppDslService:
         """
         Confirm an import that requires confirmation
         """
+        self._warnings = []
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
         pending_data = redis_client.get(redis_key)
 
@@ -346,11 +356,12 @@ class AppDslService:
 
             return Import(
                 id=import_id,
-                status=ImportStatus.COMPLETED,
+                status=self._status_with_warnings(ImportStatus.COMPLETED),
                 app_id=app.id,
                 app_mode=app.mode,
                 current_dsl_version=CURRENT_DSL_VERSION,
                 imported_dsl_version=data.get("version", "0.1.0"),
+                warnings=self._warnings,
             )
 
         except Exception as e:
@@ -492,16 +503,34 @@ class AppDslService:
                                 )
                             )
                         ]
-                workflow_service.sync_draft_workflow(
+                raw_agent_packages = data.get("agent_packages") or {}
+                if not isinstance(raw_agent_packages, Mapping):
+                    raise ValueError("agent_packages must be a mapping")
+                graph_for_sync = AgentDslService.graph_without_package_bindings(graph) if raw_agent_packages else graph
+                draft_workflow = workflow_service.sync_draft_workflow(
                     app_model=app,
-                    graph=workflow_data.get("graph", {}),
+                    graph=graph_for_sync,
                     features=workflow_data.get("features", {}),
                     unique_hash=unique_hash,
                     account=account,
                     environment_variables=environment_variables,
                     conversation_variables=conversation_variables,
                     session=self._session,
+                    commit=not raw_agent_packages,
+                    sync_agent_bindings=not raw_agent_packages,
                 )
+                if raw_agent_packages:
+                    _, warnings = AgentDslService(self._session).import_workflow_packages(
+                        workflow=draft_workflow,
+                        portable_graph=graph,
+                        raw_packages=raw_agent_packages,
+                        account=account,
+                    )
+                    self._warnings.extend(warnings)
+                    WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+                        session=self._session,
+                        draft_workflow=draft_workflow,
+                    )
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config
                 model_config = data.get("model_config")
@@ -517,6 +546,23 @@ class AppDslService:
 
                     self._session.add(app_model_config)
                     app_model_config_was_updated.send(app, app_model_config=app_model_config)
+            case AppMode.AGENT:
+                if app.app_model_config is not None:
+                    raise ValueError("Agent DSL import only supports creating a new Agent App")
+                agent_data = data.get("agent")
+                raw_agent_packages = data.get("agent_packages")
+                if not isinstance(agent_data, Mapping) or not isinstance(raw_agent_packages, Mapping):
+                    raise ValueError("Missing Agent package data")
+                package_ref = agent_data.get("package_ref")
+                if not isinstance(package_ref, str) or package_ref not in raw_agent_packages:
+                    raise ValueError("Agent package_ref is missing or invalid")
+                package = AgentPackage.model_validate(raw_agent_packages[package_ref])
+                imported = AgentDslService(self._session).import_agent_app_package(
+                    app=app,
+                    account=account,
+                    package=package,
+                )
+                self._warnings.extend(imported.warnings)
             case _:
                 raise ValueError("Invalid app mode")
         return app
@@ -538,7 +584,7 @@ class AppDslService:
         """
         app_mode = AppMode.value_of(app_model.mode)
 
-        export_data = {
+        export_data: dict[str, Any] = {
             "version": CURRENT_DSL_VERSION,
             "kind": "app",
             "app": {
@@ -562,6 +608,18 @@ class AppDslService:
                 workflow_id=workflow_id,
                 session=session,
             )
+        elif app_mode == AppMode.AGENT:
+            package_ref, packages = AgentDslService(session).export_agent_app(app=app_model)
+            export_data["agent"] = {"package_ref": package_ref}
+            export_data["agent_packages"] = {key: package.model_dump(mode="json") for key, package in packages.items()}
+            dependencies = AgentDslService(session).extract_package_dependencies(packages)
+            export_data["dependencies"] = [
+                jsonable_encoder(item.model_dump())
+                for item in DependenciesAnalysisService.generate_dependencies(
+                    tenant_id=app_model.tenant_id,
+                    dependencies=dependencies,
+                )
+            ]
         else:
             cls._append_model_config_export_data(export_data, app_model)
 
@@ -588,6 +646,11 @@ class AppDslService:
             raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)
+        graph, agent_packages = AgentDslService(session).export_workflow_packages(
+            workflow=workflow,
+            graph=workflow_dict.get("graph", {}),
+        )
+        workflow_dict["graph"] = graph
         # TODO: refactor: we need a better way to filter workspace related data from nodes
         for node in workflow_dict.get("graph", {}).get("nodes", []):
             node_data = node.get("data", {})
@@ -620,12 +683,22 @@ class AppDslService:
 
         export_data["workflow"] = workflow_dict
         dependencies = cls._extract_dependencies_from_workflow(workflow)
+        dependencies.extend(AgentDslService(session).extract_package_dependencies(agent_packages))
+        if agent_packages:
+            export_data["agent_packages"] = {
+                key: package.model_dump(mode="json") for key, package in agent_packages.items()
+            }
         export_data["dependencies"] = [
             jsonable_encoder(d.model_dump())
             for d in DependenciesAnalysisService.generate_dependencies(
                 tenant_id=app_model.tenant_id, dependencies=dependencies
             )
         ]
+
+    def _status_with_warnings(self, status: ImportStatus) -> ImportStatus:
+        if status == ImportStatus.COMPLETED and self._warnings:
+            return ImportStatus.COMPLETED_WITH_WARNINGS
+        return status
 
     @classmethod
     def _append_model_config_export_data(cls, export_data: dict[str, Any], app_model: App):

@@ -1,11 +1,16 @@
-import type { WorkflowCommentDetail, WorkflowCommentList } from '@/app/components/workflow/comment/types'
+import type {
+  WorkflowCommentDetail,
+  WorkflowCommentList,
+} from '@/app/components/workflow/comment/types'
 import { act, waitFor } from '@testing-library/react'
 import { createTestQueryClient, seedSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { ControlMode } from '../../types'
 import { useWorkflowComment } from '../use-workflow-comment'
 
-const mockScreenToFlowPosition = vi.hoisted(() => vi.fn(({ x, y }: { x: number, y: number }) => ({ x: x - 90, y: y - 180 })))
+const mockScreenToFlowPosition = vi.hoisted(() =>
+  vi.fn(({ x, y }: { x: number; y: number }) => ({ x: x - 90, y: y - 180 })),
+)
 const mockSetCenter = vi.hoisted(() => vi.fn())
 const mockGetNodes = vi.hoisted(() => vi.fn(() => []))
 
@@ -49,13 +54,30 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -211,12 +233,14 @@ describe('useWorkflowComment', () => {
         pendingComment: { pageX: 100, pageY: 200, elementX: 10, elementY: 20 },
         isCommentQuickAdd: true,
         mentionableUsersCache: {
-          'app-1': [{
-            id: 'user-2',
-            name: 'Bob',
-            email: 'bob@example.com',
-            avatar_url: 'bob.png',
-          }],
+          'app-1': [
+            {
+              id: 'user-2',
+              name: 'Bob',
+              email: 'bob@example.com',
+              avatar_url: 'bob.png',
+            },
+          ],
         },
       },
     })
@@ -246,7 +270,7 @@ describe('useWorkflowComment', () => {
       mention_count: 1,
       reply_count: 0,
     })
-    expect(comments[0]?.participants.map(p => p.id)).toEqual(['user-1', 'user-2'])
+    expect(comments[0]?.participants.map((p) => p.id)).toEqual(['user-1', 'user-2'])
     expect(store.getState().commentDetailCache['comment-2']).toMatchObject({
       content: 'new message',
       position_x: 10,
@@ -296,12 +320,14 @@ describe('useWorkflowComment', () => {
         pendingComment: { pageX: 100, pageY: 200, elementX: 10, elementY: 20 },
         isCommentQuickAdd: true,
         mentionableUsersCache: {
-          'app-1': [{
-            id: 'user-2',
-            name: 'Bob',
-            email: 'bob@example.com',
-            avatar_url: 'bob.png',
-          }],
+          'app-1': [
+            {
+              id: 'user-2',
+              name: 'Bob',
+              email: 'bob@example.com',
+              avatar_url: 'bob.png',
+            },
+          ],
         },
       },
     })
@@ -315,18 +341,22 @@ describe('useWorkflowComment', () => {
       id: 'comment-date-time',
       created_at: expectedCreatedAt,
       updated_at: expectedCreatedAt,
-      participants: [{
-        id: 'user-1',
-        name: 'Alice',
-        email: 'alice@example.com',
-        avatar_url: 'alice.png',
-      }],
+      participants: [
+        {
+          id: 'user-1',
+          name: 'Alice',
+          email: 'alice@example.com',
+          avatar_url: 'alice.png',
+        },
+      ],
     })
-    expect(store.getState().commentDetailCache['comment-date-time']?.mentions).toEqual([{
-      mentioned_user_id: 'missing-user',
-      mentioned_user_account: null,
-      reply_id: null,
-    }])
+    expect(store.getState().commentDetailCache['comment-date-time']?.mentions).toEqual([
+      {
+        mentioned_user_id: 'missing-user',
+        mentioned_user_account: null,
+        reply_id: null,
+      },
+    ])
   })
 
   it('rolls back optimistic position update when API update fails', async () => {
@@ -444,11 +474,7 @@ describe('useWorkflowComment', () => {
     await waitFor(() => {
       expect(store.getState().activeCommentId).toBe(commentB.id)
     })
-    expect(mockSetCenter).toHaveBeenCalledWith(
-      502,
-      80,
-      { zoom: 1, duration: 600 },
-    )
+    expect(mockSetCenter).toHaveBeenCalledWith(502, 80, { zoom: 1, duration: 600 })
 
     act(() => {
       result.current.handleCreateComment({
@@ -509,7 +535,9 @@ describe('useWorkflowComment', () => {
 
     await act(async () => {
       await result.current.handleCommentReply(commentA.id, '  new reply  ', ['user-2'])
-      await result.current.handleCommentReplyUpdate(commentA.id, 'reply-1', '  edited reply  ', ['user-2'])
+      await result.current.handleCommentReplyUpdate(commentA.id, 'reply-1', '  edited reply  ', [
+        'user-2',
+      ])
       await result.current.handleCommentReplyDelete(commentA.id, 'reply-1')
     })
 

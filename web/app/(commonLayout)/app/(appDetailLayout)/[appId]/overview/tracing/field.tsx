@@ -26,15 +26,19 @@ const Field: FC<Props> = ({
   return (
     <div className={cn(className)}>
       <div className="flex py-[7px]">
-        <div className={cn(labelClassName, 'flex h-[18px] items-center text-[13px] font-medium text-text-primary')}>
-          {label}
-          {' '}
+        <div
+          className={cn(
+            labelClassName,
+            'flex h-[18px] items-center text-[13px] font-medium text-text-primary',
+          )}
+        >
+          {label}{' '}
         </div>
         {isRequired && <span className="ml-0.5 text-xs font-semibold text-[#D92D20]">*</span>}
       </div>
       <Input
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         className="h-9"
         placeholder={placeholder}
       />

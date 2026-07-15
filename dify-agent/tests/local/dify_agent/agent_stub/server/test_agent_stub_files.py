@@ -115,6 +115,41 @@ def test_dify_api_agent_stub_file_handler_injects_execution_context_for_download
     asyncio.run(scenario())
 
 
+def test_dify_api_agent_stub_file_handler_forwards_internal_download_audience(monkeypatch) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "https://api.example.com/inner/api/download/file/request"
+        assert json.loads(request.content)["for_external"] is False
+        return httpx.Response(
+            200,
+            json={
+                "data": {
+                    "filename": "report.pdf",
+                    "mime_type": "application/pdf",
+                    "size": 123,
+                    "download_url": "http://internal-files/report.pdf",
+                }
+            },
+        )
+
+    _patch_async_client(monkeypatch, handler)
+    file_handler = DifyApiAgentStubFileRequestHandler(
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
+    )
+
+    async def scenario() -> None:
+        response = await file_handler.create_download_request(
+            principal=_principal(),
+            request=AgentStubFileDownloadRequest(
+                file=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1")),
+                for_external=False,
+            ),
+        )
+        assert response.download_url == "http://internal-files/report.pdf"
+
+    asyncio.run(scenario())
+
+
 def test_dify_api_agent_stub_file_handler_rejects_missing_user_id() -> None:
     file_handler = DifyApiAgentStubFileRequestHandler(
         inner_api_url="https://api.example.com",

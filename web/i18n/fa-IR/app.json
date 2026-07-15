@@ -147,6 +147,7 @@
   "maxActiveRequestsTip": "حداکثر تعداد درخواست‌های فعال همزمان در هر برنامه (0 برای نامحدود)",
   "mermaid.classic": "کلاسیک",
   "mermaid.handDrawn": "دست کشیده شده",
+  "mermaid.waitForCompletion": "در انتظار تکمیل کد نمودار...",
   "newApp.Cancel": "لغو",
   "newApp.Confirm": "تایید",
   "newApp.Create": "ایجاد",

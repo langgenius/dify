@@ -1,7 +1,6 @@
 import type { ChildChunkDetail } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import ChildSegmentList from '../child-segment-list'
 
 // Mock document context
@@ -15,7 +14,9 @@ vi.mock('../../context', () => ({
 // Mock segment list context
 let mockCurrChildChunk: { childChunkInfo: { id: string } } | null = null
 vi.mock('../index', () => ({
-  useSegmentListContext: (selector: (state: { currChildChunk: { childChunkInfo: { id: string } } | null }) => unknown) => {
+  useSegmentListContext: (
+    selector: (state: { currChildChunk: { childChunkInfo: { id: string } } | null }) => unknown,
+  ) => {
     return selector({ currChildChunk: mockCurrChildChunk })
   },
 }))
@@ -23,7 +24,9 @@ vi.mock('../index', () => ({
 vi.mock('../common/empty', () => ({
   default: ({ onClearFilter }: { onClearFilter: () => void }) => (
     <div data-testid="empty">
-      <button onClick={onClearFilter} data-testid="clear-filter-btn">Clear Filter</button>
+      <button onClick={onClearFilter} data-testid="clear-filter-btn">
+        Clear Filter
+      </button>
     </div>
   ),
 }))
@@ -53,17 +56,25 @@ vi.mock('../../../../formatted-text/flavours/edit-slice', () => ({
     offsetOptions: unknown
   }) => (
     <div data-testid="edit-slice" className={className}>
-      <span data-testid="slice-label" className={labelClassName}>{label}</span>
+      <span data-testid="slice-label" className={labelClassName}>
+        {label}
+      </span>
       <span data-testid="slice-text">{text}</span>
-      <button data-testid="delete-slice-btn" onClick={onDelete}>Delete</button>
-      <button data-testid="click-slice-btn" onClick={e => onClick(e)}>Click</button>
+      <button data-testid="delete-slice-btn" onClick={onDelete}>
+        Delete
+      </button>
+      <button data-testid="click-slice-btn" onClick={(e) => onClick(e)}>
+        Click
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../../../../formatted-text/formatted', () => ({
-  FormattedText: ({ children, className }: { children: React.ReactNode, className: string }) => (
-    <div data-testid="formatted-text" className={className}>{children}</div>
+  FormattedText: ({ children, className }: { children: React.ReactNode; className: string }) => (
+    <div data-testid="formatted-text" className={className}>
+      {children}
+    </div>
   ),
 }))
 
@@ -138,8 +149,7 @@ describe('ChildSegmentList', () => {
 
       // Act - click on the collapse toggle
       const toggleArea = screen.getByText(/segment\.childChunks/i).closest('div')
-      if (toggleArea)
-        fireEvent.click(toggleArea)
+      if (toggleArea) fireEvent.click(toggleArea)
 
       // Assert - child chunks should be visible
       expect(screen.getByTestId('formatted-text')).toBeInTheDocument()
@@ -219,7 +229,9 @@ describe('ChildSegmentList', () => {
     it('should call handleAddNewChildChunk when add button is clicked', () => {
       mockParentMode = 'full-doc'
       const mockHandleAddNewChildChunk = vi.fn()
-      render(<ChildSegmentList {...defaultProps} handleAddNewChildChunk={mockHandleAddNewChildChunk} />)
+      render(
+        <ChildSegmentList {...defaultProps} handleAddNewChildChunk={mockHandleAddNewChildChunk} />,
+      )
 
       fireEvent.click(screen.getByText(/operation\.add/i))
 
@@ -249,7 +261,14 @@ describe('ChildSegmentList', () => {
     it('should call onClearFilter when clear filter button is clicked', () => {
       mockParentMode = 'full-doc'
       const mockOnClearFilter = vi.fn()
-      render(<ChildSegmentList {...defaultProps} inputValue="search" childChunks={[]} onClearFilter={mockOnClearFilter} />)
+      render(
+        <ChildSegmentList
+          {...defaultProps}
+          inputValue="search"
+          childChunks={[]}
+          onClearFilter={mockOnClearFilter}
+        />,
+      )
 
       fireEvent.click(screen.getByTestId('clear-filter-btn'))
 
@@ -298,7 +317,9 @@ describe('ChildSegmentList', () => {
     })
 
     it('should not apply opacity when focused is true even if enabled is false', () => {
-      const { container } = render(<ChildSegmentList {...defaultProps} enabled={false} focused={true} />)
+      const { container } = render(
+        <ChildSegmentList {...defaultProps} enabled={false} focused={true} />,
+      )
 
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).not.toHaveClass('opacity-50')

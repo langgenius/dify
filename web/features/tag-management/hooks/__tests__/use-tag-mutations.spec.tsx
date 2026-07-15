@@ -4,13 +4,15 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { useApplyTagBindingsMutation } from '../use-tag-mutations'
 
-const {
-  bindTag,
-  listKey,
-  unbindTag,
-} = vi.hoisted(() => ({
+const { bindTag, listKey, unbindTag } = vi.hoisted(() => ({
   bindTag: vi.fn(),
-  listKey: vi.fn((options: { type: 'query', input: { query: { type: string } } }) => ['console', 'tags', 'get', 'query', options.input.query.type]),
+  listKey: vi.fn((options: { type: 'query'; input: { query: { type: string } } }) => [
+    'console',
+    'tags',
+    'get',
+    'query',
+    options.input.query.type,
+  ]),
   unbindTag: vi.fn(),
 }))
 
@@ -32,23 +34,22 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
     },
-    mutations: {
-      retry: false,
-    },
-  },
-})
+  })
 
 const renderMutationHook = <TResult,>(hook: () => TResult) => {
   const queryClient = createQueryClient()
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 
   return {

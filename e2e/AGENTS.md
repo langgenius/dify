@@ -127,6 +127,7 @@ This removes:
 - `docker/volumes/plugin_daemon`
 - `e2e/.auth`
 - `e2e/.logs`
+- `e2e/.logs-non-external`
 - `e2e/cucumber-report`
 
 Start the full middleware stack:
@@ -171,6 +172,7 @@ Artifacts and diagnostics:
 - `cucumber-report/artifacts/`: failure screenshots and HTML captures
 - `.logs/cucumber-api.log`: backend startup log
 - `.logs/cucumber-web.log`: frontend startup log
+- `.logs-non-external/`: non-external logs preserved before an external CI run
 
 Open the HTML report locally with:
 
@@ -209,9 +211,12 @@ Feature: Create dataset
 - `@fresh` — only runs in `e2e:full` mode (requires uninitialized instance)
 - `@external-model` — scenario execution can call a real model provider. Use this only for runtime requests, not for scenarios that only require an active model fixture.
 - `@external-tool` — scenario execution can call a real third-party tool provider. Use this only for runtime tool execution, not for plugin installation, discovery, or local deterministic tools.
+- `@microphone` — runs the scenario in an isolated Chromium instance backed by the checked-in fake audio fixture and grants microphone permission only to that scenario context.
 - `@skip` — excluded from all runs
 
 External runtime commands are opt-in. `pnpm -C e2e e2e:external:prepare` reads `E2E_EXTERNAL_RUNTIME_SEED_SPECS`, defaulting to `agent-v2:external-runtime`, and runs the matching seed packs before the external suite. `pnpm -C e2e e2e:external` reads `E2E_EXTERNAL_RUNTIME_TAGS`, defaulting to `(@external-model or @external-tool) and not @feature-gated and not @skip and not @preview`.
+
+The Agent v2 external runtime seed also prepares the workspace default Speech-to-Text model. `E2E_SPEECH_TO_TEXT_MODEL_PROVIDER` and `E2E_SPEECH_TO_TEXT_MODEL_NAME` select an existing model or the model configured through `E2E_MODEL_PROVIDER_CREDENTIALS_JSON`; they default to `openai` and `gpt-4o-mini-transcribe`.
 
 Some external runtime scenarios need feature-owned services in addition to a real model or tool provider. Do not overload `@external-model` or `@external-tool` to mean those services are available. For Agent v2, scenarios that require the standalone `dify-agent` run server use the feature tag `@agent-backend-runtime` plus the explicit step `the Agent v2 runtime backend is available`. Run them with `E2E_START_AGENT_BACKEND=1` to let E2E start `dify-agent` and the shellctl local sandbox required by its `dify.config`/`dify.shell` runtime layers, or set `E2E_AGENT_BACKEND_URL`/`AGENT_BACKEND_BASE_URL` when an existing server should be reused.
 

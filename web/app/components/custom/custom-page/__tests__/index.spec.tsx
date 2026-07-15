@@ -7,11 +7,7 @@ import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { contactSalesUrl, defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
-import {
-  initialLangGeniusVersionInfo,
-  initialWorkspaceInfo,
-  userProfilePlaceholder,
-} from '@/context/app-context-defaults'
+import { initialLangGeniusVersionInfo, initialWorkspaceInfo } from '@/context/app-context-defaults'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import CustomPage from '../index'
@@ -24,14 +20,15 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: {
-    branding: {
-      enabled: true,
-      workspace_logo: 'https://example.com/workspace-logo.png',
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: {
+      branding: {
+        enabled: true,
+        workspace_logo: 'https://example.com/workspace-logo.png',
+      },
     },
-  },
-})
+  })
 
 const { mockToast } = vi.hoisted(() => {
   const mockToast = Object.assign(vi.fn(), {
@@ -60,6 +57,15 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseModalContext = vi.mocked(useModalContext)
 
+const testUserProfile = {
+  id: '',
+  name: '',
+  email: '',
+  avatar: '',
+  avatar_url: '',
+  is_password_set: false,
+}
+
 const createProviderContext = ({
   enableBilling = false,
   planType = Plan.professional,
@@ -77,7 +83,7 @@ const createProviderContext = ({
 }
 
 const createAppContextValue = (): AppContextStateMockState => ({
-  userProfile: userProfilePlaceholder,
+  userProfile: testUserProfile,
   mutateUserProfile: vi.fn(),
   currentWorkspace: {
     ...initialWorkspaceInfo,
@@ -122,10 +128,12 @@ describe('CustomPage', () => {
 
     it('should show the upgrade banner and open pricing modal for sandbox billing', async () => {
       const user = userEvent.setup()
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.sandbox,
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: true,
+          planType: Plan.sandbox,
+        }),
+      )
 
       render(<CustomPage />)
 
@@ -138,10 +146,12 @@ describe('CustomPage', () => {
     })
 
     it('should show the contact link for professional workspaces', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.professional,
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: true,
+          planType: Plan.professional,
+        }),
+      )
 
       render(<CustomPage />)
 
@@ -153,10 +163,12 @@ describe('CustomPage', () => {
     })
 
     it('should show the contact link for team workspaces', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.team,
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: true,
+          planType: Plan.team,
+        }),
+      )
 
       render(<CustomPage />)
 
@@ -165,10 +177,12 @@ describe('CustomPage', () => {
     })
 
     it('should hide both billing sections when billing is disabled', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: false,
-        planType: Plan.sandbox,
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: false,
+          planType: Plan.sandbox,
+        }),
+      )
 
       render(<CustomPage />)
 

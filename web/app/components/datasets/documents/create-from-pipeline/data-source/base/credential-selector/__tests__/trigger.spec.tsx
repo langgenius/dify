@@ -11,7 +11,9 @@ describe('CredentialSelectorTrigger', () => {
   it('should render credential name when provided', () => {
     render(
       <Trigger
-        currentCredential={{ id: 'cred-1', name: 'Account A', avatar_url: '' } as DataSourceCredential}
+        currentCredential={
+          { id: 'cred-1', name: 'Account A', avatar_url: '' } as DataSourceCredential
+        }
         isOpen={false}
       />,
     )
