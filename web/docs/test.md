@@ -99,6 +99,7 @@ Mocks must preserve the public contract needed by the test. Do not replace Dify 
 ## Dify Test Setup
 
 - Tests under `web/` run in `happy-dom` through `web/vite.config.ts` and load `web/vitest.setup.ts`.
+- Tests under `packages/dify-ui/` use separate Vitest Browser Mode projects: unit specs load the package styles through `vitest.setup.ts`, while Storybook tests run stories through `@storybook/addon-vitest`.
 - New component and feature specs should generally use a sibling `__tests__/` directory. Existing colocated utility and hook specs may follow their owning module's convention. Cross-feature integration specs belong in `web/__tests__/`.
 - The shared `react-i18next` mock is loaded globally. Use `createReactI18nextMock` from `web/test/i18n-mock` only when a test needs custom translations.
 - For `nuqs` behavior, use the helpers in `web/test/nuqs-testing.tsx` and assert URL updates. Mock `nuqs` only when URL synchronization is explicitly outside the test contract.
@@ -148,12 +149,14 @@ vp test run --coverage path/to/spec-or-directory
 - [Vitest documentation]
 - [Vitest Browser Mode documentation]
 - [Vitest Browser Mode locators]
+- [Storybook Vitest addon]
 - [Testing Library guiding principles]
 - [React Testing Library documentation]
 - [Testing Library query guidance]
 - [Testing Library user-event guidance]
 
 [React Testing Library documentation]: https://testing-library.com/docs/react-testing-library/intro
+[Storybook Vitest addon]: https://storybook.js.org/docs/writing-tests/integrations/vitest-addon
 [Testing Library guiding principles]: https://testing-library.com/docs/guiding-principles
 [Testing Library query guidance]: https://testing-library.com/docs/queries/about
 [Testing Library user-event guidance]: https://testing-library.com/docs/user-event/intro
