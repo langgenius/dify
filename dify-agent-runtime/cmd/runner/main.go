@@ -94,7 +94,7 @@ func parentMode() {
 
 	// Determine if path isolation is enabled.
 	enableIsolation := true
-	if v := envGet(env, "ENABLE_PATH_ISOLATION"); v == "false" || v == "0" {
+	if v := envGet(env, landlock.EnvEnablePathIsolation); v == "false" || v == "0" {
 		enableIsolation = false
 	}
 

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/landlock"
 )
 
 const (
@@ -57,6 +59,14 @@ type Config struct {
 	EnablePathIsolation          bool
 }
 
+func isPathIsolationEnabled() bool {
+	v, ok := os.LookupEnv(landlock.EnvEnablePathIsolation)
+	if !ok {
+		return true
+	}
+	return v == "true"
+}
+
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() *Config {
 	homeDir, _ := os.UserHomeDir()
@@ -95,10 +105,7 @@ func DefaultConfig() *Config {
 
 	// Path isolation (Landlock) is enabled by default; set
 	// ENABLE_PATH_ISOLATION=false to disable.
-	cfg.EnablePathIsolation = true
-	if v := os.Getenv("ENABLE_PATH_ISOLATION"); v == "false" || v == "0" {
-		cfg.EnablePathIsolation = false
-	}
+	cfg.EnablePathIsolation = isPathIsolationEnabled()
 
 	return cfg
 }
