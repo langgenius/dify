@@ -4,6 +4,9 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConsoleBootstrapGate } from '../console-bootstrap-gate'
 
+const profileQueryKey = ['console', 'account', 'profile', 'get']
+const systemFeaturesQueryKey = ['console', 'system-features', 'get']
+
 type Deferred<T> = {
   promise: Promise<T>
   resolve: (value: T) => void
@@ -24,20 +27,18 @@ const createDeferred = <T,>(): Deferred<T> => {
 const mocks = vi.hoisted(() => ({
   profileQuery: undefined as Deferred<{ id: string }> | undefined,
   systemFeaturesQuery: undefined as Deferred<{ branding: { enabled: boolean } }> | undefined,
-  isLegacyBase401: vi.fn((error: unknown) => error instanceof Response && error.status === 401),
 }))
 
 vi.mock('@/features/account-profile/client', () => ({
-  isLegacyBase401: mocks.isLegacyBase401,
   userProfileQueryOptions: () => ({
-    queryKey: ['console', 'account', 'profile', 'get'],
+    queryKey: profileQueryKey,
     queryFn: () => mocks.profileQuery!.promise,
   }),
 }))
 
 vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({
-    queryKey: ['console', 'system-features', 'get'],
+    queryKey: systemFeaturesQueryKey,
     queryFn: () => mocks.systemFeaturesQuery!.promise,
   }),
 }))
@@ -50,21 +51,20 @@ function createQueryClient() {
   })
 }
 
-function renderGate(children: ReactNode) {
-  const queryClient = createQueryClient()
-
-  return render(
+function renderGate(children: ReactNode, queryClient = createQueryClient()) {
+  render(
     <QueryClientProvider client={queryClient}>
       <ConsoleBootstrapGate>{children}</ConsoleBootstrapGate>
     </QueryClientProvider>,
   )
+
+  return queryClient
 }
 
 describe('ConsoleBootstrapGate', () => {
   beforeEach(() => {
     mocks.profileQuery = createDeferred()
     mocks.systemFeaturesQuery = createDeferred()
-    mocks.isLegacyBase401.mockClear()
   })
 
   it('waits for profile and system features before mounting atom consumers', async () => {
@@ -84,17 +84,30 @@ describe('ConsoleBootstrapGate', () => {
     expect(await screen.findByText('Console shell')).toBeInTheDocument()
   })
 
-  it('keeps atom consumers unmounted after a profile 401', async () => {
-    renderGate(<div>Console shell</div>)
+  it('keeps atom consumers mounted when a cached profile background refetch fails', async () => {
+    const queryClient = createQueryClient()
+    queryClient.setQueryData(profileQueryKey, { id: 'user-1' }, { updatedAt: 1 })
+    queryClient.setQueryData(
+      systemFeaturesQueryKey,
+      { branding: { enabled: false } },
+      { updatedAt: 1 },
+    )
+
+    renderGate(<div>Console shell</div>, queryClient)
+
+    expect(screen.getByText('Console shell')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(queryClient.getQueryState(profileQueryKey)?.fetchStatus).toBe('fetching')
+    })
 
     await act(async () => {
-      mocks.profileQuery!.reject(new Response(null, { status: 401 }))
+      mocks.profileQuery!.reject(new Error('profile refetch failed'))
       mocks.systemFeaturesQuery!.resolve({ branding: { enabled: false } })
     })
 
     await waitFor(() => {
-      expect(mocks.isLegacyBase401).toHaveBeenCalledWith(expect.objectContaining({ status: 401 }))
+      expect(queryClient.getQueryState(profileQueryKey)?.status).toBe('error')
     })
-    expect(screen.queryByText('Console shell')).not.toBeInTheDocument()
+    expect(screen.getByText('Console shell')).toBeInTheDocument()
   })
 })
