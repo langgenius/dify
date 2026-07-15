@@ -6,7 +6,13 @@ import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vitest'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
-import { BlockEnum, EditionType, InputVarType, PromptRole, VarType } from '@/app/components/workflow/types'
+import {
+  BlockEnum,
+  EditionType,
+  InputVarType,
+  PromptRole,
+  VarType,
+} from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 import { getNodeUsedVars, toNodeAvailableVars, updateNodeVars } from '../utils'
 
@@ -103,7 +109,7 @@ describe('variable utils', () => {
           }),
         ]),
       )
-      expect(availableVars.find(item => item.nodeId === 'node-1')?.vars).not.toContainEqual({
+      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).not.toContainEqual({
         variable: 'usage',
         type: VarType.object,
       })
@@ -150,7 +156,7 @@ describe('variable utils', () => {
           }),
         ]),
       )
-      expect(availableVars.find(item => item.nodeId === 'node-1')?.vars).not.toContainEqual({
+      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).not.toContainEqual({
         variable: 'text',
         type: VarType.string,
       })

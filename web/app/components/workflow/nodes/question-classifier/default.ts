@@ -53,20 +53,42 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
   },
   checkValid(payload: QuestionClassifierNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
-    if (!errorMessages && (!payload.query_variable_selector || payload.query_variable_selector.length === 0))
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.questionClassifiers.inputVars`, { ns: 'workflow' }) })
+    if (
+      !errorMessages &&
+      (!payload.query_variable_selector || payload.query_variable_selector.length === 0)
+    )
+      errorMessages = t(($) => $[`${i18nPrefix}errorMsg.fieldRequired`], {
+        ns: 'workflow',
+        field: t(($) => $[`${i18nPrefix}nodes.questionClassifiers.inputVars`], { ns: 'workflow' }),
+      })
 
     if (!errorMessages && !payload.model.provider)
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.questionClassifiers.model`, { ns: 'workflow' }) })
+      errorMessages = t(($) => $[`${i18nPrefix}errorMsg.fieldRequired`], {
+        ns: 'workflow',
+        field: t(($) => $[`${i18nPrefix}nodes.questionClassifiers.model`], { ns: 'workflow' }),
+      })
 
     if (!errorMessages && (!payload.classes || payload.classes.length === 0))
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.questionClassifiers.class`, { ns: 'workflow' }) })
+      errorMessages = t(($) => $[`${i18nPrefix}errorMsg.fieldRequired`], {
+        ns: 'workflow',
+        field: t(($) => $[`${i18nPrefix}nodes.questionClassifiers.class`], { ns: 'workflow' }),
+      })
 
-    if (!errorMessages && (payload.classes.some(item => !item.name)))
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.questionClassifiers.topicName`, { ns: 'workflow' }) })
+    if (!errorMessages && payload.classes.some((item) => !item.name))
+      errorMessages = t(($) => $[`${i18nPrefix}errorMsg.fieldRequired`], {
+        ns: 'workflow',
+        field: t(($) => $[`${i18nPrefix}nodes.questionClassifiers.topicName`], { ns: 'workflow' }),
+      })
 
-    if (!errorMessages && payload.vision?.enabled && !payload.vision.configs?.variable_selector?.length)
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}errorMsg.fields.visionVariable`, { ns: 'workflow' }) })
+    if (
+      !errorMessages &&
+      payload.vision?.enabled &&
+      !payload.vision.configs?.variable_selector?.length
+    )
+      errorMessages = t(($) => $[`${i18nPrefix}errorMsg.fieldRequired`], {
+        ns: 'workflow',
+        field: t(($) => $[`${i18nPrefix}errorMsg.fields.visionVariable`], { ns: 'workflow' }),
+      })
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,

@@ -21,7 +21,12 @@ import {
 
 const TriggerButton = ({ label = 'Open Menu' }: { label?: string }) => (
   <DropdownMenuTrigger
-    render={<button type="button" className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover" />}
+    render={
+      <button
+        type="button"
+        className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      />
+    }
   >
     {label}
   </DropdownMenuTrigger>
@@ -34,7 +39,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound dropdown menu built on Base UI Menu. Supports items, separators, group labels, submenus, radio groups, checkbox items, destructive items, and disabled states.',
+        component:
+          'Compound dropdown menu built on Base UI Menu. Supports items, separators, group labels, submenus, radio groups, checkbox items, destructive items, and disabled states.',
       },
     },
   },
@@ -243,7 +249,11 @@ export const WithLinkItems: Story = {
         <DropdownMenuLinkItem href="https://docs.dify.ai" rel="noopener noreferrer" target="_blank">
           Dify Docs
         </DropdownMenuLinkItem>
-        <DropdownMenuLinkItem href="https://roadmap.dify.ai" rel="noopener noreferrer" target="_blank">
+        <DropdownMenuLinkItem
+          href="https://roadmap.dify.ai"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
           Product Roadmap
         </DropdownMenuLinkItem>
       </DropdownMenuContent>

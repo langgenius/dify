@@ -3,12 +3,18 @@ import type { KeyboardEvent, MouseEvent } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
 import { useRouter } from '@/next/navigation'
-import { getDatasetACLCapabilities, hasOnlyDatasetPreviewPermission, hasPermission } from '@/utils/permission'
+import {
+  getDatasetACLCapabilities,
+  hasOnlyDatasetPreviewPermission,
+  hasPermission,
+} from '@/utils/permission'
 import CornerLabels from './components/corner-labels'
 import DatasetCardFooter from './components/dataset-card-footer'
 import DatasetCardHeader from './components/dataset-card-header'
@@ -25,15 +31,11 @@ type DatasetCardProps = {
   onOpenTagManagement?: () => void
 }
 
-const DatasetCard = ({
-  dataset,
-  onSuccess,
-  onOpenTagManagement = () => {},
-}: DatasetCardProps) => {
+const DatasetCard = ({ dataset, onSuccess, onOpenTagManagement = () => {} }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const datasetCard = useDatasetCardController({ dataset, onSuccess })
   const {
@@ -53,16 +55,20 @@ const DatasetCard = ({
     return dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published
   }, [dataset.runtime_mode, dataset.is_published])
   const isPreviewOnly = hasOnlyDatasetPreviewPermission(dataset.permission_keys)
-  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
-    currentUserId,
-    resourceMaintainer: dataset.maintainer,
-    workspacePermissionKeys,
-  }), [dataset.maintainer, dataset.permission_keys, currentUserId, workspacePermissionKeys])
+  const datasetACLCapabilities = useMemo(
+    () =>
+      getDatasetACLCapabilities(dataset.permission_keys, {
+        currentUserId,
+        resourceMaintainer: dataset.maintainer,
+        workspacePermissionKeys,
+      }),
+    [dataset.maintainer, dataset.permission_keys, currentUserId, workspacePermissionKeys],
+  )
   const canManageAppTags = hasPermission(workspacePermissionKeys, 'dataset.tag.manage')
   const canBindOrUnbindTags = !isPreviewOnly && (canManageAppTags || datasetACLCapabilities.canEdit)
 
   const showPreviewOnlyAccessWarning = () => {
-    toast.warning(t('noAccessResourcePermission', { ns: 'app' }))
+    toast.warning(t(($) => $.noAccessResourcePermission, { ns: 'app' }))
   }
 
   const handleCardClick = (e: MouseEvent) => {
@@ -73,21 +79,20 @@ const DatasetCard = ({
     }
 
     if (isExternalProvider) {
-      push(datasetACLCapabilities.canRetrievalRecall
-        ? `/datasets/${dataset.id}/hitTesting`
-        : `/datasets/${dataset.id}/settings`)
-    }
-    else if (isPipelineUnpublished) {
+      push(
+        datasetACLCapabilities.canRetrievalRecall
+          ? `/datasets/${dataset.id}/hitTesting`
+          : `/datasets/${dataset.id}/settings`,
+      )
+    } else if (isPipelineUnpublished) {
       push(`/datasets/${dataset.id}/pipeline`)
-    }
-    else {
+    } else {
       push(`/datasets/${dataset.id}/documents`)
     }
   }
 
   const handlePreviewOnlyCardKeyDown = (e: KeyboardEvent<HTMLElement>) => {
-    if (!isPreviewOnly || (e.key !== 'Enter' && e.key !== ' '))
-      return
+    if (!isPreviewOnly || (e.key !== 'Enter' && e.key !== ' ')) return
 
     e.preventDefault()
     showPreviewOnlyAccessWarning()

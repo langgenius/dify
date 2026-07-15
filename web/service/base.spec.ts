@@ -1,7 +1,7 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-// eslint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports
 import { del, get, handleStream, patch, post, put, sseGet, ssePost } from './base'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
@@ -27,7 +27,8 @@ describe('handleStream', () => {
       const onCompleted = vi.fn()
 
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode('data: null\n'),
@@ -47,7 +48,7 @@ describe('handleStream', () => {
 
       handleStream(mockResponse, onData, onCompleted)
 
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
       expect(onData).toHaveBeenCalledWith('', true, {
         conversationId: undefined,
@@ -63,7 +64,8 @@ describe('handleStream', () => {
       const onCompleted = vi.fn()
 
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode('data: "string"\n'),
@@ -83,7 +85,7 @@ describe('handleStream', () => {
 
       handleStream(mockResponse, onData, onCompleted)
 
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
       expect(onData).toHaveBeenCalledWith('', true, {
         conversationId: undefined,
@@ -107,7 +109,8 @@ describe('handleStream', () => {
       }
 
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode(`data: ${JSON.stringify(validMessage)}\n`),
@@ -127,9 +130,10 @@ describe('handleStream', () => {
 
       handleStream(mockResponse, onData, onCompleted)
 
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
       expect(onData).toHaveBeenCalledWith('Hello world', true, {
+        event: 'message',
         conversationId: 'conv-123',
         taskId: 'task-456',
         messageId: 'msg-789',
@@ -148,7 +152,8 @@ describe('handleStream', () => {
       }
 
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode(`data: ${JSON.stringify(errorMessage)}\n`),
@@ -168,7 +173,7 @@ describe('handleStream', () => {
 
       handleStream(mockResponse, onData, onCompleted)
 
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
       expect(onData).toHaveBeenCalledWith('', false, {
         conversationId: undefined,
@@ -184,7 +189,8 @@ describe('handleStream', () => {
       const onCompleted = vi.fn()
 
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode('data: {invalid json}\n'),
@@ -204,7 +210,7 @@ describe('handleStream', () => {
 
       handleStream(mockResponse, onData, onCompleted)
 
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
       expect(onData).toHaveBeenCalled()
       expect(onCompleted).toHaveBeenCalled()
@@ -222,7 +228,8 @@ describe('handleStream', () => {
       }
 
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode(`data: ${JSON.stringify(reasoningEvent)}\n`),
@@ -250,7 +257,7 @@ describe('handleStream', () => {
         onReasoning,
       )
 
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
       expect(onReasoning).toHaveBeenCalledWith(reasoningEvent)
       expect(onData).not.toHaveBeenCalled()
@@ -305,13 +312,17 @@ describe('ssePost and sseGet', () => {
     const onError = vi.fn()
     vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new TypeError('Network failed'))
 
-    await ssePost('/chat-messages', {
-      body: {
-        query: 'hello',
+    await ssePost(
+      '/chat-messages',
+      {
+        body: {
+          query: 'hello',
+        },
       },
-    }, {
-      onError,
-    })
+      {
+        onError,
+      },
+    )
 
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith('TypeError: Network failed')
@@ -324,13 +335,17 @@ describe('ssePost and sseGet', () => {
     refreshAccessTokenOrReLoginMock.mockRejectedValueOnce(new Error('refresh failed'))
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 401 }))
 
-    await ssePost('/chat-messages', {
-      body: {
-        query: 'hello',
+    await ssePost(
+      '/chat-messages',
+      {
+        body: {
+          query: 'hello',
+        },
       },
-    }, {
-      onError,
-    })
+      {
+        onError,
+      },
+    )
 
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith('Error: refresh failed')
@@ -342,9 +357,13 @@ describe('ssePost and sseGet', () => {
     refreshAccessTokenOrReLoginMock.mockRejectedValueOnce(new Error('resume refresh failed'))
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 401 }))
 
-    await sseGet('/workflow/workflow-run-1/events', {}, {
-      onError,
-    })
+    await sseGet(
+      '/workflow/workflow-run-1/events',
+      {},
+      {
+        onError,
+      },
+    )
 
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith('Error: resume refresh failed')
@@ -367,14 +386,18 @@ describe('ssePost and sseGet', () => {
 
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(response)
 
-    await ssePost('/chat-messages', {
-      body: {
-        query: 'hello',
+    await ssePost(
+      '/chat-messages',
+      {
+        body: {
+          query: 'hello',
+        },
       },
-    }, {
-      onError,
-      onCompleted,
-    })
+      {
+        onError,
+        onCompleted,
+      },
+    )
 
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith('Error: stream lost', 'stream_read_error')

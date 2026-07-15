@@ -8,10 +8,18 @@ export const isOutput = (valueSelector: string[]) => {
 
 export const getHumanInputFormDependencySelectors = (inputs: FormInputItem[]): ValueSelector[] => {
   return inputs.flatMap((input) => {
-    if (isParagraphFormInput(input) && input.default.type === 'variable' && input.default.selector.length > 0)
+    if (
+      isParagraphFormInput(input) &&
+      input.default.type === 'variable' &&
+      input.default.selector.length > 0
+    )
       return [input.default.selector]
 
-    if (isSelectFormInput(input) && input.option_source.type === 'variable' && input.option_source.selector.length > 0)
+    if (
+      isSelectFormInput(input) &&
+      input.option_source.type === 'variable' &&
+      input.option_source.selector.length > 0
+    )
       return [input.option_source.selector]
 
     return []

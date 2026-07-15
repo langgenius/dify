@@ -27,54 +27,53 @@ const LIMIT_DEFAULT: Limit = {
   size: LIMIT_SIZE_DEFAULT,
 }
 
-const LimitConfig: FC<Props> = ({
-  className,
-  readonly,
-  config = LIMIT_DEFAULT,
-  onChange,
-}) => {
+const LimitConfig: FC<Props> = ({ className, readonly, config = LIMIT_DEFAULT, onChange }) => {
   const { t } = useTranslation()
   const payload = config
 
-  const handleLimitEnabledChange = useCallback((enabled: boolean) => {
-    onChange({
-      ...config,
-      enabled,
-    })
-  }, [config, onChange])
+  const handleLimitEnabledChange = useCallback(
+    (enabled: boolean) => {
+      onChange({
+        ...config,
+        enabled,
+      })
+    },
+    [config, onChange],
+  )
 
-  const handleLimitSizeChange = useCallback((size: number | string) => {
-    onChange({
-      ...config,
-      size: Number.parseInt(size as string),
-    })
-  }, [onChange, config])
+  const handleLimitSizeChange = useCallback(
+    (size: number | string) => {
+      onChange({
+        ...config,
+        size: Number.parseInt(size as string),
+      })
+    },
+    [onChange, config],
+  )
 
   return (
     <div className={cn(className)}>
       <Field
-        title={t(`${i18nPrefix}.limit`, { ns: 'workflow' })}
-        operations={(
+        title={t(($) => $[`${i18nPrefix}.limit`], { ns: 'workflow' })}
+        operations={
           <Switch
             checked={payload.enabled}
             onCheckedChange={handleLimitEnabledChange}
             size="md"
             disabled={readonly}
           />
-        )}
+        }
       >
-        {payload?.enabled
-          ? (
-              <InputNumberWithSlider
-                label={t(`${i18nPrefix}.limit`, { ns: 'workflow' })}
-                value={payload?.size || LIMIT_SIZE_DEFAULT}
-                min={LIMIT_SIZE_MIN}
-                max={LIMIT_SIZE_MAX}
-                onChange={handleLimitSizeChange}
-                readonly={readonly || !payload?.enabled}
-              />
-            )
-          : null}
+        {payload?.enabled ? (
+          <InputNumberWithSlider
+            label={t(($) => $[`${i18nPrefix}.limit`], { ns: 'workflow' })}
+            value={payload?.size || LIMIT_SIZE_DEFAULT}
+            min={LIMIT_SIZE_MIN}
+            max={LIMIT_SIZE_MAX}
+            onChange={handleLimitSizeChange}
+            readonly={readonly || !payload?.enabled}
+          />
+        ) : null}
       </Field>
     </div>
   )

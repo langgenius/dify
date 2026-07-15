@@ -2,22 +2,14 @@ import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiLink,
-  RiUploadCloud2Line,
-} from '@remixicon/react'
-import {
-  useCallback,
-} from 'react'
+import { RiLink, RiUploadCloud2Line } from '@remixicon/react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TransferMethod } from '@/types/app'
 import FileFromLinkOrLocal from '../file-from-link-or-local'
 import FileInput from '../file-input'
 import { useFile } from '../hooks'
-import {
-  FileContextProvider,
-  useStore,
-} from '../store'
+import { FileContextProvider, useStore } from '../store'
 import FileItem from './file-item'
 
 type Option = {
@@ -29,93 +21,95 @@ type FileUploaderInAttachmentProps = {
   isDisabled?: boolean
   fileConfig: FileUpload
 }
-const FileUploaderInAttachment = ({
-  isDisabled,
-  fileConfig,
-}: FileUploaderInAttachmentProps) => {
+const FileUploaderInAttachment = ({ isDisabled, fileConfig }: FileUploaderInAttachmentProps) => {
   const { t } = useTranslation()
-  const files = useStore(s => s.files)
-  const {
-    handleRemoveFile,
-    handleReUploadFile,
-  } = useFile(fileConfig)
+  const files = useStore((s) => s.files)
+  const { handleRemoveFile, handleReUploadFile } = useFile(fileConfig)
   const options = [
     {
       value: TransferMethod.local_file,
-      label: t('fileUploader.uploadFromComputer', { ns: 'common' }),
+      label: t(($) => $['fileUploader.uploadFromComputer'], { ns: 'common' }),
       icon: <RiUploadCloud2Line className="size-4" />,
     },
     {
       value: TransferMethod.remote_url,
-      label: t('fileUploader.pasteFileLink', { ns: 'common' }),
+      label: t(($) => $['fileUploader.pasteFileLink'], { ns: 'common' }),
       icon: <RiLink className="size-4" />,
     },
   ]
 
-  const renderButton = useCallback((option: Option, open?: boolean) => {
-    return (
-      <Button
-        variant="tertiary"
-        className={cn('relative w-full min-w-0', open && 'bg-components-button-tertiary-bg-hover')}
-        disabled={!!(fileConfig.number_limits && files.length >= fileConfig.number_limits)}
-      >
-        <span className="shrink-0">{option.icon}</span>
-        <span className="ml-1 min-w-0 truncate">{option.label}</span>
-        {
-          option.value === TransferMethod.local_file && (
-            <FileInput fileConfig={fileConfig} />
-          )
-        }
-      </Button>
-    )
-  }, [fileConfig, files.length])
-  const renderTrigger = useCallback((option: Option) => {
-    return (open: boolean) => renderButton(option, open)
-  }, [renderButton])
-  const renderOption = useCallback((option: Option) => {
-    if (option.value === TransferMethod.local_file && fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.local_file)) {
+  const renderButton = useCallback(
+    (option: Option, open?: boolean) => {
       return (
-        <div key={option.value} className="min-w-0 flex-1">
-          {renderButton(option)}
-        </div>
+        <Button
+          variant="tertiary"
+          className={cn(
+            'relative w-full min-w-0',
+            open && 'bg-components-button-tertiary-bg-hover',
+          )}
+          disabled={!!(fileConfig.number_limits && files.length >= fileConfig.number_limits)}
+        >
+          <span className="shrink-0">{option.icon}</span>
+          <span className="ml-1 min-w-0 truncate">{option.label}</span>
+          {option.value === TransferMethod.local_file && <FileInput fileConfig={fileConfig} />}
+        </Button>
       )
-    }
+    },
+    [fileConfig, files.length],
+  )
+  const renderTrigger = useCallback(
+    (option: Option) => {
+      return (open: boolean) => renderButton(option, open)
+    },
+    [renderButton],
+  )
+  const renderOption = useCallback(
+    (option: Option) => {
+      if (
+        option.value === TransferMethod.local_file &&
+        fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.local_file)
+      ) {
+        return (
+          <div key={option.value} className="min-w-0 flex-1">
+            {renderButton(option)}
+          </div>
+        )
+      }
 
-    if (option.value === TransferMethod.remote_url && fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.remote_url)) {
-      return (
-        <div key={option.value} className="min-w-0 flex-1">
-          <FileFromLinkOrLocal
-            showFromLocal={false}
-            trigger={renderTrigger(option)}
-            fileConfig={fileConfig}
-          />
-        </div>
-      )
-    }
-  }, [renderButton, renderTrigger, fileConfig])
+      if (
+        option.value === TransferMethod.remote_url &&
+        fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.remote_url)
+      ) {
+        return (
+          <div key={option.value} className="min-w-0 flex-1">
+            <FileFromLinkOrLocal
+              showFromLocal={false}
+              trigger={renderTrigger(option)}
+              fileConfig={fileConfig}
+            />
+          </div>
+        )
+      }
+    },
+    [renderButton, renderTrigger, fileConfig],
+  )
 
   return (
     <div>
-      {!isDisabled && (
-        <div className="flex items-center gap-1">
-          {options.map(renderOption)}
-        </div>
-      )}
+      {!isDisabled && <div className="flex items-center gap-1">{options.map(renderOption)}</div>}
       <div className="mt-1 space-y-1">
-        {
-          files.map(file => (
-            <FileItem
-              key={file.id}
-              file={file}
-              showDeleteAction={!isDisabled}
-              showDownloadAction={false}
-              onRemove={() => handleRemoveFile(file.id)}
-              onReUpload={() => handleReUploadFile(file.id)}
-              canPreview={fileConfig.preview_config?.file_type_list?.includes(file.type)}
-              previewMode={fileConfig.preview_config?.mode}
-            />
-          ))
-        }
+        {files.map((file) => (
+          <FileItem
+            key={file.id}
+            file={file}
+            showDeleteAction={!isDisabled}
+            showDownloadAction={false}
+            onRemove={() => handleRemoveFile(file.id)}
+            onReUpload={() => handleReUploadFile(file.id)}
+            canPreview={fileConfig.preview_config?.file_type_list?.includes(file.type)}
+            previewMode={fileConfig.preview_config?.mode}
+          />
+        ))}
       </div>
     </div>
   )
@@ -134,10 +128,7 @@ const FileUploaderInAttachmentWrapper = ({
   isDisabled,
 }: FileUploaderInAttachmentWrapperProps) => {
   return (
-    <FileContextProvider
-      value={value}
-      onChange={onChange}
-    >
+    <FileContextProvider value={value} onChange={onChange}>
       <FileUploaderInAttachment isDisabled={isDisabled} fileConfig={fileConfig} />
     </FileContextProvider>
   )

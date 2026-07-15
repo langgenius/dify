@@ -43,7 +43,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
             tenant = session.scalar(select(Tenant).where(Tenant.id == dataset.tenant_id).limit(1))
             if not tenant:
                 raise ValueError("Tenant not found")
-            user.current_tenant = tenant
+            user.set_current_tenant_with_session(tenant, session=session)
 
             for document_id in document_ids:
                 retry_indexing_cache_key = f"document_{document_id}_is_retried"
@@ -88,31 +88,46 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                     if segments:
                         index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
                         # delete from vector index
-                        index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
+                        index_processor.clean(
+                            dataset,
+                            index_node_ids,
+                            with_keywords=True,
+                            delete_child_chunks=True,
+                            session=session,
+                        )
 
                     segment_ids = [segment.id for segment in segments]
-                    segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
-                    session.execute(segment_delete_stmt)
+                    if segment_ids:
+                        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+                        session.execute(segment_delete_stmt)
                     session.commit()
 
                     document.indexing_status = IndexingStatus.PARSING
                     document.processing_started_at = naive_utc_now()
                     session.add(document)
+                    # The runner performs slow extraction/indexing in a separate transaction phase.
                     session.commit()
 
                     if dataset.runtime_mode == "rag_pipeline":
-                        rag_pipeline_service = RagPipelineService()
-                        rag_pipeline_service.retry_error_document(dataset, document, user)
+                        with session_factory.create_session() as rag_session:
+                            rag_pipeline_service = RagPipelineService(rag_session)
+                            rag_pipeline_service.retry_error_document(dataset, document, user)
                     else:
                         indexing_runner = IndexingRunner()
-                        indexing_runner.run([document])
+                        indexing_runner.run([document], session)
+                    session.commit()
                     redis_client.delete(retry_indexing_cache_key)
                 except Exception as ex:
-                    document.indexing_status = IndexingStatus.ERROR
-                    document.error = str(ex)
-                    document.stopped_at = naive_utc_now()
-                    session.add(document)
-                    session.commit()
+                    session.rollback()
+                    document = session.scalar(
+                        select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+                    )
+                    if document:
+                        document.indexing_status = IndexingStatus.ERROR
+                        document.error = str(ex)
+                        document.stopped_at = naive_utc_now()
+                        session.add(document)
+                        session.commit()
                     logger.info(click.style(str(ex), fg="yellow"))
                     redis_client.delete(retry_indexing_cache_key)
                     logger.exception("retry_document_indexing_task failed, document_id: %s", document_id)

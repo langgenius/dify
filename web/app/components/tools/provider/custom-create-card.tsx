@@ -1,6 +1,5 @@
 'use client'
 import type { CustomCollectionBackend } from '../types'
-import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
@@ -21,11 +20,10 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
-    if (!canManageTools)
-      return
+    if (!canManageTools) return
 
     await createCustomCollection(data)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
     onRefreshData()
   }
@@ -40,7 +38,7 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
 
 export const NewCustomToolButton = ({ onRefreshData }: Props) => {
   const { t } = useTranslation()
-  const addSwaggerAPIAsToolLabel = t('addSwaggerAPIAsTool', { ns: 'tools' })
+  const addSwaggerAPIAsToolLabel = t(($) => $.addSwaggerAPIAsTool, { ns: 'tools' })
   const {
     canManageTools,
     doCreateCustomToolCollection,
@@ -48,8 +46,7 @@ export const NewCustomToolButton = ({ onRefreshData }: Props) => {
     setIsShowEditCustomCollectionModal,
   } = useCustomToolCreateAction({ onRefreshData })
 
-  if (!canManageTools)
-    return null
+  if (!canManageTools) return null
 
   return (
     <>
@@ -89,9 +86,9 @@ const Contribute = ({ onRefreshData }: Props) => {
       {canManageTools && (
         <CreateEntryCard
           className="min-w-0"
-          title={t('createSwaggerAPIAsTool', { ns: 'tools' })}
-          linkText={t('swaggerAPIAsToolTip', { ns: 'tools' })}
-          linkUrl={`${docLink('/use-dify/workspace/tools' as DocPathWithoutLang)}#custom-tool`}
+          title={t(($) => $.createSwaggerAPIAsTool, { ns: 'tools' })}
+          linkText={t(($) => $.swaggerAPIAsToolTip, { ns: 'tools' })}
+          linkUrl={docLink('/use-dify/workspace/tools#swagger-api')}
           onCreate={() => setIsShowEditCustomCollectionModal(true)}
         />
       )}

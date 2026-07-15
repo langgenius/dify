@@ -4,7 +4,9 @@ import process from 'node:process'
 import ts from 'typescript'
 
 const SUPPORTED_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts'])
-export const SUPPORTED_DIAGNOSTIC_CODES = new Set([2322, 2339, 2345, 2488, 2532, 2538, 2604, 2722, 2769, 2786, 7006, 18047, 18048])
+export const SUPPORTED_DIAGNOSTIC_CODES = new Set([
+  2322, 2339, 2345, 2488, 2532, 2538, 2604, 2722, 2769, 2786, 7006, 18047, 18048,
+])
 const DEFAULT_MAX_ITERATIONS = 10
 const ACCESS_DIAGNOSTIC_CODES = new Set([2339, 2532, 18047, 18048])
 const ASSIGNABILITY_DIAGNOSTIC_CODES = new Set([2322, 2345, 2769])
@@ -26,10 +28,20 @@ type TextEdit = {
   start: number
 }
 
-type EditTarget
-  = { expression: ts.Expression, kind: 'expression', sourceFile: ts.SourceFile }
-    | { end: number, kind: 'direct-edit', replacement: string, sourceFile: ts.SourceFile, start: number }
-    | { kind: 'shorthand-property', property: ts.ShorthandPropertyAssignment, sourceFile: ts.SourceFile }
+type EditTarget =
+  | { expression: ts.Expression; kind: 'expression'; sourceFile: ts.SourceFile }
+  | {
+      end: number
+      kind: 'direct-edit'
+      replacement: string
+      sourceFile: ts.SourceFile
+      start: number
+    }
+  | {
+      kind: 'shorthand-property'
+      property: ts.ShorthandPropertyAssignment
+      sourceFile: ts.SourceFile
+    }
 
 export function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
@@ -42,11 +54,9 @@ export function parseArgs(argv: string[]): CliOptions {
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
-    if (!arg)
-      continue
+    if (!arg) continue
 
-    if (arg === '--')
-      continue
+    if (arg === '--') continue
 
     if (arg === '--write') {
       options.write = true
@@ -60,8 +70,7 @@ export function parseArgs(argv: string[]): CliOptions {
 
     if (arg === '--project') {
       const value = argv[i + 1]
-      if (!value)
-        throw new Error('Missing value for --project')
+      if (!value) throw new Error('Missing value for --project')
 
       options.project = value
       i += 1
@@ -70,8 +79,7 @@ export function parseArgs(argv: string[]): CliOptions {
 
     if (arg === '--max-iterations') {
       const value = argv[i + 1]
-      if (!value)
-        throw new Error('Missing value for --max-iterations')
+      if (!value) throw new Error('Missing value for --max-iterations')
 
       const parsed = Number(value)
       if (!Number.isInteger(parsed) || parsed <= 0)
@@ -84,16 +92,14 @@ export function parseArgs(argv: string[]): CliOptions {
 
     if (arg === '--files') {
       const value = argv[i + 1]
-      if (!value)
-        throw new Error('Missing value for --files')
+      if (!value) throw new Error('Missing value for --files')
 
       options.files.push(...splitFilesArgument(value))
       i += 1
       continue
     }
 
-    if (arg.startsWith('--'))
-      throw new Error(`Unknown option: ${arg}`)
+    if (arg.startsWith('--')) throw new Error(`Unknown option: ${arg}`)
 
     options.files.push(...splitFilesArgument(arg))
   }
@@ -104,18 +110,16 @@ export function parseArgs(argv: string[]): CliOptions {
 function splitFilesArgument(value: string): string[] {
   return value
     .split(',')
-    .map(item => item.trim())
+    .map((item) => item.trim())
     .filter(Boolean)
 }
 
 function parseTsConfig(projectPath: string): ts.ParsedCommandLine {
   const cached = parsedConfigCache.get(projectPath)
-  if (cached)
-    return cached
+  if (cached) return cached
 
   const configFile = ts.readConfigFile(projectPath, ts.sys.readFile)
-  if (configFile.error)
-    throw new Error(formatDiagnostic(configFile.error))
+  if (configFile.error) throw new Error(formatDiagnostic(configFile.error))
 
   const configDirectory = path.dirname(projectPath)
   const parsedConfig = ts.parseJsonConfigFileContent(
@@ -144,8 +148,7 @@ function createMigrationProgram(
 
   compilerHost.getSourceFile = (fileName, languageVersion, onError, shouldCreateNewSourceFile) => {
     const text = fileTexts.get(fileName)
-    if (text !== undefined)
-      return ts.createSourceFile(fileName, text, languageVersion, true)
+    if (text !== undefined) return ts.createSourceFile(fileName, text, languageVersion, true)
 
     return originalGetSourceFile(fileName, languageVersion, onError, shouldCreateNewSourceFile)
   }
@@ -161,11 +164,9 @@ function createMigrationProgram(
 
 function isTargetFile(fileName: string): boolean {
   const extension = path.extname(fileName)
-  if (!SUPPORTED_EXTENSIONS.has(extension))
-    return false
+  if (!SUPPORTED_EXTENSIONS.has(extension)) return false
 
-  if (fileName.endsWith('.d.ts'))
-    return false
+  if (fileName.endsWith('.d.ts')) return false
 
   return !fileName.includes(`${path.sep}.next${path.sep}`)
 }
@@ -180,14 +181,16 @@ function isDeclarationSupportFile(fileName: string): boolean {
 
 function isSetupSupportFile(fileName: string): boolean {
   const baseName = path.basename(fileName)
-  return baseName === 'vitest.setup.ts'
-    || baseName === 'vitest.setup.tsx'
-    || baseName === 'jest.setup.ts'
-    || baseName === 'jest.setup.tsx'
-    || baseName === 'setupTests.ts'
-    || baseName === 'setupTests.tsx'
-    || baseName === 'test.setup.ts'
-    || baseName === 'test.setup.tsx'
+  return (
+    baseName === 'vitest.setup.ts' ||
+    baseName === 'vitest.setup.tsx' ||
+    baseName === 'jest.setup.ts' ||
+    baseName === 'jest.setup.tsx' ||
+    baseName === 'setupTests.ts' ||
+    baseName === 'setupTests.tsx' ||
+    baseName === 'test.setup.ts' ||
+    baseName === 'test.setup.tsx'
+  )
 }
 
 function getMigrationRootNames(
@@ -197,32 +200,31 @@ function getMigrationRootNames(
   const rootNames = new Set(targetFiles)
 
   for (const fileName of parsedConfig.fileNames.map(normalizeFileName)) {
-    if (isDeclarationSupportFile(fileName) || isSetupSupportFile(fileName))
-      rootNames.add(fileName)
+    if (isDeclarationSupportFile(fileName) || isSetupSupportFile(fileName)) rootNames.add(fileName)
   }
 
   return Array.from(rootNames)
 }
 
 function createFileMatcher(filePatterns: string[]): (fileName: string) => boolean {
-  if (filePatterns.length === 0)
-    return () => true
+  if (filePatterns.length === 0) return () => true
 
-  const patterns = filePatterns.map(pattern => ({
+  const patterns = filePatterns.map((pattern) => ({
     absolute: normalizeFileName(pattern),
     raw: pattern.split(path.sep).join('/'),
   }))
   return (fileName: string) => {
     const normalized = normalizeFileName(fileName)
     const unixStyle = normalized.split(path.sep).join('/')
-    return patterns.some(pattern => normalized === pattern.absolute || unixStyle.endsWith(pattern.raw))
+    return patterns.some(
+      (pattern) => normalized === pattern.absolute || unixStyle.endsWith(pattern.raw),
+    )
   }
 }
 
 function formatDiagnostic(diagnostic: ts.Diagnostic): string {
   const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
-  if (!diagnostic.file || diagnostic.start === undefined)
-    return message
+  if (!diagnostic.file || diagnostic.start === undefined) return message
 
   const position = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start)
   return `${diagnostic.file.fileName}:${position.line + 1}:${position.character + 1} TS${diagnostic.code}: ${message}`
@@ -230,17 +232,14 @@ function formatDiagnostic(diagnostic: ts.Diagnostic): string {
 
 function ensureTrailingNonNullAssertion(expression: string): string {
   const trimmedExpression = expression.trimEnd()
-  return trimmedExpression.endsWith('!')
-    ? trimmedExpression
-    : `${trimmedExpression}!`
+  return trimmedExpression.endsWith('!') ? trimmedExpression : `${trimmedExpression}!`
 }
 
 function hasOptionalChainDescendant(node: ts.Node): boolean {
   let found = false
 
   const visit = (current: ts.Node) => {
-    if (found)
-      return
+    if (found) return
 
     if (ts.isOptionalChain(current)) {
       found = true
@@ -255,19 +254,27 @@ function hasOptionalChainDescendant(node: ts.Node): boolean {
 }
 
 function shouldPrintInlineNonNullAssertion(expression: ts.Expression): boolean {
-  return ts.isOptionalChain(expression)
-    || (ts.isParenthesizedExpression(expression) && hasOptionalChainDescendant(expression.expression))
+  return (
+    ts.isOptionalChain(expression) ||
+    (ts.isParenthesizedExpression(expression) && hasOptionalChainDescendant(expression.expression))
+  )
 }
 
 function normalizeOptionalChainNonNullContinuations(text: string): string {
-  const sourceFile = ts.createSourceFile('normalize.tsx', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const sourceFile = ts.createSourceFile(
+    'normalize.tsx',
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  )
   const edits: TextEdit[] = []
 
   const visit = (node: ts.Node) => {
     if (
-      ts.isNonNullExpression(node)
-      && ts.isParenthesizedExpression(node.expression)
-      && hasOptionalChainDescendant(node.expression.expression)
+      ts.isNonNullExpression(node) &&
+      ts.isParenthesizedExpression(node.expression) &&
+      hasOptionalChainDescendant(node.expression.expression)
     ) {
       edits.push({
         end: node.getEnd(),
@@ -282,8 +289,7 @@ function normalizeOptionalChainNonNullContinuations(text: string): string {
 
   visit(sourceFile)
 
-  if (edits.length === 0)
-    return text
+  if (edits.length === 0) return text
 
   return applyEdits(text, edits).text
 }
@@ -293,27 +299,27 @@ function collapseRepeatedInlineComments(text: string): string {
     .split('\n')
     .map((line) => {
       const commentIndex = line.indexOf('//')
-      if (commentIndex < 0)
-        return line
+      if (commentIndex < 0) return line
 
       const prefix = line.slice(0, commentIndex).trimEnd()
       const comment = line.slice(commentIndex + 2).trim()
       const segments = comment
         .split(/\s+\/\/\s+/)
-        .map(item => item.trim())
+        .map((item) => item.trim())
         .filter(Boolean)
 
-      if (segments.length < 2)
-        return line
+      if (segments.length < 2) return line
 
       const lastSegment = segments[segments.length - 1]!
       const stableSegments = segments.slice(0, -1)
-      const repeatedSameComment = stableSegments.length > 0
-        && stableSegments.every(segment => segment === segments[0])
-        && (lastSegment === segments[0] || segments[0]!.startsWith(lastSegment) || lastSegment.startsWith(segments[0]!))
+      const repeatedSameComment =
+        stableSegments.length > 0 &&
+        stableSegments.every((segment) => segment === segments[0]) &&
+        (lastSegment === segments[0] ||
+          segments[0]!.startsWith(lastSegment) ||
+          lastSegment.startsWith(segments[0]!))
 
-      if (!repeatedSameComment)
-        return line.replace(/!{2,}$/g, '!')
+      if (!repeatedSameComment) return line.replace(/!{2,}$/g, '!')
 
       const normalizedComment = segments[0]!.replace(/!{2,}$/g, '!')
       return prefix ? `${prefix} // ${normalizedComment}` : `// ${normalizedComment}`
@@ -330,18 +336,22 @@ export function normalizeMalformedAssertions(text: string): string {
     .replace(/\b([A-Z_$][\w$]*)!!,/gi, '$1: $1!,')
     .replace(/\b([A-Z_$][\w$]*)!!:/gi, '$1:')
     .replace(/([,{]\s*)([A-Z_$][\w$]*)!:/gi, '$1$2:')
-    .replace(/\b(const|let|var)\s+\{([^=\n]+)\}\s*=\s*([^\n;]+)/g, (fullMatch, keyword: string, bindings: string, expression: string) => {
-      if (!bindings.includes('!'))
-        return fullMatch
+    .replace(
+      /\b(const|let|var)\s+\{([^=\n]+)\}\s*=\s*([^\n;]+)/g,
+      (fullMatch, keyword: string, bindings: string, expression: string) => {
+        if (!bindings.includes('!')) return fullMatch
 
-      const normalizedBindings = bindings.replace(/!([,\s}:])/g, '$1')
-      return `${keyword} {${normalizedBindings}} = ${ensureTrailingNonNullAssertion(expression)}`
-    })
+        const normalizedBindings = bindings.replace(/!([,\s}:])/g, '$1')
+        return `${keyword} {${normalizedBindings}} = ${ensureTrailingNonNullAssertion(expression)}`
+      },
+    )
 
   return collapseRepeatedInlineComments(normalizeOptionalChainNonNullContinuations(normalizedText))
 }
 
-function isExpressionTarget(target: EditTarget): target is Extract<EditTarget, { kind: 'expression' }> {
+function isExpressionTarget(
+  target: EditTarget,
+): target is Extract<EditTarget, { kind: 'expression' }> {
   return target.kind === 'expression'
 }
 
@@ -403,14 +413,11 @@ function createArrayLiteralIterableFallbackTarget(
   const edits: TextEdit[] = []
 
   for (const element of arrayLiteral.elements) {
-    if (!ts.isSpreadElement(element))
-      continue
+    if (!ts.isSpreadElement(element)) continue
 
-    if (isAlreadyNonNull(element.expression))
-      continue
+    if (isAlreadyNonNull(element.expression)) continue
 
-    if (!typeIncludesUndefined(checker.getTypeAtLocation(element.expression)))
-      continue
+    if (!typeIncludesUndefined(checker.getTypeAtLocation(element.expression))) continue
 
     edits.push({
       end: element.expression.getEnd() - start,
@@ -419,15 +426,9 @@ function createArrayLiteralIterableFallbackTarget(
     })
   }
 
-  if (edits.length === 0)
-    return undefined
+  if (edits.length === 0) return undefined
 
-  return createDirectEditTarget(
-    sourceFile,
-    start,
-    end,
-    applyEdits(originalText, edits).text,
-  )
+  return createDirectEditTarget(sourceFile, start, end, applyEdits(originalText, edits).text)
 }
 
 function getTokenAtPosition(sourceFile: ts.SourceFile, position: number): ts.Node {
@@ -436,12 +437,10 @@ function getTokenAtPosition(sourceFile: ts.SourceFile, position: number): ts.Nod
   while (true) {
     let next: ts.Node | undefined
     current.forEachChild((child) => {
-      if (!next && position >= child.getFullStart() && position < child.getEnd())
-        next = child
+      if (!next && position >= child.getFullStart() && position < child.getEnd()) next = child
     })
 
-    if (!next)
-      return current
+    if (!next) return current
 
     current = next
   }
@@ -454,8 +453,7 @@ function findAncestor<NodeType extends ts.Node>(
   let current = node
 
   while (current) {
-    if (predicate(current))
-      return current
+    if (predicate(current)) return current
 
     current = current.parent
   }
@@ -463,15 +461,18 @@ function findAncestor<NodeType extends ts.Node>(
   return undefined
 }
 
-function findTightestExpression(sourceFile: ts.SourceFile, start: number, end: number): ts.Expression | undefined {
+function findTightestExpression(
+  sourceFile: ts.SourceFile,
+  start: number,
+  end: number,
+): ts.Expression | undefined {
   let node: ts.Node | undefined = getTokenAtPosition(sourceFile, start)
 
   while (node) {
     if (ts.isExpression(node)) {
       const nodeStart = node.getStart(sourceFile)
       const nodeEnd = node.getEnd()
-      if (nodeStart <= start && end <= nodeEnd)
-        return node
+      if (nodeStart <= start && end <= nodeEnd) return node
     }
 
     node = node.parent
@@ -485,11 +486,9 @@ function isAssignmentOperator(token: ts.SyntaxKind): boolean {
 }
 
 function typeIncludesUndefined(type: ts.Type): boolean {
-  if ((type.flags & ts.TypeFlags.Undefined) !== 0)
-    return true
+  if ((type.flags & ts.TypeFlags.Undefined) !== 0) return true
 
-  if (!type.isUnion())
-    return false
+  if (!type.isUnion()) return false
 
   return type.types.some(typeIncludesUndefined)
 }
@@ -506,8 +505,7 @@ function skipOuterExpressions(expression: ts.Expression): ts.Expression {
 function isAlreadyNonNull(expression: ts.Expression): boolean {
   let current = expression
 
-  while (ts.isParenthesizedExpression(current))
-    current = current.expression
+  while (ts.isParenthesizedExpression(current)) current = current.expression
 
   return ts.isNonNullExpression(current)
 }
@@ -521,32 +519,30 @@ function findAssignmentLikeCandidate(
   let current: ts.Node | undefined = token
 
   while (current) {
-    if (ts.isVariableDeclaration(current) && current.initializer)
-      return current.initializer
+    if (ts.isVariableDeclaration(current) && current.initializer) return current.initializer
 
-    if (ts.isPropertyDeclaration(current) && current.initializer)
-      return current.initializer
+    if (ts.isPropertyDeclaration(current) && current.initializer) return current.initializer
 
-    if (ts.isPropertyAssignment(current))
-      return current.initializer
+    if (ts.isPropertyAssignment(current)) return current.initializer
 
-    if (ts.isShorthandPropertyAssignment(current))
-      return current.name
+    if (ts.isShorthandPropertyAssignment(current)) return current.name
 
-    if (ts.isParameter(current) && current.initializer)
-      return current.initializer
+    if (ts.isParameter(current) && current.initializer) return current.initializer
 
-    if (ts.isReturnStatement(current) && current.expression)
-      return current.expression
+    if (ts.isReturnStatement(current) && current.expression) return current.expression
 
     if (ts.isBinaryExpression(current) && isAssignmentOperator(current.operatorToken.kind))
       return current.right
 
-    if (ts.isJsxAttribute(current) && current.initializer && ts.isJsxExpression(current.initializer) && current.initializer.expression)
+    if (
+      ts.isJsxAttribute(current) &&
+      current.initializer &&
+      ts.isJsxExpression(current.initializer) &&
+      current.initializer.expression
+    )
       return current.initializer.expression
 
-    if (ts.isJsxSpreadAttribute(current))
-      return current.expression
+    if (ts.isJsxSpreadAttribute(current)) return current.expression
 
     current = current.parent
   }
@@ -569,8 +565,7 @@ function findArgumentCandidate(
         const itemEnd = item.getEnd()
         return itemStart <= start && end <= itemEnd
       })
-      if (argument)
-        return argument
+      if (argument) return argument
     }
 
     current = current.parent
@@ -589,60 +584,61 @@ function findTargetFromExpression(
   expression: ts.Expression,
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
-  const referencedDeclarationTarget = findReferencedDeclarationInitializerTarget(expression, checker)
-  if (referencedDeclarationTarget)
-    return referencedDeclarationTarget
+  const referencedDeclarationTarget = findReferencedDeclarationInitializerTarget(
+    expression,
+    checker,
+  )
+  if (referencedDeclarationTarget) return referencedDeclarationTarget
 
   const nestedTarget = findNestedContainerTarget(expression, checker)
-  if (nestedTarget)
-    return nestedTarget
+  if (nestedTarget) return nestedTarget
 
   const innerExpression = skipOuterExpressions(expression)
   if (ts.isConditionalExpression(innerExpression)) {
-    return findTargetFromExpression(innerExpression.whenTrue, checker)
-      ?? findTargetFromExpression(innerExpression.whenFalse, checker)
+    return (
+      findTargetFromExpression(innerExpression.whenTrue, checker) ??
+      findTargetFromExpression(innerExpression.whenFalse, checker)
+    )
   }
 
   if (
-    ts.isBinaryExpression(innerExpression)
-    && (
-      innerExpression.operatorToken.kind === ts.SyntaxKind.BarBarToken
-      || innerExpression.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
-      || innerExpression.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken
-    )
+    ts.isBinaryExpression(innerExpression) &&
+    (innerExpression.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
+      innerExpression.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
+      innerExpression.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken)
   ) {
-    return findTargetFromExpression(innerExpression.left, checker)
-      ?? findTargetFromExpression(innerExpression.right, checker)
+    return (
+      findTargetFromExpression(innerExpression.left, checker) ??
+      findTargetFromExpression(innerExpression.right, checker)
+    )
   }
 
   if (ts.isArrowFunction(innerExpression) || ts.isFunctionExpression(innerExpression)) {
     const functionTarget = findFunctionLikeReturnTarget(innerExpression, checker)
-    if (functionTarget)
-      return functionTarget
+    if (functionTarget) return functionTarget
   }
 
   if (ts.isPropertyAccessExpression(innerExpression)) {
-    const namedPropertyTarget = findNamedPropertyTarget(innerExpression.expression, innerExpression.name.text, checker)
-    if (namedPropertyTarget)
-      return namedPropertyTarget
+    const namedPropertyTarget = findNamedPropertyTarget(
+      innerExpression.expression,
+      innerExpression.name.text,
+      checker,
+    )
+    if (namedPropertyTarget) return namedPropertyTarget
   }
 
   if (ts.isCallExpression(innerExpression)) {
     const collectionCallbackTarget = findCollectionCallbackTarget(innerExpression, checker)
-    if (collectionCallbackTarget)
-      return collectionCallbackTarget
+    if (collectionCallbackTarget) return collectionCallbackTarget
 
     const callbackArgumentTarget = findCallbackArgumentTarget(innerExpression, checker)
-    if (callbackArgumentTarget)
-      return callbackArgumentTarget
+    if (callbackArgumentTarget) return callbackArgumentTarget
 
     const callExpressionTarget = findCallExpressionDeclarationTarget(innerExpression, checker)
-    if (callExpressionTarget)
-      return callExpressionTarget
+    if (callExpressionTarget) return callExpressionTarget
   }
 
-  if (!typeIncludesUndefined(checker.getTypeAtLocation(expression)))
-    return undefined
+  if (!typeIncludesUndefined(checker.getTypeAtLocation(expression))) return undefined
 
   return createExpressionTarget(expression)
 }
@@ -652,22 +648,20 @@ function findJsxSpreadAttributeTarget(
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
   const spreadAttribute = findAncestor(token, ts.isJsxSpreadAttribute)
-  if (spreadAttribute)
-    return findTargetFromExpression(spreadAttribute.expression, checker)
+  if (spreadAttribute) return findTargetFromExpression(spreadAttribute.expression, checker)
 
-  const openingLikeElement = findAncestor(token, node =>
-    ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
+  const openingLikeElement = findAncestor(
+    token,
+    (node) => ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node),
+  )
 
-  if (!openingLikeElement)
-    return undefined
+  if (!openingLikeElement) return undefined
 
   for (const attribute of openingLikeElement.attributes.properties) {
-    if (!ts.isJsxSpreadAttribute(attribute))
-      continue
+    if (!ts.isJsxSpreadAttribute(attribute)) continue
 
     const target = findTargetFromExpression(attribute.expression, checker)
-    if (target)
-      return target
+    if (target) return target
   }
 
   return undefined
@@ -678,8 +672,7 @@ function findShorthandPropertyTarget(
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
   const property = findAncestor(token, ts.isShorthandPropertyAssignment)
-  if (!property)
-    return undefined
+  if (!property) return undefined
 
   return typeIncludesUndefined(checker.getTypeAtLocation(property.name))
     ? createShorthandPropertyTarget(property)
@@ -692,21 +685,17 @@ function findPropertyAssignmentInitializerTarget(
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
   const propertyAssignment = findAncestor(token, ts.isPropertyAssignment)
-  if (!propertyAssignment)
-    return undefined
+  if (!propertyAssignment) return undefined
 
   const propertyNameStart = propertyAssignment.name.getStart()
   const propertyNameEnd = propertyAssignment.name.getEnd()
-  if (start < propertyNameStart || start >= propertyNameEnd)
-    return undefined
+  if (start < propertyNameStart || start >= propertyNameEnd) return undefined
 
   const directTarget = findTargetFromExpression(propertyAssignment.initializer, checker)
-  if (directTarget)
-    return directTarget
+  if (directTarget) return directTarget
 
   const nestedTarget = findNestedContainerTarget(propertyAssignment.initializer, checker)
-  if (nestedTarget)
-    return nestedTarget
+  if (nestedTarget) return nestedTarget
 
   if (!typeIncludesUndefined(checker.getTypeAtLocation(propertyAssignment.initializer)))
     return undefined
@@ -714,13 +703,9 @@ function findPropertyAssignmentInitializerTarget(
   return createExpressionTarget(propertyAssignment.initializer)
 }
 
-function findPropertyAccessExpressionTarget(
-  token: ts.Node,
-  start: number,
-): EditTarget | undefined {
+function findPropertyAccessExpressionTarget(token: ts.Node, start: number): EditTarget | undefined {
   const propertyAccess = findAncestor(token, ts.isPropertyAccessExpression)
-  if (!propertyAccess)
-    return undefined
+  if (!propertyAccess) return undefined
 
   if (start >= propertyAccess.name.getStart() && start < propertyAccess.name.getEnd())
     return createExpressionTarget(propertyAccess.expression)
@@ -738,13 +723,19 @@ function findUndefinedAccessTarget(
   while (current) {
     if (ts.isPropertyAccessExpression(current)) {
       const expression = current.expression
-      if (typeIncludesUndefined(checker.getTypeAtLocation(expression)) && !isAlreadyNonNull(expression))
+      if (
+        typeIncludesUndefined(checker.getTypeAtLocation(expression)) &&
+        !isAlreadyNonNull(expression)
+      )
         bestTarget = createExpressionTarget(expression)
     }
 
     if (ts.isElementAccessExpression(current)) {
       const expression = current.expression
-      if (typeIncludesUndefined(checker.getTypeAtLocation(expression)) && !isAlreadyNonNull(expression))
+      if (
+        typeIncludesUndefined(checker.getTypeAtLocation(expression)) &&
+        !isAlreadyNonNull(expression)
+      )
         bestTarget = createExpressionTarget(expression)
     }
 
@@ -765,8 +756,7 @@ function findElementAccessArgumentTarget(token: ts.Node): EditTarget | undefined
     current = current.parent
   }
 
-  if (!matchingElementAccess?.argumentExpression)
-    return undefined
+  if (!matchingElementAccess?.argumentExpression) return undefined
 
   return createExpressionTarget(matchingElementAccess.argumentExpression)
 }
@@ -781,8 +771,7 @@ function findIterableTarget(
   const arrayLiteral = findAncestor(token, ts.isArrayLiteralExpression)
   if (arrayLiteral) {
     const arrayLiteralTarget = createArrayLiteralIterableFallbackTarget(arrayLiteral, checker)
-    if (arrayLiteralTarget)
-      return arrayLiteralTarget
+    if (arrayLiteralTarget) return arrayLiteralTarget
   }
 
   const spreadElement = findAncestor(token, ts.isSpreadElement)
@@ -791,19 +780,19 @@ function findIterableTarget(
 
   const variableDeclaration = findAncestor(token, ts.isVariableDeclaration)
   if (
-    variableDeclaration?.initializer
-    && typeIncludesUndefined(checker.getTypeAtLocation(variableDeclaration.initializer))
-    && !isAlreadyNonNull(variableDeclaration.initializer)
+    variableDeclaration?.initializer &&
+    typeIncludesUndefined(checker.getTypeAtLocation(variableDeclaration.initializer)) &&
+    !isAlreadyNonNull(variableDeclaration.initializer)
   ) {
     return createExpressionTarget(variableDeclaration.initializer)
   }
 
   const binaryExpression = findAncestor(token, ts.isBinaryExpression)
   if (
-    binaryExpression
-    && isAssignmentOperator(binaryExpression.operatorToken.kind)
-    && typeIncludesUndefined(checker.getTypeAtLocation(binaryExpression.right))
-    && !isAlreadyNonNull(binaryExpression.right)
+    binaryExpression &&
+    isAssignmentOperator(binaryExpression.operatorToken.kind) &&
+    typeIncludesUndefined(checker.getTypeAtLocation(binaryExpression.right)) &&
+    !isAlreadyNonNull(binaryExpression.right)
   ) {
     return createExpressionTarget(binaryExpression.right)
   }
@@ -813,13 +802,13 @@ function findIterableTarget(
 
 function findImplicitAnyParameterTarget(token: ts.Node): EditTarget | undefined {
   const parameter = findAncestor(token, ts.isParameter)
-  if (!parameter || parameter.type || !ts.isIdentifier(parameter.name))
-    return undefined
+  if (!parameter || parameter.type || !ts.isIdentifier(parameter.name)) return undefined
 
   const sourceFile = parameter.getSourceFile()
-  const replacement = ts.isArrowFunction(parameter.parent) && parameter.parent.parameters.length === 1
-    ? `(${parameter.name.getText(sourceFile)}: any)`
-    : `${parameter.name.getText(sourceFile)}: any`
+  const replacement =
+    ts.isArrowFunction(parameter.parent) && parameter.parent.parameters.length === 1
+      ? `(${parameter.name.getText(sourceFile)}: any)`
+      : `${parameter.name.getText(sourceFile)}: any`
 
   return createDirectEditTarget(
     sourceFile,
@@ -833,12 +822,9 @@ function getArrayPatternElementTypeText(
   element: ts.ArrayBindingElement | ts.Expression,
   checker: ts.TypeChecker,
 ): string {
-  if (ts.isOmittedExpression(element))
-    return 'unknown'
+  if (ts.isOmittedExpression(element)) return 'unknown'
 
-  const targetNode = ts.isBindingElement(element)
-    ? element.name
-    : element
+  const targetNode = ts.isBindingElement(element) ? element.name : element
 
   const targetType = checker.getNonNullableType(checker.getTypeAtLocation(targetNode))
   const typeText = checker.typeToString(targetType)
@@ -854,10 +840,9 @@ function createArrayDestructuringReplacement(
     fallbackToEmptyArray?: boolean
   },
 ): string | undefined {
-  if (elements.length === 0)
-    return undefined
+  if (elements.length === 0) return undefined
 
-  const tupleTypes = elements.map(element => getArrayPatternElementTypeText(element, checker))
+  const tupleTypes = elements.map((element) => getArrayPatternElementTypeText(element, checker))
   const expressionText = options?.fallbackToEmptyArray
     ? `(${expression.getText(sourceFile)} ?? [])`
     : `(${expression.getText(sourceFile)})`
@@ -869,14 +854,20 @@ function findArrayDestructuringTarget(
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
   const binaryExpression = findAncestor(token, ts.isBinaryExpression)
-  if (binaryExpression && isAssignmentOperator(binaryExpression.operatorToken.kind) && ts.isArrayLiteralExpression(binaryExpression.left)) {
+  if (
+    binaryExpression &&
+    isAssignmentOperator(binaryExpression.operatorToken.kind) &&
+    ts.isArrayLiteralExpression(binaryExpression.left)
+  ) {
     const replacement = createArrayDestructuringReplacement(
       binaryExpression.getSourceFile(),
       binaryExpression.right,
       binaryExpression.left.elements,
       checker,
       {
-        fallbackToEmptyArray: typeIncludesUndefined(checker.getTypeAtLocation(binaryExpression.right)),
+        fallbackToEmptyArray: typeIncludesUndefined(
+          checker.getTypeAtLocation(binaryExpression.right),
+        ),
       },
     )
     if (replacement) {
@@ -897,7 +888,9 @@ function findArrayDestructuringTarget(
       variableDeclaration.name.elements,
       checker,
       {
-        fallbackToEmptyArray: typeIncludesUndefined(checker.getTypeAtLocation(variableDeclaration.initializer)),
+        fallbackToEmptyArray: typeIncludesUndefined(
+          checker.getTypeAtLocation(variableDeclaration.initializer),
+        ),
       },
     )
     if (replacement) {
@@ -919,12 +912,10 @@ function findVariableDeclarationInitializerTarget(
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
   const variableDeclaration = findAncestor(token, ts.isVariableDeclaration)
-  if (!variableDeclaration?.initializer)
-    return undefined
+  if (!variableDeclaration?.initializer) return undefined
 
   const nestedTarget = findNestedContainerTarget(variableDeclaration.initializer, checker)
-  if (nestedTarget)
-    return nestedTarget
+  if (nestedTarget) return nestedTarget
 
   if (!typeIncludesUndefined(checker.getTypeAtLocation(variableDeclaration.initializer)))
     return undefined
@@ -936,12 +927,10 @@ function getResolvedValueDeclaration(
   symbol: ts.Symbol | undefined,
   checker: ts.TypeChecker,
 ): ts.Declaration | undefined {
-  if (!symbol)
-    return undefined
+  if (!symbol) return undefined
 
-  const resolvedSymbol = symbol.flags & ts.SymbolFlags.Alias
-    ? checker.getAliasedSymbol(symbol)
-    : symbol
+  const resolvedSymbol =
+    symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
 
   return resolvedSymbol.valueDeclaration ?? resolvedSymbol.declarations?.[0]
 }
@@ -950,18 +939,19 @@ function getFunctionLikeDeclaration(
   declaration: ts.Declaration,
 ): ts.FunctionLikeDeclarationBase | undefined {
   if (
-    ts.isFunctionDeclaration(declaration)
-    || ts.isMethodDeclaration(declaration)
-    || ts.isFunctionExpression(declaration)
-    || ts.isArrowFunction(declaration)
+    ts.isFunctionDeclaration(declaration) ||
+    ts.isMethodDeclaration(declaration) ||
+    ts.isFunctionExpression(declaration) ||
+    ts.isArrowFunction(declaration)
   ) {
     return declaration
   }
 
   if (
-    ts.isVariableDeclaration(declaration)
-    && declaration.initializer
-    && (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer))
+    ts.isVariableDeclaration(declaration) &&
+    declaration.initializer &&
+    (ts.isArrowFunction(declaration.initializer) ||
+      ts.isFunctionExpression(declaration.initializer))
   ) {
     return declaration.initializer
   }
@@ -976,12 +966,17 @@ function getPropertyNameText(name: ts.PropertyName | ts.BindingName): string | u
   return undefined
 }
 
-function getCallExpressionPropertyAccess(callExpression: ts.CallExpression): ts.PropertyAccessExpression | undefined {
+function getCallExpressionPropertyAccess(
+  callExpression: ts.CallExpression,
+): ts.PropertyAccessExpression | undefined {
   const callee = skipOuterExpressions(callExpression.expression)
   return ts.isPropertyAccessExpression(callee) ? callee : undefined
 }
 
-function getFunctionExpressionArgument(callExpression: ts.CallExpression, index = 0): ts.ArrowFunction | ts.FunctionExpression | undefined {
+function getFunctionExpressionArgument(
+  callExpression: ts.CallExpression,
+  index = 0,
+): ts.ArrowFunction | ts.FunctionExpression | undefined {
   const callback = callExpression.arguments[index]
   return callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))
     ? callback
@@ -995,8 +990,7 @@ function findTargetInFunctionBody(
   if (ts.isBlock(body)) {
     for (const expression of findReturnStatementExpressions(body)) {
       const target = resolveExpression(expression)
-      if (target)
-        return target
+      if (target) return target
     }
 
     return undefined
@@ -1010,9 +1004,12 @@ function getParameterCollectionExpression(
 ): ts.Expression | undefined {
   const functionLikeDeclaration = declaration.parent
   if (
-    !(ts.isArrowFunction(functionLikeDeclaration) || ts.isFunctionExpression(functionLikeDeclaration))
-    || !ts.isCallExpression(functionLikeDeclaration.parent)
-    || functionLikeDeclaration.parent.arguments[0] !== functionLikeDeclaration
+    !(
+      ts.isArrowFunction(functionLikeDeclaration) ||
+      ts.isFunctionExpression(functionLikeDeclaration)
+    ) ||
+    !ts.isCallExpression(functionLikeDeclaration.parent) ||
+    functionLikeDeclaration.parent.arguments[0] !== functionLikeDeclaration
   ) {
     return undefined
   }
@@ -1027,19 +1024,19 @@ function findObjectLiteralNamedPropertyTarget(
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
   for (const property of objectLiteral.properties) {
-    if (ts.isSpreadAssignment(property))
-      continue
+    if (ts.isSpreadAssignment(property)) continue
 
     if (ts.isShorthandPropertyAssignment(property) && property.name.text === propertyName)
       return createShorthandPropertyTarget(property)
 
     if (ts.isPropertyAssignment(property)) {
       const currentPropertyName = getPropertyNameText(property.name)
-      if (currentPropertyName !== propertyName)
-        continue
+      if (currentPropertyName !== propertyName) continue
 
-      return findTargetFromExpression(property.initializer, checker)
-        ?? createExpressionTarget(property.initializer)
+      return (
+        findTargetFromExpression(property.initializer, checker) ??
+        createExpressionTarget(property.initializer)
+      )
     }
   }
 
@@ -1051,12 +1048,10 @@ function findFunctionLikeNamedReturnTarget(
   propertyName: string,
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
-  if (!declaration.body)
-    return undefined
+  if (!declaration.body) return undefined
 
-  return findTargetInFunctionBody(
-    declaration.body,
-    expression => findNamedPropertyTarget(expression, propertyName, checker),
+  return findTargetInFunctionBody(declaration.body, (expression) =>
+    findNamedPropertyTarget(expression, propertyName, checker),
   )
 }
 
@@ -1070,21 +1065,17 @@ function findCollectionPropertyTarget(
   if (ts.isIdentifier(innerExpression))
     return findNamedPropertyTarget(innerExpression, propertyName, checker)
 
-  if (!ts.isCallExpression(innerExpression))
-    return undefined
+  if (!ts.isCallExpression(innerExpression)) return undefined
 
   const callee = getCallExpressionPropertyAccess(innerExpression)
-  if (!callee)
-    return undefined
+  if (!callee) return undefined
 
   if (callee.name.text === 'map' || callee.name.text === 'flatMap') {
     const callback = getFunctionExpressionArgument(innerExpression)
-    if (!callback)
-      return undefined
+    if (!callback) return undefined
 
-    return findTargetInFunctionBody(
-      callback.body,
-      returnedExpression => findNamedPropertyTarget(returnedExpression, propertyName, checker),
+    return findTargetInFunctionBody(callback.body, (returnedExpression) =>
+      findNamedPropertyTarget(returnedExpression, propertyName, checker),
     )
   }
 
@@ -1105,9 +1096,11 @@ function findNamedPropertyTarget(
     return findObjectLiteralNamedPropertyTarget(innerExpression, propertyName, checker)
 
   if (ts.isIdentifier(innerExpression)) {
-    const declaration = getResolvedValueDeclaration(checker.getSymbolAtLocation(innerExpression), checker)
-    if (!declaration)
-      return undefined
+    const declaration = getResolvedValueDeclaration(
+      checker.getSymbolAtLocation(innerExpression),
+      checker,
+    )
+    if (!declaration) return undefined
 
     if (ts.isParameter(declaration)) {
       const collectionExpression = getParameterCollectionExpression(declaration)
@@ -1126,17 +1119,21 @@ function findNamedPropertyTarget(
   }
 
   if (ts.isCallExpression(innerExpression)) {
-    const collectionPropertyTarget = findCollectionPropertyTarget(innerExpression, propertyName, checker)
-    if (collectionPropertyTarget)
-      return collectionPropertyTarget
+    const collectionPropertyTarget = findCollectionPropertyTarget(
+      innerExpression,
+      propertyName,
+      checker,
+    )
+    if (collectionPropertyTarget) return collectionPropertyTarget
 
-    const declaration = getResolvedValueDeclaration(checker.getSymbolAtLocation(skipOuterExpressions(innerExpression.expression)), checker)
-    if (!declaration)
-      return undefined
+    const declaration = getResolvedValueDeclaration(
+      checker.getSymbolAtLocation(skipOuterExpressions(innerExpression.expression)),
+      checker,
+    )
+    if (!declaration) return undefined
 
     const functionLikeDeclaration = getFunctionLikeDeclaration(declaration)
-    if (!functionLikeDeclaration)
-      return undefined
+    if (!functionLikeDeclaration) return undefined
 
     return findFunctionLikeNamedReturnTarget(functionLikeDeclaration, propertyName, checker)
   }
@@ -1149,19 +1146,16 @@ function findReturnStatementExpressions(node: ts.Node): ts.Expression[] {
 
   const visit = (current: ts.Node) => {
     if (
-      current !== node
-      && (
-        ts.isArrowFunction(current)
-        || ts.isFunctionExpression(current)
-        || ts.isFunctionDeclaration(current)
-        || ts.isMethodDeclaration(current)
-      )
+      current !== node &&
+      (ts.isArrowFunction(current) ||
+        ts.isFunctionExpression(current) ||
+        ts.isFunctionDeclaration(current) ||
+        ts.isMethodDeclaration(current))
     ) {
       return
     }
 
-    if (ts.isReturnStatement(current) && current.expression)
-      expressions.push(current.expression)
+    if (ts.isReturnStatement(current) && current.expression) expressions.push(current.expression)
 
     current.forEachChild(visit)
   }
@@ -1174,12 +1168,10 @@ function findFunctionLikeReturnTarget(
   declaration: ts.FunctionLikeDeclarationBase,
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
-  if (!declaration.body)
-    return undefined
+  if (!declaration.body) return undefined
 
-  return findTargetInFunctionBody(
-    declaration.body,
-    expression => findTargetFromExpression(expression, checker),
+  return findTargetInFunctionBody(declaration.body, (expression) =>
+    findTargetFromExpression(expression, checker),
   )
 }
 
@@ -1187,13 +1179,14 @@ function findCallExpressionDeclarationTarget(
   callExpression: ts.CallExpression,
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
-  const declaration = getResolvedValueDeclaration(checker.getSymbolAtLocation(skipOuterExpressions(callExpression.expression)), checker)
-  if (!declaration)
-    return undefined
+  const declaration = getResolvedValueDeclaration(
+    checker.getSymbolAtLocation(skipOuterExpressions(callExpression.expression)),
+    checker,
+  )
+  if (!declaration) return undefined
 
   const functionLikeDeclaration = getFunctionLikeDeclaration(declaration)
-  if (!functionLikeDeclaration)
-    return undefined
+  if (!functionLikeDeclaration) return undefined
 
   return findFunctionLikeReturnTarget(functionLikeDeclaration, checker)
 }
@@ -1203,14 +1196,14 @@ function findCallbackArgumentTarget(
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
   const callee = skipOuterExpressions(callExpression.expression)
-  const calleeName = ts.isIdentifier(callee) ? callee.text : getCallExpressionPropertyAccess(callExpression)?.name.text
+  const calleeName = ts.isIdentifier(callee)
+    ? callee.text
+    : getCallExpressionPropertyAccess(callExpression)?.name.text
 
-  if (calleeName !== 'useCallback' && calleeName !== 'useMemo')
-    return undefined
+  if (calleeName !== 'useCallback' && calleeName !== 'useMemo') return undefined
 
   const callback = getFunctionExpressionArgument(callExpression)
-  if (!callback)
-    return undefined
+  if (!callback) return undefined
 
   return findFunctionLikeReturnTarget(callback, checker)
 }
@@ -1220,12 +1213,13 @@ function findReferencedDeclarationInitializerTarget(
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
   const innerExpression = skipOuterExpressions(expression)
-  if (!ts.isIdentifier(innerExpression))
-    return undefined
+  if (!ts.isIdentifier(innerExpression)) return undefined
 
-  const declaration = getResolvedValueDeclaration(checker.getSymbolAtLocation(innerExpression), checker)
-  if (!declaration)
-    return undefined
+  const declaration = getResolvedValueDeclaration(
+    checker.getSymbolAtLocation(innerExpression),
+    checker,
+  )
+  if (!declaration) return undefined
 
   if (ts.isBindingElement(declaration)) {
     const propertyName = declaration.propertyName
@@ -1233,10 +1227,17 @@ function findReferencedDeclarationInitializerTarget(
       : getPropertyNameText(declaration.name)
 
     const variableDeclaration = declaration.parent.parent
-    if (propertyName && ts.isVariableDeclaration(variableDeclaration) && variableDeclaration.initializer) {
-      const namedPropertyTarget = findNamedPropertyTarget(variableDeclaration.initializer, propertyName, checker)
-      if (namedPropertyTarget)
-        return namedPropertyTarget
+    if (
+      propertyName &&
+      ts.isVariableDeclaration(variableDeclaration) &&
+      variableDeclaration.initializer
+    ) {
+      const namedPropertyTarget = findNamedPropertyTarget(
+        variableDeclaration.initializer,
+        propertyName,
+        checker,
+      )
+      if (namedPropertyTarget) return namedPropertyTarget
     }
   }
 
@@ -1244,35 +1245,28 @@ function findReferencedDeclarationInitializerTarget(
     const collectionExpression = getParameterCollectionExpression(declaration)
     if (collectionExpression) {
       const collectionTarget = findTargetFromExpression(collectionExpression, checker)
-      if (collectionTarget)
-        return collectionTarget
+      if (collectionTarget) return collectionTarget
     }
   }
 
   const functionLikeDeclaration = getFunctionLikeDeclaration(declaration)
   if (functionLikeDeclaration) {
     const functionTarget = findFunctionLikeReturnTarget(functionLikeDeclaration, checker)
-    if (functionTarget)
-      return functionTarget
+    if (functionTarget) return functionTarget
   }
 
-  if (!ts.isVariableDeclaration(declaration) || !declaration.initializer)
-    return undefined
+  if (!ts.isVariableDeclaration(declaration) || !declaration.initializer) return undefined
 
   const collectionCallbackTarget = findCollectionCallbackTarget(declaration.initializer, checker)
-  if (collectionCallbackTarget)
-    return collectionCallbackTarget
+  if (collectionCallbackTarget) return collectionCallbackTarget
 
   const initializerTarget = findTargetFromExpression(declaration.initializer, checker)
-  if (initializerTarget)
-    return initializerTarget
+  if (initializerTarget) return initializerTarget
 
   const nestedTarget = findNestedContainerTarget(declaration.initializer, checker)
-  if (nestedTarget)
-    return nestedTarget
+  if (nestedTarget) return nestedTarget
 
-  if (!typeIncludesUndefined(checker.getTypeAtLocation(declaration.initializer)))
-    return undefined
+  if (!typeIncludesUndefined(checker.getTypeAtLocation(declaration.initializer))) return undefined
 
   return createExpressionTarget(declaration.initializer)
 }
@@ -1282,19 +1276,15 @@ function findCollectionCallbackTarget(
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
   const innerExpression = skipOuterExpressions(expression)
-  if (!ts.isCallExpression(innerExpression))
-    return undefined
+  if (!ts.isCallExpression(innerExpression)) return undefined
 
   const callee = getCallExpressionPropertyAccess(innerExpression)
-  if (!callee)
-    return undefined
+  if (!callee) return undefined
 
-  if (callee.name.text !== 'map' && callee.name.text !== 'flatMap')
-    return undefined
+  if (callee.name.text !== 'map' && callee.name.text !== 'flatMap') return undefined
 
   const callback = getFunctionExpressionArgument(innerExpression)
-  if (!callback)
-    return undefined
+  if (!callback) return undefined
 
   return findFunctionLikeReturnTarget(callback, checker)
 }
@@ -1303,22 +1293,21 @@ function findJsxComponentDeclarationTarget(
   token: ts.Node,
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
-  const openingLikeElement = findAncestor(token, node =>
-    ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
-  if (!openingLikeElement)
-    return undefined
+  const openingLikeElement = findAncestor(
+    token,
+    (node) => ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node),
+  )
+  if (!openingLikeElement) return undefined
 
   const tagName = openingLikeElement.tagName
-  if (!ts.isIdentifier(tagName))
-    return undefined
+  if (!ts.isIdentifier(tagName)) return undefined
 
   const symbol = checker.getSymbolAtLocation(tagName)
   const declaration = symbol?.valueDeclaration
   if (!declaration || !ts.isVariableDeclaration(declaration) || !declaration.initializer)
     return undefined
 
-  if (!typeIncludesUndefined(checker.getTypeAtLocation(declaration.initializer)))
-    return undefined
+  if (!typeIncludesUndefined(checker.getTypeAtLocation(declaration.initializer))) return undefined
 
   return createExpressionTarget(declaration.initializer)
 }
@@ -1330,8 +1319,7 @@ function findObjectLiteralPropertyTarget(
   for (const property of objectLiteral.properties) {
     if (ts.isSpreadAssignment(property)) {
       const directTarget = findTargetFromExpression(property.expression, checker)
-      if (directTarget)
-        return directTarget
+      if (directTarget) return directTarget
 
       if (typeIncludesUndefined(checker.getTypeAtLocation(property.expression)))
         return createExpressionTarget(property.expression)
@@ -1346,12 +1334,10 @@ function findObjectLiteralPropertyTarget(
 
     if (ts.isPropertyAssignment(property)) {
       const directTarget = findTargetFromExpression(property.initializer, checker)
-      if (directTarget)
-        return directTarget
+      if (directTarget) return directTarget
 
       const nestedTarget = findNestedContainerTarget(property.initializer, checker)
-      if (nestedTarget)
-        return nestedTarget
+      if (nestedTarget) return nestedTarget
 
       if (typeIncludesUndefined(checker.getTypeAtLocation(property.initializer)))
         return createExpressionTarget(property.initializer)
@@ -1366,14 +1352,12 @@ function findArrayLiteralElementTarget(
   checker: ts.TypeChecker,
 ): EditTarget | undefined {
   const iterableFallbackTarget = createArrayLiteralIterableFallbackTarget(arrayLiteral, checker)
-  if (iterableFallbackTarget)
-    return iterableFallbackTarget
+  if (iterableFallbackTarget) return iterableFallbackTarget
 
   for (const element of arrayLiteral.elements) {
     if (ts.isSpreadElement(element)) {
       const directTarget = findTargetFromExpression(element.expression, checker)
-      if (directTarget)
-        return directTarget
+      if (directTarget) return directTarget
 
       if (typeIncludesUndefined(checker.getTypeAtLocation(element.expression)))
         return createExpressionTarget(element.expression)
@@ -1381,12 +1365,10 @@ function findArrayLiteralElementTarget(
     }
 
     const directTarget = findTargetFromExpression(element, checker)
-    if (directTarget)
-      return directTarget
+    if (directTarget) return directTarget
 
     const nestedTarget = findNestedContainerTarget(element, checker)
-    if (nestedTarget)
-      return nestedTarget
+    if (nestedTarget) return nestedTarget
 
     if (typeIncludesUndefined(checker.getTypeAtLocation(element)))
       return createExpressionTarget(element)
@@ -1394,14 +1376,11 @@ function findArrayLiteralElementTarget(
 
   for (let index = arrayLiteral.elements.length - 1; index >= 0; index -= 1) {
     const element = arrayLiteral.elements[index]
-    if (!element)
-      continue
+    if (!element) continue
 
-    if (ts.isSpreadElement(element))
-      continue
+    if (ts.isSpreadElement(element)) continue
 
-    if (!isAlreadyNonNull(element))
-      return createExpressionTarget(element)
+    if (!isAlreadyNonNull(element)) return createExpressionTarget(element)
   }
 
   return undefined
@@ -1430,24 +1409,46 @@ function findAccessDiagnosticTarget(
 ): EditTarget | undefined {
   const directExpression = findTightestExpression(sourceFile, start, end)
   if (directExpression) {
-    if (typeIncludesUndefined(checker.getTypeAtLocation(directExpression)) && !isAlreadyNonNull(directExpression))
+    if (
+      typeIncludesUndefined(checker.getTypeAtLocation(directExpression)) &&
+      !isAlreadyNonNull(directExpression)
+    )
       return createExpressionTarget(directExpression)
 
-    const referencedDeclarationTarget = findReferencedDeclarationInitializerTarget(directExpression, checker)
-    if (referencedDeclarationTarget && isExpressionTarget(referencedDeclarationTarget) && !isAlreadyNonNull(referencedDeclarationTarget.expression))
+    const referencedDeclarationTarget = findReferencedDeclarationInitializerTarget(
+      directExpression,
+      checker,
+    )
+    if (
+      referencedDeclarationTarget &&
+      isExpressionTarget(referencedDeclarationTarget) &&
+      !isAlreadyNonNull(referencedDeclarationTarget.expression)
+    )
       return referencedDeclarationTarget
   }
 
   const bindingPatternTarget = findVariableDeclarationInitializerTarget(sourceFile, token, checker)
-  if (bindingPatternTarget && isExpressionTarget(bindingPatternTarget) && !isAlreadyNonNull(bindingPatternTarget.expression))
+  if (
+    bindingPatternTarget &&
+    isExpressionTarget(bindingPatternTarget) &&
+    !isAlreadyNonNull(bindingPatternTarget.expression)
+  )
     return bindingPatternTarget
 
   const accessTarget = findUndefinedAccessTarget(token, checker)
-  if (accessTarget && isExpressionTarget(accessTarget) && !isAlreadyNonNull(accessTarget.expression))
+  if (
+    accessTarget &&
+    isExpressionTarget(accessTarget) &&
+    !isAlreadyNonNull(accessTarget.expression)
+  )
     return accessTarget
 
   const propertyAccessTarget = findPropertyAccessExpressionTarget(token, start)
-  if (propertyAccessTarget && isExpressionTarget(propertyAccessTarget) && !isAlreadyNonNull(propertyAccessTarget.expression))
+  if (
+    propertyAccessTarget &&
+    isExpressionTarget(propertyAccessTarget) &&
+    !isAlreadyNonNull(propertyAccessTarget.expression)
+  )
     return propertyAccessTarget
 
   return undefined
@@ -1469,13 +1470,11 @@ function findDiagnosticCandidate(
     return findAssignmentLikeCandidate(token, sourceFile, start, end)
   }
 
-  if (diagnosticCode === 2345)
-    return findArgumentCandidate(token, sourceFile, start, end)
+  if (diagnosticCode === 2345) return findArgumentCandidate(token, sourceFile, start, end)
 
   if (diagnosticCode === 2722) {
     const current = findTightestExpression(sourceFile, start, end)
-    if (current && ts.isCallExpression(current))
-      return current.expression
+    if (current && ts.isCallExpression(current)) return current.expression
 
     return findTightestExpression(sourceFile, start, end)
   }
@@ -1493,28 +1492,29 @@ function resolveEditTarget(
   const token = getTokenAtPosition(sourceFile, start)
 
   const shorthandTarget = findShorthandPropertyTarget(token, checker)
-  if (shorthandTarget)
-    return shorthandTarget
+  if (shorthandTarget) return shorthandTarget
 
   const propertyAssignmentTarget = findPropertyAssignmentInitializerTarget(token, start, checker)
-  if (propertyAssignmentTarget)
-    return propertyAssignmentTarget
+  if (propertyAssignmentTarget) return propertyAssignmentTarget
 
   const jsxSpreadTarget = findJsxSpreadAttributeTarget(token, checker)
-  if (jsxSpreadTarget && isExpressionTarget(jsxSpreadTarget) && !isAlreadyNonNull(jsxSpreadTarget.expression))
+  if (
+    jsxSpreadTarget &&
+    isExpressionTarget(jsxSpreadTarget) &&
+    !isAlreadyNonNull(jsxSpreadTarget.expression)
+  )
     return jsxSpreadTarget
 
   const jsxAttribute = findAncestor(token, ts.isJsxAttribute)
   const jsxExpression = jsxAttribute ? getExpressionFromJsxAttribute(jsxAttribute) : undefined
 
   if (
-    ASSIGNABILITY_DIAGNOSTIC_CODES.has(diagnostic.code)
-    && jsxExpression
-    && typeIncludesUndefined(checker.getTypeAtLocation(jsxExpression))
-    && !isAlreadyNonNull(jsxExpression)
+    ASSIGNABILITY_DIAGNOSTIC_CODES.has(diagnostic.code) &&
+    jsxExpression &&
+    typeIncludesUndefined(checker.getTypeAtLocation(jsxExpression)) &&
+    !isAlreadyNonNull(jsxExpression)
   ) {
-    return findTargetFromExpression(jsxExpression, checker)
-      ?? createExpressionTarget(jsxExpression)
+    return findTargetFromExpression(jsxExpression, checker) ?? createExpressionTarget(jsxExpression)
   }
 
   if (ACCESS_DIAGNOSTIC_CODES.has(diagnostic.code))
@@ -1522,28 +1522,37 @@ function resolveEditTarget(
 
   if (diagnostic.code === 2322 || diagnostic.code === 2488) {
     const arrayDestructuringTarget = findArrayDestructuringTarget(token, checker)
-    if (arrayDestructuringTarget)
-      return arrayDestructuringTarget
+    if (arrayDestructuringTarget) return arrayDestructuringTarget
   }
 
   if (diagnostic.code === 2538) {
     const elementAccessTarget = findElementAccessArgumentTarget(token)
-    if (elementAccessTarget && isExpressionTarget(elementAccessTarget) && !isAlreadyNonNull(elementAccessTarget.expression))
+    if (
+      elementAccessTarget &&
+      isExpressionTarget(elementAccessTarget) &&
+      !isAlreadyNonNull(elementAccessTarget.expression)
+    )
       return elementAccessTarget
   }
 
-  if (diagnostic.code === 7006)
-    return findImplicitAnyParameterTarget(token)
+  if (diagnostic.code === 7006) return findImplicitAnyParameterTarget(token)
 
   if (diagnostic.code === 2488) {
     const iterableTarget = findIterableTarget(sourceFile, token, start, end, checker)
-    if (iterableTarget && (!isExpressionTarget(iterableTarget) || !isAlreadyNonNull(iterableTarget.expression)))
+    if (
+      iterableTarget &&
+      (!isExpressionTarget(iterableTarget) || !isAlreadyNonNull(iterableTarget.expression))
+    )
       return iterableTarget
   }
 
   if (diagnostic.code === 2604 || diagnostic.code === 2786) {
     const jsxComponentTarget = findJsxComponentDeclarationTarget(token, checker)
-    if (jsxComponentTarget && isExpressionTarget(jsxComponentTarget) && !isAlreadyNonNull(jsxComponentTarget.expression))
+    if (
+      jsxComponentTarget &&
+      isExpressionTarget(jsxComponentTarget) &&
+      !isAlreadyNonNull(jsxComponentTarget.expression)
+    )
       return jsxComponentTarget
   }
 
@@ -1557,66 +1566,93 @@ function resolveEditTarget(
 
   if (ASSIGNABILITY_DIAGNOSTIC_CODES.has(diagnostic.code)) {
     if (
-      diagnostic.code === 2345
-      && typeIncludesUndefined(checker.getTypeAtLocation(candidate))
-      && !isAlreadyNonNull(candidate)
-      && (
-        ts.isIdentifier(candidate)
-        || ts.isElementAccessExpression(candidate)
-        || ts.isPropertyAccessExpression(candidate)
-      )
+      diagnostic.code === 2345 &&
+      typeIncludesUndefined(checker.getTypeAtLocation(candidate)) &&
+      !isAlreadyNonNull(candidate) &&
+      (ts.isIdentifier(candidate) ||
+        ts.isElementAccessExpression(candidate) ||
+        ts.isPropertyAccessExpression(candidate))
     ) {
       return createExpressionTarget(candidate)
     }
 
-    const referencedDeclarationTarget = findReferencedDeclarationInitializerTarget(candidate, checker)
-    if (referencedDeclarationTarget && isExpressionTarget(referencedDeclarationTarget) && !isAlreadyNonNull(referencedDeclarationTarget.expression))
+    const referencedDeclarationTarget = findReferencedDeclarationInitializerTarget(
+      candidate,
+      checker,
+    )
+    if (
+      referencedDeclarationTarget &&
+      isExpressionTarget(referencedDeclarationTarget) &&
+      !isAlreadyNonNull(referencedDeclarationTarget.expression)
+    )
       return referencedDeclarationTarget
 
     const collectionCallbackTarget = findCollectionCallbackTarget(candidate, checker)
-    if (collectionCallbackTarget && isExpressionTarget(collectionCallbackTarget) && !isAlreadyNonNull(collectionCallbackTarget.expression))
+    if (
+      collectionCallbackTarget &&
+      isExpressionTarget(collectionCallbackTarget) &&
+      !isAlreadyNonNull(collectionCallbackTarget.expression)
+    )
       return collectionCallbackTarget
   }
 
   const targetFromCandidate = findTargetFromExpression(candidate, checker)
-  if (targetFromCandidate && (!isExpressionTarget(targetFromCandidate) || !isAlreadyNonNull(targetFromCandidate.expression)))
+  if (
+    targetFromCandidate &&
+    (!isExpressionTarget(targetFromCandidate) || !isAlreadyNonNull(targetFromCandidate.expression))
+  )
     return targetFromCandidate
 
-  if (ASSIGNABILITY_DIAGNOSTIC_CODES.has(diagnostic.code) && (ts.isArrowFunction(candidate) || ts.isFunctionExpression(candidate))) {
+  if (
+    ASSIGNABILITY_DIAGNOSTIC_CODES.has(diagnostic.code) &&
+    (ts.isArrowFunction(candidate) || ts.isFunctionExpression(candidate))
+  ) {
     const functionTarget = findFunctionLikeReturnTarget(candidate, checker)
-    if (functionTarget && isExpressionTarget(functionTarget) && !isAlreadyNonNull(functionTarget.expression))
+    if (
+      functionTarget &&
+      isExpressionTarget(functionTarget) &&
+      !isAlreadyNonNull(functionTarget.expression)
+    )
       return functionTarget
   }
 
   const nestedContainerTarget = findNestedContainerTarget(candidate, checker)
-  if (nestedContainerTarget)
-    return nestedContainerTarget
+  if (nestedContainerTarget) return nestedContainerTarget
 
-  if (isAlreadyNonNull(candidate))
-    return undefined
+  if (isAlreadyNonNull(candidate)) return undefined
 
-  if (ASSIGNABILITY_DIAGNOSTIC_CODES.has(diagnostic.code) && ts.isObjectLiteralExpression(candidate)) {
+  if (
+    ASSIGNABILITY_DIAGNOSTIC_CODES.has(diagnostic.code) &&
+    ts.isObjectLiteralExpression(candidate)
+  ) {
     const objectLiteralTarget = findObjectLiteralPropertyTarget(candidate, checker)
-    if (objectLiteralTarget)
-      return objectLiteralTarget
+    if (objectLiteralTarget) return objectLiteralTarget
   }
 
   if (diagnostic.code === 2322) {
-    const declarationInitializerTarget = findVariableDeclarationInitializerTarget(sourceFile, token, checker)
-    if (declarationInitializerTarget && isExpressionTarget(declarationInitializerTarget) && !isAlreadyNonNull(declarationInitializerTarget.expression))
+    const declarationInitializerTarget = findVariableDeclarationInitializerTarget(
+      sourceFile,
+      token,
+      checker,
+    )
+    if (
+      declarationInitializerTarget &&
+      isExpressionTarget(declarationInitializerTarget) &&
+      !isAlreadyNonNull(declarationInitializerTarget.expression)
+    )
       return declarationInitializerTarget
   }
 
-  if (ASSIGNABILITY_DIAGNOSTIC_CODES.has(diagnostic.code) && !typeIncludesUndefined(checker.getTypeAtLocation(candidate)))
+  if (
+    ASSIGNABILITY_DIAGNOSTIC_CODES.has(diagnostic.code) &&
+    !typeIncludesUndefined(checker.getTypeAtLocation(candidate))
+  )
     return undefined
 
   return createExpressionTarget(candidate)
 }
 
-function createEditForTarget(
-  target: EditTarget,
-  printer: ts.Printer,
-): TextEdit {
+function createEditForTarget(target: EditTarget, printer: ts.Printer): TextEdit {
   const sourceFile = target.sourceFile
 
   if (target.kind === 'direct-edit') {
@@ -1637,7 +1673,10 @@ function createEditForTarget(
     )
     return {
       end: target.property.getEnd(),
-      expectedText: sourceFile.text.slice(target.property.getStart(sourceFile), target.property.getEnd()),
+      expectedText: sourceFile.text.slice(
+        target.property.getStart(sourceFile),
+        target.property.getEnd(),
+      ),
       replacement: `${name.getText(sourceFile)}: ${nonNullName}`,
       start: target.property.getStart(sourceFile),
     }
@@ -1653,29 +1692,30 @@ function createEditForTarget(
 
   return {
     end: target.expression.getEnd(),
-    expectedText: sourceFile.text.slice(target.expression.getStart(sourceFile), target.expression.getEnd()),
+    expectedText: sourceFile.text.slice(
+      target.expression.getStart(sourceFile),
+      target.expression.getEnd(),
+    ),
     replacement,
     start: target.expression.getStart(sourceFile),
   }
 }
 
 function hasOverlap(existingEdits: TextEdit[], nextEdit: TextEdit): boolean {
-  return existingEdits.some(edit => nextEdit.start < edit.end && edit.start < nextEdit.end)
+  return existingEdits.some((edit) => nextEdit.start < edit.end && edit.start < nextEdit.end)
 }
 
-function applyEdits(text: string, edits: TextEdit[]): { appliedEditCount: number, text: string } {
+function applyEdits(text: string, edits: TextEdit[]): { appliedEditCount: number; text: string } {
   let currentText = text
   let appliedEditCount = 0
 
   for (const edit of edits.sort((left, right) => right.start - left.start)) {
-    if (edit.replacement.length > currentText.length * 4)
-      continue
+    if (edit.replacement.length > currentText.length * 4) continue
 
     try {
       currentText = `${currentText.slice(0, edit.start)}${edit.replacement}${currentText.slice(edit.end)}`
       appliedEditCount += 1
-    }
-    catch {
+    } catch {
       continue
     }
   }
@@ -1687,15 +1727,21 @@ function applyEdits(text: string, edits: TextEdit[]): { appliedEditCount: number
 }
 
 function isValidEditRange(text: string, edit: TextEdit): boolean {
-  return Number.isInteger(edit.start)
-    && Number.isInteger(edit.end)
-    && edit.start >= 0
-    && edit.end >= edit.start
-    && edit.end <= text.length
+  return (
+    Number.isInteger(edit.start) &&
+    Number.isInteger(edit.end) &&
+    edit.start >= 0 &&
+    edit.end >= edit.start &&
+    edit.end <= text.length
+  )
 }
 
 function filterApplicableEdits(text: string, edits: TextEdit[]): TextEdit[] {
-  return edits.filter(edit => isValidEditRange(text, edit) && (!edit.expectedText || text.slice(edit.start, edit.end) === edit.expectedText))
+  return edits.filter(
+    (edit) =>
+      isValidEditRange(text, edit) &&
+      (!edit.expectedText || text.slice(edit.start, edit.end) === edit.expectedText),
+  )
 }
 
 export async function runMigration(options: CliOptions) {
@@ -1724,47 +1770,55 @@ export async function runMigration(options: CliOptions) {
   let previousProgram: ts.Program | undefined
 
   for (let iteration = 1; iteration <= options.maxIterations; iteration += 1) {
-    const program = createMigrationProgram(migrationRootNames, parsedConfig, fileTexts, previousProgram)
+    const program = createMigrationProgram(
+      migrationRootNames,
+      parsedConfig,
+      fileTexts,
+      previousProgram,
+    )
     const checker = program.getTypeChecker()
     const editsByFile = new Map<string, TextEdit[]>()
 
     for (const fileName of targetFiles) {
       const sourceFile = program.getSourceFile(fileName)
-      if (!sourceFile)
-        continue
+      if (!sourceFile) continue
 
       const diagnostics = program
         .getSemanticDiagnostics(sourceFile)
         .filter((diagnostic): diagnostic is ts.DiagnosticWithLocation => {
-          return diagnostic.file !== undefined
-            && diagnostic.start !== undefined
-            && diagnostic.length !== undefined
-            && SUPPORTED_DIAGNOSTIC_CODES.has(diagnostic.code)
+          return (
+            diagnostic.file !== undefined &&
+            diagnostic.start !== undefined &&
+            diagnostic.length !== undefined &&
+            SUPPORTED_DIAGNOSTIC_CODES.has(diagnostic.code)
+          )
         })
 
       if (options.verbose && diagnostics.length > 0)
-        console.log(`file ${path.relative(process.cwd(), fileName)}: ${diagnostics.length} supported diagnostic(s)`)
+        console.log(
+          `file ${path.relative(process.cwd(), fileName)}: ${diagnostics.length} supported diagnostic(s)`,
+        )
 
       for (const diagnostic of diagnostics) {
         const target = resolveEditTarget(sourceFile, diagnostic, checker)
         if (!target) {
-          if (options.verbose)
-            console.log(`unresolved ${formatDiagnostic(diagnostic)}`)
+          if (options.verbose) console.log(`unresolved ${formatDiagnostic(diagnostic)}`)
           continue
         }
 
         const editFileName = target.sourceFile.fileName
         const edit = createEditForTarget(target, printer)
         const existing = editsByFile.get(editFileName) ?? []
-        if (hasOverlap(existing, edit))
-          continue
+        if (hasOverlap(existing, edit)) continue
 
         existing.push(edit)
         editsByFile.set(editFileName, existing)
 
         if (options.verbose) {
           const position = target.sourceFile.getLineAndCharacterOfPosition(edit.start)
-          console.log(`iter ${iteration}: ${path.relative(process.cwd(), editFileName)}:${position.line + 1}:${position.character + 1} -> add !`)
+          console.log(
+            `iter ${iteration}: ${path.relative(process.cwd(), editFileName)}:${position.line + 1}:${position.character + 1} -> add !`,
+          )
         }
       }
     }
@@ -1778,20 +1832,20 @@ export async function runMigration(options: CliOptions) {
     let iterationEditCount = 0
 
     for (const [fileName, edits] of editsByFile) {
-      const currentText = fileTexts.get(fileName) ?? await fs.readFile(fileName, 'utf8')
+      const currentText = fileTexts.get(fileName) ?? (await fs.readFile(fileName, 'utf8'))
       const applicableEdits = filterApplicableEdits(currentText, edits)
-      if (applicableEdits.length === 0)
-        continue
+      if (applicableEdits.length === 0) continue
 
       const { appliedEditCount, text: editedText } = applyEdits(currentText, applicableEdits)
-      if (appliedEditCount === 0)
-        continue
+      if (appliedEditCount === 0) continue
 
       const nextText = normalizeMalformedAssertions(editedText)
       if (nextText === currentText) {
         if (options.verbose) {
           const firstEdit = applicableEdits[0]
-          console.log(`iter ${iteration}: no-op after normalization for ${path.relative(process.cwd(), fileName)}:${firstEdit?.start ?? 0} ${JSON.stringify(firstEdit ? currentText.slice(firstEdit.start, firstEdit.end) : '')} -> ${JSON.stringify(firstEdit?.replacement ?? '')}`)
+          console.log(
+            `iter ${iteration}: no-op after normalization for ${path.relative(process.cwd(), fileName)}:${firstEdit?.start ?? 0} ${JSON.stringify(firstEdit ? currentText.slice(firstEdit.start, firstEdit.end) : '')} -> ${JSON.stringify(firstEdit?.replacement ?? '')}`,
+          )
         }
         continue
       }
@@ -1801,7 +1855,9 @@ export async function runMigration(options: CliOptions) {
     }
 
     totalEdits += iterationEditCount
-    console.log(`Iteration ${iteration}: ${iterationEditCount} edit(s) across ${editsByFile.size} file(s).`)
+    console.log(
+      `Iteration ${iteration}: ${iterationEditCount} edit(s) across ${editsByFile.size} file(s).`,
+    )
     previousProgram = program
   }
 
@@ -1811,20 +1867,22 @@ export async function runMigration(options: CliOptions) {
   }
 
   if (!options.write) {
-    if (!converged)
-      console.log(`Stopped after reaching --max-iterations=${options.maxIterations}.`)
+    if (!converged) console.log(`Stopped after reaching --max-iterations=${options.maxIterations}.`)
 
-    console.log(`Dry run complete. ${totalEdits} edit(s) are ready. Re-run with --write to apply them.`)
+    console.log(
+      `Dry run complete. ${totalEdits} edit(s) are ready. Re-run with --write to apply them.`,
+    )
     return { converged, totalEdits }
   }
 
   const changedFiles = Array.from(fileTexts.entries())
-  await Promise.all(changedFiles.map(async ([fileName, text]) => {
-    await fs.writeFile(fileName, text)
-  }))
+  await Promise.all(
+    changedFiles.map(async ([fileName, text]) => {
+      await fs.writeFile(fileName, text)
+    }),
+  )
 
-  if (!converged)
-    console.log(`Stopped after reaching --max-iterations=${options.maxIterations}.`)
+  if (!converged) console.log(`Stopped after reaching --max-iterations=${options.maxIterations}.`)
 
   console.log(`Wrote ${totalEdits} edit(s) to ${changedFiles.length} file(s).`)
   return { converged, totalEdits }

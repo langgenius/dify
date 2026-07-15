@@ -9,12 +9,18 @@ describe('Notion Icon', () => {
 
   it('renders image on http url', () => {
     render(<NotionIcon src="http://example.com/image.png" />)
-    expect(screen.getByAltText('workspace icon')).toHaveAttribute('src', 'http://example.com/image.png')
+    expect(screen.getByAltText('workspace icon')).toHaveAttribute(
+      'src',
+      'http://example.com/image.png',
+    )
   })
 
   it('renders image on https url', () => {
     render(<NotionIcon src="https://example.com/image.png" />)
-    expect(screen.getByAltText('workspace icon')).toHaveAttribute('src', 'https://example.com/image.png')
+    expect(screen.getByAltText('workspace icon')).toHaveAttribute(
+      'src',
+      'https://example.com/image.png',
+    )
   })
 
   it('renders div on non-http url', () => {
@@ -28,7 +34,12 @@ describe('Notion Icon', () => {
   })
 
   it('renders image on type url for page', () => {
-    render(<NotionIcon type="page" src={{ type: 'url', url: 'https://example.com/image.png', emoji: null }} />)
+    render(
+      <NotionIcon
+        type="page"
+        src={{ type: 'url', url: 'https://example.com/image.png', emoji: null }}
+      />,
+    )
     expect(screen.getByAltText('page icon')).toHaveAttribute('src', 'https://example.com/image.png')
   })
 

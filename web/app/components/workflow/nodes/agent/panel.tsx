@@ -22,7 +22,7 @@ const i18nPrefix = 'nodes.agent'
 
 function strategyParamToCredientialForm(param: StrategyParamItem): CredentialFormSchema {
   return {
-    ...param as any,
+    ...(param as any),
     variable: param.name,
     show_on: [],
     type: toType(param.type),
@@ -47,27 +47,29 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
   const { t } = useTranslation()
   const isMCPVersionSupported = isSupportMCP(inputs.meta?.version)
 
-  const resetEditor = useStore(s => s.setControlPromptEditorRerenderKey)
+  const resetEditor = useStore((s) => s.setControlPromptEditorRerenderKey)
   return (
     <div className="my-2">
       <Field
         required
-        title={t('nodes.agent.strategy.label', { ns: 'workflow' })}
+        title={t(($) => $['nodes.agent.strategy.label'], { ns: 'workflow' })}
         className="px-4 py-2"
-        tooltip={t('nodes.agent.strategy.tooltip', { ns: 'workflow' })}
+        tooltip={t(($) => $['nodes.agent.strategy.tooltip'], { ns: 'workflow' })}
       >
         <MCPToolAvailabilityProvider versionSupported={isMCPVersionSupported}>
           <AgentStrategy
-            strategy={inputs.agent_strategy_name
-              ? {
-                  agent_strategy_provider_name: inputs.agent_strategy_provider_name!,
-                  agent_strategy_name: inputs.agent_strategy_name!,
-                  agent_strategy_label: inputs.agent_strategy_label!,
-                  agent_output_schema: inputs.output_schema,
-                  plugin_unique_identifier: inputs.plugin_unique_identifier!,
-                  meta: inputs.meta,
-                }
-              : undefined}
+            strategy={
+              inputs.agent_strategy_name
+                ? {
+                    agent_strategy_provider_name: inputs.agent_strategy_provider_name!,
+                    agent_strategy_name: inputs.agent_strategy_name!,
+                    agent_strategy_label: inputs.agent_strategy_label!,
+                    agent_output_schema: inputs.output_schema,
+                    plugin_unique_identifier: inputs.plugin_unique_identifier!,
+                    meta: inputs.meta,
+                  }
+                : undefined
+            }
             onStrategyChange={(strategy) => {
               setInputs({
                 ...inputs,
@@ -117,7 +119,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
           <VarItem
             name="text"
             type="String"
-            description={t(`${i18nPrefix}.outputVars.text`, { ns: 'workflow' })}
+            description={t(($) => $[`${i18nPrefix}.outputVars.text`], { ns: 'workflow' })}
           />
           {inputs.reasoning_format === 'separated' && (
             <VarItem
@@ -129,25 +131,20 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
           <VarItem
             name="usage"
             type="object"
-            description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
+            description={t(($) => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflow' })}
           />
           <VarItem
             name="files"
             type="Array[File]"
-            description={t(`${i18nPrefix}.outputVars.files.title`, { ns: 'workflow' })}
+            description={t(($) => $[`${i18nPrefix}.outputVars.files.title`], { ns: 'workflow' })}
           />
           <VarItem
             name="json"
             type="Array[Object]"
-            description={t(`${i18nPrefix}.outputVars.json`, { ns: 'workflow' })}
+            description={t(($) => $[`${i18nPrefix}.outputVars.json`], { ns: 'workflow' })}
           />
           {outputSchema.map(({ name, type, description }) => (
-            <VarItem
-              key={name}
-              name={name}
-              type={type}
-              description={description}
-            />
+            <VarItem key={name} name={name} type={type} description={description} />
           ))}
         </OutputVars>
       </div>

@@ -45,6 +45,7 @@ Keep this skill focused on Cucumber, Playwright, and package-level E2E guidance.
    - Inspect the target feature area.
    - Reuse an existing step when wording and behavior already match.
    - Add a new step only for a genuinely new user action or assertion.
+   - Before adding several similar steps, scan the target capability for an existing domain noun that can be parameterized without hiding behavior.
    - Keep edits close to the current capability folder unless the step is broadly reusable.
 2. Write behavior-first scenarios.
    - Describe user-observable behavior, not DOM mechanics.
@@ -53,12 +54,16 @@ Keep this skill focused on Cucumber, Playwright, and package-level E2E guidance.
 3. Write step definitions in the local style.
    - Keep one step to one user-visible action or one assertion.
    - Prefer Cucumber Expressions such as `{string}` and `{int}`.
+   - Use a bounded regex only when the accepted values are a small explicit domain set and Cucumber Expressions would make the Gherkin less natural.
+   - Do not create one-off steps for each case variant when the same domain action or outcome applies to named surfaces, modes, or resources.
    - Scope locators to stable containers when the page has repeated elements.
    - Avoid page-object layers or extra helper abstractions unless repeated complexity clearly justifies them.
 4. Use Playwright in the local style.
    - Prefer user-facing locators: `getByRole`, `getByLabel`, `getByPlaceholder`, `getByText`, then `getByTestId` for explicit contracts.
    - Use web-first `expect(...)` assertions.
    - Do not use `waitForTimeout`, manual polling, or raw visibility checks when a locator action or retrying assertion already expresses the behavior.
+   - Use `expect.poll` for API persistence, backend eventual consistency, captured browser events, or other non-DOM state; prefer locator assertions for DOM readiness and visible UI state.
+   - If a product element has real user-facing semantics but no accessible name, prefer fixing that accessible contract over adding a test id.
 5. Validate narrowly.
    - Run the narrowest tagged scenario or flow that exercises the change.
    - Run `vpr lint --fix --quiet` from the repository root and `pnpm -C e2e type-check`.

@@ -135,20 +135,20 @@ export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlQuery = z.o
 })
 
 /**
- * Authorization URL retrieved successfully
+ * Datasource OAuth authorization URL generated successfully
  */
-export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse
-  = zPluginOAuthAuthorizationUrlResponse
+export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse =
+  zPluginOAuthAuthorizationUrlResponse
 
 export const zGetOauthPluginByProviderToolAuthorizationUrlPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Authorization URL retrieved successfully
+ * Tool OAuth authorization URL generated successfully
  */
-export const zGetOauthPluginByProviderToolAuthorizationUrlResponse
-  = zPluginOAuthAuthorizationUrlResponse
+export const zGetOauthPluginByProviderToolAuthorizationUrlResponse =
+  zPluginOAuthAuthorizationUrlResponse
 
 export const zPostOauthProviderBody = zOAuthProviderRequest
 

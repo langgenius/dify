@@ -22,8 +22,7 @@ const PackageItem: FC<Props> = ({
   isFromMarketPlace,
   versionInfo,
 }) => {
-  if (!payload.value?.manifest)
-    return <LoadingError />
+  if (!payload.value?.manifest) return <LoadingError />
 
   const plugin = pluginManifestToCardPluginProps(payload.value.manifest)
   return (

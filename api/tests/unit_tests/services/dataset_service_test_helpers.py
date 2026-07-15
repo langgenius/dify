@@ -180,6 +180,7 @@ class DatasetServiceUnitDataFactory:
         dataset.embedding_model = embedding_model
         dataset.built_in_field_enabled = built_in_field_enabled
         dataset.doc_form = doc_form
+        dataset.get_doc_form.return_value = doc_form
         dataset.enable_api = enable_api
         dataset.updated_by = None
         dataset.updated_at = None
@@ -288,6 +289,7 @@ def _make_dataset(
     dataset.data_source_type = data_source_type
     dataset.indexing_technique = indexing_technique
     dataset.latest_process_rule = latest_process_rule
+    dataset.get_latest_process_rule.return_value = latest_process_rule
     dataset.embedding_model_provider = "provider"
     dataset.embedding_model = "embedding-model"
     dataset.summary_index_setting = None

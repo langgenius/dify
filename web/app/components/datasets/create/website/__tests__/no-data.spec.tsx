@@ -19,9 +19,15 @@ let mockEnableJinaReader = true
 let mockEnableWaterCrawl = true
 
 vi.mock('@/config', () => ({
-  get ENABLE_WEBSITE_FIRECRAWL() { return mockEnableFirecrawl },
-  get ENABLE_WEBSITE_JINAREADER() { return mockEnableJinaReader },
-  get ENABLE_WEBSITE_WATERCRAWL() { return mockEnableWaterCrawl },
+  get ENABLE_WEBSITE_FIRECRAWL() {
+    return mockEnableFirecrawl
+  },
+  get ENABLE_WEBSITE_JINAREADER() {
+    return mockEnableJinaReader
+  },
+  get ENABLE_WEBSITE_WATERCRAWL() {
+    return mockEnableWaterCrawl
+  },
 }))
 
 // NoData Component Tests

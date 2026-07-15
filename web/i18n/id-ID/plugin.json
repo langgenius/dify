@@ -131,6 +131,7 @@
   "detailPanel.operation.detail": "Rincian",
   "detailPanel.operation.info": "Plugin Info",
   "detailPanel.operation.install": "Pasang",
+  "detailPanel.operation.moreActions": "Tindakan lainnya",
   "detailPanel.operation.remove": "Hapus",
   "detailPanel.operation.update": "Pemutakhiran",
   "detailPanel.operation.updateTooltip": "Perbarui untuk mengakses model terbaru.",

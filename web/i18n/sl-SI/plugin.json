@@ -131,6 +131,7 @@
   "detailPanel.operation.detail": "Podrobnosti",
   "detailPanel.operation.info": "Informacije o vtičniku",
   "detailPanel.operation.install": "Namestite",
+  "detailPanel.operation.moreActions": "Več dejanj",
   "detailPanel.operation.remove": "Odstrani",
   "detailPanel.operation.update": "Posodobitev",
   "detailPanel.operation.updateTooltip": "Posodobite za dostop do najnovejših modelov.",

@@ -11,6 +11,7 @@ import hashlib
 import logging
 from collections.abc import Generator
 from typing import Any, cast
+from urllib.parse import quote
 
 import boto3
 import orjson
@@ -197,13 +198,22 @@ class ArchiveStorage:
         except ClientError as e:
             raise ArchiveStorageError(f"Failed to delete object '{key}': {e}")
 
-    def generate_presigned_url(self, key: str, expires_in: int = 3600) -> str:
+    def generate_presigned_url(
+        self,
+        key: str,
+        expires_in: int = 3600,
+        *,
+        filename: str | None = None,
+        content_type: str | None = None,
+    ) -> str:
         """
         Generate a pre-signed URL for downloading an object.
 
         Args:
             key: Object key (path) within the bucket
             expires_in: URL validity duration in seconds (default: 1 hour)
+            filename: Optional browser download filename
+            content_type: Optional response content type
 
         Returns:
             Pre-signed URL string.
@@ -211,10 +221,15 @@ class ArchiveStorage:
         Raises:
             ArchiveStorageError: If generation fails
         """
+        params = {"Bucket": self.bucket, "Key": key}
+        if filename:
+            params["ResponseContentDisposition"] = f"attachment; filename*=UTF-8''{quote(filename)}"
+        if content_type:
+            params["ResponseContentType"] = content_type
         try:
             return self.client.generate_presigned_url(
                 ClientMethod="get_object",
-                Params={"Bucket": self.bucket, "Key": key},
+                Params=params,
                 ExpiresIn=expires_in,
             )
         except ClientError as e:

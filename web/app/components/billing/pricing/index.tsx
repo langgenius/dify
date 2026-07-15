@@ -10,10 +10,11 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
-import { useAppContext } from '@/context/app-context'
 import { useGetPricingPageLanguage } from '@/context/i18n'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { BillingPermission, hasPermission } from '@/utils/permission'
 import { NoiseBottom, NoiseTop } from './assets'
@@ -28,15 +29,14 @@ type PricingProps = {
   onCancel: () => void
 }
 
-const Pricing: FC<PricingProps> = ({
-  onCancel,
-}) => {
+const Pricing: FC<PricingProps> = ({ onCancel }) => {
   const { plan, enableEducationPlan, isEducationAccount } = useProviderContext()
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const shouldDefaultToYearly = canManageBilling && enableEducationPlan && isEducationAccount
   const [selectedPlanRange, setSelectedPlanRange] = React.useState<PlanRange>()
-  const planRange = selectedPlanRange ?? (shouldDefaultToYearly ? PlanRange.yearly : PlanRange.monthly)
+  const planRange =
+    selectedPlanRange ?? (shouldDefaultToYearly ? PlanRange.yearly : PlanRange.monthly)
   const [currentCategory, setCurrentCategory] = useState<Category>(CategoryEnum.CLOUD)
   const canPay = canManageBilling
 
@@ -49,13 +49,10 @@ const Pricing: FC<PricingProps> = ({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onCancel()
+        if (!open) onCancel()
       }}
     >
-      <DialogContent
-        className="inset-0 size-full max-h-none max-w-none translate-0 overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none"
-      >
+      <DialogContent className="inset-0 size-full max-h-none max-w-none translate-0 overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none">
         <ScrollAreaRoot className="relative h-full w-full overflow-hidden">
           <ScrollAreaViewport className="overscroll-contain">
             <ScrollAreaContent className="min-h-full min-w-300">

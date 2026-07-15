@@ -1,7 +1,4 @@
-import type {
-  ComponentPropsWithoutRef,
-  Ref,
-} from 'react'
+import type { ComponentPropsWithoutRef, Ref } from 'react'
 import type { PublishedSnippetListItem } from './snippet-detail-card'
 import { cn } from '@langgenius/dify-ui/cn'
 
@@ -28,9 +25,7 @@ const SnippetListItem = ({
       )}
       {...props}
     >
-      <div className="w-full truncate system-md-semibold text-text-secondary">
-        {snippet.name}
-      </div>
+      <div className="w-full truncate system-md-semibold text-text-secondary">{snippet.name}</div>
       {!!snippet.description && (
         <div className="line-clamp-1 w-full system-sm-regular text-text-tertiary">
           {snippet.description}

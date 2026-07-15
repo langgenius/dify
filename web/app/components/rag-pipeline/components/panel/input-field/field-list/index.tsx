@@ -29,9 +29,12 @@ const FieldList = ({
   allVariableNames,
 }: FieldListProps) => {
   const { t } = useTranslation()
-  const onInputFieldsChange = useCallback((value: InputVar[]) => {
-    handleInputFieldsChange(nodeId, value)
-  }, [handleInputFieldsChange, nodeId])
+  const onInputFieldsChange = useCallback(
+    (value: InputVar[]) => {
+      handleInputFieldsChange(nodeId, value)
+    },
+    [handleInputFieldsChange, nodeId],
+  )
 
   const {
     inputFields,
@@ -51,11 +54,9 @@ const FieldList = ({
   return (
     <div className="flex flex-col">
       <div className={cn('flex items-center gap-x-2 px-4', labelClassName)}>
-        <div className="grow">
-          {LabelRightContent}
-        </div>
+        <div className="grow">{LabelRightContent}</div>
         <ActionButton
-          aria-label={t('operation.add', { ns: 'common' })}
+          aria-label={t(($) => $['operation.add'], { ns: 'common' })}
           onClick={() => handleOpenInputFieldEditor()}
           disabled={readonly}
           className={cn(readonly && 'cursor-not-allowed')}

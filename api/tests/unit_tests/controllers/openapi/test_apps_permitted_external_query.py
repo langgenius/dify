@@ -8,10 +8,17 @@ dropping them. Mode/name/page/limit have the same shape as AppListQuery.
 
 from __future__ import annotations
 
+import inspect
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
 import pytest
 from pydantic import ValidationError
 
-from controllers.openapi.apps_permitted_external import PermittedExternalAppsListQuery
+from controllers.openapi.apps_permitted_external import (
+    PermittedExternalAppDescribeApi,
+    PermittedExternalAppsListQuery,
+)
 
 from ._mode_constants import NON_LISTABLE_MODES
 
@@ -60,3 +67,22 @@ def test_query_accepts_valid_mode():
     q = PermittedExternalAppsListQuery.model_validate({"mode": "chat"})
     assert q.mode is not None
     assert q.mode.value == "chat"
+
+
+def test_describe_forwards_request_session_to_response_builder():
+    api = PermittedExternalAppDescribeApi()
+    method = inspect.unwrap(api.get)
+    session = MagicMock()
+    app = MagicMock()
+    auth_data = SimpleNamespace(app=app)
+    query = SimpleNamespace(fields={"info"})
+    response = object()
+
+    with patch(
+        "controllers.openapi.apps_permitted_external.build_app_describe_response",
+        return_value=response,
+    ) as build_response:
+        result = method(api, session, "app-id", auth_data=auth_data, query=query)
+
+    assert result is response
+    build_response.assert_called_once_with(app, query.fields, session=session)

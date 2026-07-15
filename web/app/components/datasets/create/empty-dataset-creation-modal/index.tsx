@@ -24,11 +24,11 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
   const invalidDatasetList = useInvalidDatasetList()
   const submit = async () => {
     if (!inputValue) {
-      toast.error(t('stepOne.modal.nameNotEmpty', { ns: 'datasetCreation' }))
+      toast.error(t(($) => $['stepOne.modal.nameNotEmpty'], { ns: 'datasetCreation' }))
       return
     }
     if (inputValue.length > 40) {
-      toast.error(t('stepOne.modal.nameLengthInvalid', { ns: 'datasetCreation' }))
+      toast.error(t(($) => $['stepOne.modal.nameLengthInvalid'], { ns: 'datasetCreation' }))
       return
     }
     try {
@@ -40,38 +40,50 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
       })
       onHide()
       router.push(`/datasets/${dataset.id}/documents`)
-    }
-    catch {
-      toast.error(t('stepOne.modal.failed', { ns: 'datasetCreation' }))
+    } catch {
+      toast.error(t(($) => $['stepOne.modal.failed'], { ns: 'datasetCreation' }))
     }
   }
   return (
     <Dialog
       open={show}
       onOpenChange={(open) => {
-        if (!open)
-          onHide()
+        if (!open) onHide()
       }}
     >
       <DialogContent className="w-full max-w-[520px]! overflow-hidden! border-none px-8 text-left align-middle">
-
         <div className={s.modalHeader}>
-          <div className={s.title}>{t('stepOne.modal.title', { ns: 'datasetCreation' })}</div>
+          <div className={s.title}>
+            {t(($) => $['stepOne.modal.title'], { ns: 'datasetCreation' })}
+          </div>
           <button
             type="button"
-            className={cn(s.close, 'border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden')}
-            aria-label={t('operation.close', { ns: 'common' })}
+            className={cn(
+              s.close,
+              'border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+            )}
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={onHide}
           />
         </div>
-        <div className={s.tip}>{t('stepOne.modal.tip', { ns: 'datasetCreation' })}</div>
+        <div className={s.tip}>{t(($) => $['stepOne.modal.tip'], { ns: 'datasetCreation' })}</div>
         <div className={s.form}>
-          <div className={s.label}>{t('stepOne.modal.input', { ns: 'datasetCreation' })}</div>
-          <Input value={inputValue} placeholder={t('stepOne.modal.placeholder', { ns: 'datasetCreation' }) || ''} onChange={e => setInputValue(e.target.value)} />
+          <div className={s.label}>
+            {t(($) => $['stepOne.modal.input'], { ns: 'datasetCreation' })}
+          </div>
+          <Input
+            value={inputValue}
+            placeholder={t(($) => $['stepOne.modal.placeholder'], { ns: 'datasetCreation' }) || ''}
+            onChange={(e) => setInputValue(e.target.value)}
+          />
         </div>
         <div className="flex flex-row-reverse">
-          <Button className="ml-2 w-24" variant="primary" onClick={submit}>{t('stepOne.modal.confirmButton', { ns: 'datasetCreation' })}</Button>
-          <Button className="w-24" onClick={onHide}>{t('stepOne.modal.cancelButton', { ns: 'datasetCreation' })}</Button>
+          <Button className="ml-2 w-24" variant="primary" onClick={submit}>
+            {t(($) => $['stepOne.modal.confirmButton'], { ns: 'datasetCreation' })}
+          </Button>
+          <Button className="w-24" onClick={onHide}>
+            {t(($) => $['stepOne.modal.cancelButton'], { ns: 'datasetCreation' })}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

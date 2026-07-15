@@ -2,19 +2,27 @@ import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-
 import BuiltInPipelineList from '../built-in-pipeline-list'
 
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: { enable_marketplace: true },
-})
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: { enable_marketplace: true },
+  })
 
 vi.mock('../create-card', () => ({
   default: () => <div data-testid="create-card">CreateCard</div>,
 }))
 
 vi.mock('../template-card', () => ({
-  default: ({ type, pipeline, showMoreOperations }: { type: string, pipeline: { name: string }, showMoreOperations?: boolean }) => (
+  default: ({
+    type,
+    pipeline,
+    showMoreOperations,
+  }: {
+    type: string
+    pipeline: { name: string }
+    showMoreOperations?: boolean
+  }) => (
     <div data-testid="template-card" data-type={type} data-show-more={String(showMoreOperations)}>
       {pipeline.name}
     </div>
@@ -81,10 +89,7 @@ describe('BuiltInPipelineList', () => {
   // Rendering with Data Tests
   describe('Rendering with Data', () => {
     it('should render TemplateCard for each pipeline when not loading', () => {
-      const mockPipelines = [
-        { name: 'Pipeline 1' },
-        { name: 'Pipeline 2' },
-      ]
+      const mockPipelines = [{ name: 'Pipeline 1' }, { name: 'Pipeline 2' }]
       mockUsePipelineTemplateList.mockReturnValue({
         data: { pipeline_templates: mockPipelines },
         isLoading: false,
@@ -150,7 +155,12 @@ describe('BuiltInPipelineList', () => {
       const { container } = render(<BuiltInPipelineList />)
       const grid = container.querySelector('.grid')
       expect(grid).toHaveClass('grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'gap-3', 'py-2')
-      expect(grid).not.toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3', 'lg:grid-cols-4')
+      expect(grid).not.toHaveClass(
+        'grid-cols-1',
+        'sm:grid-cols-2',
+        'md:grid-cols-3',
+        'lg:grid-cols-4',
+      )
     })
   })
 

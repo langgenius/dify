@@ -47,12 +47,15 @@ describe('ToolActionItem', () => {
 
     await user.click(screen.getByRole('button', { name: 'Search Tool' }))
 
-    expect(onSelect).toHaveBeenCalledWith(BlockEnum.Tool, expect.objectContaining({
-      provider_id: 'provider-1',
-      tool_name: 'search',
-      tool_label: 'Search Tool',
-      params: {},
-    }))
+    expect(onSelect).toHaveBeenCalledWith(
+      BlockEnum.Tool,
+      expect.objectContaining({
+        provider_id: 'provider-1',
+        tool_name: 'search',
+        tool_label: 'Search Tool',
+        params: {},
+      }),
+    )
     expect(mockTrackEvent).toHaveBeenCalledWith('tool_selected', {
       tool_name: 'search',
       plugin_id: 'plugin-1',

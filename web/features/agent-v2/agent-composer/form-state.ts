@@ -1,4 +1,8 @@
-import type { AgentKnowledgeDatasetConfig, AgentSoulAppFeaturesConfig, AgentSoulModelConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentKnowledgeDatasetConfig,
+  AgentSoulAppFeaturesConfig,
+  AgentSoulModelConfig,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
@@ -108,6 +112,7 @@ export type AgentCliTool = AgentToolBase & {
 export type AgentTool = AgentProviderTool | AgentCliTool
 
 export type AgentSoulConfigFormState = {
+  configNote: string
   prompt: string
   model?: AgentComposerModel
   appFeatures?: AgentSoulAppFeaturesConfig
@@ -120,6 +125,7 @@ export type AgentSoulConfigFormState = {
 }
 
 export const defaultAgentSoulConfigFormState: AgentSoulConfigFormState = {
+  configNote: '',
   prompt: '',
   skills: [],
   files: [],

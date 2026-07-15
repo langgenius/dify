@@ -34,12 +34,47 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => openAsyncWindowMock,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     isCurrentWorkspaceManager: isManager,
     workspacePermissionKeys,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: isManager,
+    workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: isManager,
+    workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: isManager,
+    workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    isCurrentWorkspaceManager: isManager,
+    workspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -68,21 +103,27 @@ describe('Billing', () => {
 
     render(<Billing />)
 
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
     expect(billingUrlEnabled).toBe(false)
   })
 
   it('hides the billing action when subscription management permission is missing or billing is disabled', () => {
     workspacePermissionKeys = []
     render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
     expect(billingUrlEnabled).toBe(false)
 
     vi.clearAllMocks()
     workspacePermissionKeys = ['billing.subscription.manage']
     enableBilling = false
     render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
     expect(billingUrlEnabled).toBe(false)
   })
 
