@@ -138,8 +138,8 @@ function getAgentActivityEntries(item: ChatItem): AgentActivityEntry[] {
     .flatMap((thought) => {
       const parts: AgentActivityEntry[] = []
       const key = getThoughtKey(thought)
-      const answer = thought.answer?.trim()
-      if (answer) parts.push({ type: 'message', content: answer, key: `message-${key}` })
+      const answer = thought.answer
+      if (answer?.trim()) parts.push({ type: 'message', content: answer, key: `message-${key}` })
 
       if (hasVisibleActivity(thought))
         parts.push({ type: 'thought', thought, key: `thought-${key}` })
@@ -353,9 +353,13 @@ export function AgentRosterResponseContent({
 
   const entries = getAgentActivityEntries(item)
   const hasLiveResponseParts = !!item.agent_response_parts?.length
-  const hasActivity = hasLiveResponseParts
-    ? entries.some((entry) => entry.type === 'thought')
-    : entries.length > 0
+  const hasPendingThinking =
+    !!responding &&
+    entries.length === 0 &&
+    !!item.agent_response_parts?.some((part) => part.type === 'thought')
+  const hasActivity =
+    hasPendingThinking ||
+    (hasLiveResponseParts ? entries.some((entry) => entry.type === 'thought') : entries.length > 0)
   const standaloneMessages = hasLiveResponseParts
     ? hasActivity
       ? []

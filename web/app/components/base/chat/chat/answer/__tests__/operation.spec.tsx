@@ -26,7 +26,7 @@ const { mockSetShowAnnotationFullModal, mockProviderContext, mockT, mockAddAnnot
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  default: { notify: vi.fn() },
+  toast: { success: vi.fn() },
 }))
 
 vi.mock('@/context/modal-context', () => ({
@@ -125,7 +125,11 @@ vi.mock(
 )
 
 vi.mock('@/app/components/base/new-audio-button', () => ({
-  default: () => <button data-testid="audio-btn">Play</button>,
+  default: ({ value }: { value: string }) => (
+    <button data-testid="audio-btn" data-value={value}>
+      Play
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/base/chat/chat/log', () => ({
@@ -208,6 +212,24 @@ const baseItem: ChatItem = {
   content: 'Hello world',
   isAnswer: true,
 }
+
+const createInterruptedItem = (messages: string[]): ChatItem => ({
+  ...baseItem,
+  content: '',
+  agent_response_parts: messages.map((content) => ({ type: 'message', content })),
+  agent_thoughts: [
+    {
+      id: '1',
+      thought: 'internal thought should not be used',
+      tool: '',
+      tool_input: '',
+      observation: '',
+      message_id: '',
+      conversation_id: '',
+      position: 0,
+    },
+  ],
+})
 
 const baseProps: OperationProps = {
   item: baseItem,
@@ -377,7 +399,15 @@ describe('Operation', () => {
       expect(copy).toHaveBeenCalledWith('Final answer')
     })
 
-    it('should fall back to agent thought summaries when legacy messages have no content', async () => {
+    it('should copy public response parts after an interrupted response', async () => {
+      const user = userEvent.setup()
+      const item = createInterruptedItem(['First public update', 'Second public update'])
+      renderOperation({ ...baseProps, item })
+      await user.click(screen.getByRole('button', { name: 'operation.copy' }))
+      expect(copy).toHaveBeenCalledWith('First public update\n\nSecond public update')
+    })
+
+    it('should copy public thought answers for legacy messages without content', async () => {
       const user = userEvent.setup()
       const item: ChatItem = {
         ...baseItem,
@@ -385,8 +415,8 @@ describe('Operation', () => {
         agent_thoughts: [
           {
             id: '1',
-            thought: 'internal summary',
-            answer: 'Hello World',
+            thought: 'internal thought should not be copied',
+            answer: 'Public legacy answer',
             tool: '',
             tool_input: '',
             observation: '',
@@ -398,7 +428,7 @@ describe('Operation', () => {
       }
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('internal summary')
+      expect(copy).toHaveBeenCalledWith('Public legacy answer')
     })
   })
 
@@ -935,6 +965,22 @@ describe('Operation', () => {
       )
     })
 
+    it('should annotate public response parts instead of internal thoughts', async () => {
+      const user = userEvent.setup()
+      const item = createInterruptedItem(['Public interrupted answer'])
+
+      renderOperation({ ...baseProps, item })
+      await user.click(screen.getByTestId('annotation-add-btn'))
+
+      expect(mockContextValue.onAnnotationAdded).toHaveBeenCalledWith(
+        'ann-new',
+        'Test User',
+        'What is this?',
+        'Public interrupted answer',
+        0,
+      )
+    })
+
     it('should show annotation full modal when limit reached', async () => {
       const user = userEvent.setup()
       mockProviderContext.enableBilling = true
@@ -1022,6 +1068,17 @@ describe('Operation', () => {
     it('should show audio play button when TTS enabled', () => {
       renderOperation()
       expect(screen.getByTestId('audio-btn'))!.toBeInTheDocument()
+    })
+
+    it('should send public response parts to TTS instead of internal thoughts', () => {
+      const item = createInterruptedItem(['Public interrupted answer'])
+
+      renderOperation({ ...baseProps, item })
+
+      expect(screen.getByTestId('audio-btn')).toHaveAttribute(
+        'data-value',
+        'Public interrupted answer',
+      )
     })
 
     it('should not show audio button for humanInputFormDataList', () => {

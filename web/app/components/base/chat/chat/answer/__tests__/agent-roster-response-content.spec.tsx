@@ -20,6 +20,37 @@ vi.mock('react-i18next', async () => {
 })
 
 describe('AgentRosterResponseContent', () => {
+  it('should keep the live thinking status before visible activity arrives', () => {
+    const item = {
+      id: 'answer-thinking-only',
+      content: '',
+      isAnswer: true,
+      agent_response_parts: [
+        {
+          type: 'thought',
+          thought: {
+            id: 'thought-thinking-only',
+            thought: 'internal thought should not render',
+            tool: '',
+            tool_input: '',
+            observation: '',
+            message_id: 'answer-thinking-only',
+            conversation_id: 'conversation-thinking-only',
+            position: 1,
+          },
+        },
+      ],
+    } satisfies ChatItem
+
+    render(<AgentRosterResponseContent item={item} responding />)
+
+    expect(screen.getByRole('button', { name: /Thinking/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
+  })
+
   it('should render historical agent thought answer as markdown instead of thought process', async () => {
     const user = userEvent.setup()
     const item = {
@@ -55,6 +86,35 @@ describe('AgentRosterResponseContent', () => {
     })
 
     expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
+  })
+
+  it('should preserve historical answer whitespace when rendering markdown', async () => {
+    const user = userEvent.setup()
+    const item = {
+      id: 'answer-history-code',
+      content: '',
+      isAnswer: true,
+      agent_thoughts: [
+        {
+          id: 'thought-history-code',
+          thought: 'internal thought should not render',
+          answer: '    const answer = 42',
+          tool: '',
+          tool_input: '',
+          observation: '',
+          message_id: 'answer-history-code',
+          conversation_id: 'conversation-history-code',
+          position: 1,
+        },
+      ],
+    } satisfies ChatItem
+
+    render(<AgentRosterResponseContent item={item} />)
+    await user.click(screen.getByRole('button', { name: 'Thinking' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('const answer = 42').tagName).toBe('CODE')
+    })
   })
 
   it('should keep one collapsible thinking timeline while response parts interleave', async () => {
