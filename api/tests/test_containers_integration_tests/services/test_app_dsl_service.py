@@ -1048,7 +1048,11 @@ class TestAppDslService:
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=yaml_content,
         )
-        assert result.status == ImportStatus.COMPLETED
+        assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
+        assert {warning.code for warning in result.warnings} == {
+            "agent_file_omitted",
+            "agent_skill_omitted",
+        }
         assert result.app_id is not None
         db_session_with_containers.commit()
 
