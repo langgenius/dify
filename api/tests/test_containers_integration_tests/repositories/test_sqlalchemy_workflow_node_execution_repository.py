@@ -40,8 +40,11 @@ def _create_account_with_tenant(session: Session) -> Account:
 def _make_repo(session: Session, account: Account, app_id: str) -> SQLAlchemyWorkflowNodeExecutionRepository:
     engine = session.get_bind()
     assert isinstance(engine, Engine)
+    tenant_id = account.current_tenant_id
+    assert tenant_id is not None
     return SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=sessionmaker(bind=engine, expire_on_commit=False),
+        tenant_id=tenant_id,
         user=account,
         app_id=app_id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
