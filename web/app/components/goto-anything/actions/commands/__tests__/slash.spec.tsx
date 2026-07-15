@@ -91,6 +91,8 @@ describe('slashAction', () => {
       { id: 'theme', title: '/theme', type: 'command', data: { command: 'theme' } },
     ])
 
+    expect(slashAction.source).toBe('local')
+    if (slashAction.source !== 'local') throw new Error('Expected a local slash action')
     const results = await slashAction.search('/theme dark', 'dark')
 
     expect(mockSearch).toHaveBeenCalledWith('/theme dark', 'ja')

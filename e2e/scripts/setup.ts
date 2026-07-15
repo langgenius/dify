@@ -6,6 +6,7 @@ import {
   apiDir,
   apiEnvExampleFile,
   difyAgentDir,
+  difyAgentRuntimeDir,
   dockerDir,
   e2eDir,
   e2eWebEnvOverrides,
@@ -376,12 +377,12 @@ const ensureShellctlSandboxImage = async () => {
     args: [
       'build',
       '-f',
-      path.join(difyAgentDir, 'docker', 'local-sandbox', 'Dockerfile'),
+      path.join(difyAgentRuntimeDir, 'docker', 'Dockerfile'),
       '-t',
       shellctlImage,
       '.',
     ],
-    cwd: difyAgentDir,
+    cwd: difyAgentRuntimeDir,
   })
 }
 

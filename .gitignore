@@ -261,3 +261,7 @@ scripts/stress-test/reports/
 .context/
 # Vitest local reports
 web/.vitest-reports/
+
+# dify-agent-runtime
+dify-agent-runtime/bin/
+dify-agent-runtime/.integration-state

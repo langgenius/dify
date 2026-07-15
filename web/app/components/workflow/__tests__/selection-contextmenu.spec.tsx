@@ -80,7 +80,7 @@ vi.mock('@/app/components/snippets/hooks/use-create-snippet', async () => {
 })
 
 vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
-  default: (props: {
+  CreateSnippetDialog: (props: {
     isOpen: boolean
     selectedGraph?: {
       nodes: Node[]

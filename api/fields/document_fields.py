@@ -1,12 +1,16 @@
 """Response schemas for dataset document endpoints."""
 
+from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from pydantic import Field, field_validator
+from sqlalchemy.orm import Session
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
+from models.dataset import DocMetadataDetailItem, Document
 
 
 def normalize_enum(value: Any) -> Any:
@@ -64,6 +68,39 @@ class DocumentResponse(ResponseModel):
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
+
+
+@dataclass(frozen=True)
+class DocumentWithSession:
+    """Expose session-backed document fields during response validation."""
+
+    document: Document
+    session: Session
+
+    @property
+    def data_source_detail_dict(self) -> dict[str, Any]:
+        return self.document.get_data_source_detail_dict(session=self.session)
+
+    @property
+    def hit_count(self) -> int:
+        return self.document.get_hit_count(session=self.session)
+
+    @property
+    def doc_metadata_details(self) -> list[DocMetadataDetailItem] | None:
+        return self.document.get_doc_metadata_details(session=self.session)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.document, name)  # noqa: no-new-getattr response adapter delegates model fields
+
+
+def document_response(document: Document, *, session: Session) -> DocumentResponse:
+    return DocumentResponse.model_validate(
+        DocumentWithSession(document=document, session=session), from_attributes=True
+    )
+
+
+def document_responses(documents: Iterable[Document], *, session: Session) -> list[DocumentResponse]:
+    return [document_response(document, session=session) for document in documents]
 
 
 class DocumentListResponse(ResponseModel):

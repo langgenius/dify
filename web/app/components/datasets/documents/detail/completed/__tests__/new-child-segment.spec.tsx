@@ -45,7 +45,7 @@ vi.mock('@/service/knowledge/use-segment', () => ({
 }))
 
 vi.mock('../common/action-buttons', () => ({
-  default: ({
+  ActionButtons: ({
     handleCancel,
     handleSave,
     loading,

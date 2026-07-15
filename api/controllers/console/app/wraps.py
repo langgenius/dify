@@ -1,9 +1,8 @@
 """Controller decorators for console app resources.
 
-App-loading decorators prefer a session injected by
-`controllers.common.session.with_session` when present, while still supporting
-existing handlers that have not been migrated yet and still rely on
-Flask-SQLAlchemy's scoped `db.session`.
+`get_app_model` still supports legacy handlers backed by Flask-SQLAlchemy's
+scoped session. Trial app handlers compose `get_app_model_with_trial` under
+`controllers.common.session.with_session` and always reuse that request session.
 """
 
 from collections.abc import Callable
@@ -18,6 +17,7 @@ from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models import App, AppMode, TrialApp
+from services.recommended_app_service import RecommendedAppService
 
 __all__ = ["get_app_model", "get_app_model_with_trial", "with_session"]
 
@@ -40,9 +40,9 @@ def _load_app_model_from_scoped_session(app_id: str) -> App | None:
     return app_model
 
 
-def _load_app_model_with_trial(app_id: str) -> App | None:
+def _load_app_model_with_trial(session: Session, app_id: str) -> App | None:
     """Load a normal app through its trial registration without applying current-tenant scope."""
-    app_model = db.session.scalar(
+    app_model = session.scalar(
         select(App).join(TrialApp, TrialApp.app_id == App.id).where(App.id == app_id, App.status == "normal").limit(1)
     )
     return app_model
@@ -156,6 +156,8 @@ def get_app_model_with_trial[**P, R](
     *,
     mode: AppMode | list[AppMode] | None = None,
 ) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
+    """Inject a trial-registered or recommended App using the Session supplied by `with_session`."""
+
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -167,7 +169,12 @@ def get_app_model_with_trial[**P, R](
 
             del kwargs["app_id"]
 
-            app_model = _load_app_model_with_trial(app_id)
+            session = _get_injected_session(args)
+            if session is None:
+                raise RuntimeError("get_app_model_with_trial requires @with_session")
+            app_model = _load_app_model_with_trial(session, app_id)
+            if app_model is None:
+                app_model = RecommendedAppService.get_app(app_id, session=session)
 
             if not app_model:
                 raise AppNotFoundError()

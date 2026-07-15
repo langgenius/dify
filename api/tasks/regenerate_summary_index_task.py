@@ -152,7 +152,7 @@ def regenerate_summary_index_task(
                                 try:
                                     from core.rag.datasource.vdb.vector_factory import Vector
 
-                                    vector = Vector(dataset)
+                                    vector = Vector(dataset, session=session)
                                     vector.delete_by_ids([summary_record.summary_index_node_id])
                                 except Exception as e:
                                     logger.warning(
@@ -162,7 +162,7 @@ def regenerate_summary_index_task(
                                     )
 
                             # Re-vectorize with new embedding model
-                            SummaryIndexService.vectorize_summary(summary_record, segment, dataset)
+                            SummaryIndexService.vectorize_summary(summary_record, segment, dataset, session=session)
                             session.commit()
                             total_segments_processed += 1
 

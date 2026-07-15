@@ -94,7 +94,7 @@ class TestGetAndValidateDataset:
                 "check_dataset_permission",
             ),
         ):
-            result = DatasetsHitTestingBase.get_and_validate_dataset("dataset-1", account, "tenant-1")
+            result = DatasetsHitTestingBase.get_and_validate_dataset(Mock(), "dataset-1", account, "tenant-1")
 
         assert result == dataset
 
@@ -105,7 +105,7 @@ class TestGetAndValidateDataset:
             return_value=None,
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                DatasetsHitTestingBase.get_and_validate_dataset("dataset-1", account, "tenant-1")
+                DatasetsHitTestingBase.get_and_validate_dataset(Mock(), "dataset-1", account, "tenant-1")
 
     def test_permission_denied(self, dataset, account):
         with (
@@ -121,7 +121,7 @@ class TestGetAndValidateDataset:
             ),
         ):
             with pytest.raises(Forbidden, match="no access"):
-                DatasetsHitTestingBase.get_and_validate_dataset("dataset-1", account, "tenant-1")
+                DatasetsHitTestingBase.get_and_validate_dataset(Mock(), "dataset-1", account, "tenant-1")
 
 
 class TestHitTestingArgsCheck:

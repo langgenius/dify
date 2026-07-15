@@ -140,7 +140,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 tenant = session.scalar(select(Tenant).where(Tenant.id == tenant_id).limit(1))
                 if not tenant:
                     raise ValueError(f"Tenant {tenant_id} not found")
-                account.current_tenant = tenant
+                account.set_current_tenant_with_session(tenant, session=session)
 
                 pipeline = session.scalar(select(Pipeline).where(Pipeline.id == pipeline_id).limit(1))
                 if not pipeline:
@@ -187,6 +187,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 pipeline_generator = PipelineGenerator()
                 # Using protected method intentionally for async execution
                 pipeline_generator._generate(  # type: ignore[attr-defined]
+                    session=session,
                     flask_app=flask_app,
                     context=context,
                     pipeline=pipeline,

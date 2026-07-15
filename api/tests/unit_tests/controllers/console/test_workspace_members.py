@@ -52,7 +52,7 @@ class TestMemberInviteEmailApi:
         with (
             patch("controllers.console.workspace.members.dify_config.RBAC_ENABLED", False),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "https://console.example.com"),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
         ):

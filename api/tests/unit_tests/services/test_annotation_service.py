@@ -13,6 +13,7 @@ import pytest
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
+from models.dataset import DatasetCollectionBinding
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.app_ref_service import AnnotationRef, AppRef
@@ -97,13 +98,13 @@ class TestAppAnnotationServiceUpInsert:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.up_insert_app_annotation_from_message(args, "app-1", session=mock_db.session)
+                AppAnnotationService.up_insert_app_annotation_from_message(args, "app-1", mock_db.session)
 
     def test_up_insert_app_annotation_from_message_should_raise_value_error_when_answer_missing(self) -> None:
         """Test missing answer and content raises ValueError."""
@@ -115,13 +116,13 @@ class TestAppAnnotationServiceUpInsert:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = app
 
             # Act & Assert
             with pytest.raises(ValueError):
-                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
+                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, mock_db.session)
 
     def test_up_insert_app_annotation_from_message_should_raise_not_found_when_message_missing(self) -> None:
         """Test missing message raises NotFound."""
@@ -133,13 +134,13 @@ class TestAppAnnotationServiceUpInsert:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.side_effect = [app, None]
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
+                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, mock_db.session)
 
     def test_up_insert_app_annotation_from_message_should_update_existing_annotation_when_found(self) -> None:
         """Test existing annotation is updated and indexed."""
@@ -150,18 +151,17 @@ class TestAppAnnotationServiceUpInsert:
         app = _make_app()
         annotation = _make_annotation("ann-1")
         message = _make_message(message_id="msg-1", app_id=app.id)
-        message.annotation = annotation
         setting = _make_setting()
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.add_annotation_to_index_task") as mock_task,
         ):
-            mock_db.session.scalar.side_effect = [app, message, setting]
+            mock_db.session.scalar.side_effect = [app, message, annotation, setting]
 
             # Act
-            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
+            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, mock_db.session)
 
             # Assert
             assert result == annotation
@@ -188,30 +188,25 @@ class TestAppAnnotationServiceUpInsert:
         app = _make_app()
         message = _make_message(message_id="msg-1", app_id=app.id)
         message.annotation = None
-        annotation_instance = _make_annotation("ann-1")
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.MessageAnnotation", return_value=annotation_instance) as mock_cls,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.add_annotation_to_index_task") as mock_task,
         ):
-            mock_db.session.scalar.side_effect = [app, message, None]
+            mock_db.session.scalar.side_effect = [app, message, None, None]
 
             # Act
-            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
+            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, mock_db.session)
 
             # Assert
-            assert result == annotation_instance
-            mock_cls.assert_called_once_with(
-                app_id=app.id,
-                conversation_id=message.conversation_id,
-                message_id=message.id,
-                content="hello",
-                question="q1",
-                account_id=current_user.id,
-            )
-            mock_db.session.add.assert_called_once_with(annotation_instance)
+            assert result.app_id == app.id
+            assert result.conversation_id == message.conversation_id
+            assert result.message_id == message.id
+            assert result.content == "hello"
+            assert result.question == "q1"
+            assert result.account_id == current_user.id
+            mock_db.session.add.assert_called_once_with(result)
             mock_db.session.commit.assert_called_once()
             mock_task.delay.assert_not_called()
 
@@ -225,13 +220,13 @@ class TestAppAnnotationServiceUpInsert:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = app
 
             # Act & Assert
             with pytest.raises(ValueError):
-                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
+                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, mock_db.session)
 
     def test_up_insert_app_annotation_from_message_should_create_annotation_when_message_missing(self) -> None:
         """Test annotation is created when message_id is not provided."""
@@ -245,14 +240,14 @@ class TestAppAnnotationServiceUpInsert:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.MessageAnnotation", return_value=annotation_instance) as mock_cls,
             patch("services.annotation_service.add_annotation_to_index_task") as mock_task,
         ):
             mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
-            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
+            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, mock_db.session)
 
             # Assert
             assert result == annotation_instance
@@ -377,13 +372,13 @@ class TestAppAnnotationServiceListAndExport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.get_annotation_list_by_app_id("app-1", 1, 10, "", session=mock_db.session)
+                AppAnnotationService.get_annotation_list_by_app_id("app-1", 1, 10, "", mock_db.session)
 
     def test_get_annotation_list_by_app_id_should_return_items_with_keyword(self) -> None:
         """Test keyword search returns items and total."""
@@ -394,7 +389,7 @@ class TestAppAnnotationServiceListAndExport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.paginate_query") as mock_paginate,
             patch("libs.helper.escape_like_pattern", return_value="safe"),
         ):
@@ -402,9 +397,7 @@ class TestAppAnnotationServiceListAndExport:
             mock_paginate.return_value = pagination
 
             # Act
-            items, total = AppAnnotationService.get_annotation_list_by_app_id(
-                app.id, 1, 10, "keyword", session=mock_db.session
-            )
+            items, total = AppAnnotationService.get_annotation_list_by_app_id(app.id, 1, 10, "keyword", mock_db.session)
 
             # Assert
             assert items == ["a1"]
@@ -419,16 +412,14 @@ class TestAppAnnotationServiceListAndExport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.paginate_query") as mock_paginate,
         ):
             mock_db.session.scalar.return_value = app
             mock_paginate.return_value = pagination
 
             # Act
-            items, total = AppAnnotationService.get_annotation_list_by_app_id(
-                app.id, 1, 10, "", session=mock_db.session
-            )
+            items, total = AppAnnotationService.get_annotation_list_by_app_id(app.id, 1, 10, "", mock_db.session)
 
             # Assert
             assert items == ["a1", "a2"]
@@ -448,14 +439,14 @@ class TestAppAnnotationServiceListAndExport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.CSVSanitizer.sanitize_value", side_effect=lambda v: f"safe:{v}"),
         ):
             mock_db.session.scalar.return_value = app
             mock_db.session.scalars.return_value.all.return_value = [annotation1, annotation2]
 
             # Act
-            result = AppAnnotationService.export_annotation_list_by_app_id(app.id, session=mock_db.session)
+            result = AppAnnotationService.export_annotation_list_by_app_id(app.id, mock_db.session)
 
             # Assert
             assert result == [annotation1, annotation2]
@@ -471,13 +462,13 @@ class TestAppAnnotationServiceListAndExport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.export_annotation_list_by_app_id("app-1", session=mock_db.session)
+                AppAnnotationService.export_annotation_list_by_app_id("app-1", mock_db.session)
 
 
 class TestAppAnnotationServiceDirectManipulation:
@@ -491,13 +482,13 @@ class TestAppAnnotationServiceDirectManipulation:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.insert_app_annotation_directly(args, "app-1", session=mock_db.session)
+                AppAnnotationService.insert_app_annotation_directly(args, "app-1", mock_db.session)
 
     def test_insert_app_annotation_directly_should_raise_value_error_when_question_missing(self) -> None:
         """Test missing question raises ValueError."""
@@ -508,13 +499,13 @@ class TestAppAnnotationServiceDirectManipulation:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = app
 
             # Act & Assert
             with pytest.raises(ValueError):
-                AppAnnotationService.insert_app_annotation_directly(args, app.id, session=mock_db.session)
+                AppAnnotationService.insert_app_annotation_directly(args, app.id, mock_db.session)
 
     def test_insert_app_annotation_directly_should_create_annotation_and_index(self) -> None:
         """Test insert creates annotation and triggers index task."""
@@ -528,14 +519,14 @@ class TestAppAnnotationServiceDirectManipulation:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.MessageAnnotation", return_value=annotation_instance) as mock_cls,
             patch("services.annotation_service.add_annotation_to_index_task") as mock_task,
         ):
             mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
-            result = AppAnnotationService.insert_app_annotation_directly(args, app.id, session=mock_db.session)
+            result = AppAnnotationService.insert_app_annotation_directly(args, app.id, mock_db.session)
 
             # Assert
             assert result == annotation_instance
@@ -564,7 +555,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = None
 
@@ -586,7 +577,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = annotation
 
@@ -608,7 +599,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.update_annotation_to_index_task") as mock_task,
         ):
             mock_db.session.scalar.side_effect = [annotation, setting]
@@ -645,7 +636,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.delete_annotation_index_task") as mock_task,
         ):
             mock_db.session.scalar.side_effect = [annotation, setting]
@@ -679,7 +670,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = None
 
@@ -695,7 +686,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.execute.return_value.all.return_value = []
 
@@ -718,7 +709,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.delete_annotation_index_task") as mock_task,
         ):
             # First execute().all() for multi-column query, subsequent execute() calls for deletes
@@ -757,13 +748,13 @@ class TestAppAnnotationServiceBatchImport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.batch_import_app_annotations("app-1", file, session=mock_db.session)
+                AppAnnotationService.batch_import_app_annotations("app-1", file, mock_db.session)
 
     def test_batch_import_app_annotations_should_return_error_when_columns_invalid(self) -> None:
         """Test invalid column count returns error message."""
@@ -775,7 +766,7 @@ class TestAppAnnotationServiceBatchImport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.pd.read_csv", return_value=df),
             patch(
                 "configs.dify_config",
@@ -785,7 +776,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -800,7 +791,7 @@ class TestAppAnnotationServiceBatchImport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch(
                 "configs.dify_config",
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
@@ -809,7 +800,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -826,7 +817,7 @@ class TestAppAnnotationServiceBatchImport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.pd.read_csv", return_value=df),
             patch("services.annotation_service.FeatureService.get_features", return_value=features),
             patch(
@@ -837,7 +828,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -853,7 +844,7 @@ class TestAppAnnotationServiceBatchImport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.pd.read_csv", return_value=df),
             patch(
                 "configs.dify_config",
@@ -863,7 +854,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -883,7 +874,7 @@ class TestAppAnnotationServiceBatchImport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.pd.read_csv", return_value=df),
             patch(
                 "configs.dify_config",
@@ -893,7 +884,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -909,7 +900,7 @@ class TestAppAnnotationServiceBatchImport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.pd.read_csv", return_value=df),
             patch(
                 "configs.dify_config",
@@ -919,7 +910,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -935,7 +926,7 @@ class TestAppAnnotationServiceBatchImport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.pd.read_csv", return_value=df),
             patch(
                 "configs.dify_config",
@@ -945,7 +936,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -961,7 +952,7 @@ class TestAppAnnotationServiceBatchImport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.pd.read_csv", return_value=df),
             patch(
                 "configs.dify_config",
@@ -971,7 +962,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -991,7 +982,7 @@ class TestAppAnnotationServiceBatchImport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.pd.read_csv", return_value=df),
             patch("services.annotation_service.FeatureService.get_features", return_value=features),
             patch(
@@ -1002,7 +993,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -1020,7 +1011,7 @@ class TestAppAnnotationServiceBatchImport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.pd.read_csv", return_value=df),
             patch("services.annotation_service.FeatureService.get_features", return_value=features),
             patch("services.annotation_service.batch_import_annotations_task") as mock_task,
@@ -1035,7 +1026,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, mock_db.session)
 
             # Assert
             assert result == {"job_id": "uuid-3", "job_status": "waiting", "record_count": 1}
@@ -1058,7 +1049,7 @@ class TestAppAnnotationServiceBatchImport:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.pd.read_csv", return_value=df),
             patch("services.annotation_service.FeatureService.get_features", return_value=features),
             patch("services.annotation_service.redis_client") as mock_redis,
@@ -1075,7 +1066,7 @@ class TestAppAnnotationServiceBatchImport:
 
             # Act
             with caplog.at_level(logging.DEBUG):
-                result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+                result = AppAnnotationService.batch_import_app_annotations(app.id, file, mock_db.session)
 
             # Assert
             assert result["error_msg"] == "An error occurred while processing the file: boom"
@@ -1093,7 +1084,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         # Arrange
         app = _make_app()
 
-        with patch("services.annotation_service.db") as mock_db:
+        with patch("services.annotation_service.db", create=True) as mock_db:
             mock_db.session.scalar.return_value = None
 
             # Act & Assert
@@ -1112,7 +1103,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.paginate_query") as mock_paginate,
         ):
             mock_db.session.scalar.return_value = app
@@ -1124,7 +1115,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
                 _make_annotation_ref(app, annotation.id),
                 1,
                 10,
-                session=mock_db.session,
+                mock_db.session,
             )
 
             # Assert
@@ -1136,11 +1127,11 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
     def test_get_annotation_by_id_should_return_none_when_missing(self) -> None:
         """Test get_annotation_by_id returns None when not found."""
         # Arrange
-        with patch("services.annotation_service.db") as mock_db:
+        with patch("services.annotation_service.db", create=True) as mock_db:
             mock_db.session.get.return_value = None
 
             # Act
-            result = AppAnnotationService.get_annotation_by_id("ann-1", session=mock_db.session)
+            result = AppAnnotationService.get_annotation_by_id("ann-1", mock_db.session)
 
             # Assert
             assert result is None
@@ -1149,11 +1140,11 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         """Test get_annotation_by_id returns annotation when found."""
         # Arrange
         annotation = _make_annotation("ann-1")
-        with patch("services.annotation_service.db") as mock_db:
+        with patch("services.annotation_service.db", create=True) as mock_db:
             mock_db.session.get.return_value = annotation
 
             # Act
-            result = AppAnnotationService.get_annotation_by_id("ann-1", session=mock_db.session)
+            result = AppAnnotationService.get_annotation_by_id("ann-1", mock_db.session)
 
             # Assert
             assert result == annotation
@@ -1162,7 +1153,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         """Test add_annotation_history updates hit count and creates history."""
         # Arrange
         with (
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.AppAnnotationHitHistory") as mock_history_cls,
         ):
             # Act
@@ -1183,7 +1174,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             mock_db.session.execute.assert_called_once()
             mock_history_cls.assert_called_once()
             mock_db.session.add.assert_called_once()
-            mock_db.session.commit.assert_called_once()
+            mock_db.session.flush.assert_called_once()
 
     def test_get_app_annotation_setting_by_app_id_should_return_embedding_model_when_detail_exists(self) -> None:
         """Test setting detail returns embedding model info."""
@@ -1191,21 +1182,25 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         tenant_id = "tenant-1"
         app = _make_app()
         setting = _make_setting(with_detail=True)
+        detail = setting.collection_binding_detail
+        setting.collection_binding_detail = None
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.side_effect = [app, setting]
+            mock_db.session.get.return_value = detail
 
             # Act
-            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, session=mock_db.session)
+            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, mock_db.session)
 
             # Assert
             assert result["enabled"] is True
             embedding_model = cast(dict[str, Any], result["embedding_model"])
             assert embedding_model["embedding_provider_name"] == "provider-a"
             assert embedding_model["embedding_model_name"] == "model-a"
+            mock_db.session.get.assert_called_once_with(DatasetCollectionBinding, setting.collection_binding_id)
 
     def test_get_app_annotation_setting_by_app_id_should_raise_not_found_when_app_missing(self) -> None:
         """Test missing app raises NotFound."""
@@ -1214,13 +1209,13 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.get_app_annotation_setting_by_app_id("app-1", session=mock_db.session)
+                AppAnnotationService.get_app_annotation_setting_by_app_id("app-1", mock_db.session)
 
     def test_get_app_annotation_setting_by_app_id_should_return_empty_embedding_model_when_no_detail(self) -> None:
         """Test setting without detail returns empty embedding model."""
@@ -1228,19 +1223,22 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         tenant_id = "tenant-1"
         app = _make_app()
         setting = _make_setting(with_detail=False)
+        setting.collection_binding_detail = SimpleNamespace(provider_name="wrong", model_name="wrong")
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.side_effect = [app, setting]
+            mock_db.session.get.return_value = None
 
             # Act
-            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, session=mock_db.session)
+            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, mock_db.session)
 
             # Assert
             assert result["enabled"] is True
             assert result["embedding_model"] == {}
+            mock_db.session.get.assert_called_once_with(DatasetCollectionBinding, setting.collection_binding_id)
 
     def test_get_app_annotation_setting_by_app_id_should_return_disabled_when_setting_missing(self) -> None:
         """Test missing setting returns disabled payload."""
@@ -1250,12 +1248,12 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.side_effect = [app, None]
 
             # Act
-            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, session=mock_db.session)
+            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, mock_db.session)
 
             # Assert
             assert result == {"enabled": False}
@@ -1267,27 +1265,29 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         current_user = _make_user("user-1")
         app = _make_app()
         setting = _make_setting(with_detail=True)
+        detail = setting.collection_binding_detail
+        setting.collection_binding_detail = None
         args = {"score_threshold": 0.8}
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.naive_utc_now", return_value="now"),
         ):
             mock_db.session.scalar.side_effect = [app, setting]
+            mock_db.session.get.return_value = detail
 
             # Act
-            result = AppAnnotationService.update_app_annotation_setting(
-                app.id, setting.id, args, session=mock_db.session
-            )
+            result = AppAnnotationService.update_app_annotation_setting(app.id, setting.id, args, mock_db.session)
 
             # Assert
             assert result["enabled"] is True
             assert result["score_threshold"] == 0.8
             embedding_model = cast(dict[str, Any], result["embedding_model"])
             assert embedding_model["embedding_provider_name"] == "provider-a"
+            mock_db.session.get.assert_called_once_with(DatasetCollectionBinding, setting.collection_binding_id)
             mock_db.session.add.assert_called_once_with(setting)
-            mock_db.session.commit.assert_called_once()
+            mock_db.session.flush.assert_called_once()
 
     def test_update_app_annotation_setting_should_return_empty_embedding_model_when_detail_missing(self) -> None:
         """Test update returns empty embedding_model when collection detail is absent."""
@@ -1296,24 +1296,25 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         current_user = _make_user("user-1")
         app = _make_app()
         setting = _make_setting(with_detail=False)
+        setting.collection_binding_detail = SimpleNamespace(provider_name="wrong", model_name="wrong")
         args = {"score_threshold": 0.7}
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.naive_utc_now", return_value="now"),
         ):
             mock_db.session.scalar.side_effect = [app, setting]
+            mock_db.session.get.return_value = None
 
             # Act
-            result = AppAnnotationService.update_app_annotation_setting(
-                app.id, setting.id, args, session=mock_db.session
-            )
+            result = AppAnnotationService.update_app_annotation_setting(app.id, setting.id, args, mock_db.session)
 
             # Assert
             assert result["enabled"] is True
             assert result["score_threshold"] == 0.7
             assert result["embedding_model"] == {}
+            mock_db.session.get.assert_called_once_with(DatasetCollectionBinding, setting.collection_binding_id)
 
     def test_update_app_annotation_setting_should_raise_not_found_when_app_missing(self) -> None:
         """Test update raises NotFound when app is missing."""
@@ -1322,7 +1323,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = None
 
@@ -1340,7 +1341,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.side_effect = [app, None]
 
@@ -1366,7 +1367,7 @@ class TestAppAnnotationServiceClearAll:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
             patch("services.annotation_service.delete_annotation_index_task") as mock_task,
         ):
             # scalar calls: app lookup, annotation_setting lookup
@@ -1381,7 +1382,7 @@ class TestAppAnnotationServiceClearAll:
             mock_db.session.scalars.side_effect = [annotations_scalars, histories_scalars_1, histories_scalars_2]
 
             # Act
-            result = AppAnnotationService.clear_all_annotations(app.id, session=mock_db.session)
+            result = AppAnnotationService.clear_all_annotations(app.id, mock_db.session)
 
             # Assert
             assert result == {"result": "success"}
@@ -1399,10 +1400,10 @@ class TestAppAnnotationServiceClearAll:
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.db", create=True) as mock_db,
         ):
             mock_db.session.scalar.return_value = None
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.clear_all_annotations("app-1", session=mock_db.session)
+                AppAnnotationService.clear_all_annotations("app-1", mock_db.session)

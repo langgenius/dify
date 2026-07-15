@@ -29,7 +29,7 @@ from flask import Flask
 from flask.views import MethodView
 from pydantic import ValidationError
 from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound, UnprocessableEntity
 
 from controllers.openapi import bp as openapi_bp
@@ -96,15 +96,10 @@ def database_session(sqlite_engine: Engine):
     models = (Account, Tenant, TenantAccountJoin)
     tables = [model.metadata.tables[model.__tablename__] for model in models]
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    database_session = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
-    try:
-        with (
-            patch.object(workspaces_module.db, "session", database_session),
-            patch("models.account.db", SimpleNamespace(engine=sqlite_engine)),
-        ):
-            yield database_session()
-    finally:
-        database_session.remove()
+    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    factory = SimpleNamespace(get_session_maker=lambda: session_maker, create_session=session_maker)
+    with patch("controllers.common.session.session_factory", factory), session_maker() as session:
+        yield session
 
 
 def _rule(app: Flask, path: str):

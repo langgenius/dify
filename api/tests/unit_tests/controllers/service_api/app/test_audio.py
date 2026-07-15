@@ -167,6 +167,7 @@ class TestAudioServiceMockedBehavior:
         result = AudioService.transcript_asr(
             app_model=mock_app,
             file=mock_file,
+            session=Mock(),
             end_user="user_123",
         )
 

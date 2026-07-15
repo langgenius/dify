@@ -19,7 +19,7 @@ import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
-import { TEST_RUN_MENU_HOTKEY } from './shortcuts'
+import { TEST_RUN_MENU_HOTKEY } from '../hotkeys'
 import TestRunMenu, { TriggerType } from './test-run-menu'
 
 type RunModeProps = {

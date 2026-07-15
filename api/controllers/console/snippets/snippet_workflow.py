@@ -56,6 +56,7 @@ from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.snippet import CustomizedSnippet
+from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.snippet_generate_service import SnippetGenerateService
 from services.snippet_service import SnippetService
@@ -177,6 +178,10 @@ class SnippetDraftWorkflowApi(Resource):
 
         workflow.conversation_variables = []
         response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
+            session=db.session(),
+            draft_workflow=workflow,
+        )
         response["input_fields"] = snippet.input_fields_list
         return response
 
