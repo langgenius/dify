@@ -177,7 +177,7 @@ class AgentLogsQuery(BaseModel):
         default_factory=list,
         description=(
             "Filter by one or more source IDs, e.g. webapp:<app_id> "
-            "or workflow:<app_id>:<workflow_id>:<version>:<node_id>"
+            "or workflow:<app_id>. Exact workflow:<app_id>:<workflow_id>:<version>:<node_id> IDs remain supported."
         ),
     )
     sort_by: str = Field(default="updated_at", description="Sort by created_at or updated_at")
@@ -221,7 +221,10 @@ class AgentLogsQuery(BaseModel):
 class AgentStatisticsQuery(BaseModel):
     source: str | None = Field(
         default=None,
-        description="Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger",
+        description=(
+            "Filter by a structured webapp:<app_id> or workflow:<app_id> source ID. "
+            "Legacy invoke sources and exact workflow version/node source IDs remain supported."
+        ),
     )
     start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
     end: str | None = Field(default=None, description="End date (YYYY-MM-DD HH:MM)")
