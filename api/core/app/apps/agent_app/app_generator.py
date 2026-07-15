@@ -51,6 +51,7 @@ from core.workflow.file_reference import build_file_reference, is_canonical_file
 from extensions.ext_database import db
 from models import Account, App, EndUser, Message
 from models.agent import (
+    APP_BACKED_AGENT_SOURCES,
     Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
@@ -580,7 +581,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     and_(
                         Agent.app_id == app_model.id,
                         Agent.scope == AgentScope.ROSTER,
-                        Agent.source == AgentSource.AGENT_APP,
+                        Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                     ),
                     Agent.backing_app_id == app_model.id,
                 ),
@@ -590,6 +591,12 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         )
         if agent is None:
             raise AgentAppGeneratorError("Agent App has no bound Agent")
+        if (
+            agent.source == AgentSource.IMPORTED
+            and not agent.active_config_is_published
+            and invoke_from != InvokeFrom.DEBUGGER
+        ):
+            raise AgentAppNotPublishedError("Agent has not been published")
         if invoke_from == InvokeFrom.DEBUGGER:
             draft = self._resolve_debug_draft(
                 tenant_id=app_model.tenant_id,

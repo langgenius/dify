@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -18,9 +18,11 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow
+from services.agent.dsl_service import AgentDslService
+from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
-from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
+from services.entities.dsl_entities import CheckDependenciesResult, DslImportWarning, ImportMode, ImportStatus
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.snippet_service import SNIPPET_FORBIDDEN_NODE_TYPES, SnippetService
 
@@ -29,7 +31,7 @@ logger = logging.getLogger(__name__)
 IMPORT_INFO_REDIS_KEY_PREFIX = "snippet_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "snippet_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
-CURRENT_DSL_VERSION = "0.1.0"
+CURRENT_DSL_VERSION = "0.2.0"
 
 
 class SnippetImportInfo(BaseModel):
@@ -39,6 +41,7 @@ class SnippetImportInfo(BaseModel):
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
+    warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
 def _check_version_compatibility(imported_version: str) -> ImportStatus:
@@ -62,6 +65,7 @@ class CheckDependenciesPendingData(BaseModel):
 class SnippetDslService:
     def __init__(self, session: Session):
         self._session = session
+        self._warnings: list[DslImportWarning] = []
 
     def _snippet_service(self) -> SnippetService:
         return SnippetService(session=self._session)
@@ -78,6 +82,7 @@ class SnippetDslService:
         description: str | None = None,
     ) -> SnippetImportInfo:
         """Import a snippet from YAML content or URL."""
+        self._warnings = []
         import_id = str(uuid.uuid4())
 
         # Validate import mode
@@ -261,9 +266,10 @@ class SnippetDslService:
 
             return SnippetImportInfo(
                 id=import_id,
-                status=status,
+                status=self._status_with_warnings(status),
                 snippet_id=snippet.id,
                 imported_dsl_version=imported_version,
+                warnings=self._warnings,
             )
 
         except yaml.YAMLError as e:
@@ -274,6 +280,7 @@ class SnippetDslService:
             )
 
         except Exception as e:
+            self._session.rollback()
             logger.exception("Failed to import snippet")
             return SnippetImportInfo(
                 id=import_id,
@@ -285,6 +292,7 @@ class SnippetDslService:
         """
         Confirm an import that requires confirmation
         """
+        self._warnings = []
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
         pending_data = redis_client.get(redis_key)
 
@@ -334,12 +342,14 @@ class SnippetDslService:
 
             return SnippetImportInfo(
                 id=import_id,
-                status=ImportStatus.COMPLETED,
+                status=self._status_with_warnings(ImportStatus.COMPLETED),
                 snippet_id=snippet.id,
                 imported_dsl_version=data.get("version", "0.1.0"),
+                warnings=self._warnings,
             )
 
         except Exception as e:
+            self._session.rollback()
             logger.exception("Failed to confirm import")
             return SnippetImportInfo(
                 id=import_id,
@@ -418,19 +428,36 @@ class SnippetDslService:
         # Create or update draft workflow
         if workflow_data:
             graph = workflow_data.get("graph", {})
+            raw_agent_packages = data.get("agent_packages") or {}
+            if not isinstance(raw_agent_packages, Mapping):
+                raise ValueError("agent_packages must be a mapping")
+            graph_for_sync = AgentDslService.graph_without_package_bindings(graph) if raw_agent_packages else graph
 
             snippet_service = self._snippet_service()
             # Get existing workflow hash if exists
             existing_workflow = snippet_service.get_draft_workflow(snippet=snippet)
             unique_hash = existing_workflow.unique_hash if existing_workflow else None
 
-            snippet_service.sync_draft_workflow(
+            draft_workflow = snippet_service.sync_draft_workflow(
                 snippet=snippet,
-                graph=graph,
+                graph=graph_for_sync,
                 unique_hash=unique_hash,
                 account=account,
                 input_fields=input_fields,
+                sync_agent_bindings=not raw_agent_packages,
             )
+            if raw_agent_packages:
+                _, warnings = AgentDslService(self._session).import_workflow_packages(
+                    workflow=draft_workflow,
+                    portable_graph=graph,
+                    raw_packages=raw_agent_packages,
+                    account=account,
+                )
+                self._warnings.extend(warnings)
+                WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+                    session=self._session,
+                    draft_workflow=draft_workflow,
+                )
 
         self._session.commit()
         return snippet
@@ -473,6 +500,11 @@ class SnippetDslService:
         Append workflow export data
         """
         workflow_dict = workflow.to_dict(include_secret=include_secret)
+        graph, agent_packages = AgentDslService(self._session).export_workflow_packages(
+            workflow=workflow,
+            graph=workflow_dict.get("graph", {}),
+        )
+        workflow_dict["graph"] = graph
         # Filter workspace related data from nodes
         workflow_dict["environment_variables"] = []
         workflow_dict["conversation_variables"] = []
@@ -498,6 +530,11 @@ class SnippetDslService:
 
         export_data["workflow"] = workflow_dict
         dependencies = self._extract_dependencies_from_workflow(workflow)
+        dependencies.extend(AgentDslService(self._session).extract_package_dependencies(agent_packages))
+        if agent_packages:
+            export_data["agent_packages"] = {
+                key: package.model_dump(mode="json") for key, package in agent_packages.items()
+            }
         export_data["dependencies"] = [
             jsonable_encoder(d.model_dump())
             for d in DependenciesAnalysisService.generate_dependencies(
@@ -522,6 +559,11 @@ class SnippetDslService:
         graph = workflow.graph_dict
         dependencies = self._extract_dependencies_from_workflow_graph(graph)
         return dependencies
+
+    def _status_with_warnings(self, status: ImportStatus) -> ImportStatus:
+        if status == ImportStatus.COMPLETED and self._warnings:
+            return ImportStatus.COMPLETED_WITH_WARNINGS
+        return status
 
     def _extract_dependencies_from_workflow_graph(self, graph: Mapping) -> list[str]:
         """
