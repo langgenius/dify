@@ -507,27 +507,28 @@ class TestMemberInviteEmailApi:
         assert result["invitation_results"][0]["message"] == "licensed seats limit exceeded"
 
 
-def test_count_new_member_invites():
-    new_account = None
-    existing_account_not_in_tenant = SimpleNamespace(id="account-2")
-    existing_account_in_tenant = SimpleNamespace(id="account-3")
+class TestCountNewMemberInvites:
+    def test_count_new_member_invites(self):
+        new_account = None
+        existing_account_not_in_tenant = SimpleNamespace(id="account-2")
+        existing_account_in_tenant = SimpleNamespace(id="account-3")
 
-    with (
-        patch(
-            "controllers.console.workspace.members.AccountService.get_account_by_email_with_case_fallback",
-            side_effect=[new_account, existing_account_not_in_tenant, existing_account_in_tenant],
-        ) as mock_get_account,
-        patch("controllers.console.workspace.members.db.session") as mock_session,
-    ):
-        mock_session.scalar.side_effect = [None, "join-id"]
-        result = _count_new_member_invites(
-            "tenant-1",
-            ["new@test.com", "existing@test.com", "member@test.com"],
-        )
+        with (
+            patch(
+                "controllers.console.workspace.members.AccountService.get_account_by_email_with_case_fallback",
+                side_effect=[new_account, existing_account_not_in_tenant, existing_account_in_tenant],
+            ) as mock_get_account,
+            patch("controllers.console.workspace.members.db.session") as mock_session,
+        ):
+            mock_session.scalar.side_effect = [None, "join-id"]
+            result = _count_new_member_invites(
+                "tenant-1",
+                ["new@test.com", "existing@test.com", "member@test.com"],
+            )
 
-    assert result == (2, 1)
-    assert mock_get_account.call_count == 3
-    assert mock_session.scalar.call_count == 2
+        assert result == (2, 1)
+        assert mock_get_account.call_count == 3
+        assert mock_session.scalar.call_count == 2
 
 
 class TestMemberUpdateRoleApi:
