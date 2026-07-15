@@ -3374,12 +3374,12 @@ class SegmentService:
                     segment_document.word_count += len(args["answer"])
                     segment_document.answer = args["answer"]
 
-            session.add(segment_document)
-            # update document word count
-            assert document.word_count is not None
-            document.word_count += segment_document.word_count
-            session.add(document)
-            session.commit()
+                session.add(segment_document)
+                # update document word count
+                assert document.word_count is not None
+                document.word_count += segment_document.word_count
+                session.add(document)
+                session.commit()
 
             if args["attachment_ids"]:
                 for attachment_id in args["attachment_ids"]:

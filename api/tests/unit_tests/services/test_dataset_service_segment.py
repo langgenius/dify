@@ -526,6 +526,63 @@ class TestSegmentServiceMutations:
         assert {binding.attachment_id for binding in attachment_bindings} == {"att-1", "att-2"}
         assert mock_db.session.commit.call_count == 3
 
+    def test_create_segment_commits_before_releasing_position_lock(self, account_context):
+        """The read-check-insert-commit sequence must be fully covered by the redis lock.
+
+        Regression test for a race where `session.add`/`session.commit` sat outside the
+        `with redis_client.lock(...)` block, so two concurrent callers could read the same
+        `max_position` and commit segments with duplicate positions.
+        """
+        dataset = _make_dataset(indexing_technique="economy")
+        document = _make_document(
+            dataset_id=dataset.id,
+            tenant_id=dataset.tenant_id,
+            doc_form=IndexStructureType.QA_INDEX,
+            word_count=0,
+        )
+        args = {
+            "content": "question",
+            "answer": "answer",
+            "keywords": ["kw-1"],
+            "attachment_ids": [],
+        }
+
+        class RecordingLock:
+            def __init__(self, session: MagicMock):
+                self._session = session
+                self.commit_count_at_exit: int | None = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                self.commit_count_at_exit = self._session.commit.call_count
+                return False
+
+        with (
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.db") as mock_db,
+            patch("services.dataset_service.VectorService") as vector_service,
+            patch("services.dataset_service.helper.generate_text_hash", return_value="hash-1"),
+            patch("services.dataset_service.uuid.uuid4", return_value="node-1"),
+            patch("services.dataset_service.naive_utc_now", return_value="now"),
+        ):
+            recording_lock = RecordingLock(mock_db.session)
+            mock_redis.lock.return_value = recording_lock
+
+            mock_db.session.scalar.return_value = None
+            mock_db.session.get.return_value = SimpleNamespace(id="segment-1")
+
+            SegmentService.create_segment(
+                args=args,
+                document=document,
+                dataset=dataset,
+                session=mock_db.session,
+            )
+
+        assert recording_lock.commit_count_at_exit is not None
+        assert recording_lock.commit_count_at_exit >= 1
+
     def test_multi_create_segment_high_quality_marks_segments_error_when_vector_creation_fails(self, account_context):
         dataset = _make_dataset(indexing_technique="high_quality")
         document = _make_document(
