@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import CreateCard from '../create-card'
 
 const mockPush = vi.fn()
@@ -80,7 +79,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       await waitFor(() => {
@@ -96,7 +97,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       await waitFor(() => {
@@ -112,7 +115,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       await waitFor(() => {
@@ -128,7 +133,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       // Should not throw and should handle error gracefully
@@ -145,7 +152,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       await waitFor(() => {

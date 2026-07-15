@@ -18,8 +18,7 @@ const defaultLocale = 'en-US' satisfies Locale
 
 const normalizeLocale = (locale: Locale): Locale => {
   const normalized = legacyLocaleMap[locale] ?? locale
-  if (LanguagesSupported.includes(normalized))
-    return normalized
+  if (LanguagesSupported.includes(normalized)) return normalized
 
   return defaultLocale
 }
@@ -29,7 +28,10 @@ const loadLocaleResources = (locale: Locale): Promise<LocaleResourceModule> => {
   return import(`./locale-resources/${normalized}.ts`)
 }
 
-export const loadI18nResource = async (locale: Locale, namespace: Namespace | NamespaceInFileName) => {
+export const loadI18nResource = async (
+  locale: Locale,
+  namespace: Namespace | NamespaceInFileName,
+) => {
   const { loadResource } = await loadLocaleResources(locale)
   return loadResource(kebabCase(namespace))
 }

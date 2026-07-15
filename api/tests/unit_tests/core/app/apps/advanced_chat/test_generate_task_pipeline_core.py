@@ -50,10 +50,10 @@ from core.app.entities.task_entities import (
     ReasoningChunkStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
+from core.workflow.nodes.human_input.entities import UserActionConfig
+from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from core.workflow.system_variables import build_system_variables
-from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.human_input.entities import UserActionConfig
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
@@ -168,7 +168,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert response.data.paused_nodes == ["node-1"]
         assert response.data.reasons == [
             {
-                "TYPE": PauseReasonType.HUMAN_INPUT_REQUIRED,
+                "TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED,
                 "form_id": "form-1",
                 "node_id": "node-1",
                 "node_title": "Approval",
@@ -580,21 +580,27 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert result is False
         assert seen == ["token"]
 
-    def test_handle_retriever_and_annotation_events(self):
+    def test_handle_retriever_and_annotation_events(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         calls = {"retriever": 0, "annotation": 0}
 
         def _hit_retriever(event):
             calls["retriever"] += 1
 
-        def _hit_annotation(event):
+        def _hit_annotation(_manager, event, session):
             calls["annotation"] += 1
 
         pipeline._message_cycle_manager.handle_retriever_resources = _hit_retriever
-        pipeline._message_cycle_manager.handle_annotation_reply = _hit_annotation
+        monkeypatch.setattr(type(pipeline._message_cycle_manager), "handle_annotation_reply", _hit_annotation)
 
         retriever_event = QueueRetrieverResourcesEvent(retriever_resources=[])
         annotation_event = QueueAnnotationReplyEvent(message_annotation_id="ann")
+
+        @contextmanager
+        def _fake_session():
+            yield SimpleNamespace()
+
+        monkeypatch.setattr(pipeline, "_database_session", _fake_session)
 
         assert list(pipeline._handle_retriever_resources_event(retriever_event)) == []
         assert list(pipeline._handle_annotation_reply_event(annotation_event)) == []

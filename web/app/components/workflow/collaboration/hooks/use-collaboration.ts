@@ -36,7 +36,7 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
   const lastDisconnectReasonRef = useRef<string | null>(null)
   const { data: isCollaborationEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_collaboration_mode,
+    select: (s) => s.enable_collaboration_mode,
   })
 
   useEffect(() => {
@@ -50,8 +50,7 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
     let connectionId: string | null = null
     let isUnmounted = false
 
-    if (!cursorServiceRef.current)
-      cursorServiceRef.current = new CursorService()
+    if (!cursorServiceRef.current) cursorServiceRef.current = new CursorService()
 
     const initCollaboration = async () => {
       try {
@@ -61,41 +60,44 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
           return
         }
         connectionId = id
-        setState(prev => ({ ...prev, isConnected: collaborationManager.isConnected() }))
-      }
-      catch (error) {
+        setState((prev) => ({ ...prev, isConnected: collaborationManager.isConnected() }))
+      } catch (error) {
         console.error('Failed to initialize collaboration:', error)
       }
     }
 
     initCollaboration()
 
-    const unsubscribeStateChange = collaborationManager.onStateChange((newState: Partial<CollaborationState>) => {
-      if (newState.isConnected === false)
-        lastDisconnectReasonRef.current = newState.disconnectReason || newState.error || null
-      if (newState.isConnected === true)
-        lastDisconnectReasonRef.current = null
+    const unsubscribeStateChange = collaborationManager.onStateChange(
+      (newState: Partial<CollaborationState>) => {
+        if (newState.isConnected === false)
+          lastDisconnectReasonRef.current = newState.disconnectReason || newState.error || null
+        if (newState.isConnected === true) lastDisconnectReasonRef.current = null
 
-      if (newState.isConnected === undefined)
-        return
+        if (newState.isConnected === undefined) return
 
-      setState(prev => ({ ...prev, isConnected: newState.isConnected ?? prev.isConnected }))
-    })
+        setState((prev) => ({ ...prev, isConnected: newState.isConnected ?? prev.isConnected }))
+      },
+    )
 
-    const unsubscribeCursors = collaborationManager.onCursorUpdate((cursors: Record<string, CursorPosition>) => {
-      setState(prev => ({ ...prev, cursors }))
-    })
+    const unsubscribeCursors = collaborationManager.onCursorUpdate(
+      (cursors: Record<string, CursorPosition>) => {
+        setState((prev) => ({ ...prev, cursors }))
+      },
+    )
 
     const unsubscribeUsers = collaborationManager.onOnlineUsersUpdate((users: OnlineUser[]) => {
-      setState(prev => ({ ...prev, onlineUsers: users }))
+      setState((prev) => ({ ...prev, onlineUsers: users }))
     })
 
-    const unsubscribeNodePanelPresence = collaborationManager.onNodePanelPresenceUpdate((presence: NodePanelPresenceMap) => {
-      setState(prev => ({ ...prev, nodePanelPresence: presence }))
-    })
+    const unsubscribeNodePanelPresence = collaborationManager.onNodePanelPresenceUpdate(
+      (presence: NodePanelPresenceMap) => {
+        setState((prev) => ({ ...prev, nodePanelPresence: presence }))
+      },
+    )
 
     const unsubscribeLeaderChange = collaborationManager.onLeaderChange((isLeader: boolean) => {
-      setState(prev => ({ ...prev, isLeader }))
+      setState((prev) => ({ ...prev, isLeader }))
     })
 
     return () => {
@@ -106,8 +108,7 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
       unsubscribeNodePanelPresence()
       unsubscribeLeaderChange()
       cursorServiceRef.current?.stopTracking()
-      if (connectionId)
-        collaborationManager.disconnect(connectionId)
+      if (connectionId) collaborationManager.disconnect(connectionId)
     }
   }, [appId, reactFlowStore, isCollaborationEnabled])
 
@@ -115,22 +116,26 @@ export function useCollaboration(appId: string, reactFlowStore?: ReactFlowStore)
   useEffect(() => {
     if (prevIsConnected.current && !state.isConnected) {
       const reason = lastDisconnectReasonRef.current
-      if (reason)
-        console.warn('WebSocket disconnected:', reason)
-      else
-        console.warn('WebSocket disconnected.')
+      if (reason) console.warn('WebSocket disconnected:', reason)
+      else console.warn('WebSocket disconnected.')
     }
     prevIsConnected.current = state.isConnected || false
   }, [state.isConnected])
 
-  const startCursorTracking = (containerRef: React.RefObject<HTMLElement>, reactFlowInstance?: ReactFlowInstance) => {
-    if (!isCollaborationEnabled || !cursorServiceRef.current)
-      return
+  const startCursorTracking = (
+    containerRef: React.RefObject<HTMLElement>,
+    reactFlowInstance?: ReactFlowInstance,
+  ) => {
+    if (!isCollaborationEnabled || !cursorServiceRef.current) return
 
     if (cursorServiceRef.current) {
-      cursorServiceRef.current.startTracking(containerRef, (position) => {
-        collaborationManager.emitCursorMove(position)
-      }, reactFlowInstance)
+      cursorServiceRef.current.startTracking(
+        containerRef,
+        (position) => {
+          collaborationManager.emitCursorMove(position)
+        },
+        reactFlowInstance,
+      )
     }
   }
 

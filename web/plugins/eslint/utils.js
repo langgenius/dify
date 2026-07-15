@@ -3,8 +3,7 @@ export const cleanJsonText = (text) => {
   try {
     JSON.parse(cleaned)
     return cleaned
-  }
-  catch {
+  } catch {
     return text
   }
 }

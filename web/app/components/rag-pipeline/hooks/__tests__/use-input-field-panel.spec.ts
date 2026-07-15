@@ -1,6 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import { useInputFieldPanel } from '../use-input-field-panel'
 
 const mockSetShowInputFieldPanel = vi.fn()

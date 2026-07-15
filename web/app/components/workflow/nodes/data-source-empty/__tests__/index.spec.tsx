@@ -23,14 +23,16 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
       {typeof trigger === 'function' ? trigger(false) : trigger}
       <button
         type="button"
-        onClick={() => onSelect(BlockEnum.DataSource, {
-          plugin_id: 'plugin-id',
-          provider_type: 'datasource',
-          provider_name: 'file',
-          datasource_name: 'local-file',
-          datasource_label: 'Local File',
-          title: 'Local File',
-        })}
+        onClick={() =>
+          onSelect(BlockEnum.DataSource, {
+            plugin_id: 'plugin-id',
+            provider_type: 'datasource',
+            provider_name: 'file',
+            datasource_name: 'local-file',
+            datasource_label: 'Local File',
+            title: 'Local File',
+          })
+        }
       >
         select data source
       </button>
@@ -40,21 +42,22 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
 
 type DataSourceEmptyNodeProps = ComponentProps<typeof DataSourceEmptyNode>
 
-const createNodeProps = (): DataSourceEmptyNodeProps => ({
-  id: 'data-source-empty-node',
-  data: {
-    width: 240,
-    height: 88,
-  },
-  type: 'default',
-  selected: false,
-  zIndex: 0,
-  isConnectable: true,
-  xPos: 0,
-  yPos: 0,
-  dragging: false,
-  dragHandle: undefined,
-} as unknown as DataSourceEmptyNodeProps)
+const createNodeProps = (): DataSourceEmptyNodeProps =>
+  ({
+    id: 'data-source-empty-node',
+    data: {
+      width: 240,
+      height: 88,
+    },
+    type: 'default',
+    selected: false,
+    zIndex: 0,
+    isConnectable: true,
+    xPos: 0,
+    yPos: 0,
+    dragging: false,
+    dragHandle: undefined,
+  }) as unknown as DataSourceEmptyNodeProps
 
 describe('DataSourceEmptyNode', () => {
   beforeEach(() => {
@@ -67,9 +70,7 @@ describe('DataSourceEmptyNode', () => {
   // The empty datasource node should render the add trigger and forward selector choices.
   describe('Rendering and Selection', () => {
     it('should render the datasource add trigger', () => {
-      render(
-        <DataSourceEmptyNode {...createNodeProps()} />,
-      )
+      render(<DataSourceEmptyNode {...createNodeProps()} />)
 
       expect(screen.getByText('workflow.nodes.dataSource.add')).toBeInTheDocument()
       expect(screen.getByText('workflow.blocks.datasource')).toBeInTheDocument()
@@ -82,9 +83,7 @@ describe('DataSourceEmptyNode', () => {
         handleReplaceNode,
       })
 
-      render(
-        <DataSourceEmptyNode {...createNodeProps()} />,
-      )
+      render(<DataSourceEmptyNode {...createNodeProps()} />)
 
       await user.click(screen.getByRole('button', { name: 'select data source' }))
 

@@ -15,35 +15,22 @@ import {
   concurrentFirstAgentPrompt,
   concurrentSecondAgentPrompt,
   createAgentSoulConfigWithModel,
+  createPublishableAgentSoulConfig,
   normalAgentPrompt,
   normalAgentSoulConfig,
   updatedAgentPrompt,
 } from '../../agent-v2/support/agent-soul'
-import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
+import {
+  agentBuilderTestMaterials,
+  getAgentBuilderTestMaterialPath,
+} from '../../agent-v2/support/test-materials'
 import {
   expectNormalAgentPromptDraft,
   getCurrentAgentId,
   getPreseededAgent,
 } from './configure-helpers'
 
-const concurrentAgentPrompts = [
-  concurrentFirstAgentPrompt,
-  concurrentSecondAgentPrompt,
-]
-
-function attachPageDiagnostics(world: DifyWorld, page: Page) {
-  page.setDefaultTimeout(30_000)
-  page.on('console', (message) => {
-    if (message.type() === 'error')
-      world.consoleErrors.push(message.text())
-  })
-  page.on('pageerror', (error) => {
-    world.pageErrors.push(error.message)
-  })
-  page.on('download', (dl) => {
-    world.capturedDownloads.push(dl)
-  })
-}
+const concurrentAgentPrompts = [concurrentFirstAgentPrompt, concurrentSecondAgentPrompt]
 
 const getPromptEditor = (page: Page) =>
   page.getByRole('region', { name: 'Prompt' }).getByRole('textbox', { name: 'Prompt' })
@@ -62,10 +49,11 @@ async function selectAgentModel(page: Page, modelName: string) {
 }
 
 async function expectAgentComposerPrompt(agentId: string, prompt: string) {
-  await expect.poll(
-    async () => (await getAgentComposerDraft(agentId)).agent_soul?.prompt?.system_prompt,
-    { timeout: 30_000 },
-  ).toBe(prompt)
+  await expect
+    .poll(async () => (await getAgentComposerDraft(agentId)).agent_soul?.prompt?.system_prompt, {
+      timeout: 30_000,
+    })
+    .toBe(prompt)
 }
 
 Given('an Agent v2 test agent has been created via API', async function (this: DifyWorld) {
@@ -100,6 +88,27 @@ Given('a runnable Agent v2 test agent has been created via API', async function 
   this.lastCreatedAgentRole = agent.role ?? undefined
 })
 
+Given(
+  'a runnable Agent v2 test agent using the agent-decision model has been created via API',
+  async function (this: DifyWorld) {
+    if (!this.agentBuilder.preflight.agentDecisionModel) {
+      throw new Error(
+        'Create an agent-decision Agent v2 test agent after agent-decision model preflight.',
+      )
+    }
+
+    const agent = await createConfiguredTestAgent({
+      agentSoul: createAgentSoulConfigWithModel(
+        normalAgentSoulConfig,
+        this.agentBuilder.preflight.agentDecisionModel,
+      ),
+    })
+    this.createdAgentIds.push(agent.id)
+    this.lastCreatedAgentName = agent.name
+    this.lastCreatedAgentRole = agent.role ?? undefined
+  },
+)
+
 Given('a minimal Agent v2 composer draft has been synced', async function (this: DifyWorld) {
   const agentId = getCurrentAgentId(this)
 
@@ -110,23 +119,36 @@ Given('the Agent v2 composer draft uses the normal E2E prompt', async function (
   await saveAgentComposerDraft(getCurrentAgentId(this), normalAgentSoulConfig)
 })
 
-Given('the e2e-summary-skill Skill is available to the Agent v2 test agent', async function (this: DifyWorld) {
-  const agentId = getCurrentAgentId(this)
-  const upload = await uploadAgentDriveSkill({
-    agentId,
-    fileName: agentBuilderTestMaterials.summarySkill,
-    filePath: getAgentBuilderTestMaterialPath('summarySkill'),
-  })
-  this.createdAgentDriveFiles.push({ agentId, key: upload.skill.skill_md_key })
-  if (upload.skill.archive_key)
-    this.createdAgentDriveFiles.push({ agentId, key: upload.skill.archive_key })
+Given('the Agent v2 composer draft is publishable', async function (this: DifyWorld) {
+  await saveAgentComposerDraft(
+    getCurrentAgentId(this),
+    createPublishableAgentSoulConfig(normalAgentSoulConfig),
+  )
 })
 
-Then('the Agent v2 test agent should include drive skill {string}', async function (this: DifyWorld, skillName: string) {
-  const skills = await getAgentDriveSkills(getCurrentAgentId(this))
+Given(
+  'the e2e-summary-skill Skill is available to the Agent v2 test agent',
+  async function (this: DifyWorld) {
+    const agentId = getCurrentAgentId(this)
+    const upload = await uploadAgentDriveSkill({
+      agentId,
+      fileName: agentBuilderTestMaterials.summarySkill,
+      filePath: getAgentBuilderTestMaterialPath('summarySkill'),
+    })
+    this.createdAgentDriveFiles.push({ agentId, key: upload.skill.skill_md_key })
+    if (upload.skill.archive_key)
+      this.createdAgentDriveFiles.push({ agentId, key: upload.skill.archive_key })
+  },
+)
 
-  expect(skills.map(skill => skill.name)).toContain(skillName)
-})
+Then(
+  'the Agent v2 test agent should include drive skill {string}',
+  async function (this: DifyWorld, skillName: string) {
+    const skills = await getAgentDriveSkills(getCurrentAgentId(this))
+
+    expect(skills.map((skill) => skill.name)).toContain(skillName)
+  },
+)
 
 When('I open the Agent v2 configure page', async function (this: DifyWorld) {
   await this.getPage().goto(getAgentConfigurePath(getCurrentAgentId(this)))
@@ -148,27 +170,29 @@ When('I switch to the Agent v2 Configure section', async function (this: DifyWor
   const agentId = getCurrentAgentId(this)
 
   await page.getByRole('link', { name: 'Configure' }).click()
-  await expect(page).toHaveURL(new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`))
+  await expect(page).toHaveURL(new RegExp(`/agents/${agentId}/configure(?:\\?.*)?$`))
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
 })
 
-When('I leave the Agent v2 configure page immediately after editing', async function (this: DifyWorld) {
-  const page = this.getPage()
+When(
+  'I leave the Agent v2 configure page immediately after editing',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
 
-  await page.goto('/roster')
-  await expect(page).toHaveURL(/\/roster(?:\?.*)?$/)
-})
+    await page.goto('/agents')
+    await expect(page).toHaveURL(/\/agents(?:\?.*)?$/)
+  },
+)
 
 When('I open the Agent v2 configure page from the Agent Roster', async function (this: DifyWorld) {
   const page = this.getPage()
   const agentId = getCurrentAgentId(this)
   const agentName = this.lastCreatedAgentName
-  if (!agentName)
-    throw new Error('No Agent v2 name found. Create an Agent v2 test agent first.')
+  if (!agentName) throw new Error('No Agent v2 name found. Create an Agent v2 test agent first.')
 
-  await page.goto('/roster')
+  await page.goto('/agents')
   await page.getByRole('link', { name: agentName }).click()
-  await expect(page).toHaveURL(new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`))
+  await expect(page).toHaveURL(new RegExp(`/agents/${agentId}/configure(?:\\?.*)?$`))
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
 })
 
@@ -178,20 +202,26 @@ When(
     const page = this.getPage()
     const agent = getPreseededAgent(this, agentName)
 
-    await page.goto('/roster')
+    await page.goto('/agents')
     await page.getByRole('link', { name: agentName }).click()
-    await expect(page).toHaveURL(new RegExp(`/roster/agent/${agent.id}/configure(?:\\?.*)?$`))
+    await expect(page).toHaveURL(new RegExp(`/agents/${agent.id}/configure(?:\\?.*)?$`))
     await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
   },
 )
 
-When('I fill the Agent v2 prompt editor with the normal E2E prompt', async function (this: DifyWorld) {
-  await fillAgentPromptEditor(this.getPage(), normalAgentPrompt)
-})
+When(
+  'I fill the Agent v2 prompt editor with the normal E2E prompt',
+  async function (this: DifyWorld) {
+    await fillAgentPromptEditor(this.getPage(), normalAgentPrompt)
+  },
+)
 
-When('I fill the Agent v2 prompt editor with the updated E2E prompt', async function (this: DifyWorld) {
-  await fillAgentPromptEditor(this.getPage(), updatedAgentPrompt)
-})
+When(
+  'I fill the Agent v2 prompt editor with the updated E2E prompt',
+  async function (this: DifyWorld) {
+    await fillAgentPromptEditor(this.getPage(), updatedAgentPrompt)
+  },
+)
 
 When('I open the same Agent v2 configure page in another tab', async function (this: DifyWorld) {
   if (!this.context)
@@ -199,12 +229,13 @@ When('I open the same Agent v2 configure page in another tab', async function (t
 
   const agentId = getCurrentAgentId(this)
   const concurrentPage = await this.context.newPage()
-  attachPageDiagnostics(this, concurrentPage)
   this.agentBuilder.configure.concurrentPage = concurrentPage
 
   await concurrentPage.goto(getAgentConfigurePath(agentId))
-  await expect(concurrentPage).toHaveURL(new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`))
-  await expect(concurrentPage.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
+  await expect(concurrentPage).toHaveURL(new RegExp(`/agents/${agentId}/configure(?:\\?.*)?$`))
+  await expect(concurrentPage.getByRole('heading', { name: 'Configure' })).toBeVisible({
+    timeout: 30_000,
+  })
 })
 
 When('I save the Agent v2 prompt from the first configure tab', async function (this: DifyWorld) {
@@ -232,28 +263,27 @@ When('I refresh both Agent v2 configure tabs', async function (this: DifyWorld) 
   if (!concurrentPage)
     throw new Error('Open the same Agent v2 configure page in another tab before refreshing it.')
 
-  await Promise.all([
-    page.reload(),
-    concurrentPage.reload(),
-  ])
+  await Promise.all([page.reload(), concurrentPage.reload()])
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
-  await expect(concurrentPage.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
+  await expect(concurrentPage.getByRole('heading', { name: 'Configure' })).toBeVisible({
+    timeout: 30_000,
+  })
 })
 
 Then('I should be on the Agent v2 configure page', async function (this: DifyWorld) {
   const agentId = getCurrentAgentId(this)
 
-  await expect(this.getPage()).toHaveURL(
-    new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`),
-  )
+  await expect(this.getPage()).toHaveURL(new RegExp(`/agents/${agentId}/configure(?:\\?.*)?$`))
 })
 
 Then('I should see the Agent v2 configure workspace', async function (this: DifyWorld) {
   const page = this.getPage()
+  const agentName = this.lastCreatedAgentName
+  if (!agentName) throw new Error('No Agent v2 name found. Create an Agent v2 test agent first.')
 
   await expect(page.getByRole('region', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible()
-  await expect(page.getByText(this.lastCreatedAgentName!)).toBeVisible()
+  await expect(page.getByText(agentName, { exact: true })).toBeVisible()
 })
 
 Then(
@@ -272,8 +302,9 @@ Then(
     if (!stableModel)
       throw new Error('Stable chat model preflight must run before asserting the Agent model.')
 
-    await expect(this.getPage().getByText(stableModel.name, { exact: true }))
-      .toBeVisible({ timeout: 30_000 })
+    await expect(this.getPage().getByText(stableModel.name, { exact: true })).toBeVisible({
+      timeout: 30_000,
+    })
   },
 )
 
@@ -292,19 +323,22 @@ Then(
     const agentId = getCurrentAgentId(this)
     const concurrentPage = this.agentBuilder.configure.concurrentPage
     if (!concurrentPage)
-      throw new Error('Open the same Agent v2 configure page in another tab before asserting convergence.')
+      throw new Error(
+        'Open the same Agent v2 configure page in another tab before asserting convergence.',
+      )
 
     let savedPrompt = ''
-    await expect.poll(
-      async () => {
-        const prompt = (await getAgentComposerDraft(agentId)).agent_soul?.prompt?.system_prompt
-        if (prompt && concurrentAgentPrompts.includes(prompt))
-          savedPrompt = prompt
+    await expect
+      .poll(
+        async () => {
+          const prompt = (await getAgentComposerDraft(agentId)).agent_soul?.prompt?.system_prompt
+          if (prompt && concurrentAgentPrompts.includes(prompt)) savedPrompt = prompt
 
-        return !!savedPrompt
-      },
-      { timeout: 30_000 },
-    ).toBe(true)
+          return !!savedPrompt
+        },
+        { timeout: 30_000 },
+      )
+      .toBe(true)
 
     await expect(getPromptEditor(this.getPage())).toContainText(savedPrompt)
     await expect(getPromptEditor(concurrentPage)).toContainText(savedPrompt)
@@ -338,26 +372,27 @@ Then(
 Then(
   'the normal Agent v2 draft should use the updated E2E prompt',
   async function (this: DifyWorld) {
-    await expect.poll(
-      async () => (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.prompt,
-      { timeout: 30_000 },
-    ).toEqual({ system_prompt: updatedAgentPrompt })
+    await expect
+      .poll(async () => (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.prompt, {
+        timeout: 30_000,
+      })
+      .toEqual({ system_prompt: updatedAgentPrompt })
   },
 )
 
-Then(
-  'the Agent v2 draft should use the stable E2E model',
-  async function (this: DifyWorld) {
-    const stableModel = this.agentBuilder.preflight.stableModel
-    if (!stableModel)
-      throw new Error('Stable chat model preflight must run before asserting the Agent model.')
+Then('the Agent v2 draft should use the stable E2E model', async function (this: DifyWorld) {
+  const stableModel = this.agentBuilder.preflight.stableModel
+  if (!stableModel)
+    throw new Error('Stable chat model preflight must run before asserting the Agent model.')
 
-    await expect.poll(
+  await expect
+    .poll(
       async () => {
         const model = (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.model
-        const modelConfig = typeof model === 'object' && model !== null && !Array.isArray(model)
-          ? model as Record<string, unknown>
-          : undefined
+        const modelConfig =
+          typeof model === 'object' && model !== null && !Array.isArray(model)
+            ? (model as Record<string, unknown>)
+            : undefined
 
         return {
           model: modelConfig?.model,
@@ -365,9 +400,9 @@ Then(
         }
       },
       { timeout: 30_000 },
-    ).toEqual({
+    )
+    .toEqual({
       model: stableModel.name,
       provider: stableModel.provider,
     })
-  },
-)
+})

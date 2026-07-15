@@ -1,14 +1,6 @@
 {
   "name": "@langgenius/dev-proxy",
-  "type": "module",
   "version": "0.0.5",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
-    }
-  },
-  "types": "./dist/index.d.mts",
   "bin": {
     "dev-proxy": "./bin/dev-proxy.js"
   },
@@ -17,14 +9,19 @@
     "dist",
     "src"
   ],
-  "engines": {
-    "node": "^22.22.1"
+  "type": "module",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
   },
   "scripts": {
     "build": "vp pack",
     "prepare": "pnpm run build",
     "test": "vp test",
-    "type-check": "tsgo",
+    "type-check": "tsc",
     "prepublish": "pnpm run build"
   },
   "dependencies": {
@@ -36,9 +33,12 @@
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@types/node": "catalog:",
-    "@typescript/native-preview": "catalog:",
+    "@typescript/native": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
+  },
+  "engines": {
+    "node": "^22.22.1"
   }
 }

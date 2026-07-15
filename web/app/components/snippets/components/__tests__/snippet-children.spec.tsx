@@ -57,13 +57,15 @@ describe('SnippetChildren', () => {
 
     expect(screen.getByTestId('snippet-header')).toBeInTheDocument()
     expect(screen.getByTestId('snippet-workflow-panel')).toBeInTheDocument()
-    expect(capturedHeaderProps).toEqual(expect.objectContaining({
-      snippetId: 'snippet-1',
-      canSave: true,
-      canEdit: true,
-      isPublishing: false,
-      ...callbacks,
-    }))
+    expect(capturedHeaderProps).toEqual(
+      expect.objectContaining({
+        snippetId: 'snippet-1',
+        canSave: true,
+        canEdit: true,
+        isPublishing: false,
+        ...callbacks,
+      }),
+    )
     expect(capturedWorkflowPanelProps).toEqual({
       snippetId: 'snippet-1',
       fields,

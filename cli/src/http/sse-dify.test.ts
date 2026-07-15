@@ -9,14 +9,12 @@ function bytes(s: string): Uint8Array {
 }
 
 async function* fromArray(events: SseEvent[]): AsyncGenerator<SseEvent, void, void> {
-  for (const ev of events)
-    yield ev
+  for (const ev of events) yield ev
 }
 
 async function collect(iter: AsyncIterable<SseEvent>): Promise<SseEvent[]> {
   const out: SseEvent[] = []
-  for await (const ev of iter)
-    out.push(ev)
+  for await (const ev of iter) out.push(ev)
   return out
 }
 
@@ -54,19 +52,27 @@ describe('eventNameFromDifyData', () => {
 
 describe('normalizeDifyStream', () => {
   it('promotes JSON event field into ev.name when transport name absent', async () => {
-    const out = await collect(normalizeDifyStream(fromArray([
-      { name: '', data: bytes('{"event":"workflow_started","id":"wf-1"}') },
-      { name: '', data: bytes('{"event":"workflow_finished","status":"succeeded"}') },
-    ])))
-    expect(out.map(e => e.name)).toEqual(['workflow_started', 'workflow_finished'])
+    const out = await collect(
+      normalizeDifyStream(
+        fromArray([
+          { name: '', data: bytes('{"event":"workflow_started","id":"wf-1"}') },
+          { name: '', data: bytes('{"event":"workflow_finished","status":"succeeded"}') },
+        ]),
+      ),
+    )
+    expect(out.map((e) => e.name)).toEqual(['workflow_started', 'workflow_finished'])
   })
 
   it('preserves transport-level event name over JSON event field', async () => {
-    const out = await collect(normalizeDifyStream(fromArray([
-      { name: 'ping', data: bytes('') },
-      { name: 'foo', data: bytes('{"event":"bar"}') },
-    ])))
-    expect(out.map(e => e.name)).toEqual(['ping', 'foo'])
+    const out = await collect(
+      normalizeDifyStream(
+        fromArray([
+          { name: 'ping', data: bytes('') },
+          { name: 'foo', data: bytes('{"event":"bar"}') },
+        ]),
+      ),
+    )
+    expect(out.map((e) => e.name)).toEqual(['ping', 'foo'])
   })
 
   it('forwards unchanged when ev.name absent and data has no JSON event field', async () => {
@@ -78,17 +84,15 @@ describe('normalizeDifyStream', () => {
   })
 
   it('forwards unchanged when data is malformed JSON', async () => {
-    const out = await collect(normalizeDifyStream(fromArray([
-      { name: '', data: bytes('not-json') },
-    ])))
+    const out = await collect(
+      normalizeDifyStream(fromArray([{ name: '', data: bytes('not-json') }])),
+    )
     expect(out).toHaveLength(1)
     expect(out[0]?.name).toBe('')
   })
 
   it('forwards empty-data events with empty name', async () => {
-    const out = await collect(normalizeDifyStream(fromArray([
-      { name: '', data: bytes('') },
-    ])))
+    const out = await collect(normalizeDifyStream(fromArray([{ name: '', data: bytes('') }])))
     expect(out).toHaveLength(1)
     expect(out[0]?.name).toBe('')
   })

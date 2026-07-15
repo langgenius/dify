@@ -261,7 +261,7 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert {"document", "audio", "video", "custom", "preview_config"} <= set(file_upload)
     assert "detail" in schemas["WorkflowFileUploadImagePayload"]["properties"]
     assert {"mode", "file_type_list"} <= set(schemas["WorkflowFileUploadPreviewConfigPayload"]["properties"])
-    assert schemas["AccountWithRole"]["properties"]["avatar_url"]["readOnly"] is True
+    assert schemas["AccountWithRoleResponse"]["properties"]["avatar_url"]["readOnly"] is True
 
 
 def test_checked_in_agent_v2_knowledge_openapi_and_generated_contracts_are_in_sync():

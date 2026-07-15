@@ -17,7 +17,9 @@ const toastMocks = vi.hoisted(() => {
   const call = vi.fn()
   return {
     call,
-    api: vi.fn((message: unknown, options?: Record<string, unknown>) => call({ message, ...options })),
+    api: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+      call({ message, ...options }),
+    ),
     dismiss: vi.fn(),
     update: vi.fn(),
     promise: vi.fn(),
@@ -26,10 +28,18 @@ const toastMocks = vi.hoisted(() => {
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.api, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'success', message, ...options }),
+    ),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'error', message, ...options }),
+    ),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'warning', message, ...options }),
+    ),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'info', message, ...options }),
+    ),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -374,12 +384,17 @@ describe('useUpdateDSLModal', () => {
     })
 
     it('should notify response error when importDSL rejects with a response body', async () => {
-      mockImportDSL.mockRejectedValue(new Response(JSON.stringify({
-        error: 'Missing rag_pipeline data in YAML content',
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      }))
+      mockImportDSL.mockRejectedValue(
+        new Response(
+          JSON.stringify({
+            error: 'Missing rag_pipeline data in YAML content',
+          }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
 
       const { result } = renderUpdateDSLModal()
       act(() => {
@@ -525,12 +540,17 @@ describe('useUpdateDSLModal', () => {
     })
 
     it('should notify response error when confirm rejects with a response body', async () => {
-      mockImportDSLConfirm.mockRejectedValue(new Response(JSON.stringify({
-        error: 'Import information expired or does not exist',
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      }))
+      mockImportDSLConfirm.mockRejectedValue(
+        new Response(
+          JSON.stringify({
+            error: 'Import information expired or does not exist',
+          }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
 
       const { result } = renderUpdateDSLModal()
       await setupPendingState(result)
@@ -574,9 +594,7 @@ describe('useUpdateDSLModal', () => {
 
   describe('optional onImport', () => {
     it('should work without onImport callback', async () => {
-      const { result } = renderHook(() =>
-        useUpdateDSLModal({ onCancel: mockOnCancel }),
-      )
+      const { result } = renderHook(() => useUpdateDSLModal({ onCancel: mockOnCancel }))
 
       act(() => {
         result.current.handleFile(createFile())

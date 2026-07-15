@@ -22,8 +22,8 @@ const initialState = {
   onFieldsChange: undefined,
 }
 
-export const useSnippetDetailStore = create<SnippetDetailUIState>(set => ({
+export const useSnippetDetailStore = create<SnippetDetailUIState>((set) => ({
   ...initialState,
-  setNavigationState: state => set(state),
+  setNavigationState: (state) => set(state),
   reset: () => set(initialState),
 }))

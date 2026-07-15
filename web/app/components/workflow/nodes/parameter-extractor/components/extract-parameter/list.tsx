@@ -18,48 +18,52 @@ type Props = Readonly<{
   onChange: (list: Param[], moreInfo?: MoreInfo) => void
 }>
 
-const List: FC<Props> = ({
-  list,
-  onChange,
-}) => {
+const List: FC<Props> = ({ list, onChange }) => {
   const { t } = useTranslation()
-  const [isShowEditModal, {
-    setTrue: showEditModal,
-    setFalse: hideEditModal,
-  }] = useBoolean(false)
+  const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
 
-  const handleItemChange = useCallback((index: number) => {
-    return (payload: Param, moreInfo?: MoreInfo) => {
-      const newList = list.map((item, i) => {
-        if (i === index)
-          return payload
+  const handleItemChange = useCallback(
+    (index: number) => {
+      return (payload: Param, moreInfo?: MoreInfo) => {
+        const newList = list.map((item, i) => {
+          if (i === index) return payload
 
-        return item
-      })
-      onChange(newList, moreInfo)
-      hideEditModal()
-    }
-  }, [hideEditModal, list, onChange])
+          return item
+        })
+        onChange(newList, moreInfo)
+        hideEditModal()
+      }
+    },
+    [hideEditModal, list, onChange],
+  )
 
   const [currEditItemIndex, setCurrEditItemIndex] = useState<number>(-1)
 
-  const handleItemEdit = useCallback((index: number) => {
-    return () => {
-      setCurrEditItemIndex(index)
-      showEditModal()
-    }
-  }, [showEditModal])
+  const handleItemEdit = useCallback(
+    (index: number) => {
+      return () => {
+        setCurrEditItemIndex(index)
+        showEditModal()
+      }
+    },
+    [showEditModal],
+  )
 
-  const handleItemDelete = useCallback((index: number) => {
-    return () => {
-      const newList = list.filter((_, i) => i !== index)
-      onChange(newList)
-    }
-  }, [list, onChange])
+  const handleItemDelete = useCallback(
+    (index: number) => {
+      return () => {
+        const newList = list.filter((_, i) => i !== index)
+        onChange(newList)
+      }
+    },
+    [list, onChange],
+  )
 
   if (list.length === 0) {
     return (
-      <ListNoDataPlaceholder>{t(`${i18nPrefix}.extractParametersNotSet`, { ns: 'workflow' })}</ListNoDataPlaceholder>
+      <ListNoDataPlaceholder>
+        {t(($) => $[`${i18nPrefix}.extractParametersNotSet`], { ns: 'workflow' })}
+      </ListNoDataPlaceholder>
     )
   }
   return (

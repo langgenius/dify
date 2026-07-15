@@ -32,7 +32,11 @@ const createCrawlResultItem = (url: string, title?: string): CrawlResultItem => 
   source_url: url,
 })
 
-const createOnlineDriveFile = (id: string, name: string, type = OnlineDriveFileType.file): OnlineDriveFile => ({
+const createOnlineDriveFile = (
+  id: string,
+  name: string,
+  type = OnlineDriveFileType.file,
+): OnlineDriveFile => ({
   id,
   name,
   size: 2048,
@@ -430,7 +434,9 @@ describe('Pipeline Data Source Store Composition - Cross-Slice Integration', () 
       expect(store.getState().websitePages).toHaveLength(3)
       expect(store.getState().crawlResult?.time_consuming).toBe(12.5)
       expect(store.getState().previewIndex).toBe(1)
-      expect(store.getState().previewWebsitePageRef.current?.source_url).toBe('https://docs.example.com/guide')
+      expect(store.getState().previewWebsitePageRef.current?.source_url).toBe(
+        'https://docs.example.com/guide',
+      )
     })
 
     it('should support a complete online drive navigation workflow', () => {
@@ -458,10 +464,12 @@ describe('Pipeline Data Source Store Composition - Cross-Slice Integration', () 
       store.getState().setPrefix([...store.getState().prefix, 'project-alpha'])
 
       // Step 5: Select files
-      store.getState().setOnlineDriveFileList([
-        createOnlineDriveFile('doc-1', 'spec.pdf'),
-        createOnlineDriveFile('doc-2', 'design.fig'),
-      ])
+      store
+        .getState()
+        .setOnlineDriveFileList([
+          createOnlineDriveFile('doc-1', 'spec.pdf'),
+          createOnlineDriveFile('doc-2', 'design.fig'),
+        ])
       store.getState().setSelectedFileIds(['doc-1'])
 
       // Verify full state

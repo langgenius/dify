@@ -131,6 +131,7 @@
   "detailPanel.operation.detail": "Подробности",
   "detailPanel.operation.info": "Информация о плагине",
   "detailPanel.operation.install": "Устанавливать",
+  "detailPanel.operation.moreActions": "Другие действия",
   "detailPanel.operation.remove": "Убирать",
   "detailPanel.operation.update": "Обновлять",
   "detailPanel.operation.updateTooltip": "Обновите для доступа к последним моделям.",

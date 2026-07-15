@@ -2,7 +2,11 @@ import type { AccessChannels, AccessEndpoint } from '@dify/contracts/enterprise/
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { deploymentRouteAppInstanceIdAtom } from '../../../../route-state'
-import { accessSettingsQueryAtom } from '../../state'
+import {
+  accessSettingsAtom,
+  accessSettingsIsErrorAtom,
+  accessSettingsIsLoadingAtom,
+} from '../../state'
 import { AccessChannelsSection } from '../section'
 
 const mockToggleAccessChannel = vi.hoisted(() => vi.fn())
@@ -66,19 +70,16 @@ describe('AccessChannelsSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseAtomValue.mockImplementation((atom) => {
-      if (atom === deploymentRouteAppInstanceIdAtom)
-        return 'app-instance-1'
-      if (atom === accessSettingsQueryAtom) {
+      if (atom === deploymentRouteAppInstanceIdAtom) return 'app-instance-1'
+      if (atom === accessSettingsAtom) {
         return {
-          data: {
-            accessChannels: createAccessChannels(),
-            webAppEndpoints: [createEndpoint('https://app.example.com/webapp')],
-            cliEndpoint: createEndpoint('https://cli.example.com/entry'),
-          },
-          isLoading: false,
-          isError: false,
+          accessChannels: createAccessChannels(),
+          webAppEndpoints: [createEndpoint('https://app.example.com/webapp')],
+          cliEndpoint: createEndpoint('https://cli.example.com/entry'),
         }
       }
+      if (atom === accessSettingsIsLoadingAtom) return false
+      if (atom === accessSettingsIsErrorAtom) return false
       return undefined
     })
   })

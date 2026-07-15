@@ -5,7 +5,7 @@ import * as React from 'react'
 import { languages } from '@/i18n-config/language'
 import LanguageSelect from '../index'
 
-const supportedLanguages = languages.filter(language => language.supported)
+const supportedLanguages = languages.filter((language) => language.supported)
 
 const createDefaultProps = (overrides?: Partial<ILanguageSelectProps>): ILanguageSelectProps => ({
   currentLanguage: 'English',
@@ -39,7 +39,9 @@ describe('LanguageSelect', () => {
     it('should render non-listed current language values', () => {
       render(<LanguageSelect {...createDefaultProps({ currentLanguage: 'NonExistentLanguage' })} />)
 
-      expect(screen.getByRole('combobox', { name: 'language' })).toHaveTextContent('NonExistentLanguage')
+      expect(screen.getByRole('combobox', { name: 'language' })).toHaveTextContent(
+        'NonExistentLanguage',
+      )
     })
 
     it('should render a placeholder when current language is empty', () => {
@@ -65,7 +67,7 @@ describe('LanguageSelect', () => {
 
       await openSelect()
 
-      const unsupportedLanguages = languages.filter(language => !language.supported)
+      const unsupportedLanguages = languages.filter((language) => !language.supported)
       unsupportedLanguages.forEach((language) => {
         expect(screen.queryByRole('option', { name: language.prompt_name })).not.toBeInTheDocument()
       })
@@ -109,13 +111,23 @@ describe('LanguageSelect', () => {
     it('should ignore null values emitted by the select control', async () => {
       vi.resetModules()
       vi.doMock('@langgenius/dify-ui/select', () => ({
-        Select: ({ onValueChange, children }: { onValueChange?: (value: string | null) => void, children: React.ReactNode }) => {
+        Select: ({
+          onValueChange,
+          children,
+        }: {
+          onValueChange?: (value: string | null) => void
+          children: React.ReactNode
+        }) => {
           React.useEffect(() => {
             onValueChange?.(null)
           }, [onValueChange])
           return <div>{children}</div>
         },
-        SelectTrigger: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button type="button" {...props}>{children}</button>,
+        SelectTrigger: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+          <button type="button" {...props}>
+            {children}
+          </button>
+        ),
         SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
         SelectItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
         SelectItemText: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
@@ -160,7 +172,11 @@ describe('LanguageSelect', () => {
       render(<LanguageSelect {...createDefaultProps()} />)
 
       const trigger = screen.getByRole('combobox', { name: 'language' })
-      expect(trigger).toHaveClass('mx-1', 'bg-components-button-tertiary-bg', 'text-components-button-tertiary-text')
+      expect(trigger).toHaveClass(
+        'mx-1',
+        'bg-components-button-tertiary-bg',
+        'text-components-button-tertiary-text',
+      )
     })
 
     it('should be wrapped with React.memo', () => {
