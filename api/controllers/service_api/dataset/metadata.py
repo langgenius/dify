@@ -2,13 +2,14 @@ from typing import Literal
 from uuid import UUID
 
 from flask_login import current_user
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.schema import register_response_schema_models, register_schema_model, register_schema_models
+from controllers.common.session import with_session
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
-from extensions.ext_database import db
 from fields.dataset_fields import (
     DatasetMetadataActionResponse,
     DatasetMetadataBuiltInFieldsResponse,
@@ -76,17 +77,18 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
         201, "Metadata created successfully", service_api_ns.models[DatasetMetadataResponse.__name__]
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id: UUID):
+    @with_session
+    def post(self, session: Session, tenant_id, dataset_id: UUID):
         """Create metadata for a dataset."""
         metadata_args = MetadataArgs.model_validate(service_api_ns.payload or {})
 
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, db.session())
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user, db.session())
+        DatasetService.check_dataset_permission(dataset, current_user, session)
 
-        metadata = MetadataService.create_metadata(dataset_id_str, metadata_args, session=db.session())
+        metadata = MetadataService.create_metadata(dataset_id_str, metadata_args, session=session)
         return dump_response(DatasetMetadataResponse, metadata), 201
 
     @service_api_ns.doc(
@@ -113,13 +115,14 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
     @service_api_ns.response(
         200, "Metadata retrieved successfully", service_api_ns.models[DatasetMetadataListResponse.__name__]
     )
-    def get(self, tenant_id, dataset_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id, dataset_id: UUID):
         """Get all metadata for a dataset."""
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, db.session())
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        metadata = MetadataService.get_dataset_metadatas(dataset, session=db.session())
+        metadata = MetadataService.get_dataset_metadatas(dataset, session)
         return dump_response(DatasetMetadataListResponse, metadata), 200
 
 
@@ -148,20 +151,19 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         200, "Metadata updated successfully", service_api_ns.models[DatasetMetadataResponse.__name__]
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def patch(self, tenant_id, dataset_id: UUID, metadata_id: UUID):
+    @with_session
+    def patch(self, session: Session, tenant_id, dataset_id: UUID, metadata_id: UUID):
         """Update metadata name."""
         payload = MetadataUpdatePayload.model_validate(service_api_ns.payload or {})
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, db.session())
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user, db.session())
+        DatasetService.check_dataset_permission(dataset, current_user, session)
 
-        metadata = MetadataService.update_metadata_name(
-            dataset_id_str, metadata_id_str, payload.name, session=db.session()
-        )
+        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, payload.name, session=session)
         return dump_response(DatasetMetadataResponse, metadata), 200
 
     @service_api_ns.doc(
@@ -187,16 +189,17 @@ class DatasetMetadataServiceApi(DatasetApiResource):
     )
     @service_api_ns.response(204, "Metadata deleted successfully")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def delete(self, tenant_id, dataset_id: UUID, metadata_id: UUID):
+    @with_session
+    def delete(self, session: Session, tenant_id, dataset_id: UUID, metadata_id: UUID):
         """Delete metadata."""
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, db.session())
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user, db.session())
+        DatasetService.check_dataset_permission(dataset, current_user, session)
 
-        MetadataService.delete_metadata(dataset_id_str, metadata_id_str, session=db.session())
+        MetadataService.delete_metadata(dataset_id_str, metadata_id_str, session)
         return "", 204
 
 
@@ -256,19 +259,20 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
         200, "Action completed successfully", service_api_ns.models[DatasetMetadataActionResponse.__name__]
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id: UUID, action: Literal["enable", "disable"]):
+    @with_session
+    def post(self, session: Session, tenant_id, dataset_id: UUID, action: Literal["enable", "disable"]):
         """Enable or disable built-in metadata field."""
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, db.session())
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user, db.session())
+        DatasetService.check_dataset_permission(dataset, current_user, session)
 
         match action:
             case "enable":
-                MetadataService.enable_built_in_field(dataset, session=db.session())
+                MetadataService.enable_built_in_field(dataset, session)
             case "disable":
-                MetadataService.disable_built_in_field(dataset, session=db.session())
+                MetadataService.disable_built_in_field(dataset, session)
         return dump_response(DatasetMetadataActionResponse, {"result": "success"}), 200
 
 
@@ -302,16 +306,17 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
         service_api_ns.models[DatasetMetadataActionResponse.__name__],
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id: UUID):
+    @with_session
+    def post(self, session: Session, tenant_id, dataset_id: UUID):
         """Update metadata for multiple documents."""
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, db.session())
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user, db.session())
+        DatasetService.check_dataset_permission(dataset, current_user, session)
 
         metadata_args = MetadataOperationData.model_validate(service_api_ns.payload or {})
 
-        MetadataService.update_documents_metadata(dataset, metadata_args, session=db.session())
+        MetadataService.update_documents_metadata(dataset, metadata_args, session=session)
 
         return dump_response(DatasetMetadataActionResponse, {"result": "success"}), 200

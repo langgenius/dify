@@ -11,14 +11,23 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock next/link to capture href
 vi.mock('@/next/link', () => ({
-  default: ({ children, href, replace }: { children: React.ReactNode, href: string, replace?: boolean }) => (
+  default: ({
+    children,
+    href,
+    replace,
+  }: {
+    children: React.ReactNode
+    href: string
+    replace?: boolean
+  }) => (
     <a href={href} data-replace={replace}>
       {children}
     </a>
   ),
 }))
 
-const getSelectAllCheckbox = () => screen.getByRole('checkbox', { name: 'common.operation.selectAll' })
+const getSelectAllCheckbox = () =>
+  screen.getByRole('checkbox', { name: 'common.operation.selectAll' })
 
 describe('Actions', () => {
   // Default mock for required props
@@ -35,7 +44,9 @@ describe('Actions', () => {
     it('should render without crashing', () => {
       render(<Actions {...defaultProps} />)
 
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }),
+      ).toBeInTheDocument()
     })
 
     it('should render cancel button with correct link', () => {
@@ -463,14 +474,7 @@ describe('Actions', () => {
     it('should handle very long tip text', () => {
       const longTip = 'A'.repeat(500)
 
-      render(
-        <Actions
-          {...defaultProps}
-          showSelect={true}
-          tip={longTip}
-          onSelectAll={vi.fn()}
-        />,
-      )
+      render(<Actions {...defaultProps} showSelect={true} tip={longTip} onSelectAll={vi.fn()} />)
 
       // Assert - tip should render with truncate class
       const tipElement = screen.getByTitle(longTip)
@@ -480,14 +484,7 @@ describe('Actions', () => {
     it('should handle tip with special characters', () => {
       const specialTip = '<script>alert("xss")</script> & "quotes" \'apostrophes\''
 
-      render(
-        <Actions
-          {...defaultProps}
-          showSelect={true}
-          tip={specialTip}
-          onSelectAll={vi.fn()}
-        />,
-      )
+      render(<Actions {...defaultProps} showSelect={true} tip={specialTip} onSelectAll={vi.fn()} />)
 
       // Assert - special characters should be rendered safely
       expect(screen.getByText(specialTip)).toBeInTheDocument()
@@ -496,14 +493,7 @@ describe('Actions', () => {
     it('should handle tip with unicode characters', () => {
       const unicodeTip = '选中 5 个文件，共 10MB 🚀'
 
-      render(
-        <Actions
-          {...defaultProps}
-          showSelect={true}
-          tip={unicodeTip}
-          onSelectAll={vi.fn()}
-        />,
-      )
+      render(<Actions {...defaultProps} showSelect={true} tip={unicodeTip} onSelectAll={vi.fn()} />)
 
       expect(screen.getByText(unicodeTip)).toBeInTheDocument()
     })
@@ -553,7 +543,9 @@ describe('Actions', () => {
 
       // Assert - should render checkbox
       expect(getSelectAllCheckbox()).toBeInTheDocument()
-      await expect(user.click(screen.getByText('common.operation.selectAll'))).resolves.toBeUndefined()
+      await expect(
+        user.click(screen.getByText('common.operation.selectAll')),
+      ).resolves.toBeUndefined()
     })
 
     it('should handle empty datasetId from params', () => {
@@ -610,7 +602,9 @@ describe('Actions', () => {
       expect(screen.getByText('common.operation.selectAll')).toBeInTheDocument()
       expect(screen.getByText('All props provided')).toBeInTheDocument()
       expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).not.toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }),
+      ).not.toBeDisabled()
     })
 
     it('should render minimal component with only required props', () => {
@@ -618,7 +612,9 @@ describe('Actions', () => {
 
       expect(screen.queryByText('common.operation.selectAll')).not.toBeInTheDocument()
       expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).not.toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }),
+      ).not.toBeDisabled()
     })
   })
 
@@ -649,9 +645,12 @@ describe('Actions', () => {
         )
 
         // Assert - component should render without errors
-        const expectedAriaChecked = expectedState === 'indeterminate'
-          ? 'mixed'
-          : expectedState === 'checked' ? 'true' : 'false'
+        const expectedAriaChecked =
+          expectedState === 'indeterminate'
+            ? 'mixed'
+            : expectedState === 'checked'
+              ? 'true'
+              : 'false'
         expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', expectedAriaChecked)
         expect(screen.getByText('common.operation.selectAll')).toBeInTheDocument()
       },

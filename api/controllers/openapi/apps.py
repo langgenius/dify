@@ -6,11 +6,13 @@ import uuid as _uuid
 from typing import Any, cast
 
 from flask_restx import Resource
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 
 from configs import dify_config
 from controllers.common.app_access import AppAccessFilter, resolve_app_access_filter
 from controllers.common.fields import Parameters
+from controllers.common.session import with_session
 from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
@@ -28,7 +30,6 @@ from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData, CallerKind, RBACRequirement
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
-from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import App
 from models.enums import AppStatus
@@ -56,7 +57,7 @@ _EMPTY_PARAMETERS: dict[str, Any] = {
 class AppReadResource(Resource):
     """Base for per-app read endpoints; subclasses call `_load()` for membership/exists checks."""
 
-    def _load(self, app_id: str, workspace_id: str | None = None) -> App:
+    def _load(self, session: Session, app_id: str, workspace_id: str | None = None) -> App:
         try:
             parsed_uuid = _uuid.UUID(app_id)
             is_uuid = True
@@ -66,13 +67,13 @@ class AppReadResource(Resource):
 
         if is_uuid:
             # ``str(parsed_uuid)`` normalises to the canonical dashed form.
-            app = AppService.get_visible_app_by_id(str(parsed_uuid), session=db.session())
+            app = AppService.get_visible_app_by_id(str(parsed_uuid), session)
             if app is None:
                 raise NotFound("app not found")
         else:
             if not workspace_id:
                 raise UnprocessableEntity("workspace_id is required for name-based lookup")
-            matches = AppService.find_visible_apps_by_name(name=app_id, tenant_id=workspace_id, session=db.session())
+            matches = AppService.find_visible_apps_by_name(session, name=app_id, tenant_id=workspace_id)
             if len(matches) == 0:
                 raise NotFound("app not found")
             if len(matches) > 1:
@@ -86,14 +87,14 @@ class AppReadResource(Resource):
         return app
 
 
-def parameters_payload(app: App) -> dict:
+def parameters_payload(app: App, *, session: Session) -> dict:
     """Mirrors service_api/app/app.py::AppParameterApi response body."""
-    features_dict, user_input_form = resolve_app_config(app)
+    features_dict, user_input_form = resolve_app_config(app, session=session)
     parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
     return Parameters.model_validate(parameters).model_dump(mode="json")
 
 
-def build_app_describe_response(app: App, fields: set[str] | None) -> AppDescribeResponse:
+def build_app_describe_response(app: App, fields: set[str] | None, *, session: Session) -> AppDescribeResponse:
     """Public projection of an app (name / params / input schema) — never internal config."""
     want_info = fields is None or "info" in fields
     want_params = fields is None or "parameters" in fields
@@ -117,12 +118,12 @@ def build_app_describe_response(app: App, fields: set[str] | None) -> AppDescrib
     input_schema: dict[str, Any] | None = None
     if want_params:
         try:
-            parameters = parameters_payload(app)
+            parameters = parameters_payload(app, session=session)
         except AppUnavailableError:
             parameters = dict(_EMPTY_PARAMETERS)
     if want_schema:
         try:
-            input_schema = build_input_schema(app)
+            input_schema = build_input_schema(app, session=session)
         except AppUnavailableError:
             input_schema = dict(EMPTY_INPUT_SCHEMA)
 
@@ -138,10 +139,11 @@ class AppDescribeApi(AppReadResource):
     )
     @returns(200, AppDescribeResponse, description="App description")
     @accepts(query=AppDescribeQuery)
-    def get(self, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
+    @with_session(write=False)
+    def get(self, session: Session, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
         # describe is UUID-only (workspace_id query param dropped in #37212).
-        app = self._load(app_id)
-        return build_app_describe_response(app, query.fields)
+        app = self._load(session, app_id)
+        return build_app_describe_response(app, query.fields, session=session)
 
 
 @openapi_ns.route("/apps")
@@ -149,7 +151,8 @@ class AppListApi(Resource):
     @auth_router.guard_workspace(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, AppListResponse, description="App list")
     @accepts(query=AppListQuery)
-    def get(self, *, auth_data: AuthData, query: AppListQuery):
+    @with_session(write=False)
+    def get(self, session: Session, *, auth_data: AuthData, query: AppListQuery):
         workspace_id = query.workspace_id
 
         empty = AppListResponse(page=query.page, limit=query.limit, total=0, has_more=False, data=[])
@@ -173,11 +176,15 @@ class AppListApi(Resource):
         )
         access_filter = AppAccessFilter.unrestricted()
         if apply_rbac_filter:
-            access_filter = resolve_app_access_filter(workspace_id, str(auth_data.account_id))
+            access_filter = resolve_app_access_filter(
+                workspace_id,
+                str(auth_data.account_id),
+                session=session,
+            )
 
         tenant_name: str | None = None
         if parsed_uuid is not None:
-            app: App | None = AppService.get_visible_app_by_id(str(parsed_uuid), session=db.session())
+            app: App | None = AppService.get_visible_app_by_id(str(parsed_uuid), session)
             if app is None or str(app.tenant_id) != workspace_id:
                 return empty
             if not _is_listable(app):
@@ -188,7 +195,7 @@ class AppListApi(Resource):
                 str(app.id), str(app.maintainer) if app.maintainer else None, str(auth_data.account_id)
             ):
                 return empty
-            tenant_name = TenantService.get_tenant_name(workspace_id, session=db.session())
+            tenant_name = TenantService.get_tenant_name(workspace_id, session=session)
             item = AppListRow(
                 id=str(app.id),
                 name=app.name,
@@ -215,13 +222,13 @@ class AppListApi(Resource):
         if apply_rbac_filter:
             access_filter.apply_to_params(params)
 
-        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params, db.session())
+        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params, session)
         if pagination is None:
             return empty
 
         tenant_name = None
         if pagination.items:
-            tenant_name = TenantService.get_tenant_name(workspace_id, session=db.session())
+            tenant_name = TenantService.get_tenant_name(workspace_id, session=session)
 
         items = [
             AppListRow(

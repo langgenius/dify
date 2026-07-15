@@ -71,7 +71,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -102,21 +103,27 @@ describe('Billing', () => {
 
     render(<Billing />)
 
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
     expect(billingUrlEnabled).toBe(false)
   })
 
   it('hides the billing action when subscription management permission is missing or billing is disabled', () => {
     workspacePermissionKeys = []
     render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
     expect(billingUrlEnabled).toBe(false)
 
     vi.clearAllMocks()
     workspacePermissionKeys = ['billing.subscription.manage']
     enableBilling = false
     render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
     expect(billingUrlEnabled).toBe(false)
   })
 

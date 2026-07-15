@@ -11,7 +11,9 @@ const mockCloseAllInputFieldPanels = vi.fn()
 const mockHandleNodesCancelSelected = vi.fn()
 const mockHandleCancelDebugAndPreviewPanel = vi.fn()
 const mockHandleBackupDraft = vi.fn()
-const mockFormatWorkflowRunIdentifier = vi.fn((finishedAt?: number, status?: string) => ` (${status || finishedAt || 'unknown'})`)
+const mockFormatWorkflowRunIdentifier = vi.fn(
+  (finishedAt?: number, status?: string) => ` (${status || finishedAt || 'unknown'})`,
+)
 
 let mockIsChatMode = false
 
@@ -31,7 +33,8 @@ vi.mock('../../hooks', () => {
 })
 
 vi.mock('@/service/use-workflow', () => ({
-  useWorkflowRunHistory: (url?: string, enabled?: boolean) => mockUseWorkflowRunHistory(url, enabled),
+  useWorkflowRunHistory: (url?: string, enabled?: boolean) =>
+    mockUseWorkflowRunHistory(url, enabled),
 }))
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
@@ -60,13 +63,8 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button {...props}>
-      {children}
-    </button>
+  Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button {...props}>{children}</button>
   ),
 }))
 
@@ -95,7 +93,8 @@ vi.mock('../../utils', async () => {
   const actual = await vi.importActual<typeof import('../../utils')>('../../utils')
   return {
     ...actual,
-    formatWorkflowRunIdentifier: (finishedAt?: number, status?: string) => mockFormatWorkflowRunIdentifier(finishedAt, status),
+    formatWorkflowRunIdentifier: (finishedAt?: number, status?: string) =>
+      mockFormatWorkflowRunIdentifier(finishedAt, status),
   }
 })
 
@@ -157,10 +156,7 @@ describe('ViewHistory', () => {
     })
 
     renderWorkflowComponent(
-      <ViewHistory
-        historyUrl="/history"
-        onClearLogAndMessageModal={onClearLogAndMessageModal}
-      />,
+      <ViewHistory historyUrl="/history" onClearLogAndMessageModal={onClearLogAndMessageModal} />,
       {
         hooksStoreProps: {
           handleBackupDraft: vi.fn(),

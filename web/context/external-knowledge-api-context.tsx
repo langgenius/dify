@@ -11,28 +11,35 @@ type ExternalKnowledgeApiContextType = {
   isLoading: boolean
 }
 
-const ExternalKnowledgeApiContext = createContext<ExternalKnowledgeApiContextType | undefined>(undefined)
+const ExternalKnowledgeApiContext = createContext<ExternalKnowledgeApiContextType | undefined>(
+  undefined,
+)
 
 type ExternalKnowledgeApiProviderProps = {
   children: ReactNode
   enabled?: boolean
 }
 
-export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps> = ({ children, enabled = true }) => {
+export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps> = ({
+  children,
+  enabled = true,
+}) => {
   const { data, refetch, isLoading } = useExternalKnowledgeApiList({ enabled })
 
   const mutateExternalKnowledgeApis = useCallback(() => {
-    if (!enabled)
-      return Promise.resolve(undefined)
+    if (!enabled) return Promise.resolve(undefined)
 
-    return refetch().then(res => res.data)
+    return refetch().then((res) => res.data)
   }, [enabled, refetch])
 
-  const contextValue = useMemo<ExternalKnowledgeApiContextType>(() => ({
-    externalKnowledgeApiList: data?.data || [],
-    mutateExternalKnowledgeApis,
-    isLoading,
-  }), [data, mutateExternalKnowledgeApis, isLoading])
+  const contextValue = useMemo<ExternalKnowledgeApiContextType>(
+    () => ({
+      externalKnowledgeApiList: data?.data || [],
+      mutateExternalKnowledgeApis,
+      isLoading,
+    }),
+    [data, mutateExternalKnowledgeApis, isLoading],
+  )
 
   return (
     <ExternalKnowledgeApiContext.Provider value={contextValue}>

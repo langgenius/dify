@@ -52,7 +52,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateJotaiMock(importOriginal)
 })
@@ -71,7 +72,12 @@ const appTags: Tag[] = [
   { id: 'tag-3', name: 'API', type: 'app', binding_count: '' },
 ]
 
-const knowledgeTag: Tag = { id: 'tag-k1', name: 'KnowledgeDB', type: 'knowledge', binding_count: '' }
+const knowledgeTag: Tag = {
+  id: 'tag-k1',
+  name: 'KnowledgeDB',
+  type: 'knowledge',
+  binding_count: '',
+}
 
 type PanelHarnessProps = {
   type?: TagType
@@ -95,18 +101,20 @@ const PanelHarness = ({
   const [selectedTags, setSelectedTags] = useState<Tag[]>(value)
   const [inputValue, setInputValue] = useState('')
   const items = useMemo<TagComboboxItem[]>(() => {
-    const tags = tagList.filter(tag => tag.type === type)
+    const tags = tagList.filter((tag) => tag.type === type)
 
-    if (!inputValue || tags.some(tag => tag.name === inputValue))
-      return tags
+    if (!inputValue || tags.some((tag) => tag.name === inputValue)) return tags
 
-    return [{
-      id: `__create_tag__:${inputValue}`,
-      name: inputValue,
-      type,
-      binding_count: '',
-      isCreateOption: true,
-    }, ...tags]
+    return [
+      {
+        id: `__create_tag__:${inputValue}`,
+        name: inputValue,
+        type,
+        binding_count: '',
+        isCreateOption: true,
+      },
+      ...tags,
+    ]
   }, [inputValue, tagList, type])
 
   return (
@@ -116,8 +124,7 @@ const PanelHarness = ({
       value={selectedTags}
       onValueChange={(nextTags) => {
         onValueChangeSpy(nextTags)
-        if (nextTags.some(isCreateTagOption))
-          return
+        if (nextTags.some(isCreateTagOption)) return
         setSelectedTags(nextTags)
       }}
       inputValue={inputValue}
@@ -176,7 +183,10 @@ describe('TagSearchContent', () => {
 
     expect(input).toHaveValue('')
     expect(onValueChangeSpy).not.toHaveBeenCalled()
-    expect(screen.getByRole('option', { name: /Frontend/i })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('option', { name: /Frontend/i })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 
   it('shows a create option when the query is not an existing tag name', async () => {
@@ -204,7 +214,9 @@ describe('TagSearchContent', () => {
     render(<PanelHarness />)
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ id: 'tag-2' })]))
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(
+      expect.arrayContaining([expect.objectContaining({ id: 'tag-2' })]),
+    )
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
     expect(onValueChangeSpy).toHaveBeenLastCalledWith([expect.objectContaining({ id: 'tag-1' })])
@@ -218,12 +230,14 @@ describe('TagSearchContent', () => {
     await user.type(input, 'BrandNewTag')
     await user.click(screen.getByRole('option', { name: /BrandNewTag/i }))
 
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining([
-      expect.objectContaining({
-        isCreateOption: true,
-        name: 'BrandNewTag',
-      }),
-    ]))
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          isCreateOption: true,
+          name: 'BrandNewTag',
+        }),
+      ]),
+    )
   })
 
   it('renders the empty state when no tags exist and no search is active', () => {
@@ -269,9 +283,9 @@ describe('TagSearchContent', () => {
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
 
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining([
-      expect.objectContaining({ id: 'tag-2' }),
-    ]))
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(
+      expect.arrayContaining([expect.objectContaining({ id: 'tag-2' })]),
+    )
     expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
   })
 

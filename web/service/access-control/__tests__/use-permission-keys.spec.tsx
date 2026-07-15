@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query'
-// eslint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports
 import { get } from '@/service/base'
 import { workspacePermissionKeysQueryOptions } from '../use-permission-keys'
 

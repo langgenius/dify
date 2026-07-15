@@ -13,15 +13,7 @@ describe('PlanSwitcherTab', () => {
 
   describe('Rendering', () => {
     it('should render label and icon', () => {
-      render(
-        <Tab
-          Icon={Icon}
-          value="cloud"
-          label="Cloud"
-          isActive={false}
-          onClick={vi.fn()}
-        />,
-      )
+      render(<Tab Icon={Icon} value="cloud" label="Cloud" isActive={false} onClick={vi.fn()} />)
 
       expect(screen.getByText('Cloud')).toBeInTheDocument()
       expect(screen.getByTestId('tab-icon')).toHaveAttribute('data-active', 'false')
@@ -31,15 +23,7 @@ describe('PlanSwitcherTab', () => {
   describe('Props', () => {
     it('should call onClick with the provided value', () => {
       const handleClick = vi.fn()
-      render(
-        <Tab
-          Icon={Icon}
-          value="self"
-          label="Self"
-          isActive={false}
-          onClick={handleClick}
-        />,
-      )
+      render(<Tab Icon={Icon} value="self" label="Self" isActive={false} onClick={handleClick} />)
 
       fireEvent.click(screen.getByText('Self'))
 
@@ -49,26 +33,12 @@ describe('PlanSwitcherTab', () => {
 
     it('should apply distinct styling when isActive is true', () => {
       const { rerender } = render(
-        <Tab
-          Icon={Icon}
-          value="cloud"
-          label="Cloud"
-          isActive={false}
-          onClick={vi.fn()}
-        />,
+        <Tab Icon={Icon} value="cloud" label="Cloud" isActive={false} onClick={vi.fn()} />,
       )
 
       const inactiveClassName = screen.getByText('Cloud').className
 
-      rerender(
-        <Tab
-          Icon={Icon}
-          value="cloud"
-          label="Cloud"
-          isActive
-          onClick={vi.fn()}
-        />,
-      )
+      rerender(<Tab Icon={Icon} value="cloud" label="Cloud" isActive onClick={vi.fn()} />)
 
       const activeClassName = screen.getByText('Cloud').className
       expect(activeClassName).not.toBe(inactiveClassName)
@@ -79,13 +49,7 @@ describe('PlanSwitcherTab', () => {
   describe('Edge Cases', () => {
     it('should render when label is empty', () => {
       const { container } = render(
-        <Tab
-          Icon={Icon}
-          value="cloud"
-          label=""
-          isActive={false}
-          onClick={vi.fn()}
-        />,
+        <Tab Icon={Icon} value="cloud" label="" isActive={false} onClick={vi.fn()} />,
       )
 
       const label = container.querySelector('span')

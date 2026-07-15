@@ -1347,22 +1347,33 @@ def test_get_rag_pipeline_workflow_run_node_executions_empty_when_run_missing(
     assert result == []
 
 
-def test_get_rag_pipeline_workflow_run_node_executions_returns_sorted_executions(
+def test_get_rag_pipeline_workflow_run_node_executions_assembles_configured_repository_results(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
     pipeline = _make_pipeline()
     mocker.patch.object(
         rag_pipeline_service.service, "get_rag_pipeline_workflow_run", return_value=SimpleNamespace(id="run-1")
     )
-    repo = mocker.Mock()
-    repo.get_db_models_by_workflow_run.return_value = ["n1", "n2"]
-    mocker.patch("services.rag_pipeline.rag_pipeline.SQLAlchemyWorkflowNodeExecutionRepository", return_value=repo)
+    node_repo = rag_pipeline_service.service._node_execution_service_repo
+    expected_executions = ["n1", "n2"]
+    expected_traces = ["retry-n1", "n1", "n2"]
+    node_repo.get_executions_by_workflow_run = mocker.Mock(return_value=expected_executions)
+    mock_assemble = mocker.patch(
+        "services.rag_pipeline.rag_pipeline.assemble_workflow_node_execution_traces",
+        return_value=expected_traces,
+    )
 
     result = rag_pipeline_service.service.get_rag_pipeline_workflow_run_node_executions(
         pipeline=pipeline, run_id="run-1", user=_make_account()
     )
 
-    assert result == ["n1", "n2"]
+    assert result == expected_traces
+    node_repo.get_executions_by_workflow_run.assert_called_once_with(
+        tenant_id=pipeline.tenant_id,
+        app_id=pipeline.id,
+        workflow_run_id="run-1",
+    )
+    mock_assemble.assert_called_once_with(expected_executions, node_repo)
 
 
 def test_get_recommended_plugins_returns_empty_when_no_active_plugins(
@@ -2413,3 +2424,16 @@ def test_get_pipeline_returns_pipeline_when_found(
     result = rag_pipeline_service.service.get_pipeline("t1", "d1")
 
     assert result is pipeline
+
+
+def test_get_pipeline_by_id_uses_provided_session() -> None:
+    pipeline = _make_pipeline()
+    session = Mock()
+    session.scalar.return_value = pipeline
+
+    result = RagPipelineService.get_pipeline_by_id("p1", "t1", session=session)
+
+    assert result is pipeline
+    statement = session.scalar.call_args.args[0]
+    where_clauses = statement.whereclause.clauses
+    assert [clause.right.value for clause in where_clauses] == ["p1", "t1"]

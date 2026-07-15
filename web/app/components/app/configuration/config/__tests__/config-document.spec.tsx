@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { FeatureStoreState } from '@/app/components/base/features/store'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -48,14 +48,11 @@ const setupFeatureStore = (allowedTypes: SupportUploadFileTypes[] = []) => {
   }
   mockStore.getState.mockImplementation(() => mockFeatureStoreState)
   mockUseFeaturesStore.mockReturnValue(mockStore)
-  mockUseFeatures.mockImplementation(selector => selector(mockFeatureStoreState))
+  mockUseFeatures.mockImplementation((selector) => selector(mockFeatureStoreState))
 }
 
 const renderConfigDocument = (options: SetupOptions = {}) => {
-  const {
-    isVisible = true,
-    allowedTypes = [],
-  } = options
+  const { isVisible = true, allowedTypes = [] } = options
   setupFeatureStore(allowedTypes)
   mockUseContext.mockReturnValue({
     isShowDocumentConfig: isVisible,
@@ -87,18 +84,22 @@ describe('ConfigDocument', () => {
   })
 
   it('should add document type to allowed list when toggled on', async () => {
-    const { user, setFeatures } = renderConfigDocument({ allowedTypes: [SupportUploadFileTypes.audio] })
+    const { user, setFeatures } = renderConfigDocument({
+      allowedTypes: [SupportUploadFileTypes.audio],
+    })
     const toggle = screen.getByRole('switch')
 
     expect(toggle).toHaveAttribute('aria-checked', 'false')
     await user.click(toggle)
 
-    expect(setFeatures).toHaveBeenCalledWith(expect.objectContaining({
-      file: expect.objectContaining({
-        allowed_file_types: [SupportUploadFileTypes.audio, SupportUploadFileTypes.document],
-        enabled: true,
+    expect(setFeatures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: expect.objectContaining({
+          allowed_file_types: [SupportUploadFileTypes.audio, SupportUploadFileTypes.document],
+          enabled: true,
+        }),
       }),
-    }))
+    )
   })
 
   it('should remove document type but keep file feature enabled when other types remain', async () => {
@@ -110,11 +111,13 @@ describe('ConfigDocument', () => {
     expect(toggle).toHaveAttribute('aria-checked', 'true')
     await user.click(toggle)
 
-    expect(setFeatures).toHaveBeenCalledWith(expect.objectContaining({
-      file: expect.objectContaining({
-        allowed_file_types: [SupportUploadFileTypes.audio],
-        enabled: true,
+    expect(setFeatures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: expect.objectContaining({
+          allowed_file_types: [SupportUploadFileTypes.audio],
+          enabled: true,
+        }),
       }),
-    }))
+    )
   })
 })

@@ -21,16 +21,15 @@ const EntryNodeContainer: FC<EntryNodeContainerProps> = ({
   const { t } = useTranslation()
 
   const label = useMemo(() => {
-    const translationKey = nodeType === StartNodeTypeEnum.Start ? 'entryNodeStatus' : 'triggerStatus'
-    return customLabel || t(`${translationKey}.enabled`, { ns: 'workflow' })
+    const translationKey =
+      nodeType === StartNodeTypeEnum.Start ? 'entryNodeStatus' : 'triggerStatus'
+    return customLabel || t(($) => $[`${translationKey}.enabled`], { ns: 'workflow' })
   }, [customLabel, nodeType, t])
 
   return (
     <div className="w-fit min-w-[242px] rounded-2xl bg-workflow-block-wrapper-bg-1 px-0 pt-0.5 pb-0">
       <div className="mb-0.5 flex items-center px-2.5 pt-0.5">
-        <span className="text-2xs font-semibold text-text-tertiary uppercase">
-          {label}
-        </span>
+        <span className="text-2xs font-semibold text-text-tertiary uppercase">{label}</span>
       </div>
       {children}
     </div>

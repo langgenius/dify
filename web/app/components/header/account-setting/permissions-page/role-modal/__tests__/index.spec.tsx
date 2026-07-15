@@ -50,31 +50,23 @@ describe('RoleModal', () => {
   describe('Rendering', () => {
     it('should render edit mode with role values and selected permissions', () => {
       render(
-        <RoleModal
-          open
-          mode="edit"
-          role={createRole()}
-          onClose={vi.fn()}
-          onSubmit={vi.fn()}
-        />,
+        <RoleModal open mode="edit" role={createRole()} onClose={vi.fn()} onSubmit={vi.fn()} />,
       )
 
       expect(screen.getByText('permission.role.modal.edit.title')).toBeInTheDocument()
       expect(screen.getByLabelText('permission.role.modal.nameLabel')).toHaveValue('Operator')
-      expect(screen.getByLabelText('permission.role.modal.descriptionLabel')).toHaveValue('Can operate workspace')
-      expect(screen.getByRole('button', { name: /Workspace management/ })).toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByLabelText('permission.role.modal.descriptionLabel')).toHaveValue(
+        'Can operate workspace',
+      )
+      expect(screen.getByRole('button', { name: /Workspace management/ })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
       expect(screen.getByText(/workspace\.member\.manage/)).toBeInTheDocument()
     })
 
     it('should disable confirm action when role name is empty', () => {
-      render(
-        <RoleModal
-          open
-          mode="create"
-          onClose={vi.fn()}
-          onSubmit={vi.fn()}
-        />,
-      )
+      render(<RoleModal open mode="create" onClose={vi.fn()} onSubmit={vi.fn()} />)
 
       expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeDisabled()
     })
@@ -87,17 +79,13 @@ describe('RoleModal', () => {
       const handleClose = vi.fn()
       const handleSubmit = vi.fn()
 
-      render(
-        <RoleModal
-          open
-          mode="create"
-          onClose={handleClose}
-          onSubmit={handleSubmit}
-        />,
-      )
+      render(<RoleModal open mode="create" onClose={handleClose} onSubmit={handleSubmit} />)
 
       await user.type(screen.getByLabelText('permission.role.modal.nameLabel'), '  Support role  ')
-      await user.type(screen.getByLabelText('permission.role.modal.descriptionLabel'), '  Helps members  ')
+      await user.type(
+        screen.getByLabelText('permission.role.modal.descriptionLabel'),
+        '  Helps members  ',
+      )
       await user.click(screen.getByText(/workspace\.member\.manage/))
       await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
@@ -145,20 +133,18 @@ describe('RoleModal', () => {
   describe('Read-only Mode', () => {
     it('should render role details as read-only in view mode', () => {
       render(
-        <RoleModal
-          open
-          mode="view"
-          role={createRole()}
-          onClose={vi.fn()}
-          onSubmit={vi.fn()}
-        />,
+        <RoleModal open mode="view" role={createRole()} onClose={vi.fn()} onSubmit={vi.fn()} />,
       )
 
       expect(screen.getByLabelText('permission.role.modal.nameLabel')).toBeDisabled()
       expect(screen.getByLabelText('permission.role.modal.descriptionLabel')).toBeDisabled()
-      expect(screen.queryByRole('button', { name: 'common.operation.confirm' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.confirm' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'permission.permissionList.clearAll' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'permission.permissionList.clearAll' }),
+      ).not.toBeInTheDocument()
     })
   })
 })

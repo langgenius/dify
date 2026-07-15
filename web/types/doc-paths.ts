@@ -202,8 +202,7 @@ type ExtractNodesPath<T> = T extends `/use-dify/nodes/${infer Path}` ? Path : ne
 export type UseDifyNodesPath = ExtractNodesPath<UseDifyPath>
 
 // Home paths
-type HomePath =
-  | '/home'
+type HomePath = '/home'
 
 // Learn paths
 type LearnPath =
@@ -225,8 +224,7 @@ type LearnPath =
   | '/learn/tutorials/workflow-101/lesson-10'
 
 // QuickStart paths
-type QuickStartPath =
-  | '/quick-start'
+type QuickStartPath = '/quick-start'
 
 // ApiReference paths
 type ApiReferencePath =
@@ -531,9 +529,7 @@ type DocPathWithoutLangBase =
   | ApiEndpointReferencePath
 
 // Combined path without language prefix (supports optional #anchor)
-export type DocPathWithoutLang =
-  | DocPathWithoutLangBase
-  | `${DocPathWithoutLangBase}#${string}`
+export type DocPathWithoutLang = DocPathWithoutLangBase | `${DocPathWithoutLangBase}#${string}`
 
 // Product availability for productless docs paths
 export const docPathProductAvailability: Record<string, readonly DocsProduct[]> = {

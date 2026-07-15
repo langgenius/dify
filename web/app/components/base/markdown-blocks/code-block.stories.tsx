@@ -7,19 +7,11 @@ const SAMPLE_CODE = `const greet = (name: string) => {
 
 console.log(greet('Dify'))`
 
-const CodeBlockDemo = ({
-  language = 'typescript',
-}: {
-  language?: string
-}) => {
+const CodeBlockDemo = ({ language = 'typescript' }: { language?: string }) => {
   return (
     <div className="flex w-full max-w-xl flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
       <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Code block</div>
-      <CodeBlock
-        className={`language-${language}`}
-      >
-        {SAMPLE_CODE}
-      </CodeBlock>
+      <CodeBlock className={`language-${language}`}>{SAMPLE_CODE}</CodeBlock>
     </div>
   )
 }

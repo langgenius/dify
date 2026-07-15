@@ -31,25 +31,35 @@ export const rebaseAgentConfigureComposerAtom = atom(null, (get, set) => {
   set(agentConfigureComposerRebaseRevisionAtom, get(agentConfigureComposerRebaseRevisionAtom) + 1)
 })
 
-export const setAgentConfigureConversationIdAtom = atom(null, (get, set, {
-  mode,
-  conversationId,
-}: {
-  mode: AgentConfigureRightPanelMode
-  conversationId: string | null
-}) => {
-  set(agentConfigureConversationIdsAtom, {
-    ...get(agentConfigureConversationIdsAtom),
-    [mode]: conversationId,
-  })
-})
+export const setAgentConfigureConversationIdAtom = atom(
+  null,
+  (
+    get,
+    set,
+    {
+      mode,
+      conversationId,
+    }: {
+      mode: AgentConfigureRightPanelMode
+      conversationId: string | null
+    },
+  ) => {
+    set(agentConfigureConversationIdsAtom, {
+      ...get(agentConfigureConversationIdsAtom),
+      [mode]: conversationId,
+    })
+  },
+)
 
-export const resetAgentConfigureConversationAtom = atom(null, (get, set, mode: AgentConfigureRightPanelMode) => {
-  set(agentConfigureConversationIdsAtom, {
-    ...get(agentConfigureConversationIdsAtom),
-    [mode]: null,
-  })
-})
+export const resetAgentConfigureConversationAtom = atom(
+  null,
+  (get, set, mode: AgentConfigureRightPanelMode) => {
+    set(agentConfigureConversationIdsAtom, {
+      ...get(agentConfigureConversationIdsAtom),
+      [mode]: null,
+    })
+  },
+)
 
 export const agentConfigureScopedAtoms = [
   agentConfigureSelectedVersionIdAtom,

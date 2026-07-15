@@ -27,6 +27,7 @@ from clients.agent_backend import (
     AgentBackendInternalEventType,
     AgentBackendRunClient,
     AgentBackendRunEventAdapter,
+    AgentBackendRunFailedError,
     AgentBackendRunFailedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
@@ -94,7 +95,18 @@ def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEven
     err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
     if err_cls is not None:
         return err_cls(event.error)
-    return AgentBackendError(event.error or "Agent backend run did not complete successfully.")
+    message = event.error or "Agent backend run did not complete successfully."
+    return AgentBackendRunFailedError(
+        event.run_id,
+        {
+            "error": event.error,
+            "reason": event.reason,
+            "source_event_id": event.source_event_id,
+        },
+        message=message,
+        reason=event.reason,
+        source_event_id=event.source_event_id,
+    )
 
 
 def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:
@@ -690,6 +702,9 @@ class AgentAppRunner:
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):
+                reason = terminal.reason
+                if reason == "sandbox_expired":
+                    raise AgentBackendError("The agent session sandbox has expired. Please start a new conversation.")
                 raise _agent_backend_failure_to_exception(terminal)
             raise AgentBackendError("Agent backend run did not complete successfully.")
 

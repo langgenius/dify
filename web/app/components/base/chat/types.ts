@@ -1,15 +1,10 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import type {
-  ModelConfig,
-} from '@/types/app'
+import type { ModelConfig } from '@/types/app'
 import type { HumanInputFilledFormData, HumanInputFormData, NodeTracing } from '@/types/workflow'
 
-export type {
-  Inputs,
-
-} from '@/models/debug'
+export type { Inputs } from '@/models/debug'
 
 export { TransferMethod } from '@/types/app'
 
@@ -59,10 +54,18 @@ export type ChatItemInTree = {
 
 export type OnSend = {
   (message: string, files?: FileEntity[]): void
-  (message: string, files: FileEntity[] | undefined, isRegenerate: boolean, lastAnswer?: ChatItem | null): void
+  (
+    message: string,
+    files: FileEntity[] | undefined,
+    isRegenerate: boolean,
+    lastAnswer?: ChatItem | null,
+  ): void
 }
 
-export type OnRegenerate = (chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => void
+export type OnRegenerate = (
+  chatItem: ChatItem,
+  editedQuestion?: { message: string; files?: FileEntity[] },
+) => void
 
 export type Callback = {
   onSuccess: () => void

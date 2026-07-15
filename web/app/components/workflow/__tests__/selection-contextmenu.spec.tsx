@@ -55,7 +55,8 @@ vi.mock('@/context/system-features-state', async (importOriginal) => {
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
   return createAppContextStateJotaiMock(importOriginal)
 })
 
@@ -79,9 +80,13 @@ vi.mock('@/app/components/snippets/hooks/use-create-snippet', async () => {
 })
 
 vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
-  default: (props: {
+  CreateSnippetDialog: (props: {
     isOpen: boolean
-    selectedGraph?: { nodes: Node[], edges: Edge[], viewport: { x: number, y: number, zoom: number } }
+    selectedGraph?: {
+      nodes: Node[]
+      edges: Edge[]
+      viewport: { x: number; y: number; zoom: number }
+    }
     inputFields?: Array<{ variable: string }>
   }) => {
     mockCreateSnippetDialogRender(props)
@@ -249,21 +254,27 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }))
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
+    )
 
     expect(screen.getByTestId('create-snippet-dialog')).toBeInTheDocument()
     expect(store.getState().contextMenuTarget).toBeUndefined()
 
     const dialogProps = mockCreateSnippetDialogRender.mock.calls.at(-1)?.[0]
     expect(dialogProps.selectedGraph.nodes.map((node: Node) => node.id)).toEqual(['n1', 'n2'])
-    expect(dialogProps.selectedGraph.nodes.every((node: Node) => node.selected === false)).toBe(true)
+    expect(dialogProps.selectedGraph.nodes.every((node: Node) => node.selected === false)).toBe(
+      true,
+    )
     expect(dialogProps.selectedGraph.edges).toHaveLength(1)
     expect(dialogProps.selectedGraph.viewport).toEqual({ x: 490, y: 380, zoom: 1 })
-    expect(dialogProps.selectedGraph.edges[0]).toEqual(expect.objectContaining({
-      source: 'n1',
-      target: 'n2',
-      selected: false,
-    }))
+    expect(dialogProps.selectedGraph.edges[0]).toEqual(
+      expect.objectContaining({
+        source: 'n1',
+        target: 'n2',
+        selected: false,
+      }),
+    )
   })
 
   it('should hide create snippet action without snippets create-and-modify permission', async () => {
@@ -281,7 +292,9 @@ describe('SelectionContextmenu', () => {
     await waitFor(() => {
       expect(screen.getByRole('menuitem', { name: /common.copy/ })).toBeInTheDocument()
     })
-    expect(screen.queryByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('should add input fields for variable references outside of the selected graph', async () => {
@@ -311,7 +324,9 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }))
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
+    )
 
     const dialogProps = mockCreateSnippetDialogRender.mock.calls.at(-1)?.[0]
     expect(dialogProps.inputFields).toEqual([
@@ -328,36 +343,40 @@ describe('SelectionContextmenu', () => {
         required: true,
       },
     ])
-    expect(dialogProps.selectedGraph.nodes[0].data.prompt_template).toBe('Use {{#start.topic#}} and {{#n2.answer#}}')
-    expect(dialogProps.selectedGraph.nodes[0].data.query_variable_selector).toEqual(['start', 'topic'])
+    expect(dialogProps.selectedGraph.nodes[0].data.prompt_template).toBe(
+      'Use {{#start.topic#}} and {{#n2.answer#}}',
+    )
+    expect(dialogProps.selectedGraph.nodes[0].data.query_variable_selector).toEqual([
+      'start',
+      'topic',
+    ])
     expect(dialogProps.selectedGraph.nodes[0].data.env_reference).toBe('{{#start.API_KEY#}}')
   })
 
-  it.each([
-    BlockEnum.Answer,
-    BlockEnum.End,
-    BlockEnum.Start,
-  ])('should hide create snippet when selection contains %s node', async (nodeType) => {
-    const nodes = [
-      createNode({ id: 'n1', selected: true, width: 80, height: 40, data: { type: nodeType } }),
-      createNode({ id: 'n2', selected: true, position: { x: 140, y: 0 }, width: 80, height: 40 }),
-    ]
-    const { store } = renderSelectionMenu({ nodes })
+  it.each([BlockEnum.Answer, BlockEnum.End, BlockEnum.Start])(
+    'should hide create snippet when selection contains %s node',
+    async (nodeType) => {
+      const nodes = [
+        createNode({ id: 'n1', selected: true, width: 80, height: 40, data: { type: nodeType } }),
+        createNode({ id: 'n2', selected: true, position: { x: 140, y: 0 }, width: 80, height: 40 }),
+      ]
+      const { store } = renderSelectionMenu({ nodes })
 
-    act(() => {
-      store.setState({ contextMenuTarget: { type: 'selection' } })
-    })
+      act(() => {
+        store.setState({ contextMenuTarget: { type: 'selection' } })
+      })
 
-    await waitFor(() => {
-      expect(screen.getByRole('menuitem', { name: /common.copy/ })).toBeInTheDocument()
-    })
-    expect(screen.queryByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ })).not.toBeInTheDocument()
-  })
+      await waitFor(() => {
+        expect(screen.getByRole('menuitem', { name: /common.copy/ })).toBeInTheDocument()
+      })
+      expect(
+        screen.queryByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
+      ).not.toBeInTheDocument()
+    },
+  )
 
   it('should stay hidden when only one node is selected', async () => {
-    const nodes = [
-      createNode({ id: 'n1', selected: true, width: 80, height: 40 }),
-    ]
+    const nodes = [createNode({ id: 'n1', selected: true, width: 80, height: 40 })]
 
     const { store } = renderSelectionMenu({ nodes })
 
@@ -392,8 +411,8 @@ describe('SelectionContextmenu', () => {
 
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
 
-    expect(latestNodes.find(node => node.id === 'n1')?.position.x).toBe(20)
-    expect(latestNodes.find(node => node.id === 'n2')?.position.x).toBe(20)
+    expect(latestNodes.find((node) => node.id === 'n1')?.position.x).toBe(20)
+    expect(latestNodes.find((node) => node.id === 'n2')?.position.x).toBe(20)
     expect(store.getState().contextMenuTarget).toBeUndefined()
     expect(store.getState().helpLineHorizontal).toBeUndefined()
     expect(store.getState().helpLineVertical).toBeUndefined()
@@ -425,7 +444,7 @@ describe('SelectionContextmenu', () => {
 
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-distributeHorizontal'))
 
-    expect(latestNodes.find(node => node.id === 'n2')?.position.x).toBe(150)
+    expect(latestNodes.find((node) => node.id === 'n2')?.position.x).toBe(150)
   })
 
   it('should ignore child nodes when the selected container is aligned', async () => {
@@ -464,9 +483,9 @@ describe('SelectionContextmenu', () => {
 
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
 
-    expect(latestNodes.find(node => node.id === 'container')?.position.x).toBe(40)
-    expect(latestNodes.find(node => node.id === 'other')?.position.x).toBe(40)
-    expect(latestNodes.find(node => node.id === 'child')?.position.x).toBe(210)
+    expect(latestNodes.find((node) => node.id === 'container')?.position.x).toBe(40)
+    expect(latestNodes.find((node) => node.id === 'other')?.position.x).toBe(40)
+    expect(latestNodes.find((node) => node.id === 'child')?.position.x).toBe(210)
   })
 
   it('should cancel when align bounds cannot be resolved', () => {
@@ -502,8 +521,8 @@ describe('SelectionContextmenu', () => {
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
-    expect(latestNodes.find(node => node.id === 'n1')?.position.x).toBe(0)
-    expect(latestNodes.find(node => node.id === 'n2')?.position.x).toBe(80)
+    expect(latestNodes.find((node) => node.id === 'n1')?.position.x).toBe(0)
+    expect(latestNodes.find((node) => node.id === 'n2')?.position.x).toBe(80)
   })
 
   it('should cancel when alignable nodes shrink to one item', () => {
@@ -515,7 +534,13 @@ describe('SelectionContextmenu', () => {
         height: 20,
         data: { _children: [{ nodeId: 'child', nodeType: 'code' as never }] },
       }),
-      createNode({ id: 'child', selected: true, position: { x: 80, y: 20 }, width: 40, height: 20 }),
+      createNode({
+        id: 'child',
+        selected: true,
+        position: { x: 80, y: 20 },
+        width: 40,
+        height: 20,
+      }),
     ]
 
     const { store } = renderSelectionMenu({ nodes })
@@ -527,7 +552,7 @@ describe('SelectionContextmenu', () => {
     fireEvent.click(screen.getByTestId('selection-contextmenu-item-left'))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
-    expect(latestNodes.find(node => node.id === 'container')?.position.x).toBe(0)
-    expect(latestNodes.find(node => node.id === 'child')?.position.x).toBe(80)
+    expect(latestNodes.find((node) => node.id === 'container')?.position.x).toBe(0)
+    expect(latestNodes.find((node) => node.id === 'child')?.position.x).toBe(80)
   })
 })

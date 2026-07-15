@@ -37,146 +37,164 @@ type DocumentTableRowProps = {
 }
 
 const renderCount = (count: number | undefined) => {
-  if (!count)
-    return renderTdValue(0, true)
+  if (!count) return renderTdValue(0, true)
 
-  if (count < 1000)
-    return count
+  if (count < 1000) return count
 
   return `${formatNumber((count / 1000).toFixed(1))}k`
 }
 
-const DocumentTableRow = React.memo(({
-  doc,
-  index,
-  datasetId,
-  isGeneralMode,
-  isQAMode,
-  embeddingAvailable,
-  selectedIds,
-  onSelectedIdChange,
-  onShowRenameModal,
-  onUpdate,
-}: DocumentTableRowProps) => {
-  const { t } = useTranslation()
-  const { formatTime } = useTimestamp()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const documentNameId = React.useId()
-  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
-  const currentUserId = useAtomValue(userProfileIdAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: dataset?.maintainer,
-    workspacePermissionKeys,
-  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
+const DocumentTableRow = React.memo(
+  ({
+    doc,
+    index,
+    datasetId,
+    isGeneralMode,
+    isQAMode,
+    embeddingAvailable,
+    selectedIds,
+    onSelectedIdChange,
+    onShowRenameModal,
+    onUpdate,
+  }: DocumentTableRowProps) => {
+    const { t } = useTranslation()
+    const { formatTime } = useTimestamp()
+    const router = useRouter()
+    const searchParams = useSearchParams()
+    const documentNameId = React.useId()
+    const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
+    const currentUserId = useAtomValue(userProfileIdAtom)
+    const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+    const datasetACLCapabilities = React.useMemo(
+      () =>
+        getDatasetACLCapabilities(dataset?.permission_keys, {
+          currentUserId,
+          resourceMaintainer: dataset?.maintainer,
+          workspacePermissionKeys,
+        }),
+      [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
+    )
 
-  const isFile = doc.data_source_type === DataSourceType.FILE
-  const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
-  const queryString = searchParams.toString()
+    const isFile = doc.data_source_type === DataSourceType.FILE
+    const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
+    const queryString = searchParams.toString()
 
-  const handleRowClick = useCallback(() => {
-    router.push(`/datasets/${datasetId}/documents/${doc.id}${queryString ? `?${queryString}` : ''}`)
-  }, [router, datasetId, doc.id, queryString])
+    const handleRowClick = useCallback(() => {
+      router.push(
+        `/datasets/${datasetId}/documents/${doc.id}${queryString ? `?${queryString}` : ''}`,
+      )
+    }, [router, datasetId, doc.id, queryString])
 
-  const stopPropagation = useCallback((e: React.SyntheticEvent) => {
-    e.stopPropagation()
-  }, [])
+    const stopPropagation = useCallback((e: React.SyntheticEvent) => {
+      e.stopPropagation()
+    }, [])
 
-  const handleRenameClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    onShowRenameModal(doc)
-  }, [doc, onShowRenameModal])
+    const handleRenameClick = useCallback(
+      (e: React.MouseEvent) => {
+        e.stopPropagation()
+        onShowRenameModal(doc)
+      },
+      [doc, onShowRenameModal],
+    )
 
-  return (
-    <tr
-      className="h-8 cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
-      onClick={handleRowClick}
-    >
-      <td className="text-left align-middle text-xs text-text-tertiary">
-        <div className="flex items-center" role="presentation" onClick={stopPropagation} onKeyDown={stopPropagation}>
-          <Checkbox
-            className="mr-2 shrink-0"
-            value={doc.id}
-            aria-labelledby={documentNameId}
-          />
-          {index + 1}
-        </div>
-      </td>
-      <td>
-        <div className="group mr-6 flex max-w-[460px] items-center hover:mr-0">
-          <div className="flex shrink-0 items-center">
-            <DocumentSourceIcon doc={doc} fileType={fileType} />
+    return (
+      <tr
+        className="h-8 cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
+        onClick={handleRowClick}
+      >
+        <td className="text-left align-middle text-xs text-text-tertiary">
+          <div
+            className="flex items-center"
+            role="presentation"
+            onClick={stopPropagation}
+            onKeyDown={stopPropagation}
+          >
+            <Checkbox className="mr-2 shrink-0" value={doc.id} aria-labelledby={documentNameId} />
+            {index + 1}
           </div>
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <span id={documentNameId} className="grow truncate text-sm">{doc.name}</span>
-              )}
-            />
-            <TooltipContent>
-              {doc.name}
-            </TooltipContent>
-          </Tooltip>
-          {doc.summary_index_status && (
-            <div className="ml-1 hidden shrink-0 group-hover:flex">
-              <SummaryStatus status={doc.summary_index_status} />
+        </td>
+        <td>
+          <div className="group mr-6 flex max-w-[460px] items-center hover:mr-0">
+            <div className="flex shrink-0 items-center">
+              <DocumentSourceIcon doc={doc} fileType={fileType} />
             </div>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <span id={documentNameId} className="grow truncate text-sm">
+                    {doc.name}
+                  </span>
+                }
+              />
+              <TooltipContent>{doc.name}</TooltipContent>
+            </Tooltip>
+            {doc.summary_index_status && (
+              <div className="ml-1 hidden shrink-0 group-hover:flex">
+                <SummaryStatus status={doc.summary_index_status} />
+              </div>
+            )}
+            {datasetACLCapabilities.canEdit && (
+              <div className="hidden shrink-0 group-hover:ml-auto group-hover:flex">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover"
+                        onClick={handleRenameClick}
+                      >
+                        <span className="i-ri-edit-line size-4 text-text-tertiary" />
+                      </button>
+                    }
+                  />
+                  <TooltipContent>
+                    {t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            )}
+          </div>
+        </td>
+        <td>
+          <ChunkingModeLabel isGeneralMode={isGeneralMode} isQAMode={isQAMode} />
+        </td>
+        <td>{renderCount(doc.word_count)}</td>
+        <td>{renderCount(doc.hit_count)}</td>
+        <td className="text-[13px] text-text-secondary">
+          {formatTime(
+            doc.created_at,
+            t(($) => $.dateTimeFormat, { ns: 'datasetHitTesting' }) as string,
           )}
-          {datasetACLCapabilities.canEdit && (
-            <div className="hidden shrink-0 group-hover:ml-auto group-hover:flex">
-              <Tooltip>
-                <TooltipTrigger
-                  render={(
-                    <button
-                      type="button"
-                      className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover"
-                      onClick={handleRenameClick}
-                    >
-                      <span className="i-ri-edit-line size-4 text-text-tertiary" />
-                    </button>
-                  )}
-                />
-                <TooltipContent>
-                  {t('list.table.rename', { ns: 'datasetDocuments' })}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          )}
-        </div>
-      </td>
-      <td>
-        <ChunkingModeLabel
-          isGeneralMode={isGeneralMode}
-          isQAMode={isQAMode}
-        />
-      </td>
-      <td>{renderCount(doc.word_count)}</td>
-      <td>{renderCount(doc.hit_count)}</td>
-      <td className="text-[13px] text-text-secondary">
-        {formatTime(doc.created_at, t('dateTimeFormat', { ns: 'datasetHitTesting' }) as string)}
-      </td>
-      <td>
-        <StatusItem status={doc.display_status} />
-      </td>
-      <td>
-        <Operations
-          selectedIds={selectedIds}
-          onSelectedIdChange={onSelectedIdChange}
-          embeddingAvailable={embeddingAvailable}
-          datasetId={datasetId}
-          detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form', 'display_status'])}
-          onUpdate={onUpdate}
-          canEdit={datasetACLCapabilities.canEdit}
-          canDownload={datasetACLCapabilities.canDocumentDownload}
-          canDelete={datasetACLCapabilities.canDeleteFile}
-          canViewSettings={datasetACLCapabilities.canEdit}
-        />
-      </td>
-    </tr>
-  )
-})
+        </td>
+        <td>
+          <StatusItem status={doc.display_status} />
+        </td>
+        <td>
+          <Operations
+            selectedIds={selectedIds}
+            onSelectedIdChange={onSelectedIdChange}
+            embeddingAvailable={embeddingAvailable}
+            datasetId={datasetId}
+            detail={pick(doc, [
+              'name',
+              'enabled',
+              'archived',
+              'id',
+              'data_source_type',
+              'doc_form',
+              'display_status',
+            ])}
+            onUpdate={onUpdate}
+            canEdit={datasetACLCapabilities.canEdit}
+            canDownload={datasetACLCapabilities.canDocumentDownload}
+            canDelete={datasetACLCapabilities.canDeleteFile}
+            canViewSettings={datasetACLCapabilities.canEdit}
+          />
+        </td>
+      </tr>
+    )
+  },
+)
 
 DocumentTableRow.displayName = 'DocumentTableRow'
 

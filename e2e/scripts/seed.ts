@@ -35,10 +35,8 @@ const parseArgs = (argv: string[]): SeedOptions => {
       options.pack = arg.slice('--pack='.length)
       continue
     }
-    if (arg === '--dry-run')
-      options.dryRun = true
-    if (arg === '--allow-blocked')
-      options.allowBlocked = true
+    if (arg === '--dry-run') options.dryRun = true
+    if (arg === '--allow-blocked') options.allowBlocked = true
     if (arg === '--profile') {
       options.profile = argv[index + 1] || options.profile
       continue
@@ -53,8 +51,7 @@ const parseArgs = (argv: string[]): SeedOptions => {
 }
 
 const getTasks = (pack: string, profile: string) => {
-  if (pack === 'agent-v2')
-    return createAgentV2SeedTasks(profile)
+  if (pack === 'agent-v2') return createAgentV2SeedTasks(profile)
 
   throw new Error(`Unknown seed pack "${pack}".`)
 }
@@ -63,8 +60,7 @@ const ensureAuth = async () => {
   const browser = await chromium.launch({ headless: true })
   try {
     await ensureAuthenticatedState(browser, baseURL)
-  }
-  finally {
+  } finally {
     await browser.close()
   }
 }
@@ -73,8 +69,7 @@ const startApiProcess = async (logDir: string) => {
   try {
     await waitForUrl(`${apiURL}/health`, 1_000, 250, 1_000)
     return undefined
-  }
-  catch {
+  } catch {
     // Start a local API process below.
   }
 
@@ -89,8 +84,7 @@ const startApiProcess = async (logDir: string) => {
   try {
     await waitForUrl(`${apiURL}/health`, 180_000, 1_000)
     return apiProcess
-  }
-  catch (error) {
+  } catch (error) {
     await stopManagedProcess(apiProcess)
     throw error
   }
@@ -139,11 +133,10 @@ const main = async () => {
       dryRun: options.dryRun,
       resources: new Map(),
     })
-    const reportName = options.profile === 'full'
-      ? options.pack
-      : `${options.pack}-${options.profile}`
+    const reportName =
+      options.profile === 'full' ? options.pack : `${options.pack}-${options.profile}`
     const reportPath = await writeSeedReport(reportName, results)
-    const blockedCount = results.filter(result => result.status === 'blocked').length
+    const blockedCount = results.filter((result) => result.status === 'blocked').length
 
     console.warn(`[seed] report ${reportPath}`)
     if (blockedCount > 0 && !options.allowBlocked) {
@@ -151,8 +144,7 @@ const main = async () => {
         `${blockedCount} seed task${blockedCount === 1 ? '' : 's'} blocked. Re-run with --allow-blocked only when partial readiness is intentional.`,
       )
     }
-  }
-  finally {
+  } finally {
     await stopWebServer()
     await stopManagedProcess(celeryProcess)
     await stopManagedProcess(apiProcess)

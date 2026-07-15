@@ -5,11 +5,7 @@ import type { I18nKeysWithPrefix } from '@/types/i18n'
 import ReactECharts from 'echarts-for-react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import {
-  buildChartOptions,
-  getChartValueField,
-  getTokenSummary,
-} from './chart-utils'
+import { buildChartOptions, getChartValueField, getTokenSummary } from './chart-utils'
 
 type AgentMonitoringChartProps = {
   titleKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
@@ -23,7 +19,7 @@ type AgentMonitoringChartProps = {
 }
 
 const hasChartData = (rows: AgentMonitoringChartRow[], valueKey: string) => {
-  return rows.some(row => Number(row[valueKey] ?? 0) !== 0)
+  return rows.some((row) => Number(row[valueKey] ?? 0) !== 0)
 }
 
 export function AgentMonitoringChart({
@@ -53,31 +49,29 @@ export function AgentMonitoringChart({
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center gap-1">
           <h3 className="truncate system-md-semibold text-text-secondary">
-            {t(titleKey)}
+            {t(($) => $[titleKey])}
           </h3>
-          <Infotip aria-label={t(explanationKey)}>
-            {t(explanationKey)}
-          </Infotip>
+          <Infotip aria-label={t(($) => $[explanationKey])}>{t(($) => $[explanationKey])}</Infotip>
         </div>
       </div>
 
       <div className="flex h-8 shrink-0 items-start gap-1 px-6 py-1">
-        <div className={`truncate text-3xl leading-7 font-normal ${isEmptySummary ? 'text-text-quaternary' : 'text-text-primary'}`}>
+        <div
+          className={`truncate text-3xl leading-7 font-normal ${isEmptySummary ? 'text-text-quaternary' : 'text-text-primary'}`}
+        >
           {summaryValue}
         </div>
         {chartType !== 'tokenUsage' && unitKey && (
           <div className="mt-0.5 truncate system-sm-regular text-text-secondary">
-            {t(unitKey)}
+            {t(($) => $[unitKey])}
           </div>
         )}
         {chartType === 'tokenUsage' && (
           <div className="mt-0.5 truncate system-sm-regular text-text-secondary">
-            {t('agentDetail.monitoring.tokenUsageConsumed')}
-            {' '}
+            {t(($) => $['agentDetail.monitoring.tokenUsageConsumed'])}{' '}
             <span className="text-util-colors-orange-orange-600">
               (~
-              {tokenSummary}
-              )
+              {tokenSummary})
             </span>
           </div>
         )}

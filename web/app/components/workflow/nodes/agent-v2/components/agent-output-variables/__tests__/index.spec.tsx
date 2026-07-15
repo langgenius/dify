@@ -35,12 +35,14 @@ describe('AgentOutputVariables', () => {
   it('should add an object child without opening the parent editor', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    const outputs: DeclaredOutputConfig[] = [{
-      name: 'profile',
-      type: 'object',
-      required: true,
-      description: 'User profile',
-    }]
+    const outputs: DeclaredOutputConfig[] = [
+      {
+        name: 'profile',
+        type: 'object',
+        required: true,
+        description: 'User profile',
+      },
+    ]
 
     render(<AgentOutputVariables outputs={outputs} onChange={onChange} />)
 
@@ -52,30 +54,36 @@ describe('AgentOutputVariables', () => {
 
     await confirmEditorName(user, 'email')
 
-    expect(onChange).toHaveBeenCalledWith([{
-      name: 'profile',
-      type: 'object',
-      required: true,
-      description: 'User profile',
-      children: [{
-        name: 'email',
-        type: 'string',
-        required: false,
-      }],
-    }])
+    expect(onChange).toHaveBeenCalledWith([
+      {
+        name: 'profile',
+        type: 'object',
+        required: true,
+        description: 'User profile',
+        children: [
+          {
+            name: 'email',
+            type: 'string',
+            required: false,
+          },
+        ],
+      },
+    ])
   })
 
   it('should append children to array object items', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    const outputs: DeclaredOutputConfig[] = [{
-      name: 'addresses',
-      type: 'array',
-      required: false,
-      array_item: {
-        type: 'object',
+    const outputs: DeclaredOutputConfig[] = [
+      {
+        name: 'addresses',
+        type: 'array',
+        required: false,
+        array_item: {
+          type: 'object',
+        },
       },
-    }]
+    ]
 
     render(<AgentOutputVariables outputs={outputs} onChange={onChange} />)
 
@@ -83,34 +91,42 @@ describe('AgentOutputVariables', () => {
     await user.click(getAddButton('addresses'))
     await confirmEditorName(user, 'city')
 
-    expect(onChange).toHaveBeenCalledWith([{
-      name: 'addresses',
-      type: 'array',
-      required: false,
-      array_item: {
-        type: 'object',
-        children: [{
-          name: 'city',
-          type: 'string',
-          required: false,
-        }],
+    expect(onChange).toHaveBeenCalledWith([
+      {
+        name: 'addresses',
+        type: 'array',
+        required: false,
+        array_item: {
+          type: 'object',
+          children: [
+            {
+              name: 'city',
+              type: 'string',
+              required: false,
+            },
+          ],
+        },
       },
-    }])
+    ])
   })
 
   it('should add nested children under the selected object child', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    const outputs: DeclaredOutputConfig[] = [{
-      name: 'profile',
-      type: 'object',
-      required: true,
-      children: [{
-        name: 'contact',
+    const outputs: DeclaredOutputConfig[] = [
+      {
+        name: 'profile',
         type: 'object',
         required: true,
-      }],
-    }]
+        children: [
+          {
+            name: 'contact',
+            type: 'object',
+            required: true,
+          },
+        ],
+      },
+    ]
 
     render(<AgentOutputVariables outputs={outputs} onChange={onChange} />)
 
@@ -118,42 +134,54 @@ describe('AgentOutputVariables', () => {
     await user.click(getAddButton('contact'))
     await confirmEditorName(user, 'email')
 
-    expect(onChange).toHaveBeenCalledWith([{
-      name: 'profile',
-      type: 'object',
-      required: true,
-      children: [{
-        name: 'contact',
+    expect(onChange).toHaveBeenCalledWith([
+      {
+        name: 'profile',
         type: 'object',
         required: true,
-        children: [{
-          name: 'email',
-          type: 'string',
-          required: false,
-        }],
-      }],
-    }])
+        children: [
+          {
+            name: 'contact',
+            type: 'object',
+            required: true,
+            children: [
+              {
+                name: 'email',
+                type: 'string',
+                required: false,
+              },
+            ],
+          },
+        ],
+      },
+    ])
   })
 
   it('should edit only the selected nested child', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    const outputs: DeclaredOutputConfig[] = [{
-      name: 'profile',
-      type: 'object',
-      required: true,
-      children: [{
-        name: 'contact',
+    const outputs: DeclaredOutputConfig[] = [
+      {
+        name: 'profile',
         type: 'object',
         required: true,
-        children: [{
-          name: 'email',
-          type: 'string',
-          required: true,
-          description: 'Primary email',
-        }],
-      }],
-    }]
+        children: [
+          {
+            name: 'contact',
+            type: 'object',
+            required: true,
+            children: [
+              {
+                name: 'email',
+                type: 'string',
+                required: true,
+                description: 'Primary email',
+              },
+            ],
+          },
+        ],
+      },
+    ]
 
     render(<AgentOutputVariables outputs={outputs} onChange={onChange} />)
 
@@ -164,32 +192,40 @@ describe('AgentOutputVariables', () => {
 
     await confirmEditorName(user, 'work_email')
 
-    expect(onChange).toHaveBeenCalledWith([{
-      name: 'profile',
-      type: 'object',
-      required: true,
-      children: [{
-        name: 'contact',
+    expect(onChange).toHaveBeenCalledWith([
+      {
+        name: 'profile',
         type: 'object',
         required: true,
-        children: [{
-          name: 'work_email',
-          type: 'string',
-          required: true,
-          description: 'Primary email',
-        }],
-      }],
-    }])
+        children: [
+          {
+            name: 'contact',
+            type: 'object',
+            required: true,
+            children: [
+              {
+                name: 'work_email',
+                type: 'string',
+                required: true,
+                description: 'Primary email',
+              },
+            ],
+          },
+        ],
+      },
+    ])
   })
 
   it('should reject editing an output name with dots', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    const outputs: DeclaredOutputConfig[] = [{
-      name: 'summary',
-      type: 'string',
-      required: true,
-    }]
+    const outputs: DeclaredOutputConfig[] = [
+      {
+        name: 'summary',
+        type: 'string',
+        required: true,
+      },
+    ]
 
     render(<AgentOutputVariables outputs={outputs} onChange={onChange} />)
 

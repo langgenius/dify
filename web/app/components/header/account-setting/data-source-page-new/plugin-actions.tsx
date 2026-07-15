@@ -7,7 +7,10 @@ import { memo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
-import { useDetailHeaderState, usePluginOperations } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
+import {
+  useDetailHeaderState,
+  usePluginOperations,
+} from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
 import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
@@ -24,16 +27,11 @@ type Props = {
 
 const usePluginDetailHeader = useDetailHeaderState
 
-const getDetailUrl = (
-  detail: PluginDetail,
-  locale: string,
-  theme: string,
-) => {
+const getDetailUrl = (detail: PluginDetail, locale: string, theme: string) => {
   const { source, meta } = detail
   const { author, name } = detail.declaration || detail
 
-  if (source === PluginSource.github)
-    return meta?.repo ? `https://github.com/${meta.repo}` : ''
+  if (source === PluginSource.github) return meta?.repo ? `https://github.com/${meta.repo}` : ''
 
   if (source === PluginSource.marketplace)
     return getMarketplaceUrl(`/plugins/${author}/${name}`, { language: locale, theme })
@@ -41,15 +39,12 @@ const getDetailUrl = (
   return ''
 }
 
-const DataSourcePluginActions = ({
-  detail,
-  onUpdate,
-}: Props) => {
+const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
   const locale = useLocale()
   const readmeTriggerId = useId()
-  const openReadmePanel = useReadmePanelStore(s => s.openReadmePanel)
+  const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
   const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
   const detailHeaderState = usePluginDetailHeader(detail)
   const {
@@ -60,11 +55,7 @@ const DataSourcePluginActions = ({
     isFromGitHub,
     isFromMarketplace,
   } = detailHeaderState
-  const {
-    handleUpdate,
-    handleUpdatedFromMarketplace,
-    handleDelete,
-  } = usePluginOperations({
+  const { handleUpdate, handleUpdatedFromMarketplace, handleDelete } = usePluginOperations({
     detail,
     modalStates,
     versionPicker,
@@ -75,7 +66,11 @@ const DataSourcePluginActions = ({
   })
   const displayVersion = isFromGitHub ? (detail.meta?.version ?? detail.version) : detail.version
 
-  const handleVersionSelect = (state: { version: string, unique_identifier: string, isDowngrade?: boolean }) => {
+  const handleVersionSelect = (state: {
+    version: string
+    unique_identifier: string
+    isDowngrade?: boolean
+  }) => {
     versionPicker.setTargetVersion(state)
     handleUpdate(state.isDowngrade)
   }
@@ -97,7 +92,7 @@ const DataSourcePluginActions = ({
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-1" onClick={e => e.stopPropagation()}>
+    <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
       {!!displayVersion && (
         <PluginVersionPicker
           disabled={!canUpdatePlugin || !isFromMarketplace}
@@ -106,38 +101,43 @@ const DataSourcePluginActions = ({
           pluginID={detail.plugin_id}
           currentVersion={detail.version}
           onSelect={handleVersionSelect}
-          trigger={(
+          trigger={
             <Badge
               className="h-5 px-1.5"
-              text={(
+              text={
                 <>
                   <div>{displayVersion}</div>
-                  {canUpdatePlugin && isFromMarketplace && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line h-3 w-3 shrink-0 text-text-tertiary" />}
+                  {canUpdatePlugin && isFromMarketplace && (
+                    <span
+                      aria-hidden
+                      className="ml-1 i-ri-arrow-left-right-line h-3 w-3 shrink-0 text-text-tertiary"
+                    />
+                  )}
                 </>
-              )}
+              }
               hasRedCornerMark={hasNewVersion}
               uppercase={false}
             />
-          )}
+          }
         />
       )}
       {canUpdatePlugin && (hasNewVersion || isFromGitHub) && (
         <Tooltip>
           <TooltipTrigger
             delay={300}
-            render={(
+            render={
               <Button
                 variant="secondary-accent"
                 size="small"
                 className="h-5 rounded-md px-1.5 py-0 system-xs-medium"
                 onClick={handleTriggerLatestUpdate}
               >
-                {t('detailPanel.operation.update', { ns: 'plugin' })}
+                {t(($) => $['detailPanel.operation.update'], { ns: 'plugin' })}
               </Button>
-            )}
+            }
           />
           <TooltipContent>
-            {t('detailPanel.operation.updateTooltip', { ns: 'plugin' })}
+            {t(($) => $['detailPanel.operation.updateTooltip'], { ns: 'plugin' })}
           </TooltipContent>
         </Tooltip>
       )}
