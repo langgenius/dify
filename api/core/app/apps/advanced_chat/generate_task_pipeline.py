@@ -76,12 +76,14 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.secret_scrub import collect_workflow_secret_values
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import GraphRuntimeState
+from graphon.variables import VariableBase
 from libs.datetime_utils import naive_utc_now
 from models import Account, Conversation, EndUser, Message, MessageFile
 from models.enums import CreatorUserRole, MessageFileBelongsTo, MessageStatus
@@ -97,6 +99,8 @@ class WorkflowSnapshot:
     id: str
     tenant_id: str
     features_dict: Mapping[str, Any]
+    environment_variables: tuple[VariableBase, ...]
+    conversation_variables: tuple[VariableBase, ...]
 
     @classmethod
     def from_workflow(cls, workflow: Workflow) -> "WorkflowSnapshot":
@@ -104,6 +108,8 @@ class WorkflowSnapshot:
             id=workflow.id,
             tenant_id=workflow.tenant_id,
             features_dict=dict(workflow.features_dict),
+            environment_variables=tuple(workflow.environment_variables),
+            conversation_variables=tuple(workflow.conversation_variables),
         )
 
 
@@ -188,6 +194,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             application_generate_entity=application_generate_entity,
             user=user,
             system_variables=self._workflow_system_variables,
+            secret_values=collect_workflow_secret_values(
+                workflow.environment_variables,
+                workflow.conversation_variables,
+            ),
         )
 
         self._task_state = WorkflowTaskState()

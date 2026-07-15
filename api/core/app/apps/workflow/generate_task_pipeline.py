@@ -61,6 +61,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.workflow.secret_scrub import collect_workflow_secret_values
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
@@ -120,6 +121,10 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             application_generate_entity=application_generate_entity,
             user=user,
             system_variables=self._workflow_system_variables,
+            secret_values=collect_workflow_secret_values(
+                self._workflow.environment_variables,
+                self._workflow.conversation_variables,
+            ),
         )
         self._graph_runtime_state: GraphRuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
 
