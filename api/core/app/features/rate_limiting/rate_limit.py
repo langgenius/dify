@@ -50,10 +50,11 @@ class RateLimit:
     def flush_cache(self, use_local_value=False):
         self.last_recalculate_time = time.time()
         # flush max active requests
-        if use_local_value or not redis_client.exists(self.max_active_requests_key):
+        cached = redis_client.get(self.max_active_requests_key)
+        if use_local_value or cached is None:
             redis_client.setex(self.max_active_requests_key, timedelta(days=1), self.max_active_requests)
         else:
-            self.max_active_requests = int(redis_client.get(self.max_active_requests_key).decode("utf-8"))
+            self.max_active_requests = int(cached.decode("utf-8"))
             redis_client.expire(self.max_active_requests_key, timedelta(days=1))
         if self.disabled():
             return
