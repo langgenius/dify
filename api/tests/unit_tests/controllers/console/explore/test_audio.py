@@ -45,6 +45,7 @@ def installed_app():
     app.app = MagicMock()
     app.app.id = "app-1"
     app.app.tenant_id = "tenant-1"
+    app.app_with_session.return_value = app.app
     return app
 
 

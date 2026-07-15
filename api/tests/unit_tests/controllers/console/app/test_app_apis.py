@@ -227,7 +227,7 @@ class TestAppEndpoints:
             app.test_request_context("/console/api/apps/app-1", method="PUT", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            response = method(api, app_model=_make_app(icon_type=app_module.IconType.EMOJI))
+            response = method(api, MagicMock(spec=Session), app_model=_make_app(icon_type=app_module.IconType.EMOJI))
 
         assert response == {"id": "app-1"}
         assert app_service.update_app.call_args.args[1]["icon_type"] is None
@@ -264,7 +264,7 @@ class TestAppEndpoints:
             app.test_request_context("/console/api/apps/app-1/icon", method="POST", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            response = method(api, app_model=_make_app())
+            response = method(api, MagicMock(spec=Session), app_model=_make_app())
 
         assert response == {"id": "app-1"}
         assert app_service.update_app_icon.call_args.args[1:] == (
@@ -367,7 +367,7 @@ class TestSiteEndpoints:
         site = self._add_site(db.session)
 
         with database_app.test_request_context("/", json={"title": "My Site", "input_placeholder": "Ask me anything"}):
-            result = method(api, _make_account(), app_model=_make_app())
+            result = method(api, db.session, _make_account(), app_model=_make_app())
 
         db.session.refresh(site)
         assert isinstance(result, dict)
@@ -386,7 +386,7 @@ class TestSiteEndpoints:
         monkeypatch.setattr(site_module.Site, "generate_code", lambda *_args, **_kwargs: "code")
 
         with database_app.test_request_context("/"):
-            result = method(api, _make_account(), app_model=_make_app())
+            result = method(api, db.session, _make_account(), app_model=_make_app())
 
         db.session.refresh(site)
         assert isinstance(result, dict)
