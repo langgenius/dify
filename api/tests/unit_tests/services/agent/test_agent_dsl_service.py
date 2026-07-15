@@ -534,7 +534,7 @@ def test_create_imported_roster_agent_app_prefixes_warnings(monkeypatch) -> None
     assert app.name == "Portable Agent"
     assert app.enable_site is True
     assert app.enable_api is True
-    send.assert_called_once_with(app, account=SimpleNamespace(id="account-1"))
+    send.assert_called_once_with(app, account=SimpleNamespace(id="account-1"), session=session)
     assert imported.warnings[0].path == "agent_packages.agent_1.soul.model"
 
 
