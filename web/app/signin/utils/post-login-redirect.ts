@@ -1,5 +1,4 @@
 import type { ReadonlyURLSearchParams } from '@/next/navigation'
-import { IS_CLOUD_EDITION } from '@/config'
 import { getClientLoginFallback, resolveLoginRedirectTarget } from '@/utils/login-redirect'
 
 const REDIRECT_URL_KEY = 'redirect_url'
@@ -75,7 +74,7 @@ function getDeviceRedirect(): string | null {
 
 export function resolvePostLoginRedirect(searchParams?: ReadonlyURLSearchParams) {
   const currentOrigin = typeof window === 'undefined' ? undefined : window.location.origin
-  const fallback = getClientLoginFallback(IS_CLOUD_EDITION)
+  const fallback = getClientLoginFallback()
 
   if (searchParams?.has(REDIRECT_URL_KEY)) {
     return (
