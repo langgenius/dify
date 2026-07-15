@@ -1,8 +1,6 @@
 import { render } from 'vitest-browser-react'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-
 describe('Tabs wrappers', () => {
   it('renders Base UI tabs with accessible roles', async () => {
     const screen = await render(
@@ -37,7 +35,7 @@ describe('Tabs wrappers', () => {
       </Tabs>,
     )
 
-    asHTMLElement(screen.getByRole('tab', { name: 'Python' }).element()).click()
+    await screen.getByRole('tab', { name: 'Python' }).click()
 
     expect(onValueChange).toHaveBeenCalledWith('py', expect.anything())
     await expect

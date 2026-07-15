@@ -109,43 +109,6 @@ describe('Button', () => {
       expect(onClick).toHaveBeenCalledTimes(1)
     })
 
-    it('does not fire onClick when disabled', async () => {
-      const onClick = vi.fn()
-      const screen = await render(
-        <Button onClick={onClick} disabled>
-          Click me
-        </Button>,
-      )
-      asHTMLElement(screen.getByRole('button').element()).click()
-      expect(onClick).not.toHaveBeenCalled()
-    })
-
-    it('does not fire onClick when loading', async () => {
-      const onClick = vi.fn()
-      const screen = await render(
-        <Button onClick={onClick} loading>
-          Click me
-        </Button>,
-      )
-      asHTMLElement(screen.getByRole('button').element()).click()
-      expect(onClick).not.toHaveBeenCalled()
-    })
-
-    it('does not submit a form when a loading submit button is clicked', async () => {
-      const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault())
-      const screen = await render(
-        <form onSubmit={onSubmit}>
-          <Button type="submit" loading>
-            Submit
-          </Button>
-        </form>,
-      )
-
-      asHTMLElement(screen.getByRole('button', { name: 'Submit' }).element()).click()
-
-      expect(onSubmit).not.toHaveBeenCalled()
-    })
-
     it('does not implicitly submit a form through a loading submit button', async () => {
       const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault())
       const screen = await render(

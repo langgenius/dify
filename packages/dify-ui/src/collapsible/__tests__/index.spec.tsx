@@ -1,8 +1,6 @@
 import { render } from 'vitest-browser-react'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-
 describe('Collapsible wrappers', () => {
   it('renders the Base UI anatomy with an accessible trigger', async () => {
     const screen = await render(
@@ -30,7 +28,7 @@ describe('Collapsible wrappers', () => {
 
     await expect.element(trigger).not.toHaveAttribute('data-panel-open')
 
-    asHTMLElement(trigger.element()).click()
+    await trigger.click()
 
     await expect.element(trigger).toHaveAttribute('data-panel-open', '')
     await expect.element(screen.getByText('Hidden content')).toBeInTheDocument()
