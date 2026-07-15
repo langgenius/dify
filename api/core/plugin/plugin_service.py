@@ -19,7 +19,7 @@ import time
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from mimetypes import guess_type
-from typing import Literal, Protocol
+from typing import Literal, Protocol, cast
 
 import zstandard
 from pydantic import BaseModel, TypeAdapter, ValidationError
@@ -461,7 +461,7 @@ class PluginService:
                             plugin_id=plugin_id,
                             version=manifest.latest_version,
                             unique_identifier=manifest.latest_package_identifier,
-                            status=manifest.status,
+                            status=cast(Literal["active", "deleted"], manifest.status),
                             deprecated_reason=manifest.deprecated_reason,
                             alternative_plugin_id=manifest.alternative_plugin_id,
                         )

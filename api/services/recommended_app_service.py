@@ -99,6 +99,6 @@ class RecommendedAppService:
             session.commit()
 
     @staticmethod
-    def _can_trial_app(session: scoped_session, app_id: str) -> bool:
+    def _can_trial_app(session: Session | scoped_session, app_id: str) -> bool:
         trial_app_model = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
         return trial_app_model is not None

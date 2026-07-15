@@ -3,6 +3,7 @@ from typing import Any, override
 
 import httpx
 from flask import has_request_context, request
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from services.recommend_app.buildin.buildin_retrieval import BuildInRecommendAppRetrieval
@@ -33,7 +34,8 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
     """
 
     @override
-    def get_recommend_app_detail(self, app_id: str):
+    def get_recommend_app_detail(self, app_id: str, *, session: Session | None = None):
+        del session
         try:
             result = self.fetch_recommended_app_detail_from_dify_official(app_id)
         except Exception as e:

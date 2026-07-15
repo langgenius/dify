@@ -1,6 +1,7 @@
 from typing import Any, NotRequired, TypedDict, override
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from constants.languages import languages
 from extensions.ext_database import db
@@ -55,8 +56,10 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         return result
 
     @override
-    def get_recommend_app_detail(self, app_id: str) -> RecommendedAppDetailDict | None:
-        result = self.fetch_recommended_app_detail_from_db(app_id)
+    def get_recommend_app_detail(
+        self, app_id: str, *, session: Session | None = None
+    ) -> RecommendedAppDetailDict | None:
+        result = self.fetch_recommended_app_detail_from_db(app_id, session=session)
         return result
 
     @override
@@ -146,14 +149,17 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         )
 
     @classmethod
-    def fetch_recommended_app_detail_from_db(cls, app_id: str) -> RecommendedAppDetailDict | None:
+    def fetch_recommended_app_detail_from_db(
+        cls, app_id: str, *, session: Session | None = None
+    ) -> RecommendedAppDetailDict | None:
         """
         Fetch recommended app detail from db.
         :param app_id: App ID
         :return:
         """
         # is in public recommended list
-        recommended_app = db.session.scalar(
+        query_session = session if session is not None else db.session
+        recommended_app = query_session.scalar(
             select(RecommendedApp).where(RecommendedApp.is_listed == True, RecommendedApp.app_id == app_id).limit(1)
         )
 
@@ -161,7 +167,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
             return None
 
         # get app detail
-        app_model = db.session.get(App, app_id)
+        app_model = query_session.get(App, app_id)
         if not app_model or not app_model.is_public:
             return None
 
