@@ -162,23 +162,24 @@ class LLMGenerator:
         with measure_time() as timer:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
-            )
+        )
         answer = response.message.get_text_content()
-        if answer == "":
-            return ""
-        try:
-            result_dict = json.loads(answer)
-        except json.JSONDecodeError:
-            result_dict = json_repair.loads(answer)
-
-        if not isinstance(result_dict, dict):
+        if not answer.strip():
             answer = query
         else:
-            output = result_dict.get("Your Output")
-            if isinstance(output, str) and output.strip():
-                answer = output.strip()
-            else:
+            try:
+                result_dict = json.loads(answer)
+            except json.JSONDecodeError:
+                result_dict = json_repair.loads(answer)
+
+            if not isinstance(result_dict, dict):
                 answer = query
+            else:
+                output = result_dict.get("Your Output")
+                if isinstance(output, str) and output.strip():
+                    answer = output.strip()
+                else:
+                    answer = query
 
         name = answer.strip()
 
