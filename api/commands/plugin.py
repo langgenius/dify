@@ -8,7 +8,6 @@ from pydantic import TypeAdapter
 from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
 
-from configs import dify_config
 from core.helper import encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.plugin import PluginInstaller
@@ -41,12 +40,10 @@ def setup_system_tool_oauth_client(provider, client_params):
 
     try:
         # json validate
-        click.echo(click.style(f"Validating client params: {client_params}", fg="yellow"))
+        click.echo(click.style("Validating client params...", fg="yellow"))
         client_params_dict = TypeAdapter(dict[str, Any]).validate_json(client_params)
         click.echo(click.style("Client params validated successfully.", fg="green"))
 
-        click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
-        click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
         oauth_client_params = encrypt_system_params(client_params_dict)
         click.echo(click.style("Client params encrypted successfully.", fg="green"))
     except Exception as e:
@@ -91,12 +88,10 @@ def setup_system_trigger_oauth_client(provider, client_params):
 
     try:
         # json validate
-        click.echo(click.style(f"Validating client params: {client_params}", fg="yellow"))
+        click.echo(click.style("Validating client params...", fg="yellow"))
         client_params_dict = TypeAdapter(dict[str, Any]).validate_json(client_params)
         click.echo(click.style("Client params validated successfully.", fg="green"))
 
-        click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
-        click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
         oauth_client_params = encrypt_system_params(client_params_dict)
         click.echo(click.style("Client params encrypted successfully.", fg="green"))
     except Exception as e:
@@ -138,7 +133,7 @@ def setup_datasource_oauth_client(provider, client_params):
 
     try:
         # json validate
-        click.echo(click.style(f"Validating client params: {client_params}", fg="yellow"))
+        click.echo(click.style("Validating client params...", fg="yellow"))
         client_params_dict = TypeAdapter(dict[str, Any]).validate_json(client_params)
         click.echo(click.style("Client params validated successfully.", fg="green"))
     except Exception as e:
@@ -168,7 +163,6 @@ def setup_datasource_oauth_client(provider, client_params):
     db.session.commit()
     click.echo(click.style(f"provider: {provider_name}", fg="green"))
     click.echo(click.style(f"plugin_id: {plugin_id}", fg="green"))
-    click.echo(click.style(f"params: {json.dumps(client_params_dict, indent=2, ensure_ascii=False)}", fg="green"))
     click.echo(click.style(f"Datasource oauth client setup successfully. id: {oauth_client.id}", fg="green"))
 
 
