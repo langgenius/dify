@@ -216,9 +216,7 @@ def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owne
         writable=True,
         soul=_soul(
             config_skills=[{"name": "alpha", "file_id": None, "is_missing": True}],
-            config_files=[
-                {"name": "guide.txt", "file_kind": "tool_file", "file_id": None, "is_missing": True}
-            ],
+            config_files=[{"name": "guide.txt", "file_kind": "tool_file", "file_id": None, "is_missing": True}],
         ),
     )
     file_source = SimpleNamespace(
@@ -316,9 +314,7 @@ def test_push_file_for_console_uses_service_owned_upload_lookup_and_naming() -> 
         kind=AgentConfigVersionKind.DRAFT,
         writable=False,
         soul=_soul(
-            config_files=[
-                {"name": "guide.txt", "file_kind": "upload_file", "file_id": None, "is_missing": True}
-            ]
+            config_files=[{"name": "guide.txt", "file_kind": "upload_file", "file_id": None, "is_missing": True}]
         ),
     )
     upload_file = SimpleNamespace(
