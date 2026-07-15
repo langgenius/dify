@@ -130,7 +130,7 @@ class AgentFlexibleConfig(BaseModel):
 
 class AgentFileRefConfig(AgentFlexibleConfig):
     id: str | None = Field(default=None, max_length=255)
-    file_id: str | None = Field(default=None, max_length=255)
+    file_id: str = Field(default="", max_length=255)
     upload_file_id: str | None = Field(default=None, max_length=255)
     reference: str | None = Field(default=None, max_length=255)
     tenant_id: str | None = Field(default=None, max_length=255)
@@ -209,7 +209,7 @@ class AgentConfigFileRefConfig(BaseModel):
     @model_validator(mode="after")
     def _validate_file_reference(self) -> Self:
         if self.is_missing:
-            if self.file_id is not None:
+            if self.file_id:
                 raise ValueError("missing config files must not retain a workspace-local file_id")
             return self
         if not self.file_id or not self.file_id.strip():
@@ -225,7 +225,7 @@ class AgentConfigSkillRefConfig(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str = ""
     file_kind: Literal["tool_file"] = "tool_file"
-    file_id: str | None = Field(default=None, max_length=255)
+    file_id: str = Field(default="", max_length=255)
     is_missing: bool = False
     size: int | None = None
     hash: str | None = None
@@ -239,7 +239,7 @@ class AgentConfigSkillRefConfig(BaseModel):
     @model_validator(mode="after")
     def _validate_file_reference(self) -> Self:
         if self.is_missing:
-            if self.file_id is not None:
+            if self.file_id:
                 raise ValueError("missing config skills must not retain a workspace-local file_id")
             return self
         if not self.file_id or not self.file_id.strip():

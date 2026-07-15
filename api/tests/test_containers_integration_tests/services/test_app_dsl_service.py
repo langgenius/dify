@@ -1022,7 +1022,7 @@ class TestAppDslService:
                 "name": "research",
                 "description": "Research source material.",
                 "file_kind": "tool_file",
-                "file_id": None,
+                "file_id": "",
                 "is_missing": True,
                 "size": 123,
                 "hash": None,
@@ -1033,7 +1033,7 @@ class TestAppDslService:
             {
                 "name": "guide.md",
                 "file_kind": "upload_file",
-                "file_id": None,
+                "file_id": "",
                 "is_missing": True,
                 "size": 456,
                 "hash": None,
@@ -1073,10 +1073,10 @@ class TestAppDslService:
         assert draft.base_snapshot_id == imported_agent.active_config_snapshot_id
         imported_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
         assert imported_soul.config_skills[0].name == "research"
-        assert imported_soul.config_skills[0].file_id is None
+        assert imported_soul.config_skills[0].file_id == ""
         assert imported_soul.config_skills[0].is_missing is True
         assert imported_soul.config_files[0].name == "guide.md"
-        assert imported_soul.config_files[0].file_id is None
+        assert imported_soul.config_files[0].file_id == ""
         assert imported_soul.config_files[0].is_missing is True
 
     def test_export_dsl_workflow_app_success(

@@ -99,7 +99,7 @@ class AgentRosterResponse(ResponseModel):
     archived_at: int | None = None
     created_at: int | None = None
     updated_at: int | None = None
-    reference_count: int = 0
+    reference_count: int | None = None
     published_reference_count: int = 0
     published_node_reference_count: int = 0
     published_references: list[AgentPublishedReferenceResponse] = Field(default_factory=list)

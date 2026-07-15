@@ -215,8 +215,8 @@ def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owne
         kind=AgentConfigVersionKind.BUILD_DRAFT,
         writable=True,
         soul=_soul(
-            config_skills=[{"name": "alpha", "file_id": None, "is_missing": True}],
-            config_files=[{"name": "guide.txt", "file_kind": "tool_file", "file_id": None, "is_missing": True}],
+            config_skills=[{"name": "alpha", "file_id": "", "is_missing": True}],
+            config_files=[{"name": "guide.txt", "file_kind": "tool_file", "file_id": "", "is_missing": True}],
         ),
     )
     file_source = SimpleNamespace(
@@ -313,9 +313,7 @@ def test_push_file_for_console_uses_service_owned_upload_lookup_and_naming() -> 
     target = _target(
         kind=AgentConfigVersionKind.DRAFT,
         writable=False,
-        soul=_soul(
-            config_files=[{"name": "guide.txt", "file_kind": "upload_file", "file_id": None, "is_missing": True}]
-        ),
+        soul=_soul(config_files=[{"name": "guide.txt", "file_kind": "upload_file", "file_id": "", "is_missing": True}]),
     )
     upload_file = SimpleNamespace(
         id="upload-1",
@@ -552,8 +550,8 @@ def test_manifest_uses_items_shape_without_download_urls() -> None:
 
 def test_manifest_preserves_missing_config_assets_and_pull_rejects_them() -> None:
     soul = _soul(
-        config_skills=[{"name": "alpha", "file_id": None, "is_missing": True}],
-        config_files=[{"name": "guide.txt", "file_kind": "upload_file", "file_id": None, "is_missing": True}],
+        config_skills=[{"name": "alpha", "file_id": "", "is_missing": True}],
+        config_files=[{"name": "guide.txt", "file_kind": "upload_file", "file_id": "", "is_missing": True}],
     )
     target = _target(kind=AgentConfigVersionKind.DRAFT, writable=False, soul=soul)
     service = AgentConfigService()

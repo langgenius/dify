@@ -3979,12 +3979,12 @@ class TestWorkflowAgentDraftBindingSync:
                 "variant": "agent_app",
                 "save_strategy": "save_as_new_version",
                 "agent_soul": {
-                    "config_skills": [{"name": "research", "file_id": None, "is_missing": True}],
+                    "config_skills": [{"name": "research", "file_id": "", "is_missing": True}],
                     "config_files": [
                         {
                             "name": "guide.txt",
                             "file_kind": "upload_file",
-                            "file_id": None,
+                            "file_id": "",
                             "is_missing": True,
                         }
                     ],

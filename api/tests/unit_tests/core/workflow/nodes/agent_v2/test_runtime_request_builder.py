@@ -1559,8 +1559,8 @@ def test_build_config_layer_config_excludes_missing_assets_from_runtime():
     soul = AgentSoulConfig.model_validate(
         {
             "prompt": {"system_prompt": "Use [§skill:missing-skill:Missing Skill§]."},
-            "config_skills": [{"name": "missing-skill", "file_id": None, "is_missing": True}],
-            "config_files": [{"name": "missing.txt", "file_kind": "upload_file", "file_id": None, "is_missing": True}],
+            "config_skills": [{"name": "missing-skill", "file_id": "", "is_missing": True}],
+            "config_files": [{"name": "missing.txt", "file_kind": "upload_file", "file_id": "", "is_missing": True}],
         }
     )
 

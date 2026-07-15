@@ -100,10 +100,10 @@ def make_portable_agent_package(agent: Agent, agent_soul: AgentSoulConfig) -> Ag
         for item in agent_soul.config_files
     )
     for item in soul_data.get("config_skills", []):
-        item["file_id"] = None
+        item["file_id"] = ""
         item["is_missing"] = True
     for item in soul_data.get("config_files", []):
-        item["file_id"] = None
+        item["file_id"] = ""
         item["is_missing"] = True
 
     if soul_data.get("model"):

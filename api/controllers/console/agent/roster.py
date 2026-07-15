@@ -241,7 +241,7 @@ class AgentAppPartial(GenericAppPartial):
     debug_conversation_id: str | None = None
     role: str | None = None
     active_config_is_published: bool = False
-    reference_count: int = 0
+    reference_count: int | None = None
     published_reference_count: int = 0
     published_references: list[AgentAppPublishedReferenceResponse] = Field(default_factory=list)
 
