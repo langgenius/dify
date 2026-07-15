@@ -1,5 +1,6 @@
 'use client'
 import type { WorkflowGenerateErrorResponse } from '@dify/contracts/api/console/workflow-generate/types.gen'
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { SelectorParam, TFunction } from 'i18next'
 import type { GeneratedGraph } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -23,6 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgeni
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
+import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -63,6 +65,7 @@ const FE_TIMEOUT_MS = 90_000
 // Mirrors the backend's instruction/ideal-output cap on /workflow-generate —
 // keeping the limit client-side turns an opaque 400 into a visible input stop.
 const MAX_INSTRUCTION_LENGTH = 10_000
+const WORKFLOW_GENERATOR_SUBMIT_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 // A single structured generation error. Mirrors the backend ``errors[]`` entry
 // (stable ``code`` + human ``detail`` + optional ``node_id``) so the error panel
@@ -615,9 +618,7 @@ function WorkflowGeneratorModal() {
                 value={instruction}
                 onValueChange={setInstruction}
                 onKeyDown={(e) => {
-                  // ⌘/Ctrl+Enter generates — the journey starts keyboard-first in
-                  // the palette, so let it finish without reaching for the mouse.
-                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  if (matchesKeyboardEvent(e.nativeEvent, WORKFLOW_GENERATOR_SUBMIT_HOTKEY)) {
                     e.preventDefault()
                     if (!isLoading) onGenerate()
                   }

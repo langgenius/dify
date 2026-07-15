@@ -53,7 +53,7 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 vi.mock('../common/action-buttons', () => ({
-  default: ({
+  ActionButtons: ({
     handleCancel,
     handleSave,
     handleRegeneration,

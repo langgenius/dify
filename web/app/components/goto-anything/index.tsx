@@ -51,12 +51,11 @@ import { addRecentItem, getRecentItems } from './actions/recent-store'
 import { EmptyState } from './components/empty-state'
 import { Footer } from './components/footer'
 import { gotoAnythingDialogHandle } from './dialog-handle'
+import { GOTO_ANYTHING_HOTKEY } from './hotkeys'
 
 const appWorkflowPathPattern = /^\/app\/[^/]+\/workflow$/
 const sharedWorkflowPathPattern = /^\/workflow\/[^/]+$/
 const ragPipelinePathPattern = /^\/datasets\/[^/]+\/pipeline$/
-const searchHotkey = 'Mod+K'
-const searchShortcut = searchHotkey.split('+')
 
 type CommandOption = {
   kind: 'command-option'
@@ -288,7 +287,7 @@ function GotoAnythingDialog() {
   }
 
   useHotkey(
-    searchHotkey,
+    GOTO_ANYTHING_HOTKEY,
     (event) => {
       if (event.defaultPrevented) return
       if (!gotoAnythingDialogHandle.isOpen && isEditableShortcutTarget(event.target)) return
@@ -436,7 +435,7 @@ function GotoAnythingDialog() {
                   )}
                 </div>
                 <KbdGroup>
-                  {searchShortcut.map((key) => (
+                  {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
                     <Kbd key={key}>{formatForDisplay(key)}</Kbd>
                   ))}
                 </KbdGroup>
