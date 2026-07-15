@@ -37,7 +37,7 @@ from models.agent import AgentConfigDraftType
 from models.agent_config_entities import AgentSoulConfig
 from services.agent.composer_service import AgentComposerService
 from services.agent.errors import AgentVersionNotFoundError
-from services.app_ref_service import MessageRef
+from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import AudioService
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
@@ -318,7 +318,7 @@ def test_console_text_api_builds_message_ref(app: Flask, monkeypatch: pytest.Mon
         response = handler(api, app_model=app_model)
 
     assert response == {"audio": "ok"}
-    assert calls["message_ref"] == MessageRef("tenant-1", "app-1", "message-1", account_id="account-1")
+    assert calls["message_ref"] == MessageRef(AppRef("tenant-1", "app-1"), "message-1", account_id="account-1")
 
 
 def test_console_text_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

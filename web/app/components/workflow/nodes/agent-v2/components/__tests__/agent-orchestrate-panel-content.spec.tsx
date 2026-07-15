@@ -5,6 +5,7 @@ import type {
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { FlowType } from '@/types/common'
 import { WorkflowInlineAgentConfigureWorkspace } from '../agent-orchestrate-panel-content'
 
 const mocks = vi.hoisted(() => ({
@@ -464,7 +465,8 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       <QueryClientProvider client={queryClient}>
         <WorkflowInlineAgentConfigureWorkspace
           agentId="agent-1"
-          appId="app-1"
+          flowId="app-1"
+          flowType={FlowType.appFlow}
           inlineComposerState={props.inlineComposerState ?? createInlineComposerState()}
           nodeId="node-1"
           onSaveInlineToRoster={props.onSaveInlineToRoster}
@@ -1066,7 +1068,8 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
         <QueryClientProvider client={new QueryClient()}>
           <WorkflowInlineAgentConfigureWorkspace
             agentId="agent-1"
-            appId="app-1"
+            flowId="app-1"
+            flowType={FlowType.appFlow}
             inlineComposerState={createInlineComposerState({ snapshotId: 'snapshot-2' })}
             nodeId="node-1"
             open

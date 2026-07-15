@@ -22,8 +22,6 @@ const {
 }))
 
 let mockNodesReadOnly = false
-let mockCanComment = true
-let mockCanEdit = true
 let mockCanUseCommentMode = true
 let mockIsCommentModeAvailable = true
 let mockStoreState: WorkflowStoreState
@@ -55,18 +53,6 @@ vi.mock('../../store', () => ({
   useStore: (selector: (state: WorkflowStoreState) => unknown) => selector(mockStoreState),
 }))
 
-vi.mock('../../hooks-store', () => ({
-  useHooksStore: <T,>(
-    selector: (state: { accessControl: { canComment: boolean; canEdit: boolean } }) => T,
-  ): T =>
-    selector({
-      accessControl: {
-        canComment: mockCanComment,
-        canEdit: mockCanEdit,
-      },
-    }),
-}))
-
 vi.mock('../add-block', () => ({
   default: () => <div data-testid="add-block" />,
 }))
@@ -85,8 +71,6 @@ describe('Control', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNodesReadOnly = false
-    mockCanComment = true
-    mockCanEdit = true
     mockCanUseCommentMode = true
     mockIsCommentModeAvailable = true
     mockStoreState = {
@@ -151,8 +135,6 @@ describe('Control', () => {
     })
 
     it('should block note creation when editing is not allowed', () => {
-      mockCanEdit = false
-      mockCanComment = true
       mockNodesReadOnly = true
 
       render(<Control />)
@@ -164,7 +146,7 @@ describe('Control', () => {
       expect(mockHandleAddNote).not.toHaveBeenCalled()
     })
 
-    it('should keep comment mode enabled for readonly layout users who can comment', () => {
+    it('should keep comment mode enabled when nodes are read-only', () => {
       mockNodesReadOnly = true
       mockCanUseCommentMode = true
 

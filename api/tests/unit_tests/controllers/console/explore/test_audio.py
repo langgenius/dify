@@ -22,7 +22,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from graphon.model_runtime.errors.invoke import InvokeError
-from services.app_ref_service import MessageRef
+from services.app_ref_service import AppRef, MessageRef
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -277,8 +277,7 @@ class TestChatTextApi:
 
         assert resp == {"audio": "ok"}
         assert transcript_tts.call_args.kwargs["message_ref"] == MessageRef(
-            tenant_id="tenant-1",
-            app_id="app-1",
+            app=AppRef(tenant_id="tenant-1", app_id="app-1"),
             message_id="m1",
             account_id="account-1",
         )

@@ -211,6 +211,53 @@ describe('AgentFiles', () => {
     }))
   })
 
+  it('should prevent missing files from being previewed or downloaded', async () => {
+    const user = userEvent.setup()
+    renderAgentFiles({
+      initialDraft: createInitialDraft({
+        files: [
+          {
+            id: 'missing.pdf',
+            name: 'missing.pdf',
+            icon: 'pdf',
+            fileId: 'missing-file-id',
+            configName: 'missing.pdf',
+            isMissing: true,
+          },
+          {
+            id: 'available.pdf',
+            name: 'available.pdf',
+            icon: 'pdf',
+            fileId: 'available-file-id',
+            configName: 'available.pdf',
+          },
+        ],
+      }),
+    })
+
+    const warning = screen.getByRole('button', {
+      name: 'agentV2.agentDetail.configure.files.missing',
+    })
+    expect(warning.querySelector('.i-ri-alert-fill')).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', {
+        name: 'agentV2.agentDetail.configure.files.missing',
+      }),
+    ).toHaveLength(1)
+
+    expect(screen.getByRole('button', { name: 'missing.pdf' })).toBeDisabled()
+    expect(
+      screen.queryByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.files\.download.*missing\.pdf/,
+      }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'available.pdf' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).queryByText('missing.pdf')).not.toBeInTheDocument()
+    expect(within(dialog).getAllByText('available.pdf').length).toBeGreaterThan(0)
+  })
+
   it('should delete configured files by config name', async () => {
     const { container } = renderAgentFiles()
 

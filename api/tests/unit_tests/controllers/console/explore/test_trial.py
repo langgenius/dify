@@ -36,7 +36,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode
-from services.app_ref_service import MessageRef
+from services.app_ref_service import AppRef, MessageRef
 from services.errors.audio import SpeechToTextDisabledServiceError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
@@ -934,8 +934,7 @@ class TestTrialChatTextApi:
 
         assert result == {"audio": "base64_data"}
         assert transcript_tts.call_args.kwargs["message_ref"] == MessageRef(
-            "tenant-1",
-            "a-chat",
+            AppRef("tenant-1", "a-chat"),
             "message-1",
             account_id="u1",
         )
