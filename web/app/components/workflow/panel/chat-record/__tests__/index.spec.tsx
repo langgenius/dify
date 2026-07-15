@@ -40,8 +40,22 @@ describe('ChatRecord', () => {
           metadata: {},
           message_files: [],
         },
-        { id: 'msg-2', query: 'Question 2', answer: 'Answer 2', parent_message_id: 'msg-1', metadata: {}, message_files: [] },
-        { id: 'msg-3', query: 'Question 3', answer: 'Answer 3', parent_message_id: 'msg-1', metadata: {}, message_files: [] },
+        {
+          id: 'msg-2',
+          query: 'Question 2',
+          answer: 'Answer 2',
+          parent_message_id: 'msg-1',
+          metadata: {},
+          message_files: [],
+        },
+        {
+          id: 'msg-3',
+          query: 'Question 3',
+          answer: 'Answer 3',
+          parent_message_id: 'msg-1',
+          metadata: {},
+          message_files: [],
+        },
       ],
     } as never)
 

@@ -20,6 +20,7 @@ providing more reliable and realistic test scenarios than mocks.
 import json
 import uuid
 from time import time
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import Engine, delete, select
@@ -35,6 +36,7 @@ from core.workflow.system_variables import build_system_variables
 from extensions.ext_storage import storage
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import WorkflowExecutionStatus
+from graphon.filters import GraphEventFilterContext, ResponseStreamFilter
 from graphon.graph_engine.entities.commands import GraphEngineCommand
 from graphon.graph_engine.layers.base import GraphEngineLayerNotInitializedError
 from graphon.graph_events import GraphRunPausedEvent
@@ -47,6 +49,22 @@ from models.model import AppMode, UploadFile
 from models.workflow import Workflow, WorkflowRun
 from services.file_service import FileService
 from services.workflow_run_service import WorkflowRunService
+
+
+def _create_initialized_response_stream_filter() -> ResponseStreamFilter:
+    """Build a `ResponseStreamFilter` that has already run `initialize()`.
+
+    `ResponseStreamFilter.dumps()` raises `RuntimeError` unless the filter has
+    processed a `GraphEventFilterContext` first. In production this always
+    happens before any event (including `GraphRunPausedEvent`) reaches
+    `PauseStatePersistenceLayer.on_event`, so tests that exercise `on_event`
+    or a subsequent `dumps()` call need a filter in that same state. A
+    nodeless graph is enough to satisfy the precondition.
+    """
+    response_stream_filter = ResponseStreamFilter()
+    context = GraphEventFilterContext(graph=Mock(nodes={}), runtime_state=Mock())
+    response_stream_filter.initialize(context)
+    return response_stream_filter
 
 
 class _TestCommandChannelImpl:
@@ -295,6 +313,7 @@ class TestPauseStatePersistenceLayerTestContainers:
             session_factory=self.session.get_bind(),
             state_owner_user_id=owner_id,
             generate_entity=entity,
+            response_stream_filter=_create_initialized_response_stream_filter(),
         )
 
     def test_complete_pause_flow_with_real_dependencies(self, db_session_with_containers: Session):

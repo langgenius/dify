@@ -18,7 +18,7 @@ from services.snippet_dsl_service import (
     [
         ("not-a-version", ImportStatus.FAILED),
         ("999.0.0", ImportStatus.PENDING),
-        ("0.1.0", ImportStatus.COMPLETED),
+        ("0.1.0", ImportStatus.COMPLETED_WITH_WARNINGS),
     ],
 )
 def test_check_version_compatibility_special_cases(version, expected):
@@ -95,7 +95,7 @@ def test_import_snippet_rejects_oversized_yaml_url_content(monkeypatch: pytest.M
     monkeypatch.setattr("services.snippet_dsl_service.DSL_MAX_SIZE", 3)
     monkeypatch.setattr(
         "services.snippet_dsl_service.ssrf_proxy.get",
-        Mock(return_value=SimpleNamespace(status_code=200, text="too large")),
+        Mock(return_value=SimpleNamespace(status_code=200, content=b"too large")),
     )
 
     result = service.import_snippet(
@@ -106,6 +106,43 @@ def test_import_snippet_rejects_oversized_yaml_url_content(monkeypatch: pytest.M
 
     assert result.status == ImportStatus.FAILED
     assert "YAML content size exceeds maximum limit" in result.error
+
+
+def test_import_snippet_rejects_oversized_yaml_url_bytes_before_decode(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = SnippetDslService(session=SimpleNamespace())
+    monkeypatch.setattr("services.snippet_dsl_service.DSL_MAX_SIZE", 1)
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.ssrf_proxy.get",
+        Mock(return_value=SimpleNamespace(status_code=200, content=b"\xff\xff")),
+    )
+
+    result = service.import_snippet(
+        account=SimpleNamespace(current_tenant_id="tenant-1"),
+        import_mode=ImportMode.YAML_URL.value,
+        yaml_url="https://example.com/snippet.yaml",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "YAML content size exceeds maximum limit" in result.error
+
+
+def test_import_snippet_returns_decode_error_for_invalid_yaml_url_bytes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = SnippetDslService(session=SimpleNamespace())
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.ssrf_proxy.get",
+        Mock(return_value=SimpleNamespace(status_code=200, content=b"\xff")),
+    )
+
+    result = service.import_snippet(
+        account=SimpleNamespace(current_tenant_id="tenant-1"),
+        import_mode=ImportMode.YAML_URL.value,
+        yaml_url="https://example.com/snippet.yaml",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "utf-8" in result.error
 
 
 def test_import_snippet_returns_failed_when_yaml_url_fetch_raises(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -127,12 +164,12 @@ def test_import_snippet_returns_failed_when_yaml_url_fetch_raises(monkeypatch: p
 
 def test_import_snippet_rejects_oversized_yaml_content(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetDslService(session=SimpleNamespace())
-    monkeypatch.setattr("services.snippet_dsl_service.DSL_MAX_SIZE", 3)
+    monkeypatch.setattr("services.snippet_dsl_service.DSL_MAX_SIZE", 1)
 
     result = service.import_snippet(
         account=SimpleNamespace(current_tenant_id="tenant-1"),
         import_mode=ImportMode.YAML_CONTENT.value,
-        yaml_content="too large",
+        yaml_content="é",
     )
 
     assert result.status == ImportStatus.FAILED
@@ -165,7 +202,7 @@ def test_import_snippet_rejects_invalid_yaml_shapes(yaml_content, expected_error
 
 
 def test_import_snippet_returns_failed_for_invalid_version_type() -> None:
-    service = SnippetDslService(session=SimpleNamespace())
+    service = SnippetDslService(session=SimpleNamespace(rollback=Mock()))
 
     result = service.import_snippet(
         account=SimpleNamespace(current_tenant_id="tenant-1"),
@@ -296,10 +333,26 @@ workflow:
         yaml_content=yaml_content,
     )
 
-    assert result.status == ImportStatus.COMPLETED
+    assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
     assert result.snippet_id == "snippet-1"
     dependencies = create_or_update.call_args.kwargs["dependencies"]
     assert dependencies[0].value.plugin_unique_identifier == "langgenius/openai:0.0.1"
+
+
+def test_import_snippet_rolls_back_when_create_or_update_raises(monkeypatch):
+    session = SimpleNamespace(scalar=Mock(return_value=None), rollback=Mock())
+    service = SnippetDslService(session=session)
+    monkeypatch.setattr(service, "_create_or_update_snippet", Mock(side_effect=RuntimeError("boom")))
+
+    result = service.import_snippet(
+        account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1"),
+        import_mode=ImportMode.YAML_CONTENT.value,
+        yaml_content="version: 0.1.0\nkind: snippet\nsnippet:\n  name: Bad\n",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "boom"
+    session.rollback.assert_called_once()
 
 
 def test_confirm_import_returns_failed_when_pending_data_missing(monkeypatch):
@@ -380,7 +433,8 @@ def test_confirm_import_returns_failed_for_non_mapping_yaml(monkeypatch):
 
 
 def test_confirm_import_returns_failed_when_create_or_update_raises(monkeypatch):
-    service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None)))
+    session = SimpleNamespace(scalar=Mock(return_value=None), rollback=Mock())
+    service = SnippetDslService(session=session)
     pending = SnippetPendingData(
         import_mode="yaml-content",
         yaml_content="version: 0.1.0\nkind: snippet\nsnippet:\n  name: Bad\n",
@@ -396,6 +450,7 @@ def test_confirm_import_returns_failed_when_create_or_update_raises(monkeypatch)
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "boom"
+    session.rollback.assert_called_once()
 
 
 def test_check_dependencies_returns_empty_without_draft_workflow(monkeypatch):

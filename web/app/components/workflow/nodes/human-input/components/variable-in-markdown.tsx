@@ -1,7 +1,15 @@
-/* eslint-disable react-refresh/only-export-components */
+/* oxlint-disable react/only-export-components */
+import type { TFunction } from 'i18next'
 import type { FormInputItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { TransferMethod } from '@/types/app'
@@ -48,11 +56,9 @@ const splitTextNode = (
     match = regex.exec(value)
   }
 
-  if (!parts.length)
-    return parts
+  if (!parts.length) return parts
 
-  if (lastIndex < value.length)
-    parts.push({ type: 'text', value: value.slice(lastIndex) })
+  if (lastIndex < value.length) parts.push({ type: 'text', value: value.slice(lastIndex) })
 
   return parts
 }
@@ -61,8 +67,7 @@ const visitTextNodes = (
   node: MarkdownNode,
   transform: (value: string, parent: MarkdownNode) => MarkdownNode[] | null,
 ) => {
-  if (!node.children)
-    return
+  if (!node.children) return
 
   let index = 0
   while (index < node.children.length) {
@@ -88,17 +93,14 @@ const replaceNodeIdsWithNames = (path: string, nodeName: (nodeId: string) => str
 }
 
 const formatVariablePath = (path: string) => {
-  return path.replaceAll('.', '/')
-    .replace('{{#', '{{')
-    .replace('#}}', '}}')
+  return path.replaceAll('.', '/').replace('{{#', '{{').replace('#}}', '}}')
 }
 
 const sourceToVariablePath = (
   source: { selector: string[] },
   nodeName: (nodeId: string) => string,
 ) => {
-  if (!source.selector.length)
-    return ''
+  if (!source.selector.length) return ''
 
   const path = `{{#${source.selector.join('.')}#}}`
   return replaceNodeIdsWithNames(path, nodeName)
@@ -109,11 +111,10 @@ export function rehypeVariable() {
     visitTextNodes(tree, (value) => {
       variableRegex.lastIndex = 0
       noteRegex.lastIndex = 0
-      if (!variableRegex.test(value) || noteRegex.test(value))
-        return null
+      if (!variableRegex.test(value) || noteRegex.test(value)) return null
 
       variableRegex.lastIndex = 0
-      return splitTextNode(value, variableRegex, match => ({
+      return splitTextNode(value, variableRegex, (match) => ({
         tagName: 'variable',
         properties: { dataPath: match[0].trim() },
       }))
@@ -125,8 +126,7 @@ export function rehypeNotes() {
   return (tree: MarkdownNode) => {
     visitTextNodes(tree, (value, parent) => {
       noteRegex.lastIndex = 0
-      if (!noteRegex.test(value))
-        return null
+      if (!noteRegex.test(value)) return null
 
       noteRegex.lastIndex = 0
       parent.tagName = 'div'
@@ -142,24 +142,24 @@ export function rehypeNotes() {
 }
 
 export const Variable: React.FC<{ path: string }> = ({ path }) => {
-  return (
-    <span className="text-text-accent">
-      {formatVariablePath(path)}
-    </span>
-  )
+  return <span className="text-text-accent">{formatVariablePath(path)}</span>
 }
 
-const SelectPreview: React.FC<{ label: string, options: string[] }> = ({ label, options }) => {
+const SelectPreview: React.FC<{ label: string; options: string[] }> = ({ label, options }) => {
   const [value, setValue] = React.useState(options[0] || label)
 
   return (
     <div data-testid="human-input-note-select-preview" className="my-3">
-      <Select value={value} onValueChange={nextValue => nextValue && setValue(nextValue)}>
-        <SelectTrigger size="large" className="w-full rounded-[10px]" aria-label="human-input-note-select">
+      <Select value={value} onValueChange={(nextValue) => nextValue && setValue(nextValue)}>
+        <SelectTrigger
+          size="large"
+          className="w-full rounded-[10px]"
+          aria-label="human-input-note-select"
+        >
           {value}
         </SelectTrigger>
         <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-          {options.map(option => (
+          {options.map((option) => (
             <SelectItem key={option} value={option}>
               <SelectItemText>{option}</SelectItemText>
               <SelectItemIndicator />
@@ -171,45 +171,46 @@ const SelectPreview: React.FC<{ label: string, options: string[] }> = ({ label, 
   )
 }
 
-const FileUploadPreview: React.FC<{ methods: TransferMethod[], t: (key: string, options?: Record<string, unknown>) => string }> = ({ methods, t }) => {
+const FileUploadPreview: React.FC<{ methods: TransferMethod[]; t: TFunction }> = ({
+  methods,
+  t,
+}) => {
   const normalizedMethods = methods.length
     ? methods
     : [TransferMethod.local_file, TransferMethod.remote_url]
   const actions = [
     normalizedMethods.includes(TransferMethod.local_file) && {
       iconClassName: 'i-ri-upload-cloud-2-line',
-      label: t('fileUploader.uploadFromComputer', { ns: 'common' }),
+      label: t(($) => $['fileUploader.uploadFromComputer'], { ns: 'common' }),
     },
     normalizedMethods.includes(TransferMethod.remote_url) && {
       iconClassName: 'i-ri-link',
-      label: t('fileUploader.pasteFileLink', { ns: 'common' }),
+      label: t(($) => $['fileUploader.pasteFileLink'], { ns: 'common' }),
     },
-  ].filter(Boolean) as Array<{ iconClassName: string, label: string }>
+  ].filter(Boolean) as Array<{ iconClassName: string; label: string }>
 
   return (
     <div
       data-testid="human-input-note-file-preview"
-      className={cn(
-        'my-3 grid gap-2',
-        actions.length > 1 ? 'grid-cols-2' : 'grid-cols-1',
-      )}
+      className={cn('my-3 grid gap-2', actions.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}
     >
-      {actions.map(action => (
+      {actions.map((action) => (
         <div
           key={action.label}
           className="flex h-10 items-center justify-center rounded-xl bg-components-input-bg-normal px-3"
         >
           <span className={cn('mr-2 size-5 shrink-0 text-text-tertiary', action.iconClassName)} />
-          <span className="truncate system-sm-medium text-text-tertiary">
-            {action.label}
-          </span>
+          <span className="truncate system-sm-medium text-text-tertiary">{action.label}</span>
         </div>
       ))}
     </div>
   )
 }
 
-export const Note: React.FC<{ input: FormInputItem, nodeName: (nodeId: string) => string }> = ({ input, nodeName }) => {
+export const Note: React.FC<{ input: FormInputItem; nodeName: (nodeId: string) => string }> = ({
+  input,
+  nodeName,
+}) => {
   const { t } = useTranslation()
   if (isSelectFormInput(input)) {
     const isVariable = input.option_source.type === 'variable'
@@ -217,14 +218,19 @@ export const Note: React.FC<{ input: FormInputItem, nodeName: (nodeId: string) =
       const variablePath = sourceToVariablePath(input.option_source, nodeName)
       return (
         <div className="my-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
-          {variablePath
-            ? <Variable path={variablePath} />
-            : <span>{t('nodes.humanInput.insertInputField.variable', { ns: 'workflow' })}</span>}
+          {variablePath ? (
+            <Variable path={variablePath} />
+          ) : (
+            <span>
+              {t(($) => $['nodes.humanInput.insertInputField.variable'], { ns: 'workflow' })}
+            </span>
+          )}
         </div>
       )
     }
 
-    const label = input.option_source.value[0] || t('variableConfig.select', { ns: 'appDebug' })
+    const label =
+      input.option_source.value[0] || t(($) => $['variableConfig.select'], { ns: 'appDebug' })
     return <SelectPreview label={label} options={input.option_source.value} />
   }
 

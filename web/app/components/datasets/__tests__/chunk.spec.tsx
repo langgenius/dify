@@ -72,7 +72,7 @@ describe('ChunkLabel', () => {
     it('should render with special characters in label', () => {
       render(<ChunkLabel label="Chunk <#1> & 'test'" characterCount={10} />)
 
-      expect(screen.getByText('Chunk <#1> & \'test\'')).toBeInTheDocument()
+      expect(screen.getByText("Chunk <#1> & 'test'")).toBeInTheDocument()
     })
   })
 })
@@ -119,7 +119,9 @@ describe('ChunkContainer', () => {
   describe('Structure', () => {
     it('should have space-y-2 on the outer container', () => {
       const { container } = render(
-        <ChunkContainer label="Chunk" characterCount={10}>Content</ChunkContainer>,
+        <ChunkContainer label="Chunk" characterCount={10}>
+          Content
+        </ChunkContainer>,
       )
 
       expect(container.firstElementChild).toHaveClass('space-y-2')
@@ -139,9 +141,7 @@ describe('ChunkContainer', () => {
 
   describe('Edge Cases', () => {
     it('should render without children', () => {
-      const { container } = render(
-        <ChunkContainer label="Empty" characterCount={0} />,
-      )
+      const { container } = render(<ChunkContainer label="Empty" characterCount={0} />)
 
       expect(container.firstElementChild).toBeInTheDocument()
       expect(screen.getByText('Empty')).toBeInTheDocument()
@@ -189,7 +189,9 @@ describe('QAPreview', () => {
       const qa = createQA()
       render(<QAPreview qa={qa} />)
 
-      expect(screen.getByText('Dify is an open-source LLM app development platform.')).toBeInTheDocument()
+      expect(
+        screen.getByText('Dify is an open-source LLM app development platform.'),
+      ).toBeInTheDocument()
     })
 
     it('should render Q and A labels', () => {

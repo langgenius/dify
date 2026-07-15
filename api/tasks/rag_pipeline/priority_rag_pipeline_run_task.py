@@ -126,7 +126,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 tenant = session.scalar(select(Tenant).where(Tenant.id == tenant_id).limit(1))
                 if not tenant:
                     raise ValueError(f"Tenant {tenant_id} not found")
-                account.current_tenant = tenant
+                account.set_current_tenant_with_session(tenant, session=session)
 
                 pipeline = session.scalar(select(Pipeline).where(Pipeline.id == pipeline_id).limit(1))
                 if not pipeline:
@@ -172,19 +172,21 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
 
             pipeline_generator = PipelineGenerator()
             # Using protected method intentionally for async execution
-            pipeline_generator._generate(  # type: ignore[attr-defined]
-                flask_app=flask_app,
-                context=context,
-                pipeline=pipeline,
-                workflow_id=workflow_id,
-                user=account,
-                application_generate_entity=entity,
-                invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
-                workflow_execution_repository=workflow_execution_repository,
-                workflow_node_execution_repository=workflow_node_execution_repository,
-                streaming=streaming,
-                workflow_thread_pool_id=workflow_thread_pool_id,
-            )
+            with Session(db.engine, expire_on_commit=False) as session:
+                pipeline_generator._generate(  # type: ignore[attr-defined]
+                    session=session,
+                    flask_app=flask_app,
+                    context=context,
+                    pipeline=pipeline,
+                    workflow_id=workflow_id,
+                    user=account,
+                    application_generate_entity=entity,
+                    invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+                    workflow_execution_repository=workflow_execution_repository,
+                    workflow_node_execution_repository=workflow_node_execution_repository,
+                    streaming=streaming,
+                    workflow_thread_pool_id=workflow_thread_pool_id,
+                )
         except Exception:
             logging.exception("Error in priority pipeline task")
             raise

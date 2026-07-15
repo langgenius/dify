@@ -19,15 +19,17 @@ const useSingleRunFormParams = ({
   setRunInputData,
   varSelectorsToVarInputs,
 }: Params) => {
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    setRunInputData(newPayload)
-  }, [setRunInputData])
+  const setInputVarValues = useCallback(
+    (newPayload: Record<string, any>) => {
+      setRunInputData(newPayload)
+    },
+    [setRunInputData],
+  )
   const inputVarValues = (() => {
     const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
+    Object.keys(runInputData).forEach((key) => {
+      vars[key] = runInputData[key]
+    })
     return vars
   })()
 
@@ -39,7 +41,12 @@ const useSingleRunFormParams = ({
         allInputs.push(varSelector)
       })
     }
-    if (isGroupEnabled && payload.advanced_settings && payload.advanced_settings.groups && payload.advanced_settings.groups.length) {
+    if (
+      isGroupEnabled &&
+      payload.advanced_settings &&
+      payload.advanced_settings.groups &&
+      payload.advanced_settings.groups.length
+    ) {
       payload.advanced_settings.groups.forEach((group) => {
         group.variables?.forEach((varSelector) => {
           allInputs.push(varSelector)
@@ -52,8 +59,7 @@ const useSingleRunFormParams = ({
     const existVarsKey: Record<string, boolean> = {}
     const uniqueVarInputs: InputVar[] = []
     varInputs.forEach((input) => {
-      if (!input)
-        return
+      if (!input) return
       if (!existVarsKey[input.variable]) {
         existVarsKey[input.variable] = true
         uniqueVarInputs.push({
@@ -75,8 +81,7 @@ const useSingleRunFormParams = ({
     if (payload.advanced_settings?.group_enabled) {
       const vars: ValueSelector[][] = []
       payload.advanced_settings.groups.forEach((group) => {
-        if (group.variables)
-          vars.push([...group.variables])
+        if (group.variables) vars.push([...group.variables])
       })
       return vars
     }

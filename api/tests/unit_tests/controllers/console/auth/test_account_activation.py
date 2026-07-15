@@ -597,7 +597,7 @@ class TestActivateApi:
 
         assert response["result"] == "success"
         mock_create_tenant_member.assert_called_once_with(
-            mock_invitation["tenant"], mock_account, mock_db.session, role=TenantAccountRole.ADMIN
+            mock_invitation["tenant"], mock_account, mock_db.session(), role=TenantAccountRole.ADMIN
         )
         mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id, session=ANY)
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")

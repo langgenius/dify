@@ -1,11 +1,6 @@
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  memo,
-} from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { useStore } from '@/app/components/workflow/store'
@@ -33,7 +28,7 @@ const MixedVariableTextInput = ({
   disableVariableInsertion = false,
 }: MixedVariableTextInputProps) => {
   const { t } = useTranslation()
-  const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
+  const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
 
   return (
     <PromptEditor
@@ -56,7 +51,7 @@ const MixedVariableTextInput = ({
           }
           if (node.data.type === BlockEnum.Start) {
             acc.sys = {
-              title: t('blocks.start', { ns: 'workflow' }),
+              title: t(($) => $['blocks.start'], { ns: 'workflow' }),
               type: BlockEnum.Start,
             }
           }

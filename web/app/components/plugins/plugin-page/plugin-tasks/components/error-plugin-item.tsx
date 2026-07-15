@@ -22,14 +22,16 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
   const { t } = useTranslation()
   const source = plugin.source
   const [showInstallModal, setShowInstallModal] = useState(false)
-  const [installPayload, setInstallPayload] = useState<{ uniqueIdentifier: string, manifest: Plugin } | null>(null)
+  const [installPayload, setInstallPayload] = useState<{
+    uniqueIdentifier: string
+    manifest: Plugin
+  } | null>(null)
   const [isFetching, setIsFetching] = useState(false)
   const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
 
   const handleInstallFromMarketplace = useCallback(async () => {
     const parts = plugin.plugin_id.split('/')
-    if (parts.length < 2)
-      return
+    if (parts.length < 2) return
     const [org, name] = parts
     setIsFetching(true)
     try {
@@ -38,7 +40,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
       const manifest: Plugin = {
         plugin_id: plugin.plugin_id,
         type: info.category as Plugin['type'],
-        category: info.category,
+        category: info.category as Plugin['category'],
         name: name!,
         org: org!,
         version: info.latest_version,
@@ -60,29 +62,36 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
       }
       setInstallPayload({ uniqueIdentifier: info.latest_package_identifier, manifest })
       setShowInstallModal(true)
-    }
-    catch {
+    } catch {
       // silently fail
-    }
-    finally {
+    } finally {
       setIsFetching(false)
     }
   }, [plugin.plugin_id, plugin.labels, plugin.icon])
 
-  const errorMsgKey: 'task.errorMsg.marketplace' | 'task.errorMsg.github' | 'task.errorMsg.unknown' = source === PluginSource.marketplace
-    ? 'task.errorMsg.marketplace'
-    : source === PluginSource.github
-      ? 'task.errorMsg.github'
-      : 'task.errorMsg.unknown'
+  const errorMsgKey:
+    | 'task.errorMsg.marketplace'
+    | 'task.errorMsg.github'
+    | 'task.errorMsg.unknown' =
+    source === PluginSource.marketplace
+      ? 'task.errorMsg.marketplace'
+      : source === PluginSource.github
+        ? 'task.errorMsg.github'
+        : 'task.errorMsg.unknown'
 
-  const errorMsg = t(errorMsgKey, { ns: 'plugin' })
+  const errorMsg = t(($) => $[errorMsgKey], { ns: 'plugin' })
 
   const renderAction = () => {
     if (source === PluginSource.marketplace && canInstallPlugin) {
       return (
         <div className="pt-1">
-          <Button variant="secondary" size="small" loading={isFetching} onClick={handleInstallFromMarketplace}>
-            {t('task.installFromMarketplace', { ns: 'plugin' })}
+          <Button
+            variant="secondary"
+            size="small"
+            loading={isFetching}
+            onClick={handleInstallFromMarketplace}
+          >
+            {t(($) => $['task.installFromMarketplace'], { ns: 'plugin' })}
           </Button>
         </div>
       )
@@ -91,7 +100,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
       return (
         <div className="pt-1">
           <Button variant="secondary" size="small">
-            {t('task.installFromGithub', { ns: 'plugin' })}
+            {t(($) => $['task.installFromGithub'], { ns: 'plugin' })}
           </Button>
         </div>
       )
@@ -105,16 +114,16 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
         plugin={plugin}
         getIconUrl={getIconUrl}
         language={language}
-        statusIcon={(
+        statusIcon={
           <span className="flex size-4 items-center justify-center rounded-full border border-components-panel-bg bg-components-panel-bg">
             <span className="i-ri-error-warning-fill size-4 text-text-destructive" />
           </span>
-        )}
-        statusText={(
+        }
+        statusText={
           <span className="block max-w-full min-w-0 [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
             {plugin.message || errorMsg}
           </span>
-        )}
+        }
         statusClassName="text-text-destructive"
         action={renderAction()}
         onClear={onClear}

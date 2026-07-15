@@ -1,14 +1,8 @@
 import type { StateCreator } from 'zustand'
 import type { ChecklistItem } from '@/app/components/workflow/hooks/use-checklist'
-import type {
-  VariableAssignerNodeType,
-} from '@/app/components/workflow/nodes/variable-assigner/types'
-import type {
-  Node,
-} from '@/app/components/workflow/types'
-import type {
-  NodeTracing,
-} from '@/types/workflow'
+import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
+import type { Node } from '@/app/components/workflow/types'
+import type { NodeTracing } from '@/types/workflow'
 
 export type NodeSliceShape = {
   checklistItems: ChecklistItem[]
@@ -30,11 +24,20 @@ export type NodeSliceShape = {
     x: number
     y: number
   }
-  setShowAssignVariablePopup: (showAssignVariablePopup: NodeSliceShape['showAssignVariablePopup']) => void
+  setShowAssignVariablePopup: (
+    showAssignVariablePopup: NodeSliceShape['showAssignVariablePopup'],
+  ) => void
   hoveringAssignVariableGroupId?: string
   setHoveringAssignVariableGroupId: (hoveringAssignVariableGroupId?: string) => void
-  connectingNodePayload?: { nodeId: string, nodeType: string, handleType: string, handleId: string | null }
-  setConnectingNodePayload: (startConnectingPayload?: NodeSliceShape['connectingNodePayload']) => void
+  connectingNodePayload?: {
+    nodeId: string
+    nodeType: string
+    handleType: string
+    handleId: string | null
+  }
+  setConnectingNodePayload: (
+    startConnectingPayload?: NodeSliceShape['connectingNodePayload'],
+  ) => void
   enteringNodePayload?: {
     nodeId: string
     nodeData: VariableAssignerNodeType
@@ -53,30 +56,31 @@ export type NodeSliceShape = {
   setPendingSingleRun: (payload?: NodeSliceShape['pendingSingleRun']) => void
 }
 
-export const createNodeSlice: StateCreator<NodeSliceShape> = set => ({
+export const createNodeSlice: StateCreator<NodeSliceShape> = (set) => ({
   checklistItems: [],
   showSingleRunPanel: false,
-  setShowSingleRunPanel: showSingleRunPanel => set(() => ({ showSingleRunPanel })),
+  setShowSingleRunPanel: (showSingleRunPanel) => set(() => ({ showSingleRunPanel })),
   nodeAnimation: false,
-  setNodeAnimation: nodeAnimation => set(() => ({ nodeAnimation })),
+  setNodeAnimation: (nodeAnimation) => set(() => ({ nodeAnimation })),
   candidateNode: undefined,
-  setCandidateNode: candidateNode => set(() => ({ candidateNode })),
+  setCandidateNode: (candidateNode) => set(() => ({ candidateNode })),
   openInlineAgentPanelNodeId: undefined,
-  setOpenInlineAgentPanelNodeId: nodeId => set(() => ({ openInlineAgentPanelNodeId: nodeId })),
+  setOpenInlineAgentPanelNodeId: (nodeId) => set(() => ({ openInlineAgentPanelNodeId: nodeId })),
   showAssignVariablePopup: undefined,
-  setShowAssignVariablePopup: showAssignVariablePopup => set(() => ({ showAssignVariablePopup })),
+  setShowAssignVariablePopup: (showAssignVariablePopup) => set(() => ({ showAssignVariablePopup })),
   hoveringAssignVariableGroupId: undefined,
-  setHoveringAssignVariableGroupId: hoveringAssignVariableGroupId => set(() => ({ hoveringAssignVariableGroupId })),
+  setHoveringAssignVariableGroupId: (hoveringAssignVariableGroupId) =>
+    set(() => ({ hoveringAssignVariableGroupId })),
   connectingNodePayload: undefined,
-  setConnectingNodePayload: connectingNodePayload => set(() => ({ connectingNodePayload })),
+  setConnectingNodePayload: (connectingNodePayload) => set(() => ({ connectingNodePayload })),
   enteringNodePayload: undefined,
-  setEnteringNodePayload: enteringNodePayload => set(() => ({ enteringNodePayload })),
+  setEnteringNodePayload: (enteringNodePayload) => set(() => ({ enteringNodePayload })),
   iterTimes: 1,
-  setIterTimes: iterTimes => set(() => ({ iterTimes })),
+  setIterTimes: (iterTimes) => set(() => ({ iterTimes })),
   loopTimes: 1,
-  setLoopTimes: loopTimes => set(() => ({ loopTimes })),
+  setLoopTimes: (loopTimes) => set(() => ({ loopTimes })),
   iterParallelLogMap: new Map<string, Map<string, NodeTracing[]>>(),
-  setIterParallelLogMap: iterParallelLogMap => set(() => ({ iterParallelLogMap })),
+  setIterParallelLogMap: (iterParallelLogMap) => set(() => ({ iterParallelLogMap })),
   pendingSingleRun: undefined,
-  setPendingSingleRun: payload => set(() => ({ pendingSingleRun: payload })),
+  setPendingSingleRun: (payload) => set(() => ({ pendingSingleRun: payload })),
 })

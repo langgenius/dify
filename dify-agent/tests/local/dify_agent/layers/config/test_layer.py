@@ -9,7 +9,11 @@ import pytest
 
 from dify_agent.adapters.shell.shellctl import ShellctlProvider
 from dify_agent.layers.config import DifyConfigLayerConfig
-from dify_agent.layers.config.layer import DifyConfigLayer, DifyConfigLayerError
+from dify_agent.layers.config.layer import (
+    DifyConfigLayer,
+    DifyConfigLayerError,
+    _AGENT_FILE_UPLOAD_REPLY_HINT,
+)
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer
 
@@ -127,7 +131,19 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
     assert layer.runtime_state.pulled_skill_outputs == {"alpha": "/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it."}
     assert layer.runtime_state.pulled_file_outputs == {"guide.txt": "/workspace/.dify_conf/files/guide.txt"}
     assert "dify-agent config note push --help" in layer.runtime_state.config_cli_help
+    assert "dify-agent file upload --help" in layer.runtime_state.config_cli_help
+    assert "dify-agent file download --help" in layer.runtime_state.config_cli_help
     assert layer.runtime_state.push_spec_json_schema == ""
+    suffix_prompt = layer.build_suffix_prompt()
+    assert suffix_prompt.index("Agent config CLI reference for installed `dify-agent`:") < suffix_prompt.index(
+        "Agent file CLI reference for installed `dify-agent`:"
+    )
+    assert "$ dify-agent file upload --help" in suffix_prompt
+    assert "$ dify-agent file download --help" in suffix_prompt
+    assert suffix_prompt.index("$ dify-agent file upload --help") < suffix_prompt.index(
+        "$ dify-agent file download --help"
+    )
+    assert _AGENT_FILE_UPLOAD_REPLY_HINT in suffix_prompt
 
 
 @pytest.mark.anyio

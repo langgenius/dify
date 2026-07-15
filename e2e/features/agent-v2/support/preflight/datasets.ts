@@ -9,22 +9,18 @@ import type { PreseededResource } from './common'
 import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import {
   agentBuilderExpectedTokens,
+  agentBuilderFixedInputs,
   agentBuilderPreseededResources,
 } from '../agent-builder-resources'
-import {
-  buildQuery,
-  findConsoleResourceByName,
+import { buildQuery, findConsoleResourceByName, skipBlockedPrecondition } from './common'
 
-  skipBlockedPrecondition,
-} from './common'
-
-type DocumentIndexingStatus
-  = | 'cleaning'
-    | 'completed'
-    | 'indexing'
-    | 'parsing'
-    | 'splitting'
-    | 'waiting'
+type DocumentIndexingStatus =
+  | 'cleaning'
+  | 'completed'
+  | 'indexing'
+  | 'parsing'
+  | 'splitting'
+  | 'waiting'
 
 const completedDocumentIndexingStatus: DocumentIndexingStatus = 'completed'
 const activeDocumentIndexingStatuses = new Set<string>([
@@ -53,8 +49,7 @@ const getDatasetIndexingStatuses = async (datasetId: string, resourceName: strin
     const body = (await response.json()) as DocumentStatusListResponse
 
     return body.data
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -78,16 +73,15 @@ const getDatasetDocuments = async (datasetId: string, resourceName: string) => {
     }
 
     return documents
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
 
-const datasetHasEnabledSegmentContainingToken = async (
+const datasetHasEnabledSegmentContainingTokens = async (
   datasetId: string,
   resourceName: string,
-  expectedToken: string,
+  expectedTokens: string[],
 ) => {
   const documents = await getDatasetDocuments(datasetId, resourceName)
   const ctx = await createApiContext()
@@ -95,34 +89,30 @@ const datasetHasEnabledSegmentContainingToken = async (
     for (const document of documents) {
       const query = buildQuery({
         enabled: 'true',
-        keyword: expectedToken,
+        keyword: agentBuilderExpectedTokens.knowledgeReply,
         limit: '20',
         page: '1',
       })
       const response = await ctx.get(
         `/console/api/datasets/${datasetId}/documents/${document.id}/segments?${query}`,
       )
-      await expectApiResponseOK(
-        response,
-        `Check preseeded dataset segment content ${resourceName}`,
-      )
+      await expectApiResponseOK(response, `Check preseeded dataset segment content ${resourceName}`)
       const body = (await response.json()) as ConsoleSegmentListResponse
       const matchingSegment = body.data.find(
-        segment =>
-          segment.enabled
-          && (
-            segment.content.includes(expectedToken)
-            || segment.keywords?.some(keyword => keyword.includes(expectedToken))
+        (segment) =>
+          segment.enabled &&
+          expectedTokens.every(
+            (expectedToken) =>
+              segment.content.includes(expectedToken) ||
+              segment.keywords?.some((keyword) => keyword.includes(expectedToken)),
           ),
       )
 
-      if (matchingSegment)
-        return true
+      if (matchingSegment) return true
     }
 
     return false
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -174,7 +164,7 @@ export async function skipMissingReadyPreseededDataset(
   }
 
   const incompleteStatus = statuses.find(
-    item => item.indexing_status !== completedDocumentIndexingStatus,
+    (item) => item.indexing_status !== completedDocumentIndexingStatus,
   )
   if (incompleteStatus) {
     return skipBlockedPrecondition(
@@ -184,18 +174,23 @@ export async function skipMissingReadyPreseededDataset(
   }
 
   if (resourceName === agentBuilderPreseededResources.agentKnowledgeBase) {
-    const hasExpectedToken = await datasetHasEnabledSegmentContainingToken(
+    const requiredTokens = [
+      agentBuilderFixedInputs.customKnowledgeQuery,
+      agentBuilderFixedInputs.knowledgeRuntimeQuery,
+      agentBuilderExpectedTokens.knowledgeReply,
+    ]
+    const hasExpectedToken = await datasetHasEnabledSegmentContainingTokens(
       resource.id,
       resourceName,
-      agentBuilderExpectedTokens.knowledgeReply,
+      requiredTokens,
     )
 
     if (!hasExpectedToken) {
       return skipBlockedPrecondition(
         world,
-        `Preseeded dataset "${resourceName}" has no enabled segment containing "${agentBuilderExpectedTokens.knowledgeReply}".`,
+        `Preseeded dataset "${resourceName}" has no enabled segment containing "${requiredTokens.join('" and "')}".`,
         {
-          remediation: `Seed the dataset from the Agent Builder knowledge fixture and wait until an enabled segment contains "${agentBuilderExpectedTokens.knowledgeReply}".`,
+          remediation: `Seed the dataset from the Agent Builder knowledge fixture and wait until an enabled segment contains "${requiredTokens.join('" and "')}".`,
         },
       )
     }
@@ -214,13 +209,13 @@ export async function skipMissingIndexingPreseededDataset(
     return skipBlockedPrecondition(world, `Preseeded dataset "${resourceName}" was not found.`)
 
   const statuses = await getDatasetIndexingStatuses(resource.id, resourceName)
-  const indexingStatus = statuses.find(item =>
+  const indexingStatus = statuses.find((item) =>
     activeDocumentIndexingStatuses.has(item.indexing_status ?? ''),
   )
 
   if (!indexingStatus) {
-    const actualStatuses
-      = statuses.map(item => item.indexing_status ?? 'missing').join(', ') || 'none'
+    const actualStatuses =
+      statuses.map((item) => item.indexing_status ?? 'missing').join(', ') || 'none'
 
     return skipBlockedPrecondition(
       world,

@@ -67,18 +67,20 @@ vi.mock('../permission-set-modal', () => ({
   }: {
     mode: string
     resourceType: string
-    initialValues?: { name: string, description: string, permissionKeys: string[] }
-    onSubmit: (values: { name: string, description: string, permissionKeys: string[] }) => void
+    initialValues?: { name: string; description: string; permissionKeys: string[] }
+    onSubmit: (values: { name: string; description: string; permissionKeys: string[] }) => void
   }) => (
     <div role="dialog" aria-label={`${resourceType} ${mode}`}>
       <span>{initialValues?.name}</span>
       <button
         type="button"
-        onClick={() => onSubmit({
-          name: `${resourceType} permission`,
-          description: `${resourceType} description`,
-          permissionKeys: [`${resourceType}.acl.edit`],
-        })}
+        onClick={() =>
+          onSubmit({
+            name: `${resourceType} permission`,
+            description: `${resourceType} description`,
+            permissionKeys: [`${resourceType}.acl.edit`],
+          })
+        }
       >
         submit permission set
       </button>
@@ -100,19 +102,23 @@ const appRule: AccessPolicyWithBindings = {
     created_at: '2026-01-01',
     updated_at: '2026-01-01',
   },
-  roles: [{
-    role_id: 'role-1',
-    role_name: 'Role 1',
-    binding_id: 'role-binding-1',
-    is_locked: false,
-    role_tag: '',
-  }],
-  accounts: [{
-    account_id: 'member-1',
-    account_name: 'Member 1',
-    binding_id: 'member-binding-1',
-    is_locked: false,
-  }],
+  roles: [
+    {
+      role_id: 'role-1',
+      role_name: 'Role 1',
+      binding_id: 'role-binding-1',
+      is_locked: false,
+      role_tag: '',
+    },
+  ],
+  accounts: [
+    {
+      account_id: 'member-1',
+      account_name: 'Member 1',
+      binding_id: 'member-binding-1',
+      is_locked: false,
+    },
+  ],
 }
 
 const datasetRule: AccessPolicyWithBindings = {
@@ -124,19 +130,23 @@ const datasetRule: AccessPolicyWithBindings = {
     name: 'Dataset rule',
     permission_keys: ['dataset.acl.edit'],
   },
-  roles: [{
-    role_id: 'dataset-role-1',
-    role_name: 'Dataset Role 1',
-    binding_id: 'dataset-role-binding-1',
-    is_locked: false,
-    role_tag: '',
-  }],
-  accounts: [{
-    account_id: 'dataset-member-1',
-    account_name: 'Dataset Member 1',
-    binding_id: 'dataset-member-binding-1',
-    is_locked: false,
-  }],
+  roles: [
+    {
+      role_id: 'dataset-role-1',
+      role_name: 'Dataset Role 1',
+      binding_id: 'dataset-role-binding-1',
+      is_locked: false,
+      role_tag: '',
+    },
+  ],
+  accounts: [
+    {
+      account_id: 'dataset-member-1',
+      account_name: 'Dataset Member 1',
+      binding_id: 'dataset-member-binding-1',
+      is_locked: false,
+    },
+  ],
 }
 
 const mockMutation = (mock: ReturnType<typeof vi.fn>) => {
@@ -175,8 +185,12 @@ const setupHooks = () => {
     hasNextPage: false,
     error: null,
   } as unknown as ReturnType<typeof useInfiniteWorkspaceDatasetAccessRules>)
-  vi.mocked(useCreateAccessRule).mockReturnValue(mockMutation(mocks.createAccessRule) as unknown as ReturnType<typeof useCreateAccessRule>)
-  vi.mocked(useUpdateAccessRule).mockReturnValue(mockMutation(mocks.updateAccessRule) as unknown as ReturnType<typeof useUpdateAccessRule>)
+  vi.mocked(useCreateAccessRule).mockReturnValue(
+    mockMutation(mocks.createAccessRule) as unknown as ReturnType<typeof useCreateAccessRule>,
+  )
+  vi.mocked(useUpdateAccessRule).mockReturnValue(
+    mockMutation(mocks.updateAccessRule) as unknown as ReturnType<typeof useUpdateAccessRule>,
+  )
 }
 
 describe('AccessRulesPage', () => {
@@ -188,54 +202,73 @@ describe('AccessRulesPage', () => {
   it('renders app and dataset access rule sections', () => {
     render(<AccessRulesPage />)
 
-    expect(screen.getByRole('heading', { name: 'permission.accessRule.appTitle' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'permission.accessRule.datasetTitle' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'permission.accessRule.appTitle' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'permission.accessRule.datasetTitle' }),
+    ).toBeInTheDocument()
   })
 
   it('creates app permission sets with app resource type', async () => {
     render(<AccessRulesPage />)
 
-    await userEvent.click(screen.getByRole('button', { name: 'create permission.accessRule.appTitle' }))
+    await userEvent.click(
+      screen.getByRole('button', { name: 'create permission.accessRule.appTitle' }),
+    )
     await userEvent.click(screen.getByRole('button', { name: 'submit permission set' }))
 
-    expect(mocks.createAccessRule).toHaveBeenCalledWith({
-      name: 'app permission',
-      description: 'app description',
-      permission_keys: ['app.acl.edit'],
-      resourceType: 'app',
-    }, expect.any(Object))
+    expect(mocks.createAccessRule).toHaveBeenCalledWith(
+      {
+        name: 'app permission',
+        description: 'app description',
+        permission_keys: ['app.acl.edit'],
+        resourceType: 'app',
+      },
+      expect.any(Object),
+    )
     expect(toast.success).toHaveBeenCalledWith('permission.accessRule.created')
   })
 
   it('creates dataset permission sets with dataset resource type', async () => {
     render(<AccessRulesPage />)
 
-    await userEvent.click(screen.getByRole('button', { name: 'create permission.accessRule.datasetTitle' }))
+    await userEvent.click(
+      screen.getByRole('button', { name: 'create permission.accessRule.datasetTitle' }),
+    )
     await userEvent.click(screen.getByRole('button', { name: 'submit permission set' }))
 
-    expect(mocks.createAccessRule).toHaveBeenCalledWith({
-      name: 'dataset permission',
-      description: 'dataset description',
-      permission_keys: ['dataset.acl.edit'],
-      resourceType: 'dataset',
-    }, expect.any(Object))
+    expect(mocks.createAccessRule).toHaveBeenCalledWith(
+      {
+        name: 'dataset permission',
+        description: 'dataset description',
+        permission_keys: ['dataset.acl.edit'],
+        resourceType: 'dataset',
+      },
+      expect.any(Object),
+    )
     expect(toast.success).toHaveBeenCalledWith('permission.accessRule.created')
   })
 
   it('updates dataset permission sets with dataset resource type', async () => {
     render(<AccessRulesPage />)
 
-    await userEvent.click(screen.getByRole('button', { name: 'edit permission.accessRule.datasetTitle' }))
+    await userEvent.click(
+      screen.getByRole('button', { name: 'edit permission.accessRule.datasetTitle' }),
+    )
     expect(screen.getByText('Dataset rule')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'submit permission set' }))
 
-    expect(mocks.updateAccessRule).toHaveBeenCalledWith({
-      id: 'dataset-rule-1',
-      name: 'dataset permission',
-      description: 'dataset description',
-      permission_keys: ['dataset.acl.edit'],
-      resourceType: 'dataset',
-    }, expect.any(Object))
+    expect(mocks.updateAccessRule).toHaveBeenCalledWith(
+      {
+        id: 'dataset-rule-1',
+        name: 'dataset permission',
+        description: 'dataset description',
+        permission_keys: ['dataset.acl.edit'],
+        resourceType: 'dataset',
+      },
+      expect.any(Object),
+    )
     expect(toast.success).toHaveBeenCalledWith('permission.accessRule.updated')
   })
 })

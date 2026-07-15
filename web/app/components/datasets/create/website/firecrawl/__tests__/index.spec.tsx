@@ -2,9 +2,7 @@ import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 // Component Import (after mocks)
-
 import FireCrawl from '../index'
 
 // Mock Setup - Only mock API calls and context
@@ -666,9 +664,7 @@ describe('FireCrawl', () => {
       const limitInput = screen.getByDisplayValue('10')
       fireEvent.change(limitInput, { target: { value: '20' } })
 
-      expect(mockOnCrawlOptionsChange).toHaveBeenCalledWith(
-        expect.objectContaining({ limit: 20 }),
-      )
+      expect(mockOnCrawlOptionsChange).toHaveBeenCalledWith(expect.objectContaining({ limit: 20 }))
     })
 
     it('should call onCrawlOptionsChange when checkbox changes', () => {

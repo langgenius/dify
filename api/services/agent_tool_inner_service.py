@@ -75,6 +75,7 @@ class AgentToolInnerService:
                 use_default_for_missing_form_parameters=True,
             )
             messages = ToolEngine.generic_invoke(
+                session=session,
                 tool=tool_runtime,
                 tool_parameters=dict(request.tool.tool_parameters),
                 user_id=request.caller.user_id,
