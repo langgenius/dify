@@ -39,14 +39,18 @@ const configuredProviderOrder: Array<[TracingProvider, keyof ConfiguredTracingPr
   [TracingProvider.tencent, 'tencentConfig'],
 ]
 
-export const getConfiguredTracingProvider = (configs: ConfiguredTracingProviders): TracingProvider | null => {
+export const getConfiguredTracingProvider = (
+  configs: ConfiguredTracingProviders,
+): TracingProvider | null => {
   for (const [provider, configKey] of configuredProviderOrder) {
-    if (configs[configKey])
-      return provider
+    if (configs[configKey]) return provider
   }
   return null
 }
 
-export const resolveTracingProvider = (tracingStatus: TracingStatus | null, configs: ConfiguredTracingProviders): TracingProvider | null => {
+export const resolveTracingProvider = (
+  tracingStatus: TracingStatus | null,
+  configs: ConfiguredTracingProviders,
+): TracingProvider | null => {
   return tracingStatus?.tracing_provider ?? getConfiguredTracingProvider(configs)
 }

@@ -23,27 +23,42 @@ describe('tracing provider resolution', () => {
   it('falls back to configured provider when tracing status provider is null', () => {
     const configs: ConfiguredTracingProviders = {
       ...baseConfigs,
-      langFuseConfig: { host: 'https://cloud.langfuse.com' } as ConfiguredTracingProviders['langFuseConfig'],
+      langFuseConfig: {
+        host: 'https://cloud.langfuse.com',
+      } as ConfiguredTracingProviders['langFuseConfig'],
     }
 
-    expect(resolveTracingProvider({ enabled: false, tracing_provider: null }, configs)).toBe(TracingProvider.langfuse)
+    expect(resolveTracingProvider({ enabled: false, tracing_provider: null }, configs)).toBe(
+      TracingProvider.langfuse,
+    )
   })
 
   it('keeps the tracing status provider when present', () => {
     const configs: ConfiguredTracingProviders = {
       ...baseConfigs,
-      langFuseConfig: { host: 'https://cloud.langfuse.com' } as ConfiguredTracingProviders['langFuseConfig'],
-      langSmithConfig: { endpoint: 'https://api.smith.langchain.com' } as ConfiguredTracingProviders['langSmithConfig'],
+      langFuseConfig: {
+        host: 'https://cloud.langfuse.com',
+      } as ConfiguredTracingProviders['langFuseConfig'],
+      langSmithConfig: {
+        endpoint: 'https://api.smith.langchain.com',
+      } as ConfiguredTracingProviders['langSmithConfig'],
     }
 
-    expect(resolveTracingProvider({ enabled: false, tracing_provider: TracingProvider.langSmith }, configs)).toBe(TracingProvider.langSmith)
+    expect(
+      resolveTracingProvider(
+        { enabled: false, tracing_provider: TracingProvider.langSmith },
+        configs,
+      ),
+    ).toBe(TracingProvider.langSmith)
   })
 
   it('uses the configured provider priority order when multiple are set', () => {
     const configs: ConfiguredTracingProviders = {
       ...baseConfigs,
       opikConfig: { project: 'opik-project' } as ConfiguredTracingProviders['opikConfig'],
-      langSmithConfig: { project: 'langsmith-project' } as ConfiguredTracingProviders['langSmithConfig'],
+      langSmithConfig: {
+        project: 'langsmith-project',
+      } as ConfiguredTracingProviders['langSmithConfig'],
     }
 
     expect(getConfiguredTracingProvider(configs)).toBe(TracingProvider.langSmith)
