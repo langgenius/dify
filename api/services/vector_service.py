@@ -258,7 +258,8 @@ class VectorService:
             # update vector index
             vector = Vector(dataset=dataset)
             if delete_node_ids:
-                vector.delete_by_ids(delete_node_ids)
+                for node_id in delete_node_ids:
+                    vector.delete_by_metadata_field("doc_id", node_id)
             if documents:
                 vector.add_texts(documents, duplicate_check=True)
 
@@ -266,7 +267,7 @@ class VectorService:
     def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset):
         vector = Vector(dataset=dataset)
         assert child_chunk.index_node_id
-        vector.delete_by_ids([child_chunk.index_node_id])
+        vector.delete_by_metadata_field("doc_id", child_chunk.index_node_id)
 
     @classmethod
     def update_multimodel_vector(

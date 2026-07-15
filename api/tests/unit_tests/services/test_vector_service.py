@@ -520,7 +520,11 @@ def test_update_child_chunk_vector_high_quality_updates_vector(monkeypatch: pyte
 
     VectorService.update_child_chunk_vector([new_chunk], [upd_chunk], [del_chunk], dataset)
 
-    vector_instance.delete_by_ids.assert_called_once_with(["uid", "did"])
+    # Should use delete_by_metadata_field instead of delete_by_ids to handle
+    # VDB backends like Weaviate that use content-based UUIDs (UUID5) internally
+    assert vector_instance.delete_by_metadata_field.call_count == 2
+    vector_instance.delete_by_metadata_field.assert_any_call("doc_id", "uid")
+    vector_instance.delete_by_metadata_field.assert_any_call("doc_id", "did")
     vector_instance.add_texts.assert_called_once()
     docs = vector_instance.add_texts.call_args.args[0]
     assert len(docs) == 2
@@ -543,7 +547,7 @@ def test_delete_child_chunk_vector_deletes_by_id(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(vector_service_module, "Vector", MagicMock(return_value=vector_instance))
 
     VectorService.delete_child_chunk_vector(child_chunk, dataset)
-    vector_instance.delete_by_ids.assert_called_once_with(["cid"])
+    vector_instance.delete_by_metadata_field.assert_called_once_with("doc_id", "cid")
 
 
 # ---------------------------------------------------------------------------

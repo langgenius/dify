@@ -222,7 +222,9 @@ class TestSegmentServiceChildChunks:
             patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.VectorService") as vector_service,
+            patch("services.dataset_service.helper") as mock_helper,
         ):
+            mock_helper.generate_text_hash.return_value = "new-hash"
             result = SegmentService.update_child_chunk(
                 "new content", child_chunk, _make_segment(), _make_document(), dataset, mock_db.session
             )
@@ -230,6 +232,7 @@ class TestSegmentServiceChildChunks:
         assert result is child_chunk
         assert child_chunk.content == "new content"
         assert child_chunk.word_count == len("new content")
+        assert child_chunk.index_node_hash == "new-hash"
         assert child_chunk.updated_by == "user-1"
         assert child_chunk.updated_at == "now"
         mock_db.session.add.assert_called_once_with(child_chunk)
