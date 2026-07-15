@@ -61,7 +61,7 @@ import useGenGraph from './use-gen-graph'
 // error (bounded backoff) or an unparseable response (one extra call), so a
 // slow-but-succeeding generation can legitimately pass the one-minute mark.
 // Aborting work that would have landed is the worse failure mode.
-const FE_TIMEOUT_MS = 90_000
+const FE_TIMEOUT_MS = 180_000
 // Mirrors the backend's instruction/ideal-output cap on /workflow-generate —
 // keeping the limit client-side turns an opaque 400 into a visible input stop.
 const MAX_INSTRUCTION_LENGTH = 10_000
@@ -251,7 +251,7 @@ function WorkflowGeneratorModal() {
 
   // Holds the AbortController of the in-flight ``/workflow-generate`` request
   // so we can cancel it on (a) modal close, (b) a second Generate click
-  // while loading, (c) the hard 60 s frontend timeout, or (d) the user
+  // while loading, (c) the hard frontend timeout, or (d) the user
   // pressing Cancel. Without this an in-flight request outlives the modal
   // and can race a future Generate call.
   const abortRef = useRef<AbortController | null>(null)
