@@ -23,3 +23,8 @@ def test_secret_export_forbidden_for_non_privileged_role() -> None:
 def test_secret_export_forbidden_for_none_role() -> None:
     with pytest.raises(Forbidden):
         AppDslService.assert_secret_export_allowed(include_secret=True, current_role=None)
+
+
+def test_secret_export_forbidden_for_editor_role() -> None:
+    with pytest.raises(Forbidden):
+        AppDslService.assert_secret_export_allowed(include_secret=True, current_role=TenantAccountRole.EDITOR)

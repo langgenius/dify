@@ -398,7 +398,7 @@ class AppDslService:
         )
 
     @staticmethod
-    def assert_secret_export_allowed(*, include_secret: bool, current_role: "TenantAccountRole | None") -> None:
+    def assert_secret_export_allowed(*, include_secret: bool, current_role: TenantAccountRole | None) -> None:
         """Only workspace managers (owner/admin) may export secrets in a DSL."""
         if include_secret and not TenantAccountRole.is_privileged_role(current_role):
             raise Forbidden("Only workspace managers can export secrets.")
