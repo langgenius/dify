@@ -8,7 +8,8 @@ idempotent, while the caller persists a non-dry-run cursor only after a candidat
 
 Each bundle is processed in its own database transaction. A failed bundle leaves source rows unchanged unless the
 transaction has already committed; marker handling makes the next run able to reconcile the common committed-but-marker
-not-updated case.
+not-updated case. Restore never skips a bundle with a missing deleted marker when deletion started or source rows have
+drifted, so an external cursor cannot pass an interrupted delete.
 """
 
 import datetime
@@ -358,6 +359,14 @@ class WorkflowRunBundleArchiveMaintenance:
             select(WorkflowRunArchiveBundle).where(*conditions).order_by(WorkflowRunArchiveBundle.id.asc()).limit(limit)
         )
         with self.session_factory() as session:
+            if after_catalog_id:
+                cursor_bundle = session.get(WorkflowRunArchiveBundle, after_catalog_id)
+                self._validate_catalog_cursor_scope(
+                    cursor_bundle,
+                    tenant_ids=tenant_ids,
+                    target_year=target_year,
+                    target_month=target_month,
+                )
             bundles = list(session.scalars(statement))
         return [
             ArchiveBundleCatalogEntry(
@@ -373,6 +382,22 @@ class WorkflowRunBundleArchiveMaintenance:
             )
             for bundle in bundles
         ]
+
+    @staticmethod
+    def _validate_catalog_cursor_scope(
+        cursor_bundle: WorkflowRunArchiveBundle | None,
+        *,
+        tenant_ids: Sequence[str] | None,
+        target_year: int,
+        target_month: int,
+    ) -> None:
+        """Reject a keyset cursor that cannot safely represent the requested catalog scope."""
+        if cursor_bundle is None:
+            raise ValueError("after_catalog_id does not exist in the workflow run archive bundle catalog")
+        if cursor_bundle.year != target_year or cursor_bundle.month != target_month:
+            raise ValueError("after_catalog_id is outside the requested archive month")
+        if tenant_ids is not None and cursor_bundle.tenant_id not in tenant_ids:
+            raise ValueError("after_catalog_id is outside the requested tenant scope")
 
     def _build_bundle_reference(
         self,
@@ -506,6 +531,11 @@ class WorkflowRunBundleArchiveMaintenance:
         try:
             validation_start = time.time()
             if not self._is_deleted(storage, bundle_ref.object_prefix):
+                # A committed delete may be interrupted before `.deleted` is written. Do not let restore advance its
+                # cursor over that state: retry delete to reconcile it, or investigate source-row drift first.
+                if self._is_delete_started(storage, bundle_ref.object_prefix):
+                    raise ValueError("delete started marker exists without a deleted marker; reconcile delete first")
+                self._validate_live_counts(session, bundle_ref.manifest, expected_present=True)
                 result.validation_time = time.time() - validation_start
                 result.success = True
                 result.elapsed_time = time.time() - start_time

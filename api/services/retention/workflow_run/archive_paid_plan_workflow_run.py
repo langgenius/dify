@@ -7,7 +7,9 @@ This service archives workflow run logs for paid plan users older than the confi
 Archive V2 writes bundle-level Parquet objects. A bundle contains many workflow runs and their related table rows.
 Bundle metadata lives in the object-store manifest as the recoverable source of truth. Completed bundles are also
 published into a small database catalog so console listing, download, and maintenance jobs do not list object storage
-online. Archive success requires that catalog publication to commit; retries reconcile only their known manifest key.
+online. Archive success requires that catalog publication to commit. A retry reconciles only its known manifest key
+against an already-published shard index; a missing shard index fails closed rather than rebuilding it by scanning
+historical manifests.
 
 Archive campaigns should use fixed absolute UTC windows for every tenant-prefix/shard execution. Relative windows are
 evaluated at process start and are not safe for multi-day rollout because each command would scan a different window.
@@ -731,12 +733,18 @@ class WorkflowRunArchiver:
         storage: ArchiveStorage,
         identity: ArchiveBundleIdentity,
     ) -> None:
-        """Publish a known manifest to the DB catalog before reporting archive success."""
+        """Publish a known manifest to the DB catalog and reconcile its existing shard index."""
         manifest_key = self._get_manifest_object_key(identity)
         manifest_data = storage.get_object(manifest_key)
         manifest = decode_archive_bundle_manifest(manifest_data)
         upsert_archive_bundle_index_from_manifest(session, manifest, len(manifest_data))
         session.commit()
+        self._merge_bundle_manifest_into_index(
+            storage,
+            identity,
+            manifest["run_ids"],
+            require_existing_index=True,
+        )
 
     def _lock_runs_for_archive(
         self,
@@ -1026,10 +1034,20 @@ class WorkflowRunArchiver:
         storage: ArchiveStorage,
         identity: ArchiveBundleIdentity,
         run_ids: Sequence[str],
+        *,
+        require_existing_index: bool = False,
     ) -> ArchiveBundleIndexDict:
+        """
+        Merge one bundle into its shard index.
+
+        Retries for a known manifest set ``require_existing_index`` so they never create a partial index by scanning
+        or overwriting a shard whose historical entries cannot be proven from this one manifest.
+        """
         index_key = self._get_index_object_key(identity)
         if storage.object_exists(index_key):
             index = self._load_bundle_index(storage, identity)
+        elif require_existing_index:
+            raise RuntimeError(f"archive shard index missing while reconciling known manifest: {index_key}")
         else:
             index = self._build_bundle_index(storage, identity)
 

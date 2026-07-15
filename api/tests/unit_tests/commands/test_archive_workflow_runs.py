@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import click
 import pytest
+from click.testing import CliRunner
 from sqlalchemy.exc import OperationalError
 
 from commands import retention
@@ -22,6 +23,24 @@ def _session_context(session):
     context.__enter__.return_value = session
     context.__exit__.return_value = False
     return context
+
+
+@pytest.mark.parametrize(
+    "command",
+    [retention.restore_workflow_runs, retention.delete_archived_workflow_runs],
+)
+def test_v2_archive_maintenance_rejects_explicitly_empty_tenant_ids(command):
+    result = CliRunner().invoke(
+        command,
+        ["--tenant-ids", "", "--target-month", "2025-03"],
+    )
+
+    assert result.exit_code == 2
+    assert "tenant-ids must not be empty" in result.output
+
+
+def test_archive_tenant_id_parser_keeps_omitted_scope_unset():
+    assert retention._parse_comma_separated_ids(None, param_name="tenant-ids") is None
 
 
 def test_resolve_archive_tenant_ids_from_plan_uses_explicit_sessions(monkeypatch):

@@ -77,6 +77,17 @@ def _session_factory(session: MagicMock) -> MagicMock:
     return factory
 
 
+def _bundle_reference(entry: ArchiveBundleCatalogEntry) -> BundleReference:
+    manifest = cast(BundleManifest, json.loads(_manifest(entry)))
+    return BundleReference(
+        catalog=entry,
+        object_prefix=manifest["object_prefix"],
+        manifest_key=f"{manifest['object_prefix']}/manifest.json",
+        manifest_size_bytes=0,
+        manifest=manifest,
+    )
+
+
 def test_catalog_discovery_is_ordered_and_limited_before_storage_io() -> None:
     entry = _catalog_entry()
     bundle = SimpleNamespace(
@@ -91,6 +102,7 @@ def test_catalog_discovery_is_ordered_and_limited_before_storage_io() -> None:
         archive_bytes=entry.archive_bytes,
     )
     session = MagicMock()
+    session.get.return_value = bundle
     session.scalars.return_value = [bundle]
     storage = MagicMock()
     maintenance = WorkflowRunBundleArchiveMaintenance(
@@ -115,6 +127,46 @@ def test_catalog_discovery_is_ordered_and_limited_before_storage_io() -> None:
     assert "LIMIT" in rendered
     assert entries == [entry]
     storage.list_objects.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("cursor_bundle", "tenant_ids", "error_message"),
+    [
+        (None, None, "does not exist"),
+        (
+            SimpleNamespace(year=2024, month=3, tenant_id=TENANT_ID),
+            None,
+            "requested archive month",
+        ),
+        (
+            SimpleNamespace(year=2025, month=3, tenant_id="other-tenant"),
+            [TENANT_ID],
+            "requested tenant scope",
+        ),
+    ],
+)
+def test_catalog_discovery_rejects_cursor_outside_requested_scope(
+    cursor_bundle: SimpleNamespace | None,
+    tenant_ids: list[str] | None,
+    error_message: str,
+) -> None:
+    session = MagicMock()
+    session.get.return_value = cursor_bundle
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        storage=cast(MagicMock, MagicMock()),
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+
+    with pytest.raises(ValueError, match=error_message):
+        maintenance._list_catalog_entries(
+            tenant_ids=tenant_ids,
+            target_year=2025,
+            target_month=3,
+            after_catalog_id=CATALOG_ID,
+            limit=1,
+        )
+
+    session.scalars.assert_not_called()
 
 
 def test_catalog_manifest_identity_mismatch_fails_closed() -> None:
@@ -189,3 +241,50 @@ def test_failure_and_dry_run_do_not_return_a_persistable_cursor() -> None:
 
     assert dry_run_summary.next_catalog_id is None
     assert dry_run_summary.preview_next_catalog_id == entry.catalog_id
+
+
+def test_restore_does_not_skip_an_interrupted_delete_without_deleted_marker() -> None:
+    entry = _catalog_entry()
+    session = MagicMock()
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        storage=cast(MagicMock, MagicMock()),
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+
+    with (
+        patch.object(maintenance, "_is_deleted", return_value=False),
+        patch.object(maintenance, "_is_delete_started", return_value=True),
+        patch.object(maintenance, "_validate_live_counts") as validate_live_counts,
+    ):
+        result = maintenance._restore_bundle(session, MagicMock(), _bundle_reference(entry))
+
+    assert not result.success
+    assert "reconcile delete first" in result.error
+    validate_live_counts.assert_not_called()
+    session.commit.assert_not_called()
+
+
+def test_restore_does_not_skip_missing_source_rows_without_deleted_marker() -> None:
+    entry = _catalog_entry()
+    session = MagicMock()
+    maintenance = WorkflowRunBundleArchiveMaintenance(
+        storage=cast(MagicMock, MagicMock()),
+        session_factory=cast(MagicMock, _session_factory(session)),
+    )
+    bundle_ref = _bundle_reference(entry)
+
+    with (
+        patch.object(maintenance, "_is_deleted", return_value=False),
+        patch.object(maintenance, "_is_delete_started", return_value=False),
+        patch.object(
+            maintenance,
+            "_validate_live_counts",
+            side_effect=ValueError("source rows are missing"),
+        ) as validate_live_counts,
+    ):
+        result = maintenance._restore_bundle(session, MagicMock(), bundle_ref)
+
+    assert not result.success
+    assert "source rows are missing" in result.error
+    validate_live_counts.assert_called_once_with(session, bundle_ref.manifest, expected_present=True)
+    session.commit.assert_not_called()

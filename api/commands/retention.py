@@ -69,6 +69,7 @@ def _parse_tenant_prefixes(prefixes: str | None) -> list[str]:
 
 
 def _parse_comma_separated_ids(raw_ids: str | None, *, param_name: str) -> list[str] | None:
+    """Keep an omitted scope unset while rejecting an explicitly empty scope."""
     if raw_ids is None:
         return None
     parsed = sorted({raw_id.strip() for raw_id in raw_ids.split(",") if raw_id.strip()})
@@ -933,11 +934,7 @@ def restore_workflow_runs(
     from services.retention.workflow_run.bundle_archive_maintenance import WorkflowRunBundleArchiveMaintenance
     from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
 
-    parsed_tenant_ids = None
-    if tenant_ids:
-        parsed_tenant_ids = [tid.strip() for tid in tenant_ids.split(",") if tid.strip()]
-        if not parsed_tenant_ids:
-            raise click.BadParameter("tenant-ids must not be empty")
+    parsed_tenant_ids = _parse_comma_separated_ids(tenant_ids, param_name="tenant-ids")
 
     if workers < 1:
         raise click.BadParameter("workers must be at least 1")
@@ -1054,11 +1051,7 @@ def delete_archived_workflow_runs(
     from services.retention.workflow_run.bundle_archive_maintenance import WorkflowRunBundleArchiveMaintenance
     from services.retention.workflow_run.delete_archived_workflow_run import ArchivedWorkflowRunDeletion
 
-    parsed_tenant_ids = None
-    if tenant_ids:
-        parsed_tenant_ids = [tid.strip() for tid in tenant_ids.split(",") if tid.strip()]
-        if not parsed_tenant_ids:
-            raise click.BadParameter("tenant-ids must not be empty")
+    parsed_tenant_ids = _parse_comma_separated_ids(tenant_ids, param_name="tenant-ids")
 
     if restore_sample_interval < 0:
         raise click.BadParameter("restore-sample-interval must be >= 0")
