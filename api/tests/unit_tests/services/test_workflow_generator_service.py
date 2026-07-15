@@ -200,24 +200,21 @@ class TestWorkflowGeneratorService:
         call_kwargs = mock_workflow_generator.generate_workflow_graph.call_args.kwargs
         assert call_kwargs["current_graph"] is None
 
-    @patch("services.workflow_generator_service.LLMGenerator")
     @patch("services.workflow_generator_service.WorkflowGenerator")
     @patch("services.workflow_generator_service.ModelManager")
     @patch("services.workflow_generator_service.build_tool_catalogue")
     @patch("services.workflow_generator_service.format_tool_catalogue")
-    def test_auto_mode_resolves_via_classifier(
+    def test_auto_mode_forwards_sentinel_to_runner(
         self,
         mock_format_catalogue: MagicMock,
         mock_build_catalogue: MagicMock,
         mock_model_manager: MagicMock,
         mock_workflow_generator: MagicMock,
-        mock_llm_generator: MagicMock,
     ):
-        """Task 3: ``mode="auto"`` is classified before planning; the concrete mode reaches the runner."""
+        """``mode="auto"`` passes straight through — the planner resolves it, no extra LLM call."""
         mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
         mock_build_catalogue.return_value = []
         mock_format_catalogue.return_value = ""
-        mock_llm_generator.classify_workflow_mode.return_value = "workflow"
         mock_workflow_generator.generate_workflow_graph.return_value = {
             "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
             "message": "",
@@ -231,26 +228,22 @@ class TestWorkflowGeneratorService:
             model_config=_model_config(),
         )
 
-        mock_llm_generator.classify_workflow_mode.assert_called_once()
-        classify_kwargs = mock_llm_generator.classify_workflow_mode.call_args.kwargs
-        assert classify_kwargs["tenant_id"] == "t-1"
-        assert classify_kwargs["instruction"] == "Summarize a URL"
-        assert mock_workflow_generator.generate_workflow_graph.call_args.kwargs["mode"] == "workflow"
+        assert mock_workflow_generator.generate_workflow_graph.call_args.kwargs["mode"] == "auto"
+        # the model registry is consulted exactly once — no classifier resolution
+        mock_model_manager.for_tenant.return_value.get_model_instance.assert_called_once()
 
-    @patch("services.workflow_generator_service.LLMGenerator")
     @patch("services.workflow_generator_service.WorkflowGenerator")
     @patch("services.workflow_generator_service.ModelManager")
     @patch("services.workflow_generator_service.build_tool_catalogue")
     @patch("services.workflow_generator_service.format_tool_catalogue")
-    def test_explicit_mode_skips_classifier(
+    def test_explicit_mode_passes_through_unchanged(
         self,
         mock_format_catalogue: MagicMock,
         mock_build_catalogue: MagicMock,
         mock_model_manager: MagicMock,
         mock_workflow_generator: MagicMock,
-        mock_llm_generator: MagicMock,
     ):
-        """A concrete mode passes through unchanged without an extra classification call."""
+        """A concrete mode reaches the runner verbatim."""
         mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
         mock_build_catalogue.return_value = []
         mock_format_catalogue.return_value = ""
@@ -267,7 +260,6 @@ class TestWorkflowGeneratorService:
             model_config=_model_config(),
         )
 
-        mock_llm_generator.classify_workflow_mode.assert_not_called()
         assert mock_workflow_generator.generate_workflow_graph.call_args.kwargs["mode"] == "advanced-chat"
 
     @patch("services.workflow_generator_service.WorkflowGenerator")

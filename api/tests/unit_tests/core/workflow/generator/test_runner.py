@@ -16,6 +16,7 @@ from unittest.mock import MagicMock
 import pytest
 from jinja2 import Template
 
+from configs import dify_config
 from core.workflow.generator.runner import WorkflowGenerator
 from core.workflow.generator.types import GraphDict
 
@@ -97,7 +98,7 @@ class _GraphFixtureModel:
 
 
 class _ParallelBuilderModel:
-    """Thread-safe fake that blocks the first two node builders together."""
+    """Thread-safe fake that blocks the first ``barrier_parties`` node builders together."""
 
     def __init__(
         self,
@@ -105,16 +106,20 @@ class _ParallelBuilderModel:
         configs: dict[str, dict[str, Any]],
         *,
         invalid_node_id: str | None = None,
+        barrier_parties: int | None = None,
     ) -> None:
         self._planner = planner
         self._configs = configs
         self._invalid_node_id = invalid_node_id
-        self._barrier = threading.Barrier(2) if len(configs) >= 2 else None
+        self._barrier_parties = barrier_parties if barrier_parties is not None else (2 if len(configs) >= 2 else 0)
+        self._barrier = threading.Barrier(self._barrier_parties) if self._barrier_parties >= 2 else None
         self._lock = threading.Lock()
         self._builder_calls = 0
         self._calls_by_node: dict[str, int] = {}
         self._active_builders = 0
         self.max_active_builders = 0
+        self.planner_calls = 0
+        self.planner_prompt_messages: list[Any] = []
 
     @property
     def builder_calls(self) -> int:
@@ -126,6 +131,9 @@ class _ParallelBuilderModel:
     def invoke_llm(self, *, prompt_messages, model_parameters, stream):
         system_prompt = str(prompt_messages[0].content)
         if "workflow planner" in system_prompt.lower():
+            with self._lock:
+                self.planner_calls += 1
+                self.planner_prompt_messages = list(prompt_messages)
             return _llm_result(json.dumps(self._planner))
 
         user_prompt = "\n".join(str(message.content) for message in prompt_messages)
@@ -137,7 +145,7 @@ class _ParallelBuilderModel:
             self._active_builders += 1
             self.max_active_builders = max(self.max_active_builders, self._active_builders)
         try:
-            if self._barrier is not None and call_index < 2:
+            if self._barrier is not None and call_index < self._barrier_parties:
                 self._barrier.wait(timeout=2)
             if node_id == self._invalid_node_id:
                 return _llm_result("not a json object")
@@ -148,7 +156,8 @@ class _ParallelBuilderModel:
 
 
 class TestParallelNodeBuilder:
-    def test_builds_node_configs_with_two_concurrent_workers(self):
+    def test_builder_concurrency_caps_at_configured_workers(self, monkeypatch):
+        monkeypatch.setattr(dify_config, "WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS", 2)
         planner = {
             "title": "URL Summarizer",
             "description": "Summarize a URL.",
@@ -202,6 +211,52 @@ class TestParallelNodeBuilder:
         assert model.max_active_builders == 2
         assert [node["data"]["type"] for node in result["graph"]["nodes"]] == ["start", "llm", "end"]
         assert [edge["source"] for edge in result["graph"]["edges"]] == ["node1", "node2"]
+
+    def test_higher_worker_config_runs_all_builders_in_one_wave(self, monkeypatch):
+        monkeypatch.setattr(dify_config, "WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS", 5)
+        planner = {
+            "title": "URL Summarizer",
+            "description": "Summarize a URL.",
+            "nodes": [
+                {"id": "node1", "label": "Start", "node_type": "start", "purpose": "Receive URL."},
+                {"id": "node2", "label": "Summarize", "node_type": "llm", "purpose": "Summarize it."},
+                {"id": "node3", "label": "End", "node_type": "end", "purpose": "Return summary."},
+            ],
+            "edges": [
+                {"source": "node1", "target": "node2"},
+                {"source": "node2", "target": "node3"},
+            ],
+        }
+        # A 3-party barrier deadlocks unless all three builders run concurrently,
+        # so passing at all proves the configured cap lifted the old 2-wave limit.
+        model = _ParallelBuilderModel(
+            planner,
+            {
+                "node1": {"variables": []},
+                "node2": {
+                    "model": {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}},
+                    "prompt_template": [{"role": "user", "text": "Summarize {{#sys.query#}}"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                },
+                "node3": {"outputs": [{"variable": "summary", "value_selector": ["node2", "text"]}]},
+            },
+            barrier_parties=3,
+        )
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Summarize a URL",
+        )
+
+        assert result["error"] == ""
+        assert model.builder_calls == 3
+        assert model.max_active_builders == 3
 
     def test_refine_reuses_keep_nodes_and_only_builds_updated_nodes(self):
         planner = {
@@ -681,6 +736,137 @@ class TestWorkflowGeneratorAdvancedChatMode:
         )
 
         assert "answer" in result["error"].lower()
+
+
+class TestAutoModeResolution:
+    """``mode="auto"`` resolves from the planner output — no extra LLM call."""
+
+    _WORKFLOW_PLANNER: dict[str, Any] = {
+        "title": "URL Summarizer",
+        "description": "Summarize a URL.",
+        "nodes": [
+            {"id": "node1", "label": "Start", "node_type": "start", "purpose": "Receive URL."},
+            {"id": "node2", "label": "End", "node_type": "end", "purpose": "Return summary."},
+        ],
+        "edges": [{"source": "node1", "target": "node2"}],
+    }
+    _WORKFLOW_CONFIGS: dict[str, dict[str, Any]] = {
+        "node1": {
+            "variables": [
+                {
+                    "variable": "url",
+                    "label": "URL",
+                    "type": "text-input",
+                    "required": True,
+                    "max_length": 256,
+                    "options": [],
+                }
+            ]
+        },
+        "node2": {"outputs": [{"variable": "summary", "value_selector": ["node1", "url"]}]},
+    }
+
+    def _generate(self, planner: dict[str, Any], configs: dict[str, dict[str, Any]], mode: str):
+        model = _ParallelBuilderModel(planner, configs)
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode=cast(Any, mode),
+            instruction="Summarize a URL",
+        )
+        return result, model
+
+    def test_auto_resolves_from_planner_mode_field(self):
+        planner = {**self._WORKFLOW_PLANNER, "mode": "workflow"}
+
+        result, model = self._generate(planner, self._WORKFLOW_CONFIGS, "auto")
+
+        assert result["error"] == ""
+        assert result["mode"] == "workflow"
+        # exactly one planner call + one builder per node — no classification call
+        assert model.planner_calls == 1
+        assert model.builder_calls == 2
+
+    def test_auto_without_mode_field_infers_from_terminal_node(self):
+        planner = {
+            "title": "Greeting Bot",
+            "description": "Echo greeting.",
+            "nodes": [
+                {"id": "node1", "label": "Start", "node_type": "start", "purpose": "Receive query."},
+                {"id": "node2", "label": "Reply", "node_type": "answer", "purpose": "Reply to user."},
+            ],
+            "edges": [{"source": "node1", "target": "node2"}],
+        }
+        configs: dict[str, dict[str, Any]] = {"node1": {"variables": []}, "node2": {"answer": "Hi!"}}
+
+        result, _ = self._generate(planner, configs, "auto")
+
+        assert result["error"] == ""
+        assert result["mode"] == "advanced-chat"
+
+    def test_auto_ignores_invalid_planner_mode_value(self):
+        planner = {**self._WORKFLOW_PLANNER, "mode": "chatbot-3000"}
+
+        result, _ = self._generate(planner, self._WORKFLOW_CONFIGS, "auto")
+
+        assert result["error"] == ""
+        assert result["mode"] == "workflow"
+
+    def test_explicit_mode_wins_over_contradictory_planner_mode(self):
+        planner = {**self._WORKFLOW_PLANNER, "mode": "advanced-chat"}
+
+        result, _ = self._generate(planner, self._WORKFLOW_CONFIGS, "workflow")
+
+        assert result["error"] == ""
+        assert result["mode"] == "workflow"
+
+    def test_auto_planner_failure_stamps_conversational_default(self):
+        model_instance = MagicMock()
+        model_instance.invoke_llm.return_value = _llm_result("not json at all")
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="auto",
+            instruction="x",
+        )
+
+        assert result["error"]
+        assert result["mode"] == "advanced-chat"
+
+    def test_auto_with_no_terminal_node_defaults_to_conversational(self):
+        from core.workflow.generator.runner import _resolve_generation_mode
+
+        plan = cast(Any, {"title": "x", "description": "x", "nodes": [{"node_type": "llm"}]})
+        assert _resolve_generation_mode("auto", plan) == "advanced-chat"
+
+    def test_auto_prompt_and_plan_event_carry_resolved_mode(self):
+        planner = {**self._WORKFLOW_PLANNER, "mode": "workflow"}
+        model = _ParallelBuilderModel(planner, self._WORKFLOW_CONFIGS)
+
+        events = list(
+            WorkflowGenerator.generate_workflow_graph_stream(
+                model_instance=model,
+                model_parameters={},
+                provider="openai",
+                model_name="gpt-4o",
+                model_mode="chat",
+                mode="auto",
+                instruction="Summarize a URL",
+            )
+        )
+
+        plan_events = [payload for name, payload in events if name == "plan"]
+        assert len(plan_events) == 1
+        assert plan_events[0]["mode"] == "workflow"
+        planner_prompt = str(model.planner_prompt_messages[-1].content)
+        assert "auto (choose workflow or advanced-chat)" in planner_prompt
 
 
 class TestWorkflowGeneratorFailurePaths:

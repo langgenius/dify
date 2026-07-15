@@ -11,11 +11,19 @@ from core.workflow.generator.prompts.node_builder_prompts import (
     format_tool_catalogue_section as format_node_tool_catalogue_section,
 )
 from core.workflow.generator.prompts.planner_prompts import (
+    PLANNER_SYSTEM_PROMPT,
     format_ideal_output_section,
 )
 from core.workflow.generator.prompts.planner_prompts import (
     format_tool_catalogue_section as format_planner_tool_catalogue_section,
 )
+
+
+class TestPlannerSystemPrompt:
+    def test_documents_the_mode_output_field(self):
+        """Auto-mode resolution rides on the planner echoing its mode choice."""
+        assert '"mode": "workflow | advanced-chat"' in PLANNER_SYSTEM_PROMPT
+        assert "When the ``# Mode`` section says auto, YOU decide" in PLANNER_SYSTEM_PROMPT
 
 
 class TestFormatIdealOutputSection:

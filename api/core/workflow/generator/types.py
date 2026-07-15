@@ -12,11 +12,10 @@ from typing import Literal, NotRequired, TypedDict
 
 WorkflowGenerationMode = Literal["workflow", "advanced-chat"]
 
-# The mode accepted at the API boundary. ``auto`` is a sentinel that asks the
-# service to classify the instruction into a concrete ``WorkflowGenerationMode``
-# (one tiny LLM call) BEFORE planning — see
-# ``WorkflowGeneratorService._resolve_mode`` and
-# ``LLMGenerator.classify_workflow_mode``.
+# The mode accepted at the API boundary. ``auto`` is a sentinel that delegates
+# the choice to the planner: it echoes a concrete mode in its ``mode`` output
+# field (falling back to terminal-node inference, then ``advanced-chat``) —
+# see ``runner._resolve_generation_mode``. No extra LLM call is involved.
 WorkflowGenerationModeRequest = Literal["workflow", "advanced-chat", "auto"]
 
 
@@ -94,6 +93,10 @@ class PlannerResultDict(TypedDict):
 
     title: str
     description: str
+    # Concrete mode the planner chose ("workflow" / "advanced-chat"). Parsed
+    # leniently — an ``auto`` request infers the mode from the terminal node
+    # when this is missing or invalid, so a bad value never fails the plan.
+    mode: NotRequired[str]
     app_name: NotRequired[str]
     icon: NotRequired[str]
     start_inputs: NotRequired[list[PlannerStartInputDict]]

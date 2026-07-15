@@ -784,6 +784,11 @@ class WorkflowConfig(BaseSettings):
         default=500,
     )
 
+    WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS: PositiveInt = Field(
+        description="Maximum concurrent node-builder LLM calls per workflow generation request",
+        default=5,
+    )
+
     WORKFLOW_MAX_EXECUTION_TIME: PositiveInt = Field(
         description="Maximum execution time in seconds for a single workflow",
         default=1200,

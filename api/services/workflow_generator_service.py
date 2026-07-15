@@ -16,13 +16,11 @@ from collections.abc import Iterator
 from typing import Any
 
 from core.app.app_config.entities import ModelConfig
-from core.llm_generator.llm_generator import LLMGenerator
 from core.model_manager import ModelInstance, ModelManager
 from core.workflow.generator import WorkflowGenerator
 from core.workflow.generator.tool_catalogue import build_tool_catalogue, format_tool_catalogue, installed_tool_keys
 from core.workflow.generator.types import (
     WorkflowGenerateResultDict,
-    WorkflowGenerationMode,
     WorkflowGenerationModeRequest,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -52,11 +50,9 @@ class WorkflowGeneratorService:
         """
         Resolve a model instance for the tenant and run the generator.
 
-        ``mode`` accepts the ``"auto"`` sentinel — when set, the instruction is
-        classified into a concrete ``workflow`` / ``advanced-chat`` mode (one
-        tiny LLM call) before planning so the rest of the pipeline runs against
-        a concrete mode. The resolved mode is echoed back under the result's
-        ``mode`` key.
+        ``mode`` accepts the ``"auto"`` sentinel — the planner itself picks the
+        concrete ``workflow`` / ``advanced-chat`` mode (no extra LLM call) and
+        the resolution is echoed back under the result's ``mode`` key.
 
         ``current_graph`` is the existing draft graph for the cmd+k `/refine`
         flow — when present the generator refines it instead of creating a new
@@ -66,9 +62,6 @@ class WorkflowGeneratorService:
         controller can map them to existing HTTP error envelopes (same
         envelope as ``/rule-generate``).
         """
-        resolved_mode = cls._resolve_mode(
-            tenant_id=tenant_id, mode=mode, instruction=instruction, model_config=model_config
-        )
         model_instance, model_parameters, tool_catalogue_text, installed_tools = cls._resolve_generation_context(
             tenant_id=tenant_id, model_config=model_config
         )
@@ -79,7 +72,7 @@ class WorkflowGeneratorService:
             provider=model_config.provider,
             model_name=model_config.name,
             model_mode=model_config.mode.value,
-            mode=resolved_mode,
+            mode=mode,
             instruction=instruction,
             ideal_output=ideal_output,
             tool_catalogue_text=tool_catalogue_text,
@@ -101,16 +94,13 @@ class WorkflowGeneratorService:
         """
         Streaming sibling of ``generate_workflow_graph``.
 
-        Resolves the same model instance / tool catalogue / concrete mode, then
-        delegates to ``WorkflowGenerator.generate_workflow_graph_stream`` and
-        yields its ``(event_name, payload)`` tuples through to the controller's
-        SSE writer. Provider-init / invoke errors raised while resolving the
-        model instance propagate to the caller (the controller emits them as a
+        Resolves the same model instance / tool catalogue, then delegates to
+        ``WorkflowGenerator.generate_workflow_graph_stream`` and yields its
+        ``(event_name, payload)`` tuples through to the controller's SSE
+        writer. Provider-init / invoke errors raised while resolving the model
+        instance propagate to the caller (the controller emits them as a
         single ``result`` SSE event).
         """
-        resolved_mode = cls._resolve_mode(
-            tenant_id=tenant_id, mode=mode, instruction=instruction, model_config=model_config
-        )
         model_instance, model_parameters, tool_catalogue_text, installed_tools = cls._resolve_generation_context(
             tenant_id=tenant_id, model_config=model_config
         )
@@ -121,35 +111,13 @@ class WorkflowGeneratorService:
             provider=model_config.provider,
             model_name=model_config.name,
             model_mode=model_config.mode.value,
-            mode=resolved_mode,
+            mode=mode,
             instruction=instruction,
             ideal_output=ideal_output,
             tool_catalogue_text=tool_catalogue_text,
             installed_tools=installed_tools,
             current_graph=current_graph,
         )
-
-    @classmethod
-    def _resolve_mode(
-        cls,
-        *,
-        tenant_id: str,
-        mode: WorkflowGenerationModeRequest,
-        instruction: str,
-        model_config: ModelConfig,
-    ) -> WorkflowGenerationMode:
-        """Resolve the request mode into a concrete generation mode.
-
-        ``"auto"`` triggers a one-word LLM classification using the model the
-        user already picked; everything else passes through unchanged. The
-        classifier never raises (defaults to ``advanced-chat``), so ``auto``
-        never blocks generation.
-        """
-        if mode == "auto":
-            return LLMGenerator.classify_workflow_mode(
-                tenant_id=tenant_id, instruction=instruction, model_config=model_config
-            )
-        return mode
 
     @classmethod
     def _resolve_generation_context(

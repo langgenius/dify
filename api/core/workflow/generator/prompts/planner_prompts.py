@@ -113,12 +113,19 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
     asked to change its config, and ``"add"`` for a new node. Removed nodes are
     omitted. Edge-only rewiring does not require changing a node's action.
 14. Output strictly the JSON object — no prose, no Markdown, no code fences.
+15. Echo the app mode in the ``mode`` output field — exactly "workflow" or
+    "advanced-chat". When the ``# Mode`` section says auto, YOU decide:
+    "workflow" for one-shot automations (run once with form inputs, return a
+    result), "advanced-chat" for conversational multi-turn assistants. The
+    terminal node must match the chosen mode (rule 2): "end" for workflow,
+    "answer" for advanced-chat.
 
 # Output schema
 
 {
   "title": "<≤ 40-char title of the workflow>",
   "description": "<one-sentence summary>",
+  "mode": "workflow | advanced-chat",
   "app_name": "<≤ 30-char product-style name, e.g. 'URL Summarizer'>",
   "icon": "<single emoji that captures the workflow's purpose, e.g. '📰'>",
   "start_inputs": [

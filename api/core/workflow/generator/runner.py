@@ -8,7 +8,7 @@ separated from the infrastructure layer.
 Pipeline:
 
     1. PLANNER  — short LLM call producing a high-level node list.
-    2. BUILDERS — up to two concurrent LLM calls producing compact node configs.
+    2. BUILDERS — bounded concurrent LLM calls producing compact node configs.
     3. POSTPROC — fill safe defaults, lay nodes out left-to-right, dedupe
                   edge ids, and run a final structural sanity check.
 
@@ -35,6 +35,7 @@ from typing import Any, ClassVar, cast
 
 import json_repair
 
+from configs import dify_config
 from core.workflow.generator.prompts.node_builder_prompts import (
     NODE_BUILDER_USER_PROMPT,
     format_parallel_plan,
@@ -59,6 +60,7 @@ from core.workflow.generator.types import (
     WorkflowGenerateErrorDict,
     WorkflowGenerateResultDict,
     WorkflowGenerationMode,
+    WorkflowGenerationModeRequest,
 )
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.entities.llm_entities import LLMResult
@@ -104,10 +106,16 @@ _DEFAULT_FILE_UPLOAD_METHODS = ("local_file", "remote_url")
 # keep the caller's budget so complex node configs are not truncated.
 _PLANNER_DEFAULT_MAX_TOKENS = 4096
 
+
 # Per-node calls trade a larger request count for a shorter critical path.
-# Two workers is intentionally conservative: it still overlaps the dominant
-# decode time without causing a large provider-side request burst.
-_NODE_BUILDER_MAX_WORKERS = 2
+# The cap comes from ``WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS`` (default 5,
+# enough to run a typical 3–6-node plan as a single wave); provider rate-limit
+# bursts are absorbed by ``_invoke_with_retry``'s bounded backoff, and operators
+# can dial the env var back down if their provider is stricter. Read at call
+# time so tests (and live config reloads) can adjust it without re-importing.
+def _node_builder_max_workers() -> int:
+    return dify_config.WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS
+
 
 _MODEL_NODE_TYPES = frozenset(
     {
@@ -212,12 +220,56 @@ def _result_with_errors(
 def _with_mode(result: WorkflowGenerateResultDict, mode: WorkflowGenerationMode) -> WorkflowGenerateResultDict:
     """Stamp the resolved concrete ``mode`` onto a result envelope.
 
-    ``mode="auto"`` requests are resolved to a concrete mode before planning;
-    echoing it back lets the frontend pick the right app type to create. It's
-    present for explicit modes too so the response shape stays uniform.
+    ``mode="auto"`` requests are resolved to a concrete mode from the planner
+    output; echoing it back lets the frontend pick the right app type to
+    create. It's present for explicit modes too so the response shape stays
+    uniform.
     """
     result["mode"] = mode
     return result
+
+
+def _fallback_mode(mode: WorkflowGenerationModeRequest) -> WorkflowGenerationMode:
+    """Concrete mode for envelopes emitted before the planner resolved one.
+
+    ``auto`` maps to the conversational default — the same never-fail fallback
+    the old standalone classifier used — so ``result.mode`` never leaks the
+    ``auto`` sentinel to the frontend.
+    """
+    return "advanced-chat" if mode == "auto" else mode
+
+
+def _planner_prompt_mode(mode: WorkflowGenerationModeRequest) -> str:
+    """Mode string interpolated into the planner user prompt.
+
+    For ``auto`` the value is self-describing so the planner knows the choice
+    is delegated to it (system-prompt rule 15).
+    """
+    return "auto (choose workflow or advanced-chat)" if mode == "auto" else mode
+
+
+def _resolve_generation_mode(
+    requested: WorkflowGenerationModeRequest, plan: PlannerResultDict
+) -> WorkflowGenerationMode:
+    """Resolve the request mode into the concrete generation mode.
+
+    An explicit request always wins — a contradictory planner ``mode`` field is
+    ignored. For ``auto``: trust the planner's echoed ``mode``, else infer from
+    the plan's terminal node type (the structural source of truth the graph is
+    validated against), else fall back to the conversational default. Lenient
+    on purpose — a bad ``mode`` value must never fail the plan.
+    """
+    if requested != "auto":
+        return requested
+    planner_mode = str(plan.get("mode") or "").strip().lower()
+    if planner_mode in ("workflow", "advanced-chat"):
+        return cast(WorkflowGenerationMode, planner_mode)
+    node_types = {str(node.get("node_type") or "") for node in plan.get("nodes") or [] if isinstance(node, dict)}
+    if BuiltinNodeTypes.ANSWER in node_types:
+        return "advanced-chat"
+    if BuiltinNodeTypes.END in node_types:
+        return "workflow"
+    return "advanced-chat"
 
 
 def _build_plan_event(
@@ -278,7 +330,7 @@ class WorkflowGenerator:
         provider: str,
         model_name: str,
         model_mode: str,
-        mode: WorkflowGenerationMode,
+        mode: WorkflowGenerationModeRequest,
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
@@ -287,6 +339,11 @@ class WorkflowGenerator:
     ) -> WorkflowGenerateResultDict:
         """
         Run planner → node builders → postprocess and return a graph payload.
+
+        ``mode`` accepts the ``"auto"`` sentinel — the planner then chooses the
+        concrete mode itself (echoed in its ``mode`` output field) so no extra
+        classification call is needed; the resolution is stamped onto the
+        result envelope.
 
         ``current_graph`` switches the pipeline from create mode to REFINE
         mode: the existing draft graph is summarized for the planner. Node
@@ -340,7 +397,7 @@ class WorkflowGenerator:
         # The event generator always emits exactly one result envelope; this
         # fallback only guards against a future refactor that forgets to.
         if result is None:
-            result = _with_mode(_empty_result(), mode)
+            result = _with_mode(_empty_result(), _fallback_mode(mode))
         return result
 
     @classmethod
@@ -352,7 +409,7 @@ class WorkflowGenerator:
         provider: str,
         model_name: str,
         model_mode: str,
-        mode: WorkflowGenerationMode,
+        mode: WorkflowGenerationModeRequest,
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
@@ -392,7 +449,7 @@ class WorkflowGenerator:
         provider: str,
         model_name: str,
         model_mode: str,
-        mode: WorkflowGenerationMode,
+        mode: WorkflowGenerationModeRequest,
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
@@ -426,11 +483,16 @@ class WorkflowGenerator:
             ),
         )
         if plan_err is not None:
-            yield "result", cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [plan_err]), mode))
+            failed = _with_mode(_result_with_errors(_empty_result(), [plan_err]), _fallback_mode(mode))
+            yield "result", cast(dict[str, Any], failed)
             return
 
         # The lambda return is non-None when no error fired — narrow it for type-checkers.
         plan = cast(PlannerResultDict, plan)
+        # ``auto`` requests resolve here — the planner echoed its mode choice
+        # (or we infer it from the plan's terminal node). Explicit modes pass
+        # through unchanged. Everything downstream uses the concrete mode.
+        resolved_mode = _resolve_generation_mode(mode, plan)
         plan_nodes: list[dict[str, Any]] = cast(list[dict[str, Any]], plan.get("nodes", []))
         if not plan_nodes:
             empty_plan = _with_mode(
@@ -438,7 +500,7 @@ class WorkflowGenerator:
                     _empty_result(),
                     [_err(WorkflowGenerateErrorCode.EMPTY_PLAN, "Planner returned no nodes")],
                 ),
-                mode,
+                resolved_mode,
             )
             yield "result", cast(dict[str, Any], empty_plan)
             return
@@ -457,7 +519,7 @@ class WorkflowGenerator:
 
         # First event the stream sees: the high-level plan, before the slower
         # builder call. Non-streaming callers ignore it.
-        yield "plan", _build_plan_event(plan=plan, plan_nodes=plan_nodes, start_inputs=start_inputs, mode=mode)
+        yield "plan", _build_plan_event(plan=plan, plan_nodes=plan_nodes, start_inputs=start_inputs, mode=resolved_mode)
 
         # ── 2. BUILDER ────────────────────────────────────────────────────
         builder_started_at = time.monotonic()
@@ -489,12 +551,15 @@ class WorkflowGenerator:
             (time.monotonic() - builder_started_at) * 1000,
         )
         if build_err is not None:
-            yield "result", cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [build_err]), mode))
+            yield (
+                "result",
+                cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [build_err]), resolved_mode)),
+            )
             return
         graph = cast(GraphDict, graph)
 
         # ── 3. POSTPROC + VALIDATE ────────────────────────────────────────
-        graph = cls._postprocess_graph(graph=graph, mode=mode)
+        graph = cls._postprocess_graph(graph=graph, mode=resolved_mode)
 
         # ``app_name`` / ``icon`` are planner display metadata; both default
         # to "" when the LLM omits them — the FE owns the fallback.
@@ -506,13 +571,13 @@ class WorkflowGenerator:
             "error": "",
             "errors": [],
         }
-        _with_mode(result, mode)
+        _with_mode(result, resolved_mode)
 
         # Final structural sanity check — fail closed if start/end shape is
         # wrong, container topology is broken, a tool was hallucinated, or a
         # variable reference points at a node that won't expose it. We still
         # return the partial graph so the caller can debug or salvage it.
-        structural_errors = cls._validate_structure(graph=graph, mode=mode, installed_tools=installed_tools)
+        structural_errors = cls._validate_structure(graph=graph, mode=resolved_mode, installed_tools=installed_tools)
         if structural_errors:
             logger.warning("Workflow generator: structural validation failed: %s", structural_errors)
             yield "result", cast(dict[str, Any], _result_with_errors(result, structural_errors))
@@ -653,14 +718,14 @@ class WorkflowGenerator:
         *,
         model_instance,
         model_parameters: dict[str, Any],
-        mode: WorkflowGenerationMode,
+        mode: WorkflowGenerationModeRequest,
         instruction: str,
         ideal_output: str,
         tool_catalogue_text: str,
         current_graph: dict[str, Any] | None = None,
     ) -> PlannerResultDict:
         user_prompt = PLANNER_USER_PROMPT.format(
-            mode=mode,
+            mode=_planner_prompt_mode(mode),
             instruction=instruction.strip(),
             existing_graph_section=format_existing_graph_section(current_graph),
             ideal_output_section=format_ideal_output_section(ideal_output),
@@ -747,8 +812,8 @@ class WorkflowGenerator:
 
         Refine plans can mark existing nodes as ``keep``; those nodes bypass
         the model entirely and retain their full data config. Every other node
-        gets one compact call, with at most ``_NODE_BUILDER_MAX_WORKERS`` calls
-        in flight. Any fragment failure aborts the graph, preserving the
+        gets one compact call, with at most ``_node_builder_max_workers()``
+        calls in flight. Any fragment failure aborts the graph, preserving the
         generator's existing fail-closed contract.
         """
         existing_by_id = {
@@ -762,7 +827,7 @@ class WorkflowGenerator:
 
         configs_by_id: dict[str, dict[str, Any]] = {}
         if nodes_to_build:
-            max_workers = min(_NODE_BUILDER_MAX_WORKERS, len(nodes_to_build))
+            max_workers = min(_node_builder_max_workers(), len(nodes_to_build))
             with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="workflow-node-builder") as executor:
                 futures = {
                     executor.submit(

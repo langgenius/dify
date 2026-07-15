@@ -403,55 +403,6 @@ class LLMGenerator:
         return "\n\n".join(sections) + "\n\n"
 
     @classmethod
-    def classify_workflow_mode(
-        cls,
-        tenant_id: str,
-        instruction: str,
-        model_config: ModelConfig,
-    ) -> Literal["workflow", "advanced-chat"]:
-        """Classify a free-text instruction into a concrete app mode.
-
-        One tiny LLM call using the model the user already picked (so no extra
-        provider setup is needed). Parsed leniently; defaults to
-        ``advanced-chat`` on anything unexpected or any error, so a
-        ``mode="auto"`` request never blocks generation. NEVER raises.
-        """
-        default_mode: Literal["workflow", "advanced-chat"] = "advanced-chat"
-        try:
-            model_instance = ModelManager.for_tenant(tenant_id=tenant_id).get_model_instance(
-                tenant_id=tenant_id,
-                model_type=ModelType.LLM,
-                provider=model_config.provider,
-                model=model_config.name,
-            )
-            prompt_messages: list[PromptMessage] = [
-                UserPromptMessage(
-                    content=(
-                        "Reply with exactly one word: 'workflow' (one-shot automation, no chat) "
-                        "or 'advanced-chat' (conversational multi-turn). "
-                        f"Instruction: {instruction.strip()}"
-                    )
-                ),
-            ]
-            response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=prompt_messages,
-                model_parameters={"max_tokens": 4, "temperature": 0},
-                stream=False,
-            )
-            text = (response.message.get_text_content() or "").strip().lower()
-        except Exception:
-            logger.info("Workflow mode classification failed; defaulting to %s", default_mode, exc_info=True)
-            return default_mode
-
-        # Lenient parse: an affirmative "workflow" wins; everything else
-        # (including a truncated / empty / garbled reply) falls back to the
-        # conversational default. "advanced-chat" needs no positive match
-        # because it IS the default.
-        if "workflow" in text:
-            return "workflow"
-        return default_mode
-
-    @classmethod
     def generate_rule_config(cls, tenant_id: str, args: RuleGeneratePayload):
         output_parser = RuleConfigGeneratorOutputParser()
 
