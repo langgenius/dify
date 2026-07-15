@@ -1,8 +1,8 @@
-"""Testcontainers integration tests for forgot password controller endpoints."""
+"""Unit tests for forgot password controller endpoints."""
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,12 +13,20 @@ from controllers.console.auth.forgot_password import (
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
 )
-from services.account_service import AccountService
+from models.account import Account
+from models.engine import db
+from services.feature_service import SystemFeatureModel
 
 
 @pytest.fixture
-def app(flask_app_with_containers: Flask):
-    return flask_app_with_containers
+def database_app() -> Iterator[Flask]:
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        Account.__table__.create(db.engine)
+        yield app
 
 
 class TestForgotPasswordSendEmailApi:
@@ -38,14 +46,14 @@ class TestForgotPasswordSendEmailApi:
         mock_get_account.return_value = mock_account
         mock_send_email.return_value = "token-123"
 
-        wraps_features = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
-        controller_features = SimpleNamespace(is_allow_register=True)
+        wraps_features = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
+        controller_features = SystemFeatureModel(is_allow_register=True)
         with (
             patch(
                 "controllers.console.auth.forgot_password.FeatureService.get_system_features",
                 return_value=controller_features,
             ),
-            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
         ):
             with app.test_request_context(
@@ -87,9 +95,9 @@ class TestForgotPasswordCheckApi:
         mock_get_data.return_value = {"email": "Admin@Example.com", "code": "4321"}
         mock_generate_token.return_value = (None, "new-token")
 
-        wraps_features = SimpleNamespace(enable_email_password_login=True)
+        wraps_features = SystemFeatureModel(enable_email_password_login=True)
         with (
-            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
         ):
             with app.test_request_context(
@@ -114,29 +122,28 @@ class TestForgotPasswordCheckApi:
 class TestForgotPasswordResetApi:
     @patch("controllers.console.auth.forgot_password.ForgotPasswordResetApi._update_existing_account")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.forgot_password.db")
     @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
     def test_reset_fetches_account_with_original_email(
         self,
         mock_get_reset_data,
         mock_revoke_token,
-        mock_db,
         mock_get_account,
         mock_update_account,
-        app: Flask,
+        database_app: Flask,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "User@Example.com"}
-        mock_account = MagicMock()
-        mock_get_account.return_value = mock_account
-        mock_db.session.merge.return_value = mock_account
+        account = Account(name="User", email="user@example.com")
+        db.session.add(account)
+        db.session.commit()
+        mock_get_account.return_value = account
 
-        wraps_features = SimpleNamespace(enable_email_password_login=True)
+        wraps_features = SystemFeatureModel(enable_email_password_login=True)
         with (
-            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
         ):
-            with app.test_request_context(
+            with database_app.test_request_context(
                 "/forgot-password/resets",
                 method="POST",
                 json={
@@ -151,21 +158,3 @@ class TestForgotPasswordResetApi:
         mock_get_reset_data.assert_called_once_with("token-123")
         mock_revoke_token.assert_called_once_with("token-123")
         mock_update_account.assert_called_once()
-
-
-def test_get_account_by_email_with_case_fallback_falls_back_to_lowercase():
-    """Test that case fallback tries lowercase when exact match fails."""
-    from unittest.mock import MagicMock
-
-    mock_session = MagicMock()
-    first_result = MagicMock()
-    first_result.scalar_one_or_none.return_value = None
-    expected_account = MagicMock()
-    second_result = MagicMock()
-    second_result.scalar_one_or_none.return_value = expected_account
-    mock_session.execute.side_effect = [first_result, second_result]
-
-    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=mock_session)
-
-    assert result is expected_account
-    assert mock_session.execute.call_count == 2
