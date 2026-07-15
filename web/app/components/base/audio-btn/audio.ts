@@ -21,7 +21,14 @@ export default class AudioPlayer {
   url: string
   isPublic: boolean
   callback: ((event: string) => void) | null
-  constructor(streamUrl: string, isPublic: boolean, msgId: string | undefined, msgContent: string | null | undefined, voice: string | undefined, callback: ((event: string) => void) | null) {
+  constructor(
+    streamUrl: string,
+    isPublic: boolean,
+    msgId: string | undefined,
+    msgContent: string | null | undefined,
+    voice: string | undefined,
+    callback: ((event: string) => void) | null,
+  ) {
     this.audioContext = new AudioContext()
     this.msgId = msgId
     this.msgContent = msgContent
@@ -32,12 +39,15 @@ export default class AudioPlayer {
     // Compatible with iphone ios17 ManagedMediaSource
     const MediaSource = window.ManagedMediaSource || window.MediaSource
     if (!MediaSource) {
-      toast.error('Your browser does not support audio streaming, if you are using an iPhone, please update to iOS 17.1 or later.')
+      toast.error(
+        'Your browser does not support audio streaming, if you are using an iPhone, please update to iOS 17.1 or later.',
+      )
     }
     this.mediaSource = MediaSource ? new MediaSource() : null
     this.audio = new Audio()
     this.setCallback(callback)
-    if (!window.MediaSource) { // if use  ManagedMediaSource
+    if (!window.MediaSource) {
+      // if use  ManagedMediaSource
       this.audio.disableRemotePlayback = true
       this.audio.controls = true
     }
@@ -54,8 +64,7 @@ export default class AudioPlayer {
 
   private listenMediaSource(contentType: string) {
     this.mediaSource?.addEventListener('sourceopen', () => {
-      if (this.sourceBuffer)
-        return
+      if (this.sourceBuffer) return
       this.sourceBuffer = this.mediaSource?.addSourceBuffer(contentType)
     })
   }
@@ -63,45 +72,81 @@ export default class AudioPlayer {
   public setCallback(callback: ((event: string) => void) | null) {
     this.callback = callback
     if (callback) {
-      this.audio.addEventListener('ended', () => {
-        callback('ended')
-      }, false)
-      this.audio.addEventListener('paused', () => {
-        callback('paused')
-      }, true)
-      this.audio.addEventListener('loaded', () => {
-        callback('loaded')
-      }, true)
-      this.audio.addEventListener('play', () => {
-        callback('play')
-      }, true)
-      this.audio.addEventListener('timeupdate', () => {
-        callback('timeupdate')
-      }, true)
-      this.audio.addEventListener('loadeddate', () => {
-        callback('loadeddate')
-      }, true)
-      this.audio.addEventListener('canplay', () => {
-        callback('canplay')
-      }, true)
-      this.audio.addEventListener('error', () => {
-        callback('error')
-      }, true)
+      this.audio.addEventListener(
+        'ended',
+        () => {
+          callback('ended')
+        },
+        false,
+      )
+      this.audio.addEventListener(
+        'paused',
+        () => {
+          callback('paused')
+        },
+        true,
+      )
+      this.audio.addEventListener(
+        'loaded',
+        () => {
+          callback('loaded')
+        },
+        true,
+      )
+      this.audio.addEventListener(
+        'play',
+        () => {
+          callback('play')
+        },
+        true,
+      )
+      this.audio.addEventListener(
+        'timeupdate',
+        () => {
+          callback('timeupdate')
+        },
+        true,
+      )
+      this.audio.addEventListener(
+        'loadeddate',
+        () => {
+          callback('loadeddate')
+        },
+        true,
+      )
+      this.audio.addEventListener(
+        'canplay',
+        () => {
+          callback('canplay')
+        },
+        true,
+      )
+      this.audio.addEventListener(
+        'error',
+        () => {
+          callback('error')
+        },
+        true,
+      )
     }
   }
 
   private async loadAudio() {
     try {
-      const audioResponse: any = await textToAudioStream(this.url, this.isPublic ? AppSourceType.webApp : AppSourceType.installedApp, { content_type: 'audio/mpeg' }, {
-        message_id: this.msgId,
-        streaming: true,
-        voice: this.voice,
-        text: this.msgContent,
-      })
+      const audioResponse: any = await textToAudioStream(
+        this.url,
+        this.isPublic ? AppSourceType.webApp : AppSourceType.installedApp,
+        { content_type: 'audio/mpeg' },
+        {
+          message_id: this.msgId,
+          streaming: true,
+          voice: this.voice,
+          text: this.msgContent,
+        },
+      )
       if (audioResponse.status !== 200) {
         this.isLoadData = false
-        if (this.callback)
-          this.callback('error')
+        if (this.callback) this.callback('error')
         return
       }
       const reader = audioResponse.body.getReader()
@@ -113,8 +158,7 @@ export default class AudioPlayer {
         }
         this.receiveAudioData(value)
       }
-    }
-    catch {
+    } catch {
       this.isLoadData = false
       this.callback?.('error')
     }
@@ -128,14 +172,12 @@ export default class AudioPlayer {
           this.audio.play()
           this.callback?.('play')
         })
-      }
-      else if (this.audio.ended) {
+      } else if (this.audio.ended) {
         this.audio.play()
         this.callback?.('play')
       }
       this.callback?.('play')
-    }
-    else {
+    } else {
       this.isLoadData = true
       this.audioContext.resume().then((_) => {
         this.audio.play()
@@ -181,13 +223,12 @@ export default class AudioPlayer {
           this.audio.play()
           this.callback?.('play')
         })
-      }
-      else if (this.audio.ended) {
+      } else if (this.audio.ended) {
         this.audio.play()
         this.callback?.('play')
-      }
-      else if (this.audio.played) { /* empty */ }
-      else {
+      } else if (this.audio.played) {
+        /* empty */
+      } else {
         this.audio.play()
         this.callback?.('play')
       }
@@ -207,20 +248,17 @@ export default class AudioPlayer {
     }
     const audioData = this.byteArrayToArrayBuffer(unit8Array)
     if (!audioData.byteLength) {
-      if (this.mediaSource?.readyState === 'open')
-        this.finishStream()
+      if (this.mediaSource?.readyState === 'open') this.finishStream()
       return
     }
     if (this.sourceBuffer?.updating) {
       this.cacheBuffers.push(audioData)
-    }
-    else {
+    } else {
       if (this.cacheBuffers.length && !this.sourceBuffer?.updating) {
         this.cacheBuffers.push(audioData)
         const cacheBuffer = this.cacheBuffers.shift()!
         this.sourceBuffer?.appendBuffer(cacheBuffer)
-      }
-      else {
+      } else {
         this.sourceBuffer?.appendBuffer(audioData)
       }
     }
