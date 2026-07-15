@@ -1,3 +1,5 @@
+"""Unit tests for Opik trace translation with SQLite-backed lookups."""
+
 import collections
 import logging
 from datetime import UTC, datetime, timedelta
@@ -8,6 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 from dify_trace_opik.config import OpikConfig
 from dify_trace_opik.opik_trace import OpikDataTrace, prepare_opik_uuid, wrap_dict, wrap_metadata
+from sqlalchemy.orm import Session
 
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
@@ -21,7 +24,7 @@ from core.ops.entities.trace_entity import (
 )
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser
-from models.enums import MessageStatus
+from models.enums import EndUserType, MessageStatus
 
 
 def _dt() -> datetime:
@@ -133,7 +136,10 @@ def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
     mocks["generate_name_trace"].assert_called_once_with(info)
 
 
-def test_workflow_trace_with_message_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
+def test_workflow_trace_with_message_id(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+) -> None:
     # Define constants for better readability
     WORKFLOW_ID = "fb05c7cd-6cec-4add-8a84-df03a408b4ce"
     WORKFLOW_RUN_ID = "33c67568-7a8a-450e-8916-a5f135baeaef"
@@ -166,9 +172,10 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch: pytest.Monk
         error="",
     )
 
-    mock_session = MagicMock()
-    monkeypatch.setattr("dify_trace_opik.opik_trace.sessionmaker", lambda bind: lambda: mock_session)
-    monkeypatch.setattr("dify_trace_opik.opik_trace.db", MagicMock(engine="engine"))
+    monkeypatch.setattr(
+        "dify_trace_opik.opik_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
 
     node_llm = MagicMock()
     node_llm.id = LLM_NODE_ID
@@ -222,7 +229,10 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch: pytest.Monk
     assert trace_instance.add_span.call_count >= 1
 
 
-def test_workflow_trace_no_message_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
+def test_workflow_trace_no_message_id(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+) -> None:
     # Define constants for better readability
     WORKFLOW_ID = "f0708b36-b1d7-42b3-a876-1d01b7d8f1a3"
     WORKFLOW_RUN_ID = "d42ec285-c2fd-4248-8866-5c9386b101ac"
@@ -251,8 +261,10 @@ def test_workflow_trace_no_message_id(trace_instance, monkeypatch: pytest.Monkey
         error="",
     )
 
-    monkeypatch.setattr("dify_trace_opik.opik_trace.sessionmaker", lambda bind: lambda: MagicMock())
-    monkeypatch.setattr("dify_trace_opik.opik_trace.db", MagicMock(engine="engine"))
+    monkeypatch.setattr(
+        "dify_trace_opik.opik_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
     mock_factory = MagicMock()
@@ -266,7 +278,10 @@ def test_workflow_trace_no_message_id(trace_instance, monkeypatch: pytest.Monkey
     trace_instance.add_trace.assert_called_once()
 
 
-def test_workflow_trace_missing_app_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
+def test_workflow_trace_missing_app_id(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+) -> None:
     trace_info = WorkflowTraceInfo(
         workflow_id="5745f1b8-f8e6-4859-8110-996acb6c8d6a",
         tenant_id="tenant-1",
@@ -287,8 +302,10 @@ def test_workflow_trace_missing_app_id(trace_instance, monkeypatch: pytest.Monke
         workflow_app_log_id="339760b2-4b94-4532-8c81-133a97e4680e",
         error="",
     )
-    monkeypatch.setattr("dify_trace_opik.opik_trace.sessionmaker", lambda bind: lambda: MagicMock())
-    monkeypatch.setattr("dify_trace_opik.opik_trace.db", MagicMock(engine="engine"))
+    monkeypatch.setattr(
+        "dify_trace_opik.opik_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
 
     with pytest.raises(ValueError, match="No app_id found in trace_info metadata"):
         trace_instance.workflow_trace(trace_info)
@@ -341,7 +358,8 @@ def test_message_trace_basic(trace_instance, monkeypatch: pytest.MonkeyPatch):
     trace_instance.add_span.assert_called_once()
 
 
-def test_message_trace_with_end_user(trace_instance, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite3_session", [(EndUser,)], indirect=True)
+def test_message_trace_with_end_user(trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session) -> None:
     message_data = MagicMock()
     message_data.id = "85411059-79fb-4deb-a76c-c2e215f1b97e"
     message_data.from_account_id = "acc-1"
@@ -371,10 +389,19 @@ def test_message_trace_with_end_user(trace_instance, monkeypatch: pytest.MonkeyP
         error=None,
     )
 
-    mock_end_user = MagicMock(spec=EndUser)
-    mock_end_user.session_id = "session-id-123"
-
-    monkeypatch.setattr("dify_trace_opik.opik_trace.db.session.get", lambda model, pk: mock_end_user)
+    end_user = EndUser(
+        id="end-user-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=EndUserType.BROWSER,
+        session_id="session-id-123",
+    )
+    sqlite3_session.add(end_user)
+    sqlite3_session.commit()
+    monkeypatch.setattr(
+        "dify_trace_opik.opik_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
 
     trace_instance.add_trace = MagicMock(return_value=MagicMock(id="trace_id_2"))
     trace_instance.add_span = MagicMock()
@@ -615,9 +642,13 @@ def test_get_project_url_error(trace_instance):
         trace_instance.get_project_url()
 
 
+@pytest.mark.parametrize("sqlite3_session", [()], indirect=True)
 def test_workflow_trace_usage_extraction_error_fixed(
-    trace_instance, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-):
+    trace_instance,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    sqlite3_session: Session,
+) -> None:
     trace_info = WorkflowTraceInfo(
         workflow_id="86a52565-4a6b-4a1b-9bfd-98e4595e70de",
         tenant_id="66e8e918-472e-4b69-8051-12502c34fc07",
@@ -663,8 +694,10 @@ def test_workflow_trace_usage_extraction_error_fixed(
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
     monkeypatch.setattr("dify_trace_opik.opik_trace.DifyCoreRepositoryFactory", mock_factory)
-    monkeypatch.setattr("dify_trace_opik.opik_trace.sessionmaker", lambda bind: lambda: MagicMock())
-    monkeypatch.setattr("dify_trace_opik.opik_trace.db", MagicMock(engine="engine"))
+    monkeypatch.setattr(
+        "dify_trace_opik.opik_trace.db",
+        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
+    )
     monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
     trace_instance.add_trace = MagicMock()
