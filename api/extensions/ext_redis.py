@@ -313,18 +313,18 @@ def _get_retry_policy() -> Retry:
             TimeoutError,
             BrokenPipeError,
             OSError,
-        )
+        ),
     )
 
 
 def _get_connection_health_params() -> RedisHealthParamsDict:
     """Get connection health and retry parameters for standalone and Sentinel Redis clients."""
     socket_keepalive_options: dict[int, int] = {}
-    if sys.platform == 'linux':
+    if sys.platform == "linux":
         socket_keepalive_options[socket.TCP_KEEPIDLE] = dify_config.REDIS_KEEPALIVE_IDLE
         socket_keepalive_options[socket.TCP_KEEPINTVL] = dify_config.REDIS_KEEPALIVE_INTERVAL
         socket_keepalive_options[socket.TCP_KEEPCNT] = dify_config.REDIS_KEEPALIVE_COUNT
-    elif sys.platform == 'darwin':
+    elif sys.platform == "darwin":
         socket_keepalive_options[socket.TCP_KEEPALIVE] = dify_config.REDIS_KEEPALIVE_IDLE
 
     return RedisHealthParamsDict(
