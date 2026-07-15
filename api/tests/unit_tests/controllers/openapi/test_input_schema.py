@@ -95,28 +95,37 @@ from models.model import AppMode
 
 
 def _stub_app(mode: AppMode, *, form: list[dict] | None = None, has_workflow: bool | None = None):
-    """Returns a MagicMock whose .mode + workflow / app_model_config branch is wired up."""
+    """Returns a MagicMock whose explicit config getters are wired up."""
     app = MagicMock()
     app.mode = mode
     if mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
         if has_workflow is False:
-            app.workflow = None
+            app.workflow_with_session.return_value = None
         else:
-            app.workflow = MagicMock()
-            app.workflow.user_input_form.return_value = form or []
-            app.workflow.features_dict = {}
+            workflow = MagicMock()
+            workflow.user_input_form.return_value = form or []
+            workflow.features_dict = {}
+            app.workflow_with_session.return_value = workflow
     else:
         if has_workflow is False:
-            app.app_model_config = None
+            app.app_model_config_with_session.return_value = None
         else:
-            app.app_model_config = MagicMock()
-            app.app_model_config.to_dict.return_value = {"user_input_form": form or []}
+            app_model_config = MagicMock()
+            app_model_config.to_dict.return_value = {"user_input_form": form or []}
+            app.app_model_config_with_session.return_value = app_model_config
     return app
+
+
+def _session() -> MagicMock:
+    session = MagicMock()
+    session.scalar.return_value = None
+    return session
 
 
 def test_chat_mode_includes_query() -> None:
     app = _stub_app(AppMode.CHAT, form=[{"text-input": {"variable": "x", "label": "X", "required": True}}])
-    schema = build_input_schema(app)
+    session = _session()
+    schema = build_input_schema(app, session=session)
     assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
     assert "query" in schema["properties"]
     assert schema["properties"]["query"]["type"] == "string"
@@ -124,30 +133,32 @@ def test_chat_mode_includes_query() -> None:
     assert "query" in schema["required"]
     assert "inputs" in schema["required"]
     assert schema["properties"]["inputs"]["additionalProperties"] is False
+    app.app_model_config_with_session.assert_called_once_with(session=session)
+    app.app_model_config_with_session.return_value.to_dict.assert_called_once_with(annotation_reply={"enabled": False})
 
 
 def test_agent_chat_mode_includes_query() -> None:
     app = _stub_app(AppMode.AGENT_CHAT, form=[])
-    schema = build_input_schema(app)
+    schema = build_input_schema(app, session=_session())
     assert "query" in schema["properties"]
 
 
 def test_advanced_chat_mode_includes_query() -> None:
     app = _stub_app(AppMode.ADVANCED_CHAT, form=[])
-    schema = build_input_schema(app)
+    schema = build_input_schema(app, session=_session())
     assert "query" in schema["properties"]
 
 
 def test_workflow_mode_omits_query() -> None:
     app = _stub_app(AppMode.WORKFLOW, form=[])
-    schema = build_input_schema(app)
+    schema = build_input_schema(app, session=_session())
     assert "query" not in schema["properties"]
     assert schema["required"] == ["inputs"]
 
 
 def test_completion_mode_omits_query() -> None:
     app = _stub_app(AppMode.COMPLETION, form=[])
-    schema = build_input_schema(app)
+    schema = build_input_schema(app, session=_session())
     assert "query" not in schema["properties"]
     assert schema["required"] == ["inputs"]
 
@@ -160,20 +171,20 @@ def test_inputs_required_driven_by_form() -> None:
             {"text-input": {"variable": "context", "label": "Context", "required": False}},
         ],
     )
-    schema = build_input_schema(app)
+    schema = build_input_schema(app, session=_session())
     assert schema["properties"]["inputs"]["required"] == ["industry"]
 
 
 def test_misconfigured_chat_raises_app_unavailable() -> None:
     app = _stub_app(AppMode.CHAT, has_workflow=False)
     with pytest.raises(AppUnavailableError):
-        build_input_schema(app)
+        build_input_schema(app, session=_session())
 
 
 def test_misconfigured_workflow_raises_app_unavailable() -> None:
     app = _stub_app(AppMode.WORKFLOW, has_workflow=False)
     with pytest.raises(AppUnavailableError):
-        build_input_schema(app)
+        build_input_schema(app, session=_session())
 
 
 def test_empty_input_schema_sentinel_shape() -> None:

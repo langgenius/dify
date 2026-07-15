@@ -2,7 +2,7 @@ import re
 
 from configs import dify_config
 from core.helper import marketplace
-from core.plugin.entities.plugin import PluginDependency, PluginInstallationSource
+from core.plugin.entities.plugin import PluginDependency, PluginDependencyType, PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
 from models.provider_ids import ModelProviderID, ToolProviderID
 
@@ -55,7 +55,7 @@ class DependenciesAnalysisService:
             unique_identifier = dependency.value.plugin_unique_identifier
             if unique_identifier in missing_plugin_unique_identifiers:
                 # Extract version for Marketplace dependencies
-                if dependency.type == PluginDependency.Type.Marketplace:
+                if dependency.type == PluginDependencyType.Marketplace:
                     version_match = _VERSION_REGEX.search(unique_identifier)
                     if version_match:
                         dependency.value.version = version_match.group("version")
@@ -84,7 +84,7 @@ class DependenciesAnalysisService:
             if plugin.source == PluginInstallationSource.Github:
                 result.append(
                     PluginDependency(
-                        type=PluginDependency.Type.Github,
+                        type=PluginDependencyType.Github,
                         value=PluginDependency.Github(
                             repo=plugin.meta["repo"],
                             version=plugin.meta["version"],
@@ -96,7 +96,7 @@ class DependenciesAnalysisService:
             elif plugin.source == PluginInstallationSource.Marketplace:
                 result.append(
                     PluginDependency(
-                        type=PluginDependency.Type.Marketplace,
+                        type=PluginDependencyType.Marketplace,
                         value=PluginDependency.Marketplace(
                             marketplace_plugin_unique_identifier=plugin.plugin_unique_identifier
                         ),
@@ -105,7 +105,7 @@ class DependenciesAnalysisService:
             elif plugin.source == PluginInstallationSource.Package:
                 result.append(
                     PluginDependency(
-                        type=PluginDependency.Type.Package,
+                        type=PluginDependencyType.Package,
                         value=PluginDependency.Package(plugin_unique_identifier=plugin.plugin_unique_identifier),
                     )
                 )
@@ -130,7 +130,7 @@ class DependenciesAnalysisService:
         deps = marketplace.batch_fetch_plugin_manifests(dependencies)
         return [
             PluginDependency(
-                type=PluginDependency.Type.Marketplace,
+                type=PluginDependencyType.Marketplace,
                 value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier=dep.latest_package_identifier),
             )
             for dep in deps

@@ -14,7 +14,11 @@ const {
 } = vi.hoisted(() => {
   const listeners: {
     update?: () => void
-    click?: (payload: { metaKey?: boolean, ctrlKey?: boolean, target?: EventTarget | null }) => boolean
+    click?: (payload: {
+      metaKey?: boolean
+      ctrlKey?: boolean
+      target?: EventTarget | null
+    }) => boolean
   } = {}
 
   const editor = {
@@ -44,11 +48,14 @@ const {
 })
 
 vi.mock('@lexical/react/LexicalComposerContext', () => ({
-  useLexicalComposerContext: () => ([mockEditor]),
+  useLexicalComposerContext: () => [mockEditor],
 }))
 
 vi.mock('@lexical/utils', () => ({
-  mergeRegister: (...cleanups: Array<() => void>) => () => cleanups.forEach(cleanup => cleanup()),
+  mergeRegister:
+    (...cleanups: Array<() => void>) =>
+    () =>
+      cleanups.forEach((cleanup) => cleanup()),
 }))
 
 vi.mock('@lexical/link', () => ({
@@ -186,7 +193,10 @@ describe('link editor hooks', () => {
         result.current.handleSaveLink('https://dify.ai/docs')
       })
 
-      expect(mockDispatchCommand).toHaveBeenCalledWith('toggle-link-command', 'https://dify.ai/docs')
+      expect(mockDispatchCommand).toHaveBeenCalledWith(
+        'toggle-link-command',
+        'https://dify.ai/docs',
+      )
       expect(mockSetLinkAnchorElement).toHaveBeenCalledWith()
     })
 

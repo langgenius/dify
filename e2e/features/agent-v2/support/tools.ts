@@ -1,5 +1,5 @@
 import type { DifyWorld } from '../../support/world'
-import { splitToolDisplayName } from './preflight/tools'
+import { splitToolDisplayName, splitToolResourceId } from './preflight/tools'
 
 export const getPreseededToolContract = (world: DifyWorld, resourceName: string) => {
   const resource = world.agentBuilder.preflight.preseededResources[resourceName]
@@ -10,11 +10,10 @@ export const getPreseededToolContract = (world: DifyWorld, resourceName: string)
   }
 
   const parsedDisplayName = splitToolDisplayName(resource.name)
-  const parsedToolId = splitToolDisplayName(resource.id)
-  if (!parsedDisplayName.ok)
-    throw new Error(parsedDisplayName.reason)
-  if (!parsedToolId.ok)
-    throw new Error(parsedToolId.reason)
+  const parsedToolId = splitToolResourceId(resource.id)
+  if (!parsedDisplayName.ok) throw new Error(parsedDisplayName.reason)
+  if (!parsedToolId.providerName || !parsedToolId.toolName)
+    throw new Error(`Preseeded tool "${resource.id}" must include provider and tool id segments.`)
 
   return {
     providerDisplayName: parsedDisplayName.providerName,

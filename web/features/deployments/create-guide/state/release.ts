@@ -13,27 +13,33 @@ import {
   selectedEnvironmentIdAtom,
   stepAtom,
 } from './primitives'
-import { deploymentOptionsContentCheckedAtom, existingInstanceNamesQueryAtom, instanceNameConflictQueryAtom } from './queries'
+import {
+  deploymentOptionsContentCheckedAtom,
+  existingInstanceNamesQueryAtom,
+  instanceNameConflictQueryAtom,
+} from './queries'
 import { sourceReady } from './source'
 
 export const hasInstanceNameConflictAtom = atom((get) => {
   const submittedInstanceName = get(instanceNameAtom).trim()
   const instanceNameConflictQuery = get(instanceNameConflictQueryAtom)
   const existingInstanceNamesQuery = get(existingInstanceNamesQueryAtom)
-  const existingInstanceNames = existingInstanceNamesQuery.data?.pages.flatMap(page =>
-    page.appInstances.flatMap((appInstance) => {
-      const name = appInstance.displayName.trim()
+  const existingInstanceNames =
+    existingInstanceNamesQuery.data?.pages.flatMap((page) =>
+      page.appInstances.flatMap((appInstance) => {
+        const name = appInstance.displayName.trim()
 
-      return name ? [name] : []
-    }),
-  ) ?? []
+        return name ? [name] : []
+      }),
+    ) ?? []
 
   return Boolean(
-    submittedInstanceName
-    && (
-      existingInstanceNames.includes(submittedInstanceName)
-      || (instanceNameConflictQuery.data?.appInstances.some(appInstance => appInstance.displayName.trim() === submittedInstanceName) ?? false)
-    ),
+    submittedInstanceName &&
+    (existingInstanceNames.includes(submittedInstanceName) ||
+      (instanceNameConflictQuery.data?.appInstances.some(
+        (appInstance) => appInstance.displayName.trim() === submittedInstanceName,
+      ) ??
+        false)),
   )
 })
 
@@ -45,10 +51,12 @@ export const releaseCanGoNextAtom = atom((get) => {
   const submittedInstanceName = get(instanceNameAtom).trim()
   const instanceNameConflictQuery = get(instanceNameConflictQueryAtom)
 
-  return Boolean(get(submittedReleaseReadyAtom))
-    && !get(hasInstanceNameConflictAtom)
-    && !(Boolean(submittedInstanceName) && instanceNameConflictQuery.isLoading)
-    && get(deploymentOptionsContentCheckedAtom)
+  return (
+    Boolean(get(submittedReleaseReadyAtom)) &&
+    !get(hasInstanceNameConflictAtom) &&
+    !(Boolean(submittedInstanceName) && instanceNameConflictQuery.isLoading) &&
+    get(deploymentOptionsContentCheckedAtom)
+  )
 })
 
 export const setInstanceNameAtom = atom(null, (_get, set, value: string) => {
@@ -74,8 +82,7 @@ export const setReleaseDescriptionAtom = atom(null, (_get, set, value: string) =
 })
 
 export const continueFromReleaseAtom = atom(null, (get, set) => {
-  if (!get(releaseCanGoNextAtom))
-    return
+  if (!get(releaseCanGoNextAtom)) return
 
   set(selectedEnvironmentIdAtom, '')
   set(manualBindingSelectionsAtom, {})

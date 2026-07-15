@@ -3,10 +3,12 @@ import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { useWorkflowVariables, useWorkflowVariableType } from '../use-workflow-variables'
 
 vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
+  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
+)
 
 vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock())
+  (await import('../../__tests__/service-mock-factory')).createToolServiceMock(),
+)
 
 const { mockToNodeAvailableVars, mockGetVarType } = vi.hoisted(() => ({
   mockToNodeAvailableVars: vi.fn((_args: Record<string, unknown>) => [] as unknown[]),

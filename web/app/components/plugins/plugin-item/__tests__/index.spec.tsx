@@ -23,12 +23,12 @@ vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => mockGetValueFromI18nObject,
 }))
 
-const mockCategoriesMap: Record<string, { name: string, label: string }> = {
-  'tool': { name: 'tool', label: 'Tools' },
-  'model': { name: 'model', label: 'Models' },
-  'extension': { name: 'extension', label: 'Extensions' },
+const mockCategoriesMap: Record<string, { name: string; label: string }> = {
+  tool: { name: 'tool', label: 'Tools' },
+  model: { name: 'model', label: 'Models' },
+  extension: { name: 'extension', label: 'Extensions' },
   'agent-strategy': { name: 'agent-strategy', label: 'Agents' },
-  'datasource': { name: 'datasource', label: 'Data Sources' },
+  datasource: { name: 'datasource', label: 'Data Sources' },
 }
 vi.mock('../../hooks', () => ({
   useCategories: () => ({
@@ -55,18 +55,68 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list',
 }))
 
 const mockLangGeniusVersionInfo = vi.fn(() => ({
+  current_env: '',
   current_version: '1.0.0',
-}))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }),
+  latest_version: '',
+  release_date: '',
+  release_notes: '',
+  version: '',
+  can_auto_update: false,
 }))
 
+const createLangGeniusVersionInfo = (currentVersion: string) => ({
+  current_env: '',
+  current_version: currentVersion,
+  latest_version: '',
+  release_date: '',
+  release_notes: '',
+  version: '',
+  can_auto_update: false,
+})
+
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
+
 vi.mock('../action', () => ({
-  default: ({ onDelete, pluginName }: { onDelete: () => void, pluginName: string }) => (
+  default: ({ onDelete, pluginName }: { onDelete: () => void; pluginName: string }) => (
     <div data-testid="plugin-action" data-plugin-name={pluginName}>
-      <button data-testid="delete-button" onClick={onDelete}>Delete</button>
+      <button data-testid="delete-button" onClick={onDelete}>
+        Delete
+      </button>
     </div>
   ),
 }))
@@ -84,11 +134,9 @@ vi.mock('../../card/base/description', () => ({
 }))
 
 vi.mock('../../card/base/org-info', () => ({
-  default: ({ orgName, packageName }: { orgName: string, packageName: string }) => (
+  default: ({ orgName, packageName }: { orgName: string; packageName: string }) => (
     <div data-testid="org-info" data-org={orgName} data-package={packageName}>
-      {orgName}
-      /
-      {packageName}
+      {orgName}/{packageName}
     </div>
   ),
 }))
@@ -98,12 +146,16 @@ vi.mock('../../base/badges/verified', () => ({
 }))
 
 vi.mock('../../../base/badge', () => ({
-  default: ({ text, hasRedCornerMark }: { text: string, hasRedCornerMark?: boolean }) => (
-    <div data-testid="version-badge" data-has-update={hasRedCornerMark}>{text}</div>
+  default: ({ text, hasRedCornerMark }: { text: string; hasRedCornerMark?: boolean }) => (
+    <div data-testid="version-badge" data-has-update={hasRedCornerMark}>
+      {text}
+    </div>
   ),
 }))
 
-const createPluginDeclaration = (overrides: Partial<PluginDeclaration> = {}): PluginDeclaration => ({
+const createPluginDeclaration = (
+  overrides: Partial<PluginDeclaration> = {},
+): PluginDeclaration => ({
   plugin_unique_identifier: 'test-plugin-id',
   version: '1.0.0',
   author: 'test-author',
@@ -162,7 +214,7 @@ describe('PluginItem', () => {
     mockTheme.mockReturnValue('light')
     mockCurrentPluginID.mockReturnValue(undefined)
     mockEnableMarketplace.mockReturnValue(true)
-    mockLangGeniusVersionInfo.mockReturnValue({ current_version: '1.0.0' })
+    mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('1.0.0'))
     mockGetValueFromI18nObject.mockImplementation((obj: Record<string, string>) => obj?.en_US || '')
   })
 
@@ -359,7 +411,7 @@ describe('PluginItem', () => {
   describe('Version Compatibility', () => {
     it('should show warning icon when Dify version is not compatible', () => {
       // Arrange
-      mockLangGeniusVersionInfo.mockReturnValue({ current_version: '0.3.0' })
+      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('0.3.0'))
       const plugin = createPluginDetail({
         declaration: createPluginDeclaration({
           meta: { version: '1.0.0', minimum_dify_version: '0.5.0' },
@@ -376,7 +428,7 @@ describe('PluginItem', () => {
 
     it('should not show warning when Dify version is compatible', () => {
       // Arrange
-      mockLangGeniusVersionInfo.mockReturnValue({ current_version: '1.0.0' })
+      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('1.0.0'))
       const plugin = createPluginDetail({
         declaration: createPluginDeclaration({
           meta: { version: '1.0.0', minimum_dify_version: '0.5.0' },
@@ -393,7 +445,7 @@ describe('PluginItem', () => {
 
     it('should handle missing current_version gracefully', () => {
       // Arrange
-      mockLangGeniusVersionInfo.mockReturnValue({ current_version: '' })
+      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo(''))
       const plugin = createPluginDetail()
 
       // Act
@@ -647,7 +699,9 @@ describe('PluginItem', () => {
 
       // Assert
       const pluginContainer = container.firstChild as HTMLElement
-      expect(pluginContainer).not.toHaveClass('border-components-option-card-option-selected-border')
+      expect(pluginContainer).not.toHaveClass(
+        'border-components-option-card-option-selected-border',
+      )
     })
 
     it('should stop propagation when action area is clicked', () => {

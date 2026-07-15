@@ -7,7 +7,9 @@ vi.mock('@/app/components/plugins/card/base/placeholder', () => ({
 }))
 
 vi.mock('../../../../base/icons/src/vender/other', () => ({
-  Group: ({ className }: { className: string }) => <span data-testid="group-icon" className={className} />,
+  Group: ({ className }: { className: string }) => (
+    <span data-testid="group-icon" className={className} />
+  ),
 }))
 
 describe('LoadingError', () => {

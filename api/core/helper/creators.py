@@ -24,7 +24,7 @@ def upload_dsl(dsl_file_bytes: bytes, filename: str = "template.yaml") -> str:
     response.raise_for_status()
     data = response.json()
     claim_code = data.get("data", {}).get("claim_code")
-    if not claim_code:
+    if not isinstance(claim_code, str) or not claim_code:
         raise ValueError("Creators Platform did not return a valid claim_code")
     return claim_code
 

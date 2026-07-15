@@ -48,14 +48,14 @@ class TestMetadataBugCompleteValidation:
         account = _make_account()
         # Should crash with TypeError
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-            MetadataService.create_metadata(Mock(), "dataset-123", mock_metadata_args, account, "tenant-123")
+            MetadataService.create_metadata("dataset-123", mock_metadata_args, account, "tenant-123", session=Mock())
 
         # Test update method as well
         account = _make_account()
         none_name = cast(str, None)
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
             MetadataService.update_metadata_name(
-                Mock(), "dataset-123", "metadata-456", none_name, account, "tenant-123"
+                "dataset-123", "metadata-456", none_name, account, "tenant-123", session=Mock()
             )
 
     def test_3_database_constraints_verification(self) -> None:
@@ -99,7 +99,7 @@ class TestMetadataBugCompleteValidation:
 
         account = _make_account()
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-            MetadataService.create_metadata(Mock(), "dataset-123", mock_metadata_args, account, "tenant-123")
+            MetadataService.create_metadata("dataset-123", mock_metadata_args, account, "tenant-123", session=Mock())
 
     def test_7_end_to_end_validation_layers(self) -> None:
         """Test all validation layers work together correctly."""

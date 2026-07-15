@@ -1,10 +1,6 @@
 import type { ChatItem, WorkflowProcess } from '../../types'
-
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  useEffect,
-  useState,
-} from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
@@ -28,10 +24,20 @@ const WorkflowProcessItem = ({
   const [collapse, setCollapse] = useState(!expand)
   const running = data.status === WorkflowRunningStatus.Running
   const succeeded = data.status === WorkflowRunningStatus.Succeeded
-  const failed = data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
+  const failed =
+    data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
   const paused = data.status === WorkflowRunningStatus.Paused
   const latestNode = data.tracing[data.tracing.length - 1]
-  const fallbackTitle = t('common.workflowProcess', { ns: 'workflow' })
+  const fallbackTitle = t(($) => $['common.workflowProcess'], { ns: 'workflow' })
+  const statusLabel = running
+    ? t(($) => $['common.workflowProcessRunning'], { ns: 'workflow' })
+    : succeeded
+      ? t(($) => $['common.workflowProcessSucceeded'], { ns: 'workflow' })
+      : failed
+        ? t(($) => $['common.workflowProcessFailed'], { ns: 'workflow' })
+        : paused
+          ? t(($) => $['common.workflowProcessPaused'], { ns: 'workflow' })
+          : undefined
   const collapsedTitle = failed
     ? data.error || latestNode?.error || latestNode?.title || fallbackTitle
     : latestNode?.title || fallbackTitle
@@ -40,14 +46,15 @@ const WorkflowProcessItem = ({
     setCollapse(!expand)
   }, [expand])
 
-  if (readonly)
-    return null
+  if (readonly) return null
 
   return (
     <div
       className={cn(
         '-mx-1 rounded-xl px-2.5',
-        collapse ? 'border-l-[0.25px] border-components-panel-border py-[7px]' : 'border-[0.5px] border-components-panel-border-subtle px-1 pt-[7px] pb-1',
+        collapse
+          ? 'border-l-[0.25px] border-components-panel-border py-[7px]'
+          : 'border-[0.5px] border-components-panel-border-subtle px-1 pt-[7px] pb-1',
         running && !collapse && 'bg-background-section-burn',
         succeeded && !collapse && 'bg-state-success-hover',
         failed && !collapse && 'bg-state-destructive-hover',
@@ -58,79 +65,78 @@ const WorkflowProcessItem = ({
       )}
       data-testid="workflow-process-item"
     >
-      <div
-        className={cn('flex cursor-pointer items-center', !collapse && 'px-1.5')}
+      <button
+        type="button"
+        className={cn(
+          'flex w-full cursor-pointer items-center border-0 bg-transparent p-0 text-left',
+          !collapse && 'px-1.5',
+        )}
+        aria-expanded={!collapse}
         onClick={() => setCollapse(!collapse)}
-        data-testid="workflow-process-header"
       >
-        {
-          running && (
-            <div
-              className="mr-1 i-ri-loader-2-line size-3.5 shrink-0 animate-spin text-text-tertiary"
-              data-testid="status-icon-running"
-            />
-          )
-        }
-        {
-          succeeded && (
-            <div
-              className="mr-1 i-custom-vender-solid-general-check-circle size-3.5 shrink-0 text-text-success"
-              data-testid="status-icon-success"
-            />
-          )
-        }
-        {
-          failed && (
-            <div
-              className="mr-1 i-ri-error-warning-fill size-3.5 shrink-0 text-text-destructive"
-              data-testid="status-icon-failed"
-            />
-          )
-        }
-        {
-          paused && (
-            <div
-              className="mr-1 i-ri-pause-circle-fill size-3.5 shrink-0 text-text-warning-secondary"
-              data-testid="status-icon-paused"
-            />
-          )
-        }
+        {running && (
+          <span
+            role="img"
+            aria-label={statusLabel}
+            className="mr-1 i-ri-loader-2-line size-3.5 shrink-0 animate-spin text-text-tertiary"
+          />
+        )}
+        {succeeded && (
+          <span
+            role="img"
+            aria-label={statusLabel}
+            className="mr-1 i-custom-vender-solid-general-check-circle size-3.5 shrink-0 text-text-success"
+          />
+        )}
+        {failed && (
+          <span
+            role="img"
+            aria-label={statusLabel}
+            className="mr-1 i-ri-error-warning-fill size-3.5 shrink-0 text-text-destructive"
+          />
+        )}
+        {paused && (
+          <span
+            role="img"
+            aria-label={statusLabel}
+            className="mr-1 i-ri-pause-circle-fill size-3.5 shrink-0 text-text-warning-secondary"
+          />
+        )}
         <div
           className={cn(
             'min-w-0 grow truncate system-xs-medium',
             collapse && failed && data.error ? 'text-text-destructive' : 'text-text-secondary',
           )}
-          data-testid="workflow-process-title"
         >
           {!collapse ? fallbackTitle : collapsedTitle}
         </div>
-        <div className={cn('ml-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary', !collapse && 'rotate-90')} />
-      </div>
-      {
-        !collapse && (
-          <div className="mt-1.5">
-            {
-              failed && data.error && (
-                <div
-                  className="mb-1.5 rounded-lg border-[0.5px] border-state-destructive-border bg-state-destructive-hover px-2 py-1.5 system-xs-regular text-text-destructive"
-                  data-testid="workflow-process-error"
-                >
-                  {data.error}
-                </div>
-              )
-            }
-            {
-              data.tracing.length > 0 && (
-                <TracingPanel
-                  list={data.tracing}
-                  hideNodeInfo={hideInfo}
-                  hideNodeProcessDetail={hideProcessDetail}
-                />
-              )
-            }
-          </div>
-        )
-      }
+        <span
+          aria-hidden
+          className={cn(
+            'ml-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary',
+            !collapse && 'rotate-90',
+          )}
+        />
+      </button>
+      {!collapse && (
+        <div className="mt-1.5">
+          {failed && data.error && (
+            <div
+              role="alert"
+              className="mb-1.5 rounded-lg border-[0.5px] border-state-destructive-border bg-state-destructive-hover px-2 py-1.5 system-xs-regular text-text-destructive"
+            >
+              {data.error}
+            </div>
+          )}
+          {data.tracing.length > 0 && (
+            <TracingPanel
+              list={data.tracing}
+              hideNodeInfo={hideInfo}
+              hideNodeProcessDetail={hideProcessDetail}
+            />
+          )}
+        </div>
+      )}
     </div>
   )
 }

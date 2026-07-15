@@ -50,12 +50,10 @@ vi.mock('@/config', async (importOriginal) => {
 // ─── Cookie helpers ──────────────────────────────────────────────────────────
 const getCookieData = () => {
   const raw = Cookies.get(PARTNER_STACK_CONFIG.cookieName)
-  if (!raw)
-    return null
+  if (!raw) return null
   try {
     return JSON.parse(raw)
-  }
-  catch {
+  } catch {
     return null
   }
 }

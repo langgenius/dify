@@ -11,41 +11,41 @@ export const useSnippetRefreshDraft = (snippetId: string) => {
   const workflowStore = useWorkflowStore()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
 
-  const handleRefreshWorkflowDraft = useCallback((onSuccess?: (draftWorkflow: SnippetWorkflow) => void) => {
-    const {
-      setDraftUpdatedAt,
-      setIsSyncingWorkflowDraft,
-      setSyncWorkflowDraftHash,
-    } = workflowStore.getState()
+  const handleRefreshWorkflowDraft = useCallback(
+    (onSuccess?: (draftWorkflow: SnippetWorkflow) => void) => {
+      const { setDraftUpdatedAt, setIsSyncingWorkflowDraft, setSyncWorkflowDraftHash } =
+        workflowStore.getState()
 
-    if (!snippetId)
-      return
+      if (!snippetId) return
 
-    setIsSyncingWorkflowDraft(true)
-    fetchSnippetDraftWorkflow(snippetId).then((response) => {
-      if (!response)
-        return
+      setIsSyncingWorkflowDraft(true)
+      fetchSnippetDraftWorkflow(snippetId)
+        .then((response) => {
+          if (!response) return
 
-      const inputFields = Array.isArray(response.input_fields)
-        ? response.input_fields as SnippetInputField[]
-        : []
+          const inputFields = Array.isArray(response.input_fields)
+            ? (response.input_fields as SnippetInputField[])
+            : []
 
-      handleUpdateWorkflowCanvas({
-        ...response.graph,
-        nodes: response.graph?.nodes || [],
-        edges: response.graph?.edges || [],
-        viewport: response.graph?.viewport || { x: 0, y: 0, zoom: 1 },
-      } as WorkflowDataUpdater)
-      useSnippetDraftStore.setState({
-        inputFields,
-      })
-      setSyncWorkflowDraftHash(response.hash)
-      setDraftUpdatedAt(response.updated_at)
-      onSuccess?.(response)
-    }).finally(() => {
-      setIsSyncingWorkflowDraft(false)
-    })
-  }, [handleUpdateWorkflowCanvas, snippetId, workflowStore])
+          handleUpdateWorkflowCanvas({
+            ...response.graph,
+            nodes: response.graph?.nodes || [],
+            edges: response.graph?.edges || [],
+            viewport: response.graph?.viewport || { x: 0, y: 0, zoom: 1 },
+          } as WorkflowDataUpdater)
+          useSnippetDraftStore.setState({
+            inputFields,
+          })
+          setSyncWorkflowDraftHash(response.hash)
+          setDraftUpdatedAt(response.updated_at)
+          onSuccess?.(response)
+        })
+        .finally(() => {
+          setIsSyncingWorkflowDraft(false)
+        })
+    },
+    [handleUpdateWorkflowCanvas, snippetId, workflowStore],
+  )
 
   return {
     handleRefreshWorkflowDraft,

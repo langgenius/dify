@@ -35,13 +35,14 @@ const STATUS_DOT_TEXT_CLASS_NAMES: Record<StatusDotStatus, string> = {
   warning: 'text-util-colors-warning-warning-600',
 }
 
-const TONE_CLASS_NAMES: Record<DeploymentStatusTone, { badge: string, dot: string }> = {
+const TONE_CLASS_NAMES: Record<DeploymentStatusTone, { badge: string; dot: string }> = {
   danger: {
     badge: 'border-util-colors-red-red-200 bg-util-colors-red-red-50 text-util-colors-red-red-700',
     dot: 'bg-util-colors-red-red-500',
   },
   info: {
-    badge: 'border-util-colors-blue-blue-200 bg-util-colors-blue-blue-50 text-util-colors-blue-blue-700',
+    badge:
+      'border-util-colors-blue-blue-200 bg-util-colors-blue-blue-50 text-util-colors-blue-blue-700',
     dot: 'bg-util-colors-blue-blue-500',
   },
   neutral: {
@@ -49,16 +50,20 @@ const TONE_CLASS_NAMES: Record<DeploymentStatusTone, { badge: string, dot: strin
     dot: 'bg-text-quaternary',
   },
   success: {
-    badge: 'border-util-colors-green-green-200 bg-util-colors-green-green-50 text-util-colors-green-green-700',
+    badge:
+      'border-util-colors-green-green-200 bg-util-colors-green-green-50 text-util-colors-green-green-700',
     dot: 'bg-util-colors-green-green-500',
   },
   warning: {
-    badge: 'border-util-colors-warning-warning-200 bg-util-colors-warning-warning-50 text-util-colors-warning-warning-700',
+    badge:
+      'border-util-colors-warning-warning-200 bg-util-colors-warning-warning-50 text-util-colors-warning-warning-700',
     dot: 'bg-util-colors-warning-warning-500',
   },
 }
 
-export function deploymentStatusLabelKey(status: RuntimeInstanceStatusValue): DeploymentStatusLabelKey {
+export function deploymentStatusLabelKey(
+  status: RuntimeInstanceStatusValue,
+): DeploymentStatusLabelKey {
   return `status.${status}`
 }
 

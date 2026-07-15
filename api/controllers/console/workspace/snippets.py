@@ -1,20 +1,20 @@
 import logging
-import re
-from datetime import datetime
-from typing import Any
 from urllib.parse import quote
+from uuid import UUID
 
 from flask import Response, request
-from flask_restx import Resource, marshal
-from pydantic import Field as PydanticField
-from pydantic import field_validator
+from flask_restx import Resource
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import NotFound
 
 from controllers.common.fields import TextFileResponse
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
+from controllers.console.app.wraps import with_session
 from controllers.console.snippets.payloads import (
     CreateSnippetPayload,
     IncludeSecretQuery,
@@ -35,18 +35,16 @@ from controllers.console.wraps import (
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from fields.snippet_fields import snippet_fields, snippet_list_fields
-from libs.helper import to_timestamp
+from fields.snippet_fields import SnippetListItemResponse, SnippetPaginationResponse, SnippetResponse
+from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.snippet import SnippetType
+from services.entities.dsl_entities import DslImportWarning
 from services.snippet_dsl_service import ImportStatus, SnippetDslService
 from services.snippet_service import SnippetService
 
 logger = logging.getLogger(__name__)
-_TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
-_CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
-_CREATORS_BRACKET_PATTERN = re.compile(r"^creators\[(\d+)\]$")
 
 
 class SnippetImportResponse(ResponseModel):
@@ -56,6 +54,7 @@ class SnippetImportResponse(ResponseModel):
     current_dsl_version: str
     imported_dsl_version: str
     error: str
+    warnings: list[DslImportWarning]
 
 
 class SnippetDependencyCheckResponse(ResponseModel):
@@ -67,115 +66,19 @@ class SnippetUseCountResponse(ResponseModel):
     use_count: int
 
 
-class SnippetTagResponse(ResponseModel):
-    id: str
-    name: str
-    type: str
-
-
-class SnippetAccountResponse(ResponseModel):
-    id: str
-    name: str
-    email: str
-
-
-class SnippetListItemResponse(ResponseModel):
-    id: str
-    name: str
-    description: str | None
-    type: SnippetType
-    version: int
-    use_count: int
-    is_published: bool
-    icon_info: dict[str, Any] | None
-    tags: list[SnippetTagResponse]
-    created_by: str | None
-    author_name: str | None
-    created_at: int
-    updated_by: str | None
-    updated_at: int
-
-    @field_validator("created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int:
-        timestamp = to_timestamp(value)
-        if timestamp is None:
-            raise ValueError("timestamp is required")
-        return timestamp
-
-
-class SnippetResponse(ResponseModel):
-    id: str
-    name: str
-    description: str | None
-    type: SnippetType
-    version: int
-    use_count: int
-    is_published: bool
-    icon_info: dict[str, Any] | None
-    graph: dict[str, Any] = PydanticField(validation_alias="graph_dict")
-    input_fields: list[dict[str, Any]] = PydanticField(validation_alias="input_fields_list")
-    tags: list[SnippetTagResponse]
-    created_by: SnippetAccountResponse | None = PydanticField(validation_alias="created_by_account")
-    created_at: int
-    updated_by: SnippetAccountResponse | None = PydanticField(validation_alias="updated_by_account")
-    updated_at: int
-
-    @field_validator("created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int:
-        timestamp = to_timestamp(value)
-        if timestamp is None:
-            raise ValueError("timestamp is required")
-        return timestamp
-
-
-class SnippetPaginationResponse(ResponseModel):
-    data: list[SnippetListItemResponse]
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-
-
 def _snippet_service() -> SnippetService:
     return SnippetService(sessionmaker(bind=db.engine, expire_on_commit=False))
 
 
-def _normalize_snippet_list_query_args(query_args: MultiDict[str, str]) -> dict[str, str | list[str]]:
-    normalized: dict[str, str | list[str]] = {}
-    indexed_tag_ids: list[tuple[int, str]] = []
-    indexed_creator_ids: list[tuple[int, str]] = []
+def _snippet_list_query_from_request() -> SnippetListQuery:
+    query_data: dict[str, str | list[str]] = dict(request.args.to_dict())
+    query_data["tag_ids"] = request.args.getlist("tag_ids")
 
-    for key in query_args:
-        match = _TAG_IDS_BRACKET_PATTERN.fullmatch(key)
-        if match:
-            indexed_tag_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
-            continue
+    creator_ids = request.args.getlist("creators") or request.args.getlist("creator_ids")
+    if creator_ids:
+        query_data["creators"] = creator_ids
 
-        match = _CREATOR_IDS_BRACKET_PATTERN.fullmatch(key) or _CREATORS_BRACKET_PATTERN.fullmatch(key)
-        if match:
-            indexed_creator_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
-            continue
-
-        if key in {"tag_ids", "creators", "creator_ids"}:
-            values = query_args.getlist(key)
-            if values:
-                normalized["creators" if key in {"creators", "creator_ids"} else key] = (
-                    values if len(values) > 1 else values[0]
-                )
-            continue
-
-        value = query_args.get(key)
-        if value is not None:
-            normalized[key] = value
-
-    if indexed_tag_ids:
-        normalized["tag_ids"] = [value for _, value in sorted(indexed_tag_ids)]
-    if indexed_creator_ids:
-        normalized["creators"] = [value for _, value in sorted(indexed_creator_ids)]
-
-    return normalized
+    return SnippetListQuery.model_validate(query_data)
 
 
 # Register Pydantic models with Swagger
@@ -210,12 +113,12 @@ class CustomizedSnippetsApi(Resource):
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
         """List customized snippets with pagination and search."""
-        query = SnippetListQuery.model_validate(_normalize_snippet_list_query_args(request.args))
+        query = _snippet_list_query_from_request()
 
         snippet_service = _snippet_service()
         snippets, total, has_more = snippet_service.get_snippets(
             tenant_id=current_tenant_id,
-            session=db.session,
+            session=db.session(),
             page=query.page,
             limit=query.limit,
             keyword=query.keyword,
@@ -224,13 +127,16 @@ class CustomizedSnippetsApi(Resource):
             tag_ids=query.tag_ids,
         )
 
-        return {
-            "data": marshal(snippets, snippet_list_fields),
-            "page": query.page,
-            "limit": query.limit,
-            "total": total,
-            "has_more": has_more,
-        }, 200
+        return dump_response(
+            SnippetPaginationResponse,
+            {
+                "data": snippets,
+                "page": query.page,
+                "limit": query.limit,
+                "total": total,
+                "has_more": has_more,
+            },
+        ), 200
 
     @console_ns.doc("create_customized_snippet")
     @console_ns.expect(console_ns.models.get(CreateSnippetPayload.__name__))
@@ -271,7 +177,7 @@ class CustomizedSnippetsApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return marshal(snippet, snippet_fields), 201
+        return dump_response(SnippetResponse, snippet), 201
 
 
 @console_ns.route("/workspaces/current/customized-snippets/<uuid:snippet_id>")
@@ -283,7 +189,7 @@ class CustomizedSnippetDetailApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, snippet_id: str):
+    def get(self, current_tenant_id: str, snippet_id: UUID):
         """Get customized snippet details."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
@@ -294,7 +200,7 @@ class CustomizedSnippetDetailApi(Resource):
         if not snippet:
             raise NotFound("Snippet not found")
 
-        return marshal(snippet, snippet_fields), 200
+        return dump_response(SnippetResponse, snippet), 200
 
     @console_ns.doc("update_customized_snippet")
     @console_ns.expect(console_ns.models.get(UpdateSnippetPayload.__name__))
@@ -343,7 +249,7 @@ class CustomizedSnippetDetailApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return marshal(snippet, snippet_fields), 200
+        return dump_response(SnippetResponse, snippet), 200
 
     @console_ns.doc("delete_customized_snippet")
     @console_ns.response(204, "Snippet deleted successfully")
@@ -353,8 +259,9 @@ class CustomizedSnippetDetailApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
+    @with_current_user
     @with_current_tenant_id
-    def delete(self, current_tenant_id: str, snippet_id: str):
+    def delete(self, current_tenant_id: str, current_user: Account, snippet_id: str):
         """Delete customized snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
@@ -370,6 +277,7 @@ class CustomizedSnippetDetailApi(Resource):
             SnippetService.delete_snippet(
                 session=session,
                 snippet=snippet,
+                account_id=current_user.id,
             )
             session.commit()
 
@@ -440,22 +348,21 @@ class CustomizedSnippetImportApi(Resource):
         RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
     )
     @with_current_user
-    def post(self, current_user: Account):
+    @with_session
+    def post(self, session: Session, current_user: Account):
         """Import snippet from DSL."""
         payload = SnippetImportPayload.model_validate(console_ns.payload or {})
 
-        with Session(db.engine) as session:
-            import_service = SnippetDslService(session)
-            result = import_service.import_snippet(
-                account=current_user,
-                import_mode=payload.mode,
-                yaml_content=payload.yaml_content,
-                yaml_url=payload.yaml_url,
-                snippet_id=payload.snippet_id,
-                name=payload.name,
-                description=payload.description,
-            )
-            session.commit()
+        import_service = SnippetDslService(session)
+        result = import_service.import_snippet(
+            account=current_user,
+            import_mode=payload.mode,
+            yaml_content=payload.yaml_content,
+            yaml_url=payload.yaml_url,
+            snippet_id=payload.snippet_id,
+            name=payload.name,
+            description=payload.description,
+        )
 
         # Return appropriate status code based on result
         status = result.status
@@ -481,12 +388,11 @@ class CustomizedSnippetImportConfirmApi(Resource):
         RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
     )
     @with_current_user
-    def post(self, current_user: Account, import_id: str):
+    @with_session
+    def post(self, session: Session, current_user: Account, import_id: str):
         """Confirm a pending snippet import."""
-        with Session(db.engine) as session:
-            import_service = SnippetDslService(session)
-            result = import_service.confirm_import(import_id=import_id, account=current_user)
-            session.commit()
+        import_service = SnippetDslService(session)
+        result = import_service.confirm_import(import_id=import_id, account=current_user)
 
         if result.status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400

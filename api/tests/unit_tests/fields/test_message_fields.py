@@ -1,4 +1,6 @@
-from fields.message_fields import ExploreMessageListItem, MessageListItem
+from decimal import Decimal
+
+from fields.message_fields import ExploreMessageListItem, MessageListItem, WebMessageListItem
 
 
 def _base_kwargs():
@@ -34,3 +36,33 @@ class TestExploreMessageListItem:
         # Guard the public service-API contract: the base item must not leak metadata.
         payload = MessageListItem(**_base_kwargs()).model_dump(mode="json")
         assert "metadata" not in payload
+
+    def test_message_list_item_exposes_usage_fields(self):
+        payload = MessageListItem(
+            **_base_kwargs(),
+            message_tokens=7,
+            answer_tokens=11,
+            provider_response_latency=1.25,
+            total_price=Decimal("0.0001234"),
+            currency="USD",
+        ).model_dump(mode="json")
+
+        assert payload["message_tokens"] == 7
+        assert payload["answer_tokens"] == 11
+        assert payload["total_tokens"] == 18
+        assert payload["provider_response_latency"] == 1.25
+        assert payload["total_price"] == "0.0001234"
+        assert payload["currency"] == "USD"
+
+    def test_web_message_list_item_exposes_usage_and_metadata(self):
+        payload = WebMessageListItem(
+            **_base_kwargs(),
+            metadata={"usage": {"total_tokens": 18}},
+            message_tokens=7,
+            answer_tokens=11,
+        ).model_dump(mode="json")
+
+        assert payload["metadata"] == {"usage": {"total_tokens": 18}}
+        assert payload["message_tokens"] == 7
+        assert payload["answer_tokens"] == 11
+        assert payload["total_tokens"] == 18

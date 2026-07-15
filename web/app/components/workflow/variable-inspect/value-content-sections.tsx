@@ -36,27 +36,25 @@ export const TextEditorSection = ({
   return (
     <>
       {isTruncated && <LargeDataAlert className="absolute inset-x-3 top-1" />}
-      {currentVar.value_type === 'string'
-        ? (
-            <DisplayContent
-              previewType={PreviewType.Markdown}
-              varType={currentVar.value_type}
-              mdString={typeof value === 'string' ? value : String(value ?? '')}
-              readonly={textEditorDisabled}
-              handleTextChange={onTextChange}
-              className={cn(isTruncated && 'pt-[36px]')}
-            />
-          )
-        : (
-            <Textarea
-              aria-label={t('errorMsg.fields.variableValue', { ns: 'workflow' })}
-              readOnly={textEditorDisabled}
-              disabled={textEditorDisabled || isTruncated}
-              className={cn('h-full', isTruncated && 'pt-[48px]')}
-              value={typeof value === 'number' ? value : String(value ?? '')}
-              onValueChange={value => onTextChange(value)}
-            />
-          )}
+      {currentVar.value_type === 'string' ? (
+        <DisplayContent
+          previewType={PreviewType.Markdown}
+          varType={currentVar.value_type}
+          mdString={typeof value === 'string' ? value : String(value ?? '')}
+          readonly={textEditorDisabled}
+          handleTextChange={onTextChange}
+          className={cn(isTruncated && 'pt-[36px]')}
+        />
+      ) : (
+        <Textarea
+          aria-label={t(($) => $['errorMsg.fields.variableValue'], { ns: 'workflow' })}
+          readOnly={textEditorDisabled}
+          disabled={textEditorDisabled || isTruncated}
+          className={cn('h-full', isTruncated && 'pt-[48px]')}
+          value={typeof value === 'number' ? value : String(value ?? '')}
+          onValueChange={(value) => onTextChange(value)}
+        />
+      )}
     </>
   )
 }
@@ -66,10 +64,7 @@ type BoolArraySectionProps = {
   onChange: (nextValue: boolean[]) => void
 }
 
-export const BoolArraySection = ({
-  values,
-  onChange,
-}: BoolArraySectionProps) => {
+export const BoolArraySection = ({ values, onChange }: BoolArraySectionProps) => {
   return (
     <div className="w-[295px] space-y-1">
       {values.map((value, index) => (
@@ -165,7 +160,10 @@ export const FileEditorSection = ({
             ...(FILE_EXTS[SupportUploadFileTypes.video] ?? []),
           ],
           allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-          number_limits: currentVar.value_type === 'file' ? 1 : fileUploadConfig?.workflow_file_upload_limit || 5,
+          number_limits:
+            currentVar.value_type === 'file'
+              ? 1
+              : fileUploadConfig?.workflow_file_upload_limit || 5,
           fileUploadConfig,
           preview_config: {
             mode: PreviewMode.NewPage,

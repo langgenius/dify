@@ -15,10 +15,8 @@ export function isIdempotentRetryMethod(method: string): boolean {
 }
 
 export function shouldRetry(target: Response | unknown, ctx: FetchContext): boolean {
-  if (!RETRY_METHODS_SET.has(ctx.options.method))
-    return false
-  if (target instanceof Response)
-    return RETRY_STATUS_SET.has(target.status)
+  if (!RETRY_METHODS_SET.has(ctx.options.method)) return false
+  if (target instanceof Response) return RETRY_STATUS_SET.has(target.status)
   // Any other transport error on a retryable method retries. User aborts are filtered
   // out earlier in dispatch (before this hook ever runs), so they never reach here.
   return true
@@ -30,8 +28,7 @@ const BACKOFF_BASE_MS = 300
 const BACKOFF_CAP_MS = 30_000
 
 export function backoffDelay(attempt: number): number {
-  if (attempt <= 0)
-    return 0
+  if (attempt <= 0) return 0
   const exp = BACKOFF_BASE_MS * 2 ** (attempt - 1)
   return Math.min(exp, BACKOFF_CAP_MS)
 }

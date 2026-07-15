@@ -92,7 +92,6 @@ def test_get_service_account_with_tenant_success(mock_db_session):
 
     mock_account = MagicMock(spec=Account)
     mock_account.id = "creator_id"
-    mock_account.set_tenant_id = MagicMock()
 
     mock_tenant_join = MagicMock(spec=TenantAccountJoin)
     mock_tenant_join.tenant_id = "tenant_id"
@@ -105,4 +104,4 @@ def test_get_service_account_with_tenant_success(mock_db_session):
     result = instance.get_service_account_with_tenant("some_app_id")
 
     assert result == mock_account
-    mock_account.set_tenant_id.assert_called_once_with("tenant_id")
+    mock_account.set_tenant_id_with_session.assert_called_once_with("tenant_id", session=mock_db_session)

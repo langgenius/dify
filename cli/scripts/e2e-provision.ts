@@ -26,7 +26,6 @@ import { Buffer } from 'node:buffer'
  * Output file:
  *   .provision-output.json   (also written to GITHUB_OUTPUT if set)
  */
-
 import { appendFile, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -36,7 +35,7 @@ import { fileURLToPath } from 'node:url'
 const host = process.env.DIFY_E2E_HOST ?? ''
 const email = process.env.DIFY_E2E_EMAIL ?? ''
 const password = process.env.DIFY_E2E_PASSWORD ?? ''
-const edition = ((process.env.DIFY_E2E_EDITION ?? 'ee').toLowerCase()) as 'ee' | 'ce'
+const edition = (process.env.DIFY_E2E_EDITION ?? 'ee').toLowerCase() as 'ee' | 'ce'
 const preToken = process.env.DIFY_E2E_TOKEN ?? ''
 
 if (!host || !email || !password) {
@@ -49,10 +48,10 @@ const base = host.replace(/\/$/, '')
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function sleep(ms: number) {
-  return new Promise(r => setTimeout(r, ms))
+  return new Promise((r) => setTimeout(r, ms))
 }
 
-async function consoleLogin(): Promise<{ cookieString: string, csrfToken: string }> {
+async function consoleLogin(): Promise<{ cookieString: string; csrfToken: string }> {
   const passwordB64 = Buffer.from(password, 'utf8').toString('base64')
   const res = await fetch(`${base}/console/api/login`, {
     method: 'POST',
@@ -60,14 +59,15 @@ async function consoleLogin(): Promise<{ cookieString: string, csrfToken: string
     body: JSON.stringify({ email, password: passwordB64, remember_me: false }),
     signal: AbortSignal.timeout(15_000),
   })
-  if (!res.ok)
-    throw new Error(`console/api/login failed: HTTP ${res.status}`)
+  if (!res.ok) throw new Error(`console/api/login failed: HTTP ${res.status}`)
 
   const setCookies = res.headers.getSetCookie?.() ?? []
-  const cookieString = setCookies.map(c => c.split(';')[0]).join('; ')
+  const cookieString = setCookies.map((c) => c.split(';')[0]).join('; ')
   // cookie names may have __Host- prefix on HTTPS deployments
-  const csrfPair = setCookies.map(c => c.split(';')[0]).find(p => p.includes('csrf_token='))
-  const csrfToken = csrfPair ? csrfPair.slice(csrfPair.indexOf('csrf_token=') + 'csrf_token='.length) : ''
+  const csrfPair = setCookies.map((c) => c.split(';')[0]).find((p) => p.includes('csrf_token='))
+  const csrfToken = csrfPair
+    ? csrfPair.slice(csrfPair.indexOf('csrf_token=') + 'csrf_token='.length)
+    : ''
   return { cookieString, csrfToken }
 }
 
@@ -78,8 +78,9 @@ async function validateToken(token: string): Promise<boolean> {
       signal: AbortSignal.timeout(10_000),
     })
     return res.ok
+  } catch {
+    return false
   }
-  catch { return false }
 }
 
 async function mintToken(cookieStr: string, csrf: string, label: string): Promise<string> {
@@ -90,28 +91,27 @@ async function mintToken(cookieStr: string, csrf: string, label: string): Promis
     body: JSON.stringify({ client_id: 'difyctl', device_label: label }),
     signal: AbortSignal.timeout(15_000),
   })
-  if (!codeRes.ok)
-    throw new Error(`device/code failed: HTTP ${codeRes.status}`)
-  const { device_code, user_code } = await codeRes.json() as { device_code: string, user_code: string }
+  if (!codeRes.ok) throw new Error(`device/code failed: HTTP ${codeRes.status}`)
+  const { device_code, user_code } = (await codeRes.json()) as {
+    device_code: string
+    user_code: string
+  }
 
   // Step 2: approve (with retry)
   let approveRes: Response | undefined
   for (let i = 1; i <= 5; i++) {
     approveRes = await fetch(`${base}/openapi/v1/oauth/device/approve`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cookie': cookieStr, 'X-CSRFToken': csrf },
+      headers: { 'Content-Type': 'application/json', Cookie: cookieStr, 'X-CSRFToken': csrf },
       body: JSON.stringify({ user_code }),
       signal: AbortSignal.timeout(10_000),
     })
-    if (approveRes.ok)
-      break
-    if (approveRes.status !== 429 && approveRes.status < 500)
-      break
+    if (approveRes.ok) break
+    if (approveRes.status !== 429 && approveRes.status < 500) break
     console.warn(`[provision] device/approve HTTP ${approveRes.status}; retry ${i}/5 in ${i * 2}s`)
     await sleep(i * 2_000)
   }
-  if (!approveRes?.ok)
-    throw new Error(`device/approve failed: HTTP ${approveRes?.status}`)
+  if (!approveRes?.ok) throw new Error(`device/approve failed: HTTP ${approveRes?.status}`)
 
   // Step 3: exchange token
   const tokenRes = await fetch(`${base}/openapi/v1/oauth/device/token`, {
@@ -120,39 +120,42 @@ async function mintToken(cookieStr: string, csrf: string, label: string): Promis
     body: JSON.stringify({ device_code, client_id: 'difyctl' }),
     signal: AbortSignal.timeout(10_000),
   })
-  if (!tokenRes.ok)
-    throw new Error(`device/token failed: HTTP ${tokenRes.status}`)
-  const body = await tokenRes.json() as { token?: string }
-  if (!body.token)
-    throw new Error(`device/token missing token: ${JSON.stringify(body)}`)
+  if (!tokenRes.ok) throw new Error(`device/token failed: HTTP ${tokenRes.status}`)
+  const body = (await tokenRes.json()) as { token?: string }
+  if (!body.token) throw new Error(`device/token missing token: ${JSON.stringify(body)}`)
   return body.token
 }
 
 async function discoverWorkspaces(cookieStr: string, csrf: string) {
   const res = await fetch(`${base}/console/api/workspaces`, {
-    headers: { 'Cookie': cookieStr, 'X-CSRF-Token': csrf },
+    headers: { Cookie: cookieStr, 'X-CSRF-Token': csrf },
     signal: AbortSignal.timeout(10_000),
   })
-  if (!res.ok)
-    throw new Error(`list workspaces failed: HTTP ${res.status}`)
-  const data = await res.json() as { workspaces?: Array<{ id: string, name: string }> }
+  if (!res.ok) throw new Error(`list workspaces failed: HTTP ${res.status}`)
+  const data = (await res.json()) as { workspaces?: Array<{ id: string; name: string }> }
   const all = data.workspaces ?? []
 
   if (edition === 'ee') {
-    const ws0 = all.find(w => w.name === 'auto_test0')
-    const ws1 = all.find(w => w.name === 'auto_test1')
-    if (!ws0)
-      throw new Error('[provision] EE: workspace "auto_test0" not found')
+    const ws0 = all.find((w) => w.name === 'auto_test0')
+    const ws1 = all.find((w) => w.name === 'auto_test1')
+    if (!ws0) throw new Error('[provision] EE: workspace "auto_test0" not found')
     console.warn(`[provision] EE primary:   ${ws0.name} (${ws0.id})`)
-    console.warn(`[provision] EE secondary: ${ws1?.name ?? 'reuses primary'} (${ws1?.id ?? ws0.id})`)
+    console.warn(
+      `[provision] EE secondary: ${ws1?.name ?? 'reuses primary'} (${ws1?.id ?? ws0.id})`,
+    )
     return { primaryWsId: ws0.id, primaryWsName: ws0.name, secondaryWsId: ws1?.id ?? ws0.id }
   }
 
-  const auto = all.filter(w => w.name.toLowerCase().includes('auto')).sort((a, b) => a.name.localeCompare(b.name))
+  const auto = all
+    .filter((w) => w.name.toLowerCase().includes('auto'))
+    .sort((a, b) => a.name.localeCompare(b.name))
   const primary = auto[0] ?? all[0]
-  if (!primary)
-    throw new Error('[provision] No workspaces found')
-  return { primaryWsId: primary.id, primaryWsName: primary.name, secondaryWsId: auto[1]?.id ?? primary.id }
+  if (!primary) throw new Error('[provision] No workspaces found')
+  return {
+    primaryWsId: primary.id,
+    primaryWsName: primary.name,
+    secondaryWsId: auto[1]?.id ?? primary.id,
+  }
 }
 
 async function provisionApps(
@@ -162,7 +165,7 @@ async function provisionApps(
   secondaryWsId: string,
 ): Promise<Record<string, string>> {
   const mkH = (extra: Record<string, string> = {}) => ({
-    'Cookie': cookieStr,
+    Cookie: cookieStr,
     'X-CSRF-Token': csrf,
     ...extra,
   })
@@ -202,9 +205,10 @@ async function provisionApps(
       }
 
       const dsl = await readFile(join(fixturesDir, dslFile), 'utf8')
-      const appName = (dsl.match(/^[ \t]+name:[ \t]*(\S[^\n]*)$/m) ?? [])[1]
-        ?.trim()
-        .replace(/^['"]|['"]$/g, '') ?? dslFile
+      const appName =
+        (dsl.match(/^[ \t]+name:[ \t]*(\S[^\n]*)$/m) ?? [])[1]
+          ?.trim()
+          .replace(/^['"]|['"]$/g, '') ?? dslFile
       const appMode = (dsl.match(/^[ \t]+mode:[ \t]*(\S+)/m) ?? [])[1] ?? ''
 
       // Find existing or import
@@ -212,34 +216,34 @@ async function provisionApps(
         `${base}/console/api/apps?name=${encodeURIComponent(appName)}&limit=50&page=1`,
         { headers: mkH(), signal: AbortSignal.timeout(10_000) },
       )
-      const searchData = await searchRes.json() as { data?: Array<{ id: string, name: string }> }
-      let appId = searchData.data?.find(a => a.name === appName)?.id
+      const searchData = (await searchRes.json()) as { data?: Array<{ id: string; name: string }> }
+      let appId = searchData.data?.find((a) => a.name === appName)?.id
 
       if (appId) {
         console.warn(`[provision] ${dslFile}: exists id=${appId}`)
-      }
-      else {
+      } else {
         const importRes = await fetch(`${base}/console/api/apps/imports`, {
           method: 'POST',
           headers: { ...mkH(), 'Content-Type': 'application/json' },
           body: JSON.stringify({ mode: 'yaml-content', yaml_content: dsl }),
           signal: AbortSignal.timeout(30_000),
         })
-        const importData = await importRes.json() as { app_id?: string, import_id?: string }
+        const importData = (await importRes.json()) as { app_id?: string; import_id?: string }
         if (importRes.status === 202 && importData.import_id) {
-          const confirmRes = await fetch(`${base}/console/api/apps/imports/${importData.import_id}/confirm`, {
-            method: 'POST',
-            headers: mkH(),
-            signal: AbortSignal.timeout(15_000),
-          })
-          const confirmData = await confirmRes.json() as { app_id?: string }
+          const confirmRes = await fetch(
+            `${base}/console/api/apps/imports/${importData.import_id}/confirm`,
+            {
+              method: 'POST',
+              headers: mkH(),
+              signal: AbortSignal.timeout(15_000),
+            },
+          )
+          const confirmData = (await confirmRes.json()) as { app_id?: string }
           appId = confirmData.app_id
-        }
-        else {
+        } else {
           appId = importData.app_id
         }
-        if (!appId)
-          throw new Error(`import failed: ${JSON.stringify(importData)}`)
+        if (!appId) throw new Error(`import failed: ${JSON.stringify(importData)}`)
         console.warn(`[provision] ${dslFile}: imported id=${appId}`)
       }
 
@@ -270,8 +274,7 @@ async function provisionApps(
       }
 
       results[envVar] = appId
-    }
-    catch (err) {
+    } catch (err) {
       console.warn(`[provision] ${dslFile} skipped: ${err}`)
     }
   }
@@ -281,7 +284,9 @@ async function provisionApps(
 
 async function writeOutputs(outputs: Record<string, string>) {
   const ghOutput = process.env.GITHUB_OUTPUT
-  const lines = `${Object.entries(outputs).map(([k, v]) => `${k}=${v}`).join('\n')}\n`
+  const lines = `${Object.entries(outputs)
+    .map(([k, v]) => `${k}=${v}`)
+    .join('\n')}\n`
 
   // Always write local JSON for debugging
   const { writeFile } = await import('node:fs/promises')
@@ -310,18 +315,19 @@ async function main() {
 
   // 2. Token
   let primaryToken = preToken
-  if (primaryToken && await validateToken(primaryToken)) {
+  if (primaryToken && (await validateToken(primaryToken))) {
     console.warn(`[provision] Using pre-set token: ${primaryToken.slice(0, 20)}…`)
-  }
-  else {
-    if (primaryToken)
-      console.warn('[provision] Pre-set token invalid, minting fresh…')
+  } else {
+    if (primaryToken) console.warn('[provision] Pre-set token invalid, minting fresh…')
     primaryToken = await mintToken(cookieString, csrfToken, 'e2e-provision')
     console.warn(`[provision] Minted token: ${primaryToken.slice(0, 20)}…`)
   }
 
   // 3. Discover workspaces
-  const { primaryWsId, primaryWsName, secondaryWsId } = await discoverWorkspaces(cookieString, csrfToken)
+  const { primaryWsId, primaryWsName, secondaryWsId } = await discoverWorkspaces(
+    cookieString,
+    csrfToken,
+  )
 
   // 4. Provision apps
   const appIds = await provisionApps(cookieString, csrfToken, primaryWsId, secondaryWsId)
@@ -333,10 +339,16 @@ async function main() {
   //     their describe calls rejected with "workspace_id does not match app's workspace".
   await fetch(`${base}/console/api/workspaces/switch`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Cookie': cookieString, 'X-CSRF-Token': csrfToken },
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: cookieString,
+      'X-CSRF-Token': csrfToken,
+    },
     body: JSON.stringify({ tenant_id: primaryWsId }),
     signal: AbortSignal.timeout(10_000),
-  }).catch((err: unknown) => console.warn(`[provision] switch-back to primary failed (non-fatal): ${err}`))
+  }).catch((err: unknown) =>
+    console.warn(`[provision] switch-back to primary failed (non-fatal): ${err}`),
+  )
   console.warn(`[provision] Session workspace reset to primary: ${primaryWsId}`)
 
   // 5. Write outputs

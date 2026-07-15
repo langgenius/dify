@@ -1,0 +1,30 @@
+// shellctl-runner-exit persists a drained runner exit into the shellctl SQLite DB.
+// It runs after the tmux output pipe reaches EOF and output.log is fully flushed.
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+
+	runnerexit "github.com/langgenius/dify/dify-agent-runtime/internal/runner_exit"
+)
+
+func main() {
+	stateDir := flag.String("state-dir", "", "shellctl state directory")
+	jobID := flag.String("job-id", "", "job identifier")
+	exitCode := flag.Int("exit-code", 0, "runner process exit code")
+	endedAt := flag.String("ended-at", "", "ISO-8601 ended_at timestamp")
+	busyTimeoutMs := flag.Int("sqlite-busy-timeout-ms", 5000, "SQLite busy timeout in milliseconds")
+	flag.Parse()
+
+	if *stateDir == "" || *jobID == "" || *endedAt == "" {
+		fmt.Fprintf(os.Stderr, "shellctl-runner-exit: --state-dir, --job-id, and --ended-at are required\n")
+		os.Exit(1)
+	}
+
+	if err := runnerexit.RecordRunnerExit(*stateDir, *jobID, *exitCode, *endedAt, *busyTimeoutMs); err != nil {
+		fmt.Fprintf(os.Stderr, "shellctl-runner-exit: %v\n", err)
+		os.Exit(1)
+	}
+}

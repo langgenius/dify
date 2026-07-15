@@ -1,7 +1,6 @@
 import type { ISavedItemsProps } from '../index'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
-
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -19,9 +18,7 @@ const mockCopy = vi.mocked(copy)
 const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
 
 const baseProps: ISavedItemsProps = {
-  list: [
-    { id: '1', answer: 'hello world' },
-  ],
+  list: [{ id: '1', answer: 'hello world' }],
   isShowTextToSpeech: true,
   onRemove: vi.fn(),
   onStartCreateContent: vi.fn(),
