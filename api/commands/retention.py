@@ -1,6 +1,8 @@
 import datetime
 import logging
+import re
 import time
+import uuid
 from collections.abc import Callable
 from typing import TypedDict
 
@@ -21,6 +23,7 @@ from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 logger = logging.getLogger(__name__)
 
 _HEX_PREFIXES = tuple("0123456789abcdef")
+_TARGET_MONTH_PATTERN = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 
 
 class WorkflowRunArchivePlanRow(TypedDict):
@@ -72,6 +75,27 @@ def _parse_comma_separated_ids(raw_ids: str | None, *, param_name: str) -> list[
     if not parsed:
         raise click.BadParameter(f"{param_name} must not be empty")
     return parsed
+
+
+def _parse_archive_target_month(target_month: str) -> tuple[int, int]:
+    """Validate the V2 catalog month selector and return its numeric components."""
+    if not _TARGET_MONTH_PATTERN.fullmatch(target_month):
+        raise click.BadParameter("target-month must use YYYY-MM format", param_hint="--target-month")
+    year_text, month_text = target_month.split("-", maxsplit=1)
+    return int(year_text), int(month_text)
+
+
+def _parse_archive_catalog_cursor(after_catalog_id: str | None) -> str | None:
+    """Normalize the exclusive V2 catalog keyset cursor when one is provided."""
+    if after_catalog_id is None:
+        return None
+    try:
+        return str(uuid.UUID(after_catalog_id))
+    except ValueError as exc:
+        raise click.BadParameter(
+            "after-catalog-id must be a UUID returned by the same V2 operation and scope",
+            param_hint="--after-catalog-id",
+        ) from exc
 
 
 def _get_archive_candidate_tenant_ids_by_prefix(
@@ -810,9 +834,11 @@ def backfill_workflow_run_archive_bundles(
         click.echo(click.style(f"  ... and {len(summary.errors) - 10} more failures", fg="red"))
 
 
-def _echo_bundle_archive_operation_summary(summary) -> None:
+def _echo_bundle_archive_operation_summary(summary, *, dry_run: bool) -> None:
     status = "completed successfully" if summary.bundles_failed == 0 else "completed with failures"
     fg = "green" if summary.bundles_failed == 0 else "red"
+    cursor_label = "preview_next_catalog_id" if dry_run else "next_catalog_id"
+    cursor_value = summary.preview_next_catalog_id if dry_run else summary.next_catalog_id
     click.echo(
         click.style(
             f"{summary.operation} {status}. "
@@ -821,10 +847,12 @@ def _echo_bundle_archive_operation_summary(summary) -> None:
             f"archive_bytes={summary.archive_bytes} duration={summary.elapsed_time:.2f}s "
             f"validation_time={summary.validation_time:.2f}s "
             f"runs_per_second={summary.runs_per_second:.2f} rows_per_second={summary.rows_per_second:.2f} "
-            f"bytes_per_second={summary.bytes_per_second:.2f}",
+            f"bytes_per_second={summary.bytes_per_second:.2f} {cursor_label}={cursor_value or 'none'}",
             fg=fg,
         )
     )
+    if dry_run:
+        click.echo(click.style("Dry-run cursor is preview-only; do not persist it for a destructive run.", fg="yellow"))
     click.echo(click.style("table,row_count", fg="white"))
     for table_name in [
         "workflow_runs",
@@ -842,7 +870,8 @@ def _echo_bundle_archive_operation_summary(summary) -> None:
                 click.style(
                     f"  bundle={result.bundle_id} tenant={result.tenant_id} runs={result.run_count} "
                     f"rows={result.row_count} archive_bytes={result.archive_bytes} "
-                    f"time={result.elapsed_time:.2f}s validation={result.validation_time:.2f}s",
+                    f"catalog_id={result.catalog_id} time={result.elapsed_time:.2f}s "
+                    f"validation={result.validation_time:.2f}s",
                     fg="white",
                 )
             )
@@ -850,7 +879,7 @@ def _echo_bundle_archive_operation_summary(summary) -> None:
             click.echo(
                 click.style(
                     f"  failed bundle={result.bundle_id} tenant={result.tenant_id} "
-                    f"object_prefix={result.object_prefix} error={result.error}",
+                    f"catalog_id={result.catalog_id} object_prefix={result.object_prefix} error={result.error}",
                     fg="red",
                 )
             )
@@ -867,25 +896,24 @@ def _echo_bundle_archive_operation_summary(summary) -> None:
 )
 @click.option("--run-id", required=False, help="Workflow run ID to restore.")
 @click.option(
-    "--start-from",
-    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    "--target-month",
+    metavar="YYYY-MM",
     default=None,
-    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+    help="V2 catalog month to restore; required unless --run-id is used.",
 )
 @click.option(
-    "--end-before",
-    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    "--after-catalog-id",
     default=None,
-    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
+    help="Exclusive V2 cursor from the same restore month and tenant scope.",
 )
 @click.option("--workers", default=1, show_default=True, type=int, help="V1 --run-id compatibility only.")
-@click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of V2 bundles to restore.")
+@click.option("--limit", type=click.IntRange(min=1), default=100, show_default=True, help="Maximum V2 catalog rows.")
 @click.option("--dry-run", is_flag=True, help="Preview without restoring.")
 def restore_workflow_runs(
     tenant_ids: str | None,
     run_id: str | None,
-    start_from: datetime.datetime | None,
-    end_before: datetime.datetime | None,
+    target_month: str | None,
+    after_catalog_id: str | None,
     workers: int,
     limit: int,
     dry_run: bool,
@@ -911,17 +939,18 @@ def restore_workflow_runs(
         if not parsed_tenant_ids:
             raise click.BadParameter("tenant-ids must not be empty")
 
-    if (start_from is None) ^ (end_before is None):
-        raise click.UsageError("--start-from and --end-before must be provided together.")
-    if run_id is None and (start_from is None or end_before is None):
-        raise click.UsageError("--start-from and --end-before are required for batch restore.")
     if workers < 1:
         raise click.BadParameter("workers must be at least 1")
+    if run_id is not None and (target_month is not None or after_catalog_id is not None):
+        raise click.UsageError("--target-month and --after-catalog-id are only valid for V2 batch restore.")
+    if run_id is None and target_month is None:
+        raise click.UsageError("--target-month is required for V2 batch restore.")
 
     start_time = datetime.datetime.now(datetime.UTC)
+    target_desc = f"workflow run {run_id}" if run_id else f"workflow archive catalog month {target_month}"
     click.echo(
         click.style(
-            f"Starting restore of workflow run {run_id} at {start_time.isoformat()}.",
+            f"Starting restore of {target_desc} at {start_time.isoformat()}.",
             fg="white",
         )
     )
@@ -955,17 +984,20 @@ def restore_workflow_runs(
         click.echo(
             click.style("--workers is ignored for V2 bundle restore; bundles are processed serially.", fg="yellow")
         )
-    assert start_from is not None
-    assert end_before is not None
+    assert target_month is not None
+    target_year, target_month_number = _parse_archive_target_month(target_month)
+    catalog_cursor = _parse_archive_catalog_cursor(after_catalog_id)
     bundle_restorer = WorkflowRunBundleArchiveMaintenance(dry_run=dry_run, strict_content_validation=True)
     summary = bundle_restorer.restore_batch(
         tenant_ids=parsed_tenant_ids,
-        start_date=start_from,
-        end_date=end_before,
+        target_year=target_year,
+        target_month=target_month_number,
+        after_catalog_id=catalog_cursor,
         limit=limit,
     )
-    _echo_bundle_archive_operation_summary(summary)
-    return
+    _echo_bundle_archive_operation_summary(summary, dry_run=dry_run)
+    if summary.bundles_failed:
+        raise click.exceptions.Exit(1)
 
 
 @click.command(
@@ -979,23 +1011,22 @@ def restore_workflow_runs(
 )
 @click.option("--run-id", required=False, help="Workflow run ID to delete.")
 @click.option(
-    "--start-from",
-    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    "--target-month",
+    metavar="YYYY-MM",
     default=None,
-    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+    help="V2 catalog month to delete; required unless --run-id is used.",
 )
 @click.option(
-    "--end-before",
-    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    "--after-catalog-id",
     default=None,
-    help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
+    help="Exclusive V2 cursor from the same delete month and tenant scope.",
 )
-@click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of V2 bundles to delete.")
+@click.option("--limit", type=click.IntRange(min=1), default=100, show_default=True, help="Maximum V2 catalog rows.")
 @click.option("--dry-run", is_flag=True, help="Preview without deleting.")
 @click.option(
     "--skip-bad-archives",
     is_flag=True,
-    help="Continue batch deletion when one archive object fails validation.",
+    help="V1 --run-id only: continue when one archive object fails validation.",
 )
 @click.option(
     "--restore-sample-interval",
@@ -1007,8 +1038,8 @@ def restore_workflow_runs(
 def delete_archived_workflow_runs(
     tenant_ids: str | None,
     run_id: str | None,
-    start_from: datetime.datetime | None,
-    end_before: datetime.datetime | None,
+    target_month: str | None,
+    after_catalog_id: str | None,
     limit: int,
     dry_run: bool,
     skip_bad_archives: bool,
@@ -1029,15 +1060,17 @@ def delete_archived_workflow_runs(
         if not parsed_tenant_ids:
             raise click.BadParameter("tenant-ids must not be empty")
 
-    if (start_from is None) ^ (end_before is None):
-        raise click.UsageError("--start-from and --end-before must be provided together.")
-    if run_id is None and (start_from is None or end_before is None):
-        raise click.UsageError("--start-from and --end-before are required for batch delete.")
     if restore_sample_interval < 0:
         raise click.BadParameter("restore-sample-interval must be >= 0")
+    if run_id is not None and (target_month is not None or after_catalog_id is not None):
+        raise click.UsageError("--target-month and --after-catalog-id are only valid for V2 batch delete.")
+    if run_id is None and target_month is None:
+        raise click.UsageError("--target-month is required for V2 batch delete.")
+    if run_id is None and skip_bad_archives:
+        raise click.UsageError("--skip-bad-archives is not supported for V2 catalog batches; they fail fast.")
 
     start_time = datetime.datetime.now(datetime.UTC)
-    target_desc = f"workflow run {run_id}" if run_id else "workflow runs"
+    target_desc = f"workflow run {run_id}" if run_id else f"workflow archive catalog month {target_month}"
     click.echo(
         click.style(
             f"Starting delete of {target_desc} at {start_time.isoformat()}.",
@@ -1110,20 +1143,20 @@ def delete_archived_workflow_runs(
 
     if restore_sample_interval:
         click.echo(click.style("--restore-sample-interval is ignored for V2 bundle delete.", fg="yellow"))
-    assert start_from is not None
-    assert end_before is not None
-    bundle_deleter = WorkflowRunBundleArchiveMaintenance(
-        dry_run=dry_run,
-        strict_content_validation=True,
-        stop_on_error=not skip_bad_archives,
-    )
+    assert target_month is not None
+    target_year, target_month_number = _parse_archive_target_month(target_month)
+    catalog_cursor = _parse_archive_catalog_cursor(after_catalog_id)
+    bundle_deleter = WorkflowRunBundleArchiveMaintenance(dry_run=dry_run, strict_content_validation=True)
     summary = bundle_deleter.delete_batch(
         tenant_ids=parsed_tenant_ids,
-        start_date=start_from,
-        end_date=end_before,
+        target_year=target_year,
+        target_month=target_month_number,
+        after_catalog_id=catalog_cursor,
         limit=limit,
     )
-    _echo_bundle_archive_operation_summary(summary)
+    _echo_bundle_archive_operation_summary(summary, dry_run=dry_run)
+    if summary.bundles_failed:
+        raise click.exceptions.Exit(1)
 
 
 def _find_orphaned_draft_variables(batch_size: int = 1000) -> list[str]:

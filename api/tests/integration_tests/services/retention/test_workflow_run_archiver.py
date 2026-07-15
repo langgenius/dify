@@ -513,11 +513,27 @@ class TestArchiveRunIdempotency:
         storage = MagicMock()
         storage.object_exists.return_value = True
 
-        result = archiver._archive_bundle(MagicMock(), storage, [run])
+        with patch.object(archiver, "_sync_existing_bundle_index") as sync_existing_bundle_index:
+            result = archiver._archive_bundle(MagicMock(), storage, [run])
 
         assert result.success is True
         assert result.skipped is True
         assert result.error == "bundle already archived"
+        sync_existing_bundle_index.assert_called_once()
+
+    def test_existing_bundle_catalog_publication_failure_is_not_success(self):
+        archiver = WorkflowRunArchiver(days=90)
+        run = _run()
+        session = MagicMock()
+        storage = MagicMock()
+        storage.object_exists.return_value = True
+
+        with patch.object(archiver, "_sync_existing_bundle_index", side_effect=RuntimeError("catalog unavailable")):
+            result = archiver._archive_bundle(session, storage, [run])
+
+        assert result.success is False
+        assert result.error == "catalog unavailable"
+        session.rollback.assert_called_once()
 
     def test_successful_bundle_persists_archive_index(self):
         archiver = WorkflowRunArchiver(days=90)
@@ -549,6 +565,28 @@ class TestArchiveRunIdempotency:
         assert archived_bundle.workflow_run_count == 1
         assert archived_bundle.row_count == 2
         session.commit.assert_called_once()
+
+    def test_new_bundle_catalog_commit_failure_is_not_success(self):
+        archiver = WorkflowRunArchiver(days=90)
+        run = _run(str(uuid.uuid4()))
+        run.tenant_id = str(uuid.uuid4())
+        session = MagicMock()
+        session.scalar.return_value = None
+        session.commit.side_effect = RuntimeError("catalog commit failed")
+        storage = MagicMock()
+        storage.object_exists.return_value = False
+        storage.list_objects.return_value = []
+        table_data = {"workflow_runs": [{"id": run.id, "tenant_id": run.tenant_id}]}
+
+        with (
+            patch.object(archiver, "_lock_runs_for_archive", return_value=[run]),
+            patch.object(archiver, "_extract_bundle_data", return_value=table_data),
+        ):
+            result = archiver._archive_bundle(session, storage, [run])
+
+        assert result.success is False
+        assert result.error == "catalog commit failed"
+        session.rollback.assert_called_once()
 
     def test_index_skips_all_already_archived_runs(self):
         archiver = WorkflowRunArchiver(days=90)

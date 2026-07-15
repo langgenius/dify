@@ -6,7 +6,8 @@ This service archives workflow run logs for paid plan users older than the confi
 
 Archive V2 writes bundle-level Parquet objects. A bundle contains many workflow runs and their related table rows.
 Bundle metadata lives in the object-store manifest as the recoverable source of truth. Completed bundles are also
-mirrored into a small database index so console listing and download jobs do not list object storage online.
+published into a small database catalog so console listing, download, and maintenance jobs do not list object storage
+online. Archive success requires that catalog publication to commit; retries reconcile only their known manifest key.
 
 Archive campaigns should use fixed absolute UTC windows for every tenant-prefix/shard execution. Relative windows are
 evaluated at process start and are not safe for multi-day rollout because each command would scan a different window.
@@ -639,7 +640,6 @@ class WorkflowRunArchiver:
                 if storage is None:
                     raise ArchiveStorageNotConfiguredError("Archive storage not configured")
                 if storage.object_exists(self._get_manifest_object_key(identity)):
-                    self._write_bundle_index(storage, identity)
                     self._sync_existing_bundle_index(session, storage, identity)
                     result.success = True
                     result.skipped = True
@@ -651,6 +651,8 @@ class WorkflowRunArchiver:
                 runs = [run for run in runs if run.id not in archived_run_ids]
                 result.skipped_run_count = original_run_count - len(runs)
                 if not runs:
+                    # Historical catalog rows are a rollout precondition. New bundles commit their catalog row before
+                    # publishing the shard index, so this idempotency path never needs to rescan prior manifests.
                     result.run_count = 0
                     result.success = True
                     result.skipped = True
@@ -663,7 +665,6 @@ class WorkflowRunArchiver:
                 result.object_prefix = identity.object_prefix
                 result.run_count = len(runs)
                 if storage.object_exists(self._get_manifest_object_key(identity)):
-                    self._write_bundle_index(storage, identity)
                     self._sync_existing_bundle_index(session, storage, identity)
                     result.success = True
                     result.skipped = True
@@ -695,10 +696,10 @@ class WorkflowRunArchiver:
                 for table_name, payload in table_payloads.items():
                     storage.put_object(self._get_table_object_key(identity, table_name), payload)
                 storage.put_object(self._get_manifest_object_key(identity), manifest_data)
-                self._merge_bundle_manifest_into_index(storage, identity, [run.id for run in runs])
                 manifest = decode_archive_bundle_manifest(manifest_data)
                 upsert_archive_bundle_index_from_manifest(session, manifest, len(manifest_data))
                 session.commit()
+                self._merge_bundle_manifest_into_index(storage, identity, [run.id for run in runs])
 
                 logger.info(
                     "Archived workflow run bundle %s: tenant=%s runs=%s tables=%s object_prefix=%s",
@@ -730,16 +731,12 @@ class WorkflowRunArchiver:
         storage: ArchiveStorage,
         identity: ArchiveBundleIdentity,
     ) -> None:
-        """Best-effort DB index sync for a bundle whose manifest already exists in archive storage."""
+        """Publish a known manifest to the DB catalog before reporting archive success."""
         manifest_key = self._get_manifest_object_key(identity)
-        try:
-            manifest_data = storage.get_object(manifest_key)
-            manifest = decode_archive_bundle_manifest(manifest_data)
-            upsert_archive_bundle_index_from_manifest(session, manifest, len(manifest_data))
-            session.commit()
-        except Exception:
-            session.rollback()
-            logger.warning("Failed to sync workflow archive bundle index for %s", manifest_key, exc_info=True)
+        manifest_data = storage.get_object(manifest_key)
+        manifest = decode_archive_bundle_manifest(manifest_data)
+        upsert_archive_bundle_index_from_manifest(session, manifest, len(manifest_data))
+        session.commit()
 
     def _lock_runs_for_archive(
         self,

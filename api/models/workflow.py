@@ -1467,6 +1467,7 @@ class WorkflowRunArchiveBundle(DefaultFieldsDCMixin, TypeBase):
             name="workflow_run_archive_bundle_identity_uq",
         ),
         sa.Index("workflow_run_archive_bundle_tenant_month_idx", "tenant_id", "year", "month"),
+        sa.Index("workflow_run_archive_bundle_month_id_idx", "year", "month", "id"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
