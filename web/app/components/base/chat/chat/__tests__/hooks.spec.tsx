@@ -1323,19 +1323,25 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const prevChatTree = [{
-        id: 'q-1',
-        content: 'query',
-        isAnswer: false,
-        children: [{
-          id: 'm-1',
-          content: 'initial',
-          isAnswer: true,
-          siblingIndex: 0,
-        }],
-      }]
+      const prevChatTree = [
+        {
+          id: 'q-1',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-1',
+              content: 'initial',
+              isAnswer: true,
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
 
-      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree as ChatItemInTree[]))
+      const { result } = renderHook(() =>
+        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
+      )
 
       act(() => {
         result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
@@ -1363,19 +1369,25 @@ describe('useChat', () => {
         callbacks = options as HookCallbacks
       })
 
-      const prevChatTree = [{
-        id: 'q-1',
-        content: 'query',
-        isAnswer: false,
-        children: [{
-          id: 'm-1',
-          content: 'initial',
-          isAnswer: true,
-          siblingIndex: 0,
-        }],
-      }]
+      const prevChatTree = [
+        {
+          id: 'q-1',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-1',
+              content: 'initial',
+              isAnswer: true,
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
 
-      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree as ChatItemInTree[]))
+      const { result } = renderHook(() =>
+        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
+      )
 
       act(() => {
         result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
