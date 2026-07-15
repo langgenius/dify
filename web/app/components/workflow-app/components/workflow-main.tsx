@@ -297,7 +297,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       invalidateConversationVarValues,
       accessControl: {
         canEdit: appACLCapabilities.canEdit,
-        canComment: appACLCapabilities.canComment,
         canRun: appACLCapabilities.canTestAndRun,
         canImportExportDSL: appACLCapabilities.canImportExportDSL,
         canReleaseAndVersion: appACLCapabilities.canReleaseAndVersion,
