@@ -1138,7 +1138,7 @@ export type AppVariableConfig = {
 }
 
 export type AgentConfigFileRefConfig = {
-  file_id?: string | null
+  file_id?: string
   file_kind: 'tool_file' | 'upload_file'
   hash?: string | null
   is_missing?: boolean
@@ -1494,7 +1494,7 @@ export type AgentEnvVariableConfig = {
 
 export type AgentFileRefConfig = {
   drive_key?: string | null
-  file_id?: string
+  file_id?: string | null
   id?: string | null
   name?: string | null
   reference?: string | null

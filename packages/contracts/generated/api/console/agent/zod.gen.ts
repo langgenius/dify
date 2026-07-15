@@ -1195,7 +1195,7 @@ export const zAppVariableConfig = z.object({
  * Stable Agent Soul reference to one config file payload.
  */
 export const zAgentConfigFileRefConfig = z.object({
-  file_id: z.string().max(255).nullish(),
+  file_id: z.string().max(255).optional().default(''),
   file_kind: z.enum(['tool_file', 'upload_file']),
   hash: z.string().nullish(),
   is_missing: z.boolean().optional().default(false),
@@ -1591,7 +1591,7 @@ export const zAgentEnvVariableConfig = z.object({
  */
 export const zAgentFileRefConfig = z.object({
   drive_key: z.string().max(512).nullish(),
-  file_id: z.string().max(255).optional().default(''),
+  file_id: z.string().max(255).nullish(),
   id: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
   reference: z.string().max(255).nullish(),

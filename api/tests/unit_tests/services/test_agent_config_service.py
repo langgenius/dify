@@ -587,11 +587,14 @@ def test_manifest_preserves_missing_config_assets_and_pull_rejects_them() -> Non
 
 def test_config_asset_refs_require_file_id_unless_marked_missing() -> None:
     assert AgentFileRefConfig().file_id is None
-    assert AgentConfigFileRefConfig(
-        name="guide.txt",
-        file_kind="upload_file",
-        is_missing=True,
-    ).file_id == ""
+    assert (
+        AgentConfigFileRefConfig(
+            name="guide.txt",
+            file_kind="upload_file",
+            is_missing=True,
+        ).file_id
+        == ""
+    )
     with pytest.raises(ValueError, match="file_id is required"):
         AgentConfigSkillRefConfig(name="alpha")
     with pytest.raises(ValueError, match="must not retain"):
