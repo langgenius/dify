@@ -20,6 +20,8 @@ type CreateInlineAgentBindingOptions = {
   onSuccess?: (binding: CreatedInlineAgentBinding) => void
 }
 
+const INLINE_AGENT_CREATION_REFETCH_INTERVAL = 1000
+
 export function useAgentRosterDetail(agentId?: string) {
   return useQuery(
     consoleQuery.agent.byAgentId.get.queryOptions({
@@ -34,8 +36,25 @@ export function useAgentRosterDetail(agentId?: string) {
   )
 }
 
-export function useWorkflowInlineAgentDetail(nodeId?: string, agentId?: string | null) {
+export function useWorkflowInlineAgentDetail(
+  nodeId?: string,
+  agentId?: string | null,
+  options?: {
+    pollUntilReady?: boolean
+  },
+) {
   const configsMap = useHooksStore((state) => state.configsMap)
+  const refetchUntilReady = options?.pollUntilReady
+    ? {
+        refetchInterval: (query: {
+          state: {
+            data?: {
+              agent?: unknown
+            }
+          }
+        }) => (query.state.data?.agent ? false : INLINE_AGENT_CREATION_REFETCH_INTERVAL),
+      }
+    : {}
 
   const appComposerQuery = useQuery(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions({
@@ -48,6 +67,7 @@ export function useWorkflowInlineAgentDetail(nodeId?: string, agentId?: string |
               },
             }
           : skipToken,
+      ...refetchUntilReady,
     }),
   )
   const snippetComposerQuery = useQuery(
@@ -62,6 +82,7 @@ export function useWorkflowInlineAgentDetail(nodeId?: string, agentId?: string |
                 },
               }
             : skipToken,
+        ...refetchUntilReady,
       },
     ),
   )

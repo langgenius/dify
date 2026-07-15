@@ -140,19 +140,28 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
     inputs.agent_binding?.binding_type === 'roster_agent'
       ? inputs.agent_binding.agent_id
       : undefined
-  const inlineAgentId =
+  const sourceInlineAgentId =
     inputs.agent_binding?.binding_type === 'inline_agent'
       ? inputs.agent_binding.agent_id
       : undefined
   const isInlineAgentReady = hasValidInlineAgentBinding(inputs)
   const isInlineAgentPending =
     inputs.agent_binding?.binding_type === 'inline_agent' && !isInlineAgentReady
-  const isInlineAgentPanelOpen =
-    (isInlineAgentReady || isInlineAgentPending) && openInlineAgentPanelNodeId === id
   const rosterAgentQuery = useAgentRosterDetail(rosterAgentId)
-  const inlineAgentQuery = useWorkflowInlineAgentDetail(id, inlineAgentId)
+  const inlineAgentQuery = useWorkflowInlineAgentDetail(id, sourceInlineAgentId, {
+    pollUntilReady: isInlineAgentReady,
+  })
   const { createInlineAgentBinding, isCreatingInlineAgent } = useCreateInlineAgentBinding()
   const inlineAgent = inlineAgentQuery.data?.agent
+  const inlineAgentBinding = inlineAgentQuery.data?.binding
+  const inlineAgentId =
+    inlineAgentBinding?.binding_type === 'inline_agent' && inlineAgentBinding.agent_id
+      ? inlineAgentBinding.agent_id
+      : sourceInlineAgentId
+  const isInlineAgentCreated = isInlineAgentReady && !!inlineAgent
+  const isInlineAgentWaitingForCreation = isInlineAgentReady && !isInlineAgentCreated
+  const isInlineAgentPanelOpen =
+    (isInlineAgentCreated || isInlineAgentPending) && openInlineAgentPanelNodeId === id
   const { isPending: isAppCopyingFromRoster, mutate: copyFromRosterApp } = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post.mutationOptions(),
   )
@@ -161,9 +170,10 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   )
   const isCopyingFromRoster = isAppCopyingFromRoster || isSnippetCopyingFromRoster
   const isAgentPanelOpen =
-    isInlineAgentReady || isInlineAgentPending ? isInlineAgentPanelOpen : isRosterAgentPanelOpen
-  const isInlineAgentLoading = isInlineAgentPending || (isInlineAgentReady && !inlineAgent)
-  const isAgentBindingPending = isInlineAgentPending || isCreatingInlineAgent
+    isInlineAgentCreated || isInlineAgentPending ? isInlineAgentPanelOpen : isRosterAgentPanelOpen
+  const isInlineAgentLoading = isInlineAgentPending || isInlineAgentWaitingForCreation
+  const isAgentBindingPending =
+    isInlineAgentPending || isInlineAgentWaitingForCreation || isCreatingInlineAgent
   const canStartFromScratch = inputs.agent_binding?.binding_type !== 'inline_agent'
   const canSaveInlineToRoster = isInlineAgentReady && !!inlineAgent
   const inlineComposerStateForPanel = inlineAgentQuery.data
@@ -478,6 +488,8 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
 
   const handleAgentPanelOpenChange = useCallback(
     (open: boolean) => {
+      if (open && isInlineAgentWaitingForCreation) return
+
       if (isInlineAgentReady || isInlineAgentPending) {
         if (open) setIsInlineAgentPanelOpenedFromTrigger(true)
 
@@ -502,6 +514,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       isCreatingInlineAgent,
       isInlineAgentPending,
       isInlineAgentReady,
+      isInlineAgentWaitingForCreation,
       setOpenInlineAgentPanelNodeId,
     ],
   )
@@ -606,9 +619,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       />
       <div className="border-b border-divider-subtle">
         <AgentRosterField
-          agent={displayedAgent}
+          agent={isInlineAgentWaitingForCreation ? undefined : displayedAgent}
           agentId={rosterAgentId ?? inlineAgentId ?? (isInlineAgentPending ? id : undefined)}
-          canOpenPanel
+          canOpenPanel={!isInlineAgentWaitingForCreation}
           isInlineSetup={isInlineAgentReady || isInlineAgentPending}
           isLoading={isInlineAgentLoading}
           isPanelCopyPending={isCopyingFromRoster}

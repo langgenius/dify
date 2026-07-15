@@ -4,6 +4,7 @@ import type { MouseEvent, ReactNode } from 'react'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
   FileTreeBadge,
@@ -30,6 +31,7 @@ import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { DocsLink } from '../common/docs-link'
 import { ConfigureSectionEmpty } from '../common/empty'
+import { MissingReferenceWarning } from '../common/missing-reference-warning'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentConfigApiContext } from '../config-context'
@@ -241,7 +243,10 @@ function AgentFileItem({
             <button
               type="button"
               aria-current={selected ? 'true' : undefined}
-              className="group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+              className={cn(
+                'group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+                file.isMissing && 'pr-6',
+              )}
             />
           }
         >
@@ -273,7 +278,18 @@ function AgentFileItem({
           }}
         />
       </Dialog>
-      <div className="pointer-events-none absolute top-1/2 right-1 z-10 flex -translate-y-1/2 items-center justify-end gap-1 opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100">
+      {file.isMissing && (
+        <MissingReferenceWarning
+          className="absolute top-1/2 right-1 -translate-y-1/2"
+          label={t(($) => $['agentDetail.configure.files.missing'])}
+        />
+      )}
+      <div
+        className={cn(
+          'pointer-events-none absolute top-1/2 z-10 flex -translate-y-1/2 items-center justify-end gap-1 opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100',
+          file.isMissing ? 'right-7' : 'right-1',
+        )}
+      >
         <button
           type="button"
           aria-label={t(($) => $['agentDetail.configure.files.download'], { name: file.name })}

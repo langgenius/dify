@@ -69,18 +69,36 @@ const mockSnippetComposerMutationOptions = vi.hoisted(() =>
     mutationFn: mockSnippetComposerMutationFn,
   })),
 )
-const mockAppComposerQueryFn = vi.hoisted(() => vi.fn(async () => ({ agent: { id: 'app-agent' } })))
+const mockAppComposerQueryFn = vi.hoisted(() =>
+  vi.fn(async (): Promise<{ agent?: { id: string } }> => ({ agent: { id: 'app-agent' } })),
+)
 const mockSnippetComposerQueryFn = vi.hoisted(() =>
   vi.fn(async () => ({ agent: { id: 'snippet-agent' } })),
 )
 const mockAppComposerQueryOptions = vi.hoisted(() =>
-  vi.fn(({ input }: { input: symbol | { params: { app_id: string; node_id: string } } }) => ({
-    queryKey:
-      typeof input === 'symbol'
-        ? ['workflow-agent-composer-disabled']
-        : ['workflow-agent-composer', input.params.app_id, input.params.node_id],
-    queryFn: typeof input === 'symbol' ? input : mockAppComposerQueryFn,
-  })),
+  vi.fn(
+    (options: {
+      input: symbol | { params: { app_id: string; node_id: string } }
+      refetchInterval?: (query: {
+        state: {
+          data?: {
+            agent?: unknown
+          }
+        }
+      }) => number | false
+    }) => {
+      const { input } = options
+
+      return {
+        queryKey:
+          typeof input === 'symbol'
+            ? ['workflow-agent-composer-disabled']
+            : ['workflow-agent-composer', input.params.app_id, input.params.node_id],
+        queryFn: typeof input === 'symbol' ? input : mockAppComposerQueryFn,
+        refetchInterval: options.refetchInterval,
+      }
+    },
+  ),
 )
 const mockSnippetComposerQueryOptions = vi.hoisted(() =>
   vi.fn(({ input }: { input: symbol | { params: { snippet_id: string; node_id: string } } }) => ({
@@ -204,6 +222,38 @@ describe('useWorkflowInlineAgentDetail', () => {
     })
     expect(mockSnippetComposerQueryFn).toHaveBeenCalled()
     expect(mockAppComposerQueryFn).not.toHaveBeenCalled()
+  })
+
+  it('polls until a copied inline agent composer is created for the new node', async () => {
+    mockAppComposerQueryFn.mockResolvedValueOnce({ agent: undefined })
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+    const { result } = renderWorkflowHook(
+      () =>
+        useWorkflowInlineAgentDetail('copied-node', 'source-inline-agent', {
+          pollUntilReady: true,
+        }),
+      {
+        queryClient,
+        hooksStoreProps: {
+          configsMap: {
+            flowId: 'app-1',
+            flowType: FlowType.appFlow,
+            fileSettings: {} as never,
+          },
+        },
+      },
+    )
+
+    await waitFor(() => expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(2), {
+      timeout: 1500,
+    })
+    expect(result.current.data).toEqual({ agent: { id: 'app-agent' } })
   })
 })
 

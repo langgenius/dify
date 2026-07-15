@@ -211,6 +211,40 @@ describe('AgentFiles', () => {
     }))
   })
 
+  it('should show a warning for missing files', () => {
+    renderAgentFiles({
+      initialDraft: createInitialDraft({
+        files: [
+          {
+            id: 'missing.pdf',
+            name: 'missing.pdf',
+            icon: 'pdf',
+            fileId: 'missing-file-id',
+            configName: 'missing.pdf',
+            isMissing: true,
+          },
+          {
+            id: 'available.pdf',
+            name: 'available.pdf',
+            icon: 'pdf',
+            fileId: 'available-file-id',
+            configName: 'available.pdf',
+          },
+        ],
+      }),
+    })
+
+    const warning = screen.getByRole('button', {
+      name: 'agentV2.agentDetail.configure.files.missing',
+    })
+    expect(warning.querySelector('.i-ri-alert-fill')).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', {
+        name: 'agentV2.agentDetail.configure.files.missing',
+      }),
+    ).toHaveLength(1)
+  })
+
   it('should delete configured files by config name', async () => {
     const { container } = renderAgentFiles()
 

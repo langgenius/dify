@@ -268,6 +268,37 @@ describe('AgentSkills', () => {
     }))
   })
 
+  it('should show a warning for missing skills', () => {
+    renderAgentSkills({
+      initialDraft: {
+        ...defaultAgentSoulConfigFormState,
+        skills: [
+          {
+            id: 'Missing Skill',
+            name: 'Missing Skill',
+            fileId: 'missing-skill-id',
+            isMissing: true,
+          },
+          {
+            id: 'Available Skill',
+            name: 'Available Skill',
+            fileId: 'available-skill-id',
+          },
+        ],
+      },
+    })
+
+    const warning = screen.getByRole('button', {
+      name: 'agentV2.agentDetail.configure.skills.missing',
+    })
+    expect(warning.querySelector('.i-ri-alert-fill')).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', {
+        name: 'agentV2.agentDetail.configure.skills.missing',
+      }),
+    ).toHaveLength(1)
+  })
+
   it('should delete a configured skill by config name', async () => {
     const { container } = renderAgentSkills()
 

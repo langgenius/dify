@@ -693,6 +693,76 @@ describe('agent/panel', () => {
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
   })
 
+  it('does not open copied inline agent configuration before its composer is created', () => {
+    mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
+    mockUseWorkflowInlineAgentDetail.mockReturnValue({
+      data: undefined,
+      isFetching: false,
+      refetch: mockWorkflowInlineAgentDetailRefetch,
+    })
+
+    const { container, rerender } = render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'source-inline-agent',
+            current_snapshot_id: 'source-inline-snapshot',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: /^workflow\.nodes\.agent\.roster\.openPanel/,
+      }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    mockUseWorkflowInlineAgentDetail.mockReturnValue({
+      data: {
+        agent: {
+          id: 'cloned-inline-agent',
+          name: 'Cloned Workflow Agent',
+          description: '',
+          scope: 'workflow_only',
+          status: 'active',
+        },
+        binding: {
+          binding_type: 'inline_agent',
+          agent_id: 'cloned-inline-agent',
+          current_snapshot_id: 'cloned-inline-snapshot',
+        },
+      },
+      isFetching: false,
+      refetch: mockWorkflowInlineAgentDetailRefetch,
+    })
+    rerender(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'source-inline-agent',
+            current_snapshot_id: 'source-inline-snapshot',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByRole('dialog', { name: 'Cloned Workflow Agent' })).toBeInTheDocument()
+    expect(mockOrchestratePanelContentProps.at(-1)).toMatchObject({
+      agentId: 'cloned-inline-agent',
+      nodeId: 'agent-node',
+      open: true,
+    })
+  })
+
   it('uses the detail header when opening an existing inline agent from the roster trigger', () => {
     const { rerender } = render(
       <AgentV2Panel
@@ -918,7 +988,7 @@ describe('agent/panel', () => {
     expect(screen.queryByRole('button', { name: 'Start from Scratch' })).not.toBeInTheDocument()
   })
 
-  it('opens the inline panel while workflow composer state is still loading', () => {
+  it('keeps the inline panel closed while workflow composer state is still loading', () => {
     mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
     mockUseWorkflowInlineAgentDetail.mockReturnValue({
       data: undefined,
@@ -942,20 +1012,15 @@ describe('agent/panel', () => {
 
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
     expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
-    const panel = screen.getByRole('dialog', {
-      name: 'workflow.nodes.agent.roster.inlineSetup.name',
-    })
-    expect(panel).toBeInTheDocument()
     expect(
-      within(panel).queryByRole('button', { name: 'workflow.nodes.agent.roster.more' }),
+      screen.queryByRole('button', {
+        name: /^workflow\.nodes\.agent\.roster\.openPanel/,
+      }),
     ).not.toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
-    expect(mockOrchestratePanelContentProps.at(-1)).toMatchObject({
-      agentId: 'inline-agent-1',
-      inlineComposerState: undefined,
-      nodeId: 'agent-node',
-      open: true,
-    })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'inline-orchestrate-panel' }),
+    ).not.toBeInTheDocument()
   })
 
   it('recovers the inline setup panel open state from the node open marker', () => {
