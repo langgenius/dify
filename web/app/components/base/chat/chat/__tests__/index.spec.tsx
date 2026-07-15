@@ -1,5 +1,6 @@
 import type { ChatConfig, ChatItem, OnSend } from '../../types'
 import type { ChatProps } from '../index'
+import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -10,8 +11,8 @@ import Chat from '../index'
 // Answer        – transitively pulls Markdown (rehype/remark/katex), AgentContent,
 //                 WorkflowProcessItem and Operation; none can resolve in the test DOM runtime.
 // Question      – pulls Markdown, copy-to-clipboard, react-textarea-autosize.
-// ChatInputArea – pulls js-audio-recorder (requires Web Audio API unavailable in
-//                 the test DOM runtime) and VoiceInput / FileContextProvider chains.
+// ChatInputArea – pulls browser audio APIs unavailable in the test DOM runtime
+//                 and the VoiceInput / FileContextProvider chains.
 // PromptLogModal– pulls CopyFeedbackNew and deep modal dep chain.
 // AgentLogModal – pulls @remixicon/react (causes lint push error), useClickAway
 //                 from ahooks, and AgentLogDetail (workflow graph renderer).
@@ -24,12 +25,8 @@ import Chat from '../index'
 // ─────────────────────────────────────────────────────────────────────────────
 
 vi.mock('../answer', () => ({
-  default: ({ item, responding }: { item: ChatItem, responding?: boolean }) => (
-    <div
-      data-testid="answer-item"
-      data-id={item.id}
-      data-responding={String(!!responding)}
-    >
+  default: ({ item, responding }: { item: ChatItem; responding?: boolean }) => (
+    <div data-testid="answer-item" data-id={item.id} data-responding={String(!!responding)}>
       {item.content}
     </div>
   ),
@@ -37,7 +34,9 @@ vi.mock('../answer', () => ({
 
 vi.mock('../question', () => ({
   default: ({ item }: { item: ChatItem }) => (
-    <div data-testid="question-item" data-id={item.id}>{item.content}</div>
+    <div data-testid="question-item" data-id={item.id}>
+      {item.content}
+    </div>
   ),
 }))
 
@@ -46,24 +45,43 @@ vi.mock('../chat-input-area', () => ({
     customPlaceholder,
     disabled,
     readonly,
+    footerNotice,
+    onBeforeSpeechToText,
+    speechToTextTarget,
   }: {
     customPlaceholder?: string
     disabled?: boolean
     readonly?: boolean
+    footerNotice?: string
+    onBeforeSpeechToText?: () => Promise<unknown>
+    speechToTextTarget?: SpeechToTextTarget
   }) => (
     <div
       data-testid="chat-input-area"
       data-custom-placeholder={customPlaceholder}
       data-disabled={String(!!disabled)}
       data-readonly={String(!!readonly)}
-    />
+      data-has-before-speech={String(!!onBeforeSpeechToText)}
+      data-speech-app-id={
+        speechToTextTarget?.type !== 'agent' ? speechToTextTarget?.appId : undefined
+      }
+      data-speech-source={
+        speechToTextTarget?.type === 'app'
+          ? speechToTextTarget.appSourceType
+          : speechToTextTarget?.type
+      }
+    >
+      {footerNotice}
+    </div>
   ),
 }))
 
 vi.mock('@/app/components/base/prompt-log-modal', () => ({
   default: ({ onCancel }: { onCancel: () => void }) => (
     <div data-testid="prompt-log-modal">
-      <button data-testid="prompt-log-cancel" onClick={onCancel}>cancel</button>
+      <button data-testid="prompt-log-cancel" onClick={onCancel}>
+        cancel
+      </button>
     </div>
   ),
 }))
@@ -71,7 +89,9 @@ vi.mock('@/app/components/base/prompt-log-modal', () => ({
 vi.mock('@/app/components/base/agent-log-modal', () => ({
   default: ({ onCancel }: { onCancel: () => void }) => (
     <div data-testid="agent-log-modal">
-      <button data-testid="agent-log-cancel" onClick={onCancel}>cancel</button>
+      <button data-testid="agent-log-cancel" onClick={onCancel}>
+        cancel
+      </button>
     </div>
   ),
 }))
@@ -119,8 +139,7 @@ const baseStoreState = {
   setShowAgentLogModal: mockSetShowAgentLogModal,
 }
 
-const renderChat = (props: Partial<ChatProps> = {}) =>
-  render(<Chat chatList={[]} {...props} />)
+const renderChat = (props: Partial<ChatProps> = {}) => render(<Chat chatList={[]} {...props} />)
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
@@ -134,17 +153,20 @@ describe('Chat', () => {
       return 0
     })
 
-    vi.stubGlobal('ResizeObserver', class {
-      private cb: ResizeCallback
-      constructor(cb: ResizeCallback) {
-        this.cb = cb
-        capturedResizeCallbacks.push(cb)
-      }
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        private cb: ResizeCallback
+        constructor(cb: ResizeCallback) {
+          this.cb = cb
+          capturedResizeCallbacks.push(cb)
+        }
 
-      observe() { }
-      unobserve() { }
-      disconnect() { }
-    })
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    )
 
     useAppStore.setState(baseStoreState)
   })
@@ -235,14 +257,15 @@ describe('Chat', () => {
           makeChatItem({ id: 'a2', isAnswer: true }),
         ],
       })
-      screen.getAllByTestId('answer-item').forEach(el =>
-        expect(el).toHaveAttribute('data-responding', 'false'),
-      )
+      screen
+        .getAllByTestId('answer-item')
+        .forEach((el) => expect(el).toHaveAttribute('data-responding', 'false'))
     })
 
     it('should render correct counts for a long mixed chatList', () => {
       const chatList = Array.from({ length: 6 }, (_, i) =>
-        makeChatItem({ id: `item-${i}`, isAnswer: i % 2 === 1 }))
+        makeChatItem({ id: `item-${i}`, isAnswer: i % 2 === 1 }),
+      )
       renderChat({ chatList })
       expect(screen.getAllByTestId('question-item')).toHaveLength(3)
       expect(screen.getAllByTestId('answer-item')).toHaveLength(3)
@@ -392,6 +415,29 @@ describe('Chat', () => {
       renderChat({ readonly: true })
       expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-readonly', 'true')
     })
+
+    it('should pass the explicit speech-to-text target to ChatInputArea', () => {
+      renderChat({
+        speechToTextTarget: {
+          type: 'consoleApp',
+          appId: 'app-123',
+        },
+      })
+      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-speech-app-id', 'app-123')
+      expect(screen.getByTestId('chat-input-area')).toHaveAttribute(
+        'data-speech-source',
+        'consoleApp',
+      )
+    })
+
+    it('should pass the save-before-transcribe callback to ChatInputArea', () => {
+      renderChat({ onBeforeSpeechToText: vi.fn().mockResolvedValue(undefined) })
+
+      expect(screen.getByTestId('chat-input-area')).toHaveAttribute(
+        'data-has-before-speech',
+        'true',
+      )
+    })
   })
 
   describe('PromptLogModal', () => {
@@ -502,11 +548,14 @@ describe('Chat', () => {
 
     it('should disconnect both observers on unmount', () => {
       const disconnectSpy = vi.fn()
-      vi.stubGlobal('ResizeObserver', class {
-        observe() { }
-        unobserve() { }
-        disconnect = disconnectSpy
-      })
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          observe() {}
+          unobserve() {}
+          disconnect = disconnectSpy
+        },
+      )
       const { unmount } = renderChat()
       unmount()
       expect(disconnectSpy).toHaveBeenCalled()
@@ -558,7 +607,11 @@ describe('Chat', () => {
         chatList: [makeChatItem({ id: 'first' }), makeChatItem({ id: 'second' })],
       })
       expect(() =>
-        rerender(<Chat chatList={[makeChatItem({ id: 'new-first' }), makeChatItem({ id: 'new-second' })]} />),
+        rerender(
+          <Chat
+            chatList={[makeChatItem({ id: 'new-first' }), makeChatItem({ id: 'new-second' })]}
+          />,
+        ),
       ).not.toThrow()
     })
 
@@ -598,7 +651,11 @@ describe('Chat', () => {
     })
 
     it('should render no modals when both modal flags are false', () => {
-      useAppStore.setState({ ...baseStoreState, showPromptLogModal: false, showAgentLogModal: false })
+      useAppStore.setState({
+        ...baseStoreState,
+        showPromptLogModal: false,
+        showAgentLogModal: false,
+      })
       renderChat()
       expect(screen.queryByTestId('prompt-log-modal')).not.toBeInTheDocument()
       expect(screen.queryByTestId('agent-log-modal')).not.toBeInTheDocument()
@@ -839,10 +896,15 @@ describe('Chat', () => {
 
     it('should pass appData.site.input_placeholder as customPlaceholder to ChatInputArea', () => {
       renderChat({
-        appData: { site: { input_placeholder: 'Ask the assistant' } } as unknown as ChatProps['appData'],
+        appData: {
+          site: { input_placeholder: 'Ask the assistant' },
+        } as unknown as ChatProps['appData'],
         noChatInput: false,
       })
-      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-custom-placeholder', 'Ask the assistant')
+      expect(screen.getByTestId('chat-input-area')).toHaveAttribute(
+        'data-custom-placeholder',
+        'Ask the assistant',
+      )
     })
 
     it('should pass Bot as default botName when appData.site.title is missing', () => {
@@ -886,6 +948,17 @@ describe('Chat', () => {
         onFeatureBarClick,
       })
       expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
+    })
+
+    it('should pass footer notice to ChatInputArea', () => {
+      renderChat({
+        noChatInput: false,
+        footerNotice: 'Agent runs in a Linux sandbox.',
+      })
+
+      expect(screen.getByTestId('chat-input-area')).toHaveTextContent(
+        'Agent runs in a Linux sandbox.',
+      )
     })
 
     it('should pass inputs and inputsForm to ChatInputArea', () => {
@@ -955,6 +1028,24 @@ describe('Chat', () => {
       expect(screen.getByTestId('chat-footer')).toHaveClass('bg-chat-input-mask')
     })
 
+    it('should let footer blank space pass pointer events through', () => {
+      renderChat({ noChatInput: false })
+      const footer = screen.getByTestId('chat-footer')
+      expect(footer).toHaveClass('pointer-events-none')
+      expect(footer.firstElementChild).toHaveClass('pointer-events-none')
+    })
+
+    it('should keep the stop responding button clickable inside the pass-through footer', () => {
+      renderChat({
+        isResponding: true,
+        noStopResponding: false,
+        noChatInput: true,
+      })
+      expect(screen.getByRole('button', { name: /stopResponding/i })).toHaveClass(
+        'pointer-events-auto',
+      )
+    })
+
     it('should apply chatFooterClassName when footer has content', () => {
       renderChat({
         noChatInput: false,
@@ -1011,7 +1102,8 @@ describe('Chat', () => {
   describe('Multiple Items and Index Handling', () => {
     it('should correctly identify last answer in a 10-item chat list', () => {
       const chatList = Array.from({ length: 10 }, (_, i) =>
-        makeChatItem({ id: `item-${i}`, isAnswer: i % 2 === 1 }))
+        makeChatItem({ id: `item-${i}`, isAnswer: i % 2 === 1 }),
+      )
       renderChat({ isResponding: true, chatList })
       const answers = screen.getAllByTestId('answer-item')
       expect(answers[answers.length - 1]).toHaveAttribute('data-responding', 'true')

@@ -12,6 +12,7 @@ from urllib.parse import unquote, urlparse
 
 import httpx
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.entities.knowledge_entities import PreviewDetail
@@ -46,11 +47,13 @@ class BaseIndexProcessor(ABC):
     """Interface for extract files."""
 
     @abstractmethod
-    def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
+    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
         raise NotImplementedError
 
     @abstractmethod
-    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
+    def transform(
+        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs
+    ) -> list[Document]:
         raise NotImplementedError
 
     @abstractmethod
@@ -60,6 +63,8 @@ class BaseIndexProcessor(ABC):
         preview_texts: list[PreviewDetail],
         summary_index_setting: SummaryIndexSettingDict,
         doc_language: str | None = None,
+        *,
+        session: Session,
     ) -> list[PreviewDetail]:
         """
         For each segment in preview_texts, generate a summary using LLM and attach it to the segment.
@@ -71,6 +76,7 @@ class BaseIndexProcessor(ABC):
             preview_texts: List of preview details to generate summaries for
             summary_index_setting: Summary index configuration
             doc_language: Optional document language to ensure summary is generated in the correct language
+            session: SQLAlchemy session used for summary image lookups
         """
         raise NotImplementedError
 
@@ -81,16 +87,20 @@ class BaseIndexProcessor(ABC):
         documents: list[Document],
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
+        *,
+        session: Session,
         **kwargs,
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
+    def clean(
+        self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any, session: Session) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -136,7 +146,9 @@ class BaseIndexProcessor(ABC):
 
         return character_splitter
 
-    def _get_content_files(self, document: Document, current_user: Account | None = None) -> list[AttachmentDocument]:
+    def _get_content_files(
+        self, document: Document, current_user: Account | None = None, *, session: Session
+    ) -> list[AttachmentDocument]:
         """
         Get the content files from the document.
         """
@@ -173,7 +185,7 @@ class BaseIndexProcessor(ABC):
             if match:
                 if current_user:
                     tool_file_id = match.group(1)
-                    upload_file_id = self._download_tool_file(tool_file_id, current_user)
+                    upload_file_id = self._download_tool_file(tool_file_id, current_user, session=session)
                     if upload_file_id:
                         upload_file_id_list.append(upload_file_id)
                 continue
@@ -187,7 +199,7 @@ class BaseIndexProcessor(ABC):
 
         # Get unique IDs for database query
         unique_upload_file_ids = list(set(upload_file_id_list))
-        upload_files = db.session.scalars(select(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids))).all()
+        upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids))).all()
 
         # Create a mapping from ID to UploadFile for quick lookup
         upload_file_map = {upload_file.id: upload_file for upload_file in upload_files}
@@ -293,13 +305,13 @@ class BaseIndexProcessor(ABC):
             logging.warning("Unexpected error downloading image from %s", image_url, exc_info=True)
             return None
 
-    def _download_tool_file(self, tool_file_id: str, current_user: Account) -> str | None:
+    def _download_tool_file(self, tool_file_id: str, current_user: Account, *, session: Session) -> str | None:
         """
         Download the tool file from the ID.
         """
         from services.file_service import FileService
 
-        tool_file = db.session.get(ToolFile, tool_file_id)
+        tool_file = session.get(ToolFile, tool_file_id)
         if not tool_file:
             return None
         blob = storage.load_once(tool_file.file_key)

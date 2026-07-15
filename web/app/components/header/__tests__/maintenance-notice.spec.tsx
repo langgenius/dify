@@ -4,16 +4,21 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import { NOTICE_I18N } from '@/i18n-config/language'
 import MaintenanceNotice from '../maintenance-notice'
 
+const mockEnv = vi.hoisted(() => ({
+  NEXT_PUBLIC_MAINTENANCE_NOTICE: 'true',
+}))
+
 vi.mock('@/app/components/base/icons/src/vender/line/general', () => ({
   X: (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />,
 }))
 
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/hooks',
-  () => ({
-    useLanguage: vi.fn(),
-  }),
-)
+vi.mock('@/env', () => ({
+  env: mockEnv,
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useLanguage: vi.fn(),
+}))
 
 vi.mock('@/i18n-config/language', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>
@@ -34,9 +39,7 @@ vi.mock('@/i18n-config/language', async (importOriginal) => {
 })
 
 describe('MaintenanceNotice', () => {
-  const windowOpenSpy = vi
-    .spyOn(window, 'open')
-    .mockImplementation(() => null)
+  const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
   const setNoticeHref = (href: string) => {
     NOTICE_I18N.href = href
   }
@@ -44,6 +47,7 @@ describe('MaintenanceNotice', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    mockEnv.NEXT_PUBLIC_MAINTENANCE_NOTICE = 'true'
     vi.mocked(useLanguage).mockReturnValue('en_US')
     setNoticeHref('#')
   })
@@ -71,6 +75,14 @@ describe('MaintenanceNotice', () => {
       const { container } = render(<MaintenanceNotice />)
       expect(container.firstChild).toBeNull()
     })
+
+    it('should not render when the notice env flag is disabled', () => {
+      mockEnv.NEXT_PUBLIC_MAINTENANCE_NOTICE = ''
+
+      const { container } = render(<MaintenanceNotice />)
+
+      expect(container.firstChild).toBeNull()
+    })
   })
 
   describe('User Interactions', () => {
@@ -91,10 +103,7 @@ describe('MaintenanceNotice', () => {
       const desc = screen.getByRole('button', { name: 'Notice Description' })
       fireEvent.click(desc)
 
-      expect(windowOpenSpy).toHaveBeenCalledWith(
-        'https://dify.ai/notice',
-        '_blank',
-      )
+      expect(windowOpenSpy).toHaveBeenCalledWith('https://dify.ai/notice', '_blank')
     })
 
     it('should not jump when href is #', () => {

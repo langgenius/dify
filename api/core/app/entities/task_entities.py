@@ -6,11 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
+from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
+from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.nodes.human_input.entities import FormInputConfig, UserActionConfig
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -122,7 +122,7 @@ class MessageStreamResponse(StreamResponse):
     event: StreamEvent = StreamEvent.MESSAGE
     id: str
     answer: str
-    from_variable_selector: list[str] | None = None
+    from_variable_selector: list[str] = Field(default_factory=list)
 
 
 class MessageAudioStreamResponse(StreamResponse):
@@ -151,7 +151,7 @@ class MessageEndStreamResponse(StreamResponse):
     event: StreamEvent = StreamEvent.MESSAGE_END
     id: str
     metadata: Mapping[str, object] = Field(default_factory=dict)
-    files: Sequence[Mapping[str, Any]] | None = None
+    files: Sequence[Mapping[str, Any]] = Field(default_factory=list)
 
 
 class MessageFileStreamResponse(StreamResponse):
@@ -307,7 +307,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
     ``human_input_required`` events are available.
     """
 
-    TYPE: Literal[PauseReasonType.HUMAN_INPUT_REQUIRED] = PauseReasonType.HUMAN_INPUT_REQUIRED
+    TYPE: Literal[DifyHITLEventType.HUMAN_INPUT_REQUIRED] = DifyHITLEventType.HUMAN_INPUT_REQUIRED
     form_id: str
     node_id: str
     node_title: str

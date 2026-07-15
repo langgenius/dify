@@ -13,12 +13,7 @@ describe('variable inspect display content', () => {
   it('renders markdown code view and forwards text edits', () => {
     const handleTextChange = vi.fn()
 
-    render(
-      <DisplayContent
-        {...baseProps}
-        handleTextChange={handleTextChange}
-      />,
-    )
+    render(<DisplayContent {...baseProps} handleTextChange={handleTextChange} />)
 
     expect(screen.getByText('MARKDOWN')).toBeInTheDocument()
 

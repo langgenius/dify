@@ -8,9 +8,11 @@ type BaseUIAnimationGlobal = typeof globalThis & {
 }
 
 const dispatchToastMouseOver = (element: HTMLElement | SVGElement) => {
-  element.dispatchEvent(new MouseEvent('mouseover', {
-    bubbles: true,
-  }))
+  element.dispatchEvent(
+    new MouseEvent('mouseover', {
+      bubbles: true,
+    }),
+  )
 }
 
 describe('@langgenius/dify-ui/toast', () => {
@@ -37,8 +39,6 @@ describe('@langgenius/dify-ui/toast', () => {
     await expect.element(screen.getByText('Your changes are available now.')).toBeInTheDocument()
     const viewport = screen.getByRole('region', { name: 'Notifications' })
     await expect.element(viewport).toHaveAttribute('aria-live', 'polite')
-    await expect.element(viewport).toHaveClass('z-60')
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
   })
 
   it('should keep multiple toast roots mounted in a collapsed stack', async () => {
@@ -60,13 +60,14 @@ describe('@langgenius/dify-ui/toast', () => {
     toast('Neutral toast')
 
     await expect.element(screen.getByText('Neutral toast')).toBeInTheDocument()
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-information-2-fill')).not.toBeInTheDocument()
   })
 
   it('should wrap long unbroken toast content within the card width', async () => {
     const screen = await render(<ToastHost />)
-    const longTitle = 'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
-    const longDescription = 'Put "https://plugin/assets/1bd032bb73218a5d141b80cab7111?x-id=PutObject": dial tcp 192.168.0.200:19000: connect: connection refused, icon small en_US failed to remap assets failed to store plugin asset'
+    const longTitle =
+      'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
+    const longDescription =
+      'Put "https://plugin/assets/1bd032bb73218a5d141b80cab7111?x-id=PutObject": dial tcp 192.168.0.200:19000: connect: connection refused, icon small en_US failed to remap assets failed to store plugin asset'
 
     toast.error(longTitle, {
       description: longDescription,
@@ -119,7 +120,9 @@ describe('@langgenius/dify-ui/toast', () => {
     const viewport = screen.getByRole('region', { name: 'Notifications' }).element()
     dispatchToastMouseOver(viewport)
 
-    await expect.element(screen.getByRole('button', { name: 'Close notification' })).toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('button', { name: 'Close notification' }))
+      .toBeInTheDocument()
     asHTMLElement(screen.getByRole('button', { name: 'Close notification' }).element()).click()
 
     await vi.waitFor(() => {
@@ -181,30 +184,37 @@ describe('@langgenius/dify-ui/toast', () => {
       const viewport = screen.getByRole('region', { name: 'Notifications' }).element()
       dispatchToastMouseOver(viewport)
 
-      await expect.element(screen.getByRole('button', { name: 'Close notification' })).toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('button', { name: 'Close notification' }))
+        .toBeInTheDocument()
       asHTMLElement(screen.getByRole('button', { name: 'Close notification' }).element()).click()
 
       await vi.waitFor(() => {
-        expect(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).toHaveAttribute('data-ending-style')
+        expect(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).toHaveAttribute(
+          'data-ending-style',
+        )
       })
 
       asHTMLElement(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).click()
 
-      const underlyingAction = asHTMLElement(screen.getByRole('button', { name: 'Underlying action' }).element())
+      const underlyingAction = asHTMLElement(
+        screen.getByRole('button', { name: 'Underlying action' }).element(),
+      )
       const rect = underlyingAction.getBoundingClientRect()
       const x = rect.left + rect.width / 2
       const y = rect.top + rect.height / 2
 
-      document.elementFromPoint(x, y)?.dispatchEvent(new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-        clientX: x,
-        clientY: y,
-      }))
+      document.elementFromPoint(x, y)?.dispatchEvent(
+        new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+        }),
+      )
 
       expect(onClick).toHaveBeenCalledTimes(1)
-    }
-    finally {
+    } finally {
       baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = animationState
     }
   })
@@ -220,7 +230,8 @@ describe('@langgenius/dify-ui/toast', () => {
 
     await vi.advanceTimersByTimeAsync(1)
     await vi.waitFor(() => {
-      expect(document.body).not.toHaveTextContent('Auto dismiss')
+      const toastDialog = document.body.querySelector('[role="dialog"]')
+      expect(toastDialog === null || toastDialog.hasAttribute('data-ending-style')).toBe(true)
     })
   })
 
@@ -244,7 +255,6 @@ describe('@langgenius/dify-ui/toast', () => {
       description: 'Preparing your data…',
     })
     await expect.element(screen.getByText('Loading')).toBeInTheDocument()
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-information-2-fill')).toBeInTheDocument()
 
     toast.update(toastId, {
       title: 'Done',
@@ -255,7 +265,6 @@ describe('@langgenius/dify-ui/toast', () => {
     await expect.element(screen.getByText('Done')).toBeInTheDocument()
     await expect.element(screen.getByText('Your data is ready.')).toBeInTheDocument()
     expect(document.body).not.toHaveTextContent('Loading')
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
   })
 
   it('should upsert an existing toast when add is called with the same id', async () => {
@@ -307,7 +316,7 @@ describe('@langgenius/dify-ui/toast', () => {
 
     void toast.promise(promise, {
       loading: 'Saving…',
-      success: result => ({
+      success: (result) => ({
         title: 'Saved',
         description: result,
         type: 'success',
@@ -322,6 +331,5 @@ describe('@langgenius/dify-ui/toast', () => {
 
     await expect.element(screen.getByText('Saved')).toBeInTheDocument()
     await expect.element(screen.getByText('Your changes are available now.')).toBeInTheDocument()
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
   })
 })

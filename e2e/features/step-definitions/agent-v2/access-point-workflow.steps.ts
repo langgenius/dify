@@ -15,7 +15,9 @@ Then(
       'agent',
     )
     const references = await getAgentReferencingWorkflows(agent.id)
-    const reference = references.find(item => item.app_id === workflow.id || item.app_name === workflow.name)
+    const reference = references.find(
+      (item) => item.app_id === workflow.id || item.app_name === workflow.name,
+    )
     if (!reference)
       throw new Error(`Agent "${agent.name}" does not reference workflow "${workflow.name}".`)
 
@@ -34,8 +36,7 @@ Then(
     await expect(row.getByText(new RegExp(`^${nodeCount} nodes?$`))).toBeVisible()
     if (reference.app_updated_at == null)
       await expect(row.getByText('N/A', { exact: true })).toBeVisible()
-    else
-      await expect(row.getByText('N/A', { exact: true })).not.toBeVisible()
+    else await expect(row.getByText('N/A', { exact: true })).not.toBeVisible()
     await expect(row.getByRole('link', { name: `Open ${workflowName} in Studio` })).toBeVisible()
   },
 )
@@ -43,7 +44,9 @@ Then(
 When(
   'I open the Agent v2 Workflow access reference for {string}',
   async function (this: DifyWorld, workflowName: string) {
-    const workflowLink = this.getPage().getByRole('link', { name: `Open ${workflowName} in Studio` })
+    const workflowLink = this.getPage().getByRole('link', {
+      name: `Open ${workflowName} in Studio`,
+    })
 
     const [workflowPage] = await Promise.all([
       this.getPage().waitForEvent('popup'),
@@ -58,8 +61,7 @@ Then(
   'the Agent v2 Workflow access reference for {string} should open in Studio',
   async function (this: DifyWorld, workflowName: string) {
     const workflowPage = this.agentBuilder.accessPoint.workflowReferencePage
-    if (!workflowPage)
-      throw new Error('No Agent v2 Workflow access reference page was opened.')
+    if (!workflowPage) throw new Error('No Agent v2 Workflow access reference page was opened.')
 
     const workflow = getPreseededResource(this, workflowName, 'workflow')
 

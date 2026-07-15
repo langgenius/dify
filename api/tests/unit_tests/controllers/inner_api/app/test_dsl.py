@@ -6,7 +6,7 @@ in test_auth_wraps.py; handler tests use inspect.unwrap() to bypass them.
 """
 
 import inspect
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -19,7 +19,7 @@ from controllers.inner_api.app.dsl import (
     _get_active_account,
 )
 from models.account import AccountStatus
-from services.app_dsl_service import ImportStatus
+from services.app_dsl_service import Import, ImportStatus
 
 
 class TestInnerAppDSLImportPayload:
@@ -117,9 +117,7 @@ class TestEnterpriseAppDSLImport:
             mock_dsl_cls.return_value = self._mock_dsl
             yield
 
-    def _make_import_result(self, status: ImportStatus, **kwargs) -> "Import":
-        from services.app_dsl_service import Import
-
+    def _make_import_result(self, status: ImportStatus, **kwargs) -> Import:
         result = Import(
             id="import-id",
             status=status,
@@ -147,7 +145,7 @@ class TestEnterpriseAppDSLImport:
         body, status_code = result
         assert status_code == 200
         assert body["status"] == "completed"
-        mock_account.set_tenant_id.assert_called_once_with("ws-123")
+        mock_account.set_tenant_id_with_session.assert_called_once_with("ws-123", session=self._mock_session)
         self._mock_session.commit.assert_called_once_with()
         self._mock_session.rollback.assert_not_called()
 
@@ -224,7 +222,7 @@ class TestEnterpriseAppDSLExport:
         body, status_code = result
         assert status_code == 200
         assert body["data"] == "version: 0.6.0\nkind: app\n"
-        mock_dsl_cls.export_dsl.assert_called_once_with(app_model=mock_app, include_secret=False)
+        mock_dsl_cls.export_dsl.assert_called_once_with(app_model=mock_app, session=ANY, include_secret=False)
 
     @patch("controllers.inner_api.app.dsl.AppDslService")
     @patch("controllers.inner_api.app.dsl.db")
@@ -239,7 +237,7 @@ class TestEnterpriseAppDSLExport:
 
         body, status_code = result
         assert status_code == 200
-        mock_dsl_cls.export_dsl.assert_called_once_with(app_model=mock_app, include_secret=True)
+        mock_dsl_cls.export_dsl.assert_called_once_with(app_model=mock_app, session=ANY, include_secret=True)
 
     @patch("controllers.inner_api.app.dsl.db")
     def test_export_app_not_found_returns_404(self, mock_db, api_instance, app: Flask):

@@ -1,12 +1,13 @@
 import json
 import logging
-from collections.abc import Generator
-from typing import Any, Literal
+from collections.abc import Generator, Iterator, Mapping
+from typing import Any, Literal, Protocol, runtime_checkable
 from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -22,7 +23,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -35,7 +36,7 @@ from controllers.console.wraps import (
     with_current_user_id,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import AGENT_RUNTIME_EXIT_INTENT_ARG, InvokeFrom
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -43,7 +44,6 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
-from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
@@ -57,6 +57,11 @@ from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class _ClosableStream(Protocol):
+    def close(self) -> None: ...
 
 
 def _resolve_debugger_chat_streaming(
@@ -117,15 +122,13 @@ edit workspace files, run validation or debugging commands, make exploratory che
 Use only the current Build chat message history to identify changes that need to be persisted. Do not inspect, test, or
 validate old config unless the message history already shows that the old config is invalid.
 
-Persist only the build-draft config resources that need to change, using the Agent config CLI usage provided in the
-runtime prompt:
+Only update the build-draft config note when the current Build chat contains durable context that later runs need.
+Write the config note in the language used by the message history.
+Do not create, update, delete, inspect, or fill gaps in other Agent config resources, including config files, config
+skills, config env, tools, models, knowledge, or prompt settings.
 
-- config files for reusable artifacts that should be available later,
-- config skills for reusable procedures or tools that should be available later,
-- config env when environment keys or values need to be recorded,
-- config note for concise durable context when useful.
-
-When updating the config note, record only durable context needed by later runs, such as:
+When updating the config note with the Agent config CLI usage provided in the runtime prompt, record only durable
+context needed by later runs, such as:
 
 - what you installed or configured outside the workspace for this agent,
 - where those external updates live, including CLI tools, packages, and persistent $HOME paths,
@@ -154,8 +157,9 @@ class CompletionMessageApi(Resource):
     @account_initialization_required
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @with_session
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, current_user: Account, app_model: App):
+    def post(self, session: Session, current_user: Account, app_model: App):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
@@ -164,7 +168,12 @@ class CompletionMessageApi(Resource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=streaming,
             )
 
             # response-contract:ignore compact_generate_response
@@ -230,9 +239,12 @@ class ChatMessageApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @with_session
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
-    def post(self, current_tenant_id: str, current_user: Account, app_model: App):
-        return _create_chat_message(current_tenant_id=current_tenant_id, current_user=current_user, app_model=app_model)
+    def post(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
+        return _create_chat_message(
+            session=session, current_tenant_id=current_tenant_id, current_user=current_user, app_model=app_model
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
@@ -251,9 +263,13 @@ class AgentChatMessageApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+    @with_session
+    def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = AgentRosterService(session).get_agent_runtime_app_model(
+            tenant_id=current_tenant_id, agent_id=str(agent_id)
+        )
         return _create_chat_message(
+            session=session,
             current_tenant_id=current_tenant_id,
             current_user=current_user,
             app_model=app_model,
@@ -276,9 +292,13 @@ class AgentBuildChatFinalizeApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+    @with_session
+    def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = AgentRosterService(session).get_agent_runtime_app_model(
+            tenant_id=current_tenant_id, agent_id=str(agent_id)
+        )
         return _create_build_chat_finalization_message(
+            session=session,
             current_tenant_id=current_tenant_id,
             current_user=current_user,
             app_model=app_model,
@@ -312,15 +332,20 @@ class AgentChatMessageStopApi(Resource):
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user_id: str, agent_id: UUID, task_id: str):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+    @with_session(write=False)
+    def post(self, session: Session, current_tenant_id: str, current_user_id: str, agent_id: UUID, task_id: str):
+        app_model = resolve_agent_runtime_app_model(
+            session=session,
+            tenant_id=current_tenant_id,
+            agent_id=agent_id,
+        )
         return _stop_chat_message(current_user_id=current_user_id, app_model=app_model, task_id=task_id)
 
 
 def _resolve_current_user_agent_debug_conversation_id(
-    *, current_tenant_id: str, current_user: Account, app_model: App, agent_id: str | None
+    *, session: Session, current_tenant_id: str, current_user: Account, app_model: App, agent_id: str | None
 ) -> str:
-    roster_service = AgentRosterService(db.session)
+    roster_service = AgentRosterService(session)
     if agent_id:
         return roster_service.get_or_create_agent_app_debug_conversation_id(
             tenant_id=current_tenant_id,
@@ -340,6 +365,7 @@ def _resolve_current_user_agent_debug_conversation_id(
 
 def _create_chat_message(
     *,
+    session: Session,
     current_user: Account,
     app_model: App,
     current_tenant_id: str | None = None,
@@ -351,6 +377,7 @@ def _create_chat_message(
 
     if AppMode.value_of(app_model.mode) == AppMode.AGENT:
         debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
+            session=session,
             current_tenant_id=current_tenant_id or app_model.tenant_id,
             current_user=current_user,
             app_model=app_model,
@@ -374,6 +401,7 @@ def _create_chat_message(
         args["external_trace_id"] = external_trace_id
 
     return _generate_chat_message_response(
+        session=session,
         current_user=current_user,
         app_model=app_model,
         args=args,
@@ -382,9 +410,10 @@ def _create_chat_message(
 
 
 def _create_build_chat_finalization_message(
-    *, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
+    *, session: Session, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
 ):
     debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
+        session=session,
         current_tenant_id=current_tenant_id,
         current_user=current_user,
         app_model=app_model,
@@ -397,12 +426,14 @@ def _create_build_chat_finalization_message(
         "draft_type": "debug_build",
         "conversation_id": debug_conversation_id,
         "auto_generate_name": False,
+        AGENT_RUNTIME_EXIT_INTENT_ARG: "delete",
     }
     external_trace_id = get_external_trace_id(request)
     if external_trace_id:
         args["external_trace_id"] = external_trace_id
 
     response = _generate_chat_message(
+        session=session,
         current_user=current_user,
         app_model=app_model,
         args=args,
@@ -420,7 +451,6 @@ def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[
     changes the HTTP boundary: it drains the SSE stream server-side and returns
     success after the generated build-chat message reaches ``message_end``.
     """
-    close = getattr(response, "close", None)
     try:
         for chunk in response:
             for raw_event in chunk.split("\n\n"):
@@ -450,14 +480,15 @@ def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[
                 if payload_event == "error":
                     raise CompletionRequestError(str(payload.get("message") or "Build chat finalization failed."))
     finally:
-        if callable(close):
-            close()
+        if isinstance(response, _ClosableStream):
+            response.close()
 
     raise CompletionRequestError("Build chat finalization did not complete.")
 
 
 def _generate_chat_message(
     *,
+    session: Session,
     current_user: Account,
     app_model: App,
     args: dict[str, Any],
@@ -465,6 +496,7 @@ def _generate_chat_message(
 ):
     try:
         return AppGenerateService.generate(
+            session=session,
             app_model=app_model,
             user=current_user,
             args=args,
@@ -499,17 +531,21 @@ def _generate_chat_message(
 
 def _generate_chat_message_response(
     *,
+    session: Session,
     current_user: Account,
     app_model: App,
     args: dict[str, Any],
     streaming: bool,
 ):
     response = _generate_chat_message(
+        session=session,
         current_user=current_user,
         app_model=app_model,
         args=args,
         streaming=streaming,
     )
+    if AppMode.value_of(app_model.mode) == AppMode.AGENT and streaming:
+        response = _raise_agent_stream_error_before_response(response)
     return helper.compact_generate_response(response)
 
 
@@ -522,3 +558,67 @@ def _stop_chat_message(*, current_user_id: str, app_model: App, task_id: str):
     )
 
     return SimpleResultResponse(result="success").model_dump(mode="json"), 200
+
+
+def _raise_agent_stream_error_before_response(response):
+    """Surface immediate Agent App stream errors as HTTP errors before SSE starts.
+
+    The shared streaming helper always returns HTTP 200 once the SSE response is
+    created. Agent v2 configuration errors, such as an invalid model API key,
+    can be the first real stream event after the initial ping; pre-reading that
+    first non-ping event lets the console API return the existing 400 error
+    contract instead of a successful HTTP response carrying only an SSE error.
+    """
+    if isinstance(response, Mapping):
+        return response
+
+    buffered: list[str] = []
+    iterator = iter(response)
+    while True:
+        try:
+            chunk = next(iterator)
+        except StopIteration:
+            return iter(buffered)
+
+        if not isinstance(chunk, str):
+            return _prepend_stream_chunks(buffered, chunk, iterator)
+
+        if _is_sse_ping(chunk):
+            buffered.append(chunk)
+            continue
+
+        error_payload = _extract_sse_error_payload(chunk)
+        if error_payload is not None:
+            if isinstance(response, _ClosableStream):
+                response.close()
+            message = error_payload.get("message")
+            raise CompletionRequestError(str(message or "Agent App chat failed."))
+
+        return _prepend_stream_chunks(buffered, chunk, iterator)
+
+
+def _prepend_stream_chunks(buffered: list[Any], first: Any, iterator: Iterator[Any]) -> Generator[Any, None, None]:
+    yield from buffered
+    yield first
+    yield from iterator
+
+
+def _is_sse_ping(chunk: str) -> bool:
+    return chunk.strip() == "event: ping"
+
+
+def _extract_sse_error_payload(chunk: str) -> dict[str, Any] | None:
+    for raw_event in chunk.split("\n\n"):
+        data_lines: list[str] = []
+        for line in raw_event.splitlines():
+            if line.startswith("data: "):
+                data_lines.append(line.removeprefix("data: "))
+        if not data_lines:
+            continue
+        try:
+            payload = json.loads("\n".join(data_lines))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and payload.get("event") == "error":
+            return payload
+    return None

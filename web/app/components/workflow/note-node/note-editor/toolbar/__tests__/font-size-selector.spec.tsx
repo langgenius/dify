@@ -3,10 +3,7 @@ import FontSizeSelector from '../font-size-selector'
 
 vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
-const {
-  mockHandleFontSize,
-  mockHandleOpenFontSizeSelector,
-} = vi.hoisted(() => ({
+const { mockHandleFontSize, mockHandleOpenFontSizeSelector } = vi.hoisted(() => ({
   mockHandleFontSize: vi.fn(),
   mockHandleOpenFontSizeSelector: vi.fn(),
 }))

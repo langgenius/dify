@@ -31,17 +31,17 @@ const getNumber = (value: unknown, fallback: number) => {
 }
 
 const getStringArray = (value: unknown) => {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : []
 }
 
 const getStringRecord = (value: unknown) => {
-  if (!isRecord(value))
-    return undefined
+  if (!isRecord(value)) return undefined
 
   const record: Record<string, string | undefined> = {}
   Object.entries(value).forEach(([key, item]) => {
-    if (typeof item === 'string')
-      record[key] = item
+    if (typeof item === 'string') record[key] = item
   })
   return record
 }
@@ -53,7 +53,9 @@ const normalizeEnabledConfig = (value: Record<string, unknown>, fallback = false
   }
 }
 
-const normalizeTextToSpeechConfig = (value: Record<string, unknown>): ChatConfig['text_to_speech'] => {
+const normalizeTextToSpeechConfig = (
+  value: Record<string, unknown>,
+): ChatConfig['text_to_speech'] => {
   const autoPlay = getString(value.autoPlay)
   const config = { ...value }
   delete config.autoPlay
@@ -65,7 +67,9 @@ const normalizeTextToSpeechConfig = (value: Record<string, unknown>): ChatConfig
   }
 }
 
-const normalizeAnnotationReplyConfig = (value: Record<string, unknown>): ChatConfig['annotation_reply'] => {
+const normalizeAnnotationReplyConfig = (
+  value: Record<string, unknown>,
+): ChatConfig['annotation_reply'] => {
   const embeddingModel = isRecord(value.embedding_model) ? value.embedding_model : {}
   return {
     id: getString(value.id),
@@ -79,8 +83,7 @@ const normalizeAnnotationReplyConfig = (value: Record<string, unknown>): ChatCon
 }
 
 const getTransferMethods = (value: unknown, fallback: TransferMethod[]) => {
-  if (!Array.isArray(value))
-    return fallback
+  if (!Array.isArray(value)) return fallback
 
   const methods = value.filter((item): item is TransferMethod => {
     return typeof item === 'string' && transferMethodValues.has(item)
@@ -89,27 +92,37 @@ const getTransferMethods = (value: unknown, fallback: TransferMethod[]) => {
 }
 
 const getSupportUploadFileTypes = (value: unknown): SupportUploadFileTypes[] => {
-  if (!Array.isArray(value))
-    return []
+  if (!Array.isArray(value)) return []
 
   return value.filter((item): item is SupportUploadFileTypes => {
     return typeof item === 'string' && supportUploadFileTypeValues.has(item)
   })
 }
 
-const normalizeVisionSettings = (value: unknown): NonNullable<ChatConfig['file_upload']>['image'] => {
+const normalizeVisionSettings = (
+  value: unknown,
+): NonNullable<ChatConfig['file_upload']>['image'] => {
   const image = isRecord(value) ? value : {}
   return {
     enabled: getBoolean(image.enabled),
     number_limits: getNumber(image.number_limits, 3),
     detail: getString(image.detail) === Resolution.low ? Resolution.low : Resolution.high,
-    transfer_methods: getTransferMethods(image.transfer_methods, [TransferMethod.local_file, TransferMethod.remote_url]),
+    transfer_methods: getTransferMethods(image.transfer_methods, [
+      TransferMethod.local_file,
+      TransferMethod.remote_url,
+    ]),
   }
 }
 
 const normalizeFileUploadConfig = (value: Record<string, unknown>): ChatConfig['file_upload'] => {
-  const allowedUploadMethods = getTransferMethods(value.allowed_upload_methods, [TransferMethod.local_file, TransferMethod.remote_url])
-  const allowedFileUploadMethods = getTransferMethods(value.allowed_file_upload_methods, allowedUploadMethods)
+  const allowedUploadMethods = getTransferMethods(value.allowed_upload_methods, [
+    TransferMethod.local_file,
+    TransferMethod.remote_url,
+  ])
+  const allowedFileUploadMethods = getTransferMethods(
+    value.allowed_file_upload_methods,
+    allowedUploadMethods,
+  )
 
   return {
     image: normalizeVisionSettings(value.image),
@@ -170,12 +183,13 @@ const normalizeFileInputForm = (value: Record<string, unknown>) => {
   }
 }
 
-const normalizeUserInputFormItem = (item: Record<string, unknown>): ChatConfig['user_input_form'][number] | null => {
+const normalizeUserInputFormItem = (
+  item: Record<string, unknown>,
+): ChatConfig['user_input_form'][number] | null => {
   if (isRecord(item['text-input']))
     return { 'text-input': normalizeTextInputForm(item['text-input']) }
 
-  if (isRecord(item.paragraph))
-    return { paragraph: normalizeTextInputForm(item.paragraph) }
+  if (isRecord(item.paragraph)) return { paragraph: normalizeTextInputForm(item.paragraph) }
 
   if (isRecord(item.select)) {
     return {
@@ -204,11 +218,9 @@ const normalizeUserInputFormItem = (item: Record<string, unknown>): ChatConfig['
     }
   }
 
-  if (isRecord(item.file))
-    return { file: normalizeFileInputForm(item.file) }
+  if (isRecord(item.file)) return { file: normalizeFileInputForm(item.file) }
 
-  if (isRecord(item['file-list']))
-    return { 'file-list': normalizeFileInputForm(item['file-list']) }
+  if (isRecord(item['file-list'])) return { 'file-list': normalizeFileInputForm(item['file-list']) }
 
   if (isRecord(item.external_data_tool)) {
     return {
@@ -231,7 +243,8 @@ const normalizeUserInputFormItem = (item: Record<string, unknown>): ChatConfig['
     return {
       json_object: {
         ...normalizeBaseInputForm(item.json_object),
-        json_schema: typeof jsonSchema === 'string' || isRecord(jsonSchema) ? jsonSchema : undefined,
+        json_schema:
+          typeof jsonSchema === 'string' || isRecord(jsonSchema) ? jsonSchema : undefined,
       },
     }
   }
@@ -239,11 +252,12 @@ const normalizeUserInputFormItem = (item: Record<string, unknown>): ChatConfig['
   return null
 }
 
-const normalizeUserInputForm = (items: TryAppParameters['user_input_form']): ChatConfig['user_input_form'] => {
+const normalizeUserInputForm = (
+  items: TryAppParameters['user_input_form'],
+): ChatConfig['user_input_form'] => {
   return items.reduce<ChatConfig['user_input_form']>((result, item) => {
     const normalized = normalizeUserInputFormItem(item)
-    if (normalized)
-      result.push(normalized)
+    if (normalized) result.push(normalized)
     return result
   }, [])
 }
@@ -252,7 +266,9 @@ const normalizeTryAppParams = (params: TryAppParameters): ChatConfig => {
   return {
     opening_statement: params.opening_statement ?? '',
     suggested_questions: params.suggested_questions,
-    suggested_questions_after_answer: normalizeEnabledConfig(params.suggested_questions_after_answer),
+    suggested_questions_after_answer: normalizeEnabledConfig(
+      params.suggested_questions_after_answer,
+    ),
     speech_to_text: normalizeEnabledConfig(params.speech_to_text),
     text_to_speech: normalizeTextToSpeechConfig(params.text_to_speech),
     retriever_resource: normalizeEnabledConfig(params.retriever_resource),
@@ -285,7 +301,8 @@ export const fetchTryAppFlowPreview = (appId: string) => {
 }
 
 export const fetchTryAppParams = (appId: string) => {
-  return consoleClient.trialApps.byAppId.parameters.get({ params: { app_id: appId } })
+  return consoleClient.trialApps.byAppId.parameters
+    .get({ params: { app_id: appId } })
     .then(normalizeTryAppParams)
 }
 

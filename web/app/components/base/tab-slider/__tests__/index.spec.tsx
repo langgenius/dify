@@ -77,7 +77,7 @@ describe('TabSlider Component', () => {
         value="all"
         options={mockOptions}
         onChange={onChangeMock}
-        itemClassName={active => (active ? 'is-active-custom' : 'is-inactive-custom')}
+        itemClassName={(active) => (active ? 'is-active-custom' : 'is-inactive-custom')}
       />,
     )
     expect(screen.getByTestId('tab-item-all')).toHaveClass('is-active-custom')
@@ -113,7 +113,9 @@ describe('TabSlider Component', () => {
   })
 
   it('handles invalid value gracefully', () => {
-    const { container, rerender } = render(<TabSlider value="invalid" options={mockOptions} onChange={onChangeMock} />)
+    const { container, rerender } = render(
+      <TabSlider value="invalid" options={mockOptions} onChange={onChangeMock} />,
+    )
     const activeTabs = container.querySelectorAll('.text-text-primary')
     expect(activeTabs.length).toBe(0)
 

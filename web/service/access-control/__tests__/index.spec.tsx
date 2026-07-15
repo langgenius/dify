@@ -40,7 +40,9 @@ const createWrapper = () => {
 describe('access-control service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(consoleClient.enterprise.webAppAuth.updateWebAppWhitelistSubjects).mockResolvedValue({})
+    vi.mocked(consoleClient.enterprise.webAppAuth.updateWebAppWhitelistSubjects).mockResolvedValue(
+      {},
+    )
   })
 
   // Access mode updates keep the legacy webapp whitelist payload contract.
@@ -58,7 +60,9 @@ describe('access-control service', () => {
       })
 
       await waitFor(() => {
-        expect(consoleClient.enterprise.webAppAuth.updateWebAppWhitelistSubjects).toHaveBeenCalledWith({
+        expect(
+          consoleClient.enterprise.webAppAuth.updateWebAppWhitelistSubjects,
+        ).toHaveBeenCalledWith({
           body: {
             appId: 'app-1',
             accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,

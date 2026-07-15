@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import base64
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -123,7 +123,7 @@ def test_mcp_tool_invoke_handles_content_types_and_structured_output():
     )
 
     with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
-        messages = list(tool.invoke(user_id="user-1", tool_parameters={"a": 1}))
+        messages = list(tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={"a": 1}))
 
     types = [m.type for m in messages]
     assert ToolInvokeMessage.MessageType.JSON in types
@@ -141,7 +141,7 @@ def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource():
 
     with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
         with pytest.raises(ToolInvokeError, match="Unsupported embedded resource type"):
-            list(tool.invoke(user_id="user-1", tool_parameters={}))
+            list(tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={}))
 
 
 def test_mcp_tool_handle_none_parameter_filters_empty_values():

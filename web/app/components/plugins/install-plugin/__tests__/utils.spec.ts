@@ -11,16 +11,16 @@ import {
 // Mock es-toolkit/compat
 vi.mock('es-toolkit/compat', () => ({
   isEmpty: (obj: unknown) => {
-    if (obj === null || obj === undefined)
-      return true
-    if (typeof obj === 'object')
-      return Object.keys(obj).length === 0
+    if (obj === null || obj === undefined) return true
+    if (typeof obj === 'object') return Object.keys(obj).length === 0
     return false
   },
 }))
 
 describe('pluginManifestToCardPluginProps', () => {
-  const createMockPluginDeclaration = (overrides?: Partial<PluginDeclaration>): PluginDeclaration => ({
+  const createMockPluginDeclaration = (
+    overrides?: Partial<PluginDeclaration>,
+  ): PluginDeclaration => ({
     plugin_unique_identifier: 'test-plugin-123',
     version: '1.0.0',
     author: 'test-author',
@@ -93,11 +93,7 @@ describe('pluginManifestToCardPluginProps', () => {
       })
       const result = pluginManifestToCardPluginProps(manifest)
 
-      expect(result.tags).toEqual([
-        { name: 'search' },
-        { name: 'image' },
-        { name: 'api' },
-      ])
+      expect(result.tags).toEqual([{ name: 'search' }, { name: 'image' }, { name: 'api' }])
     })
 
     it('should handle empty tags array', () => {
@@ -204,7 +200,9 @@ describe('pluginManifestToCardPluginProps', () => {
 })
 
 describe('pluginManifestInMarketToPluginProps', () => {
-  const createMockPluginManifestInMarket = (overrides?: Partial<PluginManifestInMarket>): PluginManifestInMarket => ({
+  const createMockPluginManifestInMarket = (
+    overrides?: Partial<PluginManifestInMarket>,
+  ): PluginManifestInMarket => ({
     plugin_unique_identifier: 'market-plugin-123',
     name: 'market-plugin',
     org: 'market-org',

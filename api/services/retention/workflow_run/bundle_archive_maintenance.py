@@ -1,9 +1,10 @@
 """
 Maintain V2 workflow-run archive bundles.
 
-Archive V2 keeps bundle metadata in object-store manifests, not in a database table. This module discovers bundles by
-listing `manifest.json` objects, uses object-store marker files for delete/restore state, and only touches the database
-for source-table validation, deletion, and restoration.
+Archive V2 keeps object-store manifests as the recoverable bundle source of truth. This maintenance module still
+discovers delete/restore targets by listing `manifest.json` objects and uses object-store marker files for
+delete/restore state. The separate database bundle index is intended for console listing and download jobs, not as the
+source of truth for destructive maintenance.
 
 Each bundle is processed in its own database transaction. A failed bundle leaves source rows unchanged unless the
 transaction has already committed; marker handling makes the next run able to reconcile the common committed-but-marker
