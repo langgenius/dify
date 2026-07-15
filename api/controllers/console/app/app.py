@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Literal
 
 from flask import request
+from flask_login import current_user
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, ValidationInfo, computed_field, field_validator, model_validator
 from sqlalchemy import select
@@ -891,6 +892,10 @@ class AppCopyApi(Resource):
 
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
+            AppDslService.assert_secret_export_allowed(
+                include_secret=True,
+                current_role=current_user.current_role,
+            )
             yaml_content = import_service.export_dsl(app_model=app_model, session=session, include_secret=True)
             result = import_service.import_app(
                 account=current_user,
@@ -959,6 +964,11 @@ class AppExportApi(Resource):
     def get(self, app_model: App):
         """Export app"""
         args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
+
+        AppDslService.assert_secret_export_allowed(
+            include_secret=args.include_secret,
+            current_role=current_user.current_role,
+        )
 
         response = AppExportResponse(
             data=AppDslService.export_dsl(
