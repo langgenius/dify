@@ -9,10 +9,10 @@
 
 > 进展：repo-local review materials 已同步到最新口径；上游 Feishu PRD 不自动回写，任何冲突或回写动作都需要先由用户决策。
 
-- [ ] 2.1 将已确认的手动 IM sync、IM identity 选择、Contact 编辑权限与 `Human Input` 命名规则同步回 PRD 与评审材料
-- [ ] 2.2 将 `WAITING / SUBMITTED / TIMEOUT / EXPIRED` 的最终术语映射同步给产品、设计、研发和 QA
+- [x] 2.1 将已确认的手动 IM sync、IM identity 选择、Contact 编辑权限与 `Human Input` 命名规则同步回本地评审材料（见 `design.md` §11-§12 与 repo-local review materials）
+- [x] 2.2 将 `WAITING / SUBMITTED / TIMEOUT / EXPIRED` 的最终术语映射同步到本地评审材料（见 `design.md` §7、§10、§12 与 repo-local review materials）
 - [x] 2.3 将“external contact 不转为 removed member 的 external contact”与“通知中心不进本期”的口径同步到范围说明（见 `design.md` §11-§12 与 repo-local review materials）
-- [ ] 2.4 将 `Service API` / `CLI` 只是调用来源、审批主体仍只有 `workspace user` 与 `end_user` 两类的口径同步给产品、架构、研发和 QA
+- [x] 2.4 将 `Service API` / `CLI` 只是调用来源、审批主体仍只有 `workspace user` 与 `end_user` 两类的口径同步到本地评审材料（见 `design.md` §11-§12 与 repo-local review materials）
 
 ## 3. 将确认后的规则转成实现 backlog
 
@@ -25,6 +25,6 @@
 
 ## 4. 以场景驱动进入实现
 
-- [ ] 4.1 用 `design.md` 中的业务场景与产品、架构、安全逐条走查，标记已确认和待决项
+- [x] 4.1 用 `design.md` 中的业务场景与产品、架构、安全逐条走查，标记已确认和待决项（见 `design.md` §12 走查清单与状态）
 - [x] 4.2 将 manual sync、Contact 权限、Service API request-scoped `end_user`、CLI initiator unavailable、OTP 同步提交、external contact 删除 / 重建 / email 变更，以及并发提交场景纳入首批验收用例（见 `design.md` §10）
 - [ ] 4.3 在所有 blocker 关闭后，基于已确认场景执行 `/opsx:apply`
