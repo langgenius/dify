@@ -31,39 +31,36 @@ const fetchPluginCategoryFromMarketplace = async (packageId: string) => {
       { cache: 'no-store' },
     )
 
-    if (!response.ok)
-      return undefined
+    if (!response.ok) return undefined
 
-    const payload = await response.json() as MarketplaceManifestCategoryResponse
+    const payload = (await response.json()) as MarketplaceManifestCategoryResponse
     return payload.data?.plugin?.category
-  }
-  catch {
+  } catch {
     return undefined
   }
 }
 
-const PluginList = async ({
-  searchParams,
-}: PluginListProps) => {
-  const resolvedSearchParams = await searchParams ?? {}
-  const installRedirectPathFromSearchParams = getInstallRedirectPathFromSearchParams(resolvedSearchParams)
+const PluginList = async ({ searchParams }: PluginListProps) => {
+  const resolvedSearchParams = (await searchParams) ?? {}
+  const installRedirectPathFromSearchParams =
+    getInstallRedirectPathFromSearchParams(resolvedSearchParams)
 
-  if (installRedirectPathFromSearchParams)
-    redirect(installRedirectPathFromSearchParams)
+  if (installRedirectPathFromSearchParams) redirect(installRedirectPathFromSearchParams)
 
   if (shouldResolveInstallCategoryRedirect(resolvedSearchParams)) {
     const packageId = getFirstPackageIdFromSearchParams(resolvedSearchParams)
     const category = packageId ? await fetchPluginCategoryFromMarketplace(packageId) : undefined
-    const installRedirectPath = getInstallRedirectPathByPluginCategory(category, resolvedSearchParams)
+    const installRedirectPath = getInstallRedirectPathByPluginCategory(
+      category,
+      resolvedSearchParams,
+    )
 
-    if (installRedirectPath)
-      redirect(installRedirectPath)
+    if (installRedirectPath) redirect(installRedirectPath)
   }
 
   const redirectPath = getLegacyPluginRedirectPath(resolvedSearchParams)
 
-  if (redirectPath)
-    redirect(redirectPath)
+  if (redirectPath) redirect(redirectPath)
 
   return (
     <PluginPage

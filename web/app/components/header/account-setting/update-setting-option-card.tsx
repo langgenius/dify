@@ -1,5 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioRoot } from '@langgenius/dify-ui/radio'
+import { RadioItem } from '@langgenius/dify-ui/radio'
 
 type UpdateSettingOptionCardProps<Value extends string> = {
   value: Value
@@ -19,9 +19,8 @@ const UpdateSettingOptionCard = <Value extends string>({
   onMouseLeave,
 }: UpdateSettingOptionCardProps<Value>) => {
   return (
-    <RadioRoot<Value>
+    <RadioItem<Value>
       value={value}
-      variant="unstyled"
       nativeButton
       render={<button type="button" />}
       onBlur={onBlur}
@@ -37,7 +36,7 @@ const UpdateSettingOptionCard = <Value extends string>({
       )}
     >
       <span className="max-w-full min-w-0 truncate whitespace-nowrap">{label}</span>
-    </RadioRoot>
+    </RadioItem>
   )
 }
 

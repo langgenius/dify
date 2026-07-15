@@ -12,13 +12,7 @@ vi.mock('@/app/components/base/markdown', () => ({
 
 vi.mock('../field-renderer', () => ({
   __esModule: true,
-  default: ({
-    field,
-    onChange,
-  }: {
-    field: FormInputItem
-    onChange: (value: unknown) => void
-  }) => (
+  default: ({ field, onChange }: { field: FormInputItem; onChange: (value: unknown) => void }) => (
     <button
       type="button"
       data-testid={`renderer-${field.type}`}
@@ -160,15 +154,17 @@ describe('ContentItem', () => {
 
   it('should delegate file-list fields to the shared renderer', async () => {
     const user = userEvent.setup()
-    const existingFiles: FileEntity[] = [{
-      id: 'file-1',
-      name: 'brief.pdf',
-      size: 128,
-      type: 'document',
-      progress: 100,
-      transferMethod: TransferMethod.local_file,
-      supportFileType: 'document',
-    }]
+    const existingFiles: FileEntity[] = [
+      {
+        id: 'file-1',
+        name: 'brief.pdf',
+        size: 128,
+        type: 'document',
+        progress: 100,
+        transferMethod: TransferMethod.local_file,
+        supportFileType: 'document',
+      },
+    ]
 
     render(
       <ContentItem

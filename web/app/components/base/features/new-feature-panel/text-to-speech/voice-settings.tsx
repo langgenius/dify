@@ -1,10 +1,6 @@
 'use client'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo } from 'react'
 import ParamConfigContent from '@/app/components/base/features/new-feature-panel/text-to-speech/param-config-content'
 
@@ -28,19 +24,11 @@ const VoiceSettings = ({
     <Popover
       open={open}
       onOpenChange={(nextOpen) => {
-        if (disabled)
-          return
+        if (disabled) return
         onOpen(nextOpen)
       }}
     >
-      <PopoverTrigger
-        nativeButton={false}
-        render={(
-          <div className="flex">
-            {children}
-          </div>
-        )}
-      />
+      <PopoverTrigger nativeButton={false} render={<div className="flex">{children}</div>} />
       <PopoverContent
         placement={placementLeft ? 'left' : 'top'}
         sideOffset={placementLeft ? 32 : 4}

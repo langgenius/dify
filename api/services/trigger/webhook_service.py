@@ -101,6 +101,7 @@ class WebhookService:
                 - Mapping[str, Any]: The node configuration data
 
         Raises:
+            QuotaExceededError: If the app trigger is rate limited
             ValueError: If webhook not found, app trigger not found, trigger disabled, or workflow not found
         """
         with Session(db.engine) as session:
@@ -141,8 +142,10 @@ class WebhookService:
                 # Only check enabled status if not in debug mode
 
                 if app_trigger.status == AppTriggerStatus.RATE_LIMITED:
-                    raise ValueError(
-                        f"Webhook trigger is rate limited for webhook {webhook_id}, please upgrade your plan."
+                    raise QuotaExceededError(
+                        feature=QuotaType.TRIGGER.value,
+                        tenant_id=webhook_trigger.tenant_id,
+                        required=1,
                     )
 
                 if app_trigger.status != AppTriggerStatus.ENABLED:
@@ -799,6 +802,7 @@ class WebhookService:
             workflow: The workflow to execute
 
         Raises:
+            QuotaExceededError: If the tenant has exhausted its trigger or workflow execution quota
             ValueError: If tenant owner is not found
             Exception: If workflow execution fails
         """
@@ -824,27 +828,26 @@ class WebhookService:
                 quota_charge = QuotaService.reserve(QuotaType.TRIGGER, webhook_trigger.tenant_id)
             except QuotaExceededError:
                 AppTriggerService.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
-                logger.info(
-                    "Tenant %s rate limited, skipping webhook trigger %s",
-                    webhook_trigger.tenant_id,
-                    webhook_trigger.webhook_id,
-                )
                 raise
 
             try:
                 # NOTE: don not use `with sessionmaker(bind=db.engine, expire_on_commit=False).begin()`
                 # trigger_workflow_async need to handle multipe session commits internally
                 with Session(db.engine, expire_on_commit=False) as session:
-                    AsyncWorkflowService.trigger_workflow_async(
-                        session,
-                        end_user,
-                        trigger_data,
-                    )
+                    AsyncWorkflowService.trigger_workflow_async(end_user, trigger_data, session=session)
                 quota_charge.commit()
             except Exception:
                 quota_charge.refund()
                 raise
 
+        except QuotaExceededError as e:
+            logger.info(
+                "Tenant %s quota exceeded for feature %s, skipping webhook trigger %s",
+                webhook_trigger.tenant_id,
+                e.feature,
+                webhook_trigger.webhook_id,
+            )
+            raise
         except Exception:
             logger.exception("Failed to trigger workflow for webhook %s", webhook_trigger.webhook_id)
             raise

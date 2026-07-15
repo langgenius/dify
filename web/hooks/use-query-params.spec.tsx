@@ -342,10 +342,7 @@ describe('useQueryParams hooks', () => {
 
     it('should return raw package id when JSON parsing fails', () => {
       // Arrange
-      const { result } = renderWithAdapter(
-        () => usePluginInstallation(),
-        '?package-ids=org/plugin',
-      )
+      const { result } = renderWithAdapter(() => usePluginInstallation(), '?package-ids=org/plugin')
 
       // Act
       const [state] = result.current

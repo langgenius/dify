@@ -11,7 +11,7 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     tags: {
       get: {
-        queryOptions: vi.fn(input => ({ queryKey: ['tags', input] })),
+        queryOptions: vi.fn((input) => ({ queryKey: ['tags', input] })),
       },
     },
   },

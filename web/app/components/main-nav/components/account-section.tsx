@@ -2,17 +2,16 @@
 
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import AccountDropdown from '@/app/components/header/account-dropdown'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 
 type AccountSectionProps = {
   compact?: boolean
 }
 
-const AccountSection = ({
-  compact = false,
-}: AccountSectionProps) => {
-  const { userProfile } = useAppContext()
+const AccountSection = ({ compact = false }: AccountSectionProps) => {
+  const userProfile = useAtomValue(userProfileAtom)
 
   return (
     <AccountDropdown
@@ -28,8 +27,17 @@ const AccountSection = ({
             isOpen && 'bg-state-base-hover',
           )}
         >
-          <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="md" className="size-7" />
-          {!compact && <span className="min-w-0 flex-1 truncate system-md-medium" title={userProfile.name}>{userProfile.name}</span>}
+          <Avatar
+            avatar={userProfile.avatar_url}
+            name={userProfile.name}
+            size="md"
+            className="size-7"
+          />
+          {!compact && (
+            <span className="min-w-0 flex-1 truncate system-md-medium" title={userProfile.name}>
+              {userProfile.name}
+            </span>
+          )}
         </button>
       )}
     />

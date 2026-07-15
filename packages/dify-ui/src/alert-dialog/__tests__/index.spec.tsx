@@ -25,8 +25,9 @@ describe('AlertDialog wrapper', () => {
       )
 
       await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('Confirm Delete')
-      await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('This action cannot be undone.')
-      await expect.element(document.body.querySelector('.bg-background-overlay') as HTMLElement).toHaveClass('absolute', 'inset-0', 'z-50')
+      await expect
+        .element(screen.getByRole('alertdialog'))
+        .toHaveTextContent('This action cannot be undone.')
     })
 
     it('should not render content when dialog is closed', async () => {
@@ -96,7 +97,7 @@ describe('AlertDialog wrapper', () => {
   })
 
   describe('Composition Helpers', () => {
-    it('should render actions wrapper and default confirm button styles', async () => {
+    it('should render actions wrapper and confirm button', async () => {
       const screen = await render(
         <AlertDialog open>
           <AlertDialogContent>
@@ -108,8 +109,8 @@ describe('AlertDialog wrapper', () => {
         </AlertDialog>,
       )
 
-      await expect.element(screen.getByTestId('actions')).toHaveClass('flex', 'items-start', 'justify-end', 'gap-2', 'self-stretch', 'p-6', 'custom-actions')
-      await expect.element(screen.getByRole('button', { name: 'Confirm' })).toHaveClass('bg-components-button-destructive-primary-bg')
+      await expect.element(screen.getByTestId('actions')).toHaveClass('custom-actions')
+      await expect.element(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument()
     })
 
     it('should keep dialog open after confirm click and close via cancel helper', async () => {

@@ -9,6 +9,8 @@ import {
 } from '../../../support/api'
 import { createE2EResourceName } from '../../../support/naming'
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 When('I enable the Web App share', async function (this: DifyWorld) {
   const page = this.getPage()
   const appName = this.lastCreatedAppName
@@ -18,7 +20,7 @@ When('I enable the Web App share', async function (this: DifyWorld) {
     )
   }
 
-  await page.locator('button').filter({ hasText: appName }).filter({ hasText: 'Workflow' }).click()
+  await page.getByRole('button', { name: new RegExp(escapeRegExp(appName)) }).click()
   await expect(page.getByRole('switch').first()).toBeEnabled({ timeout: 15_000 })
   await page.getByRole('switch').first().click()
 })
@@ -47,7 +49,9 @@ When('I open the shared app URL', async function (this: DifyWorld) {
 
 Then('the shared app page should be accessible', async function (this: DifyWorld) {
   await expect(this.getPage()).toHaveURL(/\/(workflow|chat)\/[a-zA-Z0-9]+/, { timeout: 15_000 })
-  await expect(this.getPage().locator('body')).toBeVisible({ timeout: 10_000 })
+  await expect(this.getPage().getByRole('button', { name: 'Execute' })).toBeVisible({
+    timeout: 10_000,
+  })
 })
 
 When('I run the shared workflow app', async function (this: DifyWorld) {
@@ -59,5 +63,7 @@ When('I run the shared workflow app', async function (this: DifyWorld) {
 })
 
 Then('the shared workflow run should succeed', async function (this: DifyWorld) {
-  await expect(this.getPage().getByTestId('status-icon-success')).toBeVisible({ timeout: 55_000 })
+  await expect(this.getPage().getByRole('img', { name: 'Workflow Process succeeded' })).toBeVisible(
+    { timeout: 55_000 },
+  )
 })

@@ -46,19 +46,45 @@ describe('RetryResultPanel', () => {
     vi.clearAllMocks()
   })
 
-  it('renders retry titles through the real tracing panel and triggers the back action', async () => {
-    const user = userEvent.setup()
-    const onBack = vi.fn()
+  it('should render every retry attempt with its details', async () => {
+    const attempts = [
+      createTrace({
+        id: 'retry-1',
+        status: NodeRunningStatus.Retry,
+        inputs: { attempt: 1 },
+        process_data: { request: 'attempt-1' },
+        outputs: { status_code: 500 },
+        error: 'first failure',
+        expand: true,
+      }),
+      createTrace({
+        id: 'retry-2',
+        status: NodeRunningStatus.Retry,
+        inputs: { attempt: 2 },
+        process_data: { request: 'attempt-2' },
+        outputs: { status_code: 503 },
+        error: 'second failure',
+        expand: true,
+      }),
+    ]
 
-    render(
-      <RetryResultPanel
-        list={[createTrace({ id: 'retry-1' }), createTrace({ id: 'retry-2' })]}
-        onBack={onBack}
-      />,
-    )
+    render(<RetryResultPanel list={attempts} onBack={vi.fn()} />)
 
     expect(screen.getByText('workflow.nodes.common.retry.retry 1')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.common.retry.retry 2')).toBeInTheDocument()
+    expect(await screen.findByText('first failure')).toBeInTheDocument()
+    expect(screen.getByText('second failure')).toBeInTheDocument()
+    expect(screen.getByText(/attempt-1/)).toBeInTheDocument()
+    expect(screen.getByText(/attempt-2/)).toBeInTheDocument()
+    expect(screen.getByText(/500/)).toBeInTheDocument()
+    expect(screen.getByText(/503/)).toBeInTheDocument()
+  })
+
+  it('should trigger the back action when back is clicked', async () => {
+    const user = userEvent.setup()
+    const onBack = vi.fn()
+
+    render(<RetryResultPanel list={[]} onBack={onBack} />)
 
     await user.click(screen.getByText('workflow.singleRun.back'))
 

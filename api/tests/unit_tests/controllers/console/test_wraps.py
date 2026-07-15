@@ -13,8 +13,10 @@ from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
+    _is_setup_completed,
     account_initialization_required,
     cloud_edition_billing_enabled,
+    cloud_edition_billing_paid_plan_required,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
     cloud_utm_record,
@@ -33,6 +35,12 @@ from controllers.console.wraps import (
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from services.feature_service import LicenseStatus
+
+
+@pytest.fixture(autouse=True)
+def reset_setup_required_cache():
+    """Keep setup_required's process cache isolated across unit tests."""
+    _is_setup_completed.reset_success()
 
 
 class MockUser(UserMixin):
@@ -481,6 +489,53 @@ class TestBillingEnabled:
         get_features.assert_not_called()
 
 
+class TestBillingPaidPlanRequired:
+    @pytest.mark.parametrize("plan", ["professional", "team"])
+    def test_should_allow_paid_plan(self, plan: str):
+        @cloud_edition_billing_paid_plan_required
+        def paid_view():
+            return "paid_success"
+
+        billing_info = {"enabled": True, "subscription": {"plan": plan}}
+        with (
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch("controllers.console.wraps.BillingService.get_info", return_value=billing_info) as get_info,
+        ):
+            result = paid_view()
+
+        assert result == "paid_success"
+        get_info.assert_called_once_with("tenant123", exclude_vector_space=True)
+
+    @pytest.mark.parametrize(
+        ("enabled", "plan"),
+        [(False, "professional"), (True, "sandbox"), (True, "unknown")],
+    )
+    def test_should_reject_non_paid_plan(self, enabled: bool, plan: str):
+        app = create_app_with_login()
+
+        @cloud_edition_billing_paid_plan_required
+        def paid_view():
+            return "paid_success"
+
+        billing_info = {"enabled": enabled, "subscription": {"plan": plan}}
+        with app.test_request_context():
+            with (
+                patch(
+                    "controllers.console.wraps.current_account_with_tenant",
+                    return_value=(MockUser("test_user"), "tenant123"),
+                ),
+                patch("controllers.console.wraps.BillingService.get_info", return_value=billing_info),
+                pytest.raises(HTTPException) as exc_info,
+            ):
+                paid_view()
+
+        assert exc_info.value.code == 403
+        assert "requires a paid plan" in str(exc_info.value.description)
+
+
 class TestBillingResourceLimits:
     """Test billing resource limit decorators"""
 
@@ -734,6 +789,39 @@ class TestSystemSetup:
 
         # Assert
         assert result == "admin_success"
+
+    @patch("controllers.console.wraps.db")
+    def test_should_cache_completed_setup(self, mock_db):
+        """Test that completed setup skips repeated DB reads in this process"""
+        mock_db.session.scalar.return_value = MagicMock()
+
+        @setup_required
+        def admin_view():
+            return "admin_success"
+
+        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+            assert admin_view() == "admin_success"
+            assert admin_view() == "admin_success"
+
+        assert mock_db.session.scalar.call_count == 1
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.wraps.os.environ.get")
+    def test_should_not_cache_missing_setup(self, mock_environ_get, mock_db):
+        """Test that first-time bootstrap completion can be observed later in the same process"""
+        mock_db.session.scalar.side_effect = [None, MagicMock()]
+        mock_environ_get.return_value = None
+
+        @setup_required
+        def admin_view():
+            return "admin_success"
+
+        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+            with pytest.raises(NotSetupError):
+                admin_view()
+            assert admin_view() == "admin_success"
+
+        assert mock_db.session.scalar.call_count == 2
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.wraps.os.environ.get")

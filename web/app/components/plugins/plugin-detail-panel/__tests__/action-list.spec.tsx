@@ -21,9 +21,7 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 vi.mock('@/app/components/tools/provider/tool-item', () => ({
-  default: ({ tool }: { tool: { name: string } }) => (
-    <div data-testid="tool-item">{tool.name}</div>
-  ),
+  default: ({ tool }: { tool: { name: string } }) => <div data-testid="tool-item">{tool.name}</div>,
 }))
 
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
@@ -71,7 +69,9 @@ describe('ActionList', () => {
       const detail = createPluginDetail()
       render(<ActionList detail={detail} />)
 
-      expect(screen.getByText('plugin.detailPanel.actionNum:{"num":2,"action":"actions"}')).toBeInTheDocument()
+      expect(
+        screen.getByText('plugin.detailPanel.actionNum:{"num":2,"action":"actions"}'),
+      ).toBeInTheDocument()
       expect(screen.getAllByTestId('tool-item')).toHaveLength(2)
     })
 
@@ -113,7 +113,9 @@ describe('ActionList', () => {
 
       // The provider key is constructed from plugin_id and tool identity name
       // When they match the mock, it renders
-      expect(screen.getByText('plugin.detailPanel.actionNum:{"num":2,"action":"actions"}')).toBeInTheDocument()
+      expect(
+        screen.getByText('plugin.detailPanel.actionNum:{"num":2,"action":"actions"}'),
+      ).toBeInTheDocument()
     })
   })
 })

@@ -3,8 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import Tooltip from '../tooltip'
 
-const renderTooltip = (data: number | string = 42, text = 'Characters', icon = <span data-testid="mock-icon">icon</span>) =>
-  render(<Tooltip data={data} text={text} icon={icon} />)
+const renderTooltip = (
+  data: number | string = 42,
+  text = 'Characters',
+  icon = <span data-testid="mock-icon">icon</span>,
+) => render(<Tooltip data={data} text={text} icon={icon} />)
 
 describe('Tooltip', () => {
   describe('Rendering', () => {

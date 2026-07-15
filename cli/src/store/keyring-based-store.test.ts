@@ -23,8 +23,7 @@ class FakeEntry {
 
   async deletePassword(): Promise<boolean> {
     deletePassword(this.key)
-    if (!passwords.has(this.key))
-      return false
+    if (!passwords.has(this.key)) return false
     passwords.delete(this.key)
     return true
   }
@@ -79,31 +78,25 @@ describe('KeyringBasedStore', () => {
 
   it('swallows getPassword exceptions and returns default', async () => {
     const s = new KeyringBasedStore(SERVICE)
-    getPassword.mockImplementationOnce(
-      () => {
-        throw new Error('NoEntry')
-      },
-    )
+    getPassword.mockImplementationOnce(() => {
+      throw new Error('NoEntry')
+    })
     expect(await s.get({ key: 'k', default: 'd' })).toBe('d')
   })
 
   it('swallows unset exceptions', async () => {
     const s = new KeyringBasedStore(SERVICE)
-    deletePassword.mockImplementationOnce(
-      () => {
-        throw new Error('NoEntry')
-      },
-    )
+    deletePassword.mockImplementationOnce(() => {
+      throw new Error('NoEntry')
+    })
     await expect(s.unset({ key: 'k', default: '' })).resolves.not.toThrow()
   })
 
   it('lets set propagate exceptions (caller decides fallback)', async () => {
     const s = new KeyringBasedStore(SERVICE)
-    setPassword.mockImplementationOnce(
-      () => {
-        throw new Error('keyring locked')
-      },
-    )
+    setPassword.mockImplementationOnce(() => {
+      throw new Error('keyring locked')
+    })
     await expect(s.set({ key: 'k', default: '' }, 'v')).rejects.toThrow(/keyring locked/)
   })
 })

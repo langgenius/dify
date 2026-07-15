@@ -6,11 +6,13 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, func, select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
 from controllers.common.fields import SimpleResultResponse, TextFileResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
@@ -39,6 +41,7 @@ from fields.base import ResponseModel
 from fields.conversation_fields import (
     MessageDetail as BaseMessageDetailResponse,
 )
+from fields.conversation_fields import MessageResponseSource
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import dump_response, uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -152,9 +155,10 @@ class ChatMessageListApi(Resource):
     @edit_permission_required
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-    def get(self, current_user: Account, app_model: App):
-        return _list_chat_messages(app_model=app_model, current_user=current_user)
+    def get(self, session: Session, current_user: Account, app_model: App):
+        return _list_chat_messages(session=session, app_model=app_model, current_user=current_user)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
@@ -172,9 +176,14 @@ class AgentChatMessageListApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
-        return _list_chat_messages(app_model=app_model, current_user=current_user)
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(
+            session=session,
+            tenant_id=current_tenant_id,
+            agent_id=agent_id,
+        )
+        return _list_chat_messages(session=session, app_model=app_model, current_user=current_user)
 
 
 @console_ns.route("/apps/<uuid:app_id>/feedbacks")
@@ -190,9 +199,10 @@ class MessageFeedbackApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
+    @with_session
     @get_app_model
-    def post(self, current_user: Account, app_model: App):
-        return _update_message_feedback(current_user=current_user, app_model=app_model)
+    def post(self, session: Session, current_user: Account, app_model: App):
+        return _update_message_feedback(session=session, current_user=current_user, app_model=app_model)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/feedbacks")
@@ -208,9 +218,14 @@ class AgentMessageFeedbackApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
-        return _update_message_feedback(current_user=current_user, app_model=app_model)
+    @with_session
+    def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(
+            session=session,
+            tenant_id=current_tenant_id,
+            agent_id=agent_id,
+        )
+        return _update_message_feedback(session=session, current_user=current_user, app_model=app_model)
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/count")
@@ -252,9 +267,12 @@ class MessageSuggestedQuestionApi(Resource):
     @account_initialization_required
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-    def get(self, current_user: Account, app_model: App, message_id: UUID):
-        return _get_message_suggested_questions(current_user=current_user, app_model=app_model, message_id=message_id)
+    def get(self, session: Session, current_user: Account, app_model: App, message_id: UUID):
+        return _get_message_suggested_questions(
+            session=session, current_user=current_user, app_model=app_model, message_id=message_id
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages/<uuid:message_id>/suggested-questions")
@@ -273,9 +291,16 @@ class AgentMessageSuggestedQuestionApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account, agent_id: UUID, message_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
-        return _get_message_suggested_questions(current_user=current_user, app_model=app_model, message_id=message_id)
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID, message_id: UUID):
+        app_model = resolve_agent_runtime_app_model(
+            session=session,
+            tenant_id=current_tenant_id,
+            agent_id=agent_id,
+        )
+        return _get_message_suggested_questions(
+            session=session, current_user=current_user, app_model=app_model, message_id=message_id
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/feedbacks/export")
@@ -333,9 +358,10 @@ class MessageApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_session(write=False)
     @get_app_model
-    def get(self, app_model: App, message_id: UUID):
-        return _get_message_detail(app_model=app_model, message_id=message_id)
+    def get(self, session: Session, app_model: App, message_id: UUID):
+        return _get_message_detail(session=session, app_model=app_model, message_id=message_id)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/messages/<uuid:message_id>")
@@ -349,12 +375,17 @@ class AgentMessageApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, agent_id: UUID, message_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
-        return _get_message_detail(app_model=app_model, message_id=message_id)
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, agent_id: UUID, message_id: UUID):
+        app_model = resolve_agent_runtime_app_model(
+            session=session,
+            tenant_id=current_tenant_id,
+            agent_id=agent_id,
+        )
+        return _get_message_detail(session=session, app_model=app_model, message_id=message_id)
 
 
-def _list_chat_messages(*, app_model: App, current_user: Account | None = None):
+def _list_chat_messages(*, session: Session, app_model: App, current_user: Account | None = None):
     args = ChatMessagesQuery.model_validate(request.args.to_dict())
 
     if AppMode.value_of(app_model.mode) == AppMode.AGENT and current_user is not None:
@@ -363,11 +394,12 @@ def _list_chat_messages(*, app_model: App, current_user: Account | None = None):
                 app_model=app_model,
                 conversation_id=args.conversation_id,
                 user=current_user,
+                session=session,
             )
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
     else:
-        conversation = db.session.scalar(
+        conversation = session.scalar(
             select(Conversation)
             .where(Conversation.id == args.conversation_id, Conversation.app_id == app_model.id)
             .limit(1)
@@ -377,14 +409,14 @@ def _list_chat_messages(*, app_model: App, current_user: Account | None = None):
         raise NotFound("Conversation Not Exists.")
 
     if args.first_id:
-        first_message = db.session.scalar(
+        first_message = session.scalar(
             select(Message).where(Message.conversation_id == conversation.id, Message.id == args.first_id).limit(1)
         )
 
         if not first_message:
             raise NotFound("First message not found")
 
-        history_messages = db.session.scalars(
+        history_messages = session.scalars(
             select(Message)
             .where(
                 Message.conversation_id == conversation.id,
@@ -395,7 +427,7 @@ def _list_chat_messages(*, app_model: App, current_user: Account | None = None):
             .limit(args.limit)
         ).all()
     else:
-        history_messages = db.session.scalars(
+        history_messages = session.scalars(
             select(Message)
             .where(Message.conversation_id == conversation.id)
             .order_by(Message.created_at.desc())
@@ -406,7 +438,7 @@ def _list_chat_messages(*, app_model: App, current_user: Account | None = None):
     if len(history_messages) == args.limit:
         current_page_first_message = history_messages[-1]
         # Check if there are more messages before the current page
-        has_more = db.session.scalar(
+        has_more = session.scalar(
             select(
                 exists().where(
                     Message.conversation_id == conversation.id,
@@ -424,26 +456,28 @@ def _list_chat_messages(*, app_model: App, current_user: Account | None = None):
 
     return dump_response(
         MessageInfiniteScrollPaginationResponse,
-        InfiniteScrollPagination(data=history_messages, limit=args.limit, has_more=has_more),
+        InfiniteScrollPagination(
+            data=[MessageResponseSource(message, session=session) for message in history_messages],
+            limit=args.limit,
+            has_more=has_more,
+        ),
     )
 
 
-def _update_message_feedback(*, current_user: Account, app_model: App):
+def _update_message_feedback(*, session: Session, current_user: Account, app_model: App):
     args = MessageFeedbackPayload.model_validate(console_ns.payload)
 
     message_id = args.message_id
 
-    message = db.session.scalar(
-        select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1)
-    )
+    message = session.scalar(select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1))
 
     if not message:
         raise NotFound("Message Not Exists.")
 
-    feedback = message.admin_feedback
+    feedback = message.admin_feedback_with_session(session=session)
 
     if not args.rating and feedback:
-        db.session.delete(feedback)
+        session.delete(feedback)
     elif args.rating and feedback:
         feedback.rating = FeedbackRating(args.rating)
         feedback.content = args.content
@@ -462,19 +496,23 @@ def _update_message_feedback(*, current_user: Account, app_model: App):
             from_source=FeedbackFromSource.ADMIN,
             from_account_id=current_user.id,
         )
-        db.session.add(feedback)
+        session.add(feedback)
 
-    db.session.commit()
+    session.commit()
 
     return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
-def _get_message_suggested_questions(*, current_user: Account, app_model: App, message_id: UUID):
+def _get_message_suggested_questions(*, session: Session, current_user: Account, app_model: App, message_id: UUID):
     message_id_str = str(message_id)
 
     try:
         questions = MessageService.get_suggested_questions_after_answer(
-            app_model=app_model, message_id=message_id_str, user=current_user, invoke_from=InvokeFrom.DEBUGGER
+            app_model=app_model,
+            message_id=message_id_str,
+            user=current_user,
+            invoke_from=InvokeFrom.DEBUGGER,
+            session=session,
         )
     except MessageNotExistsError:
         raise NotFound("Message not found")
@@ -497,10 +535,10 @@ def _get_message_suggested_questions(*, current_user: Account, app_model: App, m
     return dump_response(SuggestedQuestionsResponse, {"data": questions})
 
 
-def _get_message_detail(*, app_model: App, message_id: UUID):
+def _get_message_detail(*, session: Session, app_model: App, message_id: UUID):
     message_id_str = str(message_id)
 
-    message = db.session.scalar(
+    message = session.scalar(
         select(Message).where(Message.id == message_id_str, Message.app_id == app_model.id).limit(1)
     )
 
@@ -508,4 +546,4 @@ def _get_message_detail(*, app_model: App, message_id: UUID):
         raise NotFound("Message Not Exists.")
 
     attach_message_extra_contents([message])
-    return dump_response(MessageDetailResponse, message)
+    return dump_response(MessageDetailResponse, MessageResponseSource(message, session=session))

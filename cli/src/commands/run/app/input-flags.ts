@@ -12,17 +12,25 @@ export async function resolveInputs(
   directInputs: Readonly<Record<string, unknown>> | undefined,
 ): Promise<Record<string, unknown>> {
   if (inputsJson !== undefined && inputsFile !== undefined)
-    throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs and --inputs-file are mutually exclusive' })
+    throw new BaseError({
+      code: ErrorCode.UsageInvalidFlag,
+      message: '--inputs and --inputs-file are mutually exclusive',
+    })
   if (inputsJson !== undefined) {
     let parsed: unknown
     try {
       parsed = JSON.parse(inputsJson)
-    }
-    catch {
-      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs must be valid JSON' })
+    } catch {
+      throw new BaseError({
+        code: ErrorCode.UsageInvalidFlag,
+        message: '--inputs must be valid JSON',
+      })
     }
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
-      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs must be a JSON object' })
+      throw new BaseError({
+        code: ErrorCode.UsageInvalidFlag,
+        message: '--inputs must be a JSON object',
+      })
     return parsed as Record<string, unknown>
   }
   if (inputsFile !== undefined) {
@@ -30,12 +38,17 @@ export async function resolveInputs(
     let parsed: unknown
     try {
       parsed = JSON.parse(await readFile(inputsFile, 'utf8'))
-    }
-    catch {
-      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs-file must contain valid JSON' })
+    } catch {
+      throw new BaseError({
+        code: ErrorCode.UsageInvalidFlag,
+        message: '--inputs-file must contain valid JSON',
+      })
     }
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
-      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs-file must be a JSON object' })
+      throw new BaseError({
+        code: ErrorCode.UsageInvalidFlag,
+        message: '--inputs-file must be a JSON object',
+      })
     return parsed as Record<string, unknown>
   }
   return { ...(directInputs ?? {}) }

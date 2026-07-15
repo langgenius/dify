@@ -8,35 +8,28 @@ const EditingTitle = () => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const draftUpdatedAt = useStore(state => state.draftUpdatedAt)
-  const publishedAt = useStore(state => state.publishedAt)
-  const isSyncingWorkflowDraft = useStore(s => s.isSyncingWorkflowDraft)
+  const draftUpdatedAt = useStore((state) => state.draftUpdatedAt)
+  const publishedAt = useStore((state) => state.publishedAt)
+  const isSyncingWorkflowDraft = useStore((s) => s.isSyncingWorkflowDraft)
 
   return (
     <div className="flex h-[18px] min-w-[300px] items-center system-xs-regular whitespace-nowrap text-text-tertiary">
-      {
-        !!draftUpdatedAt && (
-          <>
-            {t('common.autoSaved', { ns: 'workflow' })}
-            {' '}
-            {formatTime(draftUpdatedAt / 1000, 'HH:mm:ss')}
-          </>
-        )
-      }
+      {!!draftUpdatedAt && (
+        <>
+          {t(($) => $['common.autoSaved'], { ns: 'workflow' })}{' '}
+          {formatTime(draftUpdatedAt / 1000, 'HH:mm:ss')}
+        </>
+      )}
       <span className="mx-1 flex items-center">·</span>
-      {
-        publishedAt
-          ? `${t('common.published', { ns: 'workflow' })} ${formatTimeFromNow(publishedAt)}`
-          : t('common.unpublished', { ns: 'workflow' })
-      }
-      {
-        isSyncingWorkflowDraft && (
-          <>
-            <span className="mx-1 flex items-center">·</span>
-            {t('common.syncingData', { ns: 'workflow' })}
-          </>
-        )
-      }
+      {publishedAt
+        ? `${t(($) => $['common.published'], { ns: 'workflow' })} ${formatTimeFromNow(publishedAt)}`
+        : t(($) => $['common.unpublished'], { ns: 'workflow' })}
+      {isSyncingWorkflowDraft && (
+        <>
+          <span className="mx-1 flex items-center">·</span>
+          {t(($) => $['common.syncingData'], { ns: 'workflow' })}
+        </>
+      )}
     </div>
   )
 }

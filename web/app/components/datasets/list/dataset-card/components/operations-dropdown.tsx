@@ -5,10 +5,11 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { datasetRbacEnabledAtom } from '@/context/system-features-state'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
 
@@ -28,23 +29,32 @@ const OperationsDropdown = ({
   openAccessConfig,
 }: OperationsDropdownProps) => {
   const [open, setOpen] = React.useState(false)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const isRbacEnabled = systemFeatures.rbac_enabled
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
-    currentUserId,
-    resourceMaintainer: dataset.maintainer,
-    workspacePermissionKeys,
-    isRbacEnabled,
-  }), [dataset.maintainer, dataset.permission_keys, currentUserId, isRbacEnabled, workspacePermissionKeys])
-  const canShowOperations = datasetACLCapabilities.canEdit
-    || datasetACLCapabilities.canImportExportDSL
-    || datasetACLCapabilities.canAccessConfig
-    || datasetACLCapabilities.canDelete
+  const currentUserId = useAtomValue(userProfileIdAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
+  const datasetACLCapabilities = React.useMemo(
+    () =>
+      getDatasetACLCapabilities(dataset.permission_keys, {
+        currentUserId,
+        resourceMaintainer: dataset.maintainer,
+        workspacePermissionKeys,
+        isRbacEnabled,
+      }),
+    [
+      dataset.maintainer,
+      dataset.permission_keys,
+      currentUserId,
+      isRbacEnabled,
+      workspacePermissionKeys,
+    ],
+  )
+  const canShowOperations =
+    datasetACLCapabilities.canEdit ||
+    datasetACLCapabilities.canImportExportDSL ||
+    datasetACLCapabilities.canAccessConfig ||
+    datasetACLCapabilities.canDelete
 
-  if (!canShowOperations)
-    return null
+  if (!canShowOperations) return null
 
   return (
     <div
@@ -54,7 +64,7 @@ const OperationsDropdown = ({
           ? 'pointer-events-auto visible'
           : 'pointer-events-none invisible group-hover:pointer-events-auto group-hover:visible',
       )}
-      onClick={e => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
@@ -69,14 +79,13 @@ const OperationsDropdown = ({
         >
           <span className="i-ri-more-fill size-5 text-text-tertiary" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          placement="bottom-end"
-          popupClassName="min-w-[186px]"
-        >
+        <DropdownMenuContent placement="bottom-end" popupClassName="min-w-[186px]">
           <Operations
             showEdit={datasetACLCapabilities.canEdit}
             showDelete={datasetACLCapabilities.canDelete}
-            showExportPipeline={dataset.runtime_mode === 'rag_pipeline' && datasetACLCapabilities.canImportExportDSL}
+            showExportPipeline={
+              dataset.runtime_mode === 'rag_pipeline' && datasetACLCapabilities.canImportExportDSL
+            }
             showAccessConfig={datasetACLCapabilities.canAccessConfig}
             openRenameModal={openRenameModal}
             handleExportPipeline={handleExportPipeline}

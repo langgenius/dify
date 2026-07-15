@@ -6,6 +6,7 @@ import uuid
 from typing import Any, TypedDict, override
 
 from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -21,7 +22,6 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document, ParentChildStructureChunk
-from extensions.ext_database import db
 from libs import helper
 from models import Account
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
@@ -42,18 +42,21 @@ class ParentChildFormatPreviewDict(TypedDict):
 
 class ParentChildIndexProcessor(BaseIndexProcessor):
     @override
-    def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
+    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
         text_docs = ExtractProcessor.extract(
             extract_setting=extract_setting,
             is_automatic=(
                 kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical"
             ),
+            session=session,
         )
 
         return text_docs
 
     @override
-    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
+    def transform(
+        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs
+    ) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         if not process_rule:
             raise ValueError("No process rule found.")
@@ -95,7 +98,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             page_content = page_content
                         if len(page_content) > 0:
                             document_node.page_content = page_content
-                            multimodel_documents = self._get_content_files(document_node, current_user)
+                            multimodel_documents = self._get_content_files(document_node, current_user, session=session)
                             if multimodel_documents:
                                 document_node.attachments = multimodel_documents
                             # parse document to child nodes
@@ -108,7 +111,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         elif rules.parent_mode == ParentMode.FULL_DOC:
             page_content = "\n".join([document.page_content for document in documents])
             document = Document(page_content=page_content, metadata=documents[0].metadata)
-            multimodel_documents = self._get_content_files(document)
+            multimodel_documents = self._get_content_files(document, session=session)
             if multimodel_documents:
                 document.attachments = multimodel_documents
             # parse document to child nodes
@@ -135,10 +138,12 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         documents: list[Document],
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
+        *,
+        session: Session,
         **kwargs,
     ) -> None:
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            vector = Vector(dataset)
+            vector = Vector(dataset, session=session)
             for document in documents:
                 child_documents = document.children
                 if child_documents:
@@ -150,7 +155,9 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 vector.create_multimodal(multimodal_documents)
 
     @override
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
+    def clean(
+        self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
+    ) -> None:
         # node_ids is segment's node_ids
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
@@ -160,24 +167,23 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         if delete_summaries:
             if node_ids:
                 # Find segments by index_node_id
-                with session_factory.create_session() as session:
-                    segments = session.scalars(
-                        select(DocumentSegment).where(
-                            DocumentSegment.dataset_id == dataset.id,
-                            DocumentSegment.index_node_id.in_(node_ids),
-                        )
-                    ).all()
-                    segment_ids = [segment.id for segment in segments]
-                    if segment_ids:
-                        SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
+                segments = session.scalars(
+                    select(DocumentSegment).where(
+                        DocumentSegment.dataset_id == dataset.id,
+                        DocumentSegment.index_node_id.in_(node_ids),
+                    )
+                ).all()
+                segment_ids = [segment.id for segment in segments]
+                if segment_ids:
+                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids, session=session)
             else:
                 # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None)
+                SummaryIndexService.delete_summaries_for_segments(dataset, None, session=session)
 
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             delete_child_chunks = kwargs.get("delete_child_chunks") or False
             precomputed_child_node_ids = kwargs.get("precomputed_child_node_ids")
-            vector = Vector(dataset)
+            vector = Vector(dataset, session=session)
 
             if node_ids:
                 # Use precomputed child_node_ids if available (to avoid race conditions)
@@ -185,7 +191,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     child_node_ids = precomputed_child_node_ids
                 else:
                     # Fallback to original query (may fail if segments are already deleted)
-                    rows = db.session.execute(
+                    rows = session.execute(
                         select(ChildChunk.index_node_id)
                         .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
                         .where(
@@ -202,23 +208,23 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
                 # Delete from database
                 if delete_child_chunks and child_node_ids:
-                    db.session.execute(
+                    session.execute(
                         delete(ChildChunk).where(
                             ChildChunk.dataset_id == dataset.id, ChildChunk.index_node_id.in_(child_node_ids)
                         )
                     )
-                    db.session.commit()
+                    session.flush()
             else:
                 vector.delete()
 
                 if delete_child_chunks:
                     # Use existing compound index: (tenant_id, dataset_id, ...)
-                    db.session.execute(
+                    session.execute(
                         delete(ChildChunk).where(
                             ChildChunk.tenant_id == dataset.tenant_id, ChildChunk.dataset_id == dataset.id
                         )
                     )
-                    db.session.commit()
+                    session.flush()
 
     def _split_child_nodes(
         self,
@@ -257,7 +263,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         return child_nodes
 
     @override
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any, session: Session) -> None:
         parent_childs = ParentChildStructureChunk.model_validate(chunks)
         documents = []
         for parent_child in parent_childs.parent_child_chunks:
@@ -291,10 +297,11 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     attachments.append(file_document)
                 doc.attachments = attachments
             else:
-                account = AccountService.load_user(document.created_by, db.session)
+                with session_factory.create_session() as account_session:
+                    account = AccountService.load_user(document.created_by, account_session)
                 if not account:
                     raise ValueError("Invalid account")
-                doc.attachments = self._get_content_files(doc, current_user=account)
+                doc.attachments = self._get_content_files(doc, current_user=account, session=session)
             documents.append(doc)
         if documents:
             # update document parent mode
@@ -308,14 +315,14 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 ),
                 created_by=document.created_by,
             )
-            db.session.add(dataset_process_rule)
-            db.session.flush()
+            session.add(dataset_process_rule)
+            session.flush()
             document.dataset_process_rule_id = dataset_process_rule.id
-            db.session.commit()
             # save node to document segment
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             # add document segments
-            doc_store.add_documents(docs=documents, save_child=True)
+            doc_store.add_documents(docs=documents, save_child=True, session=session)
+            session.commit()
             if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 all_child_documents = []
                 all_multimodal_documents = []
@@ -324,7 +331,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                         all_child_documents.extend(doc.children)
                     if doc.attachments:
                         all_multimodal_documents.extend(doc.attachments)
-                vector = Vector(dataset)
+                vector = Vector(dataset, session=session)
                 if all_child_documents:
                     vector.create(all_child_documents)
                 if all_multimodal_documents and dataset.is_multimodal:
@@ -351,6 +358,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         preview_texts: list[PreviewDetail],
         summary_index_setting: SummaryIndexSettingDict,
         doc_language: str | None = None,
+        *,
+        session: Session,
     ) -> list[PreviewDetail]:
         """
         For each parent chunk in preview_texts, concurrently call generate_summary to generate a summary
@@ -377,21 +386,25 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             if flask_app:
                 # Ensure Flask app context in worker thread
                 with flask_app.app_context():
+                    with session_factory.create_session() as worker_session:
+                        summary, _ = ParagraphIndexProcessor.generate_summary(
+                            tenant_id=tenant_id,
+                            text=preview.content,
+                            summary_index_setting=summary_index_setting,
+                            document_language=doc_language,
+                            session=worker_session,
+                        )
+                    preview.summary = summary
+            else:
+                # Fallback: try without app context (may fail)
+                with session_factory.create_session() as worker_session:
                     summary, _ = ParagraphIndexProcessor.generate_summary(
                         tenant_id=tenant_id,
                         text=preview.content,
                         summary_index_setting=summary_index_setting,
                         document_language=doc_language,
+                        session=worker_session,
                     )
-                    preview.summary = summary
-            else:
-                # Fallback: try without app context (may fail)
-                summary, _ = ParagraphIndexProcessor.generate_summary(
-                    tenant_id=tenant_id,
-                    text=preview.content,
-                    summary_index_setting=summary_index_setting,
-                    document_language=doc_language,
-                )
                 preview.summary = summary
 
         # Generate summaries concurrently using ThreadPoolExecutor

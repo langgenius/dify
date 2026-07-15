@@ -16,71 +16,81 @@ import VarItem from './var-item'
 type Props = Readonly<{
   readonly: boolean
   list: InputVar[]
-  onChange: (list: InputVar[], moreInfo?: { index: number, payload: MoreInfo }) => void
+  onChange: (list: InputVar[], moreInfo?: { index: number; payload: MoreInfo }) => void
 }>
 
-const VarList: FC<Props> = ({
-  readonly,
-  list,
-  onChange,
-}) => {
+const VarList: FC<Props> = ({ readonly, list, onChange }) => {
   const { t } = useTranslation()
 
-  const handleVarChange = useCallback((index: number) => {
-    return (payload: InputVar, moreInfo?: MoreInfo) => {
-      const newList = produce(list, (draft) => {
-        draft[index] = payload
-      })
-      let errorMsgKey: 'varKeyError.keyAlreadyExists' | '' = ''
-      let typeName: 'variableConfig.varName' | 'variableConfig.labelName' | '' = ''
-      if (hasDuplicateStr(newList.map(item => item.variable))) {
-        errorMsgKey = 'varKeyError.keyAlreadyExists'
-        typeName = 'variableConfig.varName'
-      }
-      else if (hasDuplicateStr(newList.map(item => item.label as string))) {
-        errorMsgKey = 'varKeyError.keyAlreadyExists'
-        typeName = 'variableConfig.labelName'
-      }
+  const handleVarChange = useCallback(
+    (index: number) => {
+      return (payload: InputVar, moreInfo?: MoreInfo) => {
+        const newList = produce(list, (draft) => {
+          draft[index] = payload
+        })
+        let errorMsgKey: 'varKeyError.keyAlreadyExists' | '' = ''
+        let typeName: 'variableConfig.varName' | 'variableConfig.labelName' | '' = ''
+        if (hasDuplicateStr(newList.map((item) => item.variable))) {
+          errorMsgKey = 'varKeyError.keyAlreadyExists'
+          typeName = 'variableConfig.varName'
+        } else if (hasDuplicateStr(newList.map((item) => item.label as string))) {
+          errorMsgKey = 'varKeyError.keyAlreadyExists'
+          typeName = 'variableConfig.labelName'
+        }
 
-      if (errorMsgKey && typeName) {
-        toast.error(t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }))
-        return false
+        if (errorMsgKey && typeName) {
+          toast.error(
+            t(($) => $[errorMsgKey], {
+              ns: 'appDebug',
+              key: t(($) => $[typeName], { ns: 'appDebug' }),
+            }),
+          )
+          return false
+        }
+        onChange(newList, moreInfo ? { index, payload: moreInfo } : undefined)
+        return true
       }
-      onChange(newList, moreInfo ? { index, payload: moreInfo } : undefined)
-      return true
-    }
-  }, [list, onChange])
+    },
+    [list, onChange],
+  )
 
-  const handleVarRemove = useCallback((index: number) => {
-    return () => {
-      const newList = produce(list, (draft) => {
-        draft.splice(index, 1)
-      })
-      onChange(newList, {
-        index,
-        payload: {
-          type: ChangeType.remove,
+  const handleVarRemove = useCallback(
+    (index: number) => {
+      return () => {
+        const newList = produce(list, (draft) => {
+          draft.splice(index, 1)
+        })
+        onChange(newList, {
+          index,
           payload: {
-            beforeKey: list[index]!.variable,
+            type: ChangeType.remove,
+            payload: {
+              beforeKey: list[index]!.variable,
+            },
           },
-        },
-      })
-    }
-  }, [list, onChange])
+        })
+      }
+    },
+    [list, onChange],
+  )
 
-  const listWithIds = useMemo(() => list.map((item) => {
-    return {
-      id: item.variable,
-      variable: { ...item },
-    }
-  }), [list])
+  const listWithIds = useMemo(
+    () =>
+      list.map((item) => {
+        return {
+          id: item.variable,
+          variable: { ...item },
+        }
+      }),
+    [list],
+  )
 
   const varCount = list.length
 
   if (list.length === 0) {
     return (
       <div className="flex h-[42px] items-center justify-center rounded-md bg-components-panel-bg text-xs leading-[18px] font-normal text-text-tertiary">
-        {t('nodes.start.noVarTip', { ns: 'workflow' })}
+        {t(($) => $['nodes.start.noVarTip'], { ns: 'workflow' })}
       </div>
     )
   }
@@ -91,7 +101,9 @@ const VarList: FC<Props> = ({
     <ReactSortable
       className="space-y-1"
       list={listWithIds}
-      setList={(list) => { onChange(list.map(item => item.variable)) }}
+      setList={(list) => {
+        onChange(list.map((item) => item.variable))
+      }}
       handle=".handle"
       ghostClass="opacity-50"
       animation={150}
@@ -104,14 +116,15 @@ const VarList: FC<Props> = ({
             payload={itemWithId.variable}
             onChange={handleVarChange(index)}
             onRemove={handleVarRemove(index)}
-            varKeys={list.map(item => item.variable)}
+            varKeys={list.map((item) => item.variable)}
             canDrag={canDrag}
           />
           {canDrag && (
-            <RiDraggable className={cn(
-              'handle absolute top-2.5 left-3 hidden size-3 cursor-pointer text-text-tertiary',
-              'group-hover:block',
-            )}
+            <RiDraggable
+              className={cn(
+                'handle absolute top-2.5 left-3 hidden size-3 cursor-pointer text-text-tertiary',
+                'group-hover:block',
+              )}
             />
           )}
         </div>

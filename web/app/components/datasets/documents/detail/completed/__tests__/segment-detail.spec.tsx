@@ -2,14 +2,15 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode } from '@/models/datasets'
-
 import { SegmentDetail } from '../segment-detail'
 
 // Mock dataset detail context
 let mockIndexingTechnique = IndexingType.QUALIFIED
 let mockRuntimeMode = 'general'
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { indexing_technique: string, runtime_mode: string } }) => unknown) => {
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset: { indexing_technique: string; runtime_mode: string } }) => unknown,
+  ) => {
     return selector({
       dataset: {
         indexing_technique: mockIndexingTechnique,
@@ -31,7 +32,9 @@ vi.mock('../../context', () => ({
 let mockFullScreen = false
 const mockToggleFullScreen = vi.fn()
 vi.mock('../index', () => ({
-  useSegmentListContext: (selector: (state: { fullScreen: boolean, toggleFullScreen: () => void }) => unknown) => {
+  useSegmentListContext: (
+    selector: (state: { fullScreen: boolean; toggleFullScreen: () => void }) => unknown,
+  ) => {
     const state = {
       fullScreen: mockFullScreen,
       toggleFullScreen: mockToggleFullScreen,
@@ -50,30 +53,62 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 vi.mock('../common/action-buttons', () => ({
-  default: ({ handleCancel, handleSave, handleRegeneration, loading, showRegenerationButton }: { handleCancel: () => void, handleSave: () => void, handleRegeneration?: () => void, loading: boolean, showRegenerationButton?: boolean }) => (
+  ActionButtons: ({
+    handleCancel,
+    handleSave,
+    handleRegeneration,
+    loading,
+    showRegenerationButton,
+  }: {
+    handleCancel: () => void
+    handleSave: () => void
+    handleRegeneration?: () => void
+    loading: boolean
+    showRegenerationButton?: boolean
+  }) => (
     <div data-testid="action-buttons">
-      <button onClick={handleCancel} data-testid="cancel-btn">Cancel</button>
-      <button onClick={handleSave} disabled={loading} data-testid="save-btn">Save</button>
+      <button onClick={handleCancel} data-testid="cancel-btn">
+        Cancel
+      </button>
+      <button onClick={handleSave} disabled={loading} data-testid="save-btn">
+        Save
+      </button>
       {showRegenerationButton && (
-        <button onClick={handleRegeneration} data-testid="regenerate-btn">Regenerate</button>
+        <button onClick={handleRegeneration} data-testid="regenerate-btn">
+          Regenerate
+        </button>
       )}
     </div>
   ),
 }))
 
 vi.mock('../common/chunk-content', () => ({
-  default: ({ docForm, question, answer, onQuestionChange, onAnswerChange, isEditMode }: { docForm: string, question: string, answer: string, onQuestionChange: (v: string) => void, onAnswerChange: (v: string) => void, isEditMode: boolean }) => (
+  default: ({
+    docForm,
+    question,
+    answer,
+    onQuestionChange,
+    onAnswerChange,
+    isEditMode,
+  }: {
+    docForm: string
+    question: string
+    answer: string
+    onQuestionChange: (v: string) => void
+    onAnswerChange: (v: string) => void
+    isEditMode: boolean
+  }) => (
     <div data-testid="chunk-content">
       <input
         data-testid="question-input"
         value={question}
-        onChange={e => onQuestionChange(e.target.value)}
+        onChange={(e) => onQuestionChange(e.target.value)}
       />
       {docForm === ChunkingMode.qa && (
         <input
           data-testid="answer-input"
           value={answer}
-          onChange={e => onAnswerChange(e.target.value)}
+          onChange={(e) => onAnswerChange(e.target.value)}
         />
       )}
       <span data-testid="edit-mode">{isEditMode ? 'editing' : 'viewing'}</span>
@@ -86,46 +121,81 @@ vi.mock('../common/dot', () => ({
 }))
 
 vi.mock('../common/keywords', () => ({
-  default: ({ keywords, onKeywordsChange, _isEditMode, actionType }: { keywords: string[], onKeywordsChange: (v: string[]) => void, _isEditMode?: boolean, actionType: string }) => (
+  default: ({
+    keywords,
+    onKeywordsChange,
+    _isEditMode,
+    actionType,
+  }: {
+    keywords: string[]
+    onKeywordsChange: (v: string[]) => void
+    _isEditMode?: boolean
+    actionType: string
+  }) => (
     <div data-testid="keywords">
       <span data-testid="keywords-action">{actionType}</span>
       <input
         data-testid="keywords-input"
         value={keywords.join(',')}
-        onChange={e => onKeywordsChange(e.target.value.split(',').filter(Boolean))}
+        onChange={(e) => onKeywordsChange(e.target.value.split(',').filter(Boolean))}
       />
     </div>
   ),
 }))
 
 vi.mock('../common/segment-index-tag', () => ({
-  SegmentIndexTag: ({ positionId, label, labelPrefix }: { positionId?: string, label?: string, labelPrefix?: string }) => (
+  SegmentIndexTag: ({
+    positionId,
+    label,
+    labelPrefix,
+  }: {
+    positionId?: string
+    label?: string
+    labelPrefix?: string
+  }) => (
     <span data-testid="segment-index-tag">
-      {labelPrefix}
-      {' '}
-      {positionId}
-      {' '}
-      {label}
+      {labelPrefix} {positionId} {label}
     </span>
   ),
 }))
 
 vi.mock('../common/regeneration-modal', () => ({
-  default: ({ isShow, onConfirm, onCancel, onClose }: { isShow: boolean, onConfirm: () => void, onCancel: () => void, onClose: () => void }) => (
-    isShow
-      ? (
-          <div data-testid="regeneration-modal">
-            <button onClick={onConfirm} data-testid="confirm-regeneration">Confirm</button>
-            <button onClick={onCancel} data-testid="cancel-regeneration">Cancel</button>
-            <button onClick={onClose} data-testid="close-regeneration">Close</button>
-          </div>
-        )
-      : null
-  ),
+  default: ({
+    isShow,
+    onConfirm,
+    onCancel,
+    onClose,
+  }: {
+    isShow: boolean
+    onConfirm: () => void
+    onCancel: () => void
+    onClose: () => void
+  }) =>
+    isShow ? (
+      <div data-testid="regeneration-modal">
+        <button onClick={onConfirm} data-testid="confirm-regeneration">
+          Confirm
+        </button>
+        <button onClick={onCancel} data-testid="cancel-regeneration">
+          Cancel
+        </button>
+        <button onClick={onClose} data-testid="close-regeneration">
+          Close
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/app/components/datasets/common/image-uploader/image-uploader-in-chunk', () => ({
-  default: ({ disabled, value, onChange }: { value?: unknown[], onChange?: (v: unknown[]) => void, disabled?: boolean }) => {
+  default: ({
+    disabled,
+    value,
+    onChange,
+  }: {
+    value?: unknown[]
+    onChange?: (v: unknown[]) => void
+    disabled?: boolean
+  }) => {
     return (
       <div data-testid="image-uploader">
         <span data-testid="uploader-disabled">{disabled ? 'disabled' : 'enabled'}</span>
@@ -442,7 +512,14 @@ describe('SegmentDetail', () => {
       const segInfoWithAttachments = {
         ...defaultSegInfo,
         attachments: [
-          { id: 'att-1', name: 'file1.jpg', size: 1000, mime_type: 'image/jpeg', extension: 'jpg', source_url: 'http://example.com/file1.jpg' },
+          {
+            id: 'att-1',
+            name: 'file1.jpg',
+            size: 1000,
+            mime_type: 'image/jpeg',
+            extension: 'jpg',
+            source_url: 'http://example.com/file1.jpg',
+          },
         ],
       }
 
@@ -476,13 +553,7 @@ describe('SegmentDetail', () => {
 
     it('should close modal and edit drawer when close after regeneration is clicked', () => {
       const mockOnCancel = vi.fn()
-      render(
-        <SegmentDetail
-          {...defaultProps}
-          isEditMode={true}
-          onCancel={mockOnCancel}
-        />,
-      )
+      render(<SegmentDetail {...defaultProps} isEditMode={true} onCancel={mockOnCancel} />)
 
       fireEvent.click(screen.getByTestId('regenerate-btn'))
 

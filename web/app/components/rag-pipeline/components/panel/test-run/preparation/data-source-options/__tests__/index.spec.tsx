@@ -17,25 +17,26 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
-  default: ({ type, toolIcon }: { type: string, toolIcon: unknown }) => (
+  default: ({ type, toolIcon }: { type: string; toolIcon: unknown }) => (
     <div data-testid="block-icon" data-type={type} data-tool-icon={JSON.stringify(toolIcon)}>
       BlockIcon
     </div>
   ),
 }))
 
-const createNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType => ({
-  title: 'Test Node',
-  desc: 'Test description',
-  type: 'data-source',
-  provider_type: 'local_file',
-  provider_name: 'Local File',
-  datasource_name: 'local_file',
-  plugin_id: 'test-plugin',
-  datasource_parameters: {},
-  datasource_configurations: {},
-  ...overrides,
-} as unknown as DataSourceNodeType)
+const createNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType =>
+  ({
+    title: 'Test Node',
+    desc: 'Test description',
+    type: 'data-source',
+    provider_type: 'local_file',
+    provider_name: 'Local File',
+    datasource_name: 'local_file',
+    plugin_id: 'test-plugin',
+    datasource_parameters: {},
+    datasource_configurations: {},
+    ...overrides,
+  }) as unknown as DataSourceNodeType
 
 const createDataSourceOption = (overrides?: Partial<DataSourceOption>): DataSourceOption => ({
   label: 'Test Option',
@@ -54,12 +55,7 @@ describe('OptionCard', () => {
       const nodeData = createNodeData()
 
       render(
-        <OptionCard
-          label="Test Label"
-          value="test-value"
-          selected={false}
-          nodeData={nodeData}
-        />,
+        <OptionCard label="Test Label" value="test-value" selected={false} nodeData={nodeData} />,
       )
 
       expect(screen.getByText('Test Label'))!.toBeInTheDocument()
@@ -69,12 +65,7 @@ describe('OptionCard', () => {
       const nodeData = createNodeData()
 
       render(
-        <OptionCard
-          label="My Data Source"
-          value="my-ds"
-          selected={false}
-          nodeData={nodeData}
-        />,
+        <OptionCard label="My Data Source" value="my-ds" selected={false} nodeData={nodeData} />,
       )
 
       expect(screen.getByText('My Data Source'))!.toBeInTheDocument()
@@ -83,14 +74,7 @@ describe('OptionCard', () => {
     it('should render BlockIcon component', () => {
       const nodeData = createNodeData()
 
-      render(
-        <OptionCard
-          label="Test"
-          value="test"
-          selected={false}
-          nodeData={nodeData}
-        />,
-      )
+      render(<OptionCard label="Test" value="test" selected={false} nodeData={nodeData} />)
 
       expect(screen.getByTestId('block-icon'))!.toBeInTheDocument()
     })
@@ -98,14 +82,7 @@ describe('OptionCard', () => {
     it('should pass correct type to BlockIcon', () => {
       const nodeData = createNodeData()
 
-      render(
-        <OptionCard
-          label="Test"
-          value="test"
-          selected={false}
-          nodeData={nodeData}
-        />,
-      )
+      render(<OptionCard label="Test" value="test" selected={false} nodeData={nodeData} />)
 
       const blockIcon = screen.getByTestId('block-icon')
       expect(blockIcon)!.toHaveAttribute('data-type', 'datasource')
@@ -115,12 +92,7 @@ describe('OptionCard', () => {
       const nodeData = createNodeData()
 
       render(
-        <OptionCard
-          label="Long Label Text"
-          value="test"
-          selected={false}
-          nodeData={nodeData}
-        />,
+        <OptionCard label="Long Label Text" value="test" selected={false} nodeData={nodeData} />,
       )
 
       expect(screen.getByTitle('Long Label Text'))!.toBeInTheDocument()
@@ -132,12 +104,7 @@ describe('OptionCard', () => {
       const nodeData = createNodeData()
 
       const { container } = render(
-        <OptionCard
-          label="Test"
-          value="test"
-          selected={true}
-          nodeData={nodeData}
-        />,
+        <OptionCard label="Test" value="test" selected={true} nodeData={nodeData} />,
       )
 
       const card = container.firstChild as HTMLElement
@@ -149,12 +116,7 @@ describe('OptionCard', () => {
       const nodeData = createNodeData()
 
       const { container } = render(
-        <OptionCard
-          label="Test"
-          value="test"
-          selected={false}
-          nodeData={nodeData}
-        />,
+        <OptionCard label="Test" value="test" selected={false} nodeData={nodeData} />,
       )
 
       const card = container.firstChild as HTMLElement
@@ -164,14 +126,7 @@ describe('OptionCard', () => {
     it('should apply text-text-primary to label when selected', () => {
       const nodeData = createNodeData()
 
-      render(
-        <OptionCard
-          label="Test Label"
-          value="test"
-          selected={true}
-          nodeData={nodeData}
-        />,
-      )
+      render(<OptionCard label="Test Label" value="test" selected={true} nodeData={nodeData} />)
 
       const label = screen.getByText('Test Label')
       expect(label.className).toContain('text-text-primary')
@@ -180,14 +135,7 @@ describe('OptionCard', () => {
     it('should apply text-text-secondary to label when not selected', () => {
       const nodeData = createNodeData()
 
-      render(
-        <OptionCard
-          label="Test Label"
-          value="test"
-          selected={false}
-          nodeData={nodeData}
-        />,
-      )
+      render(<OptionCard label="Test Label" value="test" selected={false} nodeData={nodeData} />)
 
       const label = screen.getByText('Test Label')
       expect(label.className).toContain('text-text-secondary')
@@ -217,12 +165,7 @@ describe('OptionCard', () => {
       })
 
       render(
-        <OptionCard
-          label="Website Crawler"
-          value="website"
-          selected={false}
-          nodeData={nodeData}
-        />,
+        <OptionCard label="Website Crawler" value="website" selected={false} nodeData={nodeData} />,
       )
 
       expect(screen.getByText('Website Crawler'))!.toBeInTheDocument()
@@ -306,13 +249,7 @@ describe('OptionCard', () => {
       const nodeData = createNodeData()
 
       const { container } = render(
-        <OptionCard
-          label="Test"
-          value=""
-          selected={false}
-          nodeData={nodeData}
-          onClick={onClick}
-        />,
+        <OptionCard label="Test" value="" selected={false} nodeData={nodeData} onClick={onClick} />,
       )
       fireEvent.click(container.firstChild as HTMLElement)
 
@@ -446,25 +383,13 @@ describe('OptionCard', () => {
       const nodeData = createNodeData()
 
       const { rerender, container } = render(
-        <OptionCard
-          label="Test"
-          value="test"
-          selected={false}
-          nodeData={nodeData}
-        />,
+        <OptionCard label="Test" value="test" selected={false} nodeData={nodeData} />,
       )
 
       let card = container.firstChild as HTMLElement
       expect(card.className).not.toContain('border-components-option-card-option-selected-border')
 
-      rerender(
-        <OptionCard
-          label="Test"
-          value="test"
-          selected={true}
-          nodeData={nodeData}
-        />,
-      )
+      rerender(<OptionCard label="Test" value="test" selected={true} nodeData={nodeData} />)
 
       card = container.firstChild as HTMLElement
       expect(card.className).toContain('border-components-option-card-option-selected-border')
@@ -475,14 +400,7 @@ describe('OptionCard', () => {
     it('should handle empty label', () => {
       const nodeData = createNodeData()
 
-      render(
-        <OptionCard
-          label=""
-          value="test"
-          selected={false}
-          nodeData={nodeData}
-        />,
-      )
+      render(<OptionCard label="" value="test" selected={false} nodeData={nodeData} />)
 
       expect(screen.getByTestId('block-icon'))!.toBeInTheDocument()
     })
@@ -491,14 +409,7 @@ describe('OptionCard', () => {
       const nodeData = createNodeData()
       const longLabel = 'A'.repeat(200)
 
-      render(
-        <OptionCard
-          label={longLabel}
-          value="test"
-          selected={false}
-          nodeData={nodeData}
-        />,
-      )
+      render(<OptionCard label={longLabel} value="test" selected={false} nodeData={nodeData} />)
 
       expect(screen.getByText(longLabel))!.toBeInTheDocument()
       expect(screen.getByTitle(longLabel))!.toBeInTheDocument()
@@ -508,14 +419,7 @@ describe('OptionCard', () => {
       const nodeData = createNodeData()
       const specialLabel = '<Test> & \'Label\' "Special"'
 
-      render(
-        <OptionCard
-          label={specialLabel}
-          value="test"
-          selected={false}
-          nodeData={nodeData}
-        />,
-      )
+      render(<OptionCard label={specialLabel} value="test" selected={false} nodeData={nodeData} />)
 
       expect(screen.getByText(specialLabel))!.toBeInTheDocument()
     })
@@ -540,13 +444,7 @@ describe('OptionCard', () => {
       const nodeData = createNodeData()
 
       const { container } = render(
-        <OptionCard
-          label="Test"
-          value=""
-          selected={false}
-          nodeData={nodeData}
-          onClick={onClick}
-        />,
+        <OptionCard label="Test" value="" selected={false} nodeData={nodeData} onClick={onClick} />,
       )
       fireEvent.click(container.firstChild as HTMLElement)
 
@@ -576,12 +474,7 @@ describe('OptionCard', () => {
       const minimalNodeData = { title: 'Minimal' } as unknown as DataSourceNodeType
 
       render(
-        <OptionCard
-          label="Minimal"
-          value="test"
-          selected={false}
-          nodeData={minimalNodeData}
-        />,
+        <OptionCard label="Minimal" value="test" selected={false} nodeData={minimalNodeData} />,
       )
 
       expect(screen.getByText('Minimal'))!.toBeInTheDocument()
@@ -593,12 +486,7 @@ describe('OptionCard', () => {
       const nodeData = createNodeData()
 
       const { container } = render(
-        <OptionCard
-          label="Test"
-          value="test"
-          selected={false}
-          nodeData={nodeData}
-        />,
+        <OptionCard label="Test" value="test" selected={false} nodeData={nodeData} />,
       )
 
       const card = container.firstChild as HTMLElement
@@ -609,14 +497,7 @@ describe('OptionCard', () => {
       const nodeData = createNodeData()
       const label = 'This is a very long label that might get truncated'
 
-      render(
-        <OptionCard
-          label={label}
-          value="test"
-          selected={false}
-          nodeData={nodeData}
-        />,
-      )
+      render(<OptionCard label={label} value="test" selected={false} nodeData={nodeData} />)
 
       expect(screen.getByTitle(label))!.toBeInTheDocument()
     })
@@ -633,12 +514,7 @@ describe('DataSourceOptions', () => {
     it('should render container without crashing', () => {
       mockDatasourceOptions = []
 
-      const { container } = render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={vi.fn()}
-        />,
-      )
+      const { container } = render(<DataSourceOptions dataSourceNodeId="" onSelect={vi.fn()} />)
 
       expect(container.querySelector('.grid'))!.toBeInTheDocument()
     })
@@ -650,12 +526,7 @@ describe('DataSourceOptions', () => {
         createDataSourceOption({ label: 'Option 3', value: 'opt-3' }),
       ]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={vi.fn()}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="" onSelect={vi.fn()} />)
 
       expect(screen.getByText('Option 1'))!.toBeInTheDocument()
       expect(screen.getByText('Option 2'))!.toBeInTheDocument()
@@ -665,12 +536,7 @@ describe('DataSourceOptions', () => {
     it('should render empty grid when no options', () => {
       mockDatasourceOptions = []
 
-      const { container } = render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={vi.fn()}
-        />,
-      )
+      const { container } = render(<DataSourceOptions dataSourceNodeId="" onSelect={vi.fn()} />)
 
       const grid = container.querySelector('.grid')
       expect(grid)!.toBeInTheDocument()
@@ -680,12 +546,7 @@ describe('DataSourceOptions', () => {
     it('should apply correct grid layout classes', () => {
       mockDatasourceOptions = [createDataSourceOption()]
 
-      const { container } = render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={vi.fn()}
-        />,
-      )
+      const { container } = render(<DataSourceOptions dataSourceNodeId="" onSelect={vi.fn()} />)
 
       const grid = container.querySelector('.grid')
       expect(grid?.className).toContain('grid-cols-4')
@@ -699,12 +560,7 @@ describe('DataSourceOptions', () => {
         createDataSourceOption({ label: 'B', value: 'b' }),
       ]
 
-      const { container } = render(
-        <DataSourceOptions
-          dataSourceNodeId="a"
-          onSelect={vi.fn()}
-        />,
-      )
+      const { container } = render(<DataSourceOptions dataSourceNodeId="a" onSelect={vi.fn()} />)
 
       const cards = container.querySelectorAll('.flex.cursor-pointer')
       expect(cards.length).toBe(2)
@@ -719,15 +575,14 @@ describe('DataSourceOptions', () => {
       ]
 
       const { container } = render(
-        <DataSourceOptions
-          dataSourceNodeId="opt-1"
-          onSelect={vi.fn()}
-        />,
+        <DataSourceOptions dataSourceNodeId="opt-1" onSelect={vi.fn()} />,
       )
 
       const cards = container.querySelectorAll('.flex.cursor-pointer')
       expect(cards[0]!.className).toContain('border-components-option-card-option-selected-border')
-      expect(cards[1]!.className).not.toContain('border-components-option-card-option-selected-border')
+      expect(cards[1]!.className).not.toContain(
+        'border-components-option-card-option-selected-border',
+      )
     })
 
     it('should mark second option as selected when matching', () => {
@@ -737,14 +592,13 @@ describe('DataSourceOptions', () => {
       ]
 
       const { container } = render(
-        <DataSourceOptions
-          dataSourceNodeId="opt-2"
-          onSelect={vi.fn()}
-        />,
+        <DataSourceOptions dataSourceNodeId="opt-2" onSelect={vi.fn()} />,
       )
 
       const cards = container.querySelectorAll('.flex.cursor-pointer')
-      expect(cards[0]!.className).not.toContain('border-components-option-card-option-selected-border')
+      expect(cards[0]!.className).not.toContain(
+        'border-components-option-card-option-selected-border',
+      )
       expect(cards[1]!.className).toContain('border-components-option-card-option-selected-border')
     })
 
@@ -755,10 +609,7 @@ describe('DataSourceOptions', () => {
       ]
 
       const { container } = render(
-        <DataSourceOptions
-          dataSourceNodeId="non-existent"
-          onSelect={vi.fn()}
-        />,
+        <DataSourceOptions dataSourceNodeId="non-existent" onSelect={vi.fn()} />,
       )
 
       const cards = container.querySelectorAll('.flex.cursor-pointer')
@@ -770,12 +621,7 @@ describe('DataSourceOptions', () => {
     it('should handle empty dataSourceNodeId', () => {
       mockDatasourceOptions = [createDataSourceOption()]
 
-      const { container } = render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={vi.fn()}
-        />,
-      )
+      const { container } = render(<DataSourceOptions dataSourceNodeId="" onSelect={vi.fn()} />)
 
       expect(container.querySelector('.grid'))!.toBeInTheDocument()
     })
@@ -793,12 +639,7 @@ describe('DataSourceOptions', () => {
         }),
       ]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId="test-id"
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="test-id" onSelect={onSelect} />)
       fireEvent.click(screen.getByText('Test Option'))
 
       expect(onSelect).toHaveBeenCalledTimes(1)
@@ -817,12 +658,7 @@ describe('DataSourceOptions', () => {
         createDataSourceOption({ label: 'Option 2', value: 'id-2', data: data2 }),
       ]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId="id-1"
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="id-1" onSelect={onSelect} />)
       fireEvent.click(screen.getByText('Option 1'))
       fireEvent.click(screen.getByText('Option 2'))
 
@@ -835,12 +671,7 @@ describe('DataSourceOptions', () => {
       const onSelect = vi.fn()
       mockDatasourceOptions = []
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
 
       expect(onSelect).not.toHaveBeenCalled()
     })
@@ -852,12 +683,7 @@ describe('DataSourceOptions', () => {
         createDataSourceOption({ label: 'Option', value: 'opt-id', data: optionData }),
       ]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId="opt-id"
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="opt-id" onSelect={onSelect} />)
       fireEvent.click(screen.getByText('Option'))
       fireEvent.click(screen.getByText('Option'))
       fireEvent.click(screen.getByText('Option'))
@@ -875,12 +701,7 @@ describe('DataSourceOptions', () => {
         createDataSourceOption({ label: 'Second', value: 'second-id' }),
       ]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
 
       await waitFor(() => {
         expect(onSelect).toHaveBeenCalledWith({
@@ -897,12 +718,7 @@ describe('DataSourceOptions', () => {
         createDataSourceOption({ label: 'Second', value: 'second-id' }),
       ]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId="second-id"
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="second-id" onSelect={onSelect} />)
 
       await waitFor(() => {
         expect(onSelect).not.toHaveBeenCalled()
@@ -913,12 +729,7 @@ describe('DataSourceOptions', () => {
       const onSelect = vi.fn()
       mockDatasourceOptions = []
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
 
       await waitFor(() => {
         expect(onSelect).not.toHaveBeenCalled()
@@ -927,29 +738,12 @@ describe('DataSourceOptions', () => {
 
     it('should run effect only once on mount', async () => {
       const onSelect = vi.fn()
-      mockDatasourceOptions = [
-        createDataSourceOption({ label: 'First', value: 'first-id' }),
-      ]
+      mockDatasourceOptions = [createDataSourceOption({ label: 'First', value: 'first-id' })]
 
-      const { rerender } = render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect}
-        />,
-      )
+      const { rerender } = render(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
 
-      rerender(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect}
-        />,
-      )
-      rerender(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect}
-        />,
-      )
+      rerender(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
+      rerender(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
 
       await waitFor(() => {
         expect(onSelect).toHaveBeenCalledTimes(1)
@@ -959,42 +753,25 @@ describe('DataSourceOptions', () => {
     it('should not re-run effect on rerender with different props', async () => {
       const onSelect1 = vi.fn()
       const onSelect2 = vi.fn()
-      mockDatasourceOptions = [
-        createDataSourceOption({ label: 'First', value: 'first-id' }),
-      ]
+      mockDatasourceOptions = [createDataSourceOption({ label: 'First', value: 'first-id' })]
 
-      const { rerender } = render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect1}
-        />,
-      )
+      const { rerender } = render(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect1} />)
 
       await waitFor(() => {
         expect(onSelect1).toHaveBeenCalledTimes(1)
       })
 
-      rerender(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect2}
-        />,
-      )
+      rerender(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect2} />)
 
       expect(onSelect2).not.toHaveBeenCalled()
     })
 
     it('should handle unmount cleanly', () => {
       const onSelect = vi.fn()
-      mockDatasourceOptions = [
-        createDataSourceOption({ label: 'Test', value: 'test-id' }),
-      ]
+      mockDatasourceOptions = [createDataSourceOption({ label: 'Test', value: 'test-id' })]
 
       const { unmount } = render(
-        <DataSourceOptions
-          dataSourceNodeId="test-id"
-          onSelect={onSelect}
-        />,
+        <DataSourceOptions dataSourceNodeId="test-id" onSelect={onSelect} />,
       )
 
       expect(() => unmount()).not.toThrow()
@@ -1009,20 +786,10 @@ describe('DataSourceOptions', () => {
         createDataSourceOption({ label: 'Option', value: 'opt-id', data: optionData }),
       ]
 
-      const { rerender } = render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect}
-        />,
-      )
+      const { rerender } = render(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
       fireEvent.click(screen.getByText('Option'))
 
-      rerender(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect}
-        />,
-      )
+      rerender(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
       fireEvent.click(screen.getByText('Option'))
 
       expect(onSelect).toHaveBeenCalledTimes(3) // 1 auto-select + 2 clicks
@@ -1031,24 +798,14 @@ describe('DataSourceOptions', () => {
     it('should update handleSelect when onSelect prop changes', () => {
       const onSelect1 = vi.fn()
       const onSelect2 = vi.fn()
-      mockDatasourceOptions = [
-        createDataSourceOption({ label: 'Option', value: 'opt-id' }),
-      ]
+      mockDatasourceOptions = [createDataSourceOption({ label: 'Option', value: 'opt-id' })]
 
       const { rerender } = render(
-        <DataSourceOptions
-          dataSourceNodeId="opt-id"
-          onSelect={onSelect1}
-        />,
+        <DataSourceOptions dataSourceNodeId="opt-id" onSelect={onSelect1} />,
       )
       fireEvent.click(screen.getByText('Option'))
 
-      rerender(
-        <DataSourceOptions
-          dataSourceNodeId="opt-id"
-          onSelect={onSelect2}
-        />,
-      )
+      rerender(<DataSourceOptions dataSourceNodeId="opt-id" onSelect={onSelect2} />)
       fireEvent.click(screen.getByText('Option'))
 
       expect(onSelect1).toHaveBeenCalledTimes(1)
@@ -1064,22 +821,14 @@ describe('DataSourceOptions', () => {
       ]
 
       const { rerender } = render(
-        <DataSourceOptions
-          dataSourceNodeId="opt-id"
-          onSelect={onSelect}
-        />,
+        <DataSourceOptions dataSourceNodeId="opt-id" onSelect={onSelect} />,
       )
       fireEvent.click(screen.getByText('Option'))
 
       mockDatasourceOptions = [
         createDataSourceOption({ label: 'Option', value: 'opt-id', data: data2 }),
       ]
-      rerender(
-        <DataSourceOptions
-          dataSourceNodeId="opt-id"
-          onSelect={onSelect}
-        />,
-      )
+      rerender(<DataSourceOptions dataSourceNodeId="opt-id" onSelect={onSelect} />)
       fireEvent.click(screen.getByText('Option'))
 
       expect(onSelect).toHaveBeenNthCalledWith(1, { nodeId: 'opt-id', nodeData: data1 })
@@ -1090,30 +839,19 @@ describe('DataSourceOptions', () => {
   describe('Edge Cases', () => {
     it('should handle single option', () => {
       const onSelect = vi.fn()
-      mockDatasourceOptions = [
-        createDataSourceOption({ label: 'Only Option', value: 'only-id' }),
-      ]
+      mockDatasourceOptions = [createDataSourceOption({ label: 'Only Option', value: 'only-id' })]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId="only-id"
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="only-id" onSelect={onSelect} />)
 
       expect(screen.getByText('Only Option'))!.toBeInTheDocument()
     })
 
     it('should handle many options', () => {
       mockDatasourceOptions = Array.from({ length: 20 }, (_, i) =>
-        createDataSourceOption({ label: `Option ${i}`, value: `opt-${i}` }))
-
-      render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={vi.fn()}
-        />,
+        createDataSourceOption({ label: `Option ${i}`, value: `opt-${i}` }),
       )
+
+      render(<DataSourceOptions dataSourceNodeId="" onSelect={vi.fn()} />)
 
       expect(screen.getByText('Option 0'))!.toBeInTheDocument()
       expect(screen.getByText('Option 19'))!.toBeInTheDocument()
@@ -1128,12 +866,7 @@ describe('DataSourceOptions', () => {
         createDataSourceOption({ label: 'Same Label', value: 'id-2', data: data2 }),
       ]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
       const labels = screen.getAllByText('Same Label')
       fireEvent.click(labels[1]!) // Click second one
 
@@ -1151,12 +884,7 @@ describe('DataSourceOptions', () => {
         }),
       ]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
       fireEvent.click(screen.getByText('Special'))
 
       expect(onSelect).toHaveBeenCalledWith({
@@ -1169,12 +897,7 @@ describe('DataSourceOptions', () => {
       const onSelect = vi.fn()
       mockDatasourceOptions = []
 
-      const { container } = render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect}
-        />,
-      )
+      const { container } = render(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
 
       expect(container.querySelector('.grid'))!.toBeInTheDocument()
     })
@@ -1186,12 +909,7 @@ describe('DataSourceOptions', () => {
         createDataSourceOption({ label: 'Empty Value', value: '', data: emptyValueData }),
       ]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
       fireEvent.click(screen.getByText('Empty Value'))
 
       expect(onSelect).toHaveBeenCalledWith({
@@ -1201,15 +919,10 @@ describe('DataSourceOptions', () => {
     })
 
     it('should handle options with whitespace-only labels', () => {
-      mockDatasourceOptions = [
-        createDataSourceOption({ label: '   ', value: 'whitespace' }),
-      ]
+      mockDatasourceOptions = [createDataSourceOption({ label: '   ', value: 'whitespace' })]
 
       const { container } = render(
-        <DataSourceOptions
-          dataSourceNodeId="whitespace"
-          onSelect={vi.fn()}
-        />,
+        <DataSourceOptions dataSourceNodeId="whitespace" onSelect={vi.fn()} />,
       )
 
       const cards = container.querySelectorAll('.flex.cursor-pointer')
@@ -1225,12 +938,7 @@ describe('DataSourceOptions', () => {
         createDataSourceOption({ label: 'Weird', value: 'weird-id', data: weirdNodeData }),
       ]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId="weird-id"
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="weird-id" onSelect={onSelect} />)
       fireEvent.click(screen.getByText('Weird'))
 
       expect(onSelect).toHaveBeenCalledWith({
@@ -1257,12 +965,7 @@ describe('DataSourceOptions Integration', () => {
         createDataSourceOption({ label: 'Option 2', value: 'id-2', data: data2 }),
       ]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId=""
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
 
       await waitFor(() => {
         expect(onSelect).toHaveBeenCalledWith({ nodeId: 'id-1', nodeData: data1 })
@@ -1282,25 +985,19 @@ describe('DataSourceOptions Integration', () => {
       ]
 
       const { rerender, container } = render(
-        <DataSourceOptions
-          dataSourceNodeId="b"
-          onSelect={onSelect}
-        />,
+        <DataSourceOptions dataSourceNodeId="b" onSelect={onSelect} />,
       )
 
       let cards = container.querySelectorAll('.flex.cursor-pointer')
       expect(cards[1]!.className).toContain('border-components-option-card-option-selected-border')
 
-      rerender(
-        <DataSourceOptions
-          dataSourceNodeId="c"
-          onSelect={onSelect}
-        />,
-      )
+      rerender(<DataSourceOptions dataSourceNodeId="c" onSelect={onSelect} />)
 
       cards = container.querySelectorAll('.flex.cursor-pointer')
       expect(cards[2]!.className).toContain('border-components-option-card-option-selected-border')
-      expect(cards[1]!.className).not.toContain('border-components-option-card-option-selected-border')
+      expect(cards[1]!.className).not.toContain(
+        'border-components-option-card-option-selected-border',
+      )
     })
 
     it('should handle rapid option switching', async () => {
@@ -1311,12 +1008,7 @@ describe('DataSourceOptions Integration', () => {
         createDataSourceOption({ label: 'C', value: 'c' }),
       ]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId="a"
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="a" onSelect={onSelect} />)
 
       fireEvent.click(screen.getByText('B'))
       fireEvent.click(screen.getByText('C'))
@@ -1338,10 +1030,7 @@ describe('DataSourceOptions Integration', () => {
       ]
 
       const { container } = render(
-        <DataSourceOptions
-          dataSourceNodeId="test-value"
-          onSelect={vi.fn()}
-        />,
+        <DataSourceOptions dataSourceNodeId="test-value" onSelect={vi.fn()} />,
       )
 
       expect(screen.getByText('Test Label'))!.toBeInTheDocument()
@@ -1357,12 +1046,7 @@ describe('DataSourceOptions Integration', () => {
         createDataSourceOption({ label: 'Click Me', value: 'click-id', data: nodeData }),
       ]
 
-      render(
-        <DataSourceOptions
-          dataSourceNodeId="click-id"
-          onSelect={onSelect}
-        />,
-      )
+      render(<DataSourceOptions dataSourceNodeId="click-id" onSelect={onSelect} />)
       fireEvent.click(screen.getByText('Click Me'))
 
       expect(onSelect).toHaveBeenCalledWith({
@@ -1381,24 +1065,18 @@ describe('DataSourceOptions Integration', () => {
       ]
 
       const { rerender, container } = render(
-        <DataSourceOptions
-          dataSourceNodeId="a"
-          onSelect={onSelect}
-        />,
+        <DataSourceOptions dataSourceNodeId="a" onSelect={onSelect} />,
       )
 
       for (let i = 0; i < 5; i++) {
-        rerender(
-          <DataSourceOptions
-            dataSourceNodeId="a"
-            onSelect={onSelect}
-          />,
-        )
+        rerender(<DataSourceOptions dataSourceNodeId="a" onSelect={onSelect} />)
       }
 
       const cards = container.querySelectorAll('.flex.cursor-pointer')
       expect(cards[0]!.className).toContain('border-components-option-card-option-selected-border')
-      expect(cards[1]!.className).not.toContain('border-components-option-card-option-selected-border')
+      expect(cards[1]!.className).not.toContain(
+        'border-components-option-card-option-selected-border',
+      )
     })
 
     it('should handle options array reference change with same content', () => {
@@ -1409,23 +1087,13 @@ describe('DataSourceOptions Integration', () => {
         createDataSourceOption({ label: 'Option', value: 'opt', data: nodeData }),
       ]
 
-      const { rerender } = render(
-        <DataSourceOptions
-          dataSourceNodeId="opt"
-          onSelect={onSelect}
-        />,
-      )
+      const { rerender } = render(<DataSourceOptions dataSourceNodeId="opt" onSelect={onSelect} />)
 
       mockDatasourceOptions = [
         createDataSourceOption({ label: 'Option', value: 'opt', data: nodeData }),
       ]
 
-      rerender(
-        <DataSourceOptions
-          dataSourceNodeId="opt"
-          onSelect={onSelect}
-        />,
-      )
+      rerender(<DataSourceOptions dataSourceNodeId="opt" onSelect={onSelect} />)
 
       fireEvent.click(screen.getByText('Option'))
 
@@ -1451,12 +1119,7 @@ describe('handleSelect Early Return Coverage', () => {
     ]
     mockDatasourceOptions = originalOptions
 
-    const { rerender } = render(
-      <DataSourceOptions
-        dataSourceNodeId="a"
-        onSelect={onSelect}
-      />,
-    )
+    const { rerender } = render(<DataSourceOptions dataSourceNodeId="a" onSelect={onSelect} />)
 
     const newOptions = [
       createDataSourceOption({ label: 'Option A', value: 'x' }), // Changed from 'a' to 'x'
@@ -1464,12 +1127,7 @@ describe('handleSelect Early Return Coverage', () => {
     ]
     mockDatasourceOptions = newOptions
 
-    rerender(
-      <DataSourceOptions
-        dataSourceNodeId="a"
-        onSelect={onSelect}
-      />,
-    )
+    rerender(<DataSourceOptions dataSourceNodeId="a" onSelect={onSelect} />)
 
     fireEvent.click(screen.getByText('Option A'))
 
@@ -1483,12 +1141,7 @@ describe('handleSelect Early Return Coverage', () => {
     const onSelect = vi.fn()
     mockDatasourceOptions = []
 
-    const { container } = render(
-      <DataSourceOptions
-        dataSourceNodeId=""
-        onSelect={onSelect}
-      />,
-    )
+    const { container } = render(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
 
     expect(container.querySelector('.grid'))!.toBeInTheDocument()
     expect(onSelect).not.toHaveBeenCalled()
@@ -1505,12 +1158,7 @@ describe('handleSelect Early Return Coverage', () => {
       }),
     ]
 
-    render(
-      <DataSourceOptions
-        dataSourceNodeId=""
-        onSelect={onSelect}
-      />,
-    )
+    render(<DataSourceOptions dataSourceNodeId="" onSelect={onSelect} />)
 
     await waitFor(() => {
       expect(onSelect).toHaveBeenCalledWith({

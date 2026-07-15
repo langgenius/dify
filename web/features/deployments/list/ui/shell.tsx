@@ -12,8 +12,13 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
 import { useInfiniteScroll } from '../../shared/hooks/use-infinite-scroll'
 import {
+  deploymentsListErrorAtom,
+  deploymentsListFetchNextPageAtom,
   deploymentsListHasFilterAtom,
-  deploymentsListQueryAtom,
+  deploymentsListHasNextPageAtom,
+  deploymentsListIsFetchingAtom,
+  deploymentsListIsFetchingNextPageAtom,
+  deploymentsListIsLoadingAtom,
   deploymentsListRowsAtom,
   deploymentsListShowEmptyStateAtom,
   deploymentsListShowErrorStateAtom,
@@ -27,9 +32,7 @@ import { InstanceCard } from './instance-card'
 
 const INSTANCE_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
 
-function DeploymentsListState({ children }: {
-  children: ReactNode
-}) {
+function DeploymentsListState({ children }: { children: ReactNode }) {
   return <DeploymentStateMessage variant="page">{children}</DeploymentStateMessage>
 }
 
@@ -48,15 +51,21 @@ function DeploymentsListEmpty() {
     <DeploymentEmptyState
       variant="page"
       icon={hasFilter ? 'i-ri-search-line' : 'i-ri-rocket-line'}
-      title={hasFilter ? t('list.emptyFilteredTitle') : t('list.emptyTitle')}
-      description={hasFilter ? t('list.emptyFilteredDescription') : t('list.emptyDescription')}
-      action={hasFilter
-        ? (
-            <Button variant="secondary" size="small" onClick={clearFilters}>
-              {t('list.clearFilters')}
-            </Button>
-          )
-        : <CreateDeploymentButton />}
+      title={hasFilter ? t(($) => $['list.emptyFilteredTitle']) : t(($) => $['list.emptyTitle'])}
+      description={
+        hasFilter
+          ? t(($) => $['list.emptyFilteredDescription'])
+          : t(($) => $['list.emptyDescription'])
+      }
+      action={
+        hasFilter ? (
+          <Button variant="secondary" size="small" onClick={clearFilters}>
+            {t(($) => $['list.clearFilters'])}
+          </Button>
+        ) : (
+          <CreateDeploymentButton />
+        )
+      }
     />
   )
 }
@@ -90,14 +99,10 @@ function InstanceCardSkeleton() {
 }
 
 function DeploymentsListSkeleton() {
-  return INSTANCE_CARD_SKELETON_KEYS.map(key => (
-    <InstanceCardSkeleton key={key} />
-  ))
+  return INSTANCE_CARD_SKELETON_KEYS.map((key) => <InstanceCardSkeleton key={key} />)
 }
 
-function DeploymentsSearchInput({ className }: {
-  className?: string
-}) {
+function DeploymentsSearchInput({ className }: { className?: string }) {
   const { t } = useTranslation('deployments')
   const [keywords, setKeywords] = useQueryState('keywords', keywordsQueryState)
 
@@ -110,18 +115,21 @@ function DeploymentsSearchInput({ className }: {
 
   return (
     <div className={cn('relative w-50', className)}>
-      <span aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary" />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 left-2.5 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary"
+      />
       <Input
         className="h-8 pr-8 pl-8"
-        aria-label={t('filter.searchPlaceholder')}
-        placeholder={t('filter.searchPlaceholder')}
+        aria-label={t(($) => $['filter.searchPlaceholder'])}
+        placeholder={t(($) => $['filter.searchPlaceholder'])}
         value={keywords}
-        onChange={e => handleKeywordsChange(e.target.value)}
+        onChange={(e) => handleKeywordsChange(e.target.value)}
       />
       {keywords && (
         <button
           type="button"
-          aria-label={t('list.clearSearch')}
+          aria-label={t(($) => $['list.clearSearch'])}
           className="absolute top-1/2 right-2.5 flex size-4 -translate-y-1/2 items-center justify-center text-text-quaternary hover:text-text-secondary"
           onClick={() => handleKeywordsChange('')}
         >
@@ -137,11 +145,13 @@ function DeploymentsListControls() {
 
   return (
     <StudioListHeader
-      title={(
+      title={
         <div className="flex items-center">
-          <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t('menus.deployments', { ns: 'common' })}</h1>
+          <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">
+            {t(($) => $['menus.deployments'], { ns: 'common' })}
+          </h1>
         </div>
-      )}
+      }
     >
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         <div className="flex min-w-0 items-center justify-between gap-2 sm:justify-start">
@@ -157,35 +167,50 @@ function DeploymentsListControls() {
 
 export function DeploymentsListShell() {
   const { t } = useTranslation('deployments')
-  const deploymentsListQuery = useAtomValue(deploymentsListQueryAtom)
+  const deploymentsListError = useAtomValue(deploymentsListErrorAtom)
+  const deploymentsListFetchNextPage = useAtomValue(deploymentsListFetchNextPageAtom)
+  const deploymentsListHasNextPage = useAtomValue(deploymentsListHasNextPageAtom)
+  const deploymentsListIsFetching = useAtomValue(deploymentsListIsFetchingAtom)
+  const deploymentsListIsFetchingNextPage = useAtomValue(deploymentsListIsFetchingNextPageAtom)
+  const deploymentsListIsLoading = useAtomValue(deploymentsListIsLoadingAtom)
   const appInstanceSummaries = useAtomValue(deploymentsListRowsAtom)
   const showSkeleton = useAtomValue(deploymentsListShowSkeletonAtom)
   const showErrorState = useAtomValue(deploymentsListShowErrorStateAtom)
   const showEmptyState = useAtomValue(deploymentsListShowEmptyStateAtom)
 
-  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>(deploymentsListQuery)
+  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>({
+    error: deploymentsListError,
+    fetchNextPage: deploymentsListFetchNextPage,
+    hasNextPage: deploymentsListHasNextPage,
+    isFetching: deploymentsListIsFetching,
+    isFetchingNextPage: deploymentsListIsFetchingNextPage,
+    isLoading: deploymentsListIsLoading,
+  })
 
   return (
-    <div ref={rootRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
+    <div
+      ref={rootRef}
+      className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body"
+    >
       <DeploymentsListControls />
-      <div className={cn(
-        'relative grid grow grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] content-start gap-4 px-8 pt-2 pb-8',
-        showEmptyState && 'overflow-hidden',
-      )}
+      <div
+        className={cn(
+          'relative grid grow grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] content-start gap-4 px-8 pt-2 pb-8',
+          showEmptyState && 'overflow-hidden',
+        )}
       >
-        {showSkeleton
-          ? <DeploymentsListSkeleton />
-          : showErrorState
-            ? <DeploymentsListState>{t('common.loadFailed')}</DeploymentsListState>
-            : showEmptyState
-              ? <DeploymentsListEmpty />
-              : appInstanceSummaries.map(summary => (
-                  <InstanceCard
-                    key={summary.appInstance.id}
-                    summary={summary}
-                  />
-                ))}
-        {deploymentsListQuery.isFetchingNextPage && <DeploymentsListSkeleton />}
+        {showSkeleton ? (
+          <DeploymentsListSkeleton />
+        ) : showErrorState ? (
+          <DeploymentsListState>{t(($) => $['common.loadFailed'])}</DeploymentsListState>
+        ) : showEmptyState ? (
+          <DeploymentsListEmpty />
+        ) : (
+          appInstanceSummaries.map((summary) => (
+            <InstanceCard key={summary.appInstance.id} summary={summary} />
+          ))
+        )}
+        {deploymentsListIsFetchingNextPage && <DeploymentsListSkeleton />}
         <div ref={sentinelRef} aria-hidden="true" className="col-span-full h-px" />
       </div>
     </div>

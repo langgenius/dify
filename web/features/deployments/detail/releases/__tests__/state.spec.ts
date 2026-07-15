@@ -12,14 +12,15 @@ type QueryOptions = {
 }
 
 vi.mock('jotai-tanstack-query', () => ({
-  atomWithQuery: (createOptions: (get: Getter) => QueryOptions) => atom(get => ({
-    ...createOptions(get),
-    data: undefined,
-    isError: false,
-    isFetching: false,
-    isLoading: false,
-    isSuccess: false,
-  })),
+  atomWithQuery: (createOptions: (get: Getter) => QueryOptions) =>
+    atom((get) => ({
+      ...createOptions(get),
+      data: undefined,
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      isSuccess: false,
+    })),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -41,7 +42,10 @@ async function loadState() {
   return await import('../state')
 }
 
-function setDeploymentRoute(store: ReturnType<typeof createStore>, appInstanceId = 'app-instance-1') {
+function setDeploymentRoute(
+  store: ReturnType<typeof createStore>,
+  appInstanceId = 'app-instance-1',
+) {
   store.set(setNextRouteStateAtom, {
     pathname: `/deployments/${appInstanceId}/overview`,
     params: { appInstanceId },

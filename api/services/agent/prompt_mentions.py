@@ -318,9 +318,10 @@ def _format_output_mention(output: DeclaredOutputConfig) -> str:
     if output.type == DeclaredOutputType.FILE:
         return (
             f"{output.name} (file output; create the file locally, run "
-            f"`dify-agent file upload <path>`, then copy the returned AgentStubFileMapping JSON "
-            f"as final_output.{output.name}; do not call final_output before upload succeeds, and do not use "
-            "the local path, filename, URL, or a synthesized dify-file-ref as the reference)"
+            f"`dify-agent file upload <path>`, then set final_output.{output.name} to a `tool_file` mapping "
+            f"using the returned `reference`; if replying to the user in natural language, use the returned "
+            f"`download_url`; do not call final_output before upload succeeds, and do not use the local path, "
+            "filename, URL, or a synthesized dify-file-ref as the reference)"
         )
     if (
         output.type == DeclaredOutputType.ARRAY
@@ -329,9 +330,10 @@ def _format_output_mention(output: DeclaredOutputConfig) -> str:
     ):
         return (
             f"{output.name} (array[file] output; upload each produced file with "
-            f"`dify-agent file upload <path>`, then copy the returned AgentStubFileMapping JSON objects "
-            f"as final_output.{output.name}; do not call final_output before all uploads succeed, and do not use "
-            "local paths, filenames, URLs, or synthesized dify-file-ref values as references)"
+            f"`dify-agent file upload <path>`, then set final_output.{output.name} to `tool_file` mappings "
+            f"using the returned `reference` values; if replying to the user in natural language, use the returned "
+            f"`download_url`; do not call final_output before all uploads succeed, and do not use local paths, "
+            "filenames, URLs, or synthesized dify-file-ref values as references)"
         )
     return f"{output.name} ({output.type.value})"
 
