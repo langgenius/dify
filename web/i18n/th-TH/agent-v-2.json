@@ -63,6 +63,8 @@
   "agentDetail.configure.advancedSettings.envEditor.valuePlaceholder": "Value",
   "agentDetail.configure.advancedSettings.label": "การตั้งค่าขั้นสูง",
   "agentDetail.configure.advancedSettings.toggle": "สลับการตั้งค่าขั้นสูง",
+  "agentDetail.configure.answer.activity.ranCommands": "เรียกใช้คำสั่งแล้ว",
+  "agentDetail.configure.answer.activity.runningCommands": "กำลังเรียกใช้คำสั่ง",
   "agentDetail.configure.answer.duration.minute": "{{count}} นาที",
   "agentDetail.configure.answer.duration.second": "{{count}} วินาที",
   "agentDetail.configure.answer.thinking": "กำลังคิด",

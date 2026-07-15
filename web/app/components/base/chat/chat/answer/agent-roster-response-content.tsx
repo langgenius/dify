@@ -16,7 +16,10 @@ type AgentRosterResponseContentProps = {
   content?: string
 }
 
-type ToolProcess = {
+const SHELL_TOOL_NAMES = new Set(['shell_run', 'shell_wait', 'shell_input', 'shell_interrupt'])
+
+type ToolActivity = {
+  kind: 'shell' | 'tool'
   key: string
   name: string
   label: string
@@ -48,11 +51,11 @@ function readIndexedValue(value: string, isArray: boolean, index: number) {
   }
 }
 
-function getToolProcesses(
+function getToolActivities(
   thought: ThoughtItem,
   language: string,
   responding?: boolean,
-): ToolProcess[] {
+): ToolActivity[] {
   let toolNames = [thought.tool]
   let isArray = false
 
@@ -67,6 +70,7 @@ function getToolProcesses(
   const labelLanguage = getLanguage(language as Locale)
 
   return toolNames.filter(Boolean).map((name, index) => ({
+    kind: SHELL_TOOL_NAMES.has(name) ? 'shell' : 'tool',
     key: `${name}-${index}`,
     name,
     label: renderI18nObject(thought.tool_labels?.[name] ?? {}, labelLanguage) || name,
@@ -173,21 +177,31 @@ function TimelineMessage({ children }: { children: ReactNode }) {
   )
 }
 
-function ToolProcessItem({ tool }: { tool: ToolProcess }) {
+function ToolActivityItem({ tool }: { tool: ToolActivity }) {
   const { t } = useTranslation()
   const hasDetails = !!tool.input || !!tool.output
+  const label =
+    tool.name === 'shell_run' && tool.label === tool.name
+      ? tool.isFinished
+        ? t(($) => $['agentDetail.configure.answer.activity.ranCommands'], { ns: 'agentV2' })
+        : t(($) => $['agentDetail.configure.answer.activity.runningCommands'], {
+            ns: 'agentV2',
+          })
+      : tool.label
 
   const content = (
     <>
       <span className="inline-flex min-w-0 items-center gap-1">
         <span className="flex size-3.5 shrink-0 items-center justify-center text-text-tertiary">
-          {tool.isFinished ? (
+          {!tool.isFinished ? (
+            <span className="i-ri-loader-2-line size-3.5 animate-spin" aria-hidden />
+          ) : tool.kind === 'shell' ? (
             <span className="i-ri-terminal-box-line size-3.5" aria-hidden />
           ) : (
-            <span className="i-ri-loader-2-line size-3.5 animate-spin" aria-hidden />
+            <span className="i-ri-hammer-line size-3.5" aria-hidden />
           )}
         </span>
-        <span className="min-w-0 truncate text-text-secondary">{tool.label}</span>
+        <span className="min-w-0 truncate text-text-secondary">{label}</span>
       </span>
       {hasDetails && (
         <span
@@ -247,12 +261,12 @@ function ActivityTimelinePart({
   responding?: boolean
 }) {
   const { i18n } = useTranslation()
-  const tools = getToolProcesses(thought, i18n.language, responding)
+  const tools = getToolActivities(thought, i18n.language, responding)
 
   return (
     <div className="flex w-full max-w-full min-w-0 flex-col gap-1">
       {tools.map((tool) => (
-        <ToolProcessItem key={`${getThoughtKey(thought)}-${tool.key}`} tool={tool} />
+        <ToolActivityItem key={`${getThoughtKey(thought)}-${tool.key}`} tool={tool} />
       ))}
       {!!thought.message_files?.length && (
         <FileList

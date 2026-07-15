@@ -63,6 +63,8 @@
   "agentDetail.configure.advancedSettings.envEditor.valuePlaceholder": "Value",
   "agentDetail.configure.advancedSettings.label": "高级设置",
   "agentDetail.configure.advancedSettings.toggle": "展开或收起高级设置",
+  "agentDetail.configure.answer.activity.ranCommands": "已运行命令",
+  "agentDetail.configure.answer.activity.runningCommands": "正在运行命令",
   "agentDetail.configure.answer.duration.minute": "{{count}}分",
   "agentDetail.configure.answer.duration.second": "{{count}}秒",
   "agentDetail.configure.answer.thinking": "深度思考中",

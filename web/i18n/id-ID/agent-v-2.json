@@ -63,6 +63,8 @@
   "agentDetail.configure.advancedSettings.envEditor.valuePlaceholder": "Value",
   "agentDetail.configure.advancedSettings.label": "Pengaturan Lanjutan",
   "agentDetail.configure.advancedSettings.toggle": "Alihkan pengaturan lanjutan",
+  "agentDetail.configure.answer.activity.ranCommands": "Perintah dijalankan",
+  "agentDetail.configure.answer.activity.runningCommands": "Menjalankan perintah",
   "agentDetail.configure.answer.duration.minute": "{{count}} mnt",
   "agentDetail.configure.answer.duration.second": "{{count}} dtk",
   "agentDetail.configure.answer.thinking": "Sedang berpikir",

@@ -13,6 +13,8 @@ vi.mock('react-i18next', async () => {
       'agentV2.agentDetail.configure.answer.thinking': 'Thinking',
       'agentV2.agentDetail.configure.answer.duration.minute': '{{count}}m',
       'agentV2.agentDetail.configure.answer.duration.second': '{{count}}s',
+      'agentV2.agentDetail.configure.answer.activity.ranCommands': 'Ran commands',
+      'agentV2.agentDetail.configure.answer.activity.runningCommands': 'Running commands',
     }),
   }
 })
@@ -74,7 +76,7 @@ describe('AgentRosterResponseContent', () => {
                 en_US: 'Loaded tools',
                 zh_Hans: '已加载工具',
               },
-              terminal: {
+              shell_run: {
                 en_US: 'Ran commands',
                 zh_Hans: '运行了命令',
               },
@@ -94,14 +96,14 @@ describe('AgentRosterResponseContent', () => {
           thought: {
             id: 'thought-2',
             thought: 'raw second thought',
-            tool: 'terminal',
+            tool: 'shell_run',
             tool_input: '',
             tool_labels: {
               load_tools: {
                 en_US: 'Loaded tools',
                 zh_Hans: '已加载工具',
               },
-              terminal: {
+              shell_run: {
                 en_US: 'Ran commands',
                 zh_Hans: '运行了命令',
               },
@@ -155,10 +157,10 @@ describe('AgentRosterResponseContent', () => {
         {
           id: 'thought-expanded',
           thought: '',
-          tool: 'terminal',
+          tool: 'shell_run',
           tool_input: '{"command":"ls"}',
           tool_labels: {
-            terminal: {
+            shell_run: {
               en_US: 'Ran commands',
               zh_Hans: '运行了命令',
             },
@@ -199,6 +201,77 @@ describe('AgentRosterResponseContent', () => {
     )
   })
 
+  it('should use the shell activity fallback only when no descriptive label is available', async () => {
+    const user = userEvent.setup()
+    const item = {
+      id: 'answer-shell-labels',
+      content: '',
+      isAnswer: true,
+      agent_thoughts: [
+        {
+          id: 'thought-shell-fallback',
+          thought: '',
+          tool: 'shell_run',
+          tool_input: 'pwd',
+          observation: '/workspace',
+          message_id: 'answer-shell-labels',
+          conversation_id: 'conversation-shell-labels',
+          position: 1,
+        },
+        {
+          id: 'thought-shell-described',
+          thought: '',
+          tool: 'shell_run',
+          tool_input: 'mkdir skill',
+          tool_labels: {
+            shell_run: {
+              en_US: 'Scaffold skill directory',
+              zh_Hans: '创建技能目录',
+            },
+          },
+          observation: '',
+          message_id: 'answer-shell-labels',
+          conversation_id: 'conversation-shell-labels',
+          position: 2,
+        },
+      ],
+    } satisfies ChatItem
+
+    render(<AgentRosterResponseContent item={item} />)
+
+    await user.click(screen.getByRole('button', { name: 'Thinking' }))
+
+    expect(screen.getByRole('button', { name: 'Ran commands' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Scaffold skill directory' })).toBeInTheDocument()
+  })
+
+  it('should describe an unfinished shell run as running commands', () => {
+    const item = {
+      id: 'answer-running-shell',
+      content: '',
+      isAnswer: true,
+      agent_response_parts: [
+        {
+          type: 'thought',
+          thought: {
+            id: 'thought-running-shell',
+            thought: '',
+            tool: 'shell_run',
+            tool_input: 'pnpm test',
+            observation: '',
+            message_id: 'answer-running-shell',
+            conversation_id: 'conversation-running-shell',
+            position: 1,
+          },
+        },
+      ],
+    } satisfies ChatItem
+
+    render(<AgentRosterResponseContent item={item} responding />)
+
+    expect(screen.getByRole('button', { name: 'Running commands' })).toBeInTheDocument()
+  })
+
   it('should collapse the thinking timeline when a public message appears', () => {
     const item = {
       id: 'answer-transition',
@@ -210,10 +283,10 @@ describe('AgentRosterResponseContent', () => {
           thought: {
             id: 'thought-transition',
             thought: 'raw thinking',
-            tool: 'terminal',
+            tool: 'shell_run',
             tool_input: '{"command":"ls"}',
             tool_labels: {
-              terminal: {
+              shell_run: {
                 en_US: 'Ran commands',
                 zh_Hans: '运行了命令',
               },
@@ -275,10 +348,10 @@ describe('AgentRosterResponseContent', () => {
         {
           id: 'thought-complete',
           thought: 'raw process detail',
-          tool: 'terminal',
+          tool: 'shell_run',
           tool_input: '{"command":"ls"}',
           tool_labels: {
-            terminal: {
+            shell_run: {
               en_US: 'Ran commands',
               zh_Hans: '运行了命令',
             },

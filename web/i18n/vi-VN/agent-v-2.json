@@ -63,6 +63,8 @@
   "agentDetail.configure.advancedSettings.envEditor.valuePlaceholder": "Value",
   "agentDetail.configure.advancedSettings.label": "Cài đặt nâng cao",
   "agentDetail.configure.advancedSettings.toggle": "Bật/tắt cài đặt nâng cao",
+  "agentDetail.configure.answer.activity.ranCommands": "Đã chạy lệnh",
+  "agentDetail.configure.answer.activity.runningCommands": "Đang chạy lệnh",
   "agentDetail.configure.answer.duration.minute": "{{count}} phút",
   "agentDetail.configure.answer.duration.second": "{{count}} giây",
   "agentDetail.configure.answer.thinking": "Đang suy nghĩ",

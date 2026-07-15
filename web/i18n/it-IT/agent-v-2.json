@@ -63,6 +63,8 @@
   "agentDetail.configure.advancedSettings.envEditor.valuePlaceholder": "Value",
   "agentDetail.configure.advancedSettings.label": "Impostazioni avanzate",
   "agentDetail.configure.advancedSettings.toggle": "Attiva/disattiva impostazioni avanzate",
+  "agentDetail.configure.answer.activity.ranCommands": "Comandi eseguiti",
+  "agentDetail.configure.answer.activity.runningCommands": "Esecuzione dei comandi",
   "agentDetail.configure.answer.duration.minute": "{{count}} min",
   "agentDetail.configure.answer.duration.second": "{{count}} s",
   "agentDetail.configure.answer.thinking": "Sto pensando",
