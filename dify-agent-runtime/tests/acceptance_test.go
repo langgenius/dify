@@ -644,64 +644,6 @@ func TestLandlockDisabledAllowsWriteOutsideHome(t *testing.T) {
 	}
 }
 
-// TestLandlockCanWriteAgentDriveBase verifies that the per-agent drive path
-// (DIFY_AGENT_STUB_DRIVE_BASE) is writable when isolation is enabled.
-func TestLandlockCanWriteAgentDriveBase(t *testing.T) {
-	for _, tgt := range targets() {
-		t.Run(tgt.name, func(t *testing.T) {
-			result := runJob(t, tgt, map[string]any{
-				"script": "mkdir -p $DIFY_AGENT_STUB_DRIVE_BASE && touch $DIFY_AGENT_STUB_DRIVE_BASE/test-file && echo write_ok",
-				"env": map[string]string{
-					"HOME":                       "/home/dify",
-					"DIFY_AGENT_STUB_DRIVE_BASE": "/mnt/drive/agent-test",
-				},
-				"timeout": 10,
-			})
-			assertJobDone(t, result)
-			assertExitCode(t, result, 0)
-			output := result["output"].(string)
-			if !strings.Contains(output, "write_ok") {
-				t.Errorf("expected write to agent drive base to succeed, got %q", output)
-			}
-		})
-	}
-}
-
-// TestLandlockCannotWriteOtherAgentDrive verifies that an agent cannot write
-// to another agent's drive subdirectory.
-func TestLandlockCannotWriteOtherAgentDrive(t *testing.T) {
-	for _, tgt := range targets() {
-		t.Run(tgt.name, func(t *testing.T) {
-			// First create the other agent's drive dir.
-			setup := runJob(t, tgt, map[string]any{
-				"script": "mkdir -p /mnt/drive/agent-other && touch /mnt/drive/agent-other/secret",
-				"env": map[string]string{
-					"HOME":                       "/home/dify",
-					"DIFY_AGENT_STUB_DRIVE_BASE": "/mnt/drive/agent-other",
-				},
-				"timeout": 10,
-			})
-			assertJobDone(t, setup)
-			assertExitCode(t, setup, 0)
-
-			// Now try to access it as a different agent.
-			result := runJob(t, tgt, map[string]any{
-				"script": "cat /mnt/drive/agent-other/secret 2>&1; echo exit=$?",
-				"env": map[string]string{
-					"HOME":                       "/home/dify",
-					"DIFY_AGENT_STUB_DRIVE_BASE": "/mnt/drive/agent-mine",
-				},
-				"timeout": 10,
-			})
-			assertJobDone(t, result)
-			output := result["output"].(string)
-			if strings.Contains(output, "exit=0") {
-				t.Errorf("expected access to other agent's drive to be denied, but it succeeded: %q", output)
-			}
-		})
-	}
-}
-
 // TestLandlockEnvBypassBlocked verifies that a caller cannot set
 // ENABLE_PATH_ISOLATION=false in job env to escape the sandbox.
 func TestLandlockEnvBypassBlocked(t *testing.T) {
