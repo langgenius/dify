@@ -1,6 +1,9 @@
 from uuid import UUID
 
+from sqlalchemy.orm import Session
+
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
@@ -51,15 +54,15 @@ class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
     @service_api_ns.response(404, "Dataset not found")
     @service_api_ns.expect(service_api_ns.models[HitTestingPayload.__name__])
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id: str, dataset_id: UUID) -> dict[str, object]:
+    @with_session
+    def post(self, session: Session, tenant_id: str, dataset_id: UUID) -> dict[str, object]:
         """Perform hit testing on a dataset.
 
         Tests retrieval performance for the specified dataset.
         """
         dataset_id_str = str(dataset_id)
-
-        dataset = self.get_and_validate_dataset(dataset_id_str)
+        dataset = self.get_and_validate_dataset(session, dataset_id_str)
         args = self.parse_args(service_api_ns.payload)
         self.hit_testing_args_check(args)
 
-        return dump_response(HitTestingResponse, self.perform_hit_testing(dataset, args))
+        return dump_response(HitTestingResponse, self.perform_hit_testing(session, dataset, args))

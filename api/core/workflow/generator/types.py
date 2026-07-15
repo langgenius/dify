@@ -7,7 +7,8 @@ required to return after ``json_repair`` parsing. They mirror the runtime
 can be written straight into a draft workflow without further translation.
 """
 
-from typing import Final, Literal, NotRequired, TypedDict
+from enum import StrEnum
+from typing import Literal, NotRequired, TypedDict
 
 WorkflowGenerationMode = Literal["workflow", "advanced-chat"]
 
@@ -22,22 +23,22 @@ WorkflowGenerationModeRequest = Literal["workflow", "advanced-chat", "auto"]
 # Machine-readable error codes returned in ``WorkflowGenerateResultDict.errors``.
 # Frontend maps these to localised copy via ``workflow.generator.errors.<code>``
 # i18n keys, so any change here MUST be mirrored in the FE i18n map.
-class WorkflowGenerateErrorCode:
-    INVALID_JSON: Final = "INVALID_JSON"
-    INVALID_SCHEMA: Final = "INVALID_SCHEMA"
-    EMPTY_INSTRUCTION: Final = "EMPTY_INSTRUCTION"
-    INSTRUCTION_TOO_LONG: Final = "INSTRUCTION_TOO_LONG"
-    DUPLICATE_NODE_ID: Final = "DUPLICATE_NODE_ID"
-    GRAPH_CYCLE: Final = "GRAPH_CYCLE"
-    EMPTY_PLAN: Final = "EMPTY_PLAN"
-    UNKNOWN_NODE_REFERENCE: Final = "UNKNOWN_NODE_REFERENCE"
-    INVALID_CONTAINER: Final = "INVALID_CONTAINER"
-    UNRESOLVED_REFERENCE: Final = "UNRESOLVED_REFERENCE"
-    UNKNOWN_TOOL: Final = "UNKNOWN_TOOL"
-    MISSING_TERMINAL: Final = "MISSING_TERMINAL"
-    MISSING_START: Final = "MISSING_START"
-    DANGLING_EDGE: Final = "DANGLING_EDGE"
-    MODEL_ERROR: Final = "MODEL_ERROR"
+class WorkflowGenerateErrorCode(StrEnum):
+    INVALID_JSON = "INVALID_JSON"
+    INVALID_SCHEMA = "INVALID_SCHEMA"
+    EMPTY_INSTRUCTION = "EMPTY_INSTRUCTION"
+    INSTRUCTION_TOO_LONG = "INSTRUCTION_TOO_LONG"
+    DUPLICATE_NODE_ID = "DUPLICATE_NODE_ID"
+    GRAPH_CYCLE = "GRAPH_CYCLE"
+    EMPTY_PLAN = "EMPTY_PLAN"
+    UNKNOWN_NODE_REFERENCE = "UNKNOWN_NODE_REFERENCE"
+    INVALID_CONTAINER = "INVALID_CONTAINER"
+    UNRESOLVED_REFERENCE = "UNRESOLVED_REFERENCE"
+    UNKNOWN_TOOL = "UNKNOWN_TOOL"
+    MISSING_TERMINAL = "MISSING_TERMINAL"
+    MISSING_START = "MISSING_START"
+    DANGLING_EDGE = "DANGLING_EDGE"
+    MODEL_ERROR = "MODEL_ERROR"
 
 
 class WorkflowGenerateErrorDict(TypedDict):

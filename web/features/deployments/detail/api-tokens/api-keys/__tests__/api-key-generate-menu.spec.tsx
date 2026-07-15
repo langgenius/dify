@@ -45,19 +45,13 @@ describe('ApiKeyGenerateMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseAtomValue.mockImplementation((atom) => {
-      if (atom === deploymentRouteAppInstanceIdAtom)
-        return 'app-instance-1'
+      if (atom === deploymentRouteAppInstanceIdAtom) return 'app-instance-1'
       return undefined
     })
   })
 
   it('should show the required name error when submitting an empty name', () => {
-    render(
-      <ApiKeyGenerateMenu
-        environments={[createEnvironment()]}
-        onCreatedToken={vi.fn()}
-      />,
-    )
+    render(<ApiKeyGenerateMenu environments={[createEnvironment()]} onCreatedToken={vi.fn()} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'deployments.access.api.newKey' }))
     fireEvent.change(screen.getByLabelText('deployments.access.api.nameLabel'), {
@@ -70,12 +64,7 @@ describe('ApiKeyGenerateMenu', () => {
   })
 
   it('should clear the required name error when typing a valid name', () => {
-    render(
-      <ApiKeyGenerateMenu
-        environments={[createEnvironment()]}
-        onCreatedToken={vi.fn()}
-      />,
-    )
+    render(<ApiKeyGenerateMenu environments={[createEnvironment()]} onCreatedToken={vi.fn()} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'deployments.access.api.newKey' }))
     const nameInput = screen.getByLabelText('deployments.access.api.nameLabel')
@@ -96,12 +85,7 @@ describe('ApiKeyGenerateMenu', () => {
   it('should disable the trigger when route app instance is missing', () => {
     mockUseAtomValue.mockReturnValue(undefined)
 
-    render(
-      <ApiKeyGenerateMenu
-        environments={[createEnvironment()]}
-        onCreatedToken={vi.fn()}
-      />,
-    )
+    render(<ApiKeyGenerateMenu environments={[createEnvironment()]} onCreatedToken={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: 'deployments.access.api.newKey' })).toBeDisabled()
   })

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
@@ -15,8 +14,8 @@ from werkzeug.exceptions import Forbidden
 import controllers.web.human_input_form as human_input_module
 import controllers.web.site as site_module
 from controllers.web.error import WebFormRateLimitExceededError
-from graphon.nodes.human_input.entities import ParagraphInputConfig, SelectInputConfig, StringListSource
-from graphon.nodes.human_input.enums import ValueSourceType
+from core.workflow.nodes.human_input.entities import ParagraphInputConfig, SelectInputConfig, StringListSource
+from core.workflow.nodes.human_input.enums import ValueSourceType
 from models.human_input import RecipientType
 from services.feature_service import FeatureModel
 from services.human_input_service import FormExpiredError
@@ -107,13 +106,13 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
         icon="robot",
         icon_background="#fff",
         description="desc",
+        input_placeholder="Ask the app",
         default_language="en",
         chat_color_theme="light",
         chat_color_theme_inverted=False,
         copyright=None,
         privacy_policy=None,
-        input_placeholder="Ask me anything",
-        custom_disclaimer=None,
+        custom_disclaimer="",
         prompt_public=False,
         show_workflow_steps=True,
         use_icon_as_answer_icon=False,
@@ -139,7 +138,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         response = HumanInputFormApi().get("token-1")
 
-    body = json.loads(response.get_data(as_text=True))
+    body = response
     assert set(body.keys()) == {
         "site",
         "form_content",
@@ -168,8 +167,8 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
             "description": "desc",
             "copyright": None,
             "privacy_policy": None,
-            "input_placeholder": "Ask me anything",
-            "custom_disclaimer": None,
+            "input_placeholder": "Ask the app",
+            "custom_disclaimer": "",
             "default_language": "en",
             "prompt_public": False,
             "show_workflow_steps": True,
@@ -186,72 +185,6 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     service_mock.get_form_by_token.assert_called_once_with("token-1")
     limiter_mock.is_rate_limited.assert_called_once_with("203.0.113.10")
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
-
-
-def test_serialize_app_site_payload_masks_paid_webapp_fields_when_feature_disabled(monkeypatch: pytest.MonkeyPatch):
-    """Runtime site payload hides paid-only fields for plans that cannot use them."""
-
-    tenant = SimpleNamespace(id="tenant-1", plan="sandbox", custom_config_dict={})
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
-    site_model = SimpleNamespace(
-        title="My Site",
-        icon_type="emoji",
-        icon="robot",
-        icon_background="#fff",
-        description="desc",
-        default_language="en",
-        chat_color_theme="light",
-        chat_color_theme_inverted=False,
-        copyright="Dify",
-        privacy_policy=None,
-        input_placeholder="Ask me anything",
-        custom_disclaimer=None,
-        prompt_public=False,
-        show_workflow_steps=True,
-        use_icon_as_answer_icon=False,
-    )
-    features = FeatureModel(can_replace_logo=False, webapp_copyright_enabled=False)
-    features.billing.enabled = True
-    monkeypatch.setattr(site_module.FeatureService, "get_features", lambda tenant_id, **_kwargs: features)
-
-    payload = site_module.serialize_app_site_payload(app_model, site_model, end_user_id=None)
-
-    assert payload["site"]["copyright"] is None
-    assert payload["site"]["input_placeholder"] is None
-
-
-def test_serialize_app_site_payload_keeps_paid_webapp_fields_when_billing_disabled(monkeypatch: pytest.MonkeyPatch):
-    """Self-hosted community runtimes keep site fields because billing is not enforcing the paid gate."""
-
-    tenant = SimpleNamespace(id="tenant-1", plan="basic", custom_config_dict={})
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
-    site_model = SimpleNamespace(
-        title="My Site",
-        icon_type="emoji",
-        icon="robot",
-        icon_background="#fff",
-        description="desc",
-        default_language="en",
-        chat_color_theme="light",
-        chat_color_theme_inverted=False,
-        copyright="Dify",
-        privacy_policy=None,
-        input_placeholder="Ask me anything",
-        custom_disclaimer=None,
-        prompt_public=False,
-        show_workflow_steps=True,
-        use_icon_as_answer_icon=False,
-    )
-    monkeypatch.setattr(
-        site_module.FeatureService,
-        "get_features",
-        lambda tenant_id, **_kwargs: FeatureModel(can_replace_logo=False, webapp_copyright_enabled=False),
-    )
-
-    payload = site_module.serialize_app_site_payload(app_model, site_model, end_user_id=None)
-
-    assert payload["site"]["copyright"] == "Dify"
-    assert payload["site"]["input_placeholder"] == "Ask me anything"
 
 
 def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, app: Flask):
@@ -319,13 +252,13 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
         icon="robot",
         icon_background="#fff",
         description="desc",
+        input_placeholder="Ask the app",
         default_language="en",
         chat_color_theme="light",
         chat_color_theme_inverted=False,
         copyright=None,
         privacy_policy=None,
-        input_placeholder="Ask me anything",
-        custom_disclaimer=None,
+        custom_disclaimer="",
         prompt_public=False,
         show_workflow_steps=True,
         use_icon_as_answer_icon=False,
@@ -346,7 +279,7 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         response = HumanInputFormApi().get("token-1")
 
-    body = json.loads(response.get_data(as_text=True))
+    body = response
     assert body["inputs"] == [input_config.model_dump(mode="json") for input_config in runtime_inputs]
     service_mock.resolve_form_inputs.assert_called_once_with(form)
 
@@ -444,13 +377,13 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
         icon="robot",
         icon_background="#fff",
         description="desc",
+        input_placeholder="Ask the app",
         default_language="en",
         chat_color_theme="light",
         chat_color_theme_inverted=False,
         copyright=None,
         privacy_policy=None,
-        input_placeholder="Ask me anything",
-        custom_disclaimer=None,
+        custom_disclaimer="",
         prompt_public=False,
         show_workflow_steps=True,
         use_icon_as_answer_icon=False,
@@ -473,7 +406,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         response = HumanInputFormApi().get("token-1")
 
-    body = json.loads(response.get_data(as_text=True))
+    body = response
     assert set(body.keys()) == {
         "site",
         "form_content",
@@ -502,8 +435,8 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
             "description": "desc",
             "copyright": None,
             "privacy_policy": None,
-            "input_placeholder": "Ask me anything",
-            "custom_disclaimer": None,
+            "input_placeholder": "Ask the app",
+            "custom_disclaimer": "",
             "default_language": "en",
             "prompt_public": False,
             "show_workflow_steps": True,

@@ -3,6 +3,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from models.agent_config_entities import AgentKnowledgeQueryMode
 from services.agent.errors import AgentSoulLockedError, InvalidComposerConfigError, PlaintextSecretNotAllowedError
 from services.agent.prompt_mentions import (
     MAX_MENTIONS_PER_PROMPT,
@@ -228,8 +229,39 @@ class ComposerConfigValidator:
     @classmethod
     def validate_agent_soul(cls, agent_soul: AgentSoulConfig) -> None:
         dumped = agent_soul.model_dump(mode="json")
+        cls._validate_knowledge_runtime_config(agent_soul)
         cls._reject_plaintext_secrets(dumped, path="agent_soul")
         cls._validate_shell_config(dumped)
+
+    @classmethod
+    def _validate_knowledge_runtime_config(cls, agent_soul: AgentSoulConfig) -> None:
+        """Validate knowledge settings that are required only for publish/run.
+
+        Draft composer saves must be able to persist partially configured
+        knowledge sets while a user is still editing the panel. These checks
+        stay in the publish validator so invalid runtime configs are still
+        blocked before a version can be published or executed.
+        """
+        for knowledge_set in agent_soul.knowledge.sets:
+            if (
+                knowledge_set.query.mode == AgentKnowledgeQueryMode.USER_QUERY
+                and not (knowledge_set.query.value or "").strip()
+            ):
+                raise InvalidComposerConfigError("knowledge query.value is required for user_query mode")
+
+            retrieval = knowledge_set.retrieval
+            if retrieval.mode == "multiple" and retrieval.top_k is None:
+                raise InvalidComposerConfigError("knowledge retrieval.top_k is required for multiple mode")
+            if retrieval.mode == "single" and retrieval.model is None:
+                raise InvalidComposerConfigError("knowledge retrieval.model is required for single mode")
+
+            metadata_filtering = knowledge_set.metadata_filtering
+            if metadata_filtering.mode == "automatic" and metadata_filtering.metadata_model_config is None:
+                raise InvalidComposerConfigError("metadata_filtering.model_config is required for automatic mode")
+            if metadata_filtering.mode == "manual" and (
+                metadata_filtering.conditions is None or not metadata_filtering.conditions.conditions
+            ):
+                raise InvalidComposerConfigError("metadata_filtering.conditions is required for manual mode")
 
     @classmethod
     def validate_node_job(cls, node_job: WorkflowNodeJobConfig) -> None:

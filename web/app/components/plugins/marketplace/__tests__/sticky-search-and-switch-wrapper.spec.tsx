@@ -5,12 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import StickySearchAndSwitchWrapper from '../sticky-search-and-switch-wrapper'
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock child components to isolate wrapper logic
 vi.mock('../plugin-type-switch', () => ({
   default: () => <div data-testid="plugin-type-switch">PluginTypeSwitch</div>,
@@ -24,9 +18,7 @@ const createWrapper = () => {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider>
-      <NuqsWrapper>
-        {children}
-      </NuqsWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
     </JotaiProvider>
   )
   return { Wrapper }
@@ -39,10 +31,7 @@ describe('StickySearchAndSwitchWrapper', () => {
 
   it('should render SearchBoxWrapper and PluginTypeSwitch', () => {
     const { Wrapper } = createWrapper()
-    const { getByTestId } = render(
-      <StickySearchAndSwitchWrapper />,
-      { wrapper: Wrapper },
-    )
+    const { getByTestId } = render(<StickySearchAndSwitchWrapper />, { wrapper: Wrapper })
 
     expect(getByTestId('search-box-wrapper')).toBeInTheDocument()
     expect(getByTestId('plugin-type-switch')).toBeInTheDocument()
@@ -50,10 +39,7 @@ describe('StickySearchAndSwitchWrapper', () => {
 
   it('should not apply sticky class when no pluginTypeSwitchClassName', () => {
     const { Wrapper } = createWrapper()
-    const { container } = render(
-      <StickySearchAndSwitchWrapper />,
-      { wrapper: Wrapper },
-    )
+    const { container } = render(<StickySearchAndSwitchWrapper />, { wrapper: Wrapper })
 
     const outerDiv = container.firstChild as HTMLElement
     expect(outerDiv.className).toContain('mt-4')

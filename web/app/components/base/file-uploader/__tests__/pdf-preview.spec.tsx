@@ -3,13 +3,25 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import PdfPreview from '../pdf-preview'
 
 vi.mock('../pdf-highlighter-adapter', () => ({
-  PdfLoader: ({ children, beforeLoad }: { children: (doc: unknown) => ReactNode, beforeLoad: ReactNode }) => (
+  PdfLoader: ({
+    children,
+    beforeLoad,
+  }: {
+    children: (doc: unknown) => ReactNode
+    beforeLoad: ReactNode
+  }) => (
     <div data-testid="pdf-loader">
       {beforeLoad}
       {children({ numPages: 1 })}
     </div>
   ),
-  PdfHighlighter: ({ enableAreaSelection, highlightTransform, scrollRef, onScrollChange, onSelectionFinished }: {
+  PdfHighlighter: ({
+    enableAreaSelection,
+    highlightTransform,
+    scrollRef,
+    onScrollChange,
+    onSelectionFinished,
+  }: {
     enableAreaSelection?: (event: MouseEvent) => boolean
     highlightTransform?: () => ReactNode
     scrollRef?: (ref: unknown) => void
@@ -35,7 +47,9 @@ describe('PdfPreview', () => {
   }
 
   const getControl = (rightClass: 'right-24' | 'right-16' | 'right-6') => {
-    const control = document.querySelector(`button.absolute.${rightClass}.top-6`) as HTMLButtonElement | null
+    const control = document.querySelector(
+      `button.absolute.${rightClass}.top-6`,
+    ) as HTMLButtonElement | null
     expect(control).toBeInTheDocument()
     return control!
   }

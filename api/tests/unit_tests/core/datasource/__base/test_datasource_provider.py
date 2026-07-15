@@ -8,7 +8,7 @@ from core.datasource.entities.datasource_entities import (
     DatasourceProviderEntityWithPlugin,
     DatasourceProviderType,
 )
-from core.entities.provider_entities import ProviderConfig
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.errors import ToolProviderCredentialValidationError
 
 
@@ -149,7 +149,7 @@ class TestDatasourcePluginProviderController:
         mock_config = MagicMock(spec=ProviderConfig)
         mock_config.name = "text_field"
         mock_config.required = True
-        mock_config.type = ProviderConfig.Type.TEXT_INPUT
+        mock_config.type = ProviderConfigType.TEXT_INPUT
 
         mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
         mock_entity.credentials_schema = [mock_config]
@@ -167,7 +167,7 @@ class TestDatasourcePluginProviderController:
         mock_config = MagicMock(spec=ProviderConfig)
         mock_config.name = "select_field"
         mock_config.required = True
-        mock_config.type = ProviderConfig.Type.SELECT
+        mock_config.type = ProviderConfigType.SELECT
         mock_config.options = [mock_option]
 
         mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
@@ -206,7 +206,7 @@ class TestDatasourcePluginProviderController:
         mock_config = MagicMock(spec=ProviderConfig)
         mock_config.name = "valid_field"
         mock_config.required = True
-        mock_config.type = ProviderConfig.Type.TEXT_INPUT
+        mock_config.type = ProviderConfigType.TEXT_INPUT
 
         mock_entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
         mock_entity.credentials_schema = [mock_config]
@@ -243,7 +243,7 @@ class TestDatasourcePluginProviderController:
         mock_config_text = MagicMock(spec=ProviderConfig)
         mock_config_text.name = "text_def"
         mock_config_text.required = False
-        mock_config_text.type = ProviderConfig.Type.TEXT_INPUT
+        mock_config_text.type = ProviderConfigType.TEXT_INPUT
         mock_config_text.default = 123  # Int default, should be converted to str
 
         mock_config_other = MagicMock(spec=ProviderConfig)

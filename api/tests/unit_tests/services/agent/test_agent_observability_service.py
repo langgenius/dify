@@ -50,6 +50,23 @@ def test_resolve_source_filters_accepts_multiple_structured_sources() -> None:
     assert AgentObservabilityService.resolve_source_filters(("all", "webapp:app-1"))[0].kind == "all"
 
 
+def test_statistics_all_source_includes_debugger_messages() -> None:
+    source_filter = AgentObservabilityService.resolve_source_filter("all")
+
+    scope_sql = AgentObservabilityService._statistics_message_scope_sql(source_filter)
+
+    assert "m.app_id = :app_id" in scope_sql
+    assert "m.invoke_from != :debugger" not in scope_sql
+
+
+def test_statistics_explicit_source_filters_invoke_from() -> None:
+    source_filter = AgentObservabilityService.resolve_source_filter("debugger")
+
+    scope_sql = AgentObservabilityService._statistics_message_scope_sql(source_filter)
+
+    assert "m.invoke_from = :source" in scope_sql
+
+
 def test_apply_status_filter_accepts_multiple_statuses() -> None:
     class FakeStmt:
         def __init__(self):

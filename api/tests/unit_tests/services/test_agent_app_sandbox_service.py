@@ -18,19 +18,30 @@ from models.agent import AgentRuntimeSession, AgentRuntimeSessionOwnerType, Agen
 from services.agent_app_sandbox_service import (
     AgentAppSandboxService,
     AgentSandboxInspectorError,
+    AgentSandboxUploadDownload,
     WorkflowAgentSandboxService,
     _default_client_factory,
+    _upload_download_response,
 )
 
 
-def _snapshot(*, session_id: str = "abc1234") -> CompositorSessionSnapshot:
+def _snapshot(
+    *,
+    session_id: str = "abc1234",
+    shell_runtime_state: dict[str, str] | None = None,
+) -> CompositorSessionSnapshot:
+    runtime_state = (
+        {"session_id": session_id, "workspace_cwd": f"~/workspace/{session_id}"}
+        if shell_runtime_state is None
+        else shell_runtime_state
+    )
     return CompositorSessionSnapshot(
         layers=[
             LayerSessionSnapshot(name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
             LayerSessionSnapshot(
                 name="shell",
                 lifecycle_state=LifecycleState.SUSPENDED,
-                runtime_state={"session_id": session_id, "workspace_cwd": f"~/workspace/{session_id}"},
+                runtime_state=runtime_state,
             ),
         ]
     )
@@ -73,11 +84,19 @@ class FakeClient:
         self.locators.append(locator)
         self.calls.append(("upload", path))
         return SandboxUploadResponse(
-            path=path, file={"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}
+            path=path,
+            file={
+                "transfer_method": "tool_file",
+                "reference": "dify-file-ref:file-1",
+                "download_url": "https://files.example/report.txt?token=1",
+            },
         )
 
 
-def _stored_session() -> StoredAgentAppSession:
+def _stored_session(
+    *,
+    session_snapshot: CompositorSessionSnapshot | None = None,
+) -> StoredAgentAppSession:
     return StoredAgentAppSession(
         scope=AgentAppSessionScope(
             tenant_id="tenant-1",
@@ -86,10 +105,23 @@ def _stored_session() -> StoredAgentAppSession:
             agent_id="agent-1",
             agent_config_snapshot_id="snapshot-1",
         ),
-        session_snapshot=_snapshot(),
+        session_snapshot=_snapshot() if session_snapshot is None else session_snapshot,
         backend_run_id="run-1",
         runtime_layer_specs=_runtime_layer_specs(),
     )
+
+
+def test_agent_app_sandbox_service_get_info_returns_metadata() -> None:
+    store = FakeStore(_stored_session())
+    client = FakeClient()
+    service = AgentAppSandboxService(session_store=store, client_factory=lambda: client)  # type: ignore[arg-type]
+
+    result = service.get_info(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1")
+
+    assert result.session_id == "abc1234"
+    assert result.workspace_cwd == "~/workspace/abc1234"
+    assert client.calls == []
+    assert store.scope == ("tenant-1", "app-1", "conv-1")
 
 
 def test_agent_app_sandbox_service_builds_locator_and_proxies() -> None:
@@ -104,35 +136,53 @@ def test_agent_app_sandbox_service_builds_locator_and_proxies() -> None:
     assert store.scope == ("tenant-1", "app-1", "conv-1")
 
 
+def test_agent_app_sandbox_service_upload_returns_download_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    store = FakeStore(_stored_session())
+    client = FakeClient()
+    captured: dict[str, object] = {}
+
+    def fake_upload_download_response(*, tenant_id: str, file_mapping: dict[str, object]) -> AgentSandboxUploadDownload:
+        captured["tenant_id"] = tenant_id
+        captured["file_mapping"] = file_mapping
+        return AgentSandboxUploadDownload(url="https://files.example/report.txt?token=1&as_attachment=true")
+
+    monkeypatch.setattr("services.agent_app_sandbox_service._upload_download_response", fake_upload_download_response)
+    service = AgentAppSandboxService(session_store=store, client_factory=lambda: client)  # type: ignore[arg-type]
+
+    result = service.upload_file(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1", path="report.txt")
+
+    assert result.url == "https://files.example/report.txt?token=1&as_attachment=true"
+    assert client.calls == [("upload", "report.txt")]
+    assert store.scope == ("tenant-1", "app-1", "conv-1")
+    assert captured == {
+        "tenant_id": "tenant-1",
+        "file_mapping": {
+            "transfer_method": "tool_file",
+            "reference": "dify-file-ref:file-1",
+            "download_url": "https://files.example/report.txt?token=1",
+        },
+    }
+
+
 def test_agent_app_sandbox_service_raises_when_no_active_session() -> None:
     service = AgentAppSandboxService(session_store=FakeStore(None), client_factory=lambda: FakeClient())  # type: ignore[arg-type]
 
     with pytest.raises(AgentSandboxInspectorError) as exc_info:
-        service.read_file(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1", path="note.txt")
+        service.get_info(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1")
 
     assert exc_info.value.code == "no_active_session"
     assert exc_info.value.status_code == 404
 
 
-def test_agent_app_sandbox_service_raises_when_runtime_specs_cannot_build_locator() -> None:
-    broken_session = StoredAgentAppSession(
-        scope=AgentAppSessionScope(
-            tenant_id="tenant-1",
-            app_id="app-1",
-            conversation_id="conv-1",
-            agent_id="agent-1",
-            agent_config_snapshot_id="snapshot-1",
-        ),
-        session_snapshot=_snapshot(),
-        backend_run_id="run-1",
-        runtime_layer_specs=[],
-    )
+def test_agent_app_sandbox_service_raises_when_shell_workspace_metadata_missing() -> None:
+    broken_session = _stored_session(session_snapshot=_snapshot(shell_runtime_state={"session_id": "abc1234"}))
     service = AgentAppSandboxService(session_store=FakeStore(broken_session), client_factory=lambda: FakeClient())  # type: ignore[arg-type]
 
     with pytest.raises(AgentSandboxInspectorError) as exc_info:
-        service.list_files(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1", path=".")
+        service.get_info(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1")
 
     assert exc_info.value.code == "no_sandbox"
+    assert exc_info.value.status_code == 404
 
 
 def test_default_client_factory_requires_agent_backend_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -195,9 +245,19 @@ def _insert_workflow_session(
 
 
 @pytest.mark.usefixtures("_runtime_session_table")
-def test_workflow_sandbox_service_resolves_locator_and_proxies() -> None:
+def test_workflow_sandbox_service_resolves_locator_and_returns_download_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _insert_workflow_session()
     client = FakeClient()
+    captured: dict[str, object] = {}
+
+    def fake_upload_download_response(*, tenant_id: str, file_mapping: dict[str, object]) -> AgentSandboxUploadDownload:
+        captured["tenant_id"] = tenant_id
+        captured["file_mapping"] = file_mapping
+        return AgentSandboxUploadDownload(url="https://files.example/report.txt?token=1&as_attachment=true")
+
+    monkeypatch.setattr("services.agent_app_sandbox_service._upload_download_response", fake_upload_download_response)
     service = WorkflowAgentSandboxService(client_factory=lambda: client)  # type: ignore[arg-type]
 
     result = service.upload_file(
@@ -207,10 +267,103 @@ def test_workflow_sandbox_service_resolves_locator_and_proxies() -> None:
         node_id="node-1",
         node_execution_id="node-exec-1",
         path="report.txt",
+        session=session_factory.create_session(),
     )
 
-    assert result.file.reference == "dify-file-ref:file-1"
+    assert result.url == "https://files.example/report.txt?token=1&as_attachment=true"
     assert client.calls == [("upload", "report.txt")]
+    assert captured == {
+        "tenant_id": "tenant-1",
+        "file_mapping": {
+            "transfer_method": "tool_file",
+            "reference": "dify-file-ref:file-1",
+            "download_url": "https://files.example/report.txt?token=1",
+        },
+    }
+
+
+def test_upload_download_response_resolves_signed_external_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    built_file = object()
+    built_with: dict[str, object] = {}
+
+    def fake_build_from_mapping(*, mapping: dict[str, object], tenant_id: str, access_controller: object) -> object:
+        built_with["mapping"] = mapping
+        built_with["tenant_id"] = tenant_id
+        built_with["access_controller"] = access_controller
+        return built_file
+
+    class FakeRuntime:
+        def __init__(self, *, file_access_controller: object) -> None:
+            self.file_access_controller = file_access_controller
+
+        def resolve_file_url(self, *, file: object, for_external: bool) -> str:
+            assert file is built_file
+            assert for_external is True
+            return "https://files.example/files/tools/tool-file.txt?timestamp=1&nonce=2&sign=3"
+
+    monkeypatch.setattr("services.agent_app_sandbox_service.file_factory.build_from_mapping", fake_build_from_mapping)
+    monkeypatch.setattr("services.agent_app_sandbox_service.DifyWorkflowFileRuntime", FakeRuntime)
+
+    result = _upload_download_response(
+        tenant_id="tenant-1",
+        file_mapping={"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
+    )
+
+    assert result.url == (
+        "https://files.example/files/tools/tool-file.txt?timestamp=1&nonce=2&sign=3&as_attachment=true"
+    )
+    assert built_with["mapping"] == {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}
+    assert built_with["tenant_id"] == "tenant-1"
+    assert built_with["access_controller"] is not None
+
+
+def test_upload_download_response_maps_resolution_failure_to_inspector_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_build_from_mapping(*, mapping: dict[str, object], tenant_id: str, access_controller: object) -> object:
+        del mapping, tenant_id, access_controller
+        raise ValueError("missing tool file")
+
+    monkeypatch.setattr("services.agent_app_sandbox_service.file_factory.build_from_mapping", fake_build_from_mapping)
+
+    with pytest.raises(AgentSandboxInspectorError) as exc_info:
+        _upload_download_response(
+            tenant_id="tenant-1",
+            file_mapping={"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
+        )
+
+    assert exc_info.value.code == "sandbox_upload_download_unavailable"
+    assert exc_info.value.status_code == 502
+
+
+def test_upload_download_response_maps_missing_url_to_inspector_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    built_file = object()
+
+    def fake_build_from_mapping(*, mapping: dict[str, object], tenant_id: str, access_controller: object) -> object:
+        del mapping, tenant_id, access_controller
+        return built_file
+
+    class FakeRuntime:
+        def __init__(self, *, file_access_controller: object) -> None:
+            self.file_access_controller = file_access_controller
+
+        def resolve_file_url(self, *, file: object, for_external: bool) -> None:
+            assert file is built_file
+            assert for_external is True
+
+    monkeypatch.setattr("services.agent_app_sandbox_service.file_factory.build_from_mapping", fake_build_from_mapping)
+    monkeypatch.setattr("services.agent_app_sandbox_service.DifyWorkflowFileRuntime", FakeRuntime)
+
+    with pytest.raises(AgentSandboxInspectorError) as exc_info:
+        _upload_download_response(
+            tenant_id="tenant-1",
+            file_mapping={"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
+        )
+
+    assert exc_info.value.code == "sandbox_upload_download_unavailable"
+    assert exc_info.value.status_code == 502
 
 
 @pytest.mark.usefixtures("_runtime_session_table")
@@ -237,6 +390,7 @@ def test_workflow_sandbox_service_filters_by_node_execution_id() -> None:
         node_id="node-1",
         node_execution_id="node-exec-2",
         path="out.txt",
+        session=session_factory.create_session(),
     )
 
     assert result.text == "hello"
@@ -270,6 +424,7 @@ def test_workflow_sandbox_service_uses_latest_active_session_when_execution_id_o
         node_id="node-1",
         node_execution_id=None,
         path=".",
+        session=session_factory.create_session(),
     )
 
     assert result.path == "."
@@ -289,6 +444,7 @@ def test_workflow_sandbox_service_raises_when_no_active_session() -> None:
             node_id="node-1",
             node_execution_id=None,
             path=".",
+            session=session_factory.create_session(),
         )
 
     assert exc_info.value.code == "no_active_session"
@@ -308,6 +464,7 @@ def test_workflow_sandbox_service_raises_when_runtime_specs_missing() -> None:
             node_id="node-1",
             node_execution_id=None,
             path=".",
+            session=session_factory.create_session(),
         )
 
     assert exc_info.value.code == "no_sandbox"

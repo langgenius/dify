@@ -11,12 +11,10 @@ import type {
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  ComboboxItem,
-  ComboboxItemText,
-} from '@langgenius/dify-ui/combobox'
+import { ComboboxItem, ComboboxItemText } from '@langgenius/dify-ui/combobox'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { useSelector } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { SubjectType } from '@/models/access-control'
 
 export function SubjectItem({
@@ -70,36 +68,39 @@ export function SelectedGroupsBreadCrumb({
 
   return (
     <div className="flex h-7 items-center gap-x-0.5 px-2 py-0.5">
-      {hasBreadcrumb
-        ? (
-            <button
-              type="button"
-              className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-              onClick={handleReset}
-            >
-              {t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}
-            </button>
-          )
-        : (
-            <span className="system-xs-regular text-text-tertiary">{t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}</span>
-          )}
+      {hasBreadcrumb ? (
+        <button
+          type="button"
+          className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={handleReset}
+        >
+          {t(($) => $['accessControlDialog.operateGroupAndMember.allMembers'], { ns: 'app' })}
+        </button>
+      ) : (
+        <span className="system-xs-regular text-text-tertiary">
+          {t(($) => $['accessControlDialog.operateGroupAndMember.allMembers'], { ns: 'app' })}
+        </span>
+      )}
       {selectedGroupsForBreadcrumb.map((group, index) => {
         const isLastGroup = index === selectedGroupsForBreadcrumb.length - 1
 
         return (
-          <div key={group.id} className="flex items-center gap-x-0.5 system-xs-regular text-text-tertiary">
+          <div
+            key={group.id}
+            className="flex items-center gap-x-0.5 system-xs-regular text-text-tertiary"
+          >
             <span>/</span>
-            {isLastGroup
-              ? <span>{group.name}</span>
-              : (
-                  <button
-                    type="button"
-                    className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                    onClick={() => handleBreadCrumbClick(index)}
-                  >
-                    {group.name}
-                  </button>
-                )}
+            {isLastGroup ? (
+              <span>{group.name}</span>
+            ) : (
+              <button
+                type="button"
+                className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={() => handleBreadCrumbClick(index)}
+              >
+                {group.name}
+              </button>
+            )}
           </div>
         )
       })}
@@ -116,7 +117,7 @@ type GroupItemProps = {
 
 function GroupItem({ group, subject, selectedGroups, onExpandGroup }: GroupItemProps) {
   const { t } = useTranslation()
-  const isChecked = selectedGroups.some(selectedGroup => selectedGroup.id === group.id)
+  const isChecked = selectedGroups.some((selectedGroup) => selectedGroup.id === group.id)
 
   return (
     <div className="flex items-center gap-2 rounded-lg hover:bg-state-base-hover">
@@ -125,7 +126,10 @@ function GroupItem({ group, subject, selectedGroups, onExpandGroup }: GroupItemP
         <ComboboxItemText className="flex grow items-center px-0">
           <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
             <div className="flex size-full items-center justify-center bg-[image:var(--color-access-app-icon-mask-bg)]">
-              <span className="i-ri-organization-chart h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" aria-hidden="true" />
+              <span
+                className="i-ri-organization-chart h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0"
+                aria-hidden="true"
+              />
             </div>
           </div>
           <span className="mr-1 system-sm-medium text-text-secondary">{group.name}</span>
@@ -137,10 +141,12 @@ function GroupItem({ group, subject, selectedGroups, onExpandGroup }: GroupItemP
         disabled={isChecked}
         variant="ghost-accent"
         className="mr-1 flex shrink-0 items-center justify-between px-1.5 py-1"
-        onPointerDown={event => event.preventDefault()}
+        onPointerDown={(event) => event.preventDefault()}
         onClick={() => onExpandGroup(group)}
       >
-        <span className="px-[3px]">{t('accessControlDialog.operateGroupAndMember.expand', { ns: 'app' })}</span>
+        <span className="px-[3px]">
+          {t(($) => $['accessControlDialog.operateGroupAndMember.expand'], { ns: 'app' })}
+        </span>
         <span className="i-ri-arrow-right-s-line size-4" aria-hidden="true" />
       </Button>
     </div>
@@ -154,9 +160,9 @@ type MemberItemProps = {
 }
 
 function MemberItem({ member, subject, selectedMembers }: MemberItemProps) {
-  const currentUser = useSelector(s => s.userProfile)
+  const currentUser = useAtomValue(userProfileAtom)
   const { t } = useTranslation()
-  const isChecked = selectedMembers.some(selectedMember => selectedMember.id === member.id)
+  const isChecked = selectedMembers.some((selectedMember) => selectedMember.id === member.id)
   return (
     <ComboboxBaseItem subject={subject} className="pr-3">
       <SelectionBox checked={isChecked} />
@@ -169,9 +175,7 @@ function MemberItem({ member, subject, selectedMembers }: MemberItemProps) {
         <span className="mr-1 system-sm-medium text-text-secondary">{member.name}</span>
         {currentUser.email === member.email && (
           <span className="system-xs-regular text-text-tertiary">
-            (
-            {t('you', { ns: 'common' })}
-            )
+            ({t(($) => $.you, { ns: 'common' })})
           </span>
         )}
       </ComboboxItemText>

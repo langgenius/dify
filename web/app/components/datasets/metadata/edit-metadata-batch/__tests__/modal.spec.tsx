@@ -62,20 +62,24 @@ vi.mock('../edit-row', () => ({
   default: ({ payload, onChange, onRemove, onReset }: EditRowProps) => (
     <div role="group" aria-label={`Edit metadata ${payload.name}`}>
       <span>{payload.name}</span>
-      <button type="button" onClick={() => onChange({ ...payload, value: 'changed', isUpdated: true, updateType: UpdateType.changeValue })}>
-        Change
-        {' '}
-        {payload.name}
+      <button
+        type="button"
+        onClick={() =>
+          onChange({
+            ...payload,
+            value: 'changed',
+            isUpdated: true,
+            updateType: UpdateType.changeValue,
+          })
+        }
+      >
+        Change {payload.name}
       </button>
       <button type="button" onClick={() => onRemove(payload.id)}>
-        Remove
-        {' '}
-        {payload.name}
+        Remove {payload.name}
       </button>
       <button type="button" onClick={() => onReset(payload.id)}>
-        Reset
-        {' '}
-        {payload.name}
+        Reset {payload.name}
       </button>
     </div>
   ),
@@ -86,14 +90,10 @@ vi.mock('../add-row', () => ({
     <div role="group" aria-label={`Added metadata ${payload.name}`}>
       <span>{payload.name}</span>
       <button type="button" onClick={() => onChange({ ...payload, value: 'new_value' })}>
-        Change
-        {' '}
-        {payload.name}
+        Change {payload.name}
       </button>
       <button type="button" onClick={onRemove}>
-        Remove
-        {' '}
-        {payload.name}
+        Remove {payload.name}
       </button>
     </div>
   ),
@@ -121,8 +121,10 @@ describe('EditMetadataBatchModal', () => {
 
   const getEditRows = () => screen.getAllByRole('group', { name: /^Edit metadata / })
   const getEditRow = (name: string) => screen.getByRole('group', { name: `Edit metadata ${name}` })
-  const getAddedRow = (name: string) => screen.getByRole('group', { name: `Added metadata ${name}` })
-  const queryAddedRow = (name: string) => screen.queryByRole('group', { name: `Added metadata ${name}` })
+  const getAddedRow = (name: string) =>
+    screen.getByRole('group', { name: `Added metadata ${name}` })
+  const queryAddedRow = (name: string) =>
+    screen.queryByRole('group', { name: `Added metadata ${name}` })
   const openMetadataPicker = () => {
     fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
   }
@@ -132,8 +134,13 @@ describe('EditMetadataBatchModal', () => {
   }
   const createMetadata = async (name = 'created_field') => {
     openMetadataPicker()
-    fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }))
-    fireEvent.change(screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }), { target: { value: name } })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+      { target: { value: name } },
+    )
     const saveButtons = screen.getAllByRole('button', { name: 'common.operation.save' })
     fireEvent.click(saveButtons[saveButtons.length - 1]!)
   }
@@ -171,14 +178,20 @@ describe('EditMetadataBatchModal', () => {
     it('should render checkbox for apply to all', async () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
       await waitFor(() => {
-        expect(screen.getByRole('checkbox', { name: 'dataset.metadata.batchEditMetadata.applyToAllSelectDocument' })).toBeInTheDocument()
+        expect(
+          screen.getByRole('checkbox', {
+            name: 'dataset.metadata.batchEditMetadata.applyToAllSelectDocument',
+          }),
+        ).toBeInTheDocument()
       })
     })
 
     it('should render dataset metadata picker', async () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))!.toBeInTheDocument()
+        expect(
+          screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }),
+        )!.toBeInTheDocument()
       })
     })
   })
@@ -220,7 +233,9 @@ describe('EditMetadataBatchModal', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      const checkbox = screen.getByRole('checkbox', { name: 'dataset.metadata.batchEditMetadata.applyToAllSelectDocument' })
+      const checkbox = screen.getByRole('checkbox', {
+        name: 'dataset.metadata.batchEditMetadata.applyToAllSelectDocument',
+      })
       await user.click(checkbox)
 
       await waitFor(() => {
@@ -409,7 +424,9 @@ describe('EditMetadataBatchModal', () => {
       })
 
       openMetadataPicker()
-      fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.manageAction' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.manageAction' }),
+      )
 
       expect(onShowManage).toHaveBeenCalled()
     })
@@ -476,11 +493,7 @@ describe('EditMetadataBatchModal', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-      expect(onSave).toHaveBeenCalledWith(
-        expect.any(Array),
-        expect.any(Array),
-        expect.any(Boolean),
-      )
+      expect(onSave).toHaveBeenCalledWith(expect.any(Array), expect.any(Array), expect.any(Boolean))
     })
 
     it('should pass isApplyToAllSelectDocument as true when checked', async () => {
@@ -492,16 +505,16 @@ describe('EditMetadataBatchModal', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      await user.click(screen.getByRole('checkbox', { name: 'dataset.metadata.batchEditMetadata.applyToAllSelectDocument' }))
+      await user.click(
+        screen.getByRole('checkbox', {
+          name: 'dataset.metadata.batchEditMetadata.applyToAllSelectDocument',
+        }),
+      )
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       await waitFor(() => {
-        expect(onSave).toHaveBeenCalledWith(
-          expect.any(Array),
-          expect.any(Array),
-          true,
-        )
+        expect(onSave).toHaveBeenCalledWith(expect.any(Array), expect.any(Array), true)
       })
     })
 
@@ -521,7 +534,7 @@ describe('EditMetadataBatchModal', () => {
       expect(onSave).toHaveBeenCalled()
       // The first argument should not contain the deleted item (id '1')
       const savedList = onSave.mock.calls[0]![0] as MetadataItemInBatchEdit[]
-      const hasDeletedItem = savedList.some(item => item.id === '1')
+      const hasDeletedItem = savedList.some((item) => item.id === '1')
       expect(hasDeletedItem).toBe(false)
     })
 

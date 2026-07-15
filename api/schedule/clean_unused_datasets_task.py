@@ -8,10 +8,11 @@ from sqlalchemy.exc import SQLAlchemyError
 
 import app
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.pagination import paginate_query
 from models.dataset import Dataset, DatasetAutoDisableLog, DatasetQuery, Document
 from services.feature_service import FeatureService
 
@@ -88,67 +89,77 @@ def clean_unused_datasets_task():
                     .order_by(Dataset.created_at.desc())
                 )
 
-                datasets = db.paginate(stmt, page=page, per_page=50, error_out=False)
+                with session_factory.create_session() as session:
+                    datasets = paginate_query(stmt, page=page, per_page=50, session=session)
+
+                    if datasets is None or datasets.items is None or len(datasets.items) == 0:
+                        break
+
+                    for dataset in datasets:
+                        dataset_query = session.scalars(
+                            select(DatasetQuery).where(
+                                DatasetQuery.created_at > clean_day, DatasetQuery.dataset_id == dataset.id
+                            )
+                        ).all()
+
+                        if not dataset_query or len(dataset_query) == 0:
+                            try:
+                                should_clean = True
+
+                                # Check plan filter if specified
+                                if plan_filter:
+                                    features_cache_key = f"features:{dataset.tenant_id}"
+                                    plan_cache = redis_client.get(features_cache_key)
+                                    if plan_cache is None:
+                                        features = FeatureService.get_features(
+                                            dataset.tenant_id, exclude_vector_space=True
+                                        )
+                                        redis_client.setex(features_cache_key, 600, features.billing.subscription.plan)
+                                        plan = features.billing.subscription.plan
+                                    else:
+                                        plan = plan_cache.decode()
+                                    should_clean = plan == plan_filter
+
+                                if should_clean:
+                                    # Add auto disable log if required
+                                    if add_logs:
+                                        documents = session.scalars(
+                                            select(Document).where(
+                                                Document.dataset_id == dataset.id,
+                                                Document.enabled == True,
+                                                Document.archived == False,
+                                            )
+                                        ).all()
+                                        for document in documents:
+                                            dataset_auto_disable_log = DatasetAutoDisableLog(
+                                                tenant_id=dataset.tenant_id,
+                                                dataset_id=dataset.id,
+                                                document_id=document.id,
+                                            )
+                                            session.add(dataset_auto_disable_log)
+
+                                    # Remove index
+                                    index_processor = IndexProcessorFactory(
+                                        dataset.get_doc_form(session=session)
+                                    ).init_index_processor()
+                                    index_processor.clean(dataset, None, session=session)
+
+                                    # Update document
+                                    session.execute(
+                                        update(Document).where(Document.dataset_id == dataset.id).values(enabled=False)
+                                    )
+                                    session.commit()
+                                    click.echo(
+                                        click.style(f"Cleaned unused dataset {dataset.id} from db success!", fg="green")
+                                    )
+                            except Exception as e:
+                                session.rollback()
+                                click.echo(
+                                    click.style(f"clean dataset index error: {e.__class__.__name__} {str(e)}", fg="red")
+                                )
 
             except SQLAlchemyError:
                 raise
-
-            if datasets is None or datasets.items is None or len(datasets.items) == 0:
-                break
-
-            for dataset in datasets:
-                dataset_query = db.session.scalars(
-                    select(DatasetQuery).where(
-                        DatasetQuery.created_at > clean_day, DatasetQuery.dataset_id == dataset.id
-                    )
-                ).all()
-
-                if not dataset_query or len(dataset_query) == 0:
-                    try:
-                        should_clean = True
-
-                        # Check plan filter if specified
-                        if plan_filter:
-                            features_cache_key = f"features:{dataset.tenant_id}"
-                            plan_cache = redis_client.get(features_cache_key)
-                            if plan_cache is None:
-                                features = FeatureService.get_features(dataset.tenant_id, exclude_vector_space=True)
-                                redis_client.setex(features_cache_key, 600, features.billing.subscription.plan)
-                                plan = features.billing.subscription.plan
-                            else:
-                                plan = plan_cache.decode()
-                            should_clean = plan == plan_filter
-
-                        if should_clean:
-                            # Add auto disable log if required
-                            if add_logs:
-                                documents = db.session.scalars(
-                                    select(Document).where(
-                                        Document.dataset_id == dataset.id,
-                                        Document.enabled == True,
-                                        Document.archived == False,
-                                    )
-                                ).all()
-                                for document in documents:
-                                    dataset_auto_disable_log = DatasetAutoDisableLog(
-                                        tenant_id=dataset.tenant_id,
-                                        dataset_id=dataset.id,
-                                        document_id=document.id,
-                                    )
-                                    db.session.add(dataset_auto_disable_log)
-
-                            # Remove index
-                            index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
-                            index_processor.clean(dataset, None)
-
-                            # Update document
-                            db.session.execute(
-                                update(Document).where(Document.dataset_id == dataset.id).values(enabled=False)
-                            )
-                            db.session.commit()
-                            click.echo(click.style(f"Cleaned unused dataset {dataset.id} from db success!", fg="green"))
-                    except Exception as e:
-                        click.echo(click.style(f"clean dataset index error: {e.__class__.__name__} {str(e)}", fg="red"))
 
             page += 1
 

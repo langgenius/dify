@@ -6,6 +6,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 import core.agent.base_agent_runner as module
+import models.model as model_module
 from core.agent.base_agent_runner import BaseAgentRunner
 
 # ==========================================================
@@ -21,7 +22,7 @@ def mock_db_session(mocker: MockerFixture):
 
 
 @pytest.fixture
-def runner(mocker: MockerFixture, mock_db_session):
+def runner(mocker: MockerFixture):
     r = BaseAgentRunner.__new__(BaseAgentRunner)
     r.tenant_id = "tenant"
     r.user_id = "user"
@@ -90,6 +91,9 @@ class TestCreateAgentThought:
         result = runner.create_agent_thought("m", "msg", "tool", "input", ["f1"])
         assert result == "10"
         assert runner.agent_thought_count == 1
+        mock_db_session.add.assert_called_once_with(mock_thought)
+        mock_db_session.commit.assert_called_once_with()
+        mock_db_session.close.assert_called_once_with()
 
     def test_without_files(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
         mock_thought = mocker.MagicMock(id=11)
@@ -151,6 +155,8 @@ class TestSaveAgentThought:
         assert agent.answer == "answer"
         assert agent.tokens == 3
         assert "tool1" in json.loads(agent.tool_labels_str)
+        mock_db_session.commit.assert_called_once_with()
+        mock_db_session.close.assert_called_once_with()
 
     def test_label_fallback_when_none(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
         agent = self.setup_agent(mocker)
@@ -216,15 +222,18 @@ class TestSaveAgentThought:
 
 class TestOrganizeUserPrompt:
     def test_no_files(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
-        mock_db_session.scalars.return_value.all.return_value = []
+        caller_session = mocker.MagicMock()
+        caller_session.scalars.return_value.all.return_value = []
         msg = mocker.MagicMock(id="1", query="hello", app_model_config=None)
-        result = runner.organize_agent_user_prompt(msg)
+        result = runner.organize_agent_user_prompt(msg, session=caller_session)
         assert result.content == "hello"
+        assert mock_db_session.mock_calls == []
 
     def test_with_files_no_config(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
         mock_db_session.scalars.return_value.all.return_value = [mocker.MagicMock()]
         msg = mocker.MagicMock(id="1", query="hello", app_model_config=None)
-        result = runner.organize_agent_user_prompt(msg)
+        msg.app_model_config_with_session.return_value = None
+        result = runner.organize_agent_user_prompt(msg, session=mock_db_session)
         assert result.content == "hello"
 
     def test_image_detail_low_fallback(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
@@ -235,10 +244,18 @@ class TestOrganizeUserPrompt:
         mocker.patch.object(module.file_factory, "build_from_message_files", return_value=[])
 
         msg = mocker.MagicMock(id="1", query="hello")
-        msg.app_model_config.to_dict.return_value = {}
+        app_model_config = mocker.MagicMock()
+        app_model_config.app_id = "app1"
+        app_model_config.to_dict.return_value = {}
+        msg.app_model_config_with_session.return_value = app_model_config
+        load_annotation_reply_config = mocker.patch.object(
+            module, "load_annotation_reply_config", return_value={"enabled": False}
+        )
 
-        result = runner.organize_agent_user_prompt(msg)
+        result = runner.organize_agent_user_prompt(msg, session=mock_db_session)
         assert result.content == "hello"
+        load_annotation_reply_config.assert_called_once_with(mock_db_session, "app1")
+        app_model_config.to_dict.assert_called_once_with(annotation_reply={"enabled": False})
 
 
 # ==========================================================
@@ -248,23 +265,27 @@ class TestOrganizeUserPrompt:
 
 class TestOrganizeHistory:
     def test_empty(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
-        mock_db_session.execute.return_value.scalars.return_value.all.return_value = []
+        caller_session = mocker.MagicMock()
+        caller_session.execute.return_value.scalars.return_value.all.return_value = []
         mocker.patch.object(module, "extract_thread_messages", return_value=[])
-        result = runner.organize_agent_history([])
+        result = runner.organize_agent_history([], session=caller_session)
         assert result == []
+        assert mock_db_session.mock_calls == []
 
     def test_with_answer_only(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
         msg = mocker.MagicMock(id="m1", answer="ans", agent_thoughts=[], app_model_config=None)
+        msg.agent_thoughts_with_session.return_value = []
+        msg.app_model_config_with_session.return_value = None
         mock_db_session.execute.return_value.scalars.return_value.all.return_value = [msg]
         mocker.patch.object(module, "extract_thread_messages", return_value=[msg])
-        result = runner.organize_agent_history([])
+        result = runner.organize_agent_history([], session=mock_db_session)
         assert any(isinstance(x, module.AssistantPromptMessage) for x in result)
 
     def test_skip_current_message(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
         msg = mocker.MagicMock(id="msg_current", agent_thoughts=[], answer="ans", app_model_config=None)
         mock_db_session.execute.return_value.scalars.return_value.all.return_value = [msg]
         mocker.patch.object(module, "extract_thread_messages", return_value=[msg])
-        result = runner.organize_agent_history([])
+        result = runner.organize_agent_history([], session=mock_db_session)
         assert result == []
 
     def test_with_tool_calls_invalid_json(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
@@ -275,21 +296,25 @@ class TestOrganizeHistory:
             thought="thinking",
         )
         msg = mocker.MagicMock(id="m2", agent_thoughts=[thought], answer=None, app_model_config=None)
+        msg.agent_thoughts_with_session.return_value = [thought]
+        msg.app_model_config_with_session.return_value = None
 
         mock_db_session.execute.return_value.scalars.return_value.all.return_value = [msg]
         mocker.patch.object(module, "extract_thread_messages", return_value=[msg])
         mocker.patch("uuid.uuid4", return_value="uuid")
 
-        result = runner.organize_agent_history([])
+        result = runner.organize_agent_history([], session=mock_db_session)
         assert isinstance(result, list)
 
     def test_empty_tool_name_split(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
         thought = mocker.MagicMock(tool=";", thought="thinking")
         msg = mocker.MagicMock(id="m5", agent_thoughts=[thought], answer=None, app_model_config=None)
+        msg.agent_thoughts_with_session.return_value = [thought]
+        msg.app_model_config_with_session.return_value = None
 
         mock_db_session.execute.return_value.scalars.return_value.all.return_value = [msg]
         mocker.patch.object(module, "extract_thread_messages", return_value=[msg])
-        result = runner.organize_agent_history([])
+        result = runner.organize_agent_history([], session=mock_db_session)
         assert isinstance(result, list)
 
     def test_valid_json_tool_flow(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
@@ -306,12 +331,14 @@ class TestOrganizeHistory:
             answer=None,
             app_model_config=None,
         )
+        msg.agent_thoughts_with_session.return_value = [thought]
+        msg.app_model_config_with_session.return_value = None
 
         mock_db_session.execute.return_value.scalars.return_value.all.return_value = [msg]
         mocker.patch.object(module, "extract_thread_messages", return_value=[msg])
         mocker.patch("uuid.uuid4", return_value="uuid")
 
-        result = runner.organize_agent_history([])
+        result = runner.organize_agent_history([], session=mock_db_session)
         assert isinstance(result, list)
 
 
@@ -424,19 +451,25 @@ class TestAdditionalCoverage:
         mocker.patch.object(module, "TextPromptMessageContent", side_effect=lambda **kw: MagicMock(**kw))
 
         msg = mocker.MagicMock(id="1", query="hello")
-        msg.app_model_config.to_dict.return_value = {}
+        app_model_config = mocker.MagicMock()
+        app_model_config.app_id = "app1"
+        app_model_config.to_dict.return_value = {}
+        msg.app_model_config_with_session.return_value = app_model_config
+        mocker.patch.object(module, "load_annotation_reply_config", return_value={"enabled": False})
 
-        result = runner.organize_agent_user_prompt(msg)
+        result = runner.organize_agent_user_prompt(msg, session=mock_db_session)
         assert result is not None
 
     def test_organize_history_without_tool_names(self, runner: BaseAgentRunner, mock_db_session, mocker: MockerFixture):
         thought = mocker.MagicMock(tool=None, thought="thinking")
         msg = mocker.MagicMock(id="m3", agent_thoughts=[thought], answer=None, app_model_config=None)
+        msg.agent_thoughts_with_session.return_value = [thought]
+        msg.app_model_config_with_session.return_value = None
 
         mock_db_session.execute.return_value.scalars.return_value.all.return_value = [msg]
         mocker.patch.object(module, "extract_thread_messages", return_value=[msg])
 
-        result = runner.organize_agent_history([])
+        result = runner.organize_agent_history([], session=mock_db_session)
         assert isinstance(result, list)
 
     def test_organize_history_multiple_tools_split(
@@ -449,12 +482,14 @@ class TestAdditionalCoverage:
             thought="thinking",
         )
         msg = mocker.MagicMock(id="m4", agent_thoughts=[thought], answer=None, app_model_config=None)
+        msg.agent_thoughts_with_session.return_value = [thought]
+        msg.app_model_config_with_session.return_value = None
 
         mock_db_session.execute.return_value.scalars.return_value.all.return_value = [msg]
         mocker.patch.object(module, "extract_thread_messages", return_value=[msg])
         mocker.patch("uuid.uuid4", return_value="uuid")
 
-        result = runner.organize_agent_history([])
+        result = runner.organize_agent_history([], session=mock_db_session)
         assert isinstance(result, list)
 
 
@@ -480,12 +515,14 @@ class TestConvertDatasetRetrieverTool:
 
 class TestBaseAgentRunnerInit:
     def test_init_sets_stream_tool_call_and_files(self, mocker: MockerFixture):
-        session = mocker.MagicMock()
-        session.scalar.return_value = 2
-        mocker.patch.object(module.db, "session", session)
-
-        mocker.patch.object(BaseAgentRunner, "organize_agent_history", return_value=[])
-        mocker.patch.object(module.DatasetRetrieverTool, "get_dataset_tools", return_value=["ds_tool"])
+        caller_session = mocker.MagicMock()
+        caller_session.scalar.return_value = 2
+        global_session = mocker.MagicMock()
+        mocker.patch.object(model_module.db, "session", global_session)
+        organize_agent_history = mocker.patch.object(BaseAgentRunner, "organize_agent_history", return_value=[])
+        get_dataset_tools = mocker.patch.object(
+            module.DatasetRetrieverTool, "get_dataset_tools", return_value=["ds_tool"]
+        )
 
         llm = mocker.MagicMock()
         llm.get_model_schema.return_value = mocker.MagicMock(
@@ -503,6 +540,7 @@ class TestBaseAgentRunnerInit:
         message = mocker.MagicMock(id="msg1", conversation_id="conv1")
 
         runner = BaseAgentRunner(
+            session=caller_session,
             tenant_id="tenant",
             application_generate_entity=app_generate,
             conversation=mocker.MagicMock(),
@@ -519,6 +557,9 @@ class TestBaseAgentRunnerInit:
         assert runner.files == ["file1"]
         assert runner.dataset_tools == ["ds_tool"]
         assert runner.agent_thought_count == 2
+        organize_agent_history.assert_called_once_with(session=caller_session, prompt_messages=[])
+        assert get_dataset_tools.call_args.kwargs["session"] is caller_session
+        assert global_session.mock_calls == []
 
 
 class TestBaseAgentRunnerCoverage:
@@ -598,7 +639,7 @@ class TestBaseAgentRunnerCoverage:
 
         system_message = module.SystemPromptMessage(content="sys")
 
-        result = runner.organize_agent_history([system_message])
+        result = runner.organize_agent_history([system_message], session=mock_db_session)
 
         assert system_message in result
 
@@ -612,6 +653,7 @@ class TestBaseAgentRunnerCoverage:
             thought="thinking",
         )
         msg = mocker.MagicMock(id="m6", agent_thoughts=[thought], answer=None, app_model_config=None)
+        msg.agent_thoughts_with_session.return_value = [thought]
 
         mock_db_session.execute.return_value.scalars.return_value.all.return_value = [msg]
         mocker.patch.object(module, "extract_thread_messages", return_value=[msg])
@@ -623,6 +665,6 @@ class TestBaseAgentRunnerCoverage:
             return_value=module.UserPromptMessage(content="user"),
         )
 
-        result = runner.organize_agent_history([])
+        result = runner.organize_agent_history([], session=mock_db_session)
 
         assert any(isinstance(item, module.ToolPromptMessage) for item in result)

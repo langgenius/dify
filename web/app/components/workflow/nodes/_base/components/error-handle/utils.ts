@@ -1,21 +1,20 @@
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
-import {
-  BlockEnum,
-  VarType,
-} from '@/app/components/workflow/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
 
 const getDefaultValueByType = (type: VarType) => {
-  if (type === VarType.string)
-    return ''
+  if (type === VarType.string) return ''
 
-  if (type === VarType.number)
-    return 0
+  if (type === VarType.number) return 0
 
-  if (type === VarType.object)
-    return '{}'
+  if (type === VarType.object) return '{}'
 
-  if (type === VarType.arrayObject || type === VarType.arrayString || type === VarType.arrayNumber || type === VarType.arrayFile)
+  if (
+    type === VarType.arrayObject ||
+    type === VarType.arrayString ||
+    type === VarType.arrayNumber ||
+    type === VarType.arrayFile
+  )
     return '[]'
 
   return ''
@@ -25,11 +24,13 @@ export const getDefaultValue = (data: CommonNodeType) => {
   const { type } = data
 
   if (type === BlockEnum.LLM) {
-    return [{
-      key: 'text',
-      type: VarType.string,
-      value: getDefaultValueByType(VarType.string),
-    }]
+    return [
+      {
+        key: 'text',
+        type: VarType.string,
+        value: getDefaultValueByType(VarType.string),
+      },
+    ]
   }
 
   if (type === BlockEnum.HttpRequest) {

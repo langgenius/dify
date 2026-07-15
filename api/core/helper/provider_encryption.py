@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any, Protocol
 
-from core.entities.provider_entities import BasicProviderConfig
+from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
 from core.helper import encrypter
 
 
@@ -60,7 +60,7 @@ class ProviderConfigEncrypter:
             fields[credential.name] = credential
 
         for field_name, field in fields.items():
-            if field.type == BasicProviderConfig.Type.SECRET_INPUT:
+            if field.type == ProviderConfigType.SECRET_INPUT:
                 if field_name in data:
                     encrypted = encrypter.encrypt_token(self.tenant_id, data[field_name] or "")
                     data[field_name] = encrypted
@@ -81,7 +81,7 @@ class ProviderConfigEncrypter:
             fields[credential.name] = credential
 
         for field_name, field in fields.items():
-            if field.type == BasicProviderConfig.Type.SECRET_INPUT:
+            if field.type == ProviderConfigType.SECRET_INPUT:
                 if field_name in data:
                     if len(data[field_name]) > 6:
                         data[field_name] = (
@@ -112,7 +112,7 @@ class ProviderConfigEncrypter:
             fields[credential.name] = credential
 
         for field_name, field in fields.items():
-            if field.type == BasicProviderConfig.Type.SECRET_INPUT:
+            if field.type == ProviderConfigType.SECRET_INPUT:
                 if field_name in data:
                     with contextlib.suppress(Exception):
                         # if the value is None or empty string, skip decrypt
@@ -125,5 +125,7 @@ class ProviderConfigEncrypter:
         return data
 
 
-def create_provider_encrypter(tenant_id: str, config: list[BasicProviderConfig], cache: ProviderConfigCache):
+def create_provider_encrypter(
+    tenant_id: str, config: list[BasicProviderConfig], cache: ProviderConfigCache
+) -> tuple[ProviderConfigEncrypter, ProviderConfigCache]:
     return ProviderConfigEncrypter(tenant_id=tenant_id, config=config, provider_config_cache=cache), cache

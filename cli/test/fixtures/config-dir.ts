@@ -15,8 +15,7 @@ export function useTempConfigDir(prefix: string): () => string {
     process.env[ENV_CONFIG_DIR] = dir
   })
   afterEach(async () => {
-    if (prev === undefined)
-      delete process.env[ENV_CONFIG_DIR]
+    if (prev === undefined) delete process.env[ENV_CONFIG_DIR]
     else process.env[ENV_CONFIG_DIR] = prev
     await rm(dir, { recursive: true, force: true })
   })

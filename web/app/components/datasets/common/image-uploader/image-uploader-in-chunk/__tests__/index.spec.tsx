@@ -16,7 +16,9 @@ vi.mock('@/service/use-common', () => ({
 vi.mock('@/app/components/datasets/common/image-previewer', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="image-previewer">
-      <button data-testid="close-preview" onClick={onClose}>Close</button>
+      <button data-testid="close-preview" onClick={onClose}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -25,9 +27,7 @@ describe('ImageUploaderInChunk', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       const onChange = vi.fn()
-      const { container } = render(
-        <ImageUploaderInChunkWrapper value={[]} onChange={onChange} />,
-      )
+      const { container } = render(<ImageUploaderInChunkWrapper value={[]} onChange={onChange} />)
       expect(container.firstChild).toBeInTheDocument()
     })
 
@@ -50,11 +50,7 @@ describe('ImageUploaderInChunk', () => {
     it('should apply custom className', () => {
       const onChange = vi.fn()
       const { container } = render(
-        <ImageUploaderInChunkWrapper
-          value={[]}
-          onChange={onChange}
-          className="custom-class"
-        />,
+        <ImageUploaderInChunkWrapper value={[]} onChange={onChange} className="custom-class" />,
       )
       expect(container.firstChild).toHaveClass('custom-class')
     })
@@ -149,9 +145,7 @@ describe('ImageUploaderInChunk', () => {
   describe('Edge Cases', () => {
     it('should handle empty files array', () => {
       const onChange = vi.fn()
-      const { container } = render(
-        <ImageUploaderInChunkWrapper value={[]} onChange={onChange} />,
-      )
+      const { container } = render(<ImageUploaderInChunkWrapper value={[]} onChange={onChange} />)
       expect(container.firstChild).toBeInTheDocument()
     })
 
