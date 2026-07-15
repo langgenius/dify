@@ -67,7 +67,7 @@
   "agentDetail.configure.answer.activity.runningCommands": "正在執行命令",
   "agentDetail.configure.answer.duration.minute": "{{count}}分",
   "agentDetail.configure.answer.duration.second": "{{count}}秒",
-  "agentDetail.configure.answer.thinking": "思考中",
+  "agentDetail.configure.answer.thinking": "思考過程",
   "agentDetail.configure.answer.workFinished": "工作已完成",
   "agentDetail.configure.answer.workedFor": "工作了 {{duration}}",
   "agentDetail.configure.answer.workingFor": "工作中 {{duration}}",
