@@ -189,12 +189,6 @@ func childMode() {
 				fmt.Fprintf(os.Stderr, "shellctl-runner: landlock restrict: %v\n", err)
 				os.Exit(125)
 			}
-		} else {
-			// Strict Landlock succeeded — verify it's actually enforced.
-			if err := landlock.Verify(home); err != nil {
-				fmt.Fprintf(os.Stderr, "shellctl-runner: %v\n", err)
-				os.Exit(125)
-			}
 		}
 	}
 

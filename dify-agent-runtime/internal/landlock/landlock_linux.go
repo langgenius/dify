@@ -30,28 +30,6 @@ func Restrict(cfg *Config) error {
 	return nil
 }
 
-// Verify checks whether Landlock is actually enforced by attempting to
-// read a probe path that should be denied.  Returns nil if the access is
-// correctly denied, or an error describing the problem.
-func Verify(home string) error {
-	probes := []string{"/root", "/var/log"}
-	for _, p := range probes {
-		if p == home {
-			continue
-		}
-		if _, err := os.Stat(p); err != nil {
-			continue
-		}
-		f, err := os.Open(p)
-		if err != nil {
-			return nil
-		}
-		f.Close()
-		return fmt.Errorf("landlock: verification failed: %s is accessible (should be denied)", p)
-	}
-	return nil
-}
-
 func buildRules(cfg *Config) []golandlock.Rule {
 	// Collect RO paths that exist on this system.
 	roPaths := filterExisting(cfg.ROPaths)

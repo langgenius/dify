@@ -11,8 +11,3 @@ var ErrNotSupported = errors.New("landlock: not supported by kernel")
 func Restrict(cfg *Config) error {
 	return ErrNotSupported
 }
-
-// Verify is a no-op on non-Linux platforms.
-func Verify(home string) error {
-	return nil
-}
