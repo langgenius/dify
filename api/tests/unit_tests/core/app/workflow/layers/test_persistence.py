@@ -9,6 +9,7 @@ from core.app.workflow.layers.persistence import (
     _NodeRuntimeSnapshot,
 )
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.graph_events import GraphRunSucceededEvent
 from graphon.node_events import NodeRunResult
 
 
@@ -125,10 +126,39 @@ def test_update_node_execution_redacts_secret_values() -> None:
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs={"api_key": "Bearer supersecretvalue123"},
             outputs={"question": "hello"},
+            process_data={"token": "supersecretvalue123"},
         ),
         WorkflowNodeExecutionStatus.SUCCEEDED,
     )
 
     kwargs = node_execution.update_from_mapping.call_args.kwargs
     assert kwargs["inputs"] == {"api_key": f"Bearer {SECRET_PLACEHOLDER}"}
+    assert kwargs["process_data"] == {"token": SECRET_PLACEHOLDER}
     assert "supersecretvalue123" not in str(kwargs)
+
+
+def test_handle_graph_run_succeeded_redacts_outputs(monkeypatch: pytest.MonkeyPatch) -> None:
+    from core.workflow.secret_scrub import SECRET_PLACEHOLDER
+
+    layer = _build_layer(secret_values=("supersecretvalue123",))
+
+    # Provide a real-attribute-storing mock as the current workflow execution.
+    execution = Mock()
+    layer._workflow_execution = execution
+
+    # Stub out _populate_completion_statistics — it accesses graph_runtime_state,
+    # which requires a bound GraphEngine; irrelevant to the redaction assertion.
+    layer._populate_completion_statistics = Mock()
+
+    # Silence the inspector side-effect; _enqueue_trace_task is already a no-op
+    # because trace_manager defaults to None in _build_layer.
+    monkeypatch.setattr(
+        "core.app.workflow.layers.persistence._inspector_publish_workflow_completed",
+        Mock(),
+    )
+
+    event = GraphRunSucceededEvent(outputs={"result": "Bearer supersecretvalue123"})
+    layer._handle_graph_run_succeeded(event)
+
+    assert execution.outputs == {"result": f"Bearer {SECRET_PLACEHOLDER}"}
+    assert "supersecretvalue123" not in str(execution.outputs)
