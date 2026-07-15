@@ -34,7 +34,7 @@ const PluginItem: FC<PluginItemProps> = ({
         {hasPluginIcon ? (
           <CardIcon size="small" src={getIconUrl(plugin.icon)} />
         ) : (
-          // eslint-disable-next-line hyoban/prefer-tailwind-icons -- Reuse the same MagicBox component as the marketplace install button.
+          // oxlint-disable-next-line hyoban/prefer-tailwind-icons -- Reuse the same MagicBox component as the marketplace install button.
           <MagicBox className="size-8 text-text-tertiary" />
         )}
         <div className="absolute -right-0.5 -bottom-0.5 z-10">{statusIcon}</div>

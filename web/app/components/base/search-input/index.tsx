@@ -82,7 +82,7 @@ export function SearchInput({
           onValueChange(e.currentTarget.value)
         }}
         autoComplete="off"
-        // eslint-disable-next-line jsx-a11y/no-autofocus
+        // oxlint-disable-next-line jsx-a11y/no-autofocus
         autoFocus={autoFocus}
         enterKeyHint="search"
       />

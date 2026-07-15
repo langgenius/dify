@@ -247,6 +247,32 @@ def test_generate_presigned_url(monkeypatch: pytest.MonkeyPatch):
     assert url == "http://signed-url"
 
 
+def test_generate_presigned_url_with_download_headers(monkeypatch: pytest.MonkeyPatch):
+    _configure_storage(monkeypatch)
+    client, _ = _mock_client(monkeypatch)
+    client.generate_presigned_url.return_value = "http://signed-url"
+    storage = ArchiveStorage(bucket=BUCKET_NAME)
+
+    url = storage.generate_presigned_url(
+        "key",
+        expires_in=123,
+        filename="workflow-run-logs-2025-03.zip",
+        content_type="application/zip",
+    )
+
+    client.generate_presigned_url.assert_called_once_with(
+        ClientMethod="get_object",
+        Params={
+            "Bucket": "archive-bucket",
+            "Key": "key",
+            "ResponseContentDisposition": "attachment; filename*=UTF-8''workflow-run-logs-2025-03.zip",
+            "ResponseContentType": "application/zip",
+        },
+        ExpiresIn=123,
+    )
+    assert url == "http://signed-url"
+
+
 def test_generate_presigned_url_error(monkeypatch: pytest.MonkeyPatch):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)

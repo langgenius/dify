@@ -1,5 +1,4 @@
 import threading
-from collections.abc import Sequence
 from typing import TypedDict
 
 from sqlalchemy import Engine, select
@@ -13,12 +12,15 @@ from models import (
     App,
     EndUser,
     Message,
-    WorkflowNodeExecutionModel,
     WorkflowRun,
     WorkflowRunTriggeredFrom,
 )
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
+from services.workflow_node_execution_trace_service import (
+    WorkflowNodeExecutionTrace,
+    assemble_workflow_node_execution_traces,
+)
 
 
 class WorkflowRunListArgs(TypedDict, total=False):
@@ -174,7 +176,7 @@ class WorkflowRunService:
         app_model: App,
         run_id: str,
         user: Account | EndUser,
-    ) -> Sequence[WorkflowNodeExecutionModel]:
+    ) -> list[WorkflowNodeExecutionTrace]:
         """
         Get workflow run node execution list
         """
@@ -191,8 +193,9 @@ class WorkflowRunService:
         if tenant_id is None:
             raise ValueError("User tenant_id cannot be None")
 
-        return self._node_execution_service_repo.get_executions_by_workflow_run(
+        node_executions = self._node_execution_service_repo.get_executions_by_workflow_run(
             tenant_id=tenant_id,
             app_id=app_model.id,
             workflow_run_id=run_id,
         )
+        return assemble_workflow_node_execution_traces(node_executions, self._node_execution_service_repo)

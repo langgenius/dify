@@ -1,4 +1,4 @@
-import type { Preview } from '@storybook/react'
+import type { Decorator, Preview } from '@storybook/react'
 import type { Resource } from 'i18next'
 import { ToastHost } from '@langgenius/dify-ui/toast'
 import { withThemeByDataAttribute } from '@storybook/addon-themes'
@@ -24,7 +24,7 @@ const storyResources: Resource = {
   },
 }
 
-export const decorators = [
+export const decorators: Decorator[] = [
   withThemeByDataAttribute({
     themes: {
       light: 'light',

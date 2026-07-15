@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { CSSProperties } from 'react'
 import type { ModelAndParameter } from '../../types'
 import type { DebugWithMultipleModelContextType } from '../context'

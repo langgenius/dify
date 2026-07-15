@@ -5,7 +5,7 @@ import type {
   AgentReferencingWorkflowResponse,
   AgentReferencingWorkflowsResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -25,7 +25,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/client'
 import { AgentPublishImpactDetails } from './publish-impact-details'
 
-const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies RegisterableHotkey
+const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
 
 type AgentConfigurePublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
 

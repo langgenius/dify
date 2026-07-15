@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
+/* oxlint-disable eslint-react/set-state-in-effect */
 import type { UseEmblaCarouselType } from 'embla-carousel-react'
 import { cn } from '@langgenius/dify-ui/cn'
 import Autoplay from 'embla-carousel-autoplay'

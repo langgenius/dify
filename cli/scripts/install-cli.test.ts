@@ -26,7 +26,7 @@ function assetVersion(name: string, target: string): string {
 // offline. Routes by URL; release bodies come from env (TAG_<tag-with-._->_>),
 // the latest release from LATEST_JSON, the listing from LIST_JSON. A missing
 // fixture returns 22 to mimic `curl -f` on a 4xx.
-/* eslint-disable no-template-curly-in-string -- shell parameter expansions, not JS template literals */
+/* oxlint-disable no-template-curly-in-string -- shell parameter expansions, not JS template literals */
 const FETCH_STUB = [
   'fetch_json() {',
   '  case "$1" in',
@@ -42,7 +42,7 @@ const FETCH_STUB = [
   '  esac',
   '}',
 ].join('\n')
-/* eslint-enable no-template-curly-in-string */
+/* oxlint-enable no-template-curly-in-string */
 
 function runLib(
   program: string,

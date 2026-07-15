@@ -11,6 +11,7 @@ from extensions.ext_database import db
 from libs.helper import to_timestamp
 from models import Account
 from models.agent import (
+    APP_BACKED_AGENT_SOURCES,
     Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
@@ -548,7 +549,7 @@ class AgentComposerService:
         )
         if not active_version:
             return False
-        if agent.source == AgentSource.AGENT_APP and not cls._has_publish_visible_revision(
+        if agent.source in APP_BACKED_AGENT_SOURCES and not cls._has_publish_visible_revision(
             tenant_id=tenant_id,
             agent_id=agent.id,
             snapshot_id=agent.active_config_snapshot_id,
@@ -589,7 +590,7 @@ class AgentComposerService:
         session: Session,
     ) -> dict[str, Any]:
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id, session=session)
-        if agent.scope != AgentScope.ROSTER or agent.source != AgentSource.AGENT_APP:
+        if agent.scope != AgentScope.ROSTER or agent.source not in APP_BACKED_AGENT_SOURCES:
             raise AgentNotFoundError()
         draft = cls._get_or_create_agent_draft(
             tenant_id=tenant_id,
@@ -1755,7 +1756,7 @@ class AgentComposerService:
                 Agent.tenant_id == tenant_id,
                 Agent.app_id == app_id,
                 Agent.scope == AgentScope.ROSTER,
-                Agent.source == AgentSource.AGENT_APP,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                 Agent.status == AgentStatus.ACTIVE,
             )
             .order_by(Agent.created_at.desc())

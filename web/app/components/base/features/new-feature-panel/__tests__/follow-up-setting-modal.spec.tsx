@@ -1,4 +1,6 @@
 import type { SuggestedQuestionsAfterAnswer } from '@/app/components/base/features/types'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { CompletionParams } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FollowUpSettingModal from '../follow-up-setting-modal'
@@ -17,9 +19,36 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 vi.mock(
   '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
   () => ({
-    default: ({ provider, modelId }: { provider: string; modelId: string }) => (
-      <div data-testid="model-parameter-modal">{`${provider}:${modelId}`}</div>
-    ),
+    default: ({
+      provider,
+      modelId,
+      completionParams,
+      onCompletionParamsChange,
+    }: {
+      provider: string
+      modelId: string
+      completionParams: FormValue
+      onCompletionParamsChange: (newParams: FormValue) => void
+    }) => {
+      const hasMaxTokens = 'max_tokens' in completionParams
+
+      return (
+        <div data-testid="model-parameter-modal">
+          {`${provider}:${modelId}`}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={hasMaxTokens}
+            onClick={() => {
+              const { max_tokens: _maxTokens, ...remainingParams } = completionParams
+              onCompletionParamsChange(remainingParams)
+            }}
+          >
+            Max Tokens
+          </button>
+        </div>
+      )
+    },
   }),
 )
 
@@ -38,6 +67,54 @@ const renderModal = (data: SuggestedQuestionsAfterAnswer = { enabled: true }) =>
 describe('FollowUpSettingModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  // Covers optional model parameters staying disabled across edits and subsequent opens.
+  describe('Model Parameters', () => {
+    it('should keep max tokens disabled after its switch is turned off', async () => {
+      const user = userEvent.setup()
+      renderModal({
+        enabled: true,
+        model: {
+          provider: 'openai',
+          name: 'gpt-4o-mini',
+          mode: 'chat',
+          completion_params: {
+            temperature: 0.7,
+            max_tokens: 0,
+            top_p: 0,
+            echo: false,
+            stop: [],
+            presence_penalty: 0,
+            frequency_penalty: 0,
+          },
+        },
+      })
+
+      const maxTokensSwitch = screen.getByRole('switch', { name: 'Max Tokens' })
+      await user.click(maxTokensSwitch)
+
+      expect(maxTokensSwitch).toHaveAttribute('aria-checked', 'false')
+    })
+
+    it('should keep max tokens disabled when saved model parameters omit it', () => {
+      renderModal({
+        enabled: true,
+        model: {
+          provider: 'openai',
+          name: 'gpt-4o-mini',
+          mode: 'chat',
+          completion_params: {
+            temperature: 0.7,
+          } as CompletionParams,
+        },
+      })
+
+      expect(screen.getByRole('switch', { name: 'Max Tokens' })).toHaveAttribute(
+        'aria-checked',
+        'false',
+      )
+    })
   })
 
   describe('Default Prompt', () => {

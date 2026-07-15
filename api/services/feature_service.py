@@ -79,6 +79,7 @@ class LicenseModel(FeatureResponseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
     workspaces: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
+    seats: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
 
 
 class BrandingModel(FeatureResponseModel):
@@ -458,6 +459,11 @@ class FeatureService:
                     features.license.workspaces.enabled = workspaces_info.get("enabled", False)
                     features.license.workspaces.limit = workspaces_info.get("limit", 0)
                     features.license.workspaces.size = workspaces_info.get("used", 0)
+
+                if seats_info := license_info.get("licensedSeats"):
+                    features.license.seats.enabled = seats_info.get("enabled", False)
+                    features.license.seats.limit = seats_info.get("limit", 0)
+                    features.license.seats.size = seats_info.get("used", 0)
 
         if "PluginInstallationPermission" in enterprise_info:
             plugin_installation_info = enterprise_info["PluginInstallationPermission"]

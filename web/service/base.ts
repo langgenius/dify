@@ -41,6 +41,7 @@ import {
 } from '@/config'
 import { asyncRunSafe } from '@/utils'
 import { isClient } from '@/utils/client'
+import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
@@ -162,17 +163,28 @@ function jumpTo(url: string) {
 }
 
 const OAUTH_AUTHORIZE_PATH = '/account/oauth/authorize'
+const SIGNIN_PATH = '/signin'
 
 export const buildSigninUrlWithRedirect = (): string => {
   const loginUrl = `${isClient ? window.location.origin : ''}${basePath}/signin`
+  if (!isClient) return loginUrl
 
-  // Only preserve redirect URL for OAuth authorize pages
-  if (isClient && window.location.pathname.includes(OAUTH_AUTHORIZE_PATH)) {
+  const signinPath = `${basePath}${SIGNIN_PATH}`
+  if (window.location.pathname === signinPath || window.location.pathname === `${signinPath}/`)
+    return loginUrl
+
+  if (window.location.pathname.includes(OAUTH_AUTHORIZE_PATH)) {
     const currentUrl = window.location.href
     return `${loginUrl}?redirect_url=${encodeURIComponent(currentUrl)}`
   }
 
-  return loginUrl
+  const currentTarget = resolveLoginRedirectTarget(
+    `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    { allowSameOriginAbsolute: false },
+  )
+  if (!currentTarget || currentTarget.kind !== 'internal') return loginUrl
+
+  return `${loginUrl}?redirect_url=${encodeURIComponent(currentTarget.href)}`
 }
 
 function unicodeToChar(text: string) {
@@ -184,20 +196,41 @@ function unicodeToChar(text: string) {
 }
 
 const WBB_APP_LOGIN_PATH = '/webapp-signin'
+
+export function isWebAppSigninPath(pathname: string) {
+  const basePathSegment = basePath.replace(/^\/+|\/+$/g, '')
+  const signinPath = `${basePathSegment ? `/${basePathSegment}` : ''}${WBB_APP_LOGIN_PATH}`
+  return pathname === signinPath || pathname === `${signinPath}/`
+}
+
+export function buildWebAppSigninUrlWithRedirect(
+  origin: string,
+  pathname: string,
+  search: string,
+  message?: string,
+  code?: number,
+) {
+  const params = new URLSearchParams()
+  params.set('redirect_url', `${pathname}${search}`)
+  if (message) params.set('message', message)
+  if (code) params.set('code', String(code))
+
+  return `${origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
+}
+
 function requiredWebSSOLogin(message?: string, code?: number) {
   if (!isClient) return
 
-  const params = new URLSearchParams()
   // prevent redirect loop
-  if (window.location.pathname === WBB_APP_LOGIN_PATH) return
+  if (isWebAppSigninPath(window.location.pathname)) return
 
-  params.append(
-    'redirect_url',
-    encodeURIComponent(`${window.location.pathname}${window.location.search}`),
+  window.location.href = buildWebAppSigninUrlWithRedirect(
+    window.location.origin,
+    window.location.pathname,
+    window.location.search,
+    message,
+    code,
   )
-  if (message) params.append('message', message)
-  if (code) params.append('code', String(code))
-  window.location.href = `${window.location.origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
 }
 
 function formatURL(url: string, isPublicAPI: boolean) {
@@ -920,9 +953,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       if (!isClient) return Promise.reject(err)
 
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
-      const loginUrl = `${window.location.origin}${basePath}/signin`
       if (parseErr) {
-        window.location.href = loginUrl
+        window.location.href = buildSigninUrlWithRedirect()
         return Promise.reject(err)
       }
       if (/\/login/.test(url)) return Promise.reject(errRespData)

@@ -23,7 +23,7 @@ export default class ErrorBoundary extends Component {
   }
 
   override render() {
-    // eslint-disable-next-line ts/ban-ts-comment
+    // oxlint-disable-next-line typescript/ban-ts-comment
     // @ts-expect-error
     if (this.state.hasError) {
       return (
@@ -35,7 +35,7 @@ export default class ErrorBoundary extends Component {
         </div>
       )
     }
-    // eslint-disable-next-line ts/ban-ts-comment
+    // oxlint-disable-next-line typescript/ban-ts-comment
     // @ts-expect-error
     return this.props.children
   }

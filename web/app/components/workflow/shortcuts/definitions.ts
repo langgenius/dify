@@ -1,4 +1,4 @@
-import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
+import type { Hotkey, IndividualKey } from '@tanstack/react-hotkeys'
 
 export type WorkflowCanvasShortcutId =
   | 'workflow.delete'
@@ -26,18 +26,26 @@ export type WorkflowCanvasHotkeyMeta = {
   description: string
 }
 
-export type WorkflowCanvasShortcutDefinition = {
+type WorkflowCanvasShortcutDefinitionBase = {
   id: WorkflowCanvasShortcutId
-  hotkeys: readonly RegisterableHotkey[]
-  displayHotkey?: RegisterableHotkey | (string & {})
   name: string
   description: string
 }
 
-export const WORKFLOW_CANVAS_SHORTCUTS: Record<
-  WorkflowCanvasShortcutId,
-  WorkflowCanvasShortcutDefinition
-> = {
+export type WorkflowCanvasHotkeyDefinition = WorkflowCanvasShortcutDefinitionBase & {
+  hotkeys: readonly Hotkey[]
+  displayHotkey?: Hotkey
+}
+
+type WorkflowCanvasHoldKeyDefinition = WorkflowCanvasShortcutDefinitionBase & {
+  holdKey: IndividualKey
+}
+
+type WorkflowCanvasShortcutDefinition =
+  | WorkflowCanvasHotkeyDefinition
+  | WorkflowCanvasHoldKeyDefinition
+
+export const WORKFLOW_CANVAS_SHORTCUTS = {
   'workflow.delete': {
     id: 'workflow.delete',
     hotkeys: ['Delete', 'Backspace'],
@@ -139,16 +147,19 @@ export const WORKFLOW_CANVAS_SHORTCUTS: Record<
   },
   'workflow.dim-other-nodes': {
     id: 'workflow.dim-other-nodes',
-    hotkeys: [{ key: 'Shift', shift: true }],
-    displayHotkey: 'Shift',
+    holdKey: 'Shift',
     name: 'Dim other nodes',
     description: 'Dim nodes outside the current workflow selection',
   },
-}
+} as const satisfies Record<WorkflowCanvasShortcutId, WorkflowCanvasShortcutDefinition>
 
-export const getWorkflowCanvasShortcutDisplayHotkey = (
+export const getWorkflowCanvasShortcutDisplayKey = (
   id: WorkflowCanvasShortcutId,
-): RegisterableHotkey | (string & {}) => {
+): Hotkey | IndividualKey => {
   const shortcut = WORKFLOW_CANVAS_SHORTCUTS[id]
-  return shortcut.displayHotkey ?? shortcut.hotkeys[0]!
+
+  if ('displayHotkey' in shortcut && shortcut.displayHotkey) return shortcut.displayHotkey
+  if ('hotkeys' in shortcut) return shortcut.hotkeys[0]
+
+  return shortcut.holdKey
 }
