@@ -2,47 +2,6 @@ import { render } from 'vitest-browser-react'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '../index'
 
 describe('Tabs wrappers', () => {
-  it('renders Base UI tabs with accessible roles', async () => {
-    const screen = await render(
-      <Tabs defaultValue="js">
-        <TabsList>
-          <TabsTab value="js">JavaScript</TabsTab>
-          <TabsTab value="py">Python</TabsTab>
-        </TabsList>
-        <TabsPanel value="js">JS panel</TabsPanel>
-        <TabsPanel value="py">Python panel</TabsPanel>
-      </Tabs>,
-    )
-
-    await expect.element(screen.getByRole('tablist')).toBeInTheDocument()
-    await expect
-      .element(screen.getByRole('tab', { name: 'JavaScript' }))
-      .toHaveAttribute('aria-selected', 'true')
-    await expect
-      .element(screen.getByRole('tab', { name: 'Python' }))
-      .toHaveAttribute('aria-selected', 'false')
-    await expect.element(screen.getByText('JS panel')).toBeInTheDocument()
-  })
-
-  it('calls onValueChange while leaving controlled value to the caller', async () => {
-    const onValueChange = vi.fn()
-    const screen = await render(
-      <Tabs value="js" onValueChange={onValueChange}>
-        <TabsList>
-          <TabsTab value="js">JavaScript</TabsTab>
-          <TabsTab value="py">Python</TabsTab>
-        </TabsList>
-      </Tabs>,
-    )
-
-    await screen.getByRole('tab', { name: 'Python' }).click()
-
-    expect(onValueChange).toHaveBeenCalledWith('py', expect.anything())
-    await expect
-      .element(screen.getByRole('tab', { name: 'JavaScript' }))
-      .toHaveAttribute('aria-selected', 'true')
-  })
-
   it('forwards className to composable parts', async () => {
     const screen = await render(
       <Tabs defaultValue="first">

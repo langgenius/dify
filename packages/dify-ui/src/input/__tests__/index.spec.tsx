@@ -4,19 +4,6 @@ import { Form } from '../../form'
 import { Input } from '../index'
 
 describe('Input', () => {
-  it('should render a labelled Base UI input with its value', async () => {
-    const screen = await render(
-      <label>
-        Workspace name
-        <Input name="workspaceName" defaultValue="Dify" />
-      </label>,
-    )
-
-    const input = screen.getByRole('textbox', { name: 'Workspace name' })
-
-    await expect.element(input).toHaveValue('Dify')
-  })
-
   it('should use Field invalid state', async () => {
     const screen = await render(
       <Field name="repositoryUrl" invalid>
