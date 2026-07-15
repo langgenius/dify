@@ -130,7 +130,7 @@ class AgentFlexibleConfig(BaseModel):
 
 class AgentFileRefConfig(AgentFlexibleConfig):
     id: str | None = Field(default=None, max_length=255)
-    file_id: str = Field(default="", max_length=255)
+    file_id: str | None = Field(default=None, max_length=255)
     upload_file_id: str | None = Field(default=None, max_length=255)
     reference: str | None = Field(default=None, max_length=255)
     tenant_id: str | None = Field(default=None, max_length=255)
@@ -195,7 +195,7 @@ class AgentConfigFileRefConfig(BaseModel):
 
     name: str = Field(min_length=1, max_length=255)
     file_kind: Literal["upload_file", "tool_file"]
-    file_id: str | None = Field(default=None, max_length=255)
+    file_id: str = Field(default="", max_length=255)
     is_missing: bool = False
     size: int | None = None
     hash: str | None = None
