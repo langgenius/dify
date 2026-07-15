@@ -489,6 +489,117 @@ func TestJobNotFound(t *testing.T) {
 	}
 }
 
+// --- Landlock Tests ---
+// These tests verify that shellctl-landlock-exec restricts filesystem access
+// so each agent job can only write within its own HOME directory while still
+// being able to execute system commands.
+
+func TestLandlockCanWriteHome(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			// The job runs with HOME set; writing a file inside HOME should succeed.
+			result := runJob(t, tgt, map[string]any{
+				"script":  "touch \"$HOME/landlock-test-file\" && echo ok",
+				"env":     map[string]string{"HOME": "/home/dify"},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			assertExitCode(t, result, 0)
+			output := result["output"].(string)
+			if !strings.Contains(output, "ok") {
+				t.Errorf("expected write to HOME to succeed, got %q", output)
+			}
+		})
+	}
+}
+
+func TestLandlockCanReadSystemBinaries(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			// System binaries should remain executable (RO access to /usr, /bin).
+			result := runJob(t, tgt, map[string]any{
+				"script":  "which ls && ls /usr/bin/env && echo ok",
+				"env":     map[string]string{"HOME": "/home/dify"},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			assertExitCode(t, result, 0)
+			output := result["output"].(string)
+			if !strings.Contains(output, "ok") {
+				t.Errorf("expected system binary access to succeed, got %q", output)
+			}
+		})
+	}
+}
+
+func TestLandlockCanWriteTmpdir(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			// TMPDIR ($CWD/.tmp) should be writable; /tmp should be denied.
+			result := runJob(t, tgt, map[string]any{
+				"script":  "echo TMPDIR=$TMPDIR && touch $TMPDIR/landlock-tmp-test && echo tmpdir_ok && touch /tmp/landlock-denied 2>&1; echo tmp_exit=$?",
+				"env":     map[string]string{"HOME": "/home/dify"},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			output := result["output"].(string)
+			if !strings.Contains(output, "tmpdir_ok") {
+				t.Errorf("expected write to $TMPDIR to succeed, got %q", output)
+			}
+			if !strings.Contains(output, "tmp_exit=1") && !strings.Contains(output, "Permission denied") {
+				t.Errorf("expected write to /tmp to be denied, got %q", output)
+			}
+		})
+	}
+}
+
+func TestLandlockCannotWriteOutsideHome(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			// Writing outside HOME (e.g., /opt) should be denied by Landlock.
+			result := runJob(t, tgt, map[string]any{
+				"script":  "touch /opt/landlock-denied 2>&1; echo exit=$?",
+				"env":     map[string]string{"HOME": "/home/dify"},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			output := result["output"].(string)
+			// The touch should fail with "Permission denied" or similar,
+			// and exit code should be non-zero.
+			if strings.Contains(output, "exit=0") {
+				t.Errorf("expected write to /opt to be denied, but it succeeded: %q", output)
+			}
+		})
+	}
+}
+
+func TestLandlockCannotReadOtherAgentHome(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			// First, create a file in one agent's home.
+			setup := runJob(t, tgt, map[string]any{
+				"script":  "mkdir -p /home/agent-a && touch /home/agent-a/secret",
+				"env":     map[string]string{"HOME": "/home/agent-a"},
+				"timeout": 10,
+			})
+			assertJobDone(t, setup)
+			assertExitCode(t, setup, 0)
+
+			// Now run as a different agent and try to read the other's file.
+			result := runJob(t, tgt, map[string]any{
+				"script":  "cat /home/agent-a/secret 2>&1; echo exit=$?",
+				"env":     map[string]string{"HOME": "/home/agent-b"},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			output := result["output"].(string)
+			if strings.Contains(output, "exit=0") {
+				t.Errorf("expected read of other agent's file to be denied, but it succeeded: %q", output)
+			}
+		})
+	}
+}
+
 // --- Helpers ---
 
 func runJob(t *testing.T, tgt target, payload map[string]any) map[string]any {

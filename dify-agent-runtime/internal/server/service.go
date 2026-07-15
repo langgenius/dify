@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -70,6 +71,7 @@ func (s *Service) PrepareRuntime() error {
 	}
 
 	s.installRunner()
+	s.installEnablePathIsolation()
 	return s.tmux.StartServer()
 }
 
@@ -826,98 +828,49 @@ func (s *Service) cleanupStarting(jobID, jobDir string) {
 }
 
 func (s *Service) installRunner() {
-	script := s.runnerScriptSource()
-	_ = os.WriteFile(s.config.RunnerPath(), []byte(script), 0755)
+	// The runner is now a pre-built Go binary (shellctl-runner).
+	// Create a symlink at the expected RunnerPath so tmux can invoke it.
+	dst := s.config.RunnerPath()
+	_ = os.Remove(dst) // remove stale script/symlink
+
+	// Look for the binary next to the main shellctl binary first,
+	// then fall back to PATH lookup.
+	src := ""
+	selfExe, _ := os.Executable()
+	if selfExe != "" {
+		candidate := filepath.Join(filepath.Dir(selfExe), "shellctl-runner")
+		if _, err := os.Stat(candidate); err == nil {
+			src = candidate
+		}
+	}
+	if src == "" {
+		if p, err := exec.LookPath("shellctl-runner"); err == nil {
+			src = p
+		}
+	}
+
+	if src != "" {
+		// Prefer symlink; fall back to copy path reference.
+		if err := os.Symlink(src, dst); err != nil {
+			// If symlink fails (e.g., cross-device), write a tiny shell wrapper.
+			wrapper := fmt.Sprintf("#!/bin/sh\nexec %q \"$@\"\n", src)
+			_ = os.WriteFile(dst, []byte(wrapper), 0755)
+		}
+	}
 }
 
-func (s *Service) runnerScriptSource() string {
-	// The runner script is a bash wrapper that waits for the start-gate,
-	// then delegates env loading + exec to a Python bootstrap so that
-	// JSON env values (including multi-line strings) are applied verbatim.
-	// The Python helper exec's the target process so SIGINT semantics
-	// match running the script directly in the tmux pane.
-	return `#!/usr/bin/env bash
-set -uo pipefail
-
-JOB_DIR="$1"
-JOB_ID="$2"
-CWD="$3"
-SCRIPT_PATH="$JOB_DIR/script"
-ENV_PATH="$JOB_DIR/.job-env.json"
-START_GATE="$JOB_DIR/start-gate"
-RUNNER_EXIT_CODE_PATH="$JOB_DIR/runner-exit-code"
-RUNNER_ENDED_AT_PATH="$JOB_DIR/runner-ended-at"
-
-write_atomic() {
-  local dest="$1"
-  local value="$2"
-  local tmp="${dest}.tmp.$$"
-  printf '%s\n' "$value" > "$tmp"
-  mv "$tmp" "$dest"
-}
-
-while [ ! -e "$START_GATE" ]; do
-  sleep 0.05
-done
-
-unset TMUX
-unset SHELLCTL_STATE_DIR
-unset SHELLCTL_RUNTIME_DIR
-unset SHELLCTL_TMUX_SOCKET
-unset SHELLCTL_RUNNER
-unset SHELLCTL_AUTH_TOKEN
-
-# Use Python bootstrap to load JSON env verbatim and exec the target.
-# This avoids depending on jq and correctly handles multi-line values.
-python3 -c '
-import json, os, stat, sys
-from pathlib import Path
-
-script_path = Path(sys.argv[1])
-cwd = sys.argv[2]
-env_path = Path(sys.argv[3])
-
-env = os.environ.copy()
-if env_path.exists():
-    env.update(json.loads(env_path.read_text(encoding="utf-8")))
-
-try:
-    os.chdir(cwd)
-except OSError:
-    raise SystemExit(111)
-
-# Ensure HOME directory exists (agent backend may set a per-agent HOME).
-home = env.get("HOME", "")
-if home and not os.path.isdir(home):
-    os.makedirs(home, exist_ok=True)
-
-with script_path.open("r", encoding="utf-8") as handle:
-    first_line = handle.readline()
-
-if first_line.startswith("#!"):
-    script_path.chmod(script_path.stat().st_mode | stat.S_IXUSR)
-    argv = [str(script_path)]
-else:
-    argv = ["sh", str(script_path)]
-
-try:
-    os.execvpe(argv[0], argv, env)
-except FileNotFoundError as exc:
-    print(f"{argv[0]}: {exc.strerror}", file=sys.stderr)
-    raise SystemExit(127) from exc
-except OSError as exc:
-    print(f"{argv[0]}: {exc.strerror}", file=sys.stderr)
-    raise SystemExit(126) from exc
-' "$SCRIPT_PATH" "$CWD" "$ENV_PATH"
-EXIT_CODE=$?
-
-ENDED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-
-write_atomic "$RUNNER_EXIT_CODE_PATH" "$EXIT_CODE"
-write_atomic "$RUNNER_ENDED_AT_PATH" "$ENDED_AT"
-
-exit "$EXIT_CODE"
-`
+// installEnablePathIsolation writes the ENABLE_PATH_ISOLATION env var into
+// the runner's per-job environment by ensuring it's passed through.  The
+// runner binary reads this env var to decide whether to apply Landlock.
+func (s *Service) installEnablePathIsolation() {
+	// The runner binary checks ENABLE_PATH_ISOLATION from its own process
+	// environment.  Since tmux inherits the shellctl server env, we ensure
+	// the variable is set in the server's own environment so it propagates.
+	if s.config.EnablePathIsolation {
+		os.Setenv("ENABLE_PATH_ISOLATION", "true")
+	} else {
+		os.Setenv("ENABLE_PATH_ISOLATION", "false")
+	}
 }
 
 // Helpers
