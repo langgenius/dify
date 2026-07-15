@@ -461,6 +461,7 @@ export const zAgentConfigFileItemResponse = z.object({
   file_id: z.string().nullish(),
   hash: z.string().nullish(),
   id: z.string(),
+  is_missing: z.boolean().optional().default(false),
   mime_type: z.string().nullish(),
   name: z.string(),
   size: z.int().nullish(),
@@ -498,6 +499,7 @@ export const zAgentConfigSkillItemResponse = z.object({
   file_id: z.string().nullish(),
   hash: z.string().nullish(),
   id: z.string(),
+  is_missing: z.boolean().optional().default(false),
   mime_type: z.string().nullish(),
   name: z.string(),
   size: z.int().nullish(),
@@ -983,6 +985,7 @@ export const zAgentAppPartial = z.object({
   permission_keys: z.array(z.string()).optional(),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
+  reference_count: z.int().optional().default(0),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
@@ -1134,6 +1137,7 @@ export const zAgentInviteOptionResponse = z.object({
   published_node_reference_count: z.int().optional().default(0),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentPublishedReferenceResponse).optional(),
+  reference_count: z.int().optional().default(0),
   role: z.string().optional().default(''),
   scope: zAgentScope,
   source: zAgentSource,
@@ -1191,9 +1195,10 @@ export const zAppVariableConfig = z.object({
  * Stable Agent Soul reference to one config file payload.
  */
 export const zAgentConfigFileRefConfig = z.object({
-  file_id: z.string().min(1).max(255),
+  file_id: z.string().max(255).nullish(),
   file_kind: z.enum(['tool_file', 'upload_file']),
   hash: z.string().nullish(),
+  is_missing: z.boolean().optional().default(false),
   mime_type: z.string().nullish(),
   name: z.string().min(1).max(255),
   size: z.int().nullish(),
@@ -1206,9 +1211,10 @@ export const zAgentConfigFileRefConfig = z.object({
  */
 export const zAgentConfigSkillRefConfig = z.object({
   description: z.string().optional().default(''),
-  file_id: z.string().min(1).max(255),
+  file_id: z.string().max(255).nullish(),
   file_kind: z.literal('tool_file').optional().default('tool_file'),
   hash: z.string().nullish(),
+  is_missing: z.boolean().optional().default(false),
   mime_type: z.string().nullish().default('application/zip'),
   name: z.string().min(1).max(255),
   size: z.int().nullish(),
@@ -2634,6 +2640,7 @@ export const zAgentAppPartialWritable = z.object({
   permission_keys: z.array(z.string()).optional(),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
+  reference_count: z.int().optional().default(0),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
