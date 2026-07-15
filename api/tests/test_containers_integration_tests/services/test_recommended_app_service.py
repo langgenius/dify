@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from extensions.ext_database import db
 from models.model import AccountTrialAppRecord, App, AppMode, TrialApp
 from services import recommended_app_service as service_module
 from services.recommended_app_service import RecommendedAppService
@@ -154,7 +155,7 @@ class TestRecommendedAppServiceGetApps:
         mock_factory = MagicMock(return_value=mock_instance)
         mock_factory_class.get_recommend_app_factory.return_value = mock_factory
 
-        result = RecommendedAppService.get_recommended_apps_and_categories(db.session, "en-US")
+        result = RecommendedAppService.get_recommended_apps_and_categories("en-US", session=db.session())
 
         assert result == expected
         assert len(result["recommended_apps"]) == 2
@@ -179,7 +180,7 @@ class TestRecommendedAppServiceGetApps:
         mock_builtin_instance.fetch_recommended_apps_from_builtin.return_value = builtin_response
         mock_factory_class.get_buildin_recommend_app_retrieval.return_value = mock_builtin_instance
 
-        result = RecommendedAppService.get_recommended_apps_and_categories(db.session, "zh-CN")
+        result = RecommendedAppService.get_recommended_apps_and_categories("zh-CN", session=db.session())
 
         assert result == builtin_response
         assert result["recommended_apps"][0]["id"] == "builtin-1"
@@ -200,7 +201,7 @@ class TestRecommendedAppServiceGetApps:
         mock_builtin_instance.fetch_recommended_apps_from_builtin.return_value = builtin_response
         mock_factory_class.get_buildin_recommend_app_retrieval.return_value = mock_builtin_instance
 
-        result = RecommendedAppService.get_recommended_apps_and_categories(db.session, "en-US")
+        result = RecommendedAppService.get_recommended_apps_and_categories("en-US", session=db.session())
 
         assert result == builtin_response
         mock_builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once()
@@ -218,7 +219,7 @@ class TestRecommendedAppServiceGetApps:
             mock_instance.get_recommended_apps_and_categories.return_value = lang_response
             mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
 
-            result = RecommendedAppService.get_recommended_apps_and_categories(db.session, language)
+            result = RecommendedAppService.get_recommended_apps_and_categories(language, session=db.session())
 
             assert result["recommended_apps"][0]["id"] == f"app-{language}"
             mock_instance.get_recommended_apps_and_categories.assert_called_with(language)
@@ -233,7 +234,7 @@ class TestRecommendedAppServiceGetApps:
             mock_instance.get_recommended_apps_and_categories.return_value = response
             mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
 
-            RecommendedAppService.get_recommended_apps_and_categories(db.session, "en-US")
+            RecommendedAppService.get_recommended_apps_and_categories("en-US", session=db.session())
 
             mock_factory_class.get_recommend_app_factory.assert_called_with(mode)
 
@@ -402,7 +403,7 @@ class TestRecommendedAppServiceTrialFeatures:
             MagicMock(return_value=SimpleNamespace(enable_trial_app=False)),
         )
 
-        result = RecommendedAppService.get_recommended_apps_and_categories(db.session, "en-US")
+        result = RecommendedAppService.get_recommended_apps_and_categories("en-US", session=db.session())
 
         assert result == expected
         retrieval_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US")
@@ -433,7 +434,7 @@ class TestRecommendedAppServiceTrialFeatures:
             MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
         )
 
-        result = RecommendedAppService.get_recommended_apps_and_categories(db.session, "ja-JP")
+        result = RecommendedAppService.get_recommended_apps_and_categories("ja-JP", session=db.session())
 
         builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once_with("en-US")
         assert result["recommended_apps"][0]["can_trial"] is True

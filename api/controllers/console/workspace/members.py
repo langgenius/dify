@@ -293,11 +293,11 @@ class MemberInviteEmailApi(Resource):
                     )
                 except SeatsLimitExceededError:
                     invitation_results.append(
-                        MemberInviteFailedResponse(
-                            status="failed",
-                            email=invitee_email,
-                            message="Licensed seats limit exceeded.",
-                        )
+                        {
+                            "status": "failed",
+                            "email": invitee_email,
+                            "message": "Licensed seats limit exceeded.",
+                        }
                     )
                 except Exception as e:
                     invitation_results.append({"status": "failed", "email": invitee_email, "message": str(e)})

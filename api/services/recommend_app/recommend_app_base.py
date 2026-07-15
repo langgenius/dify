@@ -1,5 +1,7 @@
 from typing import Any, Protocol
 
+from sqlalchemy.orm import Session
+
 
 class RecommendAppRetrievalBase(Protocol):
     """Interface for recommend app retrieval."""
@@ -8,6 +10,6 @@ class RecommendAppRetrievalBase(Protocol):
 
     def get_learn_dify_apps(self, language: str) -> Any: ...
 
-    def get_recommend_app_detail(self, app_id: str) -> Any: ...
+    def get_recommend_app_detail(self, app_id: str, *, session: Session | None = None) -> Any: ...
 
     def get_type(self) -> str: ...

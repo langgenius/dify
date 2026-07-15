@@ -399,7 +399,6 @@ class TestPluginAppBackwardsInvocation:
         route = mocker.patch.object(PluginAppBackwardsInvocation, "invoke_workflow_app", return_value={"ok": True})
 
         result = PluginAppBackwardsInvocation.invoke_app(
-            MagicMock(),
             app_id="app",
             user_id="wecom-sender-1",
             tenant_id="tenant",
