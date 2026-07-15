@@ -23,6 +23,7 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import NotFound
 
+from controllers.service_api.dataset.error import InvalidActionError
 from controllers.service_api.dataset.metadata import (
     DatasetMetadataBuiltInFieldActionServiceApi,
     DatasetMetadataBuiltInFieldServiceApi,
@@ -482,6 +483,40 @@ class TestDatasetMetadataBuiltInFieldAction:
                     dataset_id=mock_dataset.id,
                     action="enable",
                 )
+
+    @patch("controllers.service_api.dataset.metadata.MetadataService")
+    @patch("controllers.service_api.dataset.metadata.DatasetService")
+    @patch("controllers.service_api.dataset.metadata.current_user")
+    def test_unknown_action_raises_invalid_action_without_toggling(
+        self,
+        mock_current_user,
+        mock_dataset_svc,
+        mock_meta_svc,
+        app: Flask,
+        mock_tenant,
+        mock_dataset,
+    ):
+        """Test invalid action returns 400 and does not toggle built-in metadata fields."""
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.return_value = None
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/metadata/built-in/Enable",
+            method="POST",
+        ):
+            api = DatasetMetadataBuiltInFieldActionServiceApi()
+            session = MagicMock()
+            with pytest.raises(InvalidActionError):
+                self._call_post(
+                    api,
+                    session,
+                    tenant_id=mock_tenant.id,
+                    dataset_id=mock_dataset.id,
+                    action="Enable",
+                )
+
+        mock_meta_svc.enable_built_in_field.assert_not_called()
+        mock_meta_svc.disable_built_in_field.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

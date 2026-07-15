@@ -26,6 +26,8 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.metadata_service import MetadataService
 
+from .error import InvalidActionError
+
 BUILT_IN_METADATA_ACTION_PARAM = {
     "description": "`enable` to activate built-in metadata fields, `disable` to deactivate them.",
     "enum": ["enable", "disable"],
@@ -251,6 +253,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Action completed successfully",
+            400: "Bad request - invalid action",
             401: "Unauthorized - invalid API token",
             404: "Dataset not found",
         }
@@ -273,6 +276,8 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
                 MetadataService.enable_built_in_field(dataset, session)
             case "disable":
                 MetadataService.disable_built_in_field(dataset, session)
+            case _:
+                raise InvalidActionError()
         return dump_response(DatasetMetadataActionResponse, {"result": "success"}), 200
 
 
