@@ -156,6 +156,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization
+        "tasks.install_default_plugins_task",  # tenant default plugin installation
         "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME

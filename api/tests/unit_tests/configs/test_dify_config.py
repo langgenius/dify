@@ -89,6 +89,21 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     assert Version(config.project.version) >= Version("1.0.0")
 
 
+def test_new_user_default_plugin_ids_are_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv(
+        "NEW_USER_DEFAULT_PLUGIN_IDS",
+        "langgenius/openai, langgenius/gemini",
+    )
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.NEW_USER_DEFAULT_PLUGIN_ID_LIST == [
+        "langgenius/openai",
+        "langgenius/gemini",
+    ]
+
+
 def test_http_timeout_defaults(monkeypatch: pytest.MonkeyPatch):
     """Test that HTTP timeout defaults are correctly set"""
     # clear system environment variables

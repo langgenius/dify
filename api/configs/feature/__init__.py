@@ -275,6 +275,15 @@ class PluginConfig(BaseSettings):
         default=50 * 1024 * 1024,
     )
 
+    NEW_USER_DEFAULT_PLUGIN_IDS: str = Field(
+        description="Comma-separated marketplace plugin IDs whose latest versions are installed for new users",
+        default="",
+    )
+
+    @property
+    def NEW_USER_DEFAULT_PLUGIN_ID_LIST(self) -> list[str]:
+        return [item.strip() for item in self.NEW_USER_DEFAULT_PLUGIN_IDS.split(",") if item.strip()]
+
 
 class MarketplaceConfig(BaseSettings):
     """
