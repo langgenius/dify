@@ -20,6 +20,7 @@ from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models import App, AppMode, TrialApp
+from services.recommended_app_service import RecommendedAppService
 
 
 def _load_app_model(session: Session, app_id: str) -> App | None:
@@ -198,6 +199,8 @@ def get_app_model_with_trial[**P, R](
     *,
     mode: AppMode | list[AppMode] | None = None,
 ) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
+    """Inject an app registered for trial or available from the recommended catalog."""
+
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -210,6 +213,8 @@ def get_app_model_with_trial[**P, R](
             del kwargs["app_id"]
 
             app_model = _load_app_model_with_trial(app_id)
+            if app_model is None:
+                app_model = RecommendedAppService.get_app(app_id, session=db.session())
 
             if not app_model:
                 raise AppNotFoundError()
