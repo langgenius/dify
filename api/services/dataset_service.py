@@ -3893,7 +3893,14 @@ class SegmentService:
         session.add(document)
 
         # Delete database records
-        session.execute(delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)))
+        session.execute(
+            delete(DocumentSegment).where(
+                DocumentSegment.id.in_(segment_db_ids),
+                DocumentSegment.dataset_id == dataset.id,
+                DocumentSegment.document_id == document.id,
+                DocumentSegment.tenant_id == current_user.current_tenant_id,
+            )
+        )
         session.commit()
 
     @classmethod
