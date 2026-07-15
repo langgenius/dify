@@ -143,28 +143,4 @@ describe('useWorkflowMoveMode', () => {
     expect(store.getState().controlMode).toBe(ControlMode.Pointer)
     expect(mockHandleSelectionCancel).not.toHaveBeenCalled()
   })
-
-  it('does not switch to comment mode when commenting is denied', () => {
-    const { result, store } = renderWorkflowHook(() => useWorkflowMoveMode(), {
-      initialStoreState: {
-        controlMode: ControlMode.Pointer,
-      },
-      hooksStoreProps: {
-        accessControl: {
-          canEdit: true,
-          canComment: false,
-          canRun: true,
-          canImportExportDSL: true,
-          canReleaseAndVersion: true,
-        },
-      },
-    })
-
-    act(() => {
-      result.current.handleModeComment()
-    })
-
-    expect(store.getState().controlMode).toBe(ControlMode.Pointer)
-    expect(mockHandleSelectionCancel).not.toHaveBeenCalled()
-  })
 })

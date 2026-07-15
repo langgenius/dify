@@ -147,16 +147,12 @@ describe('NodeControl', () => {
     })
 
     it('should hide the run control when workflow run permission is missing', () => {
-      renderNodeControl(
-        <NodeControlHarness id="node-5" data={makeData()} />,
-        {
-          canEdit: false,
-          canComment: true,
-          canRun: false,
-          canImportExportDSL: false,
-          canReleaseAndVersion: false,
-        },
-      )
+      renderNodeControl(<NodeControlHarness id="node-5" data={makeData()} />, {
+        canEdit: false,
+        canRun: false,
+        canImportExportDSL: false,
+        canReleaseAndVersion: false,
+      })
 
       expect(screen.queryByRole('button', { name: 'workflow.panel.runThisStep' })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'open panel' })).toBeInTheDocument()

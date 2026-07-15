@@ -56,7 +56,6 @@ export function PanelContextmenu({
     || isRestoring
   )
   const canEditWorkflow = accessControl.canEdit && !workflowOperationReadOnly
-  const canCommentWorkflow = accessControl.canComment && !workflowOperationReadOnly
 
   const renderAddBlockTrigger = useCallback(() => {
     return (
@@ -115,7 +114,7 @@ export function PanelContextmenu({
             {t('nodes.note.addNote', { ns: 'workflow' })}
           </ContextMenuItem>
         )}
-        {canCommentWorkflow && isCommentModeAvailable && (
+        {!workflowOperationReadOnly && isCommentModeAvailable && (
           <ContextMenuItem
             disabled={!!pendingComment}
             className={cn(

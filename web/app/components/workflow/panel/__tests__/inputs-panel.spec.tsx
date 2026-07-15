@@ -305,18 +305,21 @@ describe('InputsPanel', () => {
       const onRun = vi.fn()
       const handleRun = vi.fn()
 
-      renderInputsPanel(createStartNode(), {
-        hooksStoreProps: createHooksStoreProps({
-          handleRun,
-          accessControl: {
-            canEdit: true,
-            canComment: true,
-            canRun: false,
-            canImportExportDSL: true,
-            canReleaseAndVersion: true,
-          },
-        }),
-      }, onRun)
+      renderInputsPanel(
+        createStartNode(),
+        {
+          hooksStoreProps: createHooksStoreProps({
+            handleRun,
+            accessControl: {
+              canEdit: true,
+              canRun: false,
+              canImportExportDSL: true,
+              canReleaseAndVersion: true,
+            },
+          }),
+        },
+        onRun,
+      )
 
       await user.click(screen.getByRole('button', { name: 'workflow.singleRun.startRun' }))
 

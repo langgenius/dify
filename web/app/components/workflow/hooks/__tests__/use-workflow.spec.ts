@@ -218,7 +218,6 @@ describe('useNodesReadOnly', () => {
       hooksStoreProps: {
         accessControl: {
           canEdit: false,
-          canComment: true,
           canRun: true,
           canImportExportDSL: true,
           canReleaseAndVersion: true,

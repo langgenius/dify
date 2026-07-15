@@ -169,7 +169,7 @@ describe('PanelContextmenu', () => {
     })
   })
 
-  it('should hide add note when editing is denied but comments are allowed', async () => {
+  it('should hide add note but keep comments available when editing is denied', async () => {
     mockUseWorkflowMoveMode.mockReturnValue({
       isCommentModeAvailable: true,
     })
@@ -182,7 +182,6 @@ describe('PanelContextmenu', () => {
         accessControl: {
           ...fullWorkflowAccessControl,
           canEdit: false,
-          canComment: true,
         },
       },
     })
