@@ -15,7 +15,7 @@ $(BIN_DIR)/shellctl-sanitize-pty: $(shell find cmd/sanitize-pty internal/sanitiz
 $(BIN_DIR)/shellctl-runner-exit: $(shell find cmd/runner-exit internal/runner_exit -name '*.go')
 	go build -o $@ ./cmd/runner-exit
 
-$(BIN_DIR)/shellctl-runner: $(shell find cmd/runner internal/landlock -name '*.go')
+$(BIN_DIR)/shellctl-runner: $(shell find cmd/runner internal/landlock internal/cmdutil -name '*.go')
 	go build -o $@ ./cmd/runner
 
 
