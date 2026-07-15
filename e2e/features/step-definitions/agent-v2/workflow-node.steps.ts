@@ -1,10 +1,7 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import {
-  createTestApp,
-  syncAgentV2WorkflowDraft,
-} from '../../../support/api'
+import { createTestApp, syncAgentV2WorkflowDraft } from '../../../support/api'
 import { createE2EResourceName } from '../../../support/naming'
 import { createConfiguredTestAgent } from '../../agent-v2/support/agent'
 import {
@@ -50,8 +47,7 @@ When('I open the Agent v2 workflow node panel', async function (this: DifyWorld)
 When('I open the Agent v2 workflow Agent details', async function (this: DifyWorld) {
   const page = this.getPage()
   const agentName = this.lastCreatedAgentName
-  if (!agentName)
-    throw new Error('No Agent v2 name found. Create a workflow Agent v2 node first.')
+  if (!agentName) throw new Error('No Agent v2 name found. Create a workflow Agent v2 node first.')
 
   await page.getByRole('button', { name: `Open ${agentName} details` }).click()
   await expect(page.getByRole('dialog', { name: `${agentName} details` })).toBeVisible()
@@ -60,8 +56,7 @@ When('I open the Agent v2 workflow Agent details', async function (this: DifyWor
 When('I open the Agent v2 workflow Agent in Agent Console', async function (this: DifyWorld) {
   const page = this.getPage()
   const agentName = this.lastCreatedAgentName
-  if (!agentName)
-    throw new Error('No Agent v2 name found. Create a workflow Agent v2 node first.')
+  if (!agentName) throw new Error('No Agent v2 name found. Create a workflow Agent v2 node first.')
 
   const detailsDialog = page.getByRole('dialog', { name: `${agentName} details` })
   const [agentConsolePage] = await Promise.all([
@@ -82,20 +77,20 @@ Then(
     if (!agentName)
       throw new Error('No Agent v2 name found. Create a workflow Agent v2 node first.')
     if (!stableModel)
-      throw new Error('Stable chat model preflight must run before asserting workflow Agent details.')
+      throw new Error(
+        'Stable chat model preflight must run before asserting workflow Agent details.',
+      )
 
     const detailsDialog = page.getByRole('dialog', { name: `${agentName} details` })
 
     await expect(detailsDialog).toBeVisible()
     await expect(detailsDialog.getByText(agentName, { exact: true })).toBeVisible()
-    if (agentRole)
-      await expect(detailsDialog.getByText(agentRole, { exact: true })).toBeVisible()
+    if (agentRole) await expect(detailsDialog.getByText(agentRole, { exact: true })).toBeVisible()
     await expect(detailsDialog.getByText(stableModel.name, { exact: true })).toBeVisible()
     await expect(detailsDialog.getByText(normalAgentPrompt)).toBeVisible()
-    await expect(detailsDialog.getByRole('link', { name: 'Edit in Agent Console' })).toHaveAttribute(
-      'href',
-      `/roster/agent/${this.createdAgentIds.at(-1)}/configure`,
-    )
+    await expect(
+      detailsDialog.getByRole('link', { name: 'Edit in Agent Console' }),
+    ).toHaveAttribute('href', `/agents/${this.createdAgentIds.at(-1)}/configure`)
   },
 )
 
@@ -106,16 +101,13 @@ Then(
     const agentId = this.createdAgentIds.at(-1)
     const agentName = this.lastCreatedAgentName
     const stableModel = this.agentBuilder.preflight.stableModel
-    if (!agentConsolePage)
-      throw new Error('Agent Console page was not opened.')
+    if (!agentConsolePage) throw new Error('Agent Console page was not opened.')
     if (!agentId || !agentName)
       throw new Error('No Agent v2 ID or name found. Create a workflow Agent v2 node first.')
     if (!stableModel)
       throw new Error('Stable chat model preflight must run before asserting Agent Console.')
 
-    await expect(agentConsolePage).toHaveURL(
-      new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`),
-    )
+    await expect(agentConsolePage).toHaveURL(new RegExp(`/agents/${agentId}/configure(?:\\?.*)?$`))
     await expect(agentConsolePage.getByRole('heading', { name: 'Configure' })).toBeVisible({
       timeout: 30_000,
     })

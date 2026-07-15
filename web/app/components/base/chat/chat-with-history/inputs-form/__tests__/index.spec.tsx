@@ -9,7 +9,7 @@ import InputsFormNode from '../index'
 
 // Mocks for components used by InputsFormContent (the real sibling)
 vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
-  default: ({ value, name }: { value: boolean, name: string }) => (
+  default: ({ value, name }: { value: boolean; name: string }) => (
     <div data-testid="mock-bool-input" role="checkbox" aria-checked={value}>
       {name}
     </div>
@@ -17,7 +17,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-i
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value, placeholder }: { value: string, placeholder?: React.ReactNode }) => (
+  default: ({ value, placeholder }: { value: string; placeholder?: React.ReactNode }) => (
     <div data-testid="mock-code-editor">
       <span>{value}</span>
       {placeholder}
@@ -36,8 +36,7 @@ vi.mock('../../context', () => ({
 }))
 
 const mockHandleStartChat = vi.fn((cb?: () => void) => {
-  if (cb)
-    cb()
+  if (cb) cb()
 })
 
 const defaultContextValues: Partial<ChatWithHistoryContextValue> = {
@@ -135,14 +134,17 @@ describe('InputsFormNode', () => {
 
     // Prefer selecting by a test id if the component exposes it. Fallback to queries that
     // don't rely on internal DOM structure so tests are less brittle.
-    const outerDiv = screen.queryByTestId('inputs-form-node') ?? (container.firstChild as HTMLElement)
+    const outerDiv =
+      screen.queryByTestId('inputs-form-node') ?? (container.firstChild as HTMLElement)
     expect(outerDiv).toBeTruthy()
     // Check for mobile-specific layout classes (pt-4)
     expect(outerDiv).toHaveClass('pt-4')
 
     // Check padding in expanded content (p-4 for mobile)
     // Prefer a test id for the content wrapper; fallback to finding the label's closest ancestor
-    const contentWrapper = screen.queryByTestId('inputs-form-content-wrapper') ?? screen.getByText('Test Label').closest('.p-4')
+    const contentWrapper =
+      screen.queryByTestId('inputs-form-content-wrapper') ??
+      screen.getByText('Test Label').closest('.p-4')
     expect(contentWrapper).toBeInTheDocument()
   })
 })

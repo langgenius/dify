@@ -26,7 +26,7 @@ export class PermittedExternalAppsClient implements AppReader {
   }
 
   async describe(appId: string, fields?: readonly string[]): Promise<AppDescribeResponse> {
-    return this.orpc.permittedExternalApps.byAppId.describe.get({
+    return this.orpc.permittedExternalApps.byAppId.get({
       params: { app_id: appId },
       query: { fields: fields !== undefined && fields.length > 0 ? fields.join(',') : undefined },
     })

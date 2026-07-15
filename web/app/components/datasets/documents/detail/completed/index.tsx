@@ -26,10 +26,7 @@ import {
   useSegmentListData,
   useSegmentSelection,
 } from './hooks'
-import {
-  SegmentListContext,
-  useSegmentListContext,
-} from './segment-list-context'
+import { SegmentListContext, useSegmentListContext } from './segment-list-context'
 
 const DEFAULT_LIMIT = 10
 
@@ -53,7 +50,7 @@ const Completed: FC<ICompletedProps> = ({
   archived,
 }) => {
   const { t } = useTranslation()
-  const docForm = useDocumentContext(s => s.docForm)
+  const docForm = useDocumentContext((s) => s.docForm)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -93,7 +90,12 @@ const Completed: FC<ICompletedProps> = ({
       },
     }
     refreshMap[String(searchFilter.selectedStatus)]?.()
-  }, [searchFilter.selectedStatus, invalidChunkListDisabled, invalidChunkListEnabled, invalidChunkListAll])
+  }, [
+    searchFilter.selectedStatus,
+    invalidChunkListDisabled,
+    invalidChunkListEnabled,
+    invalidChunkListAll,
+  ])
 
   // Segment list data
   const segmentListDataHook = useSegmentListData({
@@ -108,20 +110,27 @@ const Completed: FC<ICompletedProps> = ({
   })
 
   const segmentIds = useMemo(
-    () => segmentListDataHook.segments.map(segment => segment.id),
+    () => segmentListDataHook.segments.map((segment) => segment.id),
     [segmentListDataHook.segments],
   )
   const currentPageSegmentIdSet = useMemo(() => new Set(segmentIds), [segmentIds])
   const currentPageSelectedSegmentIds = useMemo(() => {
-    return selectionState.selectedSegmentIds.filter(segmentId => currentPageSegmentIdSet.has(segmentId))
+    return selectionState.selectedSegmentIds.filter((segmentId) =>
+      currentPageSegmentIdSet.has(segmentId),
+    )
   }, [currentPageSegmentIdSet, selectionState.selectedSegmentIds])
-  const handleCurrentPageSelectedSegmentIdsChange = useCallback((nextCurrentPageSelectedSegmentIds: string[]) => {
-    selectionState.onSelectedSegmentIdsChange(mergeCurrentPageSelectedSegmentIds({
-      selectedSegmentIds: selectionState.selectedSegmentIds,
-      currentPageSegmentIds: segmentIds,
-      nextCurrentPageSelectedSegmentIds,
-    }))
-  }, [segmentIds, selectionState.selectedSegmentIds, selectionState.onSelectedSegmentIdsChange])
+  const handleCurrentPageSelectedSegmentIdsChange = useCallback(
+    (nextCurrentPageSelectedSegmentIds: string[]) => {
+      selectionState.onSelectedSegmentIdsChange(
+        mergeCurrentPageSelectedSegmentIds({
+          selectedSegmentIds: selectionState.selectedSegmentIds,
+          currentPageSegmentIds: segmentIds,
+          nextCurrentPageSelectedSegmentIds,
+        }),
+      )
+    },
+    [segmentIds, selectionState.selectedSegmentIds, selectionState.onSelectedSegmentIdsChange],
+  )
 
   // Child segment data
   const childSegmentDataHook = useChildSegmentData({
@@ -141,7 +150,11 @@ const Completed: FC<ICompletedProps> = ({
     if (segmentListDataHook.isFullDocMode)
       return childSegmentDataHook.childChunkListData?.total || 0
     return segmentListDataHook.segmentListData?.total || 0
-  }, [segmentListDataHook.isFullDocMode, childSegmentDataHook.childChunkListData, segmentListDataHook.segmentListData])
+  }, [
+    segmentListDataHook.isFullDocMode,
+    childSegmentDataHook.childChunkListData,
+    segmentListDataHook.segmentListData,
+  ])
   const totalPages = Math.max(Math.ceil(paginationTotal / limit), 1)
 
   // Handle page change
@@ -150,78 +163,81 @@ const Completed: FC<ICompletedProps> = ({
   }, [])
 
   // Context value
-  const contextValue = useMemo<SegmentListContextValue>(() => ({
-    isCollapsed: modalState.isCollapsed,
-    fullScreen: modalState.fullScreen,
-    toggleFullScreen: modalState.toggleFullScreen,
-    currSegment: modalState.currSegment,
-    currChildChunk: modalState.currChildChunk,
-  }), [
-    modalState.isCollapsed,
-    modalState.fullScreen,
-    modalState.toggleFullScreen,
-    modalState.currSegment,
-    modalState.currChildChunk,
-  ])
+  const contextValue = useMemo<SegmentListContextValue>(
+    () => ({
+      isCollapsed: modalState.isCollapsed,
+      fullScreen: modalState.fullScreen,
+      toggleFullScreen: modalState.toggleFullScreen,
+      currSegment: modalState.currSegment,
+      currChildChunk: modalState.currChildChunk,
+    }),
+    [
+      modalState.isCollapsed,
+      modalState.fullScreen,
+      modalState.toggleFullScreen,
+      modalState.currSegment,
+      modalState.currChildChunk,
+    ],
+  )
 
   return (
     <SegmentListContext.Provider value={contextValue}>
       {/* Segment list */}
-      {segmentListDataHook.isFullDocMode
-        ? (
-            <FullDocModeContent
-              segments={segmentListDataHook.segments}
-              childSegments={childSegmentDataHook.childSegments}
-              isLoadingSegmentList={segmentListDataHook.isLoadingSegmentList}
-              isLoadingChildSegmentList={childSegmentDataHook.isLoadingChildSegmentList}
-              currSegmentId={modalState.currSegment?.segInfo?.id}
-              onClickCard={modalState.onClickCard}
-              onDeleteChildChunk={childSegmentDataHook.onDeleteChildChunk}
-              handleInputChange={searchFilter.handleInputChange}
-              handleAddNewChildChunk={modalState.handleAddNewChildChunk}
-              onClickSlice={modalState.onClickSlice}
-              archived={archived}
-              childChunkTotal={childSegmentDataHook.childChunkListData?.total || 0}
-              inputValue={searchFilter.inputValue}
-              onClearFilter={searchFilter.onClearFilter}
-            />
-          )
-        : (
-            <CheckboxGroup
-              aria-label={t('segment.chunk', { ns: 'datasetDocuments' })}
-              value={currentPageSelectedSegmentIds}
-              onValueChange={nextSegmentIds => handleCurrentPageSelectedSegmentIdsChange(nextSegmentIds)}
-              allValues={segmentIds}
-              className="flex min-h-0 grow flex-col"
-            >
-              <MenuBar
-                hasSelectableSegments={segmentIds.length > 0}
-                isLoading={segmentListDataHook.isLoadingSegmentList}
-                totalText={segmentListDataHook.totalText}
-                statusList={searchFilter.statusList}
-                selectDefaultValue={searchFilter.selectDefaultValue}
-                onChangeStatus={searchFilter.onChangeStatus}
-                inputValue={searchFilter.inputValue}
-                onInputChange={searchFilter.handleInputChange}
-                isCollapsed={modalState.isCollapsed}
-                toggleCollapsed={modalState.toggleCollapsed}
-              />
-              <GeneralModeContent
-                segmentListRef={segmentListDataHook.segmentListRef}
-                embeddingAvailable={embeddingAvailable}
-                isLoadingSegmentList={segmentListDataHook.isLoadingSegmentList}
-                segments={segmentListDataHook.segments}
-                onChangeSwitch={segmentListDataHook.onChangeSwitch}
-                onDelete={segmentListDataHook.onDelete}
-                onClickCard={modalState.onClickCard}
-                archived={archived}
-                onDeleteChildChunk={childSegmentDataHook.onDeleteChildChunk}
-                handleAddNewChildChunk={modalState.handleAddNewChildChunk}
-                onClickSlice={modalState.onClickSlice}
-                onClearFilter={searchFilter.onClearFilter}
-              />
-            </CheckboxGroup>
-          )}
+      {segmentListDataHook.isFullDocMode ? (
+        <FullDocModeContent
+          segments={segmentListDataHook.segments}
+          childSegments={childSegmentDataHook.childSegments}
+          isLoadingSegmentList={segmentListDataHook.isLoadingSegmentList}
+          isLoadingChildSegmentList={childSegmentDataHook.isLoadingChildSegmentList}
+          currSegmentId={modalState.currSegment?.segInfo?.id}
+          onClickCard={modalState.onClickCard}
+          onDeleteChildChunk={childSegmentDataHook.onDeleteChildChunk}
+          handleInputChange={searchFilter.handleInputChange}
+          handleAddNewChildChunk={modalState.handleAddNewChildChunk}
+          onClickSlice={modalState.onClickSlice}
+          archived={archived}
+          childChunkTotal={childSegmentDataHook.childChunkListData?.total || 0}
+          inputValue={searchFilter.inputValue}
+          onClearFilter={searchFilter.onClearFilter}
+        />
+      ) : (
+        <CheckboxGroup
+          aria-label={t(($) => $['segment.chunk'], { ns: 'datasetDocuments' })}
+          value={currentPageSelectedSegmentIds}
+          onValueChange={(nextSegmentIds) =>
+            handleCurrentPageSelectedSegmentIdsChange(nextSegmentIds)
+          }
+          allValues={segmentIds}
+          className="flex min-h-0 grow flex-col"
+        >
+          <MenuBar
+            hasSelectableSegments={segmentIds.length > 0}
+            isLoading={segmentListDataHook.isLoadingSegmentList}
+            totalText={segmentListDataHook.totalText}
+            statusList={searchFilter.statusList}
+            selectDefaultValue={searchFilter.selectDefaultValue}
+            onChangeStatus={searchFilter.onChangeStatus}
+            inputValue={searchFilter.inputValue}
+            onInputChange={searchFilter.handleInputChange}
+            isCollapsed={modalState.isCollapsed}
+            toggleCollapsed={modalState.toggleCollapsed}
+          />
+          <GeneralModeContent
+            segmentListRef={segmentListDataHook.segmentListRef}
+            embeddingAvailable={embeddingAvailable}
+            isLoadingSegmentList={segmentListDataHook.isLoadingSegmentList}
+            segments={segmentListDataHook.segments}
+            onChangeSwitch={segmentListDataHook.onChangeSwitch}
+            onDelete={segmentListDataHook.onDelete}
+            onClickCard={modalState.onClickCard}
+            archived={archived}
+            onDeleteChildChunk={childSegmentDataHook.onDeleteChildChunk}
+            handleAddNewChildChunk={modalState.handleAddNewChildChunk}
+            onClickSlice={modalState.onClickSlice}
+            onClearFilter={searchFilter.onClearFilter}
+          />
+        </CheckboxGroup>
+      )}
 
       {/* Pagination */}
       <Divider type="horizontal" className="mx-6 my-0 h-px w-auto bg-divider-subtle" />
@@ -230,17 +246,18 @@ const Completed: FC<ICompletedProps> = ({
         totalPages={totalPages}
         onPageChange={handlePageChange}
         labels={{
-          previous: t('pagination.previous', { ns: 'common' }),
-          next: t('pagination.next', { ns: 'common' }),
-          editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
-          pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+          previous: t(($) => $['pagination.previous'], { ns: 'common' }),
+          next: t(($) => $['pagination.next'], { ns: 'common' }),
+          editPageNumber: (page, totalPages) =>
+            t(($) => $['pagination.editPageNumber'], { ns: 'common', page, totalPages }),
+          pageNumberInput: t(($) => $['pagination.pageNumber'], { ns: 'common' }),
         }}
         pageSize={{
           value: limit,
           options: [10, 25, 50],
           onValueChange: setLimit,
-          label: t('pagination.perPage', { ns: 'common' }),
-          ariaLabel: t('pagination.perPage', { ns: 'common' }),
+          label: t(($) => $['pagination.perPage'], { ns: 'common' }),
+          ariaLabel: t(($) => $['pagination.perPage'], { ns: 'common' }),
         }}
       />
 

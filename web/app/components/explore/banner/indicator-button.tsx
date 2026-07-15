@@ -1,112 +1,47 @@
-/* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
-import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import styles from './indicator-button.module.css'
 
 type IndicatorButtonProps = {
   index: number
-  selectedIndex: number
+  label: string
+  isCurrent: boolean
   isNextSlide: boolean
   autoplayDelay: number
-  resetKey: number
-  isPaused?: boolean
+  isPaused: boolean
   onClick: () => void
 }
 
-const PROGRESS_MAX = 100
-const DEGREES_PER_PERCENT = 3.6
-
-export const IndicatorButton: FC<IndicatorButtonProps> = ({
+export function IndicatorButton({
   index,
-  selectedIndex,
+  label,
+  isCurrent,
   isNextSlide,
   autoplayDelay,
-  resetKey,
-  isPaused = false,
+  isPaused,
   onClick,
-}) => {
-  const [progress, setProgress] = useState(0)
-  const frameIdRef = useRef<number | undefined>(undefined)
-  const startTimeRef = useRef(0)
-
-  const isActive = index === selectedIndex
-  const shouldAnimate = !document.hidden && !isPaused
-
-  useEffect(() => {
-    if (!isNextSlide) {
-      setProgress(0)
-      if (frameIdRef.current)
-        cancelAnimationFrame(frameIdRef.current)
-      return
-    }
-
-    setProgress(0)
-    startTimeRef.current = Date.now()
-
-    const animate = () => {
-      if (!document.hidden && !isPaused) {
-        const elapsed = Date.now() - startTimeRef.current
-        const newProgress = Math.min((elapsed / autoplayDelay) * PROGRESS_MAX, PROGRESS_MAX)
-        setProgress(newProgress)
-
-        if (newProgress < PROGRESS_MAX)
-          frameIdRef.current = requestAnimationFrame(animate)
-      }
-      else {
-        frameIdRef.current = requestAnimationFrame(animate)
-      }
-    }
-
-    if (shouldAnimate)
-      frameIdRef.current = requestAnimationFrame(animate)
-
-    return () => {
-      if (frameIdRef.current)
-        cancelAnimationFrame(frameIdRef.current)
-    }
-  }, [isNextSlide, autoplayDelay, resetKey, isPaused])
-
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    onClick()
-  }, [onClick])
-
-  const progressDegrees = progress * DEGREES_PER_PERCENT
-
+}: IndicatorButtonProps) {
   return (
-    <button
-      onClick={handleClick}
-      className={cn(
-        'relative flex h-[18px] w-[20px] items-center justify-center rounded-[7px] border border-divider-subtle p-[2px] text-center system-2xs-semibold-uppercase transition-colors',
-        isActive
-          ? 'bg-text-primary text-components-panel-on-panel-item-bg'
-          : 'bg-components-panel-on-panel-item-bg text-text-tertiary hover:text-text-secondary',
-      )}
+    <Button
+      variant="ghost"
+      size="small"
+      aria-label={label}
+      aria-current={isCurrent ? 'true' : undefined}
+      onClick={onClick}
+      className="group relative size-6 shrink-0 rounded-lg p-0 hover:bg-transparent"
     >
-      {/* progress border for next slide */}
-      {isNextSlide && !isActive && (
-        <span
-          key={resetKey}
-          className="absolute -inset-px rounded-[7px]"
-          style={{
-            background: `conic-gradient(
-              from 0deg,
-              var(--color-text-primary) ${progressDegrees}deg,
-              transparent ${progressDegrees}deg
-            )`,
-            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-            WebkitMaskComposite: 'xor',
-            mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-            maskComposite: 'exclude',
-            padding: '1px',
-          }}
-        />
-      )}
-
-      {/* number content */}
-      <span className="relative z-10">
-        {String(index + 1).padStart(2, '0')}
+      <span className="relative flex h-5 w-[22px] items-center justify-center overflow-hidden rounded-[7px] p-px inset-ring-1 inset-ring-divider-subtle group-aria-[current=true]:bg-text-primary group-aria-[current=true]:inset-ring-text-primary">
+        {isNextSlide && !isCurrent && !isPaused ? (
+          <span
+            data-progress-ring
+            className={styles.progress}
+            aria-hidden="true"
+            style={{ animationDuration: `${autoplayDelay}ms` }}
+          />
+        ) : null}
+        <span className="relative z-10 flex h-4.5 w-5 items-center justify-center rounded-md bg-components-panel-on-panel-item-bg p-0.5 text-center system-2xs-semibold-uppercase text-text-tertiary transition-colors group-hover:text-text-secondary group-aria-[current=true]:bg-text-primary group-aria-[current=true]:text-components-panel-on-panel-item-bg">
+          {String(index + 1).padStart(2, '0')}
+        </span>
       </span>
-    </button>
+    </Button>
   )
 }

@@ -47,7 +47,10 @@ function RecommendationSectionSkeletonBody({
         </div>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
           {Array.from({ length: 4 }, (_, index) => (
-            <div key={index} className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-4 pt-4 pb-4 shadow-xs">
+            <div
+              key={index}
+              className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-4 pt-4 pb-4 shadow-xs"
+            >
               <div className="flex flex-col items-start gap-2 pb-1">
                 <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-[10px]" />
                 <SkeletonRectangle className="h-4 w-3/4 animate-pulse" />
@@ -72,7 +75,10 @@ function RecommendationSectionSkeletonBody({
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-3">
         {Array.from({ length: 4 }, (_, index) => (
-          <div key={index} className="rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-4 py-3 shadow-md">
+          <div
+            key={index}
+            className="rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-4 py-3 shadow-md"
+          >
             <SkeletonRow>
               <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-lg" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -130,15 +136,11 @@ function BannerSkeletonBody() {
   )
 }
 
-export function ExploreHomeSkeleton({
-  showBanner,
-}: {
-  showBanner: boolean
-}) {
+export function ExploreHomeSkeleton({ showBanner }: { showBanner: boolean }) {
   const { t } = useTranslation()
 
   return (
-    <div role="status" aria-label={t('loading', { ns: 'common' })} className="contents">
+    <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="contents">
       {showBanner && <BannerSkeletonBody />}
       <section className="px-8 pb-5">
         <RecommendationSectionSkeletonBody />

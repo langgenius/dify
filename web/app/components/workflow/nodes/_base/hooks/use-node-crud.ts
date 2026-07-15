@@ -10,12 +10,15 @@ const useNodeCrud = <T>(id: string, data: CommonNodeType<T>) => {
     updateRef.current = handleNodeDataUpdateWithSyncDraft
   }, [handleNodeDataUpdateWithSyncDraft])
 
-  const setInputs = useCallback((newInputs: CommonNodeType<T>) => {
-    updateRef.current({
-      id,
-      data: newInputs,
-    })
-  }, [id])
+  const setInputs = useCallback(
+    (newInputs: CommonNodeType<T>) => {
+      updateRef.current({
+        id,
+        data: newInputs,
+      })
+    },
+    [id],
+  )
 
   return {
     inputs: data,

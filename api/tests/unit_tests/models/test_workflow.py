@@ -10,6 +10,7 @@ from factories.variable_factory import build_segment
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from graphon.variables.segments import IntegerSegment, Segment
+from models.account import Account
 from models.workflow import (
     Workflow,
     WorkflowDraftVariable,
@@ -132,6 +133,57 @@ def test_to_dict():
         workflow_dict = workflow.to_dict(include_secret=True)
         assert workflow_dict["environment_variables"][0]["value"] == "secret"
         assert workflow_dict["environment_variables"][1]["value"] == "text"
+
+
+def test_workflow_account_getters_use_caller_session():
+    workflow = Workflow(
+        tenant_id="tenant_id",
+        app_id="app_id",
+        type="workflow",
+        version="draft",
+        graph="{}",
+        features="{}",
+        created_by="created-account-id",
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    workflow.updated_by = "updated-account-id"
+    created_account = mock.Mock(spec=Account)
+    updated_account = mock.Mock(spec=Account)
+    session = mock.Mock()
+    session.get.side_effect = [created_account, updated_account]
+
+    with mock.patch("models.workflow.db") as mock_db:
+        assert workflow.get_created_by_account(session=session) is created_account
+        assert workflow.get_updated_by_account(session=session) is updated_account
+
+    assert session.get.call_args_list == [
+        mock.call(Account, "created-account-id"),
+        mock.call(Account, "updated-account-id"),
+    ]
+    mock_db.session.get.assert_not_called()
+
+
+def test_workflow_tool_published_getter_uses_caller_session():
+    workflow = Workflow(
+        tenant_id="tenant_id",
+        app_id="app_id",
+        type="workflow",
+        version="draft",
+        graph="{}",
+        features="{}",
+        created_by="account_id",
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    session = mock.Mock()
+    session.execute.return_value.scalar_one.return_value = True
+
+    with mock.patch("models.workflow.db") as mock_db:
+        assert workflow.get_tool_published(session=session) is True
+
+    session.execute.assert_called_once()
+    mock_db.session.execute.assert_not_called()
 
 
 def test_normalize_environment_variable_mappings_converts_full_mask_to_hidden_value():

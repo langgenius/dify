@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
@@ -35,11 +35,46 @@ class TestChatAppConfigManager:
                 app_model_config=app_model_config,
                 conversation=None,
                 override_config_dict=override,
+                annotation_reply=None,
             )
 
         assert app_config.app_model_config_from == EasyUIBasedAppModelConfigFrom.ARGS
         assert app_config.app_model_config_dict == override
         assert app_config.app_mode == AppMode.CHAT
+
+    def test_get_app_config_uses_injected_annotation_reply(self):
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT.value)
+        app_model_config = SimpleNamespace(
+            id="config-1",
+            to_dict=MagicMock(return_value={"model": "m"}),
+        )
+        annotation_reply = {"enabled": False}
+
+        model_entity = ModelConfigEntity(provider="p", model="m")
+        prompt_entity = PromptTemplateEntity(
+            prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+            simple_prompt_template="hi",
+        )
+
+        with (
+            patch("core.app.apps.chat.app_config_manager.ModelConfigManager.convert", return_value=model_entity),
+            patch(
+                "core.app.apps.chat.app_config_manager.PromptTemplateConfigManager.convert", return_value=prompt_entity
+            ),
+            patch(
+                "core.app.apps.chat.app_config_manager.SensitiveWordAvoidanceConfigManager.convert",
+                return_value=None,
+            ),
+            patch("core.app.apps.chat.app_config_manager.DatasetConfigManager.convert", return_value=None),
+            patch("core.app.apps.chat.app_config_manager.BasicVariablesConfigManager.convert", return_value=([], [])),
+        ):
+            ChatAppConfigManager.get_app_config(
+                app_model=app_model,
+                app_model_config=app_model_config,
+                annotation_reply=annotation_reply,
+            )
+
+        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
     def test_config_validate_filters_related_keys(self):
         config = {"extra": 1}
@@ -98,7 +133,7 @@ class TestChatAppConfigManager:
                 side_effect=_add_key("sensitive_word_avoidance", 11),
             ),
         ):
-            filtered = ChatAppConfigManager.config_validate(tenant_id="t1", config=config)
+            filtered = ChatAppConfigManager.config_validate(session=MagicMock(), tenant_id="t1", config=config)
 
         assert filtered["model"] == 1
         assert filtered["inputs"] == 2

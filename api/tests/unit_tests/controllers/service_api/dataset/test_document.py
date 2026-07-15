@@ -15,8 +15,12 @@ Focus on:
 - API endpoint business logic and error handling
 """
 
+import inspect
+import json
 import uuid
-from unittest.mock import Mock, patch
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -39,44 +43,135 @@ from controllers.service_api.dataset.document import (
 )
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.enums import IndexingStatus
+from models.dataset import Dataset, Document
+from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
 
 
-def make_serializable_document(**overrides: object) -> Mock:
-    attrs: dict[str, object] = {
+def _document_data_source_info() -> dict[str, str]:
+    return {"type": "website_crawl", "url": "https://example.com/docs", "title": "Docs"}
+
+
+def _unwrap_non_wrapped_controller(view):
+    while view.__closure__:
+        inner_functions = [cell.cell_contents for cell in view.__closure__ if inspect.isfunction(cell.cell_contents)]
+        if not inner_functions:
+            break
+        view = inner_functions[-1]
+    return inspect.unwrap(view)
+
+
+@dataclass
+class _PaginationRecord:
+    items: list[Document]
+    total: int
+
+
+@pytest.fixture
+def mock_tenant() -> str:
+    return str(uuid.uuid4())
+
+
+@pytest.fixture
+def mock_dataset(mock_tenant: str) -> Dataset:
+    return make_dataset(tenant_id=mock_tenant)
+
+
+@pytest.fixture
+def mock_document(mock_dataset: Dataset) -> Document:
+    return make_serializable_document()
+
+
+def make_dataset(**overrides: object) -> Dataset:
+    attrs = {
         "id": str(uuid.uuid4()),
+        "tenant_id": str(uuid.uuid4()),
+        "name": "Test Dataset",
+        "data_source_type": DataSourceType.WEBSITE_CRAWL,
+        "indexing_technique": "economy",
+        "created_by": "user-1",
+        "maintainer": "user-1",
+        "provider": "vendor",
+        "summary_index_setting": None,
+    }
+    attrs.update(overrides)
+    return Dataset(**attrs)
+
+
+def make_serializable_document(**overrides: object) -> Document:
+    data_source_info = overrides.pop("data_source_info", _document_data_source_info())
+    summary_index_status = overrides.pop("summary_index_status", None)
+    attrs = {
+        "id": str(uuid.uuid4()),
+        "tenant_id": str(uuid.uuid4()),
+        "dataset_id": str(uuid.uuid4()),
         "position": 1,
-        "data_source_type": "upload_file",
-        "data_source_info_dict": {"upload_file_id": "file-1"},
-        "data_source_detail_dict": {},
+        "data_source_type": DataSourceType.WEBSITE_CRAWL,
+        "data_source_info": json.dumps(data_source_info),
         "dataset_process_rule_id": None,
         "batch": "batch-1",
         "name": "Test Document",
-        "created_from": "api",
+        "created_from": DocumentCreatedFrom.API,
         "created_by": "user-1",
-        "created_at": None,
-        "tokens": None,
-        "indexing_status": "completed",
+        "created_at": datetime(2021, 1, 1, tzinfo=UTC),
+        "tokens": 100,
+        "indexing_status": IndexingStatus.COMPLETED,
+        "completed_at": datetime(2021, 1, 1, 0, 0, 1, tzinfo=UTC),
+        "updated_at": datetime(2021, 1, 1, 0, 0, 2, tzinfo=UTC),
+        "indexing_latency": 0.5,
         "error": None,
         "enabled": True,
         "disabled_at": None,
         "disabled_by": None,
         "archived": False,
-        "display_status": "available",
-        "word_count": None,
-        "hit_count": 0,
-        "doc_form": "text_model",
-        "doc_metadata_details": None,
-        "summary_index_status": None,
+        "doc_type": DocumentDocType.BOOK,
+        "doc_metadata": None,
+        "doc_form": IndexStructureType.PARAGRAPH_INDEX,
+        "doc_language": "English",
         "need_summary": False,
+        "is_paused": False,
+        "processing_started_at": datetime(2021, 1, 1, tzinfo=UTC),
+        "parsing_completed_at": datetime(2021, 1, 1, 0, 0, 1, tzinfo=UTC),
+        "cleaning_completed_at": datetime(2021, 1, 1, 0, 0, 2, tzinfo=UTC),
+        "splitting_completed_at": datetime(2021, 1, 1, 0, 0, 3, tzinfo=UTC),
+        "paused_at": None,
+        "stopped_at": None,
+        "word_count": None,
     }
     attrs.update(overrides)
-    document = Mock(spec_set=list(attrs))
-    for name, value in attrs.items():
-        setattr(document, name, value)
+    document = Document(**attrs)
+    document.summary_index_status = summary_index_status  # type: ignore[attr-defined]
     return document
+
+
+def _expected_document_response(document: Document) -> dict[str, object]:
+    return {
+        "id": document.id,
+        "position": document.position,
+        "data_source_type": document.data_source_type,
+        "data_source_info": document.data_source_info_dict,
+        "data_source_detail_dict": document.data_source_info_dict,
+        "dataset_process_rule_id": document.dataset_process_rule_id,
+        "name": document.name,
+        "created_from": document.created_from,
+        "created_by": document.created_by,
+        "created_at": int(document.created_at.timestamp()) if document.created_at else None,
+        "tokens": document.tokens,
+        "indexing_status": document.indexing_status,
+        "error": document.error,
+        "enabled": document.enabled,
+        "disabled_at": int(document.disabled_at.timestamp()) if document.disabled_at else None,
+        "disabled_by": document.disabled_by,
+        "archived": document.archived,
+        "display_status": document.display_status,
+        "word_count": document.word_count,
+        "hit_count": 0,
+        "doc_form": document.doc_form,
+        "doc_metadata": [],
+        "summary_index_status": document.summary_index_status,
+        "need_summary": document.need_summary,
+    }
 
 
 class TestDocumentTextCreatePayload:
@@ -263,24 +358,22 @@ class TestDocumentService:
     @patch.object(DocumentService, "get_document")
     def test_get_document_returns_document(self, mock_get: Mock) -> None:
         """Test get_document returns document object."""
-        mock_doc = Mock()
-        mock_doc.id = str(uuid.uuid4())
-        mock_doc.name = "Test Document"
-        mock_doc.indexing_status = "completed"
-        mock_get.return_value = mock_doc
+        document = make_serializable_document(name="Test Document", indexing_status="completed")
+        mock_get.return_value = document
 
-        result = DocumentService.get_document(dataset_id="dataset_id", document_id="doc_id", session=Mock())
+        result = DocumentService.get_document(dataset_id="dataset_id", document_id="doc_id")
         assert result is not None
+        assert result == document
         assert result.name == "Test Document"
         assert result.indexing_status == "completed"
 
     @patch.object(DocumentService, "delete_document")
     def test_delete_document_called(self, mock_delete):
         """Test delete_document is called with document."""
-        mock_doc = Mock()
+        document = make_serializable_document()
         session = Mock()
-        DocumentService.delete_document(document=mock_doc, session=session)
-        mock_delete.assert_called_once_with(document=mock_doc, session=session)
+        DocumentService.delete_document(document=document, session=session)
+        mock_delete.assert_called_once_with(document=document, session=session)
 
 
 class TestDocumentIndexingStatus:
@@ -460,9 +553,9 @@ class TestDocumentServiceBatchMethods:
         dataset_id = str(uuid.uuid4())
         doc_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 
+        session = Mock()
         mock_result = Mock()
         mock_result.all.return_value = [Mock(id=doc_ids[0]), Mock(id=doc_ids[1])]
-        session = Mock()
         session.scalars.return_value = mock_result
 
         documents = DocumentService.get_documents_by_ids(dataset_id, doc_ids, session)
@@ -488,9 +581,11 @@ class TestDocumentServiceFileOperations:
         mock_get_file.return_value = mock_file
         mock_signed_url.return_value = "https://example.com/download"
 
-        url = DocumentService.get_document_download_url(mock_doc, Mock())
+        session = Mock()
+        url = DocumentService.get_document_download_url(mock_doc, session)
 
         assert url == "https://example.com/download"
+        mock_get_file.assert_called_once_with(mock_doc, session)
         mock_signed_url.assert_called_with(upload_file_id="file_id", as_attachment=True)
 
 
@@ -513,17 +608,18 @@ class TestDocumentServiceSaveValidation:
             pass
 
         mock_check_form.side_effect = TestStopError()
+        session = Mock()
 
         # Skip actual logic by mocking dependent calls or raising error to stop early
         with pytest.raises(TestStopError):
             # We just want to check check_doc_form is called early
-            DocumentService.save_document_with_dataset_id(dataset, config, Mock(), session=Mock())
+            DocumentService.save_document_with_dataset_id(dataset, config, Mock(), session=session)
 
         # This will fail if we raise exception before check_doc_form,
         # but check_doc_form is the first thing called.
         # Ideally we'd mock everything to completion, but for unit validation:
         # We can just verify check_doc_form was called if we mock it to not raise.
-        mock_check_form.assert_called_once()
+        mock_check_form.assert_called_once_with(dataset, config.doc_form, session=session)
 
 
 # =============================================================================
@@ -532,9 +628,9 @@ class TestDocumentServiceSaveValidation:
 # These tests call controller methods directly, bypassing the
 # ``DatasetApiResource.method_decorators`` (``validate_dataset_token``) by
 # invoking the *undecorated* method on the class instance.  Every external
-# dependency (``db``, service classes, ``marshal``, ``current_user``, …) is
-# patched at the module where it is looked up so the real SQLAlchemy / Flask
-# extensions are never touched.
+# dependency (``db``, service classes, ``current_user``, …) is patched at the
+# module where it is looked up so the real SQLAlchemy / Flask extensions are
+# never touched.
 # =============================================================================
 
 
@@ -547,58 +643,34 @@ class TestDocumentApiGet:
     """
 
     @pytest.fixture
-    def mock_doc_detail(self, mock_tenant: Mock) -> Mock:
-        """A document mock with every attribute ``DocumentApi.get`` reads."""
-        doc = Mock()
-        doc.id = str(uuid.uuid4())
-        doc.tenant_id = mock_tenant.id
-        doc.name = "test_document.txt"
-        doc.indexing_status = "completed"
-        doc.enabled = True
-        doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
-        doc.doc_language = "English"
-        doc.doc_type = "book"
-        doc.doc_metadata_details = {"source": "upload"}
-        doc.position = 1
-        doc.data_source_type = "upload_file"
-        doc.data_source_detail_dict = {"type": "upload_file"}
-        doc.dataset_process_rule_id = str(uuid.uuid4())
-        doc.dataset_process_rule = None
-        doc.created_from = "api"
-        doc.created_by = str(uuid.uuid4())
-        doc.created_at = Mock()
-        doc.created_at.timestamp.return_value = 1609459200
-        doc.tokens = 100
-        doc.completed_at = Mock()
-        doc.completed_at.timestamp.return_value = 1609459200
-        doc.updated_at = Mock()
-        doc.updated_at.timestamp.return_value = 1609459200
-        doc.indexing_latency = 0.5
-        doc.error = None
-        doc.disabled_at = None
-        doc.disabled_by = None
-        doc.archived = False
-        doc.segment_count = 5
-        doc.average_segment_length = 20
-        doc.hit_count = 0
-        doc.display_status = "available"
-        doc.need_summary = False
-        return doc
+    def mock_doc_detail(self, mock_tenant: str) -> Document:
+        """A concrete document record with every attribute ``DocumentApi.get`` reads."""
+        return make_serializable_document(
+            id=str(uuid.uuid4()),
+            tenant_id=mock_tenant,
+            name="test_document.txt",
+            word_count=100,
+        )
 
     @patch("controllers.service_api.dataset.document.DatasetService")
     @patch("controllers.service_api.dataset.document.DocumentService")
     def test_get_document_success_with_all_metadata(
-        self, mock_doc_svc: Mock, mock_dataset_svc: Mock, app: Flask, mock_tenant: Mock, mock_doc_detail: Mock
+        self,
+        mock_doc_svc: Mock,
+        mock_dataset_svc: Mock,
+        app: Flask,
+        mock_tenant: str,
+        mock_doc_detail: Document,
     ) -> None:
         """Test successful document retrieval with metadata='all'."""
         # Arrange
         dataset_id = str(uuid.uuid4())
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
-        mock_dataset.summary_index_setting = None
+        mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant, summary_index_setting=None)
 
         mock_doc_svc.get_document.return_value = mock_doc_detail
-        mock_dataset_svc.get_process_rules.return_value = []
+        mock_dataset_svc.get_process_rules.return_value = {"mode": "automatic", "rules": {}}
+        session = MagicMock()
+        session.scalar.side_effect = [5, 0]
 
         # Act
         with app.test_request_context(
@@ -607,24 +679,60 @@ class TestDocumentApiGet:
         ):
             api = DocumentApi()
             with patch.object(api, "get_dataset", return_value=mock_dataset):
-                response = api.get(tenant_id=mock_tenant.id, dataset_id=dataset_id, document_id=mock_doc_detail.id)
+                response = inspect.unwrap(type(api).get)(
+                    api,
+                    session,
+                    tenant_id=mock_tenant,
+                    dataset_id=dataset_id,
+                    document_id=mock_doc_detail.id,
+                )
 
         # Assert
-        assert response["id"] == mock_doc_detail.id
-        assert response["name"] == mock_doc_detail.name
-        assert response["indexing_status"] == mock_doc_detail.indexing_status
-        assert "doc_type" in response
-        assert "doc_metadata" in response
+        assert response == {
+            "id": mock_doc_detail.id,
+            "position": 1,
+            "data_source_type": "website_crawl",
+            "data_source_info": {"type": "website_crawl", "url": "https://example.com/docs", "title": "Docs"},
+            "dataset_process_rule_id": mock_doc_detail.dataset_process_rule_id,
+            "dataset_process_rule": {"mode": "automatic", "rules": {}},
+            "document_process_rule": {},
+            "name": "test_document.txt",
+            "created_from": "api",
+            "created_by": "user-1",
+            "created_at": 1609459200,
+            "tokens": 100,
+            "indexing_status": "completed",
+            "completed_at": 1609459201,
+            "updated_at": 1609459202,
+            "indexing_latency": 0.5,
+            "error": None,
+            "enabled": True,
+            "disabled_at": None,
+            "disabled_by": None,
+            "archived": False,
+            "doc_type": "book",
+            "doc_metadata": None,
+            "segment_count": 5,
+            "average_segment_length": 20,
+            "hit_count": 0,
+            "display_status": "available",
+            "doc_form": "text_model",
+            "doc_language": "English",
+            "summary_index_status": None,
+            "need_summary": False,
+        }
+        assert response["summary_index_status"] is None
 
     @patch("controllers.service_api.dataset.document.DocumentService")
-    def test_get_document_not_found(self, mock_doc_svc: Mock, app: Flask, mock_tenant: Mock) -> None:
+    def test_get_document_not_found(self, mock_doc_svc: Mock, app: Flask, mock_tenant: str) -> None:
         """Test 404 when document is not found."""
         # Arrange
         dataset_id = str(uuid.uuid4())
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
+        mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant)
 
         mock_doc_svc.get_document.return_value = None
+        session = MagicMock()
+        session.scalar.return_value = mock_dataset
 
         # Act & Assert
         with app.test_request_context(
@@ -634,20 +742,27 @@ class TestDocumentApiGet:
             api = DocumentApi()
             with patch.object(api, "get_dataset", return_value=mock_dataset):
                 with pytest.raises(NotFound):
-                    api.get(tenant_id=mock_tenant.id, dataset_id=dataset_id, document_id="nonexistent")
+                    inspect.unwrap(type(api).get)(
+                        api,
+                        session,
+                        tenant_id=mock_tenant,
+                        dataset_id=dataset_id,
+                        document_id="nonexistent",
+                    )
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     def test_get_document_forbidden_wrong_tenant(
-        self, mock_doc_svc: Mock, app: Flask, mock_tenant: Mock, mock_doc_detail: Mock
+        self, mock_doc_svc: Mock, app: Flask, mock_tenant: str, mock_doc_detail: Document
     ) -> None:
         """Test 403 when document tenant doesn't match request tenant."""
         # Arrange
         dataset_id = str(uuid.uuid4())
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
+        mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant)
 
         mock_doc_detail.tenant_id = "different-tenant-id"
         mock_doc_svc.get_document.return_value = mock_doc_detail
+        session = MagicMock()
+        session.scalar.return_value = mock_dataset
 
         # Act & Assert
         with app.test_request_context(
@@ -657,20 +772,26 @@ class TestDocumentApiGet:
             api = DocumentApi()
             with patch.object(api, "get_dataset", return_value=mock_dataset):
                 with pytest.raises(Forbidden):
-                    api.get(tenant_id=mock_tenant.id, dataset_id=dataset_id, document_id=mock_doc_detail.id)
+                    inspect.unwrap(type(api).get)(
+                        api,
+                        session,
+                        tenant_id=mock_tenant,
+                        dataset_id=dataset_id,
+                        document_id=mock_doc_detail.id,
+                    )
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     def test_get_document_metadata_only(
-        self, mock_doc_svc: Mock, app: Flask, mock_tenant: Mock, mock_doc_detail: Mock
+        self, mock_doc_svc: Mock, app: Flask, mock_tenant: str, mock_doc_detail: Document
     ) -> None:
         """Test document retrieval with metadata='only'."""
         # Arrange
         dataset_id = str(uuid.uuid4())
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
-        mock_dataset.summary_index_setting = None
+        mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant, summary_index_setting=None)
 
         mock_doc_svc.get_document.return_value = mock_doc_detail
+        session = MagicMock()
+        session.scalar.return_value = mock_dataset
 
         # Act
         with app.test_request_context(
@@ -679,28 +800,41 @@ class TestDocumentApiGet:
         ):
             api = DocumentApi()
             with patch.object(api, "get_dataset", return_value=mock_dataset):
-                response = api.get(tenant_id=mock_tenant.id, dataset_id=dataset_id, document_id=mock_doc_detail.id)
+                response = inspect.unwrap(type(api).get)(
+                    api,
+                    session,
+                    tenant_id=mock_tenant,
+                    dataset_id=dataset_id,
+                    document_id=mock_doc_detail.id,
+                )
 
         # Assert — metadata='only' returns only id, doc_type, doc_metadata
         assert response["id"] == mock_doc_detail.id
-        assert "doc_type" in response
-        assert "doc_metadata" in response
-        assert "name" not in response
+        assert response == {
+            "id": mock_doc_detail.id,
+            "doc_type": mock_doc_detail.doc_type,
+            "doc_metadata": None,
+        }
 
     @patch("controllers.service_api.dataset.document.DatasetService")
     @patch("controllers.service_api.dataset.document.DocumentService")
     def test_get_document_metadata_without(
-        self, mock_doc_svc: Mock, mock_dataset_svc: Mock, app: Flask, mock_tenant: Mock, mock_doc_detail: Mock
+        self,
+        mock_doc_svc: Mock,
+        mock_dataset_svc: Mock,
+        app: Flask,
+        mock_tenant: str,
+        mock_doc_detail: Document,
     ) -> None:
         """Test document retrieval with metadata='without'."""
         # Arrange
         dataset_id = str(uuid.uuid4())
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
-        mock_dataset.summary_index_setting = None
+        mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant, summary_index_setting=None)
 
         mock_doc_svc.get_document.return_value = mock_doc_detail
-        mock_dataset_svc.get_process_rules.return_value = []
+        mock_dataset_svc.get_process_rules.return_value = {"mode": "automatic", "rules": {}}
+        session = MagicMock()
+        session.scalar.side_effect = [5, 0]
 
         # Act
         with app.test_request_context(
@@ -709,26 +843,66 @@ class TestDocumentApiGet:
         ):
             api = DocumentApi()
             with patch.object(api, "get_dataset", return_value=mock_dataset):
-                response = api.get(tenant_id=mock_tenant.id, dataset_id=dataset_id, document_id=mock_doc_detail.id)
+                response = inspect.unwrap(type(api).get)(
+                    api,
+                    session,
+                    tenant_id=mock_tenant,
+                    dataset_id=dataset_id,
+                    document_id=mock_doc_detail.id,
+                )
 
         # Assert — metadata='without' omits doc_type / doc_metadata
         assert response["id"] == mock_doc_detail.id
         assert "doc_type" not in response
         assert "doc_metadata" not in response
         assert "name" in response
+        assert set(response) == {
+            "id",
+            "position",
+            "data_source_type",
+            "data_source_info",
+            "dataset_process_rule_id",
+            "dataset_process_rule",
+            "document_process_rule",
+            "name",
+            "created_from",
+            "created_by",
+            "created_at",
+            "tokens",
+            "indexing_status",
+            "completed_at",
+            "updated_at",
+            "indexing_latency",
+            "error",
+            "enabled",
+            "disabled_at",
+            "disabled_by",
+            "archived",
+            "segment_count",
+            "average_segment_length",
+            "hit_count",
+            "display_status",
+            "doc_form",
+            "doc_language",
+            "summary_index_status",
+            "need_summary",
+        }
+        assert response["error"] is None
+        assert response["disabled_at"] is None
+        assert response["disabled_by"] is None
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     def test_get_document_invalid_metadata_value(
-        self, mock_doc_svc: Mock, app: Flask, mock_tenant: Mock, mock_doc_detail: Mock
+        self, mock_doc_svc: Mock, app: Flask, mock_tenant: str, mock_doc_detail: Document
     ) -> None:
         """Test error when metadata parameter has invalid value."""
         # Arrange
         dataset_id = str(uuid.uuid4())
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
-        mock_dataset.summary_index_setting = None
+        mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant, summary_index_setting=None)
 
         mock_doc_svc.get_document.return_value = mock_doc_detail
+        session = MagicMock()
+        session.scalar.return_value = mock_dataset
 
         # Act & Assert
         with app.test_request_context(
@@ -738,7 +912,13 @@ class TestDocumentApiGet:
             api = DocumentApi()
             with patch.object(api, "get_dataset", return_value=mock_dataset):
                 with pytest.raises(InvalidMetadataError):
-                    api.get(tenant_id=mock_tenant.id, dataset_id=dataset_id, document_id=mock_doc_detail.id)
+                    inspect.unwrap(type(api).get)(
+                        api,
+                        session,
+                        tenant_id=mock_tenant,
+                        dataset_id=dataset_id,
+                        document_id=mock_doc_detail.id,
+                    )
 
 
 class TestDocumentApiDelete:
@@ -746,16 +926,9 @@ class TestDocumentApiDelete:
 
     ``delete`` is wrapped by ``@cloud_edition_billing_rate_limit_check`` which
     internally calls ``validate_and_get_api_token``.  To bypass the decorator
-    we call the original function via ``__wrapped__`` (preserved by
-    ``functools.wraps``).  ``delete`` loads the dataset via
-    ``db.session.scalar(select(Dataset)...)``, so we patch ``db`` at the
-    controller module.
+    we call the original function via ``inspect.unwrap`` (preserved by
+    ``functools.wraps``) and pass the test session explicitly.
     """
-
-    @staticmethod
-    def _call_delete(api: DocumentApi, **kwargs):
-        """Call the unwrapped delete to skip billing decorators."""
-        return api.delete.__wrapped__(api, **kwargs)
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.db")
@@ -763,8 +936,7 @@ class TestDocumentApiDelete:
         """Test successful document deletion."""
         # Arrange
         dataset_id = str(uuid.uuid4())
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
+        mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant)
         mock_db.session.scalar.return_value = mock_dataset
 
         mock_doc_svc.get_document.return_value = mock_document
@@ -777,8 +949,13 @@ class TestDocumentApiDelete:
             method="DELETE",
         ):
             api = DocumentApi()
-            response = self._call_delete(
-                api, tenant_id=mock_tenant.id, dataset_id=dataset_id, document_id=mock_document.id
+            delete = inspect.unwrap(type(api).delete)
+            response = delete(
+                api,
+                mock_db.session,
+                tenant_id=mock_tenant,
+                dataset_id=dataset_id,
+                document_id=mock_document.id,
             )
 
         # Assert
@@ -792,8 +969,7 @@ class TestDocumentApiDelete:
         # Arrange
         dataset_id = str(uuid.uuid4())
         document_id = str(uuid.uuid4())
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
+        mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant)
         mock_db.session.scalar.return_value = mock_dataset
 
         mock_doc_svc.get_document.return_value = None
@@ -804,8 +980,15 @@ class TestDocumentApiDelete:
             method="DELETE",
         ):
             api = DocumentApi()
+            delete = inspect.unwrap(type(api).delete)
             with pytest.raises(NotFound):
-                self._call_delete(api, tenant_id=mock_tenant.id, dataset_id=dataset_id, document_id=document_id)
+                delete(
+                    api,
+                    mock_db.session,
+                    tenant_id=mock_tenant,
+                    dataset_id=dataset_id,
+                    document_id=document_id,
+                )
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.db")
@@ -813,8 +996,7 @@ class TestDocumentApiDelete:
         """Test ArchivedDocumentImmutableError when deleting archived document."""
         # Arrange
         dataset_id = str(uuid.uuid4())
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
+        mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant)
         mock_db.session.scalar.return_value = mock_dataset
 
         mock_doc_svc.get_document.return_value = mock_document
@@ -826,8 +1008,15 @@ class TestDocumentApiDelete:
             method="DELETE",
         ):
             api = DocumentApi()
+            delete = inspect.unwrap(type(api).delete)
             with pytest.raises(ArchivedDocumentImmutableError):
-                self._call_delete(api, tenant_id=mock_tenant.id, dataset_id=dataset_id, document_id=mock_document.id)
+                delete(
+                    api,
+                    mock_db.session,
+                    tenant_id=mock_tenant,
+                    dataset_id=dataset_id,
+                    document_id=mock_document.id,
+                )
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.db")
@@ -844,31 +1033,40 @@ class TestDocumentApiDelete:
             method="DELETE",
         ):
             api = DocumentApi()
+            delete = inspect.unwrap(type(api).delete)
             with pytest.raises(ValueError, match="Dataset does not exist."):
-                self._call_delete(api, tenant_id=mock_tenant.id, dataset_id=dataset_id, document_id=document_id)
+                delete(
+                    api,
+                    mock_db.session,
+                    tenant_id=mock_tenant,
+                    dataset_id=dataset_id,
+                    document_id=document_id,
+                )
 
 
 class TestDocumentListApi:
     """Test suite for DocumentListApi endpoint."""
 
+    @patch("controllers.service_api.dataset.document.paginate_query")
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.db")
-    def test_list_documents_success(self, mock_db, mock_doc_svc, app: Flask, mock_tenant, mock_dataset):
+    def test_list_documents_success(self, mock_db, mock_doc_svc, mock_paginate, app: Flask, mock_tenant, mock_dataset):
         """Test successful document list retrieval."""
         # Arrange
-        mock_db.session.scalar.return_value = mock_dataset
+        mock_db.session.scalar.side_effect = [mock_dataset, 0, 0]
 
-        mock_pagination = Mock()
-        mock_pagination.items = [
+        documents = [
             make_serializable_document(
                 id="doc-1",
                 name="Document 1",
-                doc_metadata_details=[{"id": "meta-1", "name": "amount", "type": "number", "value": 42}],
+                tenant_id=mock_tenant,
+                dataset_id=mock_dataset.id,
             ),
-            make_serializable_document(id="doc-2", name="Document 2"),
+            make_serializable_document(
+                id="doc-2", name="Document 2", tenant_id=mock_tenant, dataset_id=mock_dataset.id
+            ),
         ]
-        mock_pagination.total = 2
-        mock_db.paginate.return_value = mock_pagination
+        mock_paginate.return_value = _PaginationRecord(items=documents, total=2)
 
         mock_doc_svc.enrich_documents_with_summary_index_status.return_value = None
 
@@ -878,17 +1076,18 @@ class TestDocumentListApi:
             method="GET",
         ):
             api = DocumentListApi()
-            response = api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
+            response = inspect.unwrap(type(api).get)(
+                api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+            )
 
         # Assert
-        assert "data" in response
-        assert "total" in response
-        assert response["page"] == 1
-        assert response["limit"] == 20
-        assert response["total"] == 2
-        assert response["data"][0]["id"] == "doc-1"
-        assert response["data"][0]["data_source_info"] == {"upload_file_id": "file-1"}
-        assert response["data"][0]["doc_metadata"][0]["value"] == 42
+        assert response == {
+            "data": [_expected_document_response(documents[0]), _expected_document_response(documents[1])],
+            "has_more": False,
+            "limit": 20,
+            "total": 2,
+            "page": 1,
+        }
         assert "data_source_info_dict" not in response["data"][0]
         assert "doc_metadata_details" not in response["data"][0]
 
@@ -905,7 +1104,7 @@ class TestDocumentListApi:
         ):
             api = DocumentListApi()
             with pytest.raises(NotFound):
-                api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
+                inspect.unwrap(type(api).get)(api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id)
 
 
 class TestDocumentIndexingStatusApi:
@@ -917,20 +1116,14 @@ class TestDocumentIndexingStatusApi:
         """Test successful indexing status retrieval."""
         # Arrange
         batch_id = "batch_123"
-        mock_doc = Mock()
-        mock_doc.id = str(uuid.uuid4())
-        mock_doc.is_paused = False
-        mock_doc.indexing_status = "completed"
-        mock_doc.processing_started_at = None
-        mock_doc.parsing_completed_at = None
-        mock_doc.cleaning_completed_at = None
-        mock_doc.splitting_completed_at = None
-        mock_doc.completed_at = None
-        mock_doc.paused_at = None
-        mock_doc.error = None
-        mock_doc.stopped_at = None
+        document = make_serializable_document(
+            id=str(uuid.uuid4()),
+            tenant_id=mock_tenant,
+            dataset_id=mock_dataset.id,
+            completed_at=datetime(2021, 1, 1, 0, 0, 4, tzinfo=UTC),
+        )
 
-        mock_doc_svc.get_batch_documents.return_value = [mock_doc]
+        mock_doc_svc.get_batch_documents.return_value = [document]
 
         # scalar() called 3 times: dataset lookup, completed_segments count, total_segments count
         mock_db.session.scalar.side_effect = [mock_dataset, 5, 5]
@@ -941,17 +1134,33 @@ class TestDocumentIndexingStatusApi:
             method="GET",
         ):
             api = DocumentIndexingStatusApi()
-            response = api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id, batch=batch_id)
+            response = inspect.unwrap(type(api).get)(
+                api,
+                mock_db.session,
+                tenant_id=mock_tenant,
+                dataset_id=mock_dataset.id,
+                batch=batch_id,
+            )
 
         # Assert
-        assert "data" in response
-        assert len(response["data"]) == 1
-        item = response["data"][0]
-        assert item["id"] == mock_doc.id
-        assert item["indexing_status"] == "completed"
-        assert item["completed_segments"] == 5
-        assert item["total_segments"] == 5
-        assert item["processing_started_at"] is None
+        assert response == {
+            "data": [
+                {
+                    "id": document.id,
+                    "indexing_status": "completed",
+                    "processing_started_at": 1609459200,
+                    "parsing_completed_at": 1609459201,
+                    "cleaning_completed_at": 1609459202,
+                    "splitting_completed_at": 1609459203,
+                    "completed_at": 1609459204,
+                    "paused_at": None,
+                    "error": None,
+                    "stopped_at": None,
+                    "completed_segments": 5,
+                    "total_segments": 5,
+                }
+            ]
+        }
 
     @patch("controllers.service_api.dataset.document.db")
     def test_get_indexing_status_dataset_not_found(self, mock_db, app: Flask, mock_tenant, mock_dataset):
@@ -967,7 +1176,13 @@ class TestDocumentIndexingStatusApi:
         ):
             api = DocumentIndexingStatusApi()
             with pytest.raises(NotFound):
-                api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id, batch=batch_id)
+                inspect.unwrap(type(api).get)(
+                    api,
+                    mock_db.session,
+                    tenant_id=mock_tenant,
+                    dataset_id=mock_dataset.id,
+                    batch=batch_id,
+                )
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.db")
@@ -987,7 +1202,13 @@ class TestDocumentIndexingStatusApi:
         ):
             api = DocumentIndexingStatusApi()
             with pytest.raises(NotFound):
-                api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id, batch=batch_id)
+                inspect.unwrap(type(api).get)(
+                    api,
+                    mock_db.session,
+                    tenant_id=mock_tenant,
+                    dataset_id=mock_dataset.id,
+                    batch=batch_id,
+                )
 
 
 class TestDocumentAddByTextApi:
@@ -1050,9 +1271,9 @@ class TestDocumentAddByTextApi:
     ):
         """Test successful document creation by text."""
         # Arrange — neutralise billing decorators
-        self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
 
-        mock_db.session.scalar.return_value = mock_dataset
+        mock_db.session.scalar.side_effect = [mock_dataset, None, 0]
         mock_dataset.indexing_technique = "economy"
         mock_current_user.id = str(uuid.uuid4())
 
@@ -1081,17 +1302,17 @@ class TestDocumentAddByTextApi:
             headers={"Authorization": "Bearer test_token"},
         ):
             api = DocumentAddByTextApi()
-            response, status = api.post(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
+            response, status = _unwrap_non_wrapped_controller(type(api).post)(
+                api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+            )
 
         # Assert
-        assert status == 200
-        assert "document" in response
-        assert "batch" in response
-        assert response["batch"] == "batch_123"
-        assert response["document"]["id"] == "doc-create-text"
-        assert response["document"]["data_source_info"] == {"upload_file_id": "file-1"}
-        assert response["document"]["doc_metadata"] == []
+        assert (response, status) == (
+            {"document": _expected_document_response(mock_doc), "batch": "batch_123"},
+            200,
+        )
         assert "data_source_info_dict" not in response["document"]
+        assert mock_doc_svc.save_document_with_dataset_id.call_args.kwargs["session"] is mock_db.session
 
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
@@ -1101,7 +1322,7 @@ class TestDocumentAddByTextApi:
     ):
         """Test ValueError when dataset not found."""
         # Arrange — neutralise billing decorators
-        self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
 
         mock_db.session.scalar.return_value = None
 
@@ -1114,7 +1335,9 @@ class TestDocumentAddByTextApi:
         ):
             api = DocumentAddByTextApi()
             with pytest.raises(ValueError, match="Dataset does not exist."):
-                api.post(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                )
 
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
@@ -1129,7 +1352,7 @@ class TestDocumentAddByTextApi:
         document creation paths instead of leaking a ``KeyError`` from the dumped payload dict.
         """
         # Arrange — neutralise billing decorators
-        self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
 
         mock_dataset.indexing_technique = None
         mock_db.session.scalar.return_value = mock_dataset
@@ -1143,7 +1366,9 @@ class TestDocumentAddByTextApi:
         ):
             api = DocumentAddByTextApi()
             with pytest.raises(ValueError, match="indexing_technique is required."):
-                api.post(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                )
 
 
 class TestArchivedDocumentImmutableError:
@@ -1236,10 +1461,9 @@ class TestDocumentUpdateByTextApiPost:
         mock_dataset,
     ):
         """Test successful document update by text."""
-        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
         mock_dataset.indexing_technique = "economy"
-        mock_dataset.latest_process_rule = Mock()
-        mock_db.session.scalar.return_value = mock_dataset
+        mock_db.session.scalar.side_effect = [mock_dataset, None, 0]
 
         mock_current_user.id = "user-1"
         mock_upload = Mock()
@@ -1258,17 +1482,18 @@ class TestDocumentUpdateByTextApiPost:
             headers={"Authorization": "Bearer test_token"},
         ):
             api = DocumentUpdateByTextApi()
-            response, status = api.post(
-                tenant_id=mock_tenant.id,
+            response, status = _unwrap_non_wrapped_controller(type(api).post)(
+                api,
+                mock_db.session,
+                tenant_id=mock_tenant,
                 dataset_id=mock_dataset.id,
                 document_id=doc_id,
             )
 
-        assert status == 200
-        assert "document" in response
-        assert response["batch"] == "batch-1"
-        assert response["document"]["id"] == "doc-update-text"
-        assert response["document"]["doc_metadata"] == []
+        assert (response, status) == (
+            {"document": _expected_document_response(mock_document), "batch": "batch-1"},
+            200,
+        )
 
     @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
@@ -1283,7 +1508,7 @@ class TestDocumentUpdateByTextApiPost:
         mock_dataset,
     ):
         """Test ValueError when dataset not found."""
-        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
         mock_db.session.scalar.return_value = None
 
         doc_id = str(uuid.uuid4())
@@ -1295,8 +1520,10 @@ class TestDocumentUpdateByTextApiPost:
         ):
             api = DocumentUpdateByTextApi()
             with pytest.raises(ValueError, match="Dataset does not exist"):
-                api.post(
-                    tenant_id=mock_tenant.id,
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api,
+                    mock_db.session,
+                    tenant_id=mock_tenant,
                     dataset_id=mock_dataset.id,
                     document_id=doc_id,
                 )
@@ -1328,13 +1555,11 @@ class TestDocumentAddByFileApiPost:
         mock_dataset,
     ):
         """Test successful document creation by file."""
-        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
         mock_dataset.provider = "vendor"
         mock_dataset.indexing_technique = "economy"
         mock_dataset.chunk_structure = None
-        mock_dataset.latest_process_rule = Mock()
-        mock_dataset.created_by_account = Mock()
-        mock_db.session.scalar.return_value = mock_dataset
+        mock_db.session.scalar.side_effect = [mock_dataset, 0]
 
         mock_current_user.id = "user-1"
         mock_upload = Mock()
@@ -1347,7 +1572,10 @@ class TestDocumentAddByFileApiPost:
 
         from io import BytesIO
 
-        data = {"file": (BytesIO(b"content"), "test.pdf", "application/pdf")}
+        data = {
+            "file": (BytesIO(b"content"), "test.pdf", "application/pdf"),
+            "data": json.dumps({"process_rule": {"mode": "automatic", "rules": None}}),
+        }
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/document/create-by-file",
             method="POST",
@@ -1356,13 +1584,14 @@ class TestDocumentAddByFileApiPost:
             headers={"Authorization": "Bearer test_token"},
         ):
             api = DocumentAddByFileApi()
-            response, status = api.post(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
+            response, status = _unwrap_non_wrapped_controller(type(api).post)(
+                api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+            )
 
-        assert status == 200
-        assert response["batch"] == "batch-file"
-        assert response["document"]["id"] == "doc-create-file"
-        assert response["document"]["data_source_info"] == {"upload_file_id": "file-1"}
-        assert response["document"]["doc_metadata"] == []
+        assert (response, status) == (
+            {"document": _expected_document_response(mock_document), "batch": "batch-file"},
+            200,
+        )
 
     @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
@@ -1377,7 +1606,7 @@ class TestDocumentAddByFileApiPost:
         mock_dataset,
     ):
         """Test ValueError when dataset not found."""
-        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
         mock_db.session.scalar.return_value = None
 
         from io import BytesIO
@@ -1392,7 +1621,9 @@ class TestDocumentAddByFileApiPost:
         ):
             api = DocumentAddByFileApi()
             with pytest.raises(ValueError, match="Dataset does not exist"):
-                api.post(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                )
 
     @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
@@ -1407,7 +1638,7 @@ class TestDocumentAddByFileApiPost:
         mock_dataset,
     ):
         """Test ValueError when dataset is external."""
-        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
         mock_dataset.provider = "external"
         mock_db.session.scalar.return_value = mock_dataset
 
@@ -1423,7 +1654,9 @@ class TestDocumentAddByFileApiPost:
         ):
             api = DocumentAddByFileApi()
             with pytest.raises(ValueError, match="External datasets"):
-                api.post(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                )
 
     @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
@@ -1440,7 +1673,7 @@ class TestDocumentAddByFileApiPost:
         """Test NoFileUploadedError when no file in request."""
         from controllers.common.errors import NoFileUploadedError
 
-        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
         mock_dataset.provider = "vendor"
         mock_dataset.indexing_technique = "economy"
         mock_dataset.chunk_structure = None
@@ -1455,7 +1688,9 @@ class TestDocumentAddByFileApiPost:
         ):
             api = DocumentAddByFileApi()
             with pytest.raises(NoFileUploadedError):
-                api.post(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                )
 
     @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
@@ -1470,7 +1705,7 @@ class TestDocumentAddByFileApiPost:
         mock_dataset,
     ):
         """Test ValueError when indexing_technique is missing."""
-        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
         mock_dataset.provider = "vendor"
         mock_dataset.indexing_technique = None
         mock_dataset.chunk_structure = None
@@ -1488,7 +1723,9 @@ class TestDocumentAddByFileApiPost:
         ):
             api = DocumentAddByFileApi()
             with pytest.raises(ValueError, match="indexing_technique is required"):
-                api.post(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
+                _unwrap_non_wrapped_controller(type(api).post)(
+                    api, mock_db.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                )
 
 
 class TestDocumentUpdateByFileApiPatch:
@@ -1513,26 +1750,36 @@ class TestDocumentUpdateByFileApiPatch:
         mock_dataset,
     ):
         """Test legacy POST aliases still dispatch while marked deprecated."""
-        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
-        mock_update_document_by_file.return_value = ({"document": {"id": "doc-1"}, "batch": "batch-1"}, 200)
+        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
+        mock_update_document_by_file.return_value = (
+            make_serializable_document(id="doc-1", batch="batch-1"),
+            "batch-1",
+        )
 
         doc_id = str(uuid.uuid4())
+        session = MagicMock()
+        session.scalar.return_value = 0
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/{doc_id}/{route_name}",
             method="POST",
             headers={"Authorization": "Bearer test_token"},
         ):
             api = DeprecatedDocumentUpdateByFileApi()
-            response, status = api.post(
-                tenant_id=mock_tenant.id,
+            response, status = _unwrap_non_wrapped_controller(type(api).post)(
+                api,
+                session,
+                tenant_id=mock_tenant,
                 dataset_id=mock_dataset.id,
                 document_id=doc_id,
             )
 
-        assert status == 200
-        assert response["batch"] == "batch-1"
+        assert (response, status) == (
+            {"document": _expected_document_response(mock_update_document_by_file.return_value[0]), "batch": "batch-1"},
+            200,
+        )
         mock_update_document_by_file.assert_called_once_with(
-            tenant_id=mock_tenant.id,
+            session=session,
+            tenant_id=mock_tenant,
             dataset_id=mock_dataset.id,
             document_id=doc_id,
         )
@@ -1550,7 +1797,7 @@ class TestDocumentUpdateByFileApiPatch:
         mock_dataset,
     ):
         """Test ValueError when dataset not found."""
-        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
         mock_db.session.scalar.return_value = None
 
         from io import BytesIO
@@ -1566,8 +1813,10 @@ class TestDocumentUpdateByFileApiPatch:
         ):
             api = DocumentApi()
             with pytest.raises(ValueError, match="Dataset does not exist"):
-                api.patch(
-                    tenant_id=mock_tenant.id,
+                _unwrap_non_wrapped_controller(type(api).patch)(
+                    api,
+                    mock_db.session,
+                    tenant_id=mock_tenant,
                     dataset_id=mock_dataset.id,
                     document_id=doc_id,
                 )
@@ -1585,7 +1834,7 @@ class TestDocumentUpdateByFileApiPatch:
         mock_dataset,
     ):
         """Test ValueError when dataset is external."""
-        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
         mock_dataset.provider = "external"
         mock_db.session.scalar.return_value = mock_dataset
 
@@ -1602,8 +1851,10 @@ class TestDocumentUpdateByFileApiPatch:
         ):
             api = DocumentApi()
             with pytest.raises(ValueError, match="External datasets"):
-                api.patch(
-                    tenant_id=mock_tenant.id,
+                _unwrap_non_wrapped_controller(type(api).patch)(
+                    api,
+                    mock_db.session,
+                    tenant_id=mock_tenant,
                     dataset_id=mock_dataset.id,
                     document_id=doc_id,
                 )
@@ -1627,13 +1878,11 @@ class TestDocumentUpdateByFileApiPatch:
         mock_dataset,
     ):
         """Test successful document update by file."""
-        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
         mock_dataset.indexing_technique = "economy"
         mock_dataset.provider = "vendor"
         mock_dataset.chunk_structure = None
-        mock_dataset.latest_process_rule = Mock()
-        mock_dataset.created_by_account = Mock()
-        mock_db.session.scalar.return_value = mock_dataset
+        mock_db.session.scalar.side_effect = [mock_dataset, None, 0]
 
         mock_current_user.id = "user-1"
         mock_upload = Mock()
@@ -1656,14 +1905,15 @@ class TestDocumentUpdateByFileApiPatch:
             headers={"Authorization": "Bearer test_token"},
         ):
             api = DocumentApi()
-            response, status = api.patch(
-                tenant_id=mock_tenant.id,
+            response, status = _unwrap_non_wrapped_controller(type(api).patch)(
+                api,
+                mock_db.session,
+                tenant_id=mock_tenant,
                 dataset_id=mock_dataset.id,
                 document_id=doc_id,
             )
 
-        assert status == 200
-        assert "document" in response
-        assert response["batch"] == "batch-1"
-        assert response["document"]["id"] == "doc-update-file"
-        assert response["document"]["data_source_info"] == {"upload_file_id": "file-1"}
+        assert (response, status) == (
+            {"document": _expected_document_response(mock_document), "batch": "batch-1"},
+            200,
+        )

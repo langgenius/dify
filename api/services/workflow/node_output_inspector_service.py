@@ -52,9 +52,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.file_access import DatabaseFileAccessController
-from core.db.session_factory import session_factory
 from core.workflow.nodes.agent_v2.binding_resolver import (
     WorkflowAgentBindingError,
     WorkflowAgentBindingResolver,
@@ -410,8 +410,8 @@ class NodeOutputInspectorService:
     The service is dependency-light: it holds a single
     :class:`WorkflowAgentBindingResolver` so agent v2 nodes can map to their
     declared outputs without re-implementing binding lookup. All other I/O
-    uses the global session factory so workflow runs / executions stay on the
-    repo-default code path.
+    receives an explicit SQLAlchemy session from its caller so transaction
+    ownership stays at the controller/task boundary.
 
     Tenancy is enforced via ``app_model.tenant_id`` + ``app_model.id`` on
     every load — the same scope guard regardless of trigger source.
@@ -422,9 +422,13 @@ class NodeOutputInspectorService:
 
     # ── public API ────────────────────────────────────────────────────────
 
-    def snapshot_workflow_run(self, *, app_model: App, workflow_run_id: str) -> WorkflowRunSnapshotView:
+    def snapshot_workflow_run(
+        self, *, app_model: App, workflow_run_id: str, session: Session
+    ) -> WorkflowRunSnapshotView:
         """Build the per-node snapshot for one debug workflow run."""
-        workflow_run, executions = self._load_run_and_executions(app_model=app_model, workflow_run_id=workflow_run_id)
+        workflow_run, executions = self._load_run_and_executions(
+            app_model=app_model, workflow_run_id=workflow_run_id, session=session
+        )
         executions_by_node = self._index_executions_by_node(executions)
         graph_nodes = _graph_nodes(workflow_run)
 
@@ -447,9 +451,11 @@ class NodeOutputInspectorService:
             node_outputs=node_views,
         )
 
-    def node_detail(self, *, app_model: App, workflow_run_id: str, node_id: str) -> NodeOutputsView:
+    def node_detail(self, *, app_model: App, workflow_run_id: str, node_id: str, session: Session) -> NodeOutputsView:
         """Per-node Inspector entry — returns one ``NodeOutputsView``."""
-        workflow_run, executions = self._load_run_and_executions(app_model=app_model, workflow_run_id=workflow_run_id)
+        workflow_run, executions = self._load_run_and_executions(
+            app_model=app_model, workflow_run_id=workflow_run_id, session=session
+        )
         graph_nodes = _graph_nodes(workflow_run)
         raw_node = next((n for n in graph_nodes if str(n.get("id")) == node_id), None)
         if raw_node is None:
@@ -474,9 +480,12 @@ class NodeOutputInspectorService:
         workflow_run_id: str,
         node_id: str,
         output_name: str,
+        session: Session,
     ) -> OutputPreviewView:
         """Full payload for one declared output (with signed file URL)."""
-        workflow_run, executions = self._load_run_and_executions(app_model=app_model, workflow_run_id=workflow_run_id)
+        workflow_run, executions = self._load_run_and_executions(
+            app_model=app_model, workflow_run_id=workflow_run_id, session=session
+        )
         graph_nodes = _graph_nodes(workflow_run)
         raw_node = next((n for n in graph_nodes if str(n.get("id")) == node_id), None)
         if raw_node is None:
@@ -536,7 +545,7 @@ class NodeOutputInspectorService:
     # ── DB loading ────────────────────────────────────────────────────────
 
     def _load_run_and_executions(
-        self, *, app_model: App, workflow_run_id: str
+        self, *, app_model: App, workflow_run_id: str, session: Session
     ) -> tuple[WorkflowRun, Sequence[WorkflowNodeExecutionModel]]:
         """Fetch the ``WorkflowRun`` row + every execution that belongs to it.
 
@@ -548,24 +557,23 @@ class NodeOutputInspectorService:
         deliberately not checked here — D-1 was lifted 2026-05-26 and the
         Inspector now serves both draft and published runs.
         """
-        with session_factory.create_session() as session:
-            workflow_run = session.scalar(
-                select(WorkflowRun).where(
-                    WorkflowRun.id == workflow_run_id,
-                    WorkflowRun.app_id == app_model.id,
-                    WorkflowRun.tenant_id == app_model.tenant_id,
-                )
+        workflow_run = session.scalar(
+            select(WorkflowRun).where(
+                WorkflowRun.id == workflow_run_id,
+                WorkflowRun.app_id == app_model.id,
+                WorkflowRun.tenant_id == app_model.tenant_id,
             )
-            if workflow_run is None:
-                raise NodeOutputInspectorError("workflow_run_not_found", "Workflow run not found.")
+        )
+        if workflow_run is None:
+            raise NodeOutputInspectorError("workflow_run_not_found", "Workflow run not found.")
 
-            executions = session.scalars(
-                select(WorkflowNodeExecutionModel).where(
-                    WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-                    WorkflowNodeExecutionModel.tenant_id == app_model.tenant_id,
-                    WorkflowNodeExecutionModel.app_id == app_model.id,
-                )
-            ).all()
+        executions = session.scalars(
+            select(WorkflowNodeExecutionModel).where(
+                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+                WorkflowNodeExecutionModel.tenant_id == app_model.tenant_id,
+                WorkflowNodeExecutionModel.app_id == app_model.id,
+            )
+        ).all()
 
         return workflow_run, executions
 

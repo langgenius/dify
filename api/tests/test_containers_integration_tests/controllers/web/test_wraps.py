@@ -19,6 +19,8 @@ from controllers.web.wraps import (
     decode_jwt_token,
 )
 
+pytestmark = pytest.mark.usefixtures("db_session_with_containers")
+
 
 class TestValidateWebappToken:
     def test_enterprise_enabled_and_app_auth_requires_webapp_source(self) -> None:

@@ -8,13 +8,17 @@ import type {
   AgentThought,
   MessageDetailResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
+import type { ReactNode } from 'react'
 import type {
-  ReactNode,
-} from 'react'
-import type { FeedbackType, IChatItem, InputForm, ThoughtItem } from '@/app/components/base/chat/chat/type'
+  FeedbackType,
+  IChatItem,
+  InputForm,
+  ThoughtItem,
+} from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import type { Inputs } from '@/models/debug'
 import type { MessageRating } from '@/models/log'
@@ -24,9 +28,15 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
-import { buildChatItemTree, getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
+import {
+  buildChatItemTree,
+  getLastAnswer,
+  isValidGeneratedAnswer,
+} from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import Loading from '@/app/components/base/loading'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -34,7 +44,7 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/comp
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { userProfileAtom } from '@/context/account-state'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
@@ -91,8 +101,7 @@ const disabledFileUploadConfig = {
 const defaultFileUploadMethods = [TransferMethod.local_file, TransferMethod.remote_url]
 
 const toPreviewFileUploadConfig = (fileUpload: FileUpload | undefined) => {
-  if (!fileUpload?.enabled)
-    return disabledFileUploadConfig
+  if (!fileUpload?.enabled) return disabledFileUploadConfig
 
   const allowedFileUploadMethods = fileUpload.allowed_file_upload_methods?.length
     ? fileUpload.allowed_file_upload_methods
@@ -121,7 +130,8 @@ const toPreviewFileUploadConfig = (fileUpload: FileUpload | undefined) => {
   } as ChatConfig['file_upload']
 }
 
-const getModelSettings = (agentSoulConfig?: AgentSoulConfig) => agentSoulConfig?.model?.model_settings ?? {}
+const getModelSettings = (agentSoulConfig?: AgentSoulConfig) =>
+  agentSoulConfig?.model?.model_settings ?? {}
 
 const toEnabledConfig = (config?: { enabled?: boolean } | null) => ({
   ...config,
@@ -129,14 +139,10 @@ const toEnabledConfig = (config?: { enabled?: boolean } | null) => ({
 })
 
 const toInputType = (type: string): InputVarType => {
-  if (type === InputVarType.paragraph)
-    return InputVarType.paragraph
-  if (type === InputVarType.select)
-    return InputVarType.select
-  if (type === InputVarType.number)
-    return InputVarType.number
-  if (type === InputVarType.json || type === InputVarType.jsonObject)
-    return InputVarType.json
+  if (type === InputVarType.paragraph) return InputVarType.paragraph
+  if (type === InputVarType.select) return InputVarType.select
+  if (type === InputVarType.number) return InputVarType.number
+  if (type === InputVarType.json || type === InputVarType.jsonObject) return InputVarType.json
 
   return InputVarType.textInput
 }
@@ -155,7 +161,8 @@ const toInputForm = (variable: NonNullable<AgentSoulConfig['app_variables']>[num
   }
 }
 
-const getAgentSoulInputsForm = (agentSoulConfig?: AgentSoulConfig) => (agentSoulConfig?.app_variables ?? []).map(toInputForm)
+const getAgentSoulInputsForm = (agentSoulConfig?: AgentSoulConfig) =>
+  (agentSoulConfig?.app_variables ?? []).map(toInputForm)
 
 const getAgentSoulInputs = (inputsForm: InputForm[]) => {
   return inputsForm.reduce<Inputs>((acc, input) => {
@@ -204,13 +211,16 @@ const toLegacyPreviewDatasetConfigs = (
       reranking_model_name: retrieval?.reranking_model?.model ?? '',
     },
     top_k: retrieval?.top_k ?? 4,
-    score_threshold_enabled: retrieval?.score_threshold !== undefined && retrieval?.score_threshold !== null,
+    score_threshold_enabled:
+      retrieval?.score_threshold !== undefined && retrieval?.score_threshold !== null,
     score_threshold: retrieval?.score_threshold ?? 0.8,
     datasets: {
-      datasets: datasets.map(dataset => ({
-        enabled: true,
-        id: dataset.id ?? '',
-      })).filter(dataset => dataset.id),
+      datasets: datasets
+        .map((dataset) => ({
+          enabled: true,
+          id: dataset.id ?? '',
+        }))
+        .filter((dataset) => dataset.id),
     },
   }
 }
@@ -224,7 +234,9 @@ const stopAgentChatMessageResponding = (agentId: string, taskId: string) => {
   })
 }
 
-const toFileResponse = (file: NonNullable<MessageDetailResponse['message_files']>[number]): FileResponse => ({
+const toFileResponse = (
+  file: NonNullable<MessageDetailResponse['message_files']>[number],
+): FileResponse => ({
   related_id: file.id ?? file.upload_file_id,
   extension: '',
   filename: file.filename,
@@ -237,20 +249,24 @@ const toFileResponse = (file: NonNullable<MessageDetailResponse['message_files']
   remote_url: file.url ?? '',
 })
 
-const toLogMessages = (message: MessageDetailResponse['message'], answer: string, files: MessageDetailResponse['message_files']) => {
-  if (!Array.isArray(message))
-    return []
+const toLogMessages = (
+  message: MessageDetailResponse['message'],
+  answer: string,
+  files: MessageDetailResponse['message_files'],
+) => {
+  if (!Array.isArray(message)) return []
 
   const logMessages = message as IChatItem['log']
-  if (logMessages?.at(-1)?.role === 'assistant')
-    return logMessages
+  if (logMessages?.at(-1)?.role === 'assistant') return logMessages
 
   return [
     ...(logMessages ?? []),
     {
       role: 'assistant',
       text: answer,
-      files: getProcessedFilesFromResponse((files?.filter(file => file.belongs_to === 'assistant') || []).map(toFileResponse)),
+      files: getProcessedFilesFromResponse(
+        (files?.filter((file) => file.belongs_to === 'assistant') || []).map(toFileResponse),
+      ),
     },
   ]
 }
@@ -259,6 +275,7 @@ const toAgentThoughtItem = (thought: AgentThought, conversationId: string): Thou
   id: thought.id,
   tool: thought.tool ?? '',
   thought: thought.thought ?? '',
+  answer: thought.answer ?? '',
   tool_input: thought.tool_input ?? '',
   message_id: thought.message_id,
   conversation_id: conversationId,
@@ -267,13 +284,13 @@ const toAgentThoughtItem = (thought: AgentThought, conversationId: string): Thou
   files: thought.files,
 })
 
-const toFeedback = (feedback: NonNullable<MessageDetailResponse['feedbacks']>[number] | undefined): FeedbackType | undefined => {
-  if (!feedback)
-    return undefined
+const toFeedback = (
+  feedback: NonNullable<MessageDetailResponse['feedbacks']>[number] | undefined,
+): FeedbackType | undefined => {
+  if (!feedback) return undefined
 
   const rating = feedback.rating as MessageRating
-  if (rating !== 'like' && rating !== 'dislike' && rating !== null)
-    return undefined
+  if (rating !== 'like' && rating !== 'dislike' && rating !== null) return undefined
 
   return {
     rating,
@@ -288,8 +305,7 @@ const getAgentDebugMessageAnswer = (message: MessageDetailResponse) => {
 function getLastWorkflowRunId(messages: MessageDetailResponse[]) {
   for (let index = messages.length - 1; index >= 0; index--) {
     const workflowRunId = messages[index]?.workflow_run_id
-    if (workflowRunId)
-      return workflowRunId
+    if (workflowRunId) return workflowRunId
   }
 
   return null
@@ -300,8 +316,8 @@ function getFormattedAgentDebugChatTree(messages: MessageDetailResponse[]): Chat
 
   messages.forEach((item) => {
     const answer = getAgentDebugMessageAnswer(item)
-    const questionFiles = item.message_files?.filter(file => file.belongs_to === 'user') || []
-    const answerFiles = item.message_files?.filter(file => file.belongs_to === 'assistant') || []
+    const questionFiles = item.message_files?.filter((file) => file.belongs_to === 'user') || []
+    const answerFiles = item.message_files?.filter((file) => file.belongs_to === 'assistant') || []
     const answerTokens = item.answer_tokens ?? 0
     const messageTokens = item.message_tokens ?? 0
     const latency = item.provider_response_latency ?? 0
@@ -317,10 +333,14 @@ function getFormattedAgentDebugChatTree(messages: MessageDetailResponse[]): Chat
       id: item.id,
       content: answer,
       agent_thoughts: addFileInfos(
-        sortAgentSorts((item.agent_thoughts ?? []).map(thought => toAgentThoughtItem(thought, item.conversation_id))),
+        sortAgentSorts(
+          (item.agent_thoughts ?? []).map((thought) =>
+            toAgentThoughtItem(thought, item.conversation_id),
+          ),
+        ),
         item.message_files as unknown as FileEntity[],
       ),
-      feedback: toFeedback(item.feedbacks?.find(feedback => feedback.from_source === 'user')),
+      feedback: toFeedback(item.feedbacks?.find((feedback) => feedback.from_source === 'user')),
       isAnswer: true,
       log: toLogMessages(item.message, answer, item.message_files),
       message_files: getProcessedFilesFromResponse(answerFiles.map(toFileResponse)),
@@ -371,7 +391,7 @@ const buildChatConfig = ({
     prompt_type: PromptMode.simple,
     chat_prompt_config: DEFAULT_CHAT_PROMPT_CONFIG,
     completion_prompt_config: DEFAULT_COMPLETION_PROMPT_CONFIG,
-    user_input_form: (agentSoulConfig?.app_variables ?? []).map(variable => ({
+    user_input_form: (agentSoulConfig?.app_variables ?? []).map((variable) => ({
       'text-input': {
         default: String(variable.default ?? ''),
         label: variable.name,
@@ -384,7 +404,9 @@ const buildChatConfig = ({
     dataset_query_variable: '',
     opening_statement: appFeatures.opening_statement ?? '',
     suggested_questions: appFeatures.suggested_questions ?? [],
-    suggested_questions_after_answer: toEnabledConfig(appFeatures.suggested_questions_after_answer) as ChatConfig['suggested_questions_after_answer'],
+    suggested_questions_after_answer: toEnabledConfig(
+      appFeatures.suggested_questions_after_answer,
+    ) as ChatConfig['suggested_questions_after_answer'],
     more_like_this: { enabled: false },
     text_to_speech: toEnabledConfig(appFeatures.text_to_speech) as ChatConfig['text_to_speech'],
     speech_to_text: toEnabledConfig(appFeatures.speech_to_text),
@@ -448,12 +470,14 @@ export type AgentChatRuntimeProps = {
   conversationId?: string | null
   draftType?: 'debug_build'
   inputPlaceholder: string
+  inputAutoFocus?: boolean
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onConversationIdChange?: (conversationId: string) => void
   onWorkflowRunIdChange?: (workflowRunId: string | null) => void
+  onBeforeSpeechToText?: () => Promise<unknown>
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
 }
@@ -469,41 +493,49 @@ export function AgentChatRuntime({
   conversationId,
   draftType,
   inputPlaceholder,
+  inputAutoFocus,
   sendButtonLabel,
   renderEmptyState,
   onClearChatListChange,
   onConversationComplete,
   onConversationIdChange,
   onWorkflowRunIdChange,
+  onBeforeSpeechToText,
   onSendInterrupted,
   onSaveDraftBeforeRun,
 }: AgentChatRuntimeProps) {
-  const [currentSessionConversationId, setCurrentSessionConversationId] = useState<string | null>(null)
-  const handleClearChatListChange = useCallback((nextClearChatList: boolean) => {
-    if (!nextClearChatList)
-      setCurrentSessionConversationId(null)
-    onClearChatListChange(nextClearChatList)
-  }, [onClearChatListChange])
-  const historyQuery = useQuery(consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
-    input: conversationId
-      ? {
-          params: {
-            agent_id: agentId,
-          },
-          query: {
-            conversation_id: conversationId,
-          },
-        }
-      : skipToken,
-  }))
-  const conversationBelongsToCurrentSession = !!conversationId && conversationId === currentSessionConversationId
+  const [currentSessionConversationId, setCurrentSessionConversationId] = useState<string | null>(
+    null,
+  )
+  const handleClearChatListChange = useCallback(
+    (nextClearChatList: boolean) => {
+      if (!nextClearChatList) setCurrentSessionConversationId(null)
+      onClearChatListChange(nextClearChatList)
+    },
+    [onClearChatListChange],
+  )
+  const historyQuery = useQuery(
+    consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
+      input: conversationId
+        ? {
+            params: {
+              agent_id: agentId,
+            },
+            query: {
+              conversation_id: conversationId,
+            },
+          }
+        : skipToken,
+    }),
+  )
+  const conversationBelongsToCurrentSession =
+    !!conversationId && conversationId === currentSessionConversationId
   const initialChatTree = useMemo(
     () => getFormattedAgentDebugChatTree(historyQuery.data?.data ?? []),
     [historyQuery.data?.data],
   )
   useEffect(() => {
-    if (!conversationId || !historyQuery.data)
-      return
+    if (!conversationId || !historyQuery.data) return
 
     onWorkflowRunIdChange?.(getLastWorkflowRunId(historyQuery.data.data ?? []))
   }, [conversationId, historyQuery.data, onWorkflowRunIdChange])
@@ -515,9 +547,10 @@ export function AgentChatRuntime({
       </div>
     )
   }
-  const chatSessionKey = !conversationId || conversationBelongsToCurrentSession
-    ? 'current-session'
-    : `${conversationId}-${historyQuery.dataUpdatedAt}`
+  const chatSessionKey =
+    !conversationId || conversationBelongsToCurrentSession
+      ? 'current-session'
+      : `${conversationId}-${historyQuery.dataUpdatedAt}`
 
   return (
     <AgentPreviewChatSession
@@ -533,12 +566,14 @@ export function AgentChatRuntime({
       draftType={draftType}
       initialChatTree={initialChatTree}
       inputPlaceholder={inputPlaceholder}
+      inputAutoFocus={inputAutoFocus}
       sendButtonLabel={sendButtonLabel}
       renderEmptyState={renderEmptyState}
       onClearChatListChange={handleClearChatListChange}
       onConversationComplete={onConversationComplete}
       onConversationIdChange={onConversationIdChange}
       onCurrentSessionConversationIdChange={setCurrentSessionConversationId}
+      onBeforeSpeechToText={onBeforeSpeechToText}
       onSendInterrupted={onSendInterrupted}
       onSaveDraftBeforeRun={onSaveDraftBeforeRun}
     />
@@ -557,12 +592,14 @@ function AgentPreviewChatSession({
   draftType,
   initialChatTree,
   inputPlaceholder,
+  inputAutoFocus,
   sendButtonLabel,
   renderEmptyState,
   onClearChatListChange,
   onConversationComplete,
   onConversationIdChange,
   onCurrentSessionConversationIdChange,
+  onBeforeSpeechToText,
   onSendInterrupted,
   onSaveDraftBeforeRun,
 }: {
@@ -577,37 +614,43 @@ function AgentPreviewChatSession({
   draftType?: 'debug_build'
   initialChatTree: ChatItemInTree[]
   inputPlaceholder: string
+  inputAutoFocus?: boolean
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onConversationIdChange?: (conversationId: string) => void
   onCurrentSessionConversationIdChange: (conversationId: string) => void
+  onBeforeSpeechToText?: () => Promise<unknown>
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
 }) {
+  const { t } = useTranslation('agentV2')
   const queryClient = useQueryClient()
-  const { userProfile } = useAppContext()
+  const userProfile = useAtomValue(userProfileAtom)
   const prompt = useAtomValue(agentComposerPromptAtom)
   const currentModel = useAtomValue(agentComposerModelAtom)
-  const config = useMemo(() => buildChatConfig({
-    agentSoulConfig,
-    currentModel,
-    prompt,
-  }), [agentSoulConfig, currentModel, prompt])
+  const config = useMemo(
+    () =>
+      buildChatConfig({
+        agentSoulConfig,
+        currentModel,
+        prompt,
+      }),
+    [agentSoulConfig, currentModel, prompt],
+  )
   const inputsForm = useMemo(() => getAgentSoulInputsForm(agentSoulConfig), [agentSoulConfig])
   const inputs = useMemo(() => getAgentSoulInputs(inputsForm), [inputsForm])
   const sendInterruptedRef = useRef(false)
+  const [isSendPending, setIsSendPending] = useState(false)
   const notifySendInterrupted = useCallback(() => {
-    if (sendInterruptedRef.current)
-      return
+    if (sendInterruptedRef.current) return
 
     sendInterruptedRef.current = true
     onSendInterrupted?.()
   }, [onSendInterrupted])
-  const {
-    textGenerationModelList,
-  } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
+  const { textGenerationModelList } =
+    useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
   const {
     chatList,
     setTargetMessageId,
@@ -631,43 +674,51 @@ function AgentPreviewChatSession({
     clearChatList,
     onClearChatListChange,
     conversationId ?? undefined,
+    { isNewAgent: true },
   )
 
-  const doSend: OnSend = useCallback(async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
-    sendInterruptedRef.current = false
+  const doSend: OnSend = useCallback(
+    async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+      sendInterruptedRef.current = false
+      setIsSendPending(true)
+      let sendStarted = false
 
-    try {
-      const preparedAgentSoulConfig = await onSaveDraftBeforeRun?.()
-      const runtimeAgentSoulConfig = preparedAgentSoulConfig || agentSoulConfig
-      const runtimeInputsForm = preparedAgentSoulConfig ? getAgentSoulInputsForm(runtimeAgentSoulConfig) : inputsForm
-      const runtimeInputs = preparedAgentSoulConfig ? getAgentSoulInputs(runtimeInputsForm) : inputs
-      const runtimeConfig = preparedAgentSoulConfig
-        ? buildChatConfig({
-            agentSoulConfig: runtimeAgentSoulConfig,
-            currentModel: undefined,
-            prompt: runtimeAgentSoulConfig?.prompt?.system_prompt ?? '',
-          })
-        : config
+      try {
+        const preparedAgentSoulConfig = await onSaveDraftBeforeRun?.()
+        const runtimeAgentSoulConfig = preparedAgentSoulConfig || agentSoulConfig
+        const runtimeInputsForm = preparedAgentSoulConfig
+          ? getAgentSoulInputsForm(runtimeAgentSoulConfig)
+          : inputsForm
+        const runtimeInputs = preparedAgentSoulConfig
+          ? getAgentSoulInputs(runtimeInputsForm)
+          : inputs
+        const runtimeConfig = preparedAgentSoulConfig
+          ? buildChatConfig({
+              agentSoulConfig: runtimeAgentSoulConfig,
+              currentModel: undefined,
+              prompt: runtimeAgentSoulConfig?.prompt?.system_prompt ?? '',
+            })
+          : config
 
-      const currentProvider = textGenerationModelList.find(item => item.provider === runtimeConfig.model.provider)
-      const selectedModel = currentProvider?.models.find(model => model.model === runtimeConfig.model.name)
-      const supportVision = selectedModel?.features?.includes(ModelFeatureEnum.vision)
-      const data: Record<string, unknown> = {
-        query: message,
-        inputs: runtimeInputs,
-        overrideInputsForm: runtimeInputsForm,
-        parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
-      }
-      if (draftType)
-        data.draft_type = draftType
+        const currentProvider = textGenerationModelList.find(
+          (item) => item.provider === runtimeConfig.model.provider,
+        )
+        const selectedModel = currentProvider?.models.find(
+          (model) => model.model === runtimeConfig.model.name,
+        )
+        const supportVision = selectedModel?.features?.includes(ModelFeatureEnum.vision)
+        const data: Record<string, unknown> = {
+          query: message,
+          inputs: runtimeInputs,
+          overrideInputsForm: runtimeInputsForm,
+          parent_message_id:
+            (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
+        }
+        if (draftType) data.draft_type = draftType
 
-      if (files?.length && supportVision)
-        data.files = files
+        if (files?.length && supportVision) data.files = files
 
-      handleSend(
-        `agent/${agentId}/chat-messages`,
-        data as Parameters<typeof handleSend>[1],
-        {
+        handleSend(`agent/${agentId}/chat-messages`, data as Parameters<typeof handleSend>[1], {
           onGetConversationMessages: async (conversationId) => {
             return queryClient.fetchQuery({
               ...consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
@@ -683,7 +734,19 @@ function AgentPreviewChatSession({
               staleTime: 0,
             })
           },
-          onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
+          onGetSuggestedQuestions: (responseItemId) =>
+            fetchAgentSuggestedQuestions(agentId, responseItemId),
+          onUnhandledEvent: (event) => {
+            if (event.event !== 'error' || typeof event.message !== 'string') return
+
+            return {
+              conversationId:
+                typeof event.conversation_id === 'string' ? event.conversation_id : undefined,
+              messageId: typeof event.message_id === 'string' ? event.message_id : undefined,
+              errorMessage: event.message,
+              errorCode: typeof event.code === 'string' ? event.code : undefined,
+            }
+          },
           onConversationComplete: (completedConversationId, workflowRunId) => {
             if (completedConversationId && completedConversationId !== conversationId)
               onCurrentSessionConversationIdChange(completedConversationId)
@@ -691,50 +754,91 @@ function AgentPreviewChatSession({
             onConversationComplete?.(completedConversationId, workflowRunId)
           },
           onSendSettled: (hasError) => {
-            if (hasError)
-              notifySendInterrupted()
+            setIsSendPending(false)
+            if (hasError) notifySendInterrupted()
           },
-        },
-      )
-    }
-    catch {
-      return false
-    }
-  }, [agentId, agentSoulConfig, chatList, config, conversationId, draftType, handleSend, inputs, inputsForm, notifySendInterrupted, onConversationComplete, onConversationIdChange, onCurrentSessionConversationIdChange, onSaveDraftBeforeRun, queryClient, textGenerationModelList])
+        })
+        sendStarted = true
+      } catch {
+        return false
+      } finally {
+        if (!sendStarted) setIsSendPending(false)
+      }
+    },
+    [
+      agentId,
+      agentSoulConfig,
+      chatList,
+      config,
+      conversationId,
+      draftType,
+      handleSend,
+      inputs,
+      inputsForm,
+      notifySendInterrupted,
+      onConversationComplete,
+      onConversationIdChange,
+      onCurrentSessionConversationIdChange,
+      onSaveDraftBeforeRun,
+      queryClient,
+      textGenerationModelList,
+    ],
+  )
 
   const doStopResponding = useCallback(() => {
     handleStop()
     notifySendInterrupted()
   }, [handleStop, notifySendInterrupted])
 
-  const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
-    const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)
-    if (!question)
-      return
+  const doRegenerate = useCallback(
+    (chatItem: ChatItem, editedQuestion?: { message: string; files?: FileEntity[] }) => {
+      const question = editedQuestion
+        ? chatItem
+        : chatList.find((item) => item.id === chatItem.parentMessageId)
+      if (!question) return
 
-    const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
-    doSend(
-      editedQuestion ? editedQuestion.message : question.content,
-      editedQuestion ? editedQuestion.files : question.message_files,
-      true,
-      isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
-    )
-  }, [chatList, doSend])
+      const parentAnswer = chatList.find((item) => item.id === question.parentMessageId)
+      doSend(
+        editedQuestion ? editedQuestion.message : question.content,
+        editedQuestion ? editedQuestion.files : question.message_files,
+        true,
+        isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
+      )
+    },
+    [chatList, doSend],
+  )
   const isEmptyChat = chatList.length === 0
   const hasInstructions = !!config.pre_prompt.trim()
+  const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
+  const sandboxNotice = t(($) => $['agentDetail.configure.preview.sandboxNotice'])
+  const sandboxNoticeTooltip = t(($) => $['agentDetail.configure.preview.sandboxNoticeTooltip'])
+  const showSandboxNotice = isEmptyChat && !isSendPending && !isResponding
+  const speechToTextTarget: SpeechToTextTarget = {
+    type: 'agent',
+    agentId,
+    draftType: draftType ?? 'draft',
+  }
   const emptyChatInputNode = (
     <div className="pointer-events-auto mt-5 w-full">
       <ChatInputArea
         botName={agentName || 'Agent'}
         customPlaceholder={inputPlaceholder}
         disabled={isResponding}
+        // Build chat opts out so it does not steal focus from the configure editor.
+        // oxlint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={inputAutoFocus}
+        sendButtonLoading={sendButtonLoading}
         showFileUpload={false}
         visionConfig={config.file_upload}
         speechToTextConfig={config.speech_to_text}
+        speechToTextTarget={speechToTextTarget}
+        onBeforeSpeechToText={onBeforeSpeechToText}
         onSend={doSend}
         inputs={inputs}
         inputsForm={inputsForm}
         sendButtonLabel={sendButtonLabel}
+        footerNotice={showSandboxNotice ? sandboxNotice : undefined}
+        footerNoticeTooltip={showSandboxNotice ? sandboxNoticeTooltip : undefined}
       />
     </div>
   )
@@ -742,39 +846,41 @@ function AgentPreviewChatSession({
   return (
     <Chat
       config={config}
+      speechToTextTarget={speechToTextTarget}
+      onBeforeSpeechToText={onBeforeSpeechToText}
       chatList={chatList}
       isResponding={isResponding}
-      chatNode={isEmptyChat
-        ? renderEmptyState({
-            agentIcon,
-            agentIconBackground,
-            agentIconType,
-            agentName,
-            hasInstructions,
-            inputNode: emptyChatInputNode,
-          })
-        : null}
+      sendButtonLoading={sendButtonLoading}
+      chatNode={
+        isEmptyChat
+          ? renderEmptyState({
+              agentIcon,
+              agentIconBackground,
+              agentIconType,
+              agentName,
+              hasInstructions,
+              inputNode: emptyChatInputNode,
+            })
+          : null
+      }
       chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12 pt-2 !pb-[88px]' : 'px-3')}
-      chatFooterClassName={cn(
-        '!bottom-2 pb-0',
-        isEmptyChat ? 'hidden' : 'px-3 pt-10',
-      )}
+      chatFooterClassName={cn('!bottom-2 pb-0', isEmptyChat ? 'hidden' : 'px-3 pt-10')}
       inputPlaceholder={inputPlaceholder}
-      sendButtonLabel={sendButtonLabel}
+      sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       showFileUpload={false}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
       inputs={inputs}
       inputsForm={inputsForm}
       onRegenerate={doRegenerate}
-      switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
+      switchSibling={(siblingMessageId) => setTargetMessageId(siblingMessageId)}
       onStopResponding={doStopResponding}
       noChatInput={isEmptyChat}
-      showPromptLog
       questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}
+      renderAgentContent={AgentRosterResponseContent}
       noSpacing
     />
   )

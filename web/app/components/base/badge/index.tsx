@@ -10,21 +10,18 @@ enum BadgeState {
   Default = '',
 }
 
-const BadgeVariants = cva(
-  'badge',
-  {
-    variants: {
-      size: {
-        s: 'badge-s',
-        m: 'badge-m',
-        l: 'badge-l',
-      },
-    },
-    defaultVariants: {
-      size: 'm',
+const BadgeVariants = cva('badge', {
+  variants: {
+    size: {
+      s: 'badge-s',
+      m: 'badge-m',
+      l: 'badge-l',
     },
   },
-)
+  defaultVariants: {
+    size: 'm',
+  },
+})
 
 type BadgeProps = Readonly<{
   size?: 's' | 'm' | 'l'
@@ -33,7 +30,9 @@ type BadgeProps = Readonly<{
   state?: BadgeState
   styleCss?: CSSProperties
   children?: ReactNode
-}> & React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof BadgeVariants>
+}> &
+  React.HTMLAttributes<HTMLDivElement> &
+  VariantProps<typeof BadgeVariants>
 
 function getBadgeState(state: BadgeState) {
   switch (state) {
@@ -58,11 +57,22 @@ const Badge: React.FC<BadgeProps> = ({
 }) => {
   return (
     <div
-      className={cn(BadgeVariants({ size, className }), getBadgeState(state), size === 's'
-        ? (iconOnly ? 'p-[3px]' : 'px-[5px] py-[3px]')
-        : size === 'l'
-          ? (iconOnly ? 'p-1.5' : 'px-2 py-1')
-          : (iconOnly ? 'p-1' : 'px-[5px] py-[2px]'), uppercase ? 'system-2xs-medium-uppercase' : 'system-2xs-medium')}
+      className={cn(
+        BadgeVariants({ size, className }),
+        getBadgeState(state),
+        size === 's'
+          ? iconOnly
+            ? 'p-[3px]'
+            : 'px-[5px] py-[3px]'
+          : size === 'l'
+            ? iconOnly
+              ? 'p-1.5'
+              : 'px-2 py-1'
+            : iconOnly
+              ? 'p-1'
+              : 'px-[5px] py-[2px]',
+        uppercase ? 'system-2xs-medium-uppercase' : 'system-2xs-medium',
+      )}
       style={styleCss}
       {...props}
     >

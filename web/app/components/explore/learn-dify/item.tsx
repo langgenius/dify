@@ -16,12 +16,7 @@ type LearnDifyItemProps = {
   onTry?: (params: TryAppSelection) => void
 }
 
-const LearnDifyItem = ({
-  canCreate,
-  item,
-  onCreate,
-  onTry,
-}: LearnDifyItemProps) => {
+const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps) => {
   const appBasicInfo = item.app
   const canViewApp = IS_CLOUD_EDITION
   const canShowCreate = canCreate && !!onCreate
@@ -43,12 +38,10 @@ const LearnDifyItem = ({
       return
     }
 
-    if (canShowCreate)
-      onCreate?.(item)
+    if (canShowCreate) onCreate?.(item)
   }
   const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key !== 'Enter' && event.key !== ' ')
-      return
+    if (event.key !== 'Enter' && event.key !== ' ') return
 
     event.preventDefault()
     handleCardClick()

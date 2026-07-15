@@ -15,97 +15,129 @@ const MIN = 1
 const MAX = 6
 const ParamConfigContent: FC = () => {
   const { t } = useTranslation()
-  const file = useFeatures(s => s.features.file)
+  const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
 
-  const handleChange = useCallback((data: FileUpload) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
+  const handleChange = useCallback(
+    (data: FileUpload) => {
+      const { features, setFeatures } = featuresStore!.getState()
 
-    const newFeatures = produce(features, (draft) => {
-      draft.file = {
-        ...draft.file,
-        allowed_file_upload_methods: data.allowed_file_upload_methods,
-        number_limits: data.number_limits,
-        image: {
-          enabled: data.enabled,
-          detail: data.image?.detail,
-          transfer_methods: data.allowed_file_upload_methods,
+      const newFeatures = produce(features, (draft) => {
+        draft.file = {
+          ...draft.file,
+          allowed_file_upload_methods: data.allowed_file_upload_methods,
           number_limits: data.number_limits,
-        },
-      }
-    })
-    setFeatures(newFeatures)
-  }, [featuresStore])
+          image: {
+            enabled: data.enabled,
+            detail: data.image?.detail,
+            transfer_methods: data.allowed_file_upload_methods,
+            number_limits: data.number_limits,
+          },
+        }
+      })
+      setFeatures(newFeatures)
+    },
+    [featuresStore],
+  )
 
   return (
     <div>
-      <div className="text-base/6 font-semibold text-text-primary">{t('vision.visionSettings.title', { ns: 'appDebug' })}</div>
+      <div className="text-base/6 font-semibold text-text-primary">
+        {t(($) => $['vision.visionSettings.title'], { ns: 'appDebug' })}
+      </div>
       <div className="space-y-6 pt-3">
         <div>
           <div className="mb-2 flex items-center space-x-1">
-            <div className="text-[13px] leading-[18px] font-semibold text-text-secondary">{t('vision.visionSettings.resolution', { ns: 'appDebug' })}</div>
+            <div className="text-[13px] leading-[18px] font-semibold text-text-secondary">
+              {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
+            </div>
             <Infotip
-              aria-label={t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' })}
+              aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
+                ns: 'appDebug',
+              })}
               popupClassName="w-[180px]"
             >
-              {t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
-                <div key={item}>{item}</div>
-              ))}
+              {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })
+                .split('\n')
+                .map((item) => (
+                  <div key={item}>{item}</div>
+                ))}
             </Infotip>
           </div>
           <div className="flex items-center gap-1">
             <OptionCard
               className="grow"
-              title={t('vision.visionSettings.high', { ns: 'appDebug' })}
+              title={t(($) => $['vision.visionSettings.high'], { ns: 'appDebug' })}
               selected={file?.image?.detail === Resolution.high}
-              onSelect={() => handleChange({
-                ...file,
-                image: { detail: Resolution.high },
-              })}
+              onSelect={() =>
+                handleChange({
+                  ...file,
+                  image: { detail: Resolution.high },
+                })
+              }
             />
             <OptionCard
               className="grow"
-              title={t('vision.visionSettings.low', { ns: 'appDebug' })}
+              title={t(($) => $['vision.visionSettings.low'], { ns: 'appDebug' })}
               selected={file?.image?.detail === Resolution.low}
-              onSelect={() => handleChange({
-                ...file,
-                image: { detail: Resolution.low },
-              })}
+              onSelect={() =>
+                handleChange({
+                  ...file,
+                  image: { detail: Resolution.low },
+                })
+              }
             />
           </div>
         </div>
         <div>
-          <div className="mb-2 text-[13px] leading-[18px] font-semibold text-text-secondary">{t('vision.visionSettings.uploadMethod', { ns: 'appDebug' })}</div>
+          <div className="mb-2 text-[13px] leading-[18px] font-semibold text-text-secondary">
+            {t(($) => $['vision.visionSettings.uploadMethod'], { ns: 'appDebug' })}
+          </div>
           <div className="flex items-center gap-1">
             <OptionCard
               className="grow"
-              title={t('vision.visionSettings.both', { ns: 'appDebug' })}
-              selected={!!file?.allowed_file_upload_methods?.includes(TransferMethod.local_file) && !!file?.allowed_file_upload_methods?.includes(TransferMethod.remote_url)}
-              onSelect={() => handleChange({
-                ...file,
-                allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-              })}
+              title={t(($) => $['vision.visionSettings.both'], { ns: 'appDebug' })}
+              selected={
+                !!file?.allowed_file_upload_methods?.includes(TransferMethod.local_file) &&
+                !!file?.allowed_file_upload_methods?.includes(TransferMethod.remote_url)
+              }
+              onSelect={() =>
+                handleChange({
+                  ...file,
+                  allowed_file_upload_methods: [
+                    TransferMethod.local_file,
+                    TransferMethod.remote_url,
+                  ],
+                })
+              }
             />
             <OptionCard
               className="grow"
-              title={t('vision.visionSettings.localUpload', { ns: 'appDebug' })}
-              selected={!!file?.allowed_file_upload_methods?.includes(TransferMethod.local_file) && file?.allowed_file_upload_methods?.length === 1}
-              onSelect={() => handleChange({
-                ...file,
-                allowed_file_upload_methods: [TransferMethod.local_file],
-              })}
+              title={t(($) => $['vision.visionSettings.localUpload'], { ns: 'appDebug' })}
+              selected={
+                !!file?.allowed_file_upload_methods?.includes(TransferMethod.local_file) &&
+                file?.allowed_file_upload_methods?.length === 1
+              }
+              onSelect={() =>
+                handleChange({
+                  ...file,
+                  allowed_file_upload_methods: [TransferMethod.local_file],
+                })
+              }
             />
             <OptionCard
               className="grow"
-              title={t('vision.visionSettings.url', { ns: 'appDebug' })}
-              selected={!!file?.allowed_file_upload_methods?.includes(TransferMethod.remote_url) && file?.allowed_file_upload_methods?.length === 1}
-              onSelect={() => handleChange({
-                ...file,
-                allowed_file_upload_methods: [TransferMethod.remote_url],
-              })}
+              title={t(($) => $['vision.visionSettings.url'], { ns: 'appDebug' })}
+              selected={
+                !!file?.allowed_file_upload_methods?.includes(TransferMethod.remote_url) &&
+                file?.allowed_file_upload_methods?.length === 1
+              }
+              onSelect={() =>
+                handleChange({
+                  ...file,
+                  allowed_file_upload_methods: [TransferMethod.remote_url],
+                })
+              }
             />
           </div>
         </div>
@@ -113,7 +145,7 @@ const ParamConfigContent: FC = () => {
           <ParamItem
             id="upload_limit"
             className=""
-            name={t('vision.visionSettings.uploadLimit', { ns: 'appDebug' })}
+            name={t(($) => $['vision.visionSettings.uploadLimit'], { ns: 'appDebug' })}
             noTooltip
             {...{
               default: 2,
@@ -124,8 +156,7 @@ const ParamConfigContent: FC = () => {
             value={file?.number_limits || 3}
             enable={true}
             onChange={(_key: string, value: number) => {
-              if (!value)
-                return
+              if (!value) return
 
               handleChange({
                 ...file,

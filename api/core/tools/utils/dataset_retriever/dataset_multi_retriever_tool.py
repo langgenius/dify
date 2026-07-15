@@ -4,6 +4,7 @@ from typing import override
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelManager
@@ -48,7 +49,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
         )
 
     @override
-    def _run(self, query: str) -> str:
+    def _run(self, session: Session, query: str) -> str:
         threads = []
         all_documents: list[RagDocument] = []
         for dataset_id in self.dataset_ids:
@@ -75,11 +76,11 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             model=self.reranking_model_name,
         )
 
-        rerank_runner = RerankModelRunner(rerank_model_instance)
+        rerank_runner = RerankModelRunner(rerank_model_instance, session=session)
         all_documents = rerank_runner.run(query, all_documents, self.score_threshold, self.top_k)
 
         for hit_callback in self.hit_callbacks:
-            hit_callback.on_tool_end(all_documents, db.session)
+            hit_callback.on_tool_end(all_documents, session)
 
         document_score_list = {}
         for item in all_documents:
@@ -95,7 +96,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             DocumentSegment.enabled == True,
             DocumentSegment.index_node_id.in_(index_node_ids),
         )
-        segments = db.session.scalars(document_segment_stmt).all()
+        segments = session.scalars(document_segment_stmt).all()
 
         if segments:
             index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}
@@ -111,13 +112,13 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                 context_list: list[RetrievalSourceMetadata] = []
                 resource_number = 1
                 for segment in sorted_segments:
-                    dataset = db.session.get(Dataset, segment.dataset_id)
+                    dataset = session.get(Dataset, segment.dataset_id)
                     document_stmt = select(Document).where(
                         Document.id == segment.document_id,
                         Document.enabled == True,
                         Document.archived == False,
                     )
-                    document = db.session.scalar(document_stmt)
+                    document = session.scalar(document_stmt)
                     if dataset and document:
                         source = RetrievalSourceMetadata(
                             position=resource_number,
@@ -147,7 +148,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                 for hit_callback in self.hit_callbacks:
                     hit_callback.return_retriever_resource_info(context_list)
 
-            return str("\n".join(document_context_list))
+            return "\n".join(document_context_list)
         return ""
 
     def _retriever(
@@ -166,7 +167,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                 return []
 
             for hit_callback in hit_callbacks:
-                hit_callback.on_query(query, dataset.id, db.session)
+                hit_callback.on_query(query, dataset.id, db.session())
 
             # get retrieval model , if the model is not setting , using default
             retrieval_model = dataset.retrieval_model or default_retrieval_model
