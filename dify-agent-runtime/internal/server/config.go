@@ -8,25 +8,25 @@ import (
 )
 
 const (
-	DefaultListen                       = "127.0.0.1:8765"
-	DefaultTimeoutSeconds               = 30.0
-	DefaultMaxWaitTimeoutSeconds        = 600.0
-	DefaultIdleFlushSeconds             = 0.5
-	DefaultTerminalCols                 = 200
-	DefaultTerminalRows                 = 50
-	DefaultOutputLimitBytes             = 16 * 1024
-	MaxOutputLimitBytes                 = 512 * 1024
-	DefaultListLimit                    = 50
-	MaxListLimit                        = 200
-	DefaultTerminateGraceSeconds        = 10.0
-	DefaultGCIntervalSeconds            = 60.0
+	DefaultListen                        = "127.0.0.1:8765"
+	DefaultTimeoutSeconds                = 30.0
+	DefaultMaxWaitTimeoutSeconds         = 600.0
+	DefaultIdleFlushSeconds              = 0.5
+	DefaultTerminalCols                  = 200
+	DefaultTerminalRows                  = 50
+	DefaultOutputLimitBytes              = 16 * 1024
+	MaxOutputLimitBytes                  = 512 * 1024
+	DefaultListLimit                     = 50
+	MaxListLimit                         = 200
+	DefaultTerminateGraceSeconds         = 10.0
+	DefaultGCIntervalSeconds             = 60.0
 	DefaultGCFinishedJobRetentionSeconds = 300.0
-	DefaultPollInterval                 = 50 * time.Millisecond
-	DefaultPipeMonitorInterval          = 1 * time.Second
-	DefaultPipeReadyTimeout             = 10 * time.Second
-	DefaultSQLiteBusyTimeoutMs          = 5000
-	DefaultAuthTokenEnv                 = "SHELLCTL_AUTH_TOKEN"
-	HealthStatus                        = "ok"
+	DefaultPollInterval                  = 50 * time.Millisecond
+	DefaultPipeMonitorInterval           = 1 * time.Second
+	DefaultPipeReadyTimeout              = 10 * time.Second
+	DefaultSQLiteBusyTimeoutMs           = 5000
+	DefaultAuthTokenEnv                  = "SHELLCTL_AUTH_TOKEN"
+	HealthStatus                         = "ok"
 )
 
 // Config holds runtime configuration for the shellctl server.
