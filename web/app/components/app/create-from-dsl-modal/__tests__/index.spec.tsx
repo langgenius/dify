@@ -139,8 +139,11 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: (...args: unknown[]) => mockGetRedirection(...args),
-  resolveImportedAppRedirectionTarget: (...args: unknown[]) =>
-    mockResolveImportedAppRedirectionTarget(...args),
+}))
+
+vi.mock('@/utils/imported-app-redirection', () => ({
+  resolveImportedAppRedirectionTarget: (target: Record<string, unknown>) =>
+    mockResolveImportedAppRedirectionTarget(target),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({

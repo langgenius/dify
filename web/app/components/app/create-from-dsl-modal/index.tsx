@@ -27,6 +27,7 @@ import { useInvalidateAppList } from '@/service/use-apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getDSLImportWarningDescription } from '@/utils/dsl-import-warning'
+import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 import Uploader from './uploader'
 
 type CreateFromDSLModalProps = {
@@ -154,7 +155,12 @@ const CreateFromDSLModal = ({
         invalidateAppList()
         if (app_id) {
           await handleCheckPluginDependencies(app_id)
-          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+          const redirectionTarget = await resolveImportedAppRedirectionTarget({
+            id: app_id,
+            mode: app_mode,
+            permission_keys,
+          })
+          getRedirection(redirectionTarget, push, {
             currentUserId,
             resourceMaintainer: currentUserId,
             workspacePermissionKeys,
@@ -231,7 +237,12 @@ const CreateFromDSLModal = ({
         setNeedRefresh('1')
         invalidateAppList()
         if (app_id) {
-          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+          const redirectionTarget = await resolveImportedAppRedirectionTarget({
+            id: app_id,
+            mode: app_mode,
+            permission_keys,
+          })
+          getRedirection(redirectionTarget, push, {
             currentUserId,
             resourceMaintainer: currentUserId,
             workspacePermissionKeys,
