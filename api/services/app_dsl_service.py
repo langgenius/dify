@@ -14,6 +14,7 @@ from packaging.version import parse as parse_version
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
@@ -37,6 +38,7 @@ from graphon.nodes.question_classifier.entities import QuestionClassifierNodeDat
 from graphon.nodes.tool.entities import ToolNodeData
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
+from models.account import TenantAccountRole
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService, AgentPackage
@@ -394,6 +396,12 @@ class AppDslService:
         return CheckDependenciesResult(
             leaked_dependencies=leaked_dependencies,
         )
+
+    @staticmethod
+    def assert_secret_export_allowed(*, include_secret: bool, current_role: "TenantAccountRole | None") -> None:
+        """Only workspace managers (owner/admin) may export secrets in a DSL."""
+        if include_secret and not TenantAccountRole.is_privileged_role(current_role):
+            raise Forbidden("Only workspace managers can export secrets.")
 
     def _create_or_update_app(
         self,
