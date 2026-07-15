@@ -1,5 +1,6 @@
 import { CodeGroup } from '../code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
+import { WorkflowVersionApiUpgradeNotice } from '../workflow-version-api-upgrade-notice.tsx'
 
 # 高度なチャットアプリ API
 
@@ -74,7 +75,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       タイトルを自動生成、デフォルトは`true`。
       `false`に設定すると、会話のリネームAPIを呼び出し、`auto_generate`を`true`に設定することで非同期タイトル生成を実現できます。
       </Property>
-      <Property name='workflow_id' type='string' key='workflow_id'>
+      <Property name='workflow_id' type='string' key='workflow_id' nameAction={<WorkflowVersionApiUpgradeNotice />}>
       （オプション）ワークフローID、特定のバージョンを指定するために使用、提供されない場合はデフォルトの公開バージョンを使用。
       </Property>
       <Property name='trace_id' type='string' key='trace_id'>
@@ -250,6 +251,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - 400, `draft_workflow_error`, ドラフトワークフローバージョンは使用できません
     - 400, `workflow_id_format_error`, ワークフローID形式エラー、UUID形式が必要です
     - 400, `completion_request_error`, テキスト生成に失敗しました
+    - 403, `workflow_version_execution_not_allowed`, 現在のプランではワークフローバージョンを実行できません。有料プランにアップグレードしてください
     - 500, 内部サーバーエラー
 
   </Col>
