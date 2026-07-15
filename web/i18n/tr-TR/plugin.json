@@ -131,6 +131,7 @@
   "detailPanel.operation.detail": "Detay",
   "detailPanel.operation.info": "Eklenti Bilgileri",
   "detailPanel.operation.install": "Yükle",
+  "detailPanel.operation.moreActions": "Diğer işlemler",
   "detailPanel.operation.remove": "Kaldır",
   "detailPanel.operation.update": "Güncelle",
   "detailPanel.operation.updateTooltip": "En son modellere erişmek için güncelleyin.",

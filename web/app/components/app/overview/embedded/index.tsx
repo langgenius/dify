@@ -1,16 +1,21 @@
 import type { MutableRefObject } from 'react'
-import type { EmbeddedWebAppRoute, WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '../app-card-utils'
+import type {
+  EmbeddedWebAppRoute,
+  WorkflowHiddenStartVariable,
+  WorkflowLaunchInputValue,
+} from '../app-card-utils'
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
+import { useAtomValue } from 'jotai'
 import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 import { InputVarType } from '@/app/components/workflow/types'
-import { useAppContext } from '@/context/app-context'
+import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { basePath } from '@/utils/var'
 import {
   compressAndEncodeBase64,
@@ -37,7 +42,7 @@ type Props = Readonly<{
 const OPTION_KEYS = ['iframe', 'scripts', 'chromePlugin'] as const
 const prefixEmbedded = 'overview.appInfo.embedded'
 
-type Option = typeof OPTION_KEYS[number]
+type Option = (typeof OPTION_KEYS)[number]
 
 const optionIconClassName: Record<Option, string> = {
   iframe: style.iframeIcon!,
@@ -50,8 +55,7 @@ const getSerializedHiddenInputValue = (
   values: Record<string, WorkflowLaunchInputValue>,
 ) => {
   const rawValue = values[variable.variable]
-  if (variable.type === InputVarType.checkbox)
-    return String(Boolean(rawValue))
+  if (variable.type === InputVarType.checkbox) return String(Boolean(rawValue))
 
   return String(rawValue ?? '')
 }
@@ -69,11 +73,19 @@ const buildEmbeddedIframeUrl = async ({
   variables: WorkflowHiddenStartVariable[]
   values: Record<string, WorkflowLaunchInputValue>
 }) => {
-  const iframeUrl = new URL(`${appBaseUrl}${basePath}/${webAppRoute}/${accessToken}`, window.location.origin)
+  const iframeUrl = new URL(
+    `${appBaseUrl}${basePath}/${webAppRoute}/${accessToken}`,
+    window.location.origin,
+  )
 
-  await Promise.all(variables.map(async (variable) => {
-    iframeUrl.searchParams.set(variable.variable, await compressAndEncodeBase64(getSerializedHiddenInputValue(variable, values)))
-  }))
+  await Promise.all(
+    variables.map(async (variable) => {
+      iframeUrl.searchParams.set(
+        variable.variable,
+        await compressAndEncodeBase64(getSerializedHiddenInputValue(variable, values)),
+      )
+    }),
+  )
 
   return iframeUrl.toString()
 }
@@ -90,8 +102,7 @@ const AsyncEmbeddedOptionContent = ({
   const iframeUrl = use(iframeUrlPromise)
   latestResolvedIframeUrlRef.current = iframeUrl
 
-  if (option === 'chromePlugin')
-    return getChromePluginContent(iframeUrl)
+  if (option === 'chromePlugin') return getChromePluginContent(iframeUrl)
 
   return getEmbeddedIframeSnippet(iframeUrl)
 }
@@ -102,7 +113,8 @@ const EmbeddedContent = ({
   accessToken,
   webAppRoute = 'chatbot',
   hiddenInputs,
-}: Required<Pick<Props, 'accessToken' | 'appBaseUrl'>> & Pick<Props, 'siteInfo' | 'webAppRoute' | 'hiddenInputs'>) => {
+}: Required<Pick<Props, 'accessToken' | 'appBaseUrl'>> &
+  Pick<Props, 'siteInfo' | 'webAppRoute' | 'hiddenInputs'>) => {
   const { t } = useTranslation()
   const supportedHiddenInputs = useMemo<WorkflowHiddenStartVariable[]>(
     () => (hiddenInputs ?? []).filter(isWorkflowLaunchInputSupported),
@@ -115,11 +127,11 @@ const EmbeddedContent = ({
   const [option, setOption] = useState<Option>('iframe')
   const [copiedOption, setCopiedOption] = useState<Option | null>(null)
   const [hiddenInputsCollapsed, setHiddenInputsCollapsed] = useState(true)
-  const [hiddenInputValues, setHiddenInputValues] = useState<Record<string, WorkflowLaunchInputValue>>(
-    () => initialHiddenInputValues,
-  )
-  const [previewIframeUrlPromise, setPreviewIframeUrlPromise] = useState<Promise<string>>(
-    () => buildEmbeddedIframeUrl({
+  const [hiddenInputValues, setHiddenInputValues] = useState<
+    Record<string, WorkflowLaunchInputValue>
+  >(() => initialHiddenInputValues)
+  const [previewIframeUrlPromise, setPreviewIframeUrlPromise] = useState<Promise<string>>(() =>
+    buildEmbeddedIframeUrl({
       appBaseUrl,
       accessToken,
       webAppRoute,
@@ -129,9 +141,11 @@ const EmbeddedContent = ({
   )
   const latestResolvedIframeUrlRef = useRef('')
 
-  const { langGeniusVersionInfo } = useAppContext()
+  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const themeBuilder = useThemeContext()
-  const isTestEnv = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
+  const isTestEnv =
+    langGeniusVersionInfo.current_env === 'TESTING' ||
+    langGeniusVersionInfo.current_env === 'DEVELOPMENT'
 
   const handleHiddenInputValueChange = (variable: string, value: WorkflowLaunchInputValue) => {
     const nextHiddenInputValues = {
@@ -141,22 +155,35 @@ const EmbeddedContent = ({
 
     setCopiedOption(null)
     setHiddenInputValues(nextHiddenInputValues)
-    setPreviewIframeUrlPromise(buildEmbeddedIframeUrl({
-      appBaseUrl,
-      accessToken,
-      webAppRoute,
-      variables: supportedHiddenInputs,
-      values: nextHiddenInputValues,
-    }))
+    setPreviewIframeUrlPromise(
+      buildEmbeddedIframeUrl({
+        appBaseUrl,
+        accessToken,
+        webAppRoute,
+        variables: supportedHiddenInputs,
+        values: nextHiddenInputValues,
+      }),
+    )
   }
-  const scriptsContent = useMemo(() => getEmbeddedScriptSnippet({
-    url: appBaseUrl,
-    token: accessToken,
-    webAppRoute,
-    primaryColor: themeBuilder.theme?.primaryColor ?? '#1C64F2',
-    isTestEnv,
-    inputValues: hiddenInputValues,
-  }), [accessToken, appBaseUrl, hiddenInputValues, isTestEnv, themeBuilder.theme?.primaryColor, webAppRoute])
+  const scriptsContent = useMemo(
+    () =>
+      getEmbeddedScriptSnippet({
+        url: appBaseUrl,
+        token: accessToken,
+        webAppRoute,
+        primaryColor: themeBuilder.theme?.primaryColor ?? '#1C64F2',
+        isTestEnv,
+        inputValues: hiddenInputValues,
+      }),
+    [
+      accessToken,
+      appBaseUrl,
+      hiddenInputValues,
+      isTestEnv,
+      themeBuilder.theme?.primaryColor,
+      webAppRoute,
+    ],
+  )
 
   const onClickCopy = async () => {
     const latestIframeUrl = await buildEmbeddedIframeUrl({
@@ -169,54 +196,66 @@ const EmbeddedContent = ({
 
     if (option === 'chromePlugin') {
       const splitUrl = getChromePluginContent(latestIframeUrl).split(': ')
-      if (splitUrl.length > 1)
-        copy(splitUrl[1]!)
-    }
-    else if (option === 'iframe') {
+      if (splitUrl.length > 1) copy(splitUrl[1]!)
+    } else if (option === 'iframe') {
       copy(getEmbeddedIframeSnippet(latestIframeUrl))
-    }
-    else {
+    } else {
       copy(scriptsContent)
     }
     setCopiedOption(option)
   }
   const previewFallback = latestResolvedIframeUrlRef.current
-    ? (option === 'chromePlugin'
-        ? getChromePluginContent(latestResolvedIframeUrlRef.current)
-        : getEmbeddedIframeSnippet(latestResolvedIframeUrlRef.current))
+    ? option === 'chromePlugin'
+      ? getChromePluginContent(latestResolvedIframeUrlRef.current)
+      : getEmbeddedIframeSnippet(latestResolvedIframeUrlRef.current)
     : ''
 
   const navigateToChromeUrl = () => {
-    window.open('https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf', '_blank', 'noopener,noreferrer')
+    window.open(
+      'https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf',
+      '_blank',
+      'noopener,noreferrer',
+    )
   }
 
   useEffect(() => {
-    themeBuilder.buildTheme(siteInfo?.chat_color_theme ?? null, siteInfo?.chat_color_theme_inverted ?? false)
+    themeBuilder.buildTheme(
+      siteInfo?.chat_color_theme ?? null,
+      siteInfo?.chat_color_theme_inverted ?? false,
+    )
   }, [siteInfo?.chat_color_theme, siteInfo?.chat_color_theme_inverted, themeBuilder])
 
   return (
     <>
       <div className="mt-8 mb-4 system-sm-medium text-text-primary">
-        {t(`${prefixEmbedded}.explanation`, { ns: 'appOverview' })}
+        {t(($) => $[`${prefixEmbedded}.explanation`], { ns: 'appOverview' })}
       </div>
       {supportedHiddenInputs.length > 0 && (
         <div className="mb-6 rounded-xl border-[0.5px] border-components-panel-border bg-background-section">
           <button
             type="button"
             className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-            onClick={() => setHiddenInputsCollapsed(prev => !prev)}
+            onClick={() => setHiddenInputsCollapsed((prev) => !prev)}
           >
             <div>
               <div className="system-sm-medium text-text-primary">
-                {t(`${prefixEmbedded}.hiddenInputs.title`, { ns: 'appOverview' })}
+                {t(($) => $[`${prefixEmbedded}.hiddenInputs.title`], { ns: 'appOverview' })}
               </div>
               <div className="mt-1 system-xs-regular text-text-tertiary">
-                {t(`${prefixEmbedded}.hiddenInputs.description`, { ns: 'appOverview' })}
+                {t(($) => $[`${prefixEmbedded}.hiddenInputs.description`], { ns: 'appOverview' })}
               </div>
             </div>
-            {hiddenInputsCollapsed
-              ? <span aria-hidden className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" />
-              : <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary" />}
+            {hiddenInputsCollapsed ? (
+              <span
+                aria-hidden
+                className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
+              />
+            ) : (
+              <span
+                aria-hidden
+                className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary"
+              />
+            )}
           </button>
           {!hiddenInputsCollapsed && (
             <div className="max-h-72 space-y-4 overflow-y-auto border-t-[0.5px] border-divider-subtle px-4 py-4">
@@ -236,18 +275,13 @@ const EmbeddedContent = ({
             <button
               type="button"
               key={v}
-              aria-label={t(`${prefixEmbedded}.${v}`, { ns: 'appOverview' }) || v}
-              className={cn(
-                style.option,
-                optionIconClassName[v],
-                option === v && style.active,
-              )}
+              aria-label={t(($) => $[`${prefixEmbedded}.${v}`], { ns: 'appOverview' }) || v}
+              className={cn(style.option, optionIconClassName[v], option === v && style.active)}
               onClick={() => {
                 setOption(v)
                 setCopiedOption(null)
               }}
-            >
-            </button>
+            ></button>
           )
         })}
       </div>
@@ -255,54 +289,70 @@ const EmbeddedContent = ({
         <div className="mt-6 w-full">
           <button
             type="button"
-            className={cn('inline-flex w-full items-center justify-center gap-2 rounded-lg py-3', 'shrink-0 bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm')}
+            className={cn(
+              'inline-flex w-full items-center justify-center gap-2 rounded-lg py-3',
+              'shrink-0 bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm',
+            )}
             onClick={navigateToChromeUrl}
           >
             <div className={`relative size-4 ${style.pluginInstallIcon}`}></div>
-            <div className="font-['Inter'] text-sm leading-tight font-medium text-white">{t(`${prefixEmbedded}.chromePlugin`, { ns: 'appOverview' })}</div>
+            <div className="font-['Inter'] text-sm leading-tight font-medium text-white">
+              {t(($) => $[`${prefixEmbedded}.chromePlugin`], { ns: 'appOverview' })}
+            </div>
           </button>
         </div>
       )}
-      <div className={cn('inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section', 'mt-6')}>
+      <div
+        className={cn(
+          'inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section',
+          'mt-6',
+        )}
+      >
         <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pr-1 pl-3">
           <div className="shrink-0 grow system-sm-medium text-text-secondary">
-            {t(`${prefixEmbedded}.${option}`, { ns: 'appOverview' })}
+            {t(($) => $[`${prefixEmbedded}.${option}`], { ns: 'appOverview' })}
           </div>
           <Tooltip>
             <TooltipTrigger
-              render={(
+              render={
                 <ActionButton
-                  aria-label={(copiedOption === option
-                    ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-                    : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''}
+                  aria-label={
+                    (copiedOption === option
+                      ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+                      : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''
+                  }
                   onClick={() => void onClickCopy()}
                 >
-                  {copiedOption === option && <span aria-hidden="true" className="i-ri-clipboard-fill size-4" />}
-                  {copiedOption !== option && <span aria-hidden="true" className="i-ri-clipboard-line size-4" />}
+                  {copiedOption === option && (
+                    <span aria-hidden="true" className="i-ri-clipboard-fill size-4" />
+                  )}
+                  {copiedOption !== option && (
+                    <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
+                  )}
                 </ActionButton>
-              )}
+              }
             />
             <TooltipContent>
               {(copiedOption === option
-                ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-                : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''}
+                ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+                : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''}
             </TooltipContent>
           </Tooltip>
         </div>
         <div className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] w-full items-start justify-start gap-2 overflow-auto p-3">
           <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
             <pre className="select-text">
-              {option === 'scripts'
-                ? scriptsContent
-                : (
-                    <Suspense fallback={previewFallback}>
-                      <AsyncEmbeddedOptionContent
-                        option={option}
-                        iframeUrlPromise={previewIframeUrlPromise}
-                        latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
-                      />
-                    </Suspense>
-                  )}
+              {option === 'scripts' ? (
+                scriptsContent
+              ) : (
+                <Suspense fallback={previewFallback}>
+                  <AsyncEmbeddedOptionContent
+                    option={option}
+                    iframeUrlPromise={previewIframeUrlPromise}
+                    latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
+                  />
+                </Suspense>
+              )}
             </pre>
           </div>
         </div>
@@ -311,21 +361,34 @@ const EmbeddedContent = ({
   )
 }
 
-const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, webAppRoute = 'chatbot', hiddenInputs, className }: Props) => {
+const Embedded = ({
+  siteInfo,
+  isShow,
+  onClose,
+  appBaseUrl,
+  accessToken,
+  webAppRoute = 'chatbot',
+  hiddenInputs,
+  className,
+}: Props) => {
   const { t } = useTranslation()
 
   return (
     <Dialog
       open={isShow}
       onOpenChange={(open) => {
-        if (open)
-          return
+        if (open) return
         onClose()
       }}
     >
-      <DialogContent className={cn('flex max-h-[calc(100dvh-2rem)] w-[640px] flex-col overflow-hidden!', className)}>
+      <DialogContent
+        className={cn(
+          'flex max-h-[calc(100dvh-2rem)] w-[640px] flex-col overflow-hidden!',
+          className,
+        )}
+      >
         <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
-          {t(`${prefixEmbedded}.title`, { ns: 'appOverview' })}
+          {t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
         </DialogTitle>
         <DialogCloseButton />
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">

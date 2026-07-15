@@ -33,15 +33,18 @@ describe('runSkillsInstall', () => {
   const claudeTarget = () => join(home, '.claude', 'skills', 'difyctl', 'SKILL.md')
 
   it('--stdout returns the skill verbatim and writes nothing', async () => {
-    expect(await runSkillsInstall(opts({ stdout: true }))).toEqual({ kind: 'ok', text: SKILL, wrote: [] })
+    expect(await runSkillsInstall(opts({ stdout: true }))).toEqual({
+      kind: 'ok',
+      text: SKILL,
+      wrote: [],
+    })
   })
 
   it('dry-run lists detected agents and writes nothing', async () => {
     await mkdir(join(home, '.claude'))
     const result = await runSkillsInstall(opts({}))
     expect(result.kind).toBe('ok')
-    if (result.kind !== 'ok')
-      return
+    if (result.kind !== 'ok') return
     expect(result.text).toContain('Detected 1 agent: claude-code')
     expect(result.text).toContain(`would write to claude-code: ${claudeTarget()}`)
     expect(result.text).toContain('Re-run with --yes')
@@ -58,8 +61,7 @@ describe('runSkillsInstall', () => {
     await mkdir(join(home, '.codex'))
     const result = await runSkillsInstall(opts({}))
     expect(result.kind).toBe('ok')
-    if (result.kind !== 'ok')
-      return
+    if (result.kind !== 'ok') return
     // The detection summary lists the selectable names; the footer just shows the flag.
     expect(result.text).toContain('Detected 2 agents: claude-code, codex')
     expect(result.text).toContain('--agent <name> to write only some')
@@ -70,7 +72,11 @@ describe('runSkillsInstall', () => {
   it('--yes writes the skill and reports the actual path', async () => {
     await mkdir(join(home, '.claude'))
     const result = await runSkillsInstall(opts({ write: true }))
-    expect(result).toEqual({ kind: 'ok', text: `wrote ${claudeTarget()}\n`, wrote: [claudeTarget()] })
+    expect(result).toEqual({
+      kind: 'ok',
+      text: `wrote ${claudeTarget()}\n`,
+      wrote: [claudeTarget()],
+    })
     expect(await readFile(claudeTarget(), 'utf8')).toBe(SKILL)
   })
 
@@ -84,8 +90,7 @@ describe('runSkillsInstall', () => {
   it('guides the user and writes nothing when no agents are detected', async () => {
     const result = await runSkillsInstall(opts({ write: true }))
     expect(result.kind).toBe('ok')
-    if (result.kind !== 'ok')
-      return
+    if (result.kind !== 'ok') return
     expect(result.text).toContain('No agents detected')
     expect(result.wrote).toEqual([])
   })
@@ -94,8 +99,7 @@ describe('runSkillsInstall', () => {
     await mkdir(join(home, '.claude'))
     const result = await runSkillsInstall(opts({ write: true, agents: ['bogus'] }))
     expect(result.kind).toBe('usage')
-    if (result.kind !== 'usage')
-      return
+    if (result.kind !== 'usage') return
     expect(result.message).toContain('bogus')
   })
 
@@ -118,8 +122,7 @@ describe('runSkillsInstall', () => {
     await mkdir(join(home, '.config', 'opencode'), { recursive: true })
     const result = await runSkillsInstall(opts({ write: true }))
     expect(result.kind).toBe('ok')
-    if (result.kind !== 'ok')
-      return
+    if (result.kind !== 'ok') return
     expect(result.wrote).toEqual([
       join(home, '.claude', 'skills', 'difyctl', 'SKILL.md'),
       join(home, '.agents', 'skills', 'difyctl', 'SKILL.md'),
@@ -132,8 +135,7 @@ describe('runSkillsInstall', () => {
     await mkdir(join(home, '.codex'))
     const result = await runSkillsInstall(opts({ write: true, agents: ['codex'] }))
     expect(result.kind).toBe('ok')
-    if (result.kind !== 'ok')
-      return
+    if (result.kind !== 'ok') return
     expect(result.wrote).toEqual([join(home, '.agents', 'skills', 'difyctl', 'SKILL.md')])
   })
 
@@ -142,12 +144,13 @@ describe('runSkillsInstall', () => {
     await mkdir(join(home, '.pi'))
     const result = await runSkillsInstall(opts({ write: true }))
     expect(result.kind).toBe('ok')
-    if (result.kind !== 'ok')
-      return
+    if (result.kind !== 'ok') return
     expect(result.wrote).toEqual([
       join(home, '.cursor', 'skills', 'difyctl', 'SKILL.md'),
       join(home, '.pi', 'agent', 'skills', 'difyctl', 'SKILL.md'),
     ])
-    expect(await readFile(join(home, '.pi', 'agent', 'skills', 'difyctl', 'SKILL.md'), 'utf8')).toBe(SKILL)
+    expect(
+      await readFile(join(home, '.pi', 'agent', 'skills', 'difyctl', 'SKILL.md'), 'utf8'),
+    ).toBe(SKILL)
   })
 })

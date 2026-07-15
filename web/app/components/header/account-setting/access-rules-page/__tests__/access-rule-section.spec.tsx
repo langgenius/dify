@@ -9,11 +9,42 @@ const mocks = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mocks.workspacePermissionKeys,
-  })),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mocks.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mocks.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mocks.workspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mocks.workspacePermissionKeys,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 const rule: AccessPolicyWithBindings = {
   policy: {
@@ -29,19 +60,23 @@ const rule: AccessPolicyWithBindings = {
     created_at: '2026-01-01',
     updated_at: '2026-01-01',
   },
-  roles: [{
-    role_id: 'role-1',
-    role_name: 'Admin',
-    binding_id: 'role-binding-1',
-    is_locked: true,
-    role_tag: '',
-  }],
-  accounts: [{
-    account_id: 'account-1',
-    account_name: 'Levi',
-    binding_id: 'account-binding-1',
-    is_locked: false,
-  }],
+  roles: [
+    {
+      role_id: 'role-1',
+      role_name: 'Admin',
+      binding_id: 'role-binding-1',
+      is_locked: true,
+      role_tag: '',
+    },
+  ],
+  accounts: [
+    {
+      account_id: 'account-1',
+      account_name: 'Levi',
+      binding_id: 'account-binding-1',
+      is_locked: false,
+    },
+  ],
 }
 
 let intersectionObserverCallback: IntersectionObserverCallback | null = null
@@ -63,11 +98,7 @@ const renderWithQueryClient = (children: ReactNode) => {
     },
   })
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>)
 }
 
 describe('AccessRuleSection', () => {
@@ -75,7 +106,8 @@ describe('AccessRuleSection', () => {
     vi.clearAllMocks()
     mocks.workspacePermissionKeys = []
     intersectionObserverCallback = null
-    globalThis.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver
+    globalThis.IntersectionObserver =
+      MockIntersectionObserver as unknown as typeof IntersectionObserver
   })
 
   it('should render a collapsed group and expand it when the header is clicked', async () => {
@@ -113,13 +145,15 @@ describe('AccessRuleSection', () => {
     render(
       <AccessRuleSection
         title="App Access Rules"
-        rules={[{
-          ...rule,
-          policy: {
-            ...rule.policy,
-            description: '',
+        rules={[
+          {
+            ...rule,
+            policy: {
+              ...rule.policy,
+              description: '',
+            },
           },
-        }]}
+        ]}
         totalCount={1}
         isLoadingRules={false}
         defaultExpanded
@@ -190,7 +224,9 @@ describe('AccessRuleSection', () => {
       />,
     )
 
-    await userEvent.click(screen.getByRole('button', { name: /permission\.accessRule\.newPermissionSet/ }))
+    await userEvent.click(
+      screen.getByRole('button', { name: /permission\.accessRule\.newPermissionSet/ }),
+    )
 
     expect(onCreate).toHaveBeenCalledTimes(1)
   })
@@ -221,6 +257,8 @@ describe('AccessRuleSection', () => {
       />,
     )
 
-    expect(screen.queryByRole('button', { name: /permission\.accessRule\.newPermissionSet/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /permission\.accessRule\.newPermissionSet/ }),
+    ).not.toBeInTheDocument()
   })
 })

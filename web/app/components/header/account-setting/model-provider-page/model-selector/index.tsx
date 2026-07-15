@@ -1,4 +1,4 @@
-import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { DefaultModel, Model, ModelFeatureEnum, ModelItem } from '../declarations'
 import type { ModelSelectorModelPredicate, ModelSelectorValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,8 +14,7 @@ import { getModelSelectorValueLabel, isSameModelSelectorValue } from './types'
 const getModelProviderPluginId = (provider: string) => {
   const [organization, pluginName] = provider.split('/').filter(Boolean)
 
-  if (organization && pluginName)
-    return `${organization}/${pluginName}`
+  if (organization && pluginName) return `${organization}/${pluginName}`
 
   return provider ? `langgenius/${provider}` : ''
 }
@@ -37,6 +36,7 @@ type ModelSelectorProps = {
   providerSettingsSource?: 'agent'
   showModelMeta?: boolean
   modelPredicate?: ModelSelectorModelPredicate
+  modelSuggestionPredicate?: ModelSelectorModelPredicate
 }
 function ModelSelector({
   defaultModel,
@@ -55,20 +55,14 @@ function ModelSelector({
   providerSettingsSource,
   showModelMeta,
   modelPredicate,
+  modelSuggestionPredicate,
 }: ModelSelectorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
-  const {
-    currentProvider,
-    currentModel,
-  } = useCurrentProviderAndModel(
-    modelList,
-    defaultModel,
-  )
+  const { currentProvider, currentModel } = useCurrentProviderAndModel(modelList, defaultModel)
   const currentValue = useMemo<ModelSelectorValue | null>(() => {
-    if (!currentProvider || !currentModel)
-      return null
+    if (!currentProvider || !currentModel) return null
 
     return {
       provider: currentProvider.provider,
@@ -76,47 +70,53 @@ function ModelSelector({
     }
   }, [currentModel, currentProvider])
 
-  const handleOpenChange = useCallback((newOpen: boolean) => {
-    if (readonly)
-      return
+  const handleOpenChange = useCallback(
+    (newOpen: boolean) => {
+      if (readonly) return
 
-    setOpen(newOpen)
-    if (!newOpen)
+      setOpen(newOpen)
+      if (!newOpen) setInputValue('')
+    },
+    [readonly],
+  )
+
+  const handleSelect = useCallback(
+    (provider: string, model: ModelItem) => {
+      setOpen(false)
       setInputValue('')
-  }, [readonly])
 
-  const handleSelect = useCallback((provider: string, model: ModelItem) => {
-    setOpen(false)
-    setInputValue('')
+      if (onSelect) {
+        onSelect({
+          provider,
+          model: model.model,
+          plugin_id: getModelProviderPluginId(provider),
+        })
+      }
+    },
+    [onSelect],
+  )
 
-    if (onSelect) {
-      onSelect({
-        provider,
-        model: model.model,
-        plugin_id: getModelProviderPluginId(provider),
-      })
-    }
-  }, [onSelect])
+  const handleValueChange = useCallback(
+    (value: ModelSelectorValue | null) => {
+      if (!value) return
 
-  const handleValueChange = useCallback((value: ModelSelectorValue | null) => {
-    if (!value)
-      return
+      const provider = modelList.find((model) => model.provider === value.provider)
+      const model = provider?.models.find((model) => model.model === value.model)
 
-    const provider = modelList.find(model => model.provider === value.provider)
-    const model = provider?.models.find(model => model.model === value.model)
+      if (!provider || !model) return
+      if (model.status !== ModelStatusEnum.active) return
 
-    if (!provider || !model)
-      return
-    if (model.status !== ModelStatusEnum.active)
-      return
+      handleSelect(provider.provider, model)
+    },
+    [handleSelect, modelList],
+  )
 
-    handleSelect(provider.provider, model)
-  }, [handleSelect, modelList])
-
-  const handleInputValueChange = useCallback((inputValue: string, details: ComboboxRootChangeEventDetails) => {
-    if (details.reason !== 'item-press')
-      setInputValue(inputValue)
-  }, [])
+  const handleInputValueChange = useCallback(
+    (inputValue: string, details: ComboboxChangeEventDetails) => {
+      if (details.reason !== 'item-press') setInputValue(inputValue)
+    },
+    [],
+  )
 
   const handleHide = useCallback(() => {
     setOpen(false)
@@ -142,7 +142,7 @@ function ModelSelector({
       onValueChange={handleValueChange}
     >
       <ComboboxTrigger
-        aria-label={t('detailPanel.configureModel', { ns: 'plugin' })}
+        aria-label={t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
         icon={false}
         className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-popup-open:bg-transparent"
         disabled={readonly}
@@ -157,7 +157,11 @@ function ModelSelector({
           deprecatedClassName={deprecatedClassName}
           showDeprecatedWarnIcon={showDeprecatedWarnIcon}
           showModelMeta={showModelMeta}
-          isModelCompatible={currentProvider && currentModel ? modelPredicate?.(currentProvider, currentModel) : undefined}
+          isModelCompatible={
+            currentProvider && currentModel
+              ? modelPredicate?.(currentProvider, currentModel)
+              : undefined
+          }
         />
       </ComboboxTrigger>
       <ComboboxContent
@@ -173,6 +177,7 @@ function ModelSelector({
           hideProviderSettingsFooter={hideProviderSettingsFooter}
           providerSettingsSource={providerSettingsSource}
           modelPredicate={modelPredicate}
+          modelSuggestionPredicate={modelSuggestionPredicate}
           onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}
           onOpenMarketplace={onOpenMarketplace}
           onInputValueChange={setInputValue}

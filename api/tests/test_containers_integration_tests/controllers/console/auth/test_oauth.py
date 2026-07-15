@@ -105,6 +105,7 @@ class TestOAuthLogin:
             invite_token=expected_token,
             timezone=None,
             language=None,
+            redirect_url=None,
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -127,6 +128,7 @@ class TestOAuthLogin:
             invite_token=None,
             timezone="Asia/Shanghai",
             language=None,
+            redirect_url=None,
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -149,6 +151,7 @@ class TestOAuthLogin:
             invite_token=None,
             timezone=None,
             language="zh-Hans",
+            redirect_url=None,
         )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
@@ -494,7 +497,7 @@ class TestAccountGeneration:
         second_result.scalar_one_or_none.return_value = expected_account
         mock_session.execute.side_effect = [first_result, second_result]
 
-        result = AccountService.get_account_by_email_with_case_fallback(mock_session, "Case@Test.com")
+        result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=mock_session)
 
         assert result is expected_account
         assert mock_session.execute.call_count == 2

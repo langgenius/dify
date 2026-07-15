@@ -19,7 +19,9 @@ let capturedTextGenerationProps: {
   className?: string
 } | null = null
 
-let eventSubscriptionCallback: ((v: { type: string, payload?: Record<string, unknown> }) => void) | null = null
+let eventSubscriptionCallback:
+  | ((v: { type: string; payload?: Record<string, unknown> }) => void)
+  | null = null
 
 vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
@@ -42,7 +44,8 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 vi.mock('@/utils/model-config', () => ({
-  promptVariablesToUserInputsForm: (...args: unknown[]) => mockPromptVariablesToUserInputsForm(...args),
+  promptVariablesToUserInputsForm: (...args: unknown[]) =>
+    mockPromptVariablesToUserInputsForm(...args),
 }))
 
 vi.mock('@/app/components/app/text-generate/item', () => ({
@@ -59,7 +62,9 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
   },
 }))
 
-const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): ModelAndParameter => ({
+const createModelAndParameter = (
+  overrides: Partial<ModelAndParameter> = {},
+): ModelAndParameter => ({
   id: 'model-1',
   model: 'gpt-3.5-turbo',
   provider: 'openai',
@@ -73,9 +78,7 @@ const createDefaultMocks = () => {
     modelConfig: {
       configs: {
         prompt_template: 'Hello {{name}}',
-        prompt_variables: [
-          { key: 'name', name: 'Name', type: 'string', is_context_var: false },
-        ],
+        prompt_variables: [{ key: 'name', name: 'Name', type: 'string', is_context_var: false }],
       },
       system_parameters: {},
     },
@@ -128,7 +131,9 @@ const createDefaultMocks = () => {
 
   mockUseEventEmitterContextContext.mockReturnValue({
     eventEmitter: {
-      useSubscription: (callback: (v: { type: string, payload?: Record<string, unknown> }) => void) => {
+      useSubscription: (
+        callback: (v: { type: string; payload?: Record<string, unknown> }) => void,
+      ) => {
         eventSubscriptionCallback = callback
       },
     },
@@ -457,8 +462,16 @@ describe('TextGenerationItem', () => {
         expect.any(String),
         expect.objectContaining({
           files: [
-            expect.objectContaining({ id: 'f1', transfer_method: TransferMethod.local_file, url: '' }),
-            expect.objectContaining({ id: 'f2', transfer_method: TransferMethod.remote_url, url: 'https://example.com/file' }),
+            expect.objectContaining({
+              id: 'f1',
+              transfer_method: TransferMethod.local_file,
+              url: '',
+            }),
+            expect.objectContaining({
+              id: 'f2',
+              transfer_method: TransferMethod.remote_url,
+              url: 'https://example.com/file',
+            }),
           ],
         }),
       )
@@ -473,17 +486,19 @@ describe('TextGenerationItem', () => {
         messageId: null,
       })
 
-      mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) => {
-        const state = {
-          features: {
-            moreLikeThis: { enabled: false },
-            moderation: { enabled: false },
-            text2speech: { enabled: false },
-            file: { enabled: false },
-          },
-        }
-        return selector(state)
-      })
+      mockUseFeatures.mockImplementation(
+        (selector: (state: Record<string, unknown>) => unknown) => {
+          const state = {
+            features: {
+              moreLikeThis: { enabled: false },
+              moderation: { enabled: false },
+              text2speech: { enabled: false },
+              file: { enabled: false },
+            },
+          }
+          return selector(state)
+        },
+      )
 
       renderComponent()
 

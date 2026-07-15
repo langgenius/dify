@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "升级以一次性上传多个文档",
   "upgrade.workflowRestore.description": "当前套餐不支持恢复工作流版本。",
   "upgrade.workflowRestore.title": "升级以恢复工作流版本",
+  "upgrade.workflowVersionRun.description": "当前套餐不支持通过工作流 ID 执行指定版本。",
+  "upgrade.workflowVersionRun.title": "升级以执行指定工作流版本",
   "upgradeBtn.encourage": "立即升级",
   "upgradeBtn.encourageShort": "升级",
   "upgradeBtn.plain": "查看套餐",

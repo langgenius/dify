@@ -2,15 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Button } from '../button'
 import { Checkbox } from '../checkbox'
 import { CheckboxGroup } from '../checkbox-group'
-import {
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldItem,
-  FieldLabel,
-  FieldRoot,
-} from '../field'
-import { FieldsetLegend, FieldsetRoot } from '../fieldset'
+import { Field, FieldControl, FieldDescription, FieldError, FieldItem, FieldLabel } from '../field'
+import { Fieldset, FieldsetLegend } from '../fieldset'
 import { Form } from './index'
 
 const meta = {
@@ -28,22 +21,22 @@ type Story = StoryObj<typeof meta>
 export const Basic: Story = {
   render: () => (
     <Form className="grid w-96 gap-4" onFormSubmit={() => undefined}>
-      <FieldRoot name="name">
+      <Field name="name">
         <FieldLabel>Name</FieldLabel>
         <FieldControl required placeholder="Enter a name" />
         <FieldError match="valueMissing">Name is required.</FieldError>
-      </FieldRoot>
+      </Field>
 
-      <FieldRoot name="email">
+      <Field name="email">
         <FieldLabel>Email</FieldLabel>
         <FieldControl type="email" required placeholder="name@example.com" />
         <FieldDescription>Used for account notifications.</FieldDescription>
         <FieldError match="valueMissing">Email is required.</FieldError>
         <FieldError match="typeMismatch">Enter a valid email address.</FieldError>
-      </FieldRoot>
+      </Field>
 
-      <FieldRoot name="features">
-        <FieldsetRoot render={<CheckboxGroup defaultValue={['search']} />}>
+      <Field name="features">
+        <Fieldset render={<CheckboxGroup defaultValue={['search']} />}>
           <FieldsetLegend>Features</FieldsetLegend>
           <div className="grid gap-2">
             <FieldItem>
@@ -59,11 +52,13 @@ export const Basic: Story = {
               </FieldLabel>
             </FieldItem>
           </div>
-        </FieldsetRoot>
-      </FieldRoot>
+        </Fieldset>
+      </Field>
 
       <div className="flex justify-end">
-        <Button type="submit" variant="primary">Save</Button>
+        <Button type="submit" variant="primary">
+          Save
+        </Button>
       </div>
     </Form>
   ),

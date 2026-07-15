@@ -35,18 +35,16 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     open?: boolean
     onOpenChange?: (open: boolean) => void
   }) => (
-    <PopoverContext.Provider value={{ open: !!open, setOpen: (nextOpen: boolean) => onOpenChange?.(nextOpen) }}>
+    <PopoverContext.Provider
+      value={{ open: !!open, setOpen: (nextOpen: boolean) => onOpenChange?.(nextOpen) }}
+    >
       {children}
     </PopoverContext.Provider>
   )
 
   const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
     const { open, setOpen } = React.useContext(PopoverContext)
-    return (
-      <div onClick={() => setOpen(!open)}>
-        {render}
-      </div>
-    )
+    return <div onClick={() => setOpen(!open)}>{render}</div>
   }
 
   const PopoverContent = ({
@@ -57,7 +55,11 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     className?: string
   }) => {
     const { open } = React.useContext(PopoverContext)
-    return open ? <div data-testid="popover-content" className={className}>{children}</div> : null
+    return open ? (
+      <div data-testid="popover-content" className={className}>
+        {children}
+      </div>
+    ) : null
   }
 
   return {
@@ -85,18 +87,20 @@ vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
       <div>{placeholder}</div>
       <div data-testid="search-state">{search}</div>
       <div data-testid="tags-state">{tags.join(',')}</div>
-      <button data-testid="set-query" onClick={() => onSearchChange('tool-rag')}>set-query</button>
-      <button data-testid="set-tags" onClick={() => onTagsChange(['rag'])}>set-tags</button>
+      <button data-testid="set-query" onClick={() => onSearchChange('tool-rag')}>
+        set-query
+      </button>
+      <button data-testid="set-tags" onClick={() => onTagsChange(['rag'])}>
+        set-tags
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../no-data-placeholder', () => ({
-  default: ({
-    noPlugins,
-  }: {
-    noPlugins?: boolean
-  }) => <div data-testid="no-data">{String(noPlugins)}</div>,
+  default: ({ noPlugins }: { noPlugins?: boolean }) => (
+    <div data-testid="no-data">{String(noPlugins)}</div>
+  ),
 }))
 
 vi.mock('../tool-item', () => ({
@@ -112,7 +116,9 @@ vi.mock('../tool-item', () => ({
     <div data-testid="tool-item">
       <span>{payload.plugin_id}</span>
       <span>{String(isChecked)}</span>
-      <button data-testid={`toggle-${payload.plugin_id}`} onClick={onCheckChange}>toggle</button>
+      <button data-testid={`toggle-${payload.plugin_id}`} onClick={onCheckChange}>
+        toggle
+      </button>
     </div>
   ),
 }))
@@ -122,14 +128,15 @@ const createPlugin = (
   source: PluginDetail['source'],
   category: string,
   tags: string[],
-): PluginDetail => ({
-  plugin_id: pluginId,
-  source,
-  declaration: {
-    category,
-    tags,
-  },
-} as PluginDetail)
+): PluginDetail =>
+  ({
+    plugin_id: pluginId,
+    source,
+    declaration: {
+      category,
+      tags,
+    },
+  }) as PluginDetail
 
 describe('ToolPicker', () => {
   beforeEach(() => {

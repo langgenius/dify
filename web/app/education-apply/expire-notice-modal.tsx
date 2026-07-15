@@ -28,13 +28,12 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
   const docLink = useDocLink()
   const eduDocLink = docLink('/use-dify/workspace/subscription-management#dify-for-education')
   const { formatTime } = useTimestamp()
-  const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
+  const setShowPricingModal = useModalContextSelector((s) => s.setShowPricingModal)
   const { mutateAsync } = useEducationVerify()
   const router = useRouter()
   const handleVerify = async () => {
     const { token } = await mutateAsync()
-    if (token)
-      router.push(`/education-apply?token=${token}`)
+    if (token) router.push(`/education-apply?token=${token}`)
   }
   const handleConfirm = async () => {
     await handleVerify()
@@ -45,62 +44,85 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
     >
       <DialogContent className="w-full max-w-[600px] overflow-hidden! border-none text-left align-middle">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {expired ? t(`${i18nPrefix}.expired.title`, { ns: 'education' }) : t(`${i18nPrefix}.isAboutToExpire.title`, { ns: 'education', date: formatTime(expireAt, t(`${i18nPrefix}.dateFormat`, { ns: 'education' }) as string), interpolation: { escapeValue: false } })}
+          {expired
+            ? t(($) => $[`${i18nPrefix}.expired.title`], { ns: 'education' })
+            : t(($) => $[`${i18nPrefix}.isAboutToExpire.title`], {
+                ns: 'education',
+                date: formatTime(
+                  expireAt,
+                  t(($) => $[`${i18nPrefix}.dateFormat`], { ns: 'education' }) as string,
+                ),
+                interpolation: { escapeValue: false },
+              })}
         </DialogTitle>
 
         <div className="mt-5 space-y-5 body-md-regular text-text-secondary">
           <div>
-            {expired
-              ? (
-                  <>
-                    <div>{t(`${i18nPrefix}.expired.summary.line1`, { ns: 'education' })}</div>
-                    <div>{t(`${i18nPrefix}.expired.summary.line2`, { ns: 'education' })}</div>
-                  </>
-                )
-              : t(`${i18nPrefix}.isAboutToExpire.summary`, { ns: 'education' })}
+            {expired ? (
+              <>
+                <div>{t(($) => $[`${i18nPrefix}.expired.summary.line1`], { ns: 'education' })}</div>
+                <div>{t(($) => $[`${i18nPrefix}.expired.summary.line2`], { ns: 'education' })}</div>
+              </>
+            ) : (
+              t(($) => $[`${i18nPrefix}.isAboutToExpire.summary`], { ns: 'education' })
+            )}
           </div>
           <div>
-            <strong className="block title-md-semi-bold">{t(`${i18nPrefix}.stillInEducation.title`, { ns: 'education' })}</strong>
-            {t(`${i18nPrefix}.stillInEducation.${expired ? 'expired' : 'isAboutToExpire'}`, { ns: 'education' })}
+            <strong className="block title-md-semi-bold">
+              {t(($) => $[`${i18nPrefix}.stillInEducation.title`], { ns: 'education' })}
+            </strong>
+            {t(
+              ($) => $[`${i18nPrefix}.stillInEducation.${expired ? 'expired' : 'isAboutToExpire'}`],
+              { ns: 'education' },
+            )}
           </div>
           <div>
-            <strong className="block title-md-semi-bold">{t(`${i18nPrefix}.alreadyGraduated.title`, { ns: 'education' })}</strong>
-            {t(`${i18nPrefix}.alreadyGraduated.${expired ? 'expired' : 'isAboutToExpire'}`, { ns: 'education' })}
+            <strong className="block title-md-semi-bold">
+              {t(($) => $[`${i18nPrefix}.alreadyGraduated.title`], { ns: 'education' })}
+            </strong>
+            {t(
+              ($) => $[`${i18nPrefix}.alreadyGraduated.${expired ? 'expired' : 'isAboutToExpire'}`],
+              { ns: 'education' },
+            )}
           </div>
         </div>
         <div className="mt-7 flex items-center justify-between space-x-2">
-          <Link className="flex items-center space-x-1 system-xs-regular text-text-accent" href={eduDocLink} target="_blank" rel="noopener noreferrer">
-            <div>{t('learn', { ns: 'education' })}</div>
+          <Link
+            className="flex items-center space-x-1 system-xs-regular text-text-accent"
+            href={eduDocLink}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <div>{t(($) => $.learn, { ns: 'education' })}</div>
             <RiExternalLinkLine className="size-3" />
           </Link>
           <div className="flex space-x-2">
-            {expired && IS_CLOUD_EDITION
-              ? (
-                  <Button
-                    onClick={() => {
-                      onClose()
-                      setShowPricingModal()
-                    }}
-                    className="flex items-center space-x-1"
-                  >
-                    <SparklesSoftAccent className="size-4" />
-                    <div className="text-components-button-secondary-accent-text">{t(`${i18nPrefix}.action.upgrade`, { ns: 'education' })}</div>
-                  </Button>
-                )
-              : (
-                  <Button onClick={onClose}>
-                    {t(`${i18nPrefix}.action.dismiss`, { ns: 'education' })}
-                  </Button>
-                )}
+            {expired && IS_CLOUD_EDITION ? (
+              <Button
+                onClick={() => {
+                  onClose()
+                  setShowPricingModal()
+                }}
+                className="flex items-center space-x-1"
+              >
+                <SparklesSoftAccent className="size-4" />
+                <div className="text-components-button-secondary-accent-text">
+                  {t(($) => $[`${i18nPrefix}.action.upgrade`], { ns: 'education' })}
+                </div>
+              </Button>
+            ) : (
+              <Button onClick={onClose}>
+                {t(($) => $[`${i18nPrefix}.action.dismiss`], { ns: 'education' })}
+              </Button>
+            )}
             <Button variant="primary" onClick={handleConfirm}>
-              {t(`${i18nPrefix}.action.reVerify`, { ns: 'education' })}
+              {t(($) => $[`${i18nPrefix}.action.reVerify`], { ns: 'education' })}
             </Button>
           </div>
         </div>

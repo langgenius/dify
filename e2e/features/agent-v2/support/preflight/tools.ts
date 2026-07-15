@@ -1,14 +1,7 @@
 import type { DifyWorld } from '../../../support/world'
 import type { LocalizedLabel, PreseededResource } from './common'
 import { createApiContext, expectApiResponseOK } from '../../../../support/api'
-import {
-  asRecord,
-  asString,
-
-  matchesNameOrLabel,
-
-  skipBlockedPrecondition,
-} from './common'
+import { asRecord, asString, matchesNameOrLabel, skipBlockedPrecondition } from './common'
 
 type BuiltinToolProvider = {
   label?: LocalizedLabel
@@ -20,7 +13,7 @@ type BuiltinToolProvider = {
 }
 
 export const splitToolDisplayName = (resourceName: string) => {
-  const [providerName, toolName] = resourceName.split('/').map(item => item.trim())
+  const [providerName, toolName] = resourceName.split('/').map((item) => item.trim())
 
   if (!providerName || !toolName) {
     return {
@@ -33,6 +26,20 @@ export const splitToolDisplayName = (resourceName: string) => {
     ok: true as const,
     providerName,
     toolName,
+  }
+}
+
+export const splitToolResourceId = (resourceId: string) => {
+  const parts = resourceId
+    .split('/')
+    .map((item) => item.trim())
+    .filter(Boolean)
+  const toolName = parts.at(-1)
+  const providerName = parts.slice(0, -1).join('/')
+
+  return {
+    providerName,
+    toolName: toolName ?? '',
   }
 }
 
@@ -58,8 +65,8 @@ export const findToolEntry = (
     const toolValues = [record.tool_name, record.name].map(asString)
 
     return (
-      providerValues.some(value => value === providerName || value === providerDisplayName)
-      && toolValues.some(value => value === toolName || value === toolDisplayName)
+      providerValues.some((value) => value === providerName || value === providerDisplayName) &&
+      toolValues.some((value) => value === toolName || value === toolDisplayName)
     )
   })
 
@@ -84,18 +91,17 @@ export async function skipMissingPreseededTool(
   resourceName: string,
 ): Promise<'skipped' | PreseededResource> {
   const parsed = splitToolDisplayName(resourceName)
-  if (!parsed.ok)
-    return skipBlockedPrecondition(world, parsed.reason)
+  if (!parsed.ok) return skipBlockedPrecondition(world, parsed.reason)
 
   const ctx = await createApiContext()
   try {
     const response = await ctx.get('/console/api/workspaces/current/tools/builtin')
     await expectApiResponseOK(response, `Check preseeded tool ${resourceName}`)
     const providers = (await response.json()) as BuiltinToolProvider[]
-    const provider = providers.find(item =>
+    const provider = providers.find((item) =>
       matchesNameOrLabel(parsed.providerName, item.name, item.label),
     )
-    const tool = provider?.tools.find(item =>
+    const tool = provider?.tools.find((item) =>
       matchesNameOrLabel(parsed.toolName, item.name, item.label),
     )
 
@@ -107,8 +113,7 @@ export async function skipMissingPreseededTool(
       kind: 'tool',
       name: resourceName,
     }
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }

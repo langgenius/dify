@@ -15,25 +15,13 @@ describe('LocaleMenu', () => {
 
   describe('Rendering', () => {
     it('should render selected locale name when value matches an item', () => {
-      render(
-        <LocaleMenu
-          items={localeItems}
-          value="en-US"
-          onChange={vi.fn()}
-        />,
-      )
+      render(<LocaleMenu items={localeItems} value="en-US" onChange={vi.fn()} />)
 
       expect(screen.getByRole('button', { name: /english \(us\)/i })).toBeInTheDocument()
     })
 
     it('should render trigger without selected label when value is not found', () => {
-      render(
-        <LocaleMenu
-          items={localeItems}
-          value="missing"
-          onChange={vi.fn()}
-        />,
-      )
+      render(<LocaleMenu items={localeItems} value="missing" onChange={vi.fn()} />)
 
       const trigger = screen.getByRole('button')
       expect(trigger).toBeInTheDocument()
@@ -46,13 +34,7 @@ describe('LocaleMenu', () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
 
-      render(
-        <LocaleMenu
-          items={localeItems}
-          value="en-US"
-          onChange={onChange}
-        />,
-      )
+      render(<LocaleMenu items={localeItems} value="en-US" onChange={onChange} />)
 
       await user.click(screen.getByRole('button', { name: /english \(us\)/i }))
       await user.click(screen.getByRole('menuitemradio', { name: '日本語' }))
@@ -63,13 +45,7 @@ describe('LocaleMenu', () => {
     it('should render all locale options when menu is opened', async () => {
       const user = userEvent.setup()
 
-      render(
-        <LocaleMenu
-          items={localeItems}
-          value="en-US"
-          onChange={vi.fn()}
-        />,
-      )
+      render(<LocaleMenu items={localeItems} value="en-US" onChange={vi.fn()} />)
 
       await user.click(screen.getByRole('button', { name: /english \(us\)/i }))
 
@@ -83,12 +59,7 @@ describe('LocaleMenu', () => {
     it('should not throw when onChange is undefined and option is selected', async () => {
       const user = userEvent.setup()
 
-      render(
-        <LocaleMenu
-          items={localeItems}
-          value="en-US"
-        />,
-      )
+      render(<LocaleMenu items={localeItems} value="en-US" />)
 
       await user.click(screen.getByRole('button', { name: /english \(us\)/i }))
       await user.click(screen.getByRole('menuitemradio', { name: '简体中文' }))
@@ -99,13 +70,7 @@ describe('LocaleMenu', () => {
     it('should render no options when items are empty', async () => {
       const user = userEvent.setup()
 
-      render(
-        <LocaleMenu
-          items={[]}
-          value="en-US"
-          onChange={vi.fn()}
-        />,
-      )
+      render(<LocaleMenu items={[]} value="en-US" onChange={vi.fn()} />)
 
       await user.click(screen.getByRole('button'))
 

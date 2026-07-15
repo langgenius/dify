@@ -25,7 +25,9 @@ describe('CredentialSelector', () => {
   it('should render current workspace name', () => {
     render(<CredentialSelector value="1" items={mockItems} onSelect={vi.fn()} />)
 
-    expect(screen.getByTestId('notion-credential-selector-name')).toHaveTextContent('Notion Workspace 1')
+    expect(screen.getByTestId('notion-credential-selector-name')).toHaveTextContent(
+      'Notion Workspace 1',
+    )
   })
 
   it('should show all workspaces when menu is clicked', async () => {
@@ -62,6 +64,8 @@ describe('CredentialSelector', () => {
     ]
     render(<CredentialSelector value="1" items={itemsWithoutWorkspaceName} onSelect={vi.fn()} />)
 
-    expect(screen.getByTestId('notion-credential-selector-name')).toHaveTextContent('Credential Name 1')
+    expect(screen.getByTestId('notion-credential-selector-name')).toHaveTextContent(
+      'Credential Name 1',
+    )
   })
 })

@@ -36,7 +36,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
   useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
     isPending: false,
-    mutate: (input: unknown, options?: { onSuccess?: () => void, onError?: () => void }) => {
+    mutate: (input: unknown, options?: { onSuccess?: () => void; onError?: () => void }) => {
       Promise.resolve(mutationOptions.mutationFn(input))
         .then(() => options?.onSuccess?.())
         .catch(() => options?.onError?.())
@@ -44,11 +44,48 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
+
+vi.mock('jotai', async (importOriginal) => {
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateJotaiMock(importOriginal)
+})
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
@@ -58,7 +95,11 @@ vi.mock('@/service/client', () => ({
       },
       post: {
         mutationOptions: () => ({
-          mutationFn: ({ body }: { body: { name: string, type: 'app' | 'knowledge' | 'snippet' } }) => createTag(body.name, body.type),
+          mutationFn: ({
+            body,
+          }: {
+            body: { name: string; type: 'app' | 'knowledge' | 'snippet' }
+          }) => createTag(body.name, body.type),
         }),
       },
       byTagId: {
@@ -101,8 +142,17 @@ describe('TagManagementModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseQueryData.current = mockTags
-    mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify']
-    vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: '' })
+    mockWorkspacePermissionKeys.value = [
+      'app.tag.manage',
+      'dataset.tag.manage',
+      'snippets.create_and_modify',
+    ]
+    vi.mocked(createTag).mockResolvedValue({
+      id: 'new-tag',
+      name: 'NewTag',
+      type: 'app',
+      binding_count: '',
+    })
   })
 
   describe('Rendering', () => {
@@ -279,7 +329,12 @@ describe('TagManagementModal', () => {
 
     it('should handle tag creation with knowledge type', async () => {
       const user = userEvent.setup()
-      vi.mocked(createTag).mockResolvedValue({ id: 'new-k', name: 'KnowledgeTag', type: 'knowledge', binding_count: '' })
+      vi.mocked(createTag).mockResolvedValue({
+        id: 'new-k',
+        name: 'KnowledgeTag',
+        type: 'knowledge',
+        binding_count: '',
+      })
 
       render(<TagManagementModal {...defaultProps} type="knowledge" />)
 

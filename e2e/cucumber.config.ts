@@ -1,8 +1,11 @@
 import type { IConfiguration } from '@cucumber/cucumber'
+import './scripts/env-register'
 
-const hasCliTags = process.argv.some(arg => arg === '--tags' || arg.startsWith('--tags='))
-const defaultTags = process.env.E2E_CUCUMBER_TAGS
-  || (hasCliTags ? undefined : 'not @fresh and not @skip and not @preview')
+const hasCliTags = process.argv.some((arg) => arg === '--tags' || arg.startsWith('--tags='))
+const defaultNonExternalTags =
+  'not @fresh and not @skip and not @preview and not @external-model and not @external-tool'
+const defaultTags =
+  process.env.E2E_CUCUMBER_TAGS || (hasCliTags ? undefined : defaultNonExternalTags)
 
 const config = {
   format: [

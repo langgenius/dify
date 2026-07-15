@@ -102,25 +102,37 @@ describe('Options', () => {
       const payload = createMockCrawlOptions({ crawl_sub_pages: true })
       render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByRole('checkbox', { name: /crawlSubPage/i })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('checkbox', { name: /crawlSubPage/i })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
     })
 
     it('should display crawl_sub_pages checkbox without check icon when false', () => {
       const payload = createMockCrawlOptions({ crawl_sub_pages: false })
       render(<Options payload={payload} onChange={mockOnChange} />)
-      expect(screen.getByRole('checkbox', { name: /crawlSubPage/i })).toHaveAttribute('aria-checked', 'false')
+      expect(screen.getByRole('checkbox', { name: /crawlSubPage/i })).toHaveAttribute(
+        'aria-checked',
+        'false',
+      )
     })
 
     it('should display only_main_content checkbox with check icon when true', () => {
       const payload = createMockCrawlOptions({ only_main_content: true })
       render(<Options payload={payload} onChange={mockOnChange} />)
-      expect(screen.getByRole('checkbox', { name: /extractOnlyMainContent/i })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('checkbox', { name: /extractOnlyMainContent/i })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
     })
 
     it('should display only_main_content checkbox without check icon when false', () => {
       const payload = createMockCrawlOptions({ only_main_content: false })
       render(<Options payload={payload} onChange={mockOnChange} />)
-      expect(screen.getByRole('checkbox', { name: /extractOnlyMainContent/i })).toHaveAttribute('aria-checked', 'false')
+      expect(screen.getByRole('checkbox', { name: /extractOnlyMainContent/i })).toHaveAttribute(
+        'aria-checked',
+        'false',
+      )
     })
 
     it('should display limit value in input', () => {
@@ -319,17 +331,13 @@ describe('Options', () => {
       const limitInput = screen.getByDisplayValue('10')
       fireEvent.change(limitInput, { target: { value: '15' } })
 
-      expect(mockOnChange).toHaveBeenCalledWith(
-        expect.objectContaining({ limit: 15 }),
-      )
+      expect(mockOnChange).toHaveBeenCalledWith(expect.objectContaining({ limit: 15 }))
 
       // Change max_depth
       const maxDepthInput = screen.getByDisplayValue('2')
       fireEvent.change(maxDepthInput, { target: { value: '5' } })
 
-      expect(mockOnChange).toHaveBeenCalledWith(
-        expect.objectContaining({ max_depth: 5 }),
-      )
+      expect(mockOnChange).toHaveBeenCalledWith(expect.objectContaining({ max_depth: 5 }))
     })
 
     it('should handle multiple rapid changes', () => {
