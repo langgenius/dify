@@ -147,7 +147,6 @@ describe('NodeControl', () => {
     it('should hide the run control when workflow run permission is missing', () => {
       renderNodeControl(<NodeControlHarness id="node-5" data={makeData()} />, {
         canEdit: false,
-        canComment: true,
         canRun: false,
         canImportExportDSL: false,
         canReleaseAndVersion: false,
