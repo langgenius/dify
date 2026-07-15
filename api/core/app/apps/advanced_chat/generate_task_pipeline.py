@@ -757,7 +757,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
 
         with self._database_session() as session:
-            err_event = QueueErrorEvent(error=ValueError(f"Run failed: {event.error}"))
+            redacted_error = self._workflow_response_converter._redact(event.error)
+            err_event = QueueErrorEvent(error=ValueError(f"Run failed: {redacted_error}"))
             err = self._base_task_pipeline.handle_error(event=err_event, session=session, message_id=self._message_id)
 
         yield workflow_finish_resp

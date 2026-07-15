@@ -890,11 +890,10 @@ class AppCopyApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         args = CopyAppPayload.model_validate(console_ns.payload or {})
 
-        AppDslService.assert_secret_export_allowed(
-            include_secret=True,
-            current_role=current_user.current_role,
-        )
-
+        # The copy endpoint exports DSL server-side and immediately re-imports it within the
+        # same tenant — the YAML is never returned to the caller, so there is no secret
+        # exfiltration risk.  The assert_secret_export_allowed guard is only needed on the
+        # /export endpoint where plaintext is sent to the client.
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, session=session, include_secret=True)

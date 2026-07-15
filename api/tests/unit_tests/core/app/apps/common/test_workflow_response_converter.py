@@ -3,11 +3,16 @@ from unittest.mock import Mock
 
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.entities.queue_entities import QueueNodeStartedEvent, QueueNodeSucceededEvent
+from core.app.entities.queue_entities import (
+    QueueNodeFailedEvent,
+    QueueNodeRetryEvent,
+    QueueNodeStartedEvent,
+    QueueNodeSucceededEvent,
+)
 from core.workflow.secret_scrub import SECRET_PLACEHOLDER
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
-from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
 from libs.datetime_utils import naive_utc_now
@@ -361,3 +366,91 @@ class TestWorkflowResponseConverterSecretRedaction:
         assert response is not None
         assert SECRET_PLACEHOLDER in str(response.data.outputs)
         assert secret not in str(response.data.outputs)
+
+    def test_node_finish_redacts_error_and_execution_metadata(self):
+        """node-finish stream response must redact secret from error string and execution_metadata."""
+        secret = "supersecretvalue123"
+        converter = self._make_converter(secret_values=(secret,))
+        start_event = self._prime_converter(converter)
+
+        failed_event = QueueNodeFailedEvent(
+            node_execution_id=start_event.node_execution_id,
+            node_id="node-1",
+            node_type=BuiltinNodeTypes.CODE,
+            start_at=naive_utc_now(),
+            inputs={},
+            process_data={},
+            outputs={},
+            error=f"API call failed with token={secret}",
+            execution_metadata={
+                WorkflowNodeExecutionMetadataKey.TOOL_INFO: {"credential": secret},
+            },
+        )
+
+        response = converter.workflow_node_finish_to_stream_response(event=failed_event, task_id="t1")
+
+        assert response is not None
+        # error field must be scrubbed
+        assert response.data.error is not None
+        assert secret not in response.data.error
+        assert SECRET_PLACEHOLDER in response.data.error
+        # execution_metadata must be scrubbed
+        assert response.data.execution_metadata is not None
+        assert secret not in str(response.data.execution_metadata)
+        assert SECRET_PLACEHOLDER in str(response.data.execution_metadata)
+
+    def test_node_retry_redacts_error_and_execution_metadata(self):
+        """node-retry stream response must redact secret from error string and execution_metadata."""
+        secret = "supersecretvalue123"
+        converter = self._make_converter(secret_values=(secret,))
+        start_event = self._prime_converter(converter)
+
+        retry_event = QueueNodeRetryEvent(
+            node_execution_id=start_event.node_execution_id,
+            node_id="node-1",
+            node_title="Test Node",
+            node_type=BuiltinNodeTypes.CODE,
+            start_at=naive_utc_now(),
+            provider_type="built-in",
+            provider_id="code",
+            inputs={},
+            process_data={},
+            outputs={},
+            error=f"Retry because of token={secret}",
+            execution_metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: {"credential": secret}},
+            retry_index=1,
+        )
+
+        response = converter.workflow_node_retry_to_stream_response(event=retry_event, task_id="t1")
+
+        assert response is not None
+        assert response.data.error is not None
+        assert secret not in response.data.error
+        assert SECRET_PLACEHOLDER in response.data.error
+        assert response.data.execution_metadata is not None
+        assert secret not in str(response.data.execution_metadata)
+        assert SECRET_PLACEHOLDER in str(response.data.execution_metadata)
+
+    def test_workflow_finish_redacts_error(self):
+        """workflow_finish stream response must redact secret from error string."""
+        secret = "supersecretvalue123"
+        converter = self._make_converter(secret_values=(secret,))
+        self._prime_converter(converter)
+
+        mock_graph_runtime_state = Mock()
+        mock_graph_runtime_state.outputs = {}
+        mock_graph_runtime_state.total_tokens = 0
+        mock_graph_runtime_state.node_run_steps = 1
+
+        response = converter.workflow_finish_to_stream_response(
+            task_id="t1",
+            workflow_id="wf-id",
+            status=WorkflowExecutionStatus.FAILED,
+            graph_runtime_state=mock_graph_runtime_state,
+            error=f"Workflow failed: bad credential={secret}",
+        )
+
+        assert response is not None
+        assert response.data.error is not None
+        assert secret not in response.data.error
+        assert SECRET_PLACEHOLDER in response.data.error

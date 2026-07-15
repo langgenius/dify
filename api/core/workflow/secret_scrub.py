@@ -43,7 +43,10 @@ def _split_values(secret_values: Iterable[str]) -> tuple[tuple[str, ...], frozen
             substrings.append(value)
         else:
             exacts.add(value)
-    return tuple(dict.fromkeys(substrings)), frozenset(exacts)
+    # Sort longest-first so a longer secret containing a shorter one is matched first,
+    # preventing the shorter secret from fragmenting a longer overlapping one.
+    deduped = list(dict.fromkeys(substrings))
+    return tuple(sorted(deduped, key=len, reverse=True)), frozenset(exacts)
 
 
 def redact_secret_values(value: object, secret_values: Iterable[str]) -> object:

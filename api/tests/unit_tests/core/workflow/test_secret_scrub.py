@@ -44,3 +44,17 @@ def test_collect_deduplicates_and_skips_empty() -> None:
         SecretVariable(value="", name="c"),
     ]
     assert collect_workflow_secret_values(env, []) == ("dup",)
+
+
+def test_overlapping_secret_longer_wins() -> None:
+    # When a short secret is a substring of a longer secret,
+    # the longer secret must be fully masked without being fragmented.
+    long_secret = "supersecretvalue123"
+    short_secret = "supersecret"  # prefix of long_secret, len >= _MIN_SUBSTRING_LENGTH
+    text = f"token={long_secret}"
+
+    # Both secrets registered; longer-first ordering prevents the short one from
+    # splitting the long one before it can be matched.
+    result = redact_secret_values(text, (short_secret, long_secret))
+    # The full long secret must be replaced by exactly one placeholder.
+    assert result == f"token={SECRET_PLACEHOLDER}"

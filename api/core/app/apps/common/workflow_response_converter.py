@@ -310,7 +310,7 @@ class WorkflowResponseConverter:
                 workflow_id=workflow_id,
                 status=status,
                 outputs=encoded_outputs,
-                error=error,
+                error=self._redact(error),
                 elapsed_time=elapsed_time,
                 total_tokens=graph_runtime_state.total_tokens,
                 total_steps=graph_runtime_state.node_run_steps,
@@ -614,9 +614,9 @@ class WorkflowResponseConverter:
                 outputs=outputs,
                 outputs_truncated=outputs_truncated,
                 status=status,
-                error=error_message,
+                error=self._redact(error_message),
                 elapsed_time=elapsed_time,
-                execution_metadata=metadata,
+                execution_metadata=self._redact(metadata),
                 created_at=int(start_at.timestamp()),
                 finished_at=int(finished_at.timestamp()),
                 files=self.fetch_files_from_node_outputs(event.outputs or {}),
@@ -663,9 +663,9 @@ class WorkflowResponseConverter:
                 outputs=outputs,
                 outputs_truncated=outputs_truncated,
                 status=WorkflowNodeExecutionStatus.RETRY,
-                error=event.error,
+                error=self._redact(event.error),
                 elapsed_time=elapsed_time,
-                execution_metadata=metadata,
+                execution_metadata=self._redact(metadata),
                 created_at=int(snapshot.start_at.timestamp()),
                 finished_at=int(finished_at.timestamp()),
                 files=self.fetch_files_from_node_outputs(event.outputs or {}),
@@ -729,9 +729,9 @@ class WorkflowResponseConverter:
     ) -> IterationNodeCompletedStreamResponse:
         json_converter = WorkflowRuntimeTypeConverter()
 
-        new_inputs, inputs_truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
+        new_inputs, inputs_truncated = self._truncator.truncate_variable_mapping(self._redact(event.inputs or {}))
         new_outputs, outputs_truncated = self._truncator.truncate_variable_mapping(
-            json_converter.to_json_encodable(event.outputs) or {}
+            self._redact(json_converter.to_json_encodable(event.outputs) or {})
         )
         return IterationNodeCompletedStreamResponse(
             task_id=task_id,
@@ -753,7 +753,7 @@ class WorkflowResponseConverter:
                 error=None,
                 elapsed_time=(naive_utc_now() - event.start_at).total_seconds(),
                 total_tokens=(lambda x: x if isinstance(x, int) else 0)(event.metadata.get("total_tokens", 0)),
-                execution_metadata=event.metadata,
+                execution_metadata=self._redact(event.metadata),
                 finished_at=int(time.time()),
                 steps=event.steps,
             ),
@@ -811,9 +811,9 @@ class WorkflowResponseConverter:
         event: QueueLoopCompletedEvent,
     ) -> LoopNodeCompletedStreamResponse:
         json_converter = WorkflowRuntimeTypeConverter()
-        new_inputs, inputs_truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
+        new_inputs, inputs_truncated = self._truncator.truncate_variable_mapping(self._redact(event.inputs or {}))
         new_outputs, outputs_truncated = self._truncator.truncate_variable_mapping(
-            json_converter.to_json_encodable(event.outputs) or {}
+            self._redact(json_converter.to_json_encodable(event.outputs) or {})
         )
         return LoopNodeCompletedStreamResponse(
             task_id=task_id,
@@ -835,7 +835,7 @@ class WorkflowResponseConverter:
                 error=None,
                 elapsed_time=(naive_utc_now() - event.start_at).total_seconds(),
                 total_tokens=(lambda x: x if isinstance(x, int) else 0)(event.metadata.get("total_tokens", 0)),
-                execution_metadata=event.metadata,
+                execution_metadata=self._redact(event.metadata),
                 finished_at=int(time.time()),
                 steps=event.steps,
             ),
