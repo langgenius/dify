@@ -61,6 +61,7 @@ from core.workflow.human_input_policy import (
     resolve_human_input_pause_reason_inputs,
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.secret_scrub import redact_secret_values
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
@@ -130,10 +131,12 @@ class WorkflowResponseConverter:
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
         user: Union[Account, EndUser],
         system_variables: Sequence[Variable],
+        secret_values: tuple[str, ...] = (),
     ):
         self._application_generate_entity = application_generate_entity
         self._user = user
         self._system_variables = system_variables_to_mapping(system_variables)
+        self._secret_values = secret_values
         self._workflow_inputs = self._prepare_workflow_inputs()
 
         # Disable truncation for SERVICE_API calls to keep backward compatibility.
@@ -234,6 +237,9 @@ class WorkflowResponseConverter:
         converter = WorkflowRuntimeTypeConverter()
         return converter.to_json_encodable(outputs)
 
+    def _redact(self, value: object) -> object:
+        return redact_secret_values(value, self._secret_values)
+
     def workflow_start_to_stream_response(
         self,
         *,
@@ -279,7 +285,7 @@ class WorkflowResponseConverter:
         elapsed_time = (finished_at - started_at).total_seconds()
 
         outputs_mapping = graph_runtime_state.outputs or {}
-        encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
+        encoded_outputs = self._redact(WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping))
 
         created_by: CreatedByDict | dict[str, object] = {}
         user = self._user
@@ -331,7 +337,7 @@ class WorkflowResponseConverter:
             )
         paused_at = naive_utc_now()
         elapsed_time = (paused_at - started_at).total_seconds()
-        encoded_outputs = self._encode_outputs(event.outputs) or {}
+        encoded_outputs = self._redact(self._encode_outputs(event.outputs) or {})
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}
         variable_pool = graph_runtime_state.variable_pool
@@ -575,9 +581,9 @@ class WorkflowResponseConverter:
         finished_at = event.finished_at or naive_utc_now()
         elapsed_time = (finished_at - start_at).total_seconds()
 
-        inputs, inputs_truncated = self._truncate_mapping(event.inputs)
-        process_data, process_data_truncated = self._truncate_mapping(event.process_data)
-        encoded_outputs = self._encode_outputs(event.outputs)
+        inputs, inputs_truncated = self._truncate_mapping(self._redact(event.inputs))
+        process_data, process_data_truncated = self._truncate_mapping(self._redact(event.process_data))
+        encoded_outputs = self._redact(self._encode_outputs(event.outputs))
         outputs, outputs_truncated = self._truncate_mapping(encoded_outputs)
         metadata = self._merge_metadata(event.execution_metadata, snapshot)
 
@@ -635,9 +641,9 @@ class WorkflowResponseConverter:
         finished_at = naive_utc_now()
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
-        inputs, inputs_truncated = self._truncate_mapping(event.inputs)
-        process_data, process_data_truncated = self._truncate_mapping(event.process_data)
-        encoded_outputs = self._encode_outputs(event.outputs)
+        inputs, inputs_truncated = self._truncate_mapping(self._redact(event.inputs))
+        process_data, process_data_truncated = self._truncate_mapping(self._redact(event.process_data))
+        encoded_outputs = self._redact(self._encode_outputs(event.outputs))
         outputs, outputs_truncated = self._truncate_mapping(encoded_outputs)
         metadata = self._merge_metadata(event.execution_metadata, snapshot)
 

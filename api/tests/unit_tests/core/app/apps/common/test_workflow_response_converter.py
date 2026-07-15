@@ -1,8 +1,17 @@
 from collections.abc import Mapping, Sequence
+from unittest.mock import Mock
 
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.queue_entities import QueueNodeStartedEvent, QueueNodeSucceededEvent
+from core.workflow.secret_scrub import SECRET_PLACEHOLDER
+from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
+from graphon.enums import BuiltinNodeTypes
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
+from libs.datetime_utils import naive_utc_now
+from models import Account
 
 
 class TestWorkflowResponseConverterFetchFilesFromVariableValue:
@@ -256,3 +265,77 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
         assert len(result) == 2
         assert result[0]["id"] == "complex_file"
         assert result[1]["id"] == "complex_obj"
+
+
+class TestWorkflowResponseConverterSecretRedaction:
+    """Test that WorkflowResponseConverter redacts secret values from SSE stream responses."""
+
+    def _make_converter(self, secret_values: tuple[str, ...] = ()) -> WorkflowResponseConverter:
+        mock_entity = Mock(spec=WorkflowAppGenerateEntity)
+        mock_app_config = Mock()
+        mock_app_config.tenant_id = "test-tenant-id"
+        mock_entity.invoke_from = InvokeFrom.WEB_APP
+        mock_entity.app_config = mock_app_config
+        mock_entity.inputs = {}
+
+        mock_user = Mock(spec=Account)
+        mock_user.id = "test-user-id"
+        mock_user.name = "Test User"
+        mock_user.email = "test@example.com"
+
+        system_variables = build_system_variables(workflow_id="wf-id", workflow_execution_id="run-id")
+        return WorkflowResponseConverter(
+            application_generate_entity=mock_entity,
+            user=mock_user,
+            system_variables=system_variables,
+            secret_values=secret_values,
+        )
+
+    def _prime_converter(self, converter: WorkflowResponseConverter) -> QueueNodeStartedEvent:
+        """Seed workflow run id and node snapshot so finish events are processable."""
+        converter.workflow_start_to_stream_response(
+            task_id="t1",
+            workflow_run_id="run-id",
+            workflow_id="wf-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
+        start_event = QueueNodeStartedEvent(
+            node_execution_id="exec-1",
+            node_id="node-1",
+            node_title="Test Node",
+            node_type=BuiltinNodeTypes.CODE,
+            start_at=naive_utc_now(),
+            in_iteration_id=None,
+            in_loop_id=None,
+            provider_type="built-in",
+            provider_id="code",
+        )
+        converter.workflow_node_start_to_stream_response(event=start_event, task_id="t1")
+        return start_event
+
+    def test_node_finish_redacts_inputs_process_data_outputs(self):
+        """node-finish stream response must replace secret values with SECRET_PLACEHOLDER."""
+        secret = "supersecretvalue123"
+        converter = self._make_converter(secret_values=(secret,))
+        start_event = self._prime_converter(converter)
+
+        succeeded_event = QueueNodeSucceededEvent(
+            node_execution_id=start_event.node_execution_id,
+            node_id="node-1",
+            node_type=BuiltinNodeTypes.CODE,
+            start_at=naive_utc_now(),
+            inputs={"api_key": secret},
+            process_data={"raw_response": f"token={secret}"},
+            outputs={"result": f"hello {secret} world"},
+        )
+
+        response = converter.workflow_node_finish_to_stream_response(event=succeeded_event, task_id="t1")
+
+        assert response is not None
+        # Secret must be replaced in all three fields
+        assert SECRET_PLACEHOLDER in str(response.data.inputs)
+        assert secret not in str(response.data.inputs)
+        assert SECRET_PLACEHOLDER in str(response.data.process_data)
+        assert secret not in str(response.data.process_data)
+        assert SECRET_PLACEHOLDER in str(response.data.outputs)
+        assert secret not in str(response.data.outputs)
