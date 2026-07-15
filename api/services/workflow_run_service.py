@@ -80,18 +80,31 @@ class WorkflowRunService:
         run_ids = [workflow_run.id for workflow_run in workflow_runs]
         messages_by_run_id: dict[str, Message] = {}
         if run_ids:
+            # Pick a single message per run in SQL via DISTINCT ON, instead of
+            # loading every matching row and de-duplicating in Python. This
+            # avoids fetching extra Message rows when a run has more than one
+            # message, and makes the selection rule explicit: the most recent
+            # message per run (created_at desc, id desc as a stable tie-break),
+            # rather than depending on the row return order.
             messages = db.session.scalars(
-                select(Message).where(
+                select(Message)
+                .where(
                     Message.app_id == app_model.id,
                     Message.workflow_run_id.in_(run_ids),
+                )
+                .distinct(Message.workflow_run_id)
+                .order_by(
+                    Message.workflow_run_id,
+                    Message.created_at.desc(),
+                    Message.id.desc(),
                 )
             ).all()
             for loaded_message in messages:
                 run_id = loaded_message.workflow_run_id
                 if run_id is None:
                     continue
-                # setdefault mirrors scalar()'s single-row-per-run semantics.
-                messages_by_run_id.setdefault(run_id, loaded_message)
+                # DISTINCT ON already guarantees one row per run.
+                messages_by_run_id[run_id] = loaded_message
 
         with_message_workflow_runs = []
         for workflow_run in workflow_runs:
