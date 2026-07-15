@@ -1,5 +1,13 @@
 import { render } from 'vitest-browser-react'
-import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '../index'
+import {
+  createDialogHandle,
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
@@ -17,6 +25,26 @@ describe('Dialog wrapper', () => {
 
       await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Title')
       await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Description')
+    })
+
+    it('should connect a detached trigger to the dialog', async () => {
+      const handle = createDialogHandle()
+      const screen = await render(
+        <>
+          <DialogTrigger handle={handle}>Open dialog</DialogTrigger>
+          <Dialog handle={handle}>
+            <DialogContent>
+              <DialogTitle>Detached dialog</DialogTitle>
+            </DialogContent>
+          </Dialog>
+        </>,
+      )
+
+      await screen.getByRole('button', { name: 'Open dialog' }).click()
+
+      await expect
+        .element(screen.getByRole('dialog', { name: 'Detached dialog' }))
+        .toBeInTheDocument()
     })
   })
 

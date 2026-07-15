@@ -23,7 +23,7 @@ from controllers.console.auth.error import (
     NotOwnerError,
     OwnerTransferLimitError,
 )
-from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
+from controllers.console.error import EmailSendIpLimitError, SeatsLimitExceeded, WorkspaceMembersLimitExceeded
 from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.wraps import (
     account_initialization_required,
@@ -40,7 +40,7 @@ from libs.login import current_account_with_tenant, login_required
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.enterprise import rbac_service as enterprise_rbac_service
-from services.errors.account import AccountAlreadyInTenantError, SeatsLimitExceededError
+from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
 
 
@@ -160,12 +160,14 @@ def _normalize_enum_value(value: object) -> str:
     return str(normalized) if normalized is not None else ""
 
 
-def _count_new_member_invites(tenant_id: str, emails: list[str]) -> int:
+def _count_new_member_invites(tenant_id: str, emails: list[str]) -> tuple[int, int]:
     new_member_count = 0
+    new_account_count = 0
     for email in emails:
         account = AccountService.get_account_by_email_with_case_fallback(email, session=db.session())
         if not account:
             new_member_count += 1
+            new_account_count += 1
             continue
 
         exists = db.session.scalar(
@@ -176,7 +178,7 @@ def _count_new_member_invites(tenant_id: str, emails: list[str]) -> int:
         if not exists:
             new_member_count += 1
 
-    return new_member_count
+    return new_member_count, new_account_count
 
 
 def _count_current_members(tenant_id: str) -> int:
@@ -185,7 +187,7 @@ def _count_current_members(tenant_id: str) -> int:
     )
 
 
-def _check_member_invite_limits(tenant_id: str, new_member_count: int) -> None:
+def _check_member_invite_limits(tenant_id: str, new_member_count: int, new_account_count: int) -> None:
     if new_member_count <= 0:
         return
 
@@ -195,6 +197,10 @@ def _check_member_invite_limits(tenant_id: str, new_member_count: int) -> None:
         workspace_members = features.workspace_members
         if workspace_members.enabled is True and not workspace_members.is_available(new_member_count):
             raise WorkspaceMembersLimitExceeded()
+        if new_account_count > 0:
+            seats = FeatureService.get_system_features(is_authenticated=True).license.seats
+            if not seats.is_available(new_account_count):
+                raise SeatsLimitExceeded()
         return
 
     if dify_config.BILLING_ENABLED and features.billing.enabled is True:
@@ -295,8 +301,8 @@ class MemberInviteEmailApi(Resource):
         tenant_id = inviter.current_tenant.id
         with redis_client.lock(f"workspace_member_invite:{tenant_id}", timeout=60):
             if dify_config.ENTERPRISE_ENABLED is True or dify_config.BILLING_ENABLED is True:
-                new_member_count = _count_new_member_invites(tenant_id, invitee_emails)
-                _check_member_invite_limits(tenant_id, new_member_count)
+                new_member_count, new_account_count = _count_new_member_invites(tenant_id, invitee_emails)
+                _check_member_invite_limits(tenant_id, new_member_count, new_account_count)
 
             for invitee_email in invitee_emails:
                 try:
@@ -324,14 +330,6 @@ class MemberInviteEmailApi(Resource):
                             status="already_member",
                             email=invitee_email,
                             message="Account already in workspace.",
-                        )
-                    )
-                except SeatsLimitExceededError:
-                    invitation_results.append(
-                        MemberInviteFailedResponse(
-                            status="failed",
-                            email=invitee_email,
-                            message="Licensed seats limit exceeded.",
                         )
                     )
                 except Exception as e:

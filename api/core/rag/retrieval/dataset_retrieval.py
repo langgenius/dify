@@ -274,7 +274,8 @@ class DatasetRetrieval:
             retrieval_resource_list.append(source)
         # deal with dify documents
         if dify_documents:
-            records = RetrievalService.format_retrieval_documents(dify_documents)
+            with Session(bind=session.get_bind()) as format_session:
+                records = RetrievalService.format_retrieval_documents(format_session, dify_documents)
             dataset_ids = [i.segment.dataset_id for i in records]
             document_ids = [i.segment.document_id for i in records]
 
@@ -491,7 +492,8 @@ class DatasetRetrieval:
             retrieval_resource_list.append(source)
         # deal with dify documents
         if dify_documents:
-            records = RetrievalService.format_retrieval_documents(dify_documents)
+            with Session(bind=session.get_bind()) as format_session:
+                records = RetrievalService.format_retrieval_documents(format_session, dify_documents)
             if records:
                 for record in records:
                     segment = record.segment
@@ -1225,7 +1227,11 @@ class DatasetRetrieval:
                 continue
 
             # pass if dataset is not available
-            if dataset and dataset.provider != "external" and dataset.available_document_count == 0:
+            if (
+                dataset
+                and dataset.provider != "external"
+                and dataset.get_total_available_documents(session=session) == 0
+            ):
                 continue
 
             available_datasets.append(dataset)
@@ -1859,23 +1865,31 @@ class DatasetRetrieval:
                 # Skip second reranking when there is only one dataset
                 if reranking_enable and dataset_count > 1:
                     # do rerank for searched documents
-                    data_post_processor = DataPostProcessor(tenant_id, reranking_mode, reranking_model, weights, False)
-                    if query:
-                        all_documents_item = data_post_processor.invoke(
-                            query=query,
-                            documents=all_documents_item,
-                            score_threshold=score_threshold,
-                            top_n=top_k,
-                            query_type=QueryType.TEXT_QUERY,
+                    with session_factory.create_session() as session:
+                        data_post_processor = DataPostProcessor(
+                            tenant_id,
+                            reranking_mode,
+                            reranking_model,
+                            weights,
+                            False,
+                            session=session,
                         )
-                    if attachment_id:
-                        all_documents_item = data_post_processor.invoke(
-                            documents=all_documents_item,
-                            score_threshold=score_threshold,
-                            top_n=top_k,
-                            query_type=QueryType.IMAGE_QUERY,
-                            query=attachment_id,
-                        )
+                        if query:
+                            all_documents_item = data_post_processor.invoke(
+                                query=query,
+                                documents=all_documents_item,
+                                score_threshold=score_threshold,
+                                top_n=top_k,
+                                query_type=QueryType.TEXT_QUERY,
+                            )
+                        if attachment_id:
+                            all_documents_item = data_post_processor.invoke(
+                                documents=all_documents_item,
+                                score_threshold=score_threshold,
+                                top_n=top_k,
+                                query_type=QueryType.IMAGE_QUERY,
+                                query=attachment_id,
+                            )
                 else:
                     if index_type == IndexTechniqueType.ECONOMY:
                         if not query:

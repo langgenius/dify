@@ -1,5 +1,5 @@
 import type { HotkeyCallback, UseHotkeyDefinition, UseHotkeyOptions } from '@tanstack/react-hotkeys'
-import type { WorkflowCanvasHotkeyMeta, WorkflowCanvasShortcutDefinition } from './definitions'
+import type { WorkflowCanvasHotkeyDefinition, WorkflowCanvasHotkeyMeta } from './definitions'
 import { useHotkeys, useKeyHold } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
@@ -29,7 +29,7 @@ const isInputLikeElement = (element: Element | null) => {
 }
 
 const toHotkeyDefinitions = (
-  shortcut: WorkflowCanvasShortcutDefinition,
+  shortcut: WorkflowCanvasHotkeyDefinition,
   callback: HotkeyCallback,
   options?: UseHotkeyOptions,
 ): UseHotkeyDefinition[] => {
@@ -68,7 +68,7 @@ export const useWorkflowHotkeys = (): void => {
   const { handleLayout } = useWorkflowOrganize()
 
   const { zoomTo, getZoom, fitView, getNodes } = useReactFlow()
-  const isShiftHeld = useKeyHold('Shift')
+  const isShiftHeld = useKeyHold(WORKFLOW_CANVAS_SHORTCUTS['workflow.dim-other-nodes'].holdKey)
   const shiftDimmedRef = useRef(false)
   const undimAllNodesRef = useRef(undimAllNodes)
   undimAllNodesRef.current = undimAllNodes

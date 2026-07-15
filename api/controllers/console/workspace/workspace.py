@@ -6,7 +6,8 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
-from werkzeug.exceptions import Unauthorized
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound, Unauthorized
 
 import services
 from configs import dify_config
@@ -23,6 +24,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
@@ -220,10 +222,11 @@ class TenantListApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account):
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, current_user: Account):
         tenant_rows: list[tuple[Tenant, TenantAccountJoin]] = [
             (tenant, membership)
-            for tenant, membership in TenantService.get_workspaces_for_account(current_user.id, session=db.session())
+            for tenant, membership in TenantService.get_workspaces_for_account(current_user.id, session=session)
             if tenant.status == TenantStatus.NORMAL
         ]
         tenants = [tenant for tenant, _ in tenant_rows]
@@ -274,11 +277,12 @@ class WorkspaceListApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspacePaginationResponse.__name__])
     @setup_required
     @admin_required
-    def get(self):
+    @with_session(write=False)
+    def get(self, session: Session):
         args = query_params_from_request(WorkspaceListQuery)
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
-        tenants = paginate_query(stmt, page=args.page, per_page=args.limit)
+        tenants = paginate_query(stmt, session=session, page=args.page, per_page=args.limit)
         has_more = False
 
         if tenants.has_next:
@@ -297,7 +301,8 @@ class TenantApi(Resource):
     @account_initialization_required
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TenantInfoResponse.__name__])
     @with_current_user
-    def post(self, current_user: Account):
+    @with_session
+    def post(self, session: Session, current_user: Account):
         if request.path == "/info":
             logger.warning("Deprecated URL /info was used.")
 
@@ -306,17 +311,17 @@ class TenantApi(Resource):
             raise ValueError("No current tenant")
 
         if tenant.status == TenantStatus.ARCHIVE:
-            tenants = TenantService.get_join_tenants(current_user, session=db.session())
+            tenants = TenantService.get_join_tenants(current_user, session=session)
             # if there is any tenant, switch to the first one
             if len(tenants) > 0:
-                TenantService.switch_tenant(current_user, tenants[0].id, session=db.session())
+                TenantService.switch_tenant(current_user, tenants[0].id, session=session)
                 tenant = tenants[0]
             # else, raise Unauthorized
             else:
                 raise Unauthorized("workspace is archived")
 
         return (
-            dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant, session=db.session())),
+            dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant, session=session)),
             HTTPStatus.OK,
         )
 
@@ -329,22 +334,23 @@ class SwitchWorkspaceApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def post(self, current_user: Account):
+    @with_session
+    def post(self, session: Session, current_user: Account):
         payload = console_ns.payload or {}
         args = SwitchWorkspacePayload.model_validate(payload)
 
         # Check whether the tenant_id belongs to the current account.
         try:
-            TenantService.switch_tenant(current_user, args.tenant_id, session=db.session())
+            TenantService.switch_tenant(current_user, args.tenant_id, session=session)
         except Exception:
             raise AccountNotLinkTenantError("Account not link tenant")
 
-        new_tenant = db.session.get(Tenant, args.tenant_id)  # Get new tenant
+        new_tenant = TenantService.get_tenant_by_id(args.tenant_id, session=session)
         if new_tenant is None:
             raise ValueError("Tenant not found")
 
         return SwitchWorkspaceResponse(
-            result="success", new_tenant=WorkspaceService.get_tenant_info(new_tenant, session=db.session())
+            result="success", new_tenant=WorkspaceService.get_tenant_info(new_tenant, session=session)
         ).model_dump(mode="json")
 
 
@@ -357,10 +363,13 @@ class CustomConfigWorkspaceApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
+    @with_session
+    def post(self, session: Session, current_tenant_id: str):
         payload = console_ns.payload or {}
         args = WorkspaceCustomConfigPayload.model_validate(payload)
-        tenant = db.get_or_404(Tenant, current_tenant_id)
+        tenant = TenantService.get_tenant_by_id(current_tenant_id, session=session)
+        if tenant is None:
+            raise NotFound()
 
         custom_config_dict: TenantCustomConfigDict = {
             "remove_webapp_brand": args.remove_webapp_brand
@@ -372,10 +381,10 @@ class CustomConfigWorkspaceApi(Resource):
         }
 
         tenant.custom_config_dict = custom_config_dict
-        db.session.commit()
+        session.commit()
 
         return WorkspaceTenantResultResponse(
-            result="success", tenant=WorkspaceService.get_tenant_info(tenant, session=db.session())
+            result="success", tenant=WorkspaceService.get_tenant_info(tenant, session=session)
         ).model_dump(mode="json")
 
 
@@ -430,18 +439,21 @@ class WorkspaceInfoApi(Resource):
     @account_initialization_required
     # Change workspace name
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
+    @with_session
+    def post(self, session: Session, current_tenant_id: str):
         payload = console_ns.payload or {}
         args = WorkspaceInfoPayload.model_validate(payload)
 
         if not current_tenant_id:
             raise ValueError("No current tenant")
-        tenant = db.get_or_404(Tenant, current_tenant_id)
+        tenant = TenantService.get_tenant_by_id(current_tenant_id, session=session)
+        if tenant is None:
+            raise NotFound()
         tenant.name = args.name
-        db.session.commit()
+        session.commit()
 
         return WorkspaceTenantResultResponse(
-            result="success", tenant=WorkspaceService.get_tenant_info(tenant, session=db.session())
+            result="success", tenant=WorkspaceService.get_tenant_info(tenant, session=session)
         ).model_dump(mode="json")
 
 

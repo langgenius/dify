@@ -1421,6 +1421,7 @@ export type AgentUserSatisfactionRateStatisticResponse = {
 
 export type AgentConfigRevisionOperation =
   | 'create_version'
+  | 'import_package'
   | 'publish_draft'
   | 'restore_version'
   | 'save_current_version'

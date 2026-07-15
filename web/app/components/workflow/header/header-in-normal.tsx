@@ -13,7 +13,7 @@ import GlobalVariableButton from './global-variable-button'
 import OnlineUsers from './online-users'
 import RunAndHistory from './run-and-history'
 import ScrollToSelectedNodeButton from './scroll-to-selected-node-button'
-import VersionHistoryButton from './version-history-button'
+import { VersionHistoryButton } from './version-history-button'
 
 export type HeaderInNormalProps = {
   components?: {

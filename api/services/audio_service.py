@@ -12,11 +12,10 @@ from werkzeug.datastructures import FileStorage
 from constants import AUDIO_EXTENSIONS
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.model_manager import ModelManager
-from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import MessageStatus
-from models.model import App, AppMode, Message
+from models.model import App, AppMode, Message, load_annotation_reply_config
 from services.agent.roster_service import AgentRosterService
 from services.app_ref_service import MessageRef
 from services.errors.audio import (
@@ -46,7 +45,14 @@ class AudioService:
         return session.scalar(stmt.limit(1))
 
     @classmethod
-    def transcript_asr(cls, app_model: App, file: FileStorage | None, end_user: str | None = None) -> dict[str, str]:
+    def transcript_asr(
+        cls,
+        app_model: App,
+        file: FileStorage | None,
+        *,
+        session: Session,
+        end_user: str | None = None,
+    ) -> dict[str, str]:
         """Transcribe audio after enforcing the effective feature configuration.
 
         Published Agent Apps use their active Agent Soul. Historical Agent Apps
@@ -56,7 +62,7 @@ class AudioService:
             SpeechToTextDisabledServiceError: If the effective feature configuration disables STT.
         """
         if app_model.mode == AppMode.AGENT:
-            agent_soul = AgentRosterService(db.session).get_published_agent_soul_for_app(
+            agent_soul = AgentRosterService(session).get_published_agent_soul_for_app(
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
             )
@@ -65,11 +71,12 @@ class AudioService:
                     app_model=app_model,
                     agent_soul=agent_soul,
                     file=file,
+                    session=session,
                     end_user=end_user,
                 )
 
         if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app_model.workflow
+            workflow = app_model.workflow_with_session(session=session)
             if workflow is None:
                 raise SpeechToTextDisabledServiceError()
 
@@ -77,7 +84,7 @@ class AudioService:
             if "speech_to_text" not in features_dict or not features_dict["speech_to_text"].get("enabled"):
                 raise SpeechToTextDisabledServiceError()
         else:
-            app_model_config = app_model.app_model_config
+            app_model_config = app_model.app_model_config_with_session(session=session)
             if not app_model_config:
                 raise SpeechToTextDisabledServiceError()
 
@@ -92,6 +99,8 @@ class AudioService:
         app_model: App,
         agent_soul: AgentSoulConfig,
         file: FileStorage | None,
+        *,
+        session: Session,
         end_user: str | None = None,
     ) -> dict[str, str]:
         """Transcribe Agent audio after applying Soul-first runtime feature projection.
@@ -99,9 +108,12 @@ class AudioService:
         Raises:
             SpeechToTextDisabledServiceError: If the merged Agent feature configuration disables STT.
         """
+        app_model_config = app_model.app_model_config_with_session(session=session)
+        annotation_reply = load_annotation_reply_config(session, app_model.id) if app_model_config else None
         features = merge_agent_app_features(
             agent_soul=agent_soul,
-            app_model_config=app_model.app_model_config,
+            app_model_config=app_model_config,
+            annotation_reply=annotation_reply,
         )
         if not features.get("speech_to_text", {}).get("enabled"):
             raise SpeechToTextDisabledServiceError()
@@ -156,7 +168,7 @@ class AudioService:
                     if is_draft:
                         workflow = WorkflowService().get_draft_workflow(app_model=app_model, session=session)
                     else:
-                        workflow = app_model.workflow
+                        workflow = app_model.workflow_with_session(session=session)
                     if (
                         workflow is None
                         or "text_to_speech" not in workflow.features_dict
@@ -167,9 +179,10 @@ class AudioService:
                     voice = workflow.features_dict["text_to_speech"].get("voice")
                 else:
                     if not is_draft:
-                        if app_model.app_model_config is None:
+                        app_model_config = app_model.app_model_config_with_session(session=session)
+                        if app_model_config is None:
                             raise ValueError("AppModelConfig not found")
-                        text_to_speech_dict = app_model.app_model_config.text_to_speech_dict
+                        text_to_speech_dict = app_model_config.text_to_speech_dict
 
                         if not text_to_speech_dict.get("enabled"):
                             raise ValueError("TTS is not enabled")

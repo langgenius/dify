@@ -1,5 +1,5 @@
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { render, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import NormalForm from '../normal-form'
@@ -145,6 +145,43 @@ describe('NormalForm', () => {
           '/signin/invite-settings?invite_token=invite-token',
         )
       })
+    })
+  })
+
+  describe('Registration Navigation', () => {
+    it('should preserve the current query when navigating to sign up', () => {
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams('redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing'),
+      )
+      mockUseQuery.mockReturnValue(nonInviteQueryResult as unknown as ReturnType<typeof useQuery>)
+      mockUseSuspenseQuery.mockReturnValue({
+        data: {
+          enable_social_oauth_login: false,
+          sso_enforced_for_signin: false,
+          enable_email_code_login: false,
+          enable_email_password_login: true,
+          is_email_setup: true,
+          is_allow_register: true,
+          license: {
+            status: 'none',
+          },
+          branding: {
+            enabled: true,
+          },
+        },
+      } as unknown as ReturnType<typeof useSuspenseQuery>)
+
+      const queryClient = new QueryClient()
+      render(
+        <QueryClientProvider client={queryClient}>
+          <NormalForm />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('link', { name: 'login.signup.signUp' })).toHaveAttribute(
+        'href',
+        '/signup?redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
+      )
     })
   })
 })
