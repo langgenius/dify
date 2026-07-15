@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { TextGenerationTranslate } from '../types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
@@ -14,6 +15,10 @@ import Loading from '@/app/components/base/loading'
 import NoData from '@/app/components/share/text-generation/no-data'
 import { useResultRunState } from './hooks/use-result-run-state'
 import { useResultSender } from './hooks/use-result-sender'
+
+const translateResultKey: TextGenerationTranslate = (selector, options) => {
+  return t(selector, options)
+}
 
 type IResultProps = {
   isWorkflow: boolean
@@ -38,16 +43,46 @@ type IResultProps = {
   completionFiles: VisionFile[]
   siteInfo: SiteInfo | null
   onRunStart: () => void
-  onRunControlChange?: (control: {
-    onStop: () => Promise<void> | void
-    isStopping: boolean
-  } | null) => void
+  onRunControlChange?: (
+    control: {
+      onStop: () => Promise<void> | void
+      isStopping: boolean
+    } | null,
+  ) => void
   hideInlineStopButton?: boolean
 }
-const Result: FC<IResultProps> = ({ isWorkflow, isCallBatchAPI, isPC, isMobile, appSourceType, appId, isError, isShowTextToSpeech, promptConfig, moreLikeThisEnabled, inputs, controlSend, controlRetry, controlStopResponding, onShowRes, handleSaveMessage, taskId, onCompleted, visionConfig, completionFiles, siteInfo, onRunStart, onRunControlChange, hideInlineStopButton = false }) => {
-  const notify = useCallback(({ type, message }: { type: 'error' | 'info' | 'success' | 'warning', message: string }) => {
-    toast(message, { type })
-  }, [])
+const Result: FC<IResultProps> = ({
+  isWorkflow,
+  isCallBatchAPI,
+  isPC,
+  isMobile,
+  appSourceType,
+  appId,
+  isError,
+  isShowTextToSpeech,
+  promptConfig,
+  moreLikeThisEnabled,
+  inputs,
+  controlSend,
+  controlRetry,
+  controlStopResponding,
+  onShowRes,
+  handleSaveMessage,
+  taskId,
+  onCompleted,
+  visionConfig,
+  completionFiles,
+  siteInfo,
+  onRunStart,
+  onRunControlChange,
+  hideInlineStopButton = false,
+}) => {
+  const notify = useCallback(
+    ({ type, message }: { type: 'error' | 'info' | 'success' | 'warning'; message: string }) => {
+      toast(message, { type })
+    },
+    [],
+  )
   const runState = useResultRunState({
     appId,
     appSourceType,
@@ -72,7 +107,7 @@ const Result: FC<IResultProps> = ({ isWorkflow, isCallBatchAPI, isPC, isMobile, 
     onShowRes,
     promptConfig,
     runState,
-    t,
+    t: translateResultKey,
     taskId,
     visionConfig,
   })
@@ -82,10 +117,14 @@ const Result: FC<IResultProps> = ({ isWorkflow, isCallBatchAPI, isPC, isMobile, 
       {!hideInlineStopButton && runState.isResponding && runState.currentTaskId && (
         <div className={`mb-3 flex ${isPC ? 'justify-end' : 'justify-center'}`}>
           <Button variant="secondary" disabled={runState.isStopping} onClick={runState.handleStop}>
-            {runState.isStopping
-              ? <span aria-hidden className="mr-[5px] i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />
-              : <span aria-hidden className="mr-[5px] i-ri-stop-circle-fill h-3.5 w-3.5" />}
-            <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
+            {runState.isStopping ? (
+              <span aria-hidden className="mr-[5px] i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <span aria-hidden className="mr-[5px] i-ri-stop-circle-fill h-3.5 w-3.5" />
+            )}
+            <span className="text-xs font-normal">
+              {t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}
+            </span>
           </Button>
         </div>
       )}
@@ -116,28 +155,26 @@ const Result: FC<IResultProps> = ({ isWorkflow, isCallBatchAPI, isPC, isMobile, 
   )
   return (
     <>
-      {!isCallBatchAPI && !isWorkflow && ((runState.isResponding && !runState.completionRes)
-        ? (
-            <div className="flex size-full items-center justify-center">
-              <Loading type="area" />
-            </div>
-          )
-        : (
-            <>
-              {(isNoData)
-                ? <NoData />
-                : renderTextGenerationRes()}
-            </>
-          ))}
-      {!isCallBatchAPI && isWorkflow && ((runState.isResponding && !runState.workflowProcessData)
-        ? (
-            <div className="flex size-full items-center justify-center">
-              <Loading type="area" />
-            </div>
-          )
-        : !runState.workflowProcessData
-            ? <NoData />
-            : renderTextGenerationRes())}
+      {!isCallBatchAPI &&
+        !isWorkflow &&
+        (runState.isResponding && !runState.completionRes ? (
+          <div className="flex size-full items-center justify-center">
+            <Loading type="area" />
+          </div>
+        ) : (
+          <>{isNoData ? <NoData /> : renderTextGenerationRes()}</>
+        ))}
+      {!isCallBatchAPI &&
+        isWorkflow &&
+        (runState.isResponding && !runState.workflowProcessData ? (
+          <div className="flex size-full items-center justify-center">
+            <Loading type="area" />
+          </div>
+        ) : !runState.workflowProcessData ? (
+          <NoData />
+        ) : (
+          renderTextGenerationRes()
+        ))}
       {isCallBatchAPI && renderTextGenerationRes()}
     </>
   )

@@ -692,7 +692,7 @@ def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup():
     second.scalar_one_or_none.return_value = expected_account
     mock_session.execute.side_effect = [first, second]
 
-    result = AccountService.get_account_by_email_with_case_fallback(mock_session, "Mixed@Test.com")
+    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=mock_session)
 
     assert result is expected_account
     assert mock_session.execute.call_count == 2

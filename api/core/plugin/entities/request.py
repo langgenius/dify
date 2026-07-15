@@ -230,6 +230,7 @@ class RequestRequestUploadFile(BaseModel):
 
     filename: str
     mimetype: str
+    conversation_id: str | None = None
 
 
 class RequestDownloadFileMapping(BaseModel):
@@ -275,6 +276,7 @@ class RequestRequestDownloadFile(BaseModel):
         "validation",
     ]
     file: RequestDownloadFileMapping
+    for_external: bool = True
 
     model_config = ConfigDict(extra="forbid")
 

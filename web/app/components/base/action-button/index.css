@@ -1,8 +1,8 @@
 @utility action-btn {
-  @apply inline-flex justify-center items-center cursor-pointer text-text-tertiary hover:text-text-secondary hover:bg-state-base-hover;
+  @apply inline-flex cursor-pointer items-center justify-center text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary;
 
   &.action-btn-active {
-    @apply text-text-accent bg-state-accent-active hover:bg-state-accent-active-alt;
+    @apply bg-state-accent-active text-text-accent hover:bg-state-accent-active-alt;
   }
 
   &.action-btn-disabled {
@@ -10,7 +10,7 @@
   }
 
   &.action-btn-destructive {
-    @apply text-text-destructive bg-state-destructive-hover;
+    @apply bg-state-destructive-hover text-text-destructive;
   }
 }
 
@@ -27,34 +27,34 @@
 }
 
 @utility action-btn-xl {
-  @apply p-2 w-9 h-9 rounded-lg;
+  @apply h-9 w-9 rounded-lg p-2;
 }
 
 @utility action-btn-l {
-  @apply p-1.5 w-8 h-8 rounded-lg;
+  @apply h-8 w-8 rounded-lg p-1.5;
 }
 
 @utility action-btn-m {
   /* m is for the regular button */
-  @apply p-0.5 w-6 h-6 rounded-lg;
+  @apply h-6 w-6 rounded-lg p-0.5;
 }
 
 @utility action-btn-s {
-  @apply w-5 h-5 rounded-[6px];
+  @apply h-5 w-5 rounded-[6px];
 }
 
 @utility action-btn-xs {
-  @apply p-0 w-4 h-4 rounded-sm;
+  @apply h-4 w-4 rounded-sm p-0;
 }
 
 @utility action-btn-active {
   &.action-btn {
-    @apply text-text-accent bg-state-accent-active hover:bg-state-accent-active-alt;
+    @apply bg-state-accent-active text-text-accent hover:bg-state-accent-active-alt;
   }
 }
 
 @utility action-btn-destructive {
   &.action-btn {
-    @apply text-text-destructive bg-state-destructive-hover;
+    @apply bg-state-destructive-hover text-text-destructive;
   }
 }

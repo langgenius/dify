@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "Actualizează pentru a încărca mai multe documente odată",
   "upgrade.workflowRestore.description": "Restaurarea versiunilor fluxului de lucru nu este disponibilă în planul tău actual.",
   "upgrade.workflowRestore.title": "Fă upgrade pentru a restaura versiunile fluxului de lucru",
+  "upgrade.workflowVersionRun.description": "Rularea unei versiuni specifice a fluxului de lucru prin ID nu este disponibilă în planul tău actual.",
+  "upgrade.workflowVersionRun.title": "Fă upgrade pentru a rula versiuni specifice ale fluxului de lucru",
   "upgradeBtn.encourage": "Actualizează acum",
   "upgradeBtn.encourageShort": "Actualizează",
   "upgradeBtn.plain": "Actualizează planul",

@@ -34,6 +34,7 @@ class OAuthState(TypedDict, total=False):
     invite_token: str
     timezone: str
     language: str
+    redirect_url: str
 
 
 class GitHubEmailRecord(TypedDict, total=False):
@@ -72,6 +73,7 @@ def encode_oauth_state(
     invite_token: str | None = None,
     timezone: str | None = None,
     language: str | None = None,
+    redirect_url: str | None = None,
 ) -> str | None:
     state: OAuthState = {}
     if invite_token:
@@ -80,6 +82,8 @@ def encode_oauth_state(
         state["timezone"] = timezone
     if language:
         state["language"] = language
+    if redirect_url:
+        state["redirect_url"] = redirect_url
     if not state:
         return None
 
@@ -122,6 +126,7 @@ class OAuth:
         invite_token: str | None = None,
         timezone: str | None = None,
         language: str | None = None,
+        redirect_url: str | None = None,
     ) -> str:
         raise NotImplementedError()
 
@@ -151,13 +156,19 @@ class GitHubOAuth(OAuth):
         invite_token: str | None = None,
         timezone: str | None = None,
         language: str | None = None,
+        redirect_url: str | None = None,
     ) -> str:
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
             "scope": "user:email",  # Request only basic user information
         }
-        state = encode_oauth_state(invite_token=invite_token, timezone=timezone, language=language)
+        state = encode_oauth_state(
+            invite_token=invite_token,
+            timezone=timezone,
+            language=language,
+            redirect_url=redirect_url,
+        )
         if state:
             params["state"] = state
         return f"{self._AUTH_URL}?{urllib.parse.urlencode(params)}"
@@ -248,6 +259,7 @@ class GoogleOAuth(OAuth):
         invite_token: str | None = None,
         timezone: str | None = None,
         language: str | None = None,
+        redirect_url: str | None = None,
     ) -> str:
         params = {
             "client_id": self.client_id,
@@ -255,7 +267,12 @@ class GoogleOAuth(OAuth):
             "redirect_uri": self.redirect_uri,
             "scope": "openid email",
         }
-        state = encode_oauth_state(invite_token=invite_token, timezone=timezone, language=language)
+        state = encode_oauth_state(
+            invite_token=invite_token,
+            timezone=timezone,
+            language=language,
+            redirect_url=redirect_url,
+        )
         if state:
             params["state"] = state
         return f"{self._AUTH_URL}?{urllib.parse.urlencode(params)}"

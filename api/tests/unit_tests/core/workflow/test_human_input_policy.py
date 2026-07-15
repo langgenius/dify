@@ -6,8 +6,8 @@ from core.workflow.human_input_policy import (
     is_recipient_type_allowed_for_surface,
     resolve_variable_select_input_options,
 )
-from graphon.nodes.human_input.entities import SelectInputConfig, StringListSource
-from graphon.nodes.human_input.enums import ValueSourceType
+from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
+from core.workflow.nodes.human_input.enums import ValueSourceType
 from graphon.runtime import VariablePool
 from models.human_input import RecipientType
 

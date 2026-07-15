@@ -1,9 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import {
-  ModelFeatureEnum,
-  ModelFeatureTextEnum,
-} from '../../declarations'
+import { ModelFeatureEnum, ModelFeatureTextEnum } from '../../declarations'
 import FeatureIcon from '../feature-icon'
 
 describe('FeatureIcon', () => {
@@ -28,7 +25,7 @@ describe('FeatureIcon', () => {
   })
 
   it('should show tooltip content on hover when showFeaturesLabel is false', async () => {
-    const cases: Array<{ feature: ModelFeatureEnum, text: string }> = [
+    const cases: Array<{ feature: ModelFeatureEnum; text: string }> = [
       { feature: ModelFeatureEnum.vision, text: ModelFeatureTextEnum.vision },
       { feature: ModelFeatureEnum.document, text: ModelFeatureTextEnum.document },
       { feature: ModelFeatureEnum.audio, text: ModelFeatureTextEnum.audio },
@@ -38,8 +35,9 @@ describe('FeatureIcon', () => {
     for (const { feature, text } of cases) {
       const { container, unmount } = render(<FeatureIcon feature={feature} />)
       await userEvent.hover(container.firstElementChild as HTMLElement)
-      expect(await screen.findByText(`common.modelProvider.featureSupported:{"feature":"${text}"}`))
-        .toBeInTheDocument()
+      expect(
+        await screen.findByText(`common.modelProvider.featureSupported:{"feature":"${text}"}`),
+      ).toBeInTheDocument()
       unmount()
     }
   })

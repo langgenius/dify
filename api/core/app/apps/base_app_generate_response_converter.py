@@ -5,10 +5,11 @@ from typing import Any, Union, cast
 
 from pydantic import JsonValue
 
+from clients.agent_backend.errors import AgentBackendError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from graphon.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError, InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +128,8 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
             },
             ModelCurrentlyNotSupportError: {"code": "model_currently_not_support", "status": 400},
             InvokeError: {"code": "completion_request_error", "status": 400},
+            AgentBackendError: {"code": "completion_request_error", "status": 400},
+            InvokeRateLimitError: {"code": "rate_limit_error", "status": 429},
         }
 
         # Determine the response based on the type of exception

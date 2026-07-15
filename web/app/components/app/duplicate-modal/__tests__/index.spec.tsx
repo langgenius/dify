@@ -3,13 +3,6 @@ import userEvent from '@testing-library/user-event'
 import DuplicateAppModal from '../index'
 
 const toastErrorMock = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     plan: {
@@ -28,7 +21,9 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ onClick }: { onClick: () => void }) => (
-    <button type="button" onClick={onClick}>open-icon-picker</button>
+    <button type="button" onClick={onClick}>
+      open-icon-picker
+    </button>
   ),
 }))
 
@@ -38,7 +33,7 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
     onSelect,
   }: {
     onOpenChange: (open: boolean) => void
-    onSelect: (payload: { type: 'emoji', icon: string, background: string }) => void
+    onSelect: (payload: { type: 'emoji'; icon: string; background: string }) => void
   }) => {
     let selectedBackground = '#FFEAD5'
     return (
@@ -47,7 +42,13 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
         <button type="button" onClick={() => {}}>
           <em-emoji />
         </button>
-        <button type="button" aria-label="#E4FBCC" onClick={() => { selectedBackground = '#E4FBCC' }} />
+        <button
+          type="button"
+          aria-label="#E4FBCC"
+          onClick={() => {
+            selectedBackground = '#E4FBCC'
+          }}
+        />
         <button
           type="button"
           onClick={() => {
@@ -57,7 +58,9 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
         >
           iconPicker.ok
         </button>
-        <button type="button" onClick={() => onOpenChange(false)}>iconPicker.cancel</button>
+        <button type="button" onClick={() => onOpenChange(false)}>
+          iconPicker.cancel
+        </button>
       </div>
     )
   },
@@ -91,9 +94,11 @@ describe('DuplicateAppModal', () => {
     expect(input).toHaveValue('Updated App')
 
     await user.clear(input)
-    await user.click(screen.getByRole('button', { name: 'duplicate' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
 
-    expect(toastErrorMock).toHaveBeenCalledWith('appCustomize.nameRequired')
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      expect.stringMatching(/(?:^|\.)appCustomize\.nameRequired(?=$|:)/),
+    )
     expect(onConfirm).not.toHaveBeenCalled()
     expect(onHide).not.toHaveBeenCalled()
   })
@@ -124,7 +129,7 @@ describe('DuplicateAppModal', () => {
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
     })
-    await user.click(screen.getByRole('button', { name: 'duplicate' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
 
     expect(onConfirm).toHaveBeenCalledWith({
       name: 'Demo App',
@@ -151,7 +156,7 @@ describe('DuplicateAppModal', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'operation.close' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
 
     expect(onHide).toHaveBeenCalledTimes(1)
   })
@@ -192,13 +197,15 @@ describe('DuplicateAppModal', () => {
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
     })
-    await user.click(screen.getByRole('button', { name: 'duplicate' }))
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
 
-    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'Image App',
-      icon_type: 'emoji',
-      icon: expect.any(String),
-      icon_background: '#E4FBCC',
-    }))
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Image App',
+        icon_type: 'emoji',
+        icon: expect.any(String),
+        icon_background: '#E4FBCC',
+      }),
+    )
   })
 })

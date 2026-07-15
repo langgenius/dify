@@ -65,7 +65,9 @@ vi.mock('../steps/install', () => ({
       <div data-testid="install-step">
         <span data-testid="install-uid">{uniqueIdentifier}</span>
         <span data-testid="install-payload-name">{payload.name}</span>
-        <button data-testid="install-cancel-btn" onClick={onCancel}>Cancel</button>
+        <button data-testid="install-cancel-btn" onClick={onCancel}>
+          Cancel
+        </button>
         <button data-testid="install-start-btn" onClick={() => onStartToInstall?.()}>
           Start Install
         </button>
@@ -103,7 +105,9 @@ vi.mock('../../base/installed', () => ({
       <span data-testid="installed-payload-name">{payload?.name || 'null'}</span>
       <span data-testid="installed-is-failed">{isFailed ? 'true' : 'false'}</span>
       <span data-testid="installed-err-msg">{errMsg || 'null'}</span>
-      <button data-testid="installed-cancel-btn" onClick={onCancel}>Close</button>
+      <button data-testid="installed-cancel-btn" onClick={onCancel}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -188,11 +192,7 @@ describe('ReadyToInstall', () => {
 
     it('should pass errorMsg to Installed component', () => {
       render(
-        <ReadyToInstall
-          {...defaultProps}
-          step={InstallStep.installFailed}
-          errorMsg="Some error"
-        />,
+        <ReadyToInstall {...defaultProps} step={InstallStep.installFailed} errorMsg="Some error" />,
       )
 
       expect(screen.getByTestId('installed-err-msg')).toHaveTextContent('Some error')
@@ -342,7 +342,11 @@ describe('ReadyToInstall', () => {
     it('should handle transition from readyToInstall to installed', () => {
       const onStepChange = vi.fn()
       const { rerender } = render(
-        <ReadyToInstall {...defaultProps} step={InstallStep.readyToInstall} onStepChange={onStepChange} />,
+        <ReadyToInstall
+          {...defaultProps}
+          step={InstallStep.readyToInstall}
+          onStepChange={onStepChange}
+        />,
       )
 
       // Initially shows Install component
@@ -354,7 +358,13 @@ describe('ReadyToInstall', () => {
       expect(onStepChange).toHaveBeenCalledWith(InstallStep.installed)
 
       // Rerender with new step
-      rerender(<ReadyToInstall {...defaultProps} step={InstallStep.installed} onStepChange={onStepChange} />)
+      rerender(
+        <ReadyToInstall
+          {...defaultProps}
+          step={InstallStep.installed}
+          onStepChange={onStepChange}
+        />,
+      )
 
       // Now shows Installed component
       expect(screen.getByTestId('installed-step')).toBeInTheDocument()
@@ -363,7 +373,11 @@ describe('ReadyToInstall', () => {
     it('should handle transition from readyToInstall to installFailed', () => {
       const onStepChange = vi.fn()
       const { rerender } = render(
-        <ReadyToInstall {...defaultProps} step={InstallStep.readyToInstall} onStepChange={onStepChange} />,
+        <ReadyToInstall
+          {...defaultProps}
+          step={InstallStep.readyToInstall}
+          onStepChange={onStepChange}
+        />,
       )
 
       // Initially shows Install component
@@ -375,7 +389,13 @@ describe('ReadyToInstall', () => {
       expect(onStepChange).toHaveBeenCalledWith(InstallStep.installFailed)
 
       // Rerender with new step
-      rerender(<ReadyToInstall {...defaultProps} step={InstallStep.installFailed} onStepChange={onStepChange} />)
+      rerender(
+        <ReadyToInstall
+          {...defaultProps}
+          step={InstallStep.installFailed}
+          onStepChange={onStepChange}
+        />,
+      )
 
       // Now shows Installed component with failed state
       expect(screen.getByTestId('installed-step')).toBeInTheDocument()

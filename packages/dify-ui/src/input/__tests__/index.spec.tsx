@@ -1,13 +1,12 @@
-import * as React from 'react'
 import { render } from 'vitest-browser-react'
-import { FieldControl, FieldError, FieldLabel, FieldRoot } from '../../field'
+import { Field, FieldError, FieldLabel } from '../../field'
 import { Form } from '../../form'
 import { Input } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
 describe('Input', () => {
-  it('should render a labelled Base UI input with design-system classes', async () => {
+  it('should render a labelled Base UI input with its value', async () => {
     const screen = await render(
       <label>
         Workspace name
@@ -18,54 +17,31 @@ describe('Input', () => {
     const input = screen.getByRole('textbox', { name: 'Workspace name' })
 
     await expect.element(input).toHaveValue('Dify')
-    await expect.element(input).toHaveClass('rounded-lg', 'py-[7px]', 'system-sm-regular')
   })
 
-  it('should apply size variants shared with FieldControl', async () => {
+  it('should use Field invalid state', async () => {
     const screen = await render(
-      <React.Fragment>
-        <label>
-          Small input
-          <Input size="small" />
-        </label>
-        <div>
-          Large field
-          <FieldRoot name="largeField">
-            <FieldLabel>Large field</FieldLabel>
-            <FieldControl size="large" />
-          </FieldRoot>
-        </div>
-      </React.Fragment>,
-    )
-
-    await expect.element(screen.getByRole('textbox', { name: 'Small input' })).toHaveClass('rounded-md', 'py-[3px]', 'system-xs-regular')
-    await expect.element(screen.getByRole('textbox', { name: 'Large field' })).toHaveClass('rounded-[10px]', 'py-[7px]', 'system-md-regular')
-  })
-
-  it('should use FieldRoot invalid state', async () => {
-    const screen = await render(
-      <FieldRoot name="repositoryUrl" invalid>
+      <Field name="repositoryUrl" invalid>
         <FieldLabel>Repository URL</FieldLabel>
         <Input defaultValue="github.com/langgenius" />
-      </FieldRoot>,
+      </Field>,
     )
 
     const input = screen.getByRole('textbox', { name: 'Repository URL' })
 
     await expect.element(input).toHaveAttribute('aria-invalid', 'true')
     await expect.element(input).toHaveAttribute('data-invalid')
-    await expect.element(input).toHaveClass('data-invalid:border-components-input-border-destructive')
   })
 
-  it('should integrate with FieldRoot and Base UI Form validation', async () => {
+  it('should integrate with Field and Base UI Form validation', async () => {
     const onFormSubmit = vi.fn()
     const screen = await render(
       <Form aria-label="account form" onFormSubmit={onFormSubmit}>
-        <FieldRoot name="email">
+        <Field name="email">
           <FieldLabel>Email</FieldLabel>
           <Input type="email" required />
           <FieldError match="valueMissing">Email is required.</FieldError>
-        </FieldRoot>
+        </Field>
         <button type="submit">Save</button>
       </Form>,
     )

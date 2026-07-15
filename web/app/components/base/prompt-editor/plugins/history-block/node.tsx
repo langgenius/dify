@@ -3,7 +3,7 @@ import type { RoleName } from './index'
 import { DecoratorNode } from 'lexical'
 import HistoryBlockComponent from './component'
 
-export type SerializedNode = SerializedLexicalNode & { roleName: RoleName, onEditRole: () => void }
+export type SerializedNode = SerializedLexicalNode & { roleName: RoleName; onEditRole: () => void }
 
 export class HistoryBlockNode extends DecoratorNode<React.JSX.Element> {
   __roleName: RoleName
@@ -79,7 +79,10 @@ export class HistoryBlockNode extends DecoratorNode<React.JSX.Element> {
     return '{{#histories#}}'
   }
 }
-export function $createHistoryBlockNode(roleName: RoleName, onEditRole: () => void): HistoryBlockNode {
+export function $createHistoryBlockNode(
+  roleName: RoleName,
+  onEditRole: () => void,
+): HistoryBlockNode {
   return new HistoryBlockNode(roleName, onEditRole)
 }
 

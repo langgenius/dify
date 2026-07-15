@@ -5,6 +5,9 @@ The adapter does not define a new cross-service event contract. It consumes
 workflow Agent Node maps to Graphon/AppQueue events. Deferred external tool calls
 remain Dify Agent ``run_succeeded`` payloads on the wire; API code turns them
 into an internal event so workflow pause/session handling stays local to API.
+Agent-message deltas are exposed as annotations on ``PydanticAIStreamRunEvent``
+so API code does not have to parse Pydantic AI stream-event internals to
+preserve streaming. The terminal answer remains the ``run_succeeded`` output.
 """
 
 from __future__ import annotations
@@ -32,6 +35,7 @@ class AgentBackendInternalEventType(StrEnum):
 
     RUN_STARTED = "run_started"
     STREAM_EVENT = "stream_event"
+    AGENT_MESSAGE_DELTA = "agent_message_delta"
     DEFERRED_TOOL_CALL = "deferred_tool_call"
     RUN_SUCCEEDED = "run_succeeded"
     RUN_FAILED = "run_failed"
@@ -61,12 +65,20 @@ class AgentBackendStreamInternalEvent(AgentBackendInternalEventBase):
     data: JsonValue
 
 
+class AgentBackendAgentMessageDeltaInternalEvent(AgentBackendInternalEventBase):
+    """API-internal agent-message delta emitted independently from raw stream events."""
+
+    type: Literal[AgentBackendInternalEventType.AGENT_MESSAGE_DELTA] = AgentBackendInternalEventType.AGENT_MESSAGE_DELTA
+    delta: str
+
+
 class AgentBackendRunSucceededInternalEvent(AgentBackendInternalEventBase):
     """API-internal terminal success event carrying final output and session state."""
 
     type: Literal[AgentBackendInternalEventType.RUN_SUCCEEDED] = AgentBackendInternalEventType.RUN_SUCCEEDED
     output: JsonValue
     session_snapshot: CompositorSessionSnapshot
+    usage: dict[str, JsonValue] | None = None
 
 
 class AgentBackendDeferredToolCallInternalEvent(AgentBackendInternalEventBase):
@@ -76,6 +88,7 @@ class AgentBackendDeferredToolCallInternalEvent(AgentBackendInternalEventBase):
     deferred_tool_call: DeferredToolCallPayload
     message: str | None = None
     session_snapshot: CompositorSessionSnapshot
+    usage: dict[str, JsonValue] | None = None
 
 
 class AgentBackendRunFailedInternalEvent(AgentBackendInternalEventBase):
@@ -97,6 +110,7 @@ class AgentBackendRunCancelledInternalEvent(AgentBackendInternalEventBase):
 type AgentBackendInternalEvent = Annotated[
     AgentBackendRunStartedInternalEvent
     | AgentBackendStreamInternalEvent
+    | AgentBackendAgentMessageDeltaInternalEvent
     | AgentBackendDeferredToolCallInternalEvent
     | AgentBackendRunSucceededInternalEvent
     | AgentBackendRunFailedInternalEvent
@@ -119,6 +133,14 @@ class AgentBackendRunEventAdapter:
                     )
                 ]
             case PydanticAIStreamRunEvent():
+                if event.agent_message_delta:
+                    return [
+                        AgentBackendAgentMessageDeltaInternalEvent(
+                            run_id=event.run_id,
+                            source_event_id=event.id,
+                            delta=event.agent_message_delta,
+                        )
+                    ]
                 data = cast(JsonValue, _EVENT_DATA_ADAPTER.dump_python(event.data, mode="json"))
                 event_kind = data.get("event_kind") if isinstance(data, dict) else None
                 return [
@@ -140,6 +162,7 @@ class AgentBackendRunEventAdapter:
                             deferred_tool_call=event.data.deferred_tool_call,
                             message=_deferred_tool_call_message(event.data.deferred_tool_call),
                             session_snapshot=event.data.session_snapshot,
+                            usage=_agent_run_usage(event.data.usage),
                         )
                     ]
                 return [
@@ -148,6 +171,7 @@ class AgentBackendRunEventAdapter:
                         source_event_id=event.id,
                         output=event.data.output,
                         session_snapshot=event.data.session_snapshot,
+                        usage=_agent_run_usage(event.data.usage),
                     )
                 ]
             case RunFailedEvent():
@@ -184,3 +208,13 @@ def _deferred_tool_call_message(payload: DeferredToolCallPayload) -> str:
             return title
 
     return f"Agent backend requested external input via deferred tool '{payload.tool_name}'."
+
+
+def _agent_run_usage(usage: object | None) -> dict[str, JsonValue] | None:
+    """Return JSON-safe usage metadata from optional Agent backend usage."""
+    if usage is None:
+        return None
+    dumped = _EVENT_DATA_ADAPTER.dump_python(usage, mode="json")
+    if not isinstance(dumped, dict):
+        return None
+    return cast(dict[str, JsonValue], dumped)

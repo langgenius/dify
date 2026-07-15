@@ -25,7 +25,7 @@ from libs.token import (
 from models import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
-from services.errors.account import AccountNotFoundError, AccountRegisterError
+from services.errors.account import AccountNotFoundError, AccountRegisterError, SeatsLimitExceededError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 from services.feature_service import FeatureService
 
@@ -38,6 +38,7 @@ class OAuthLoginQuery(BaseModel):
     invite_token: str | None = Field(default=None, description="Optional invitation token")
     timezone: str | None = Field(default=None, description="Preferred timezone")
     language: str | None = Field(default=None, description="Preferred interface language")
+    redirect_url: str | None = Field(default=None, description="Relative page to resume after login")
 
 
 class OAuthCallbackQuery(BaseModel):
@@ -87,6 +88,36 @@ def _validated_language(value: str | None) -> str | None:
     return None
 
 
+def _url_origin(url: str) -> tuple[str, str, int] | None:
+    parsed_url = urllib.parse.urlsplit(url)
+    if parsed_url.scheme not in {"http", "https"} or parsed_url.hostname is None:
+        return None
+
+    try:
+        port = parsed_url.port
+    except ValueError:
+        return None
+
+    if port is None:
+        port = 443 if parsed_url.scheme == "https" else 80
+    return parsed_url.scheme, parsed_url.hostname, port
+
+
+def _get_redirect_target(redirect_url: str | None) -> str:
+    if not redirect_url:
+        return dify_config.CONSOLE_WEB_URL
+
+    parsed_url = urllib.parse.urlsplit(redirect_url)
+    normalized_path = redirect_url.lstrip().replace("\\", "/")
+    if not parsed_url.scheme and not parsed_url.netloc and not normalized_path.startswith("//"):
+        return redirect_url
+
+    redirect_origin = _url_origin(redirect_url)
+    if redirect_origin is not None and redirect_origin == _url_origin(dify_config.CONSOLE_WEB_URL):
+        return redirect_url
+    return dify_config.CONSOLE_WEB_URL
+
+
 def _preferred_interface_language(language: str | None = None) -> str:
     if language:
         return language
@@ -109,6 +140,7 @@ class OAuthLogin(Resource):
         invite_token = request.args.get("invite_token") or None
         timezone = _validated_timezone(request.args.get("timezone") or None)
         language = _validated_language(request.args.get("language") or None)
+        redirect_url = request.args.get("redirect_url") or None
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
@@ -119,6 +151,7 @@ class OAuthLogin(Resource):
             invite_token=invite_token,
             timezone=timezone,
             language=language,
+            redirect_url=redirect_url,
         )
         return redirect(auth_url)
 
@@ -144,6 +177,7 @@ class OAuthCallback(Resource):
         invite_token = oauth_state.get("invite_token")
         timezone = _validated_timezone(oauth_state.get("timezone"))
         language = _validated_language(oauth_state.get("language"))
+        redirect_url = oauth_state.get("redirect_url")
 
         if not code:
             return {"error": "Authorization code is required"}, 400
@@ -182,6 +216,8 @@ class OAuthCallback(Resource):
                 f"{dify_config.CONSOLE_WEB_URL}/signin"
                 "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
             )
+        except SeatsLimitExceededError:
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Licensed seats limit exceeded.")
         except AccountRegisterError as e:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
 
@@ -195,7 +231,7 @@ class OAuthCallback(Resource):
             db.session.commit()
 
         try:
-            TenantService.create_owner_tenant_if_not_exist(account, session=db.session)
+            TenantService.create_owner_tenant_if_not_exist(account, session=db.session())
         except Unauthorized:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found.")
         except WorkSpaceNotAllowedCreateError:
@@ -206,13 +242,13 @@ class OAuthCallback(Resource):
 
         token_pair = AccountService.login(
             account=account,
-            session=db.session,
+            session=db.session(),
             ip_address=extract_remote_ip(request),
         )
 
-        base_url = dify_config.CONSOLE_WEB_URL
-        query_char = "&" if "?" in base_url else "?"
-        target_url = f"{base_url}{query_char}oauth_new_user={str(oauth_new_user).lower()}"
+        target_url = _get_redirect_target(redirect_url)
+        query_char = "&" if "?" in target_url else "?"
+        target_url = f"{target_url}{query_char}oauth_new_user={str(oauth_new_user).lower()}"
         response = redirect(target_url)
 
         set_access_token_to_cookie(request, response, token_pair.access_token)
@@ -225,7 +261,7 @@ def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> 
     account: Account | None = Account.get_by_openid(provider, user_info.id)
 
     if not account:
-        account = AccountService.get_account_by_email_with_case_fallback(db.session, user_info.email)
+        account = AccountService.get_account_by_email_with_case_fallback(user_info.email, session=db.session())
 
     return account
 
@@ -241,14 +277,14 @@ def _generate_account(
     oauth_new_user = False
 
     if account:
-        tenants = TenantService.get_join_tenants(account, session=db.session)
+        tenants = TenantService.get_join_tenants(account, session=db.session())
         if not tenants:
             if not FeatureService.get_system_features().is_allow_create_workspace:
                 raise WorkSpaceNotAllowedCreateError()
             else:
-                new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session)
-                TenantService.create_tenant_member(new_tenant, account, db.session, role="owner")
-                account.current_tenant = new_tenant
+                new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session())
+                TenantService.create_tenant_member(new_tenant, account, db.session(), role="owner")
+                account.set_current_tenant_with_session(new_tenant, session=db.session())
                 tenant_was_created.send(new_tenant)
 
     if not account:
@@ -273,10 +309,10 @@ def _generate_account(
             provider=provider,
             language=interface_language,
             timezone=timezone,
-            session=db.session,
+            session=db.session(),
         )
 
     # Link account
-    AccountService.link_account_integrate(provider, user_info.id, account, session=db.session)
+    AccountService.link_account_integrate(provider, user_info.id, account, session=db.session())
 
     return account, oauth_new_user

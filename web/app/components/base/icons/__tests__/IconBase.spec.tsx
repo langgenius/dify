@@ -7,11 +7,7 @@ import * as utils from '../utils'
 // Mock the utils module
 vi.mock('../utils', () => ({
   generate: vi.fn((icon, key, props) => (
-    <svg
-      data-testid={key}
-      key={key}
-      {...props}
-    >
+    <svg data-testid={key} key={key} {...props}>
       mocked svg content
     </svg>
   )),

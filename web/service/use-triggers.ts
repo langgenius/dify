@@ -1,5 +1,10 @@
 import type { FormOption } from '@/app/components/base/form/types'
-import type { ParametersSchema, PluginTriggerSubscriptionConstructor, TriggerEvent, TriggerEventParameter } from '@/app/components/plugins/types'
+import type {
+  ParametersSchema,
+  PluginTriggerSubscriptionConstructor,
+  TriggerEvent,
+  TriggerEventParameter,
+} from '@/app/components/plugins/types'
 import type {
   TriggerLogEntity,
   TriggerOAuthClientParams,
@@ -18,16 +23,24 @@ import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'triggers'
 
-type GeneratedEventParameter = import('@dify/contracts/api/console/workspaces/types.gen').EventParameter
+type GeneratedEventParameter =
+  import('@dify/contracts/api/console/workspaces/types.gen').EventParameter
 type GeneratedI18nObject = import('@dify/contracts/api/console/workspaces/types.gen').I18nObject
-type GeneratedProviderConfig = import('@dify/contracts/api/console/workspaces/types.gen').ProviderConfig
+type GeneratedProviderConfig =
+  import('@dify/contracts/api/console/workspaces/types.gen').ProviderConfig
 type GeneratedRequestLog = import('@dify/contracts/api/console/workspaces/types.gen').RequestLog
-type GeneratedSubscriptionBuilder = import('@dify/contracts/api/console/workspaces/types.gen').SubscriptionBuilderApiEntity
-type GeneratedTriggerCreationMethod = import('@dify/contracts/api/console/workspaces/types.gen').TriggerCreationMethod
-type GeneratedTriggerOAuthConfig = import('@dify/contracts/api/console/workspaces/types.gen').TriggerOAuthClientResponse
-type GeneratedTriggerProvider = import('@dify/contracts/api/console/workspaces/types.gen').TriggerProviderApiEntity
-type GeneratedTriggerSubscription = import('@dify/contracts/api/console/workspaces/types.gen').TriggerProviderSubscriptionApiEntity
-type TriggerProviderApiEntity = import('@/app/components/workflow/block-selector/types').TriggerProviderApiEntity
+type GeneratedSubscriptionBuilder =
+  import('@dify/contracts/api/console/workspaces/types.gen').SubscriptionBuilderApiEntity
+type GeneratedTriggerCreationMethod =
+  import('@dify/contracts/api/console/workspaces/types.gen').TriggerCreationMethod
+type GeneratedTriggerOAuthConfig =
+  import('@dify/contracts/api/console/workspaces/types.gen').TriggerOAuthClientResponse
+type GeneratedTriggerProvider =
+  import('@dify/contracts/api/console/workspaces/types.gen').TriggerProviderApiEntity
+type GeneratedTriggerSubscription =
+  import('@dify/contracts/api/console/workspaces/types.gen').TriggerProviderSubscriptionApiEntity
+type TriggerProviderApiEntity =
+  import('@/app/components/workflow/block-selector/types').TriggerProviderApiEntity
 
 const getString = (value: unknown) => {
   return typeof value === 'string' ? value : ''
@@ -38,8 +51,7 @@ const getNumber = (value: unknown) => {
 }
 
 const getObjectString = (value: unknown, key: string) => {
-  if (!value || typeof value !== 'object')
-    return ''
+  if (!value || typeof value !== 'object') return ''
 
   return getString(Object.entries(value).find(([entryKey]) => entryKey === key)?.[1])
 }
@@ -74,9 +86,9 @@ const normalizeI18nObject = (value: GeneratedI18nObject | null | undefined, fall
     'id-ID': en,
     'nl-NL': en,
     'ar-TN': en,
-    'en_US': en,
-    'zh_Hans': zhHans,
-    'ja_JP': ja,
+    en_US: en,
+    zh_Hans: zhHans,
+    ja_JP: ja,
   }
 }
 
@@ -110,35 +122,36 @@ const normalizeUnknownI18nObject = (value: unknown, fallback = '') => {
     'id-ID': en,
     'nl-NL': en,
     'ar-TN': en,
-    'en_US': en,
-    'zh_Hans': zhHans,
-    'ja_JP': ja,
+    en_US: en,
+    zh_Hans: zhHans,
+    ja_JP: ja,
   }
 }
 
 const normalizeParameterDefault = (value: unknown) => {
-  if (Array.isArray(value))
-    return value.filter(item => typeof item === 'string')
-  if (typeof value === 'string')
-    return value
-  if (value === undefined || value === null)
-    return undefined
+  if (Array.isArray(value)) return value.filter((item) => typeof item === 'string')
+  if (typeof value === 'string') return value
+  if (value === undefined || value === null) return undefined
   return String(value)
 }
 
 const normalizeProviderOptions = (options: GeneratedProviderConfig['options']) => {
-  return options?.map(option => ({
-    label: normalizeI18nObject(option.label),
-    value: option.value,
-  })) ?? []
+  return (
+    options?.map((option) => ({
+      label: normalizeI18nObject(option.label),
+      value: option.value,
+    })) ?? []
+  )
 }
 
 const normalizeEventOptions = (options: GeneratedEventParameter['options']) => {
-  return options?.map(option => ({
-    icon: option.icon ?? undefined,
-    label: normalizeI18nObject(option.label),
-    value: option.value,
-  })) ?? []
+  return (
+    options?.map((option) => ({
+      icon: option.icon ?? undefined,
+      label: normalizeI18nObject(option.label),
+      value: option.value,
+    })) ?? []
+  )
 }
 
 const normalizeProviderConfigType = (type: GeneratedProviderConfig['type']): FormTypeEnum => {
@@ -278,7 +291,9 @@ const normalizeTriggerEvent = (event: GeneratedTriggerProvider['events'][number]
   }
 }
 
-const normalizeSupportedCreationMethod = (method: GeneratedTriggerCreationMethod): SupportedCreationMethods => {
+const normalizeSupportedCreationMethod = (
+  method: GeneratedTriggerCreationMethod,
+): SupportedCreationMethods => {
   switch (method) {
     case SupportedCreationMethods.APIKEY:
       return SupportedCreationMethods.APIKEY
@@ -293,20 +308,23 @@ const normalizeSupportedCreationMethod = (method: GeneratedTriggerCreationMethod
 const normalizeSubscriptionConstructor = (
   constructor: GeneratedTriggerProvider['subscription_constructor'],
 ): PluginTriggerSubscriptionConstructor | null => {
-  if (!constructor)
-    return null
+  if (!constructor) return null
 
   return {
     credentials_schema: (constructor.credentials_schema ?? []).map(normalizeCredentialSchema),
     oauth_schema: {
       client_schema: (constructor.oauth_schema?.client_schema ?? []).map(normalizeCredentialSchema),
-      credentials_schema: (constructor.oauth_schema?.credentials_schema ?? []).map(normalizeCredentialSchema),
+      credentials_schema: (constructor.oauth_schema?.credentials_schema ?? []).map(
+        normalizeCredentialSchema,
+      ),
     },
     parameters: (constructor.parameters ?? []).map(normalizeEventParameterToSchema),
   }
 }
 
-export const normalizeTriggerProvider = (provider: GeneratedTriggerProvider): TriggerProviderApiEntity => {
+export const normalizeTriggerProvider = (
+  provider: GeneratedTriggerProvider,
+): TriggerProviderApiEntity => {
   return {
     author: provider.author,
     name: provider.name,
@@ -317,14 +335,18 @@ export const normalizeTriggerProvider = (provider: GeneratedTriggerProvider): Tr
     tags: provider.tags ?? [],
     plugin_id: provider.plugin_id ?? undefined,
     plugin_unique_identifier: provider.plugin_unique_identifier ?? '',
-    supported_creation_methods: (provider.supported_creation_methods ?? []).map(normalizeSupportedCreationMethod),
+    supported_creation_methods: (provider.supported_creation_methods ?? []).map(
+      normalizeSupportedCreationMethod,
+    ),
     subscription_constructor: normalizeSubscriptionConstructor(provider.subscription_constructor),
     subscription_schema: (provider.subscription_schema ?? []).map(normalizeProviderConfig),
     events: provider.events.map(normalizeTriggerEvent),
   }
 }
 
-const normalizeCredentialType = (credentialType: GeneratedTriggerSubscription['credential_type']): TriggerCredentialTypeEnum => {
+const normalizeCredentialType = (
+  credentialType: GeneratedTriggerSubscription['credential_type'],
+): TriggerCredentialTypeEnum => {
   switch (credentialType) {
     case TriggerCredentialTypeEnum.ApiKey:
       return TriggerCredentialTypeEnum.ApiKey
@@ -336,7 +358,9 @@ const normalizeCredentialType = (credentialType: GeneratedTriggerSubscription['c
   return TriggerCredentialTypeEnum.Unauthorized
 }
 
-const normalizeTriggerSubscription = (subscription: GeneratedTriggerSubscription): TriggerSubscription => {
+const normalizeTriggerSubscription = (
+  subscription: GeneratedTriggerSubscription,
+): TriggerSubscription => {
   return {
     id: subscription.id,
     name: subscription.name,
@@ -350,7 +374,9 @@ const normalizeTriggerSubscription = (subscription: GeneratedTriggerSubscription
   }
 }
 
-const normalizeTriggerSubscriptionBuilder = (builder: GeneratedSubscriptionBuilder): TriggerSubscriptionBuilder => {
+const normalizeTriggerSubscriptionBuilder = (
+  builder: GeneratedSubscriptionBuilder,
+): TriggerSubscriptionBuilder => {
   return {
     id: builder.id,
     name: builder.name,
@@ -387,19 +413,16 @@ const normalizeTriggerOAuthConfig = (config: GeneratedTriggerOAuthConfig): Trigg
 }
 
 const normalizeDynamicOptionLabel = (label: unknown, fallback: string) => {
-  if (typeof label === 'string')
-    return label
+  if (typeof label === 'string') return label
 
   return normalizeUnknownI18nObject(label, fallback)
 }
 
 const normalizeDynamicOption = (option: unknown): FormOption | null => {
-  if (!option || typeof option !== 'object')
-    return null
+  if (!option || typeof option !== 'object') return null
 
   const value = getObjectString(option, 'value')
-  if (!value)
-    return null
+  if (!value) return null
 
   const label = Object.entries(option).find(([key]) => key === 'label')?.[1]
   const icon = getObjectString(option, 'icon')
@@ -408,8 +431,7 @@ const normalizeDynamicOption = (option: unknown): FormOption | null => {
     value,
   }
 
-  if (icon)
-    normalizedOption.icon = icon
+  if (icon) normalizedOption.icon = icon
 
   return normalizedOption
 }
@@ -418,7 +440,9 @@ const isFormOption = (option: FormOption | null): option is FormOption => {
   return option !== null
 }
 
-const normalizeDynamicOptionsResponse = (response: { options: unknown }): { options: FormOption[] } => {
+const normalizeDynamicOptionsResponse = (response: {
+  options: unknown
+}): { options: FormOption[] } => {
   return {
     options: Array.isArray(response.options)
       ? response.options.map(normalizeDynamicOption).filter(isFormOption)
@@ -428,10 +452,10 @@ const normalizeDynamicOptionsResponse = (response: { options: unknown }): { opti
 
 const normalizeLogHeaders = (headers: unknown) => {
   return {
-    'Host': getObjectString(headers, 'Host'),
+    Host: getObjectString(headers, 'Host'),
     'User-Agent': getObjectString(headers, 'User-Agent'),
     'Content-Length': getObjectString(headers, 'Content-Length'),
-    'Accept': getObjectString(headers, 'Accept'),
+    Accept: getObjectString(headers, 'Accept'),
     'Content-Type': getObjectString(headers, 'Content-Type'),
     'X-Forwarded-For': getObjectString(headers, 'X-Forwarded-For'),
     'X-Forwarded-Host': getObjectString(headers, 'X-Forwarded-Host'),
@@ -439,8 +463,14 @@ const normalizeLogHeaders = (headers: unknown) => {
     'X-Github-Delivery': getObjectString(headers, 'X-Github-Delivery'),
     'X-Github-Event': getObjectString(headers, 'X-Github-Event'),
     'X-Github-Hook-Id': getObjectString(headers, 'X-Github-Hook-Id'),
-    'X-Github-Hook-Installation-Target-Id': getObjectString(headers, 'X-Github-Hook-Installation-Target-Id'),
-    'X-Github-Hook-Installation-Target-Type': getObjectString(headers, 'X-Github-Hook-Installation-Target-Type'),
+    'X-Github-Hook-Installation-Target-Id': getObjectString(
+      headers,
+      'X-Github-Hook-Installation-Target-Id',
+    ),
+    'X-Github-Hook-Installation-Target-Type': getObjectString(
+      headers,
+      'X-Github-Hook-Installation-Target-Type',
+    ),
     'Accept-Encoding': getObjectString(headers, 'Accept-Encoding'),
   }
 }
@@ -471,7 +501,9 @@ const normalizeTriggerLog = (log: GeneratedRequestLog): TriggerLogEntity => {
   }
 }
 
-export const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): TriggerWithProvider => {
+export const convertToTriggerWithProvider = (
+  provider: TriggerProviderApiEntity,
+): TriggerWithProvider => {
   return {
     id: provider.plugin_id || provider.name,
     name: provider.name,
@@ -487,12 +519,12 @@ export const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity)
     labels: provider.tags || [],
     plugin_id: provider.plugin_id,
     plugin_unique_identifier: provider.plugin_unique_identifier || '',
-    events: provider.events.map(event => ({
+    events: provider.events.map((event) => ({
       name: event.name,
       author: provider.author,
       label: event.identity.label,
       description: event.description,
-      parameters: event.parameters.map(param => ({
+      parameters: event.parameters.map((param) => ({
         name: param.name,
         label: param.label,
         human_description: param.description || param.label,
@@ -501,10 +533,11 @@ export const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity)
         llm_description: JSON.stringify(param.description || {}),
         required: param.required || false,
         default: param.default ?? '',
-        options: param.options?.map(option => ({
-          label: option.label,
-          value: option.value,
-        })) || [],
+        options:
+          param.options?.map((option) => ({
+            label: option.label,
+            value: option.value,
+          })) || [],
         multiple: param.multiple || false,
       })),
       labels: provider.tags || [],
@@ -538,19 +571,30 @@ export const useInvalidateAllTriggerPlugins = () => {
 
 export const useTriggerProviderInfo = (provider: string, enabled = true) => {
   return useQuery<TriggerProviderApiEntity>({
-    queryKey: consoleQuery.workspaces.current.triggerProvider.byProvider.info.get.queryKey({ input: { params: { provider } } }),
-    queryFn: async () => normalizeTriggerProvider(
-      await consoleClient.workspaces.current.triggerProvider.byProvider.info.get({ params: { provider } }),
-    ),
+    queryKey: consoleQuery.workspaces.current.triggerProvider.byProvider.info.get.queryKey({
+      input: { params: { provider } },
+    }),
+    queryFn: async () =>
+      normalizeTriggerProvider(
+        await consoleClient.workspaces.current.triggerProvider.byProvider.info.get({
+          params: { provider },
+        }),
+      ),
     enabled: enabled && !!provider,
   })
 }
 
 export const useTriggerSubscriptions = (provider: string, enabled = true) => {
   return useQuery<TriggerSubscription[]>({
-    queryKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.list.get.queryKey({ input: { params: { provider } } }),
+    queryKey:
+      consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.list.get.queryKey({
+        input: { params: { provider } },
+      }),
     queryFn: async () => {
-      const response = await consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.list.get({ params: { provider } })
+      const response =
+        await consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.list.get({
+          params: { provider },
+        })
       return response.map(normalizeTriggerSubscription)
     },
     enabled: enabled && !!provider,
@@ -559,25 +603,26 @@ export const useTriggerSubscriptions = (provider: string, enabled = true) => {
 
 export const useCreateTriggerSubscriptionBuilder = () => {
   return useMutation({
-    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.create.post.mutationKey(),
-    mutationFn: (payload: {
-      provider: string
-      credential_type?: string
-    }) => {
+    mutationKey:
+      consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.create.post.mutationKey(),
+    mutationFn: (payload: { provider: string; credential_type?: string }) => {
       const { provider, ...body } = payload
-      return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.create.post({
-        params: { provider },
-        body,
-      }).then(response => ({
-        subscription_builder: normalizeTriggerSubscriptionBuilder(response.subscription_builder),
-      }))
+      return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.create
+        .post({
+          params: { provider },
+          body,
+        })
+        .then((response) => ({
+          subscription_builder: normalizeTriggerSubscriptionBuilder(response.subscription_builder),
+        }))
     },
   })
 }
 
 export const useUpdateTriggerSubscriptionBuilder = () => {
   return useMutation({
-    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.update.bySubscriptionBuilderId.post.mutationKey(),
+    mutationKey:
+      consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.update.bySubscriptionBuilderId.post.mutationKey(),
     mutationFn: (payload: {
       provider: string
       subscriptionBuilderId: string
@@ -587,48 +632,58 @@ export const useUpdateTriggerSubscriptionBuilder = () => {
       credentials?: Record<string, unknown>
     }) => {
       const { provider, subscriptionBuilderId, ...body } = payload
-      return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.update.bySubscriptionBuilderId.post({
-        params: { provider, subscription_builder_id: subscriptionBuilderId },
-        body,
-      }).then(normalizeTriggerSubscriptionBuilder)
+      return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.update.bySubscriptionBuilderId
+        .post({
+          params: { provider, subscription_builder_id: subscriptionBuilderId },
+          body,
+        })
+        .then(normalizeTriggerSubscriptionBuilder)
     },
   })
 }
 
 export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
   return useMutation({
-    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.verifyAndUpdate.bySubscriptionBuilderId.post.mutationKey(),
+    mutationKey:
+      consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.verifyAndUpdate.bySubscriptionBuilderId.post.mutationKey(),
     mutationFn: (payload: {
       provider: string
       subscriptionBuilderId: string
       credentials?: Record<string, unknown>
     }) => {
       const { provider, subscriptionBuilderId, credentials } = payload
-      return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.verifyAndUpdate.bySubscriptionBuilderId.post({
-        params: { provider, subscription_builder_id: subscriptionBuilderId },
-        body: { credentials: credentials ?? {} },
-      }, {
-        context: { silent: true },
-      })
+      return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.verifyAndUpdate.bySubscriptionBuilderId.post(
+        {
+          params: { provider, subscription_builder_id: subscriptionBuilderId },
+          body: { credentials: credentials ?? {} },
+        },
+        {
+          context: { silent: true },
+        },
+      )
     },
   })
 }
 
 export const useVerifyTriggerSubscription = () => {
   return useMutation({
-    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.verify.bySubscriptionId.post.mutationKey(),
+    mutationKey:
+      consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.verify.bySubscriptionId.post.mutationKey(),
     mutationFn: (payload: {
       provider: string
       subscriptionId: string
       credentials?: Record<string, unknown>
     }) => {
       const { provider, subscriptionId, credentials } = payload
-      return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.verify.bySubscriptionId.post({
-        params: { provider, subscription_id: subscriptionId },
-        body: { credentials: credentials ?? {} },
-      }, {
-        context: { silent: true },
-      })
+      return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.verify.bySubscriptionId.post(
+        {
+          params: { provider, subscription_id: subscriptionId },
+          body: { credentials: credentials ?? {} },
+        },
+        {
+          context: { silent: true },
+        },
+      )
     },
   })
 }
@@ -642,24 +697,30 @@ export type BuildTriggerSubscriptionPayload = {
 
 export const useBuildTriggerSubscription = () => {
   return useMutation({
-    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.build.bySubscriptionBuilderId.post.mutationKey(),
+    mutationKey:
+      consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.build.bySubscriptionBuilderId.post.mutationKey(),
     mutationFn: (payload: BuildTriggerSubscriptionPayload) => {
       const { provider, subscriptionBuilderId, ...body } = payload
-      return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.build.bySubscriptionBuilderId.post({
-        params: { provider, subscription_builder_id: subscriptionBuilderId },
-        body,
-      })
+      return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.build.bySubscriptionBuilderId.post(
+        {
+          params: { provider, subscription_builder_id: subscriptionBuilderId },
+          body,
+        },
+      )
     },
   })
 }
 
 export const useDeleteTriggerSubscription = () => {
   return useMutation({
-    mutationKey: consoleQuery.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.delete.post.mutationKey(),
+    mutationKey:
+      consoleQuery.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.delete.post.mutationKey(),
     mutationFn: (subscriptionId: string) => {
-      return consoleClient.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.delete.post({
-        params: { subscription_id: subscriptionId },
-      })
+      return consoleClient.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.delete.post(
+        {
+          params: { subscription_id: subscriptionId },
+        },
+      )
     },
   })
 }
@@ -674,13 +735,16 @@ type UpdateTriggerSubscriptionPayload = {
 
 export const useUpdateTriggerSubscription = () => {
   return useMutation({
-    mutationKey: consoleQuery.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.update.post.mutationKey(),
+    mutationKey:
+      consoleQuery.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.update.post.mutationKey(),
     mutationFn: (payload: UpdateTriggerSubscriptionPayload) => {
       const { subscriptionId, ...body } = payload
-      return consoleClient.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.update.post({
-        params: { subscription_id: subscriptionId },
-        body,
-      })
+      return consoleClient.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.update.post(
+        {
+          params: { subscription_id: subscriptionId },
+          body,
+        },
+      )
     },
   })
 }
@@ -696,13 +760,19 @@ export const useTriggerSubscriptionBuilderLogs = (
   const { enabled = true, refetchInterval = false } = options
 
   return useQuery<{ logs: TriggerLogEntity[] }>({
-    queryKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.logs.bySubscriptionBuilderId.get.queryKey({
-      input: { params: { provider, subscription_builder_id: subscriptionBuilderId } },
-    }),
+    queryKey:
+      consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.logs.bySubscriptionBuilderId.get.queryKey(
+        {
+          input: { params: { provider, subscription_builder_id: subscriptionBuilderId } },
+        },
+      ),
     queryFn: async () => {
-      const response = await consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.logs.bySubscriptionBuilderId.get({
-        params: { provider, subscription_builder_id: subscriptionBuilderId },
-      })
+      const response =
+        await consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.logs.bySubscriptionBuilderId.get(
+          {
+            params: { provider, subscription_builder_id: subscriptionBuilderId },
+          },
+        )
       return {
         logs: response.logs.map(normalizeTriggerLog),
       }
@@ -715,10 +785,15 @@ export const useTriggerSubscriptionBuilderLogs = (
 // ===== OAuth Management =====
 export const useTriggerOAuthConfig = (provider: string, enabled = true) => {
   return useQuery<TriggerOAuthConfig>({
-    queryKey: consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.get.queryKey({ input: { params: { provider } } }),
-    queryFn: async () => normalizeTriggerOAuthConfig(
-      await consoleClient.workspaces.current.triggerProvider.byProvider.oauth.client.get({ params: { provider } }),
-    ),
+    queryKey: consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.get.queryKey({
+      input: { params: { provider } },
+    }),
+    queryFn: async () =>
+      normalizeTriggerOAuthConfig(
+        await consoleClient.workspaces.current.triggerProvider.byProvider.oauth.client.get({
+          params: { provider },
+        }),
+      ),
     enabled: enabled && !!provider,
   })
 }
@@ -731,7 +806,8 @@ export type ConfigureTriggerOAuthPayload = {
 
 export const useConfigureTriggerOAuth = () => {
   return useMutation({
-    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.post.mutationKey(),
+    mutationKey:
+      consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.post.mutationKey(),
     mutationFn: (payload: ConfigureTriggerOAuthPayload) => {
       const { provider, ...body } = payload
       return consoleClient.workspaces.current.triggerProvider.byProvider.oauth.client.post({
@@ -744,7 +820,8 @@ export const useConfigureTriggerOAuth = () => {
 
 export const useDeleteTriggerOAuth = () => {
   return useMutation({
-    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.delete.mutationKey(),
+    mutationKey:
+      consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.delete.mutationKey(),
     mutationFn: (provider: string) => {
       return consoleClient.workspaces.current.triggerProvider.byProvider.oauth.client.delete({
         params: { provider },
@@ -755,13 +832,18 @@ export const useDeleteTriggerOAuth = () => {
 
 export const useInitiateTriggerOAuth = () => {
   return useMutation({
-    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get.mutationKey(),
+    mutationKey:
+      consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get.mutationKey(),
     mutationFn: async (provider: string) => {
-      const response = await consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get({
-        params: { provider },
-      }, {
-        context: { silent: true },
-      })
+      const response =
+        await consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get(
+          {
+            params: { provider },
+          },
+          {
+            context: { silent: true },
+          },
+        )
       return {
         authorization_url: response.authorization_url,
         subscription_builder: normalizeTriggerSubscriptionBuilder(response.subscription_builder),
@@ -771,51 +853,76 @@ export const useInitiateTriggerOAuth = () => {
 }
 
 // ===== Dynamic Options Support =====
-export const useTriggerPluginDynamicOptions = (payload: {
-  plugin_id: string
-  provider: string
-  action: string
-  parameter: string
-  credential_id: string
-  credentials?: Record<string, unknown>
-  extra?: Record<string, unknown>
-}, enabled = true) => {
+export const useTriggerPluginDynamicOptions = (
+  payload: {
+    plugin_id: string
+    provider: string
+    action: string
+    parameter: string
+    credential_id: string
+    credentials?: Record<string, unknown>
+    extra?: Record<string, unknown>
+  },
+  enabled = true,
+) => {
   return useQuery<{ options: FormOption[] }>({
-    queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.credential_id, payload.credentials, payload.extra],
+    queryKey: [
+      NAME_SPACE,
+      'dynamic-options',
+      payload.plugin_id,
+      payload.provider,
+      payload.action,
+      payload.parameter,
+      payload.credential_id,
+      payload.credentials,
+      payload.extra,
+    ],
     queryFn: async () => {
       if (payload.credentials) {
         return normalizeDynamicOptionsResponse(
-          await consoleClient.workspaces.current.plugin.parameters.dynamicOptionsWithCredentials.post({
-            body: {
-              action: payload.action,
-              credential_id: payload.credential_id,
-              credentials: payload.credentials,
-              parameter: payload.parameter,
-              plugin_id: payload.plugin_id,
-              provider: payload.provider,
+          await consoleClient.workspaces.current.plugin.parameters.dynamicOptionsWithCredentials.post(
+            {
+              body: {
+                action: payload.action,
+                credential_id: payload.credential_id,
+                credentials: payload.credentials,
+                parameter: payload.parameter,
+                plugin_id: payload.plugin_id,
+                provider: payload.provider,
+              },
             },
-          }, {
-            context: { silent: true },
-          }),
+            {
+              context: { silent: true },
+            },
+          ),
         )
       }
 
       return normalizeDynamicOptionsResponse(
-        await consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get({
-          query: {
-            action: payload.action,
-            credential_id: payload.credential_id,
-            parameter: payload.parameter,
-            plugin_id: payload.plugin_id,
-            provider: payload.provider,
-            provider_type: 'trigger',
+        await consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get(
+          {
+            query: {
+              action: payload.action,
+              credential_id: payload.credential_id,
+              parameter: payload.parameter,
+              plugin_id: payload.plugin_id,
+              provider: payload.provider,
+              provider_type: 'trigger',
+            },
           },
-        }, {
-          context: { silent: true },
-        }),
+          {
+            context: { silent: true },
+          },
+        ),
       )
     },
-    enabled: enabled && !!payload.plugin_id && !!payload.provider && !!payload.action && !!payload.parameter && !!payload.credential_id,
+    enabled:
+      enabled &&
+      !!payload.plugin_id &&
+      !!payload.provider &&
+      !!payload.action &&
+      !!payload.parameter &&
+      !!payload.credential_id,
     retry: 0,
     staleTime: 0,
   })

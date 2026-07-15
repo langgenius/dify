@@ -43,10 +43,13 @@ describe('runGetMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.list).toHaveBeenCalledExactlyOnceWith('550e8400-e29b-41d4-a716-446655440000', { page: 1, limit: 20 })
+    expect(client.list).toHaveBeenCalledExactlyOnceWith('550e8400-e29b-41d4-a716-446655440000', {
+      page: 1,
+      limit: 20,
+    })
     expect(r.workspaceId).toBe('550e8400-e29b-41d4-a716-446655440000')
-    expect(r.data.rows.map(row => row.current)).toEqual([true, false])
-    expect(r.data.rows.map(row => row.id)).toEqual(['acct-1', 'acct-2'])
+    expect(r.data.rows.map((row) => row.current)).toEqual([true, false])
+    expect(r.data.rows.map((row) => row.id)).toEqual(['acct-1', 'acct-2'])
   })
 
   it('-w flag overrides resolved workspace', async () => {
@@ -60,7 +63,10 @@ describe('runGetMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.list).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440008', { page: 1, limit: 20 })
+    expect(client.list).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440008', {
+      page: 1,
+      limit: 20,
+    })
     expect(r.workspaceId).toBe('550e8400-e29b-41d4-a716-446655440008')
   })
 
@@ -75,7 +81,10 @@ describe('runGetMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.list).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440000', { page: 3, limit: 50 })
+    expect(client.list).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440000', {
+      page: 3,
+      limit: 50,
+    })
   })
 
   it('marks no row when active context has no account id', async () => {
@@ -97,7 +106,7 @@ describe('runGetMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(r.data.rows.every(row => !row.current)).toBe(true)
+    expect(r.data.rows.every((row) => !row.current)).toBe(true)
   })
 
   it('throws when no workspace can be resolved', async () => {
@@ -144,7 +153,7 @@ describe('MemberListOutput shape', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(r.data.tableColumns().map(c => c.name)).toEqual([
+    expect(r.data.tableColumns().map((c) => c.name)).toEqual([
       'ID',
       'NAME',
       'EMAIL',

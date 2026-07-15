@@ -7,8 +7,7 @@ const INVALID_FILENAME_CHARS_PATTERN = /[\\/:*?"<>|]+/g
 const FILENAME_SEPARATOR_PATTERN = /[\s-]+/g
 
 function sanitizeFileNamePart(value?: string) {
-  if (!value)
-    return ''
+  if (!value) return ''
 
   return value
     .trim()
@@ -18,7 +17,10 @@ function sanitizeFileNamePart(value?: string) {
     .replace(/^-+|-+$/g, '')
 }
 
-function releaseDslFileName({ release, appInstanceName }: {
+function releaseDslFileName({
+  release,
+  appInstanceName,
+}: {
   release: Release
   appInstanceName?: string
 }) {
@@ -29,7 +31,11 @@ function releaseDslFileName({ release, appInstanceName }: {
   return `${baseName}.yaml`
 }
 
-export async function exportReleaseDsl({ release, releaseId, appInstanceName }: {
+export async function exportReleaseDsl({
+  release,
+  releaseId,
+  appInstanceName,
+}: {
   release: Release
   releaseId: string
   appInstanceName?: string

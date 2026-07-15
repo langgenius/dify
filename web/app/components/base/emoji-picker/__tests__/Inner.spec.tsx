@@ -31,9 +31,14 @@ describe('EmojiPickerInner', () => {
     vi.clearAllMocks()
     // Define the custom element to avoid "Unknown custom element" warnings
     if (!customElements.get('em-emoji')) {
-      customElements.define('em-emoji', class extends HTMLElement {
-        static get observedAttributes() { return ['id'] }
-      })
+      customElements.define(
+        'em-emoji',
+        class extends HTMLElement {
+          static get observedAttributes() {
+            return ['id']
+          }
+        },
+      )
     }
   })
 

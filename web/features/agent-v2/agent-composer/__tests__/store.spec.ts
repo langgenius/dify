@@ -32,7 +32,9 @@ describe('agent composer store conversions', () => {
     expect(store.get(agentComposerDraftAtom).prompt).toBe('Build draft prompt')
     expect(store.get(agentComposerOriginalDraftAtom)?.prompt).toBe('Build draft prompt')
     expect(store.get(agentComposerPublishedDraftAtom)?.prompt).toBe('Build draft prompt')
-    expect(store.get(agentComposerOriginalConfigAtom)?.prompt?.system_prompt).toBe('Build draft prompt')
+    expect(store.get(agentComposerOriginalConfigAtom)?.prompt?.system_prompt).toBe(
+      'Build draft prompt',
+    )
   })
 
   it('should hydrate editable form state from an AgentSoulConfig and preserve it in the config snapshot', () => {
@@ -203,22 +205,24 @@ describe('agent composer store conversions', () => {
         }),
       ],
     })
-    expect(formState.tools).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        id: 'duckduckgo',
-        kind: 'provider',
-        actions: [
-          expect.objectContaining({
-            toolName: 'ddg_search',
-          }),
-        ],
-      }),
-      expect.objectContaining({
-        id: 'run-tests',
-        kind: 'cli',
-        installCommand: 'pnpm install',
-      }),
-    ]))
+    expect(formState.tools).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'duckduckgo',
+          kind: 'provider',
+          actions: [
+            expect.objectContaining({
+              toolName: 'ddg_search',
+            }),
+          ],
+        }),
+        expect.objectContaining({
+          id: 'run-tests',
+          kind: 'cli',
+          installCommand: 'pnpm install',
+        }),
+      ]),
+    )
     expect(formState.toolSettings['duckduckgo:ddg_search']).toEqual({
       query: 'latest docs',
       used_in_agent_nodes: true,
@@ -378,6 +382,121 @@ describe('agent composer store conversions', () => {
         runtime_parameters: {
           query: 'updated query',
         },
+      }),
+    ])
+  })
+
+  it('should preserve oauth2 credential references when saving tool config', () => {
+    const baseConfig = {
+      tools: {
+        dify_tools: [
+          {
+            provider: 'google',
+            provider_id: 'google',
+            provider_type: 'builtin',
+            tool_name: 'search',
+            credential_type: 'oauth2',
+            credential_ref: {
+              id: 'credential-oauth',
+              provider: 'google',
+              type: 'provider',
+            },
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        credentialId: 'credential-oauth',
+        credentialType: 'oauth2',
+        credentialVariant: 'authorized',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        credential_type: 'oauth2',
+        credential_ref: {
+          id: 'credential-oauth',
+          provider: 'google',
+          type: 'provider',
+        },
+      }),
+    ])
+  })
+
+  it('should hydrate oauth tool authorization state from credential refs', () => {
+    const formState = agentSoulConfigToFormState({
+      tools: {
+        dify_tools: [
+          {
+            provider: 'google',
+            provider_id: 'google',
+            provider_type: 'builtin',
+            tool_name: 'search',
+            credential_type: 'oauth2',
+          },
+          {
+            provider: 'slack',
+            provider_id: 'slack',
+            provider_type: 'builtin',
+            tool_name: 'post_message',
+            credential_type: 'oauth2',
+            credential_ref: {
+              id: 'slack-oauth',
+              provider: 'slack',
+              type: 'provider',
+            },
+          },
+        ],
+      },
+    })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        id: 'google',
+        credentialType: 'oauth2',
+        credentialVariant: 'unauthorized',
+      }),
+      expect.objectContaining({
+        id: 'slack',
+        credentialId: 'slack-oauth',
+        credentialType: 'oauth2',
+        credentialVariant: 'authorized',
+      }),
+    ])
+  })
+
+  it('should not save credentialed tool config without a credential reference', () => {
+    const baseConfig = {
+      tools: {
+        dify_tools: [
+          {
+            provider: 'google',
+            provider_id: 'google',
+            provider_type: 'builtin',
+            tool_name: 'search',
+            credential_type: 'oauth2',
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        credentialId: undefined,
+        credentialType: 'oauth2',
+        credentialVariant: 'unauthorized',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        credential_type: 'unauthorized',
+        credential_ref: undefined,
       }),
     ])
   })

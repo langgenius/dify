@@ -8,8 +8,21 @@ vi.mock('@/hooks/use-document-title', () => ({
 }))
 
 vi.mock('../chat', () => ({
-  default: ({ appId, appDetail, className }: { appId: string, appDetail: TryAppInfo, className: string }) => (
-    <div data-testid="chat-component" data-app-id={appId} data-mode={appDetail.mode} className={className}>
+  default: ({
+    appId,
+    appDetail,
+    className,
+  }: {
+    appId: string
+    appDetail: TryAppInfo
+    className: string
+  }) => (
+    <div
+      data-testid="chat-component"
+      data-app-id={appId}
+      data-mode={appDetail.mode}
+      className={className}
+    >
       Chat Component
     </div>
   ),
@@ -21,7 +34,12 @@ vi.mock('../text-generation', () => ({
     className,
     isWorkflow,
     appData,
-  }: { appId: string, className: string, isWorkflow: boolean, appData: { mode: string } }) => (
+  }: {
+    appId: string
+    className: string
+    isWorkflow: boolean
+    appData: { mode: string }
+  }) => (
     <div
       data-testid="text-generation-component"
       data-app-id={appId}
@@ -34,35 +52,36 @@ vi.mock('../text-generation', () => ({
   ),
 }))
 
-const createMockAppDetail = (mode: string): TryAppInfo => ({
-  id: 'test-app-id',
-  name: 'Test App',
-  description: 'Test Description',
-  mode,
-  site: {
-    title: 'Test Site Title',
-    icon: 'icon',
-    icon_type: 'emoji',
-    icon_background: '#FFFFFF',
-    icon_url: '',
-  },
-  model_config: {
-    model: {
-      provider: 'test/provider',
-      name: 'test-model',
-      mode: 'chat',
+const createMockAppDetail = (mode: string): TryAppInfo =>
+  ({
+    id: 'test-app-id',
+    name: 'Test App',
+    description: 'Test Description',
+    mode,
+    site: {
+      title: 'Test Site Title',
+      icon: 'icon',
+      icon_type: 'emoji',
+      icon_background: '#FFFFFF',
+      icon_url: '',
     },
-    dataset_configs: {
-      datasets: {
-        datasets: [],
+    model_config: {
+      model: {
+        provider: 'test/provider',
+        name: 'test-model',
+        mode: 'chat',
       },
+      dataset_configs: {
+        datasets: {
+          datasets: [],
+        },
+      },
+      agent_mode: {
+        tools: [],
+      },
+      user_input_form: [],
     },
-    agent_mode: {
-      tools: [],
-    },
-    user_input_form: [],
-  },
-} as unknown as TryAppInfo)
+  }) as unknown as TryAppInfo
 
 describe('TryApp (app/index.tsx)', () => {
   afterEach(() => {

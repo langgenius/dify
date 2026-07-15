@@ -53,6 +53,12 @@ pnpm -C e2e e2e:full
 # run a tagged subset
 pnpm -C e2e e2e -- --tags @smoke
 
+# prepare external runtime seed resources for opt-in external suites
+pnpm -C e2e e2e:external:prepare
+
+# run scenarios that call real external providers
+pnpm -C e2e e2e:external
+
 # headed browser
 pnpm -C e2e e2e:headed -- --tags @smoke
 
@@ -74,8 +80,8 @@ flowchart TD
   C --> D["Cucumber loads config, steps, and support modules"]
   D --> E["BeforeAll bootstraps shared auth state via /install"]
   E --> F{"Which command is running?"}
-  F -->|`pnpm -C e2e e2e`| G["Run config default tags: not @fresh and not @skip and not @preview"]
-  F -->|`pnpm -C e2e e2e:full*`| H["Override tags to not @skip and not @preview"]
+  F -->|`pnpm -C e2e e2e`| G["Run config default tags: not @fresh and not @skip and not @preview and not @external-model and not @external-tool"]
+  F -->|`pnpm -C e2e e2e:full*`| H["Override tags to not @skip and not @preview and not @external-model and not @external-tool"]
   G --> I["Per-scenario BrowserContext from shared browser"]
   H --> I
   I --> J["Failure artifacts written to cucumber-report/artifacts"]
@@ -105,7 +111,7 @@ Behavior depends on instance state:
 - uninitialized instance: completes install and stores authenticated state
 - initialized instance: signs in and reuses authenticated state
 
-Because of that, the `@fresh` install scenario only runs in the `pnpm -C e2e e2e:full*` flows. The default `pnpm -C e2e e2e*` flows exclude `@fresh` and `@preview` via Cucumber config tags so they can be re-run against an already initialized instance while keeping Builder Preview scenarios opt-in.
+Because of that, the `@fresh` install scenario only runs in the `pnpm -C e2e e2e:full*` flows. The default `pnpm -C e2e e2e*` flows exclude `@fresh`, `@preview`, `@external-model`, and `@external-tool` via Cucumber config tags so they can be re-run against an already initialized instance while keeping Builder Preview and real external runtime scenarios opt-in.
 
 Reset all persisted E2E state:
 
@@ -121,6 +127,7 @@ This removes:
 - `docker/volumes/plugin_daemon`
 - `e2e/.auth`
 - `e2e/.logs`
+- `e2e/.logs-non-external`
 - `e2e/cucumber-report`
 
 Start the full middleware stack:
@@ -165,6 +172,7 @@ Artifacts and diagnostics:
 - `cucumber-report/artifacts/`: failure screenshots and HTML captures
 - `.logs/cucumber-api.log`: backend startup log
 - `.logs/cucumber-web.log`: frontend startup log
+- `.logs-non-external/`: non-external logs preserved before an external CI run
 
 Open the HTML report locally with:
 
@@ -201,7 +209,16 @@ Feature: Create dataset
   - `@unauthenticated` — uses a clean BrowserContext with no cookies or storage
   - `@authenticated` — optional intent tag for readability or selective runs; it does not currently change hook behavior on its own
 - `@fresh` — only runs in `e2e:full` mode (requires uninitialized instance)
+- `@external-model` — scenario execution can call a real model provider. Use this only for runtime requests, not for scenarios that only require an active model fixture.
+- `@external-tool` — scenario execution can call a real third-party tool provider. Use this only for runtime tool execution, not for plugin installation, discovery, or local deterministic tools.
+- `@microphone` — runs the scenario in an isolated Chromium instance backed by the checked-in fake audio fixture and grants microphone permission only to that scenario context.
 - `@skip` — excluded from all runs
+
+External runtime commands are opt-in. `pnpm -C e2e e2e:external:prepare` reads `E2E_EXTERNAL_RUNTIME_SEED_SPECS`, defaulting to `agent-v2:external-runtime`, and runs the matching seed packs before the external suite. `pnpm -C e2e e2e:external` reads `E2E_EXTERNAL_RUNTIME_TAGS`, defaulting to `(@external-model or @external-tool) and not @feature-gated and not @skip and not @preview`.
+
+The Agent v2 external runtime seed also prepares the workspace default Speech-to-Text model. `E2E_SPEECH_TO_TEXT_MODEL_PROVIDER` and `E2E_SPEECH_TO_TEXT_MODEL_NAME` select an existing model or the model configured through `E2E_MODEL_PROVIDER_CREDENTIALS_JSON`; they default to `openai` and `gpt-4o-mini-transcribe`.
+
+Some external runtime scenarios need feature-owned services in addition to a real model or tool provider. Do not overload `@external-model` or `@external-tool` to mean those services are available. For Agent v2, scenarios that require the standalone `dify-agent` run server use the feature tag `@agent-backend-runtime` plus the explicit step `the Agent v2 runtime backend is available`. Run them with `E2E_START_AGENT_BACKEND=1` to let E2E start `dify-agent` and the shellctl local sandbox required by its `dify.config`/`dify.shell` runtime layers, or set `E2E_AGENT_BACKEND_URL`/`AGENT_BACKEND_BASE_URL` when an existing server should be reused.
 
 Keep scenarios short and declarative. Each step should describe **what** the user does, not **how** the UI works.
 
