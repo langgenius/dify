@@ -9,7 +9,7 @@ from core.app.workflow.layers.persistence import (
     _NodeRuntimeSnapshot,
 )
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus, WorkflowType
-from graphon.graph_events import GraphRunSucceededEvent
+from graphon.graph_events import GraphRunFailedEvent, GraphRunSucceededEvent
 from graphon.node_events import NodeRunResult
 
 
@@ -162,3 +162,59 @@ def test_handle_graph_run_succeeded_redacts_outputs(monkeypatch: pytest.MonkeyPa
 
     assert execution.outputs == {"result": f"Bearer {SECRET_PLACEHOLDER}"}
     assert "supersecretvalue123" not in str(execution.outputs)
+
+
+def test_update_node_execution_redacts_error_field() -> None:
+    """Secrets in node error strings must be redacted before persistence."""
+    from core.workflow.secret_scrub import SECRET_PLACEHOLDER
+
+    layer = _build_layer(secret_values=("supersecretvalue123",))
+    node_execution = Mock()
+    node_execution.id = "node-exec-error"
+    node_execution.node_type = BuiltinNodeTypes.START
+    node_execution.created_at = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).replace(tzinfo=None)
+    node_execution.update_from_mapping = Mock()
+
+    layer._node_snapshots[node_execution.id] = _NodeRuntimeSnapshot(
+        node_id="code",
+        title="Code",
+        predecessor_node_id=None,
+        iteration_id=None,
+        loop_id=None,
+        created_at=node_execution.created_at,
+    )
+
+    layer._update_node_execution(
+        node_execution,
+        NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED),
+        WorkflowNodeExecutionStatus.FAILED,
+        error="API call failed: token=supersecretvalue123 rejected",
+    )
+
+    assert SECRET_PLACEHOLDER in node_execution.error
+    assert "supersecretvalue123" not in node_execution.error
+
+
+def test_handle_graph_run_failed_redacts_error_message(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Secrets in workflow-level error messages must be redacted before persistence."""
+    from core.workflow.secret_scrub import SECRET_PLACEHOLDER
+
+    layer = _build_layer(secret_values=("supersecretvalue123",))
+
+    execution = Mock()
+    layer._workflow_execution = execution
+
+    layer._populate_completion_statistics = Mock()
+    # Stub _fail_running_node_executions to avoid iterating empty cache with redact calls.
+    layer._fail_running_node_executions = Mock()
+
+    monkeypatch.setattr(
+        "core.app.workflow.layers.persistence._inspector_publish_workflow_completed",
+        Mock(),
+    )
+
+    event = GraphRunFailedEvent(error="Upstream error: key=supersecretvalue123 invalid")
+    layer._handle_graph_run_failed(event)
+
+    assert SECRET_PLACEHOLDER in execution.error_message
+    assert "supersecretvalue123" not in execution.error_message

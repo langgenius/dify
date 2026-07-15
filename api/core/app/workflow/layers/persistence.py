@@ -188,7 +188,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def _handle_graph_run_failed(self, event: GraphRunFailedEvent) -> None:
         execution = self._get_workflow_execution()
         execution.status = WorkflowExecutionStatus.FAILED
-        execution.error_message = event.error
+        execution.error_message = cast(str, self._redact(event.error))
         execution.exceptions_count = event.exceptions_count
         self._populate_completion_statistics(execution)
 
@@ -200,7 +200,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def _handle_graph_run_aborted(self, event: GraphRunAbortedEvent) -> None:
         execution = self._get_workflow_execution()
         execution.status = WorkflowExecutionStatus.STOPPED
-        execution.error_message = event.reason or "Workflow execution aborted"
+        execution.error_message = cast(str, self._redact(event.reason or "Workflow execution aborted"))
         self._populate_completion_statistics(execution)
 
         self._fail_running_node_executions(error_message=execution.error_message or "")
@@ -259,7 +259,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def _handle_node_retry(self, event: NodeRunRetryEvent) -> None:
         domain_execution = self._get_node_execution(event.id)
         domain_execution.status = WorkflowNodeExecutionStatus.RETRY
-        domain_execution.error = event.error
+        domain_execution.error = cast(str, self._redact(event.error))
         self._append_retry_history(domain_execution, event)
         self._workflow_node_execution_repository.save(domain_execution)
         self._workflow_node_execution_repository.save_execution_data(domain_execution)
@@ -427,7 +427,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         domain_execution.elapsed_time = max((actual_finished_at - start_at).total_seconds(), 0.0)
 
         if error:
-            domain_execution.error = error
+            domain_execution.error = cast(str, self._redact(error))
 
         if update_outputs:
             projected_outputs = project_node_outputs_for_workflow_run(
@@ -451,7 +451,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         for execution in self._node_execution_cache.values():
             if execution.status == WorkflowNodeExecutionStatus.RUNNING:
                 execution.status = WorkflowNodeExecutionStatus.FAILED
-                execution.error = error_message
+                execution.error = cast(str, self._redact(error_message))
                 execution.finished_at = now
                 execution.elapsed_time = max((now - execution.created_at).total_seconds(), 0.0)
                 self._workflow_node_execution_repository.save(execution)

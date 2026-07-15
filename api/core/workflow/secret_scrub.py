@@ -1,3 +1,11 @@
+"""Value-matching backstop redactor for workflow run logs.
+
+Known limitations: secrets transformed (encoded, truncated, …) before logging
+won't match; mapping *keys* are not scrubbed; the registry is collected from
+workflow-definition secrets only and may not cover all runtime credential
+sources.
+"""
+
 from collections.abc import Iterable, Mapping
 
 from graphon.variables import SecretVariable, VariableBase
@@ -25,6 +33,7 @@ def collect_workflow_secret_values(
 
 
 def _split_values(secret_values: Iterable[str]) -> tuple[tuple[str, ...], frozenset[str]]:
+    """Partition secrets into substring-redactable (long) and exact-match-only (short) sets."""
     substrings: list[str] = []
     exacts: set[str] = set()
     for value in secret_values:
@@ -38,7 +47,7 @@ def _split_values(secret_values: Iterable[str]) -> tuple[tuple[str, ...], frozen
 
 
 def redact_secret_values(value: object, secret_values: Iterable[str]) -> object:
-    """Return a copy of ``value`` with every secret occurrence replaced.
+    """Return ``value`` unchanged when there is nothing to redact, otherwise a copy with secrets replaced.
 
     Returns:
         ``value`` unchanged (same object) when there are no secrets to redact;
@@ -60,6 +69,7 @@ def redact_secret_values(value: object, secret_values: Iterable[str]) -> object:
         if isinstance(item, str):
             return redact_text(item)
         if isinstance(item, Mapping):
+            # Keys are field/variable names, not secret plaintext — intentionally not scrubbed.
             return {key: visit(nested) for key, nested in item.items()}
         if isinstance(item, list):
             return [visit(nested) for nested in item]
