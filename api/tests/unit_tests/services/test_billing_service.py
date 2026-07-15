@@ -9,7 +9,8 @@ This test module covers all aspects of the billing service including:
 - Cache management for billing data
 - Partner integration features
 
-All tests use mocking to avoid external dependencies and ensure fast, reliable execution.
+Network, billing-provider, and cache boundaries are mocked; database authorization
+paths use isolated in-memory SQLite sessions with persisted membership rows.
 Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
@@ -19,11 +20,62 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 from enums.cloud_plan import CloudPlan
-from models import Account, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.billing_service import BillingService
+
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
+OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
+ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
+
+
+def _account(*, account_id: str = ACCOUNT_ID, email: str = "user@example.com", tenant_id: str = TENANT_ID) -> Account:
+    tenant = Tenant(name="Test Tenant")
+    tenant.id = tenant_id
+    account = Account(name="Test User", email=email)
+    account.id = account_id
+    account._current_tenant = tenant
+    return account
+
+
+def _persist_membership(
+    sqlite_session: Session,
+    *,
+    role: TenantAccountRole | None,
+    add_other_tenant_membership: bool = False,
+) -> Account:
+    account = _account()
+    tenant = account.current_tenant
+    assert tenant is not None
+    sqlite_session.add_all([tenant, account])
+    if role is not None:
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=TENANT_ID,
+                account_id=ACCOUNT_ID,
+                current=True,
+                role=role,
+            )
+        )
+    if add_other_tenant_membership:
+        other_tenant = Tenant(name="Other Tenant")
+        other_tenant.id = OTHER_TENANT_ID
+        sqlite_session.add_all(
+            [
+                other_tenant,
+                TenantAccountJoin(
+                    tenant_id=OTHER_TENANT_ID,
+                    account_id=ACCOUNT_ID,
+                    current=False,
+                    role=TenantAccountRole.OWNER,
+                ),
+            ]
+        )
+    sqlite_session.commit()
+    return account
 
 
 class TestBillingServiceSendRequest:
@@ -996,10 +1048,7 @@ class TestBillingServiceRateLimitEnforcement:
     def test_education_activate_rate_limit_not_exceeded(self, mock_send_request):
         """Test education activation when rate limit is not exceeded."""
         # Arrange
-        account = MagicMock(spec=Account)
-        account.id = "account-123"
-        account.email = "student@university.edu"
-        account.current_tenant_id = "tenant-456"
+        account = _account(email="student@university.edu")
         token = "verification-token"
         institution = "MIT"
         role = "student"
@@ -1033,10 +1082,7 @@ class TestBillingServiceRateLimitEnforcement:
     def test_education_activate_rate_limit_exceeded(self, mock_send_request):
         """Test education activation when rate limit is exceeded."""
         # Arrange
-        account = MagicMock(spec=Account)
-        account.id = "account-123"
-        account.email = "student@university.edu"
-        account.current_tenant_id = "tenant-456"
+        account = _account(email="student@university.edu")
         token = "verification-token"
         institution = "MIT"
         role = "student"
@@ -1142,11 +1188,6 @@ class TestBillingServiceAccountManagement:
         with patch.object(BillingService, "_send_request") as mock:
             yield mock
 
-    @pytest.fixture
-    def mock_db_session(self):
-        """Mock database session."""
-        return MagicMock()
-
     def test_delete_account(self, mock_send_request):
         """Test account deletion."""
         # Arrange
@@ -1216,70 +1257,49 @@ class TestBillingServiceAccountManagement:
             "POST", "/account/delete-feedback", json={"email": email, "feedback": feedback}
         )
 
-    def test_is_tenant_owner_or_admin_owner(self, mock_db_session):
+    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
+    def test_is_tenant_owner_or_admin_owner(self, sqlite_session: Session):
         """Test tenant owner/admin check for owner role."""
         # Arrange
-        current_user = MagicMock(spec=Account)
-        current_user.id = "account-123"
-        current_user.current_tenant_id = "tenant-456"
-
-        mock_join = MagicMock(spec=TenantAccountJoin)
-        mock_join.role = TenantAccountRole.OWNER
-
-        mock_db_session.scalar.return_value = mock_join
+        current_user = _persist_membership(sqlite_session, role=TenantAccountRole.OWNER)
 
         # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user, session=mock_db_session)
-        mock_db_session.scalar.assert_called_once()
+        BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
 
-    def test_is_tenant_owner_or_admin_admin(self, mock_db_session):
+    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
+    def test_is_tenant_owner_or_admin_admin(self, sqlite_session: Session):
         """Test tenant owner/admin check for admin role."""
         # Arrange
-        current_user = MagicMock(spec=Account)
-        current_user.id = "account-123"
-        current_user.current_tenant_id = "tenant-456"
-
-        mock_join = MagicMock(spec=TenantAccountJoin)
-        mock_join.role = TenantAccountRole.ADMIN
-
-        mock_db_session.scalar.return_value = mock_join
+        current_user = _persist_membership(sqlite_session, role=TenantAccountRole.ADMIN)
 
         # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user, session=mock_db_session)
-        mock_db_session.scalar.assert_called_once()
+        BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
 
-    def test_is_tenant_owner_or_admin_normal_user_raises_error(self, mock_db_session):
+    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
+    def test_is_tenant_owner_or_admin_normal_user_raises_error(self, sqlite_session: Session):
         """Test tenant owner/admin check raises error for normal user."""
         # Arrange
-        current_user = MagicMock(spec=Account)
-        current_user.id = "account-123"
-        current_user.current_tenant_id = "tenant-456"
-
-        mock_join = MagicMock(spec=TenantAccountJoin)
-        mock_join.role = TenantAccountRole.NORMAL
-
-        mock_db_session.scalar.return_value = mock_join
+        current_user = _persist_membership(sqlite_session, role=TenantAccountRole.NORMAL)
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user, session=mock_db_session)
+            BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
         assert "Only team owner or team admin can perform this action" in str(exc_info.value)
-        mock_db_session.scalar.assert_called_once()
 
-    def test_is_tenant_owner_or_admin_no_join_raises_error(self, mock_db_session):
+    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
+    def test_is_tenant_owner_or_admin_no_join_raises_error(self, sqlite_session: Session):
         """Test tenant owner/admin check raises error when join not found."""
         # Arrange
-        current_user = MagicMock(spec=Account)
-        current_user.id = "account-123"
-        current_user.current_tenant_id = "tenant-456"
-
-        mock_db_session.scalar.return_value = None
+        current_user = _persist_membership(
+            sqlite_session,
+            role=None,
+            add_other_tenant_membership=True,
+        )
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user, session=mock_db_session)
+            BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
         assert "Tenant account join not found" in str(exc_info.value)
-        mock_db_session.scalar.assert_called_once()
 
 
 class TestBillingServiceCacheManagement:
@@ -1829,10 +1849,7 @@ class TestBillingServiceIntegrationScenarios:
     def test_education_verification_and_activation_flow(self, mock_send_request):
         """Test complete education verification and activation flow."""
         # Arrange
-        account = MagicMock(spec=Account)
-        account.id = "account-edu"
-        account.email = "student@mit.edu"
-        account.current_tenant_id = "tenant-edu"
+        account = _account(email="student@mit.edu")
 
         # Step 1: Search for institution
         with (

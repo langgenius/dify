@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import { act, renderHook, waitFor } from '@testing-library/react'
 import {
   CONTEXT_PLACEHOLDER_TEXT,

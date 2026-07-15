@@ -50,7 +50,7 @@ function List({ controlRefreshList = 0 }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { onPlanInfoChanged } = useProviderContext()
 
-  // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
+  // oxlint-disable-next-line eslint-react/use-state -- custom URL query hook, not React.useState
   const {
     query: { category, keywords, creatorIDs },
     setCategory,

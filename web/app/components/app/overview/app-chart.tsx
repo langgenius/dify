@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components, react/component-hook-factories */
+/* oxlint-disable react/only-export-components */
 'use client'
 import type { Dayjs } from 'dayjs'
 import type { SelectorParam } from 'i18next'
@@ -99,7 +99,7 @@ const Chart: React.FC<IChartProps> = ({
   const tokenSummary = getTokenSummary(statistics)
   const showTokenSummary =
     CHART_TYPE_CONFIG[chartType].showTokens && hasNonZeroChartData(statistics, 'total_price')
-  const isZeroSummary = summaryValue === '0' || summaryValue === '0 ms'
+  const isZeroSummary = !hasNonZeroChartData(statistics, yField)
 
   return (
     <div

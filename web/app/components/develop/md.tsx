@@ -14,9 +14,10 @@ type IHeaderingProps = {
   method: 'PUT' | 'DELETE' | 'GET' | 'POST' | 'PATCH'
   title: string
   name: string
+  titleAction?: React.ReactNode
 }
 
-export const Heading = function H2({ url, method, title, name }: IHeaderingProps) {
+export const Heading = function H2({ url, method, title, name, titleAction }: IHeaderingProps) {
   let style = ''
   switch (method) {
     case 'PUT':
@@ -52,10 +53,11 @@ export const Heading = function H2({ url, method, title, name }: IHeaderingProps
         {/* <span className="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span> */}
         <span className="font-mono text-xs text-zinc-400">{url}</span>
       </div>
-      <h2 className="mt-2 scroll-mt-32">
+      <h2 className={cn('mt-2 scroll-mt-32', titleAction && 'flex items-center gap-x-2')}>
         <a href={name} className="group text-inherit no-underline hover:text-inherit">
           {title}
         </a>
+        {titleAction}
       </h2>
     </>
   )
@@ -83,10 +85,7 @@ export function Col({ children, sticky = false }: IColProps) {
 export function Properties({ children }: IChildrenProps) {
   return (
     <div className="my-6">
-      <ul
-        role="list"
-        className="m-0 max-w-[calc(var(--container-lg)-(--spacing(8)))] list-none divide-y divide-zinc-900/5 p-0 dark:divide-white/5"
-      >
+      <ul className="m-0 max-w-[calc(var(--container-lg)-(--spacing(8)))] list-none divide-y divide-zinc-900/5 p-0 dark:divide-white/5">
         {children}
       </ul>
     </div>
@@ -96,14 +95,16 @@ export function Properties({ children }: IChildrenProps) {
 type IProperty = IChildrenProps & {
   name: string
   type: string
+  nameAction?: React.ReactNode
 }
-export function Property({ name, type, children }: IProperty) {
+export function Property({ name, type, nameAction, children }: IProperty) {
   return (
     <li className="m-0 px-0 py-4 first:pt-0 last:pb-0">
       <dl className="m-0 flex flex-wrap items-center gap-x-3 gap-y-2">
         <dt className="sr-only">Name</dt>
         <dd>
           <code>{name}</code>
+          {nameAction ? <span className="ml-2 inline-flex align-middle">{nameAction}</span> : null}
         </dd>
         <dt className="sr-only">Type</dt>
         <dd className="font-mono text-xs text-zinc-400 dark:text-zinc-500">{type}</dd>

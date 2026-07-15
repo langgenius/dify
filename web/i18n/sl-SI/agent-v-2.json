@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "Naložite datoteko .zip ali .skill.",
   "agentDetail.configure.skills.upload.success": "Veščina naložena.",
   "agentDetail.configure.skills.upload.title": "Naloži veščino",
+  "agentDetail.configure.skills.upload.warning.files": "Če želite uporabljati samo datoteke Markdown, jih naložite v razdelek Datoteke in se nanje sklicujte v svojem pozivu.",
+  "agentDetail.configure.skills.upload.warning.specification": "Naložene veščine morajo upoštevati <specificationLink>specifikacijo Agent Skills</specificationLink>.",
   "agentDetail.configure.title": "Konfiguriraj",
   "agentDetail.configure.tools.add": "Dodaj orodje",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Za razvijalce",

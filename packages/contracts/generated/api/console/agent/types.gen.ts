@@ -111,6 +111,10 @@ export type ApiKeyItem = {
   type: string
 }
 
+export type AudioTranscriptResponse = {
+  text: string
+}
+
 export type SimpleResultResponse = {
   result: string
 }
@@ -1417,6 +1421,7 @@ export type AgentUserSatisfactionRateStatisticResponse = {
 
 export type AgentConfigRevisionOperation =
   | 'create_version'
+  | 'import_package'
   | 'publish_draft'
   | 'restore_version'
   | 'save_current_version'
@@ -2159,6 +2164,31 @@ export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponses = {
 
 export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponse =
   DeleteAgentByAgentIdApiKeysByApiKeyIdResponses[keyof DeleteAgentByAgentIdApiKeysByApiKeyIdResponses]
+
+export type PostAgentByAgentIdAudioToTextData = {
+  body: {
+    draft_type?: 'debug_build' | 'draft'
+    file: Blob | File
+  }
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/audio-to-text'
+}
+
+export type PostAgentByAgentIdAudioToTextErrors = {
+  400: unknown
+  404: unknown
+  413: unknown
+}
+
+export type PostAgentByAgentIdAudioToTextResponses = {
+  200: AudioTranscriptResponse
+}
+
+export type PostAgentByAgentIdAudioToTextResponse =
+  PostAgentByAgentIdAudioToTextResponses[keyof PostAgentByAgentIdAudioToTextResponses]
 
 export type PostAgentByAgentIdBuildChatFinalizeData = {
   body?: never

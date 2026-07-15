@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "Tải lên một tệp .zip hoặc .skill.",
   "agentDetail.configure.skills.upload.success": "Đã tải lên kỹ năng.",
   "agentDetail.configure.skills.upload.title": "Tải lên kỹ năng",
+  "agentDetail.configure.skills.upload.warning.files": "Nếu bạn chỉ cần sử dụng tệp Markdown, hãy tải chúng lên Tệp và tham chiếu chúng trong prompt của bạn.",
+  "agentDetail.configure.skills.upload.warning.specification": "Kỹ năng được tải lên phải tuân theo <specificationLink>đặc tả Agent Skills</specificationLink>.",
   "agentDetail.configure.title": "Cấu hình",
   "agentDetail.configure.tools.add": "Thêm công cụ",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Dành cho nhà phát triển",

@@ -34,6 +34,14 @@ const loadConsoleQueryWithRequest = async (request: ReturnType<typeof vi.fn>) =>
   return module.consoleQuery
 }
 
+const loadWorkflowGenerationStream = async (sseGeneratorPost: ReturnType<typeof vi.fn>) => {
+  vi.resetModules()
+  vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
+  vi.doMock('./base', () => ({ request: vi.fn(), sseGeneratorPost }))
+  const module = await import('./client')
+  return module.streamWorkflowGeneration
+}
+
 const createMutationContext = (queryClient: QueryClient): MutationFunctionContext => ({
   client: queryClient,
   meta: undefined,
@@ -250,6 +258,21 @@ describe('getBaseURL', () => {
     // Assert
     expect(url.href).toBe('https://api.example.com/console/api')
     expect(warnSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('streamWorkflowGeneration', () => {
+  it('should preserve the generator stream transport contract', async () => {
+    const expectedResult = Promise.resolve()
+    const sseGeneratorPost = vi.fn().mockReturnValue(expectedResult)
+    const streamWorkflowGeneration = await loadWorkflowGenerationStream(sseGeneratorPost)
+    const body = { instruction: 'Build a researched answer' }
+    const callbacks = { onCompleted: vi.fn() }
+
+    const result = streamWorkflowGeneration('/workflow-generate/stream', body, callbacks)
+
+    expect(result).toBe(expectedResult)
+    expect(sseGeneratorPost).toHaveBeenCalledWith('/workflow-generate/stream', body, callbacks)
   })
 })
 

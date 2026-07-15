@@ -58,10 +58,6 @@ vi.mock('@/utils/timezone', () => ({
   ],
 }))
 
-vi.mock('../utils/post-login-redirect', () => ({
-  resolvePostLoginRedirect: vi.fn(() => null),
-}))
-
 const mockReplace = vi.fn()
 const mockRefetch = vi.fn()
 
@@ -240,6 +236,27 @@ describe('InviteSettingsPage', () => {
             timezone: 'Asia/Shanghai',
           },
         })
+      })
+    })
+  })
+
+  describe('Post-activation redirect', () => {
+    it('should use the console home when the redirect target is external', async () => {
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams(
+          'invite_token=invite-token&redirect_url=https%3A%2F%2Fgoogle.com',
+        ) as unknown as ReturnType<typeof useSearchParams>,
+      )
+
+      render(<InviteSettingsPage />)
+
+      fireEvent.change(screen.getByLabelText('login.name'), {
+        target: { value: 'Invitee' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/')
       })
     })
   })

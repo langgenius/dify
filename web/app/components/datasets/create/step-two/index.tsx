@@ -31,7 +31,7 @@ import {
   useSegmentationState,
 } from './hooks'
 
-// eslint-disable-next-line no-barrel-files/no-barrel-files
+// oxlint-disable-next-line no-barrel-files/no-barrel-files
 export { IndexingType }
 
 const StepTwo: FC<StepTwoProps> = ({
@@ -251,7 +251,7 @@ const StepTwo: FC<StepTwoProps> = ({
       segmentation.applyConfigFromRules(rules, isHierarchical)
       segmentation.setSegmentationType(documentDetail.dataset_process_rule.mode)
     }
-    // eslint-disable-next-line react/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [])
 
   // Show options conditions

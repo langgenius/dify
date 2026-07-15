@@ -226,7 +226,7 @@ const WebAppsSectionContent = () => {
             value={searchText}
             onValueChange={setSearchText}
             placeholder={t(($) => $['mainNav.webApps.searchPlaceholder'], { ns: 'common' })}
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- The field is mounted after an explicit search action.
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- The field is mounted after an explicit search action.
             autoFocus
           />
         </div>

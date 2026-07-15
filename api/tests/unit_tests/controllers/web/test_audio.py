@@ -18,6 +18,7 @@ from controllers.web.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -27,6 +28,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -81,6 +83,16 @@ class TestAudioApi:
         data = {"file": (BytesIO(b"x"), "x.mp3")}
         with app.test_request_context("/audio-to-text", method="POST", data=data, content_type="multipart/form-data"):
             with pytest.raises(ProviderNotSupportSpeechToTextError):
+                AudioApi().post(_app_model(), _end_user())
+
+    @patch(
+        "controllers.web.audio.AudioService.transcript_asr",
+        side_effect=SpeechToTextDisabledServiceError(),
+    )
+    def test_speech_to_text_disabled(self, mock_asr: MagicMock, app: Flask) -> None:
+        data = {"file": (BytesIO(b"x"), "x.mp3")}
+        with app.test_request_context("/audio-to-text", method="POST", data=data, content_type="multipart/form-data"):
+            with pytest.raises(SpeechToTextDisabledError):
                 AudioApi().post(_app_model(), _end_user())
 
     @patch(

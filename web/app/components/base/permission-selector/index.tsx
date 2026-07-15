@@ -8,7 +8,7 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-// eslint-disable-next-line no-restricted-imports -- This legacy selector still relies on showLeftIcon/showClearIcon props from the old input.
+// oxlint-disable-next-line no-restricted-imports -- This legacy selector still relies on showLeftIcon/showClearIcon props from the old input.
 import Input from '@/app/components/base/input'
 import { userProfileAtom } from '@/context/account-state'
 import { PermissionLevel } from '@/models/permission'

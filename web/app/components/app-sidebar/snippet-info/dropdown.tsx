@@ -22,7 +22,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
+import { CreateSnippetDialog } from '@/app/components/snippets/create-snippet-dialog'
 import {
   canCreateAndModifySnippets,
   canManageSnippets,

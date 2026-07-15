@@ -5,17 +5,19 @@ import type { ComponentProps } from 'react'
 import type { AgentDetailSectionKey } from './section'
 import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
 import { cn } from '@langgenius/dify-ui/cn'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
-import ToggleButton from '@/app/components/app-sidebar/toggle-button'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
-import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
+import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -37,8 +39,6 @@ type AgentDetailNavItem = {
   icon: NavIcon
   activeIcon: NavIcon
 }
-
-const SEARCH_SHORTCUT = ['Mod', 'K']
 
 const createAgentNavIcon = (iconClassName: string) => {
   function AgentNavIcon({ className }: ComponentProps<'svg'>) {
@@ -86,15 +86,14 @@ const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
 export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps) {
   const { t: tApp } = useTranslation('app')
   const { t: tCommon } = useTranslation('common')
-  const setGotoAnythingOpen = useSetGotoAnythingOpen()
 
   if (!expand) {
     return (
       <div className="flex w-full items-center justify-center px-3 pt-2 pb-1">
         {onToggle && (
-          <ToggleButton
+          <DetailSidebarToggleButton
             expand={expand}
-            handleToggle={onToggle}
+            onToggle={onToggle}
             icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
             className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
           />
@@ -125,14 +124,18 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
       <Tooltip>
         <TooltipTrigger
           render={
-            <button
-              type="button"
-              aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
-              className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={() => setGotoAnythingOpen(true)}
-            >
-              <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
-            </button>
+            <DialogTrigger
+              handle={gotoAnythingDialogHandle}
+              render={
+                <button
+                  type="button"
+                  aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
+                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                >
+                  <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
+                </button>
+              }
+            />
           }
         />
         <TooltipContent
@@ -141,16 +144,16 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
         >
           <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
           <KbdGroup>
-            {SEARCH_SHORTCUT.map((key) => (
+            {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
               <Kbd key={key}>{formatForDisplay(key)}</Kbd>
             ))}
           </KbdGroup>
         </TooltipContent>
       </Tooltip>
       {onToggle && (
-        <ToggleButton
+        <DetailSidebarToggleButton
           expand={expand}
-          handleToggle={onToggle}
+          onToggle={onToggle}
           icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
           className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
         />

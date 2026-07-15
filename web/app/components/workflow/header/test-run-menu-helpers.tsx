@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
+/* oxlint-disable react/only-export-components */
 import type { MouseEvent, MouseEventHandler, ReactElement } from 'react'
 import type { TriggerOption } from './test-run-menu'
 import { DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
@@ -32,7 +32,9 @@ export const OptionRow = ({
         <div className="flex size-6 shrink-0 items-center justify-center">{option.icon}</div>
         <span className="ml-2 truncate">{option.name}</span>
       </div>
-      {shortcutKey && <ShortcutKbd hotkey={shortcutKey} className="ml-2" textColor="secondary" />}
+      {shortcutKey && (
+        <ShortcutKbd displayKey={shortcutKey} className="ml-2" textColor="secondary" />
+      )}
     </DropdownMenuItem>
   )
 }
@@ -86,7 +88,7 @@ export const SingleOptionTrigger = ({
     const childElement = children as ReactElement<{ onClick?: MouseEventHandler<HTMLElement> }>
     const originalOnClick = childElement.props?.onClick
 
-    // eslint-disable-next-line react/no-clone-element
+    // oxlint-disable-next-line react/no-clone-element
     return cloneElement(childElement, {
       onClick: (event: MouseEvent<HTMLElement>) => {
         if (typeof originalOnClick === 'function') originalOnClick(event)

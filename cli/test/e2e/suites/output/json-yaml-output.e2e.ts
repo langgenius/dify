@@ -29,7 +29,7 @@
  */
 
 import type { AuthFixture } from '../../helpers/cli.js'
-import { afterEach, beforeEach, describe, expect, it, inject } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import {
   assertErrorEnvelope,
   assertExitCode,
@@ -39,7 +39,7 @@ import {
   assertPipeFriendlyJson,
 } from '../../helpers/assert.js'
 import { withAuthFixture, withTempConfig } from '../../helpers/cli.js'
-import { loadE2EEnv, resolveEnv } from '../../setup/env.js'
+import { resolveEnv } from '../../setup/env.js'
 
 // @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
 const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities

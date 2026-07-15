@@ -73,6 +73,7 @@ export type Import = {
   imported_dsl_version?: string
   permission_keys?: Array<string>
   status: ImportStatus
+  warnings?: Array<DslImportWarning>
 }
 
 export type CheckDependenciesResult = {
@@ -545,6 +546,7 @@ export type AppImportResponse = {
   id: string
   imported_dsl_version?: string
   status: ImportStatus
+  warnings?: Array<DslImportWarning>
 }
 
 export type AppExportResponse = {
@@ -1370,6 +1372,15 @@ export type WorkflowPartial = {
 }
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
+
+export type DslImportWarning = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  path: string
+}
 
 export type PluginDependency = {
   current_identifier?: string | null
@@ -4357,7 +4368,9 @@ export type PostAppsByAppIdApiEnableResponse =
   PostAppsByAppIdApiEnableResponses[keyof PostAppsByAppIdApiEnableResponses]
 
 export type PostAppsByAppIdAudioToTextData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     app_id: string
   }

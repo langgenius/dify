@@ -344,7 +344,7 @@ export function PaginationPageJump({
           <NumberFieldGroup className="h-7 w-full min-w-0 rounded-lg border-[0.5px] border-components-input-border-active bg-components-input-bg-active shadow-xs">
             <NumberFieldInput
               aria-label={inputLabel}
-              // eslint-disable-next-line jsx-a11y/no-autofocus -- Editing starts after an explicit user action and focus must move to the replacement input.
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- Editing starts after an explicit user action and focus must move to the replacement input.
               autoFocus
               className="px-2 py-1.5 text-center system-xs-medium tabular-nums"
               onBlur={() => requestAnimationFrame(() => setEditing(false))}

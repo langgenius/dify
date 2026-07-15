@@ -57,7 +57,9 @@ const isHashCollisionResponse = (e: unknown): boolean => {
 // strip trailing punctuation.
 const deriveAppName = (instruction: string): string => {
   const trimmed = instruction.trim().slice(0, 40)
-  return trimmed.replace(/[.,!?;:。，！？；：]+$/, '').trim() || 'Generated Workflow'
+  const name = trimmed.replace(/[.,!?;:。，！？；：]+$/, '').trim()
+  if (!name) throw new Error('Cannot create a generated app without an instruction.')
+  return name
 }
 
 type ApplyToNewAppParams = {

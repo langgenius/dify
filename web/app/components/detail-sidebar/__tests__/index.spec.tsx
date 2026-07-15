@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { DetailSidebarFrame } from '..'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
 
@@ -6,8 +6,8 @@ const { hotkeyRegistrations } = vi.hoisted(() => ({
   hotkeyRegistrations: new Map<
     string,
     {
-      handler: (event: { preventDefault: () => void }) => void
-      options?: { ignoreInputs?: boolean }
+      handler: () => void
+      options?: { ignoreInputs?: boolean; preventDefault?: boolean }
     }
   >(),
 }))
@@ -25,8 +25,8 @@ vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
     ...actual,
     useHotkey: (
       hotkey: string,
-      handler: (event: { preventDefault: () => void }) => void,
-      options?: { ignoreInputs?: boolean },
+      handler: () => void,
+      options?: { ignoreInputs?: boolean; preventDefault?: boolean },
     ) => {
       hotkeyRegistrations.set(hotkey, { handler, options })
     },
@@ -117,8 +117,17 @@ describe('DetailSidebarFrame', () => {
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'true')
     expect(hotkeyRegistrations.get('Mod+B')?.options).toEqual(
-      expect.objectContaining({ ignoreInputs: false }),
+      expect.objectContaining({ ignoreInputs: false, preventDefault: true }),
     )
+  })
+
+  it('toggles detail content from the registered shortcut', () => {
+    renderDetailSidebarFrame()
+
+    act(() => hotkeyRegistrations.get('Mod+B')?.handler())
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16')
+    expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
   })
 
   it('collapses detail content from the top toggle and hides environment metadata', () => {

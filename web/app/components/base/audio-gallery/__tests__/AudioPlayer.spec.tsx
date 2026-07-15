@@ -45,7 +45,7 @@ async function advanceWaveformTimer() {
   })
 }
 
-// eslint-disable-next-line ts/no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 type ReactEventHandler = ((...args: any[]) => void) | undefined
 function getReactProps<T extends Element>(el: T): Record<string, ReactEventHandler> {
   const key = Object.keys(el).find((k) => k.startsWith('__reactProps$'))

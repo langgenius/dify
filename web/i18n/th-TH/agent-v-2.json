@@ -218,6 +218,8 @@
   "agentDetail.configure.skills.upload.invalidFile": "อัปโหลดไฟล์ .zip หรือ .skill",
   "agentDetail.configure.skills.upload.success": "อัปโหลดทักษะแล้ว",
   "agentDetail.configure.skills.upload.title": "อัปโหลดทักษะ",
+  "agentDetail.configure.skills.upload.warning.files": "หากต้องการใช้เฉพาะไฟล์ Markdown ให้อัปโหลดไปยังส่วนไฟล์และอ้างอิงไฟล์เหล่านั้นในพรอมต์ของคุณ",
+  "agentDetail.configure.skills.upload.warning.specification": "ทักษะที่อัปโหลดต้องเป็นไปตาม<specificationLink>ข้อกำหนด Agent Skills</specificationLink>",
   "agentDetail.configure.title": "กำหนดค่า",
   "agentDetail.configure.tools.add": "เพิ่มเครื่องมือ",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "สำหรับนักพัฒนา",

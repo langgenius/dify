@@ -11,6 +11,7 @@ import pytest
 import yaml
 from faker import Faker
 from flask import Flask
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.trigger.constants import (
@@ -21,6 +22,7 @@ from core.trigger.constants import (
 from extensions.ext_redis import redis_client
 from graphon.enums import BuiltinNodeTypes
 from models import Account, App, AppMode
+from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentScope, AgentSource
 from models.model import AppModelConfig, IconType
 from services import app_dsl_service
 from services.account_service import AccountService, TenantService
@@ -946,6 +948,64 @@ class TestAppDslService:
         assert exported_data["app"]["mode"] == app.mode
         assert "model_config" in exported_data
         assert "dependencies" in exported_data
+
+    def test_agent_app_dsl_round_trip_creates_unpublished_imported_agent(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        _, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        source_app = AppService().create_app(
+            account.current_tenant_id,
+            CreateAppParams(
+                name="Portable Agent",
+                description="Agent DSL integration test",
+                mode="agent",
+                agent_role="researcher",
+                icon_type="emoji",
+                icon="R",
+                icon_background="#FFFFFF",
+            ),
+            account,
+            session=db_session_with_containers,
+        )
+
+        yaml_content = AppDslService.export_dsl(
+            source_app,
+            include_secret=False,
+            session=db_session_with_containers,
+        )
+        exported_data = yaml.safe_load(yaml_content)
+        serialized_package = exported_data["agent_packages"][exported_data["agent"]["package_ref"]]
+        assert exported_data["app"]["mode"] == AppMode.AGENT.value
+        assert "agent_id" not in json.dumps(serialized_package)
+
+        result = AppDslService(db_session_with_containers).import_app(
+            account=account,
+            import_mode=ImportMode.YAML_CONTENT,
+            yaml_content=yaml_content,
+        )
+        assert result.status == ImportStatus.COMPLETED
+        assert result.app_id is not None
+        db_session_with_containers.commit()
+
+        imported_agent = db_session_with_containers.scalar(
+            select(Agent).where(
+                Agent.tenant_id == account.current_tenant_id,
+                Agent.app_id == result.app_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.IMPORTED,
+            )
+        )
+        assert imported_agent is not None
+        assert imported_agent.active_config_is_published is False
+        draft = db_session_with_containers.scalar(
+            select(AgentConfigDraft).where(
+                AgentConfigDraft.agent_id == imported_agent.id,
+                AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                AgentConfigDraft.draft_owner_key == "",
+            )
+        )
+        assert draft is not None
+        assert draft.base_snapshot_id == imported_agent.active_config_snapshot_id
 
     def test_export_dsl_workflow_app_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies

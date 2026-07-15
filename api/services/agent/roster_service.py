@@ -11,6 +11,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
+    APP_BACKED_AGENT_SOURCES,
+    WORKFLOW_ONLY_AGENT_SOURCES,
     Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
@@ -355,6 +357,9 @@ class AgentRosterService:
         icon_type: Any = None,
         icon: str | None = None,
         icon_background: str | None = None,
+        source: AgentSource = AgentSource.AGENT_APP,
+        initial_soul: AgentSoulConfig | None = None,
+        revision_operation: AgentConfigRevisionOperation = AgentConfigRevisionOperation.CREATE_VERSION,
     ) -> Agent:
         """Create the roster Agent that backs an Agent App, linked via ``app_id``.
 
@@ -362,8 +367,10 @@ class AgentRosterService:
         (``AppService.create_app``) owns the surrounding transaction so the App
         row and its backing Agent are persisted atomically. A default (empty)
         Agent Soul is seeded; the user configures model/prompt/tools afterward in
-        the Composer.
+        the Composer. Importers may provide a portable Soul and provenance while
+        retaining the same one-App-to-one-Agent transaction boundary.
         """
+        soul = initial_soul or AgentSoulConfig()
         agent = Agent(
             tenant_id=tenant_id,
             name=name,
@@ -374,7 +381,7 @@ class AgentRosterService:
             icon_background=icon_background,
             agent_kind=AgentKind.DIFY_AGENT,
             scope=AgentScope.ROSTER,
-            source=AgentSource.AGENT_APP,
+            source=source,
             status=AgentStatus.ACTIVE,
             app_id=app_id,
             backing_app_id=app_id,
@@ -392,7 +399,7 @@ class AgentRosterService:
             tenant_id=tenant_id,
             agent_id=agent.id,
             version=1,
-            config_snapshot=AgentSoulConfig(),
+            config_snapshot=soul,
             created_by=account_id,
         )
         self._session.add(version)
@@ -403,12 +410,12 @@ class AgentRosterService:
             agent_id=agent.id,
             current_snapshot_id=version.id,
             revision=1,
-            operation=AgentConfigRevisionOperation.CREATE_VERSION,
+            operation=revision_operation,
             created_by=account_id,
         )
         self._session.add(revision)
         agent.active_config_snapshot_id = version.id
-        agent.active_config_has_model = agent_soul_has_model(AgentSoulConfig())
+        agent.active_config_has_model = agent_soul_has_model(soul)
         agent.active_config_is_published = False
         self._session.flush()
         self._get_or_create_agent_app_debug_conversation(agent=agent, account_id=account_id)
@@ -780,7 +787,7 @@ class AgentRosterService:
                 Agent.tenant_id == tenant_id,
                 Agent.app_id.in_(app_ids),
                 Agent.scope == AgentScope.ROSTER,
-                Agent.source == AgentSource.AGENT_APP,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                 Agent.status == AgentStatus.ACTIVE,
             )
         ).all()
@@ -793,10 +800,22 @@ class AgentRosterService:
                 Agent.tenant_id == tenant_id,
                 Agent.app_id == app_id,
                 Agent.scope == AgentScope.ROSTER,
-                Agent.source == AgentSource.AGENT_APP,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                 Agent.status == AgentStatus.ACTIVE,
             )
         )
+
+    def get_published_agent_soul_for_app(self, *, tenant_id: str, app_id: str) -> AgentSoulConfig | None:
+        """Return the active Agent Soul used by a published Agent App runtime."""
+        agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=app_id)
+        if agent is None:
+            return None
+        version = self._get_version(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            version_id=agent.active_config_snapshot_id,
+        )
+        return AgentSoulConfig.model_validate(version.config_snapshot_dict)
 
     def get_agent_app_model(self, *, tenant_id: str, agent_id: str) -> App:
         """Resolve the Agent App hidden behind an app-backed Agent id.
@@ -812,7 +831,7 @@ class AgentRosterService:
                 Agent.tenant_id == tenant_id,
                 Agent.id == agent_id,
                 Agent.scope == AgentScope.ROSTER,
-                Agent.source == AgentSource.AGENT_APP,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                 Agent.app_id.is_not(None),
                 Agent.status == AgentStatus.ACTIVE,
             )
@@ -851,10 +870,10 @@ class AgentRosterService:
                 Agent.id == agent_id,
                 Agent.status == AgentStatus.ACTIVE,
                 or_(
-                    and_(Agent.scope == AgentScope.ROSTER, Agent.source == AgentSource.AGENT_APP),
+                    and_(Agent.scope == AgentScope.ROSTER, Agent.source.in_(APP_BACKED_AGENT_SOURCES)),
                     and_(
                         Agent.scope == AgentScope.WORKFLOW_ONLY,
-                        Agent.source == AgentSource.WORKFLOW,
+                        Agent.source.in_(WORKFLOW_ONLY_AGENT_SOURCES),
                         Agent.workflow_id.is_not(None),
                         Agent.workflow_node_id.is_not(None),
                     ),
@@ -1099,20 +1118,28 @@ class AgentRosterService:
 
     @staticmethod
     def _visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:
-        if agent.source == AgentSource.AGENT_APP:
-            return {
+        if agent.source == AgentSource.AGENT_APP or (
+            agent.source == AgentSource.IMPORTED and agent.scope == AgentScope.ROSTER and agent.app_id
+        ):
+            operations = {
                 AgentConfigRevisionOperation.PUBLISH_DRAFT,
                 AgentConfigRevisionOperation.SAVE_NEW_VERSION,
                 AgentConfigRevisionOperation.SAVE_TO_ROSTER,
                 AgentConfigRevisionOperation.RESTORE_VERSION,
             }
-        return {
+            if agent.source == AgentSource.IMPORTED:
+                operations.add(AgentConfigRevisionOperation.IMPORT_PACKAGE)
+            return operations
+        operations = {
             AgentConfigRevisionOperation.CREATE_VERSION,
             AgentConfigRevisionOperation.SAVE_NEW_VERSION,
             AgentConfigRevisionOperation.SAVE_NEW_AGENT,
             AgentConfigRevisionOperation.SAVE_TO_ROSTER,
             AgentConfigRevisionOperation.RESTORE_VERSION,
         }
+        if agent.source == AgentSource.IMPORTED:
+            operations.add(AgentConfigRevisionOperation.IMPORT_PACKAGE)
+        return operations
 
     def active_config_is_published(self, *, tenant_id: str, agent: Agent) -> bool:
         """Return whether the normal shared draft has been published into the active snapshot."""

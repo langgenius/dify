@@ -27,10 +27,10 @@
     "directory": "sdks/nodejs-client"
   },
   "files": [
-    "dist/index.js",
-    "dist/index.d.ts",
+    "LICENSE",
     "README.md",
-    "LICENSE"
+    "dist/index.d.ts",
+    "dist/index.js"
   ],
   "type": "module",
   "main": "./dist/index.js",
@@ -43,8 +43,6 @@
   },
   "scripts": {
     "build": "vp pack",
-    "lint": "eslint",
-    "lint:fix": "eslint --fix",
     "type-check": "tsc",
     "test": "vp test",
     "test:coverage": "vp test --coverage",
@@ -53,13 +51,9 @@
   },
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
-    "@eslint/js": "catalog:",
     "@types/node": "catalog:",
-    "@typescript-eslint/eslint-plugin": "catalog:",
-    "@typescript-eslint/parser": "catalog:",
     "@typescript/native": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "eslint": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",

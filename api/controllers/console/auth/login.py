@@ -30,6 +30,7 @@ from controllers.console.error import (
     AccountNotFound,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
+    SeatsLimitExceeded,
     WorkspacesLimitExceeded,
 )
 from controllers.console.wraps import (
@@ -56,7 +57,12 @@ from models.account import Account
 from services.account_service import AccountService, InvitationDetailDict, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
-from services.errors.account import AccountRegisterError, RefreshTokenAccountNotFoundError, RefreshTokenNotFoundError
+from services.errors.account import (
+    AccountRegisterError,
+    RefreshTokenAccountNotFoundError,
+    RefreshTokenNotFoundError,
+    SeatsLimitExceededError,
+)
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
@@ -325,6 +331,8 @@ class EmailCodeLoginApi(Resource):
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()
+            except SeatsLimitExceededError:
+                raise SeatsLimitExceeded()
             except AccountRegisterError:
                 _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
                 raise AccountInFreezeError()

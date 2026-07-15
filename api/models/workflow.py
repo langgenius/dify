@@ -1446,6 +1446,40 @@ class WorkflowArchiveLog(TypeBase):
         }
 
 
+class WorkflowRunArchiveBundle(DefaultFieldsDCMixin, TypeBase):
+    """
+    Query index for one immutable V2 workflow-run archive bundle.
+
+    R2 manifest objects remain the recoverable archive source of truth. This table stores the small subset needed to
+    list tenant/month archives and locate bundles without listing object storage online. Missing rows can be rebuilt
+    from existing manifests by a backfill/reconciliation command.
+    """
+
+    __tablename__ = "workflow_run_archive_bundles"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_run_archive_bundle_pkey"),
+        sa.UniqueConstraint(
+            "tenant_id",
+            "year",
+            "month",
+            "shard",
+            "bundle_id",
+            name="workflow_run_archive_bundle_identity_uq",
+        ),
+        sa.Index("workflow_run_archive_bundle_tenant_month_idx", "tenant_id", "year", "month"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    year: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    month: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    shard: Mapped[str] = mapped_column(String(32), nullable=False)
+    bundle_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    workflow_run_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    row_count: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    archive_bytes: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    archived_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
 class ConversationVariable(TypeBase):
     __tablename__ = "workflow_conversation_variables"
 

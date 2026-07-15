@@ -590,7 +590,7 @@ def test_app_create_api_attaches_permission_keys(app, app_module):
     assert status == 201
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
     assert replace_whitelist.call_args.kwargs["payload"].scope is app_module.RBACResourceWhitelistScope.ALL
-    initialize_rbac_task.delay.assert_called_once_with("tenant-1", "acct-1", "app-new")
+    initialize_rbac_task.delay.assert_called_once_with("tenant-1", "acct-1", app_id="app-new")
 
 
 def test_app_list_api_attaches_permission_keys(app, app_module):

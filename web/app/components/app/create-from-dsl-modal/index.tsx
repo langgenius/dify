@@ -1,9 +1,11 @@
 'use client'
 
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
@@ -13,7 +15,6 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
-import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { userProfileIdAtom } from '@/context/account-state'
@@ -26,21 +27,19 @@ import { importDSL, importDSLConfirm } from '@/service/apps'
 import { useInvalidateAppList } from '@/service/use-apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { CreateFromDSLModalTab } from './types'
 import Uploader from './uploader'
 
 type CreateFromDSLModalProps = {
   show: boolean
   onSuccess?: () => void
   onClose: () => void
-  activeTab?: string
+  activeTab?: CreateFromDSLModalTab
   dslUrl?: string
   droppedFile?: File
 }
 
-export enum CreateFromDSLModalTab {
-  FROM_FILE = 'from-file',
-  FROM_URL = 'from-url',
-}
+const CREATE_FROM_DSL_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 const CreateFromDSLModal = ({
   show,
@@ -91,8 +90,8 @@ const CreateFromDSLModal = ({
   const isCreatingRef = useRef(false)
 
   useEffect(() => {
-    if (droppedFile) handleFile(droppedFile)
-  }, [droppedFile, handleFile])
+    if (droppedFile) readFile(droppedFile)
+  }, [droppedFile, readFile])
 
   const onCreate = async (_e?: React.MouseEvent) => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile) return
@@ -179,7 +178,7 @@ const CreateFromDSLModal = ({
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
 
   useHotkey(
-    'Mod+Enter',
+    CREATE_FROM_DSL_HOTKEY,
     () => {
       handleCreateApp(undefined)
     },
@@ -251,16 +250,23 @@ const CreateFromDSLModal = ({
         <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
           <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
             {t(($) => $.importApp, { ns: 'app' })}
-            <div className="flex size-8 cursor-pointer items-center" onClick={() => onClose()}>
-              <span className="i-ri-close-line size-5 text-text-tertiary" />
-            </div>
+            <Button
+              variant="ghost"
+              size="small"
+              aria-label={t(($) => $['operation.cancel'], { ns: 'common' })}
+              className="size-8 p-0"
+              onClick={onClose}
+            >
+              <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
+            </Button>
           </div>
           <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 system-md-semibold text-text-tertiary">
             {tabs.map((tab) => (
-              <div
+              <button
+                type="button"
                 key={tab.key}
                 className={cn(
-                  'relative flex h-full cursor-pointer items-center',
+                  'relative flex h-full cursor-pointer items-center outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                   currentTab === tab.key && 'text-text-primary',
                 )}
                 onClick={() => setCurrentTab(tab.key)}
@@ -269,7 +275,7 @@ const CreateFromDSLModal = ({
                 {currentTab === tab.key && (
                   <div className="absolute bottom-0 h-[2px] w-full bg-util-colors-blue-brand-blue-brand-600"></div>
                 )}
-              </div>
+              </button>
             ))}
           </div>
           <div className="px-6 py-4">
@@ -304,7 +310,7 @@ const CreateFromDSLModal = ({
             >
               <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
               <KbdGroup>
-                {['Mod', 'Enter'].map((key) => (
+                {CREATE_FROM_DSL_HOTKEY.split('+').map((key) => (
                   <Kbd key={key} color="white">
                     {formatForDisplay(key)}
                   </Kbd>

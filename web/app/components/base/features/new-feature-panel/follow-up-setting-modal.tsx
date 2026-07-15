@@ -40,8 +40,7 @@ const getInitialModel = (model?: Model): Model => ({
   name: model?.name || '',
   mode: model?.mode || ModelModeTypeEnum.chat,
   completion_params: {
-    ...DEFAULT_COMPLETION_PARAMS,
-    ...(model?.completion_params || {}),
+    ...(model?.completion_params ?? DEFAULT_COMPLETION_PARAMS),
   },
 })
 
@@ -90,10 +89,7 @@ const FollowUpSettingModal = ({ data, onSave, onCancel }: FollowUpSettingModalPr
     (newParams: FormValue) => {
       setModel({
         ...selectedModel,
-        completion_params: {
-          ...DEFAULT_COMPLETION_PARAMS,
-          ...(newParams as Partial<CompletionParams>),
-        },
+        completion_params: newParams as CompletionParams,
       })
     },
     [selectedModel],

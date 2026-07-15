@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { AccessMode } from '@/models/access-control'
@@ -75,7 +75,6 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={Date.now()}
-        publishShortcut={['Mod', 'Shift', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
       />,
@@ -113,7 +112,6 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
-        publishShortcut={['Mod', 'Shift', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
       />,
@@ -137,7 +135,6 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
-        publishShortcut={['Mod', 'Shift', 'P']}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
       />,
@@ -161,7 +158,6 @@ describe('app-publisher sections', () => {
         publishDisabled={false}
         published={false}
         publishedAt={undefined}
-        publishShortcut={['Mod', 'Shift', 'P']}
         startNodeLimitExceeded
         upgradeHighlightStyle={{}}
       />,
