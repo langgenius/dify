@@ -1,34 +1,63 @@
+import type { SelectorParam, TFunction } from 'i18next'
 import type { NodeTracing } from '@/types/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 
+export type WorkflowTranslate = <const Selector extends SelectorParam<'workflow'>>(
+  selector: Selector,
+  options: { ns: 'workflow' },
+) => ReturnType<TFunction>
+
+const translateWorkflowString = <const Selector extends SelectorParam<'workflow'>>(
+  t: WorkflowTranslate,
+  selector: Selector,
+): string => {
+  const result = t(selector, { ns: 'workflow' })
+  if (typeof result !== 'string')
+    throw new TypeError('Expected workflow translation selector to return a string')
+
+  return result
+}
+
 function findLastIndex<T>(list: T[], predicate: (item: T) => boolean): number {
   for (let index = list.length - 1; index >= 0; index--) {
-    if (predicate(list[index]!))
-      return index
+    if (predicate(list[index]!)) return index
   }
 
   return -1
 }
 
-type Translator = (key: string, options?: Record<string, string>) => string
+function printNodeStructure(node: NodeTracing, depth: number) {
+  const indent = '  '.repeat(depth)
+  console.log(`${indent}${node.title}`)
+  if (node.parallelDetail?.children) {
+    node.parallelDetail.children.forEach((child) => {
+      printNodeStructure(child, depth + 1)
+    })
+  }
+}
 
 const isParallelBoundaryNode = (node: NodeTracing) =>
   node.node_type === BlockEnum.End || node.node_type === BlockEnum.LoopEnd
 
-function addTitle({
-  list,
-  depth,
-  belongParallelIndexInfo,
-}: {
-  list: NodeTracing[]
-  depth: number
-  belongParallelIndexInfo?: string
-}, t: Translator) {
+function addTitle(
+  {
+    list,
+    depth,
+    belongParallelIndexInfo,
+  }: {
+    list: NodeTracing[]
+    depth: number
+    belongParallelIndexInfo?: string
+  },
+  t: WorkflowTranslate,
+) {
   let branchIndex = 0
-  const hasMoreThanOneParallel = list.filter(node => node.parallelDetail?.isParallelStartNode).length > 1
+  const hasMoreThanOneParallel =
+    list.filter((node) => node.parallelDetail?.isParallelStartNode).length > 1
   list.forEach((node) => {
     const parallel_id = node.parallel_id ?? node.execution_metadata?.parallel_id ?? null
-    const parallel_start_node_id = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
+    const parallel_start_node_id =
+      node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
 
     const isNotInParallel = !parallel_id || isParallelBoundaryNode(node)
     if (isNotInParallel)
@@ -37,10 +66,13 @@ function addTitle({
     const isParallelStartNode = node.parallelDetail?.isParallelStartNode
 
     const parallelIndexLetter = (() => {
-      if (!isParallelStartNode || !hasMoreThanOneParallel)
-        return ''
+      if (!isParallelStartNode || !hasMoreThanOneParallel) return ''
 
-      const index = 1 + list.filter(node => node.parallelDetail?.isParallelStartNode).findIndex(item => item.node_id === node.node_id)
+      const index =
+        1 +
+        list
+          .filter((node) => node.parallelDetail?.isParallelStartNode)
+          .findIndex((item) => item.node_id === node.node_id)
       return String.fromCharCode(64 + index)
     })()
 
@@ -48,7 +80,7 @@ function addTitle({
 
     if (isParallelStartNode) {
       node.parallelDetail!.isParallelStartNode = true
-      node.parallelDetail!.parallelTitle = `${t('common.parallel', { ns: 'workflow' })}-${parallelIndexInfo}`
+      node.parallelDetail!.parallelTitle = `${translateWorkflowString(t, ($) => $['common.parallel'])}-${parallelIndexInfo}`
     }
 
     const isBrachStartNode = parallel_start_node_id === node.node_id
@@ -61,32 +93,42 @@ function addTitle({
         }
       }
 
-      node.parallelDetail!.branchTitle = `${t('common.branch', { ns: 'workflow' })}-${belongParallelIndexInfo}-${branchLetter}`
+      node.parallelDetail!.branchTitle = `${translateWorkflowString(t, ($) => $['common.branch'])}-${belongParallelIndexInfo}-${branchLetter}`
     }
 
     if (node.parallelDetail?.children && node.parallelDetail.children.length > 0) {
-      addTitle({
-        list: node.parallelDetail.children,
-        depth: depth + 1,
-        belongParallelIndexInfo: parallelIndexInfo,
-      }, t)
+      addTitle(
+        {
+          list: node.parallelDetail.children,
+          depth: depth + 1,
+          belongParallelIndexInfo: parallelIndexInfo,
+        },
+        t,
+      )
     }
   })
 }
 
 // list => group by parallel_id(parallel tree).
-const format = (list: NodeTracing[], t: Translator): NodeTracing[] => {
+const format = (list: NodeTracing[], t: WorkflowTranslate, isPrint?: boolean): NodeTracing[] => {
+  if (isPrint) console.log(list)
+
   const result: NodeTracing[] = [...list]
   // list to tree by parent_parallel_start_node_id and branch by parallel_start_node_id. Each parallel may has more than one branch.
   result.forEach((node) => {
     const parallel_id = node.parallel_id ?? node.execution_metadata?.parallel_id ?? null
-    const parallel_start_node_id = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
-    const parent_parallel_id = node.parent_parallel_id ?? node.execution_metadata?.parent_parallel_id ?? null
-    const branchStartNodeId = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
-    const parentParallelBranchStartNodeId = node.parent_parallel_start_node_id ?? node.execution_metadata?.parent_parallel_start_node_id ?? null
+    const parallel_start_node_id =
+      node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
+    const parent_parallel_id =
+      node.parent_parallel_id ?? node.execution_metadata?.parent_parallel_id ?? null
+    const branchStartNodeId =
+      node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
+    const parentParallelBranchStartNodeId =
+      node.parent_parallel_start_node_id ??
+      node.execution_metadata?.parent_parallel_start_node_id ??
+      null
     const isNotInParallel = !parallel_id || isParallelBoundaryNode(node)
-    if (isNotInParallel)
-      return
+    if (isNotInParallel) return
 
     const isParallelStartNode = parallel_start_node_id === node.node_id // in the same parallel has more than one start node
     if (isParallelStartNode) {
@@ -96,10 +138,11 @@ const format = (list: NodeTracing[], t: Translator): NodeTracing[] => {
         children: [selfNode],
       }
       const isRootLevel = !parent_parallel_id
-      if (isRootLevel)
-        return
+      if (isRootLevel) return
 
-      const parentParallelStartNode = result.find(item => item.node_id === parentParallelBranchStartNodeId)
+      const parentParallelStartNode = result.find(
+        (item) => item.node_id === parentParallelBranchStartNodeId,
+      )
       // append to parent parallel start node and after the same branch
       if (parentParallelStartNode) {
         if (!parentParallelStartNode?.parallelDetail) {
@@ -108,31 +151,48 @@ const format = (list: NodeTracing[], t: Translator): NodeTracing[] => {
           }
         }
         if (parentParallelStartNode!.parallelDetail.children) {
-          const sameBranchNodesLastIndex = findLastIndex(parentParallelStartNode.parallelDetail.children, (node) => {
-            const currStartNodeId = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
-            return currStartNodeId === parentParallelBranchStartNodeId
-          })
+          const sameBranchNodesLastIndex = findLastIndex(
+            parentParallelStartNode.parallelDetail.children,
+            (node) => {
+              const currStartNodeId =
+                node.parallel_start_node_id ??
+                node.execution_metadata?.parallel_start_node_id ??
+                null
+              return currStartNodeId === parentParallelBranchStartNodeId
+            },
+          )
           if (sameBranchNodesLastIndex !== -1)
-            parentParallelStartNode!.parallelDetail.children.splice(sameBranchNodesLastIndex + 1, 0, node)
-          else
-            parentParallelStartNode!.parallelDetail.children.push(node)
+            parentParallelStartNode!.parallelDetail.children.splice(
+              sameBranchNodesLastIndex + 1,
+              0,
+              node,
+            )
+          else parentParallelStartNode!.parallelDetail.children.push(node)
         }
       }
       return
     }
 
     // append to parallel start node and after the same branch
-    const parallelStartNode = result.find(item => parallel_start_node_id === item.node_id)
+    const parallelStartNode = result.find((item) => parallel_start_node_id === item.node_id)
 
-    if (parallelStartNode && parallelStartNode.parallelDetail && parallelStartNode!.parallelDetail!.children) {
-      const sameBranchNodesLastIndex = findLastIndex(parallelStartNode.parallelDetail.children, (node) => {
-        const currStartNodeId = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
-        return currStartNodeId === branchStartNodeId
-      })
+    if (
+      parallelStartNode &&
+      parallelStartNode.parallelDetail &&
+      parallelStartNode!.parallelDetail!.children
+    ) {
+      const sameBranchNodesLastIndex = findLastIndex(
+        parallelStartNode.parallelDetail.children,
+        (node) => {
+          const currStartNodeId =
+            node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
+          return currStartNodeId === branchStartNodeId
+        },
+      )
       if (sameBranchNodesLastIndex !== -1) {
         parallelStartNode.parallelDetail.children.splice(sameBranchNodesLastIndex + 1, 0, node)
-      }
-      else { // new branch
+      } else {
+        // new branch
         parallelStartNode.parallelDetail.children.push(node)
       }
     }
@@ -145,23 +205,35 @@ const format = (list: NodeTracing[], t: Translator): NodeTracing[] => {
     if (isNotInParallel)
       return true
 
-    const parent_parallel_id = node.parent_parallel_id ?? node.execution_metadata?.parent_parallel_id ?? null
+    const parent_parallel_id =
+      node.parent_parallel_id ?? node.execution_metadata?.parent_parallel_id ?? null
 
-    if (parent_parallel_id)
-      return false
+    if (parent_parallel_id) return false
 
     const isParallelStartNode = node.parallelDetail?.isParallelStartNode
 
-    if (!isParallelStartNode)
-      return false
+    if (!isParallelStartNode) return false
 
     return true
   })
 
-  addTitle({
-    list: filteredInParallelSubNodes,
-    depth: 1,
-  }, t)
+  // print node structure for debug
+  if (isPrint) {
+    filteredInParallelSubNodes.forEach((node) => {
+      const now = Date.now()
+      console.log(`----- p: ${now} start -----`)
+      printNodeStructure(node, 0)
+      console.log(`----- p: ${now} end -----`)
+    })
+  }
+
+  addTitle(
+    {
+      list: filteredInParallelSubNodes,
+      depth: 1,
+    },
+    t,
+  )
 
   return filteredInParallelSubNodes
 }

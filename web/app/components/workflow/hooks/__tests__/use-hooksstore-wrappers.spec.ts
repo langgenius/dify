@@ -34,7 +34,9 @@ describe('useWorkflowRun', () => {
 
     expect(result.current.handleBackupDraft).toBe(mocks.handleBackupDraft)
     expect(result.current.handleLoadBackupDraft).toBe(mocks.handleLoadBackupDraft)
-    expect(result.current.handleRestoreFromPublishedWorkflow).toBe(mocks.handleRestoreFromPublishedWorkflow)
+    expect(result.current.handleRestoreFromPublishedWorkflow).toBe(
+      mocks.handleRestoreFromPublishedWorkflow,
+    )
     expect(result.current.handleRun).toBe(mocks.handleRun)
     expect(result.current.handleStopRun).toBe(mocks.handleStopRun)
   })
@@ -57,12 +59,24 @@ describe('useWorkflowStartRun', () => {
     })
 
     expect(result.current.handleStartWorkflowRun).toBe(mocks.handleStartWorkflowRun)
-    expect(result.current.handleWorkflowStartRunInWorkflow).toBe(mocks.handleWorkflowStartRunInWorkflow)
-    expect(result.current.handleWorkflowStartRunInChatflow).toBe(mocks.handleWorkflowStartRunInChatflow)
-    expect(result.current.handleWorkflowTriggerScheduleRunInWorkflow).toBe(mocks.handleWorkflowTriggerScheduleRunInWorkflow)
-    expect(result.current.handleWorkflowTriggerWebhookRunInWorkflow).toBe(mocks.handleWorkflowTriggerWebhookRunInWorkflow)
-    expect(result.current.handleWorkflowTriggerPluginRunInWorkflow).toBe(mocks.handleWorkflowTriggerPluginRunInWorkflow)
-    expect(result.current.handleWorkflowRunAllTriggersInWorkflow).toBe(mocks.handleWorkflowRunAllTriggersInWorkflow)
+    expect(result.current.handleWorkflowStartRunInWorkflow).toBe(
+      mocks.handleWorkflowStartRunInWorkflow,
+    )
+    expect(result.current.handleWorkflowStartRunInChatflow).toBe(
+      mocks.handleWorkflowStartRunInChatflow,
+    )
+    expect(result.current.handleWorkflowTriggerScheduleRunInWorkflow).toBe(
+      mocks.handleWorkflowTriggerScheduleRunInWorkflow,
+    )
+    expect(result.current.handleWorkflowTriggerWebhookRunInWorkflow).toBe(
+      mocks.handleWorkflowTriggerWebhookRunInWorkflow,
+    )
+    expect(result.current.handleWorkflowTriggerPluginRunInWorkflow).toBe(
+      mocks.handleWorkflowTriggerPluginRunInWorkflow,
+    )
+    expect(result.current.handleWorkflowRunAllTriggersInWorkflow).toBe(
+      mocks.handleWorkflowRunAllTriggersInWorkflow,
+    )
   })
 })
 

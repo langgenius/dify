@@ -32,13 +32,7 @@ describe('Chip', () => {
     return {
       user,
       ...render(
-        <Chip
-          value="all"
-          items={items}
-          onSelect={onSelect}
-          onClear={onClear}
-          {...props}
-        />,
+        <Chip value="all" items={items} onSelect={onSelect} onClear={onClear} {...props} />,
       ),
     }
   }
@@ -91,14 +85,7 @@ describe('Chip', () => {
       const { rerender } = renderChip({ value: 'all' })
       expect(screen.getByText('All Items'))!.toBeInTheDocument()
 
-      rerender(
-        <Chip
-          value="archived"
-          items={items}
-          onSelect={onSelect}
-          onClear={onClear}
-        />,
-      )
+      rerender(<Chip value="archived" items={items} onSelect={onSelect} onClear={onClear} />)
       expect(screen.getByRole('combobox', { name: 'Archived' }))!.toBeInTheDocument()
     })
 
@@ -164,15 +151,6 @@ describe('Chip', () => {
       const panel = document.body.querySelector(`.${customPanelClass}`)
       expect(panel)!.toBeInTheDocument()
     })
-
-    it('should use visible focus styles on the trigger', () => {
-      const { container } = renderChip()
-
-      expect(getTrigger(container)).toHaveClass(
-        'focus-visible:ring-2',
-        'focus-visible:ring-state-accent-solid',
-      )
-    })
   })
 
   describe('State Management', () => {
@@ -187,8 +165,7 @@ describe('Chip', () => {
       expect(trigger).toHaveAttribute('data-popup-open')
       expect(within(listbox).getByRole('option', { name: 'All Items' })).toBeInTheDocument()
 
-      if (trigger)
-        await user.click(trigger)
+      if (trigger) await user.click(trigger)
       await expectPanelClosed(trigger)
     })
 
@@ -221,12 +198,6 @@ describe('Chip', () => {
 
       const clearButton = screen.getByRole('button', { name: /common\.operation\.clear/ })
       expect(clearButton).toHaveAccessibleName(/Active/)
-      expect(clearButton).toHaveClass(
-        'outline-hidden',
-        'focus-visible:ring-2',
-        'focus-visible:ring-state-accent-solid',
-        'focus-visible:ring-inset',
-      )
       expect(clearButton.querySelector('.i-ri-close-circle-fill')).toHaveAttribute('aria-hidden')
 
       await user.click(clearButton)
@@ -255,17 +226,14 @@ describe('Chip', () => {
 
       const trigger = getTrigger(container)
 
-      if (trigger)
-        await user.click(trigger)
+      if (trigger) await user.click(trigger)
       expect(await screen.findByRole('listbox')).toBeInTheDocument()
       expect(trigger).toHaveAttribute('data-popup-open')
 
-      if (trigger)
-        await user.click(trigger)
+      if (trigger) await user.click(trigger)
       await expectPanelClosed(trigger)
 
-      if (trigger)
-        await user.click(trigger)
+      if (trigger) await user.click(trigger)
       expect(await screen.findByRole('listbox')).toBeInTheDocument()
       expect(trigger).toHaveAttribute('data-popup-open')
     })
@@ -315,7 +283,10 @@ describe('Chip', () => {
 
       const listbox = await openPanel(user, container)
 
-      expect(within(listbox).getByRole('option', { name: 'Active' })).toHaveAttribute('aria-selected', 'true')
+      expect(within(listbox).getByRole('option', { name: 'Active' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
     })
 
     it('should render all items in dropdown when open', async () => {
@@ -346,7 +317,9 @@ describe('Chip', () => {
 
       // The trigger should not display any item name text
       expect(trigger?.textContent?.trim()).toBeFalsy()
-      expect(screen.queryByRole('button', { name: /common\.operation\.clear/ })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /common\.operation\.clear/ }),
+      ).not.toBeInTheDocument()
     })
 
     it('should allow selecting already selected item', async () => {

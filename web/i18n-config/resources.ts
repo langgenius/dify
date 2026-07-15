@@ -15,6 +15,7 @@ import type datasetPipeline from '../i18n/en-US/dataset-pipeline.json'
 import type datasetSettings from '../i18n/en-US/dataset-settings.json'
 import type dataset from '../i18n/en-US/dataset.json'
 import type deployments from '../i18n/en-US/deployments.json'
+import type deviceFlow from '../i18n/en-US/device-flow.json'
 import type education from '../i18n/en-US/education.json'
 import type explore from '../i18n/en-US/explore.json'
 import type layout from '../i18n/en-US/layout.json'
@@ -35,7 +36,7 @@ import type tools from '../i18n/en-US/tools.json'
 import type workflow from '../i18n/en-US/workflow.json'
 import { kebabCase } from 'string-ts'
 
-export type Resources = {
+type RawResources = {
   app: typeof app
   appAnnotation: typeof appAnnotation
   appApi: typeof appApi
@@ -53,6 +54,7 @@ export type Resources = {
   datasetPipeline: typeof datasetPipeline
   datasetSettings: typeof datasetSettings
   deployments: typeof deployments
+  deviceFlow: typeof deviceFlow
   education: typeof education
   explore: typeof explore
   layout: typeof layout
@@ -73,6 +75,68 @@ export type Resources = {
   workflow: typeof workflow
 }
 
+// This type-only bridge exposes runtime plural base keys; selector types cannot require callers to pass count.
+type PluralBaseResources = {
+  agentV2: {
+    'agentDetail.access.workflow.nodeCount': string
+    'agentDetail.configure.buildDraft.changesToApply': string
+    'agentDetail.configure.publishImpact.workflowCount': string
+  }
+  app: {
+    'accessControlDialog.groups': string
+    'accessControlDialog.members': string
+  }
+  billing: {
+    'plansCommon.teamMember': string
+  }
+  common: {
+    'members.recipientCount': string
+    'members.seatsRemaining': string
+    'members.sendInviteCount': string
+  }
+  dataset: {
+    docAllEnabled: string
+    partialEnabled: string
+  }
+  datasetDocuments: {
+    'segment.characters': string
+    'segment.childChunks': string
+    'segment.chunks': string
+    'segment.parentChunks': string
+    'segment.searchResults': string
+  }
+  deployments: {
+    'access.members.groupCount': string
+    'access.members.memberCount': string
+    'createGuide.target.bindingCount': string
+    'createGuide.target.envVarCount': string
+    'deployDrawer.bindingCount': string
+    'deployDrawer.envVarCount': string
+    'overview.apiKeysCount': string
+    'overview.apiTokenSummary.environments': string
+    'overview.chip.behind': string
+    'overview.chip.behindTooltip': string
+    'overview.latestRelease.releaseCount': string
+    'versions.disabledReason.releaseInUse': string
+  }
+  permission: {
+    'accessRule.summary': string
+    'role.copyMembersDescription': string
+  }
+  workflow: {
+    'changeHistory.stepBackward': string
+    'changeHistory.stepForward': string
+    'nodes.iteration.error': string
+    'nodes.iteration.iteration': string
+    'nodes.loop.error': string
+    'nodes.loop.loop': string
+  }
+}
+
+export type Resources = RawResources & PluralBaseResources
+
+export const defaultNS = 'app' as const
+
 export const namespaces = [
   'app',
   'appAnnotation',
@@ -91,6 +155,7 @@ export const namespaces = [
   'datasetPipeline',
   'datasetSettings',
   'deployments',
+  'deviceFlow',
   'education',
   'explore',
   'layout',
@@ -110,7 +175,7 @@ export const namespaces = [
   'tools',
   'workflow',
 ] as const satisfies ReadonlyArray<keyof Resources>
-export type Namespace = typeof namespaces[number]
+export type Namespace = (typeof namespaces)[number]
 
-export const namespacesInFileName = namespaces.map(ns => kebabCase(ns))
-export type NamespaceInFileName = typeof namespacesInFileName[number]
+export const namespacesInFileName = namespaces.map((ns) => kebabCase(ns))
+export type NamespaceInFileName = (typeof namespacesInFileName)[number]

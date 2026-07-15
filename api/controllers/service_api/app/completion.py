@@ -6,13 +6,17 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from pydantic.json_schema import SkipJsonSchema
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from configs import dify_config
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
+    AgentNotPublishedError,
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
@@ -20,6 +24,7 @@ from controllers.service_api.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.service_api.schema import (
     InputFileList,
@@ -29,6 +34,7 @@ from controllers.service_api.schema import (
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -36,12 +42,16 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
+from enums.cloud_plan import CloudPlan
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
+from services.billing_service import BillingService
+from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 
@@ -154,7 +164,7 @@ class ChatRequestPayload(BaseModel):
 
 
 register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)
-register_response_schema_models(service_api_ns, GeneratedAppResponse, SimpleResultResponse)
+register_response_schema_models(service_api_ns, SimpleResultResponse)
 
 
 @service_api_ns.route("/completion-messages")
@@ -197,13 +207,10 @@ class CompletionApi(Resource):
             500: "Internal server error",
         }
     )
-    @service_api_ns.response(
-        200,
-        "Completion created successfully",
-        service_api_ns.models[GeneratedAppResponse.__name__],
-    )
+    @service_api_ns.response(200, "Completion created successfully")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """Create a completion for the given prompt.
 
         This endpoint generates a completion based on the provided inputs and query.
@@ -229,6 +236,7 @@ class CompletionApi(Resource):
 
         try:
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model,
                 user=end_user,
                 args=args,
@@ -236,6 +244,7 @@ class CompletionApi(Resource):
                 streaming=streaming,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -244,6 +253,8 @@ class CompletionApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
+        except AgentAppNotPublishedError:
+            raise AgentNotPublishedError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -296,7 +307,7 @@ class CompletionStopApi(Resource):
             app_mode=AppMode.value_of(app_model.mode),
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @service_api_ns.route("/chat-messages")
@@ -324,6 +335,10 @@ class ChatApi(Resource):
                 "- `model_currently_not_support` : Current model unavailable.\n"
                 "- `completion_request_error` : Text generation failed."
             ),
+            403: (
+                "`workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the "
+                "current plan. Upgrade to a paid plan."
+            ),
             404: "`not_found` : Conversation does not exist.",
             429: (
                 "- `too_many_requests` : Too many concurrent requests for this app.\n"
@@ -341,18 +356,16 @@ class ChatApi(Resource):
             200: "Message sent successfully",
             400: "Bad request - invalid parameters or workflow issues",
             401: "Unauthorized - invalid API token",
+            403: "Forbidden - upgrade to a paid plan to execute a specific workflow version",
             404: "Conversation or workflow not found",
             429: "Rate limit exceeded",
             500: "Internal server error",
         }
     )
-    @service_api_ns.response(
-        200,
-        "Message sent successfully",
-        service_api_ns.models[GeneratedAppResponse.__name__],
-    )
+    @service_api_ns.response(200, "Message sent successfully")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """Send a message in a chat conversation.
 
         This endpoint handles chat messages for chat, agent chat, and advanced chat applications.
@@ -363,6 +376,11 @@ class ChatApi(Resource):
             raise NotChatAppError()
 
         payload = ChatRequestPayload.model_validate(omit_trace_session_id_from_payload(service_api_ns.payload) or {})
+
+        if app_mode == AppMode.ADVANCED_CHAT and payload.workflow_id and dify_config.BILLING_ENABLED:
+            billing_info = BillingService.get_info(app_model.tenant_id, exclude_vector_space=True)
+            if billing_info["enabled"] and billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+                raise WorkflowVersionExecutionNotAllowedError()
 
         external_trace_id = get_external_trace_id(request)
         args = payload.model_dump(exclude_none=True)
@@ -375,10 +393,25 @@ class ChatApi(Resource):
         streaming = _resolve_agent_app_streaming(app_mode=app_mode, response_mode=payload.response_mode)
 
         try:
+            # Eagerly validate conversation to avoid hanging on invalid conversation_id
+            if payload.conversation_id:
+                ConversationService.get_conversation(
+                    app_model=app_model,
+                    conversation_id=payload.conversation_id,
+                    user=end_user,
+                    session=db.session(),
+                )
+
             response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
+                session=session,
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=streaming,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except WorkflowNotFoundError as ex:
             raise NotFound(str(ex))
@@ -393,6 +426,8 @@ class ChatApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
+        except AgentAppNotPublishedError:
+            raise AgentNotPublishedError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -448,4 +483,4 @@ class ChatStopApi(Resource):
             app_mode=app_mode,
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200

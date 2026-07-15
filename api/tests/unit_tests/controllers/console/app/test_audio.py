@@ -4,13 +4,20 @@ import io
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import patch
+from uuid import UUID
 
 import pytest
 from flask import Flask
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import InternalServerError
+from werkzeug.exceptions import Forbidden, InternalServerError
 
-from controllers.console.app.audio import ChatMessageAudioApi, ChatMessageTextApi, TextModesApi
+from controllers.console.app import audio as audio_module
+from controllers.console.app.audio import (
+    AgentChatMessageAudioApi,
+    ChatMessageAudioApi,
+    ChatMessageTextApi,
+    TextModesApi,
+)
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -20,10 +27,16 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
+from models import AppMode
+from models.agent import AgentConfigDraftType
+from models.agent_config_entities import AgentSoulConfig
+from services.agent.composer_service import AgentComposerService
+from services.agent.errors import AgentVersionNotFoundError
 from services.app_ref_service import MessageRef
 from services.audio_service import AudioService
 from services.errors.app_model_config import AppModelConfigBrokenError
@@ -32,6 +45,7 @@ from services.errors.audio import (
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
     ProviderNotSupportTextToSpeechLanageServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -52,6 +66,180 @@ def test_console_audio_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) 
     assert response == {"text": "ok"}
 
 
+def test_console_audio_api_accepts_published_agent_apps() -> None:
+    assert AppMode.AGENT in audio_module._CONSOLE_AUDIO_TRANSCRIPT_APP_MODES
+
+
+def test_agent_console_audio_api_uses_agent_draft(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
+    app_model = SimpleNamespace(id="backing-app-1")
+    agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
+    calls: dict[str, object] = {}
+
+    def resolve_agent_runtime_app_model(**kwargs):
+        calls["resolver"] = kwargs
+        return app_model
+
+    def load_agent_soul_for_debug(**kwargs):
+        calls["draft"] = kwargs
+        return agent_soul
+
+    def transcript_agent_asr(**kwargs):
+        calls["asr"] = kwargs
+        return {"text": "agent transcript"}
+
+    def enforce_rbac_access(**kwargs):
+        calls["rbac"] = kwargs
+
+    monkeypatch.setattr(audio_module, "resolve_agent_runtime_app_model", resolve_agent_runtime_app_model)
+    monkeypatch.setattr(audio_module, "enforce_rbac_access", enforce_rbac_access)
+    monkeypatch.setattr(AgentComposerService, "load_agent_soul_for_debug", load_agent_soul_for_debug)
+    monkeypatch.setattr(AudioService, "transcript_agent_asr", transcript_agent_asr)
+
+    api = AgentChatMessageAudioApi()
+    handler = unwrap(api.post)
+    session = SimpleNamespace()
+    current_user = SimpleNamespace(id="account-1")
+    with app.test_request_context(
+        f"/console/api/agent/{agent_id}/audio-to-text",
+        method="POST",
+        data={"file": _file_data(), "draft_type": "debug_build"},
+    ):
+        response = handler(
+            api,
+            session=session,
+            current_tenant_id="tenant-1",
+            current_user=current_user,
+            agent_id=agent_id,
+        )
+
+    assert response == {"text": "agent transcript"}
+    assert calls["resolver"] == {"tenant_id": "tenant-1", "agent_id": agent_id}
+    assert calls["rbac"] == {
+        "tenant_id": "tenant-1",
+        "account_id": "account-1",
+        "resource_type": audio_module.RBACResourceScope.APP,
+        "scene": audio_module.RBACPermission.APP_TEST_AND_RUN,
+        "path_args": {"app_id": "backing-app-1"},
+    }
+    assert calls["draft"] == {
+        "tenant_id": "tenant-1",
+        "agent_id": str(agent_id),
+        "account_id": "account-1",
+        "draft_type": AgentConfigDraftType.DEBUG_BUILD,
+        "session": session,
+    }
+    assert calls["asr"] == {
+        "app_model": app_model,
+        "agent_soul": agent_soul,
+        "file": calls["asr"]["file"],
+        "end_user": None,
+    }
+
+
+def test_agent_console_audio_api_defaults_to_normal_draft(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        audio_module,
+        "resolve_agent_runtime_app_model",
+        lambda **_kwargs: SimpleNamespace(id="backing-app-1"),
+    )
+
+    def load_agent_soul_for_debug(**kwargs):
+        captured.update(kwargs)
+        return AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
+
+    monkeypatch.setattr(AgentComposerService, "load_agent_soul_for_debug", load_agent_soul_for_debug)
+    monkeypatch.setattr(AudioService, "transcript_agent_asr", lambda **_kwargs: {"text": "ok"})
+
+    api = AgentChatMessageAudioApi()
+    handler = unwrap(api.post)
+    with app.test_request_context(
+        f"/console/api/agent/{agent_id}/audio-to-text",
+        method="POST",
+        data={"file": _file_data()},
+    ):
+        response = handler(
+            api,
+            session=SimpleNamespace(),
+            current_tenant_id="tenant-1",
+            current_user=SimpleNamespace(id="account-1"),
+            agent_id=agent_id,
+        )
+
+    assert response == {"text": "ok"}
+    assert captured["draft_type"] == AgentConfigDraftType.DRAFT
+
+
+def test_agent_console_audio_api_checks_rbac_with_backing_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
+    app_model = SimpleNamespace(id="backing-app-1")
+    soul_loaded = False
+
+    monkeypatch.setattr(audio_module, "resolve_agent_runtime_app_model", lambda **_kwargs: app_model)
+
+    def deny_access(**kwargs):
+        assert kwargs["path_args"] == {"app_id": "backing-app-1"}
+        raise Forbidden()
+
+    def load_agent_soul_for_debug(**_kwargs):
+        nonlocal soul_loaded
+        soul_loaded = True
+        return AgentSoulConfig()
+
+    monkeypatch.setattr(audio_module, "enforce_rbac_access", deny_access)
+    monkeypatch.setattr(AgentComposerService, "load_agent_soul_for_debug", load_agent_soul_for_debug)
+
+    api = AgentChatMessageAudioApi()
+    handler = unwrap(api.post)
+    with app.test_request_context(
+        f"/console/api/agent/{agent_id}/audio-to-text",
+        method="POST",
+        data={"file": _file_data()},
+    ):
+        with pytest.raises(Forbidden):
+            handler(
+                api,
+                session=SimpleNamespace(),
+                current_tenant_id="tenant-1",
+                current_user=SimpleNamespace(id="account-1"),
+                agent_id=agent_id,
+            )
+
+    assert soul_loaded is False
+
+
+def test_agent_console_audio_api_preserves_missing_build_draft_404(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    agent_id = UUID("019ef3d2-b24c-7803-b428-18b5ee8fb853")
+    monkeypatch.setattr(
+        audio_module,
+        "resolve_agent_runtime_app_model",
+        lambda **_kwargs: SimpleNamespace(id="backing-app-1"),
+    )
+    monkeypatch.setattr(
+        AgentComposerService,
+        "load_agent_soul_for_debug",
+        lambda **_kwargs: (_ for _ in ()).throw(AgentVersionNotFoundError()),
+    )
+
+    api = AgentChatMessageAudioApi()
+    handler = unwrap(api.post)
+    with app.test_request_context(
+        f"/console/api/agent/{agent_id}/audio-to-text",
+        method="POST",
+        data={"file": _file_data(), "draft_type": "debug_build"},
+    ):
+        with pytest.raises(AgentVersionNotFoundError):
+            handler(
+                api,
+                session=SimpleNamespace(),
+                current_tenant_id="tenant-1",
+                current_user=SimpleNamespace(id="account-1"),
+                agent_id=agent_id,
+            )
+
+
 @pytest.mark.parametrize(
     ("exc", "expected"),
     [
@@ -60,6 +248,7 @@ def test_console_audio_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) 
         (AudioTooLargeServiceError("too big"), AudioTooLargeError),
         (UnsupportedAudioTypeServiceError(), UnsupportedAudioTypeError),
         (ProviderNotSupportSpeechToTextServiceError(), ProviderNotSupportSpeechToTextError),
+        (SpeechToTextDisabledServiceError(), SpeechToTextDisabledError),
         (ProviderTokenNotInitError("token"), ProviderNotInitializeError),
         (QuotaExceededError(), ProviderQuotaExceededError),
         (ModelCurrentlyNotSupportError(), ProviderModelCurrentlyNotSupportError),
@@ -148,7 +337,8 @@ def test_console_text_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPa
 
 
 def test_console_text_modes_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: ["voice-1"])
+    expected_voices = [{"name": "Voice 1", "value": "voice-1"}]
+    monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: expected_voices)
 
     api = TextModesApi()
     handler = unwrap(api.get)
@@ -157,7 +347,7 @@ def test_console_text_modes_success(app: Flask, monkeypatch: pytest.MonkeyPatch)
     with app.test_request_context("/console/api/apps/app/text-to-audio/voices?language=en", method="GET"):
         response = handler(api, app_model=app_model)
 
-    assert response == ["voice-1"]
+    assert response == expected_voices
 
 
 def test_console_text_modes_language_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -242,7 +432,8 @@ def test_text_to_audio_voices_success(app: Flask, monkeypatch: pytest.MonkeyPatc
     api = TextModesApi()
     method = unwrap(api.get)
 
-    monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: ["voice-1"])
+    expected_voices = [{"name": "Voice 1", "value": "voice-1"}]
+    monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: expected_voices)
 
     app_model = SimpleNamespace(tenant_id="tenant-1")
 
@@ -253,7 +444,7 @@ def test_text_to_audio_voices_success(app: Flask, monkeypatch: pytest.MonkeyPatc
     ):
         response = method(api, app_model=app_model)
 
-    assert response == ["voice-1"]
+    assert response == expected_voices
 
 
 def test_audio_to_text_with_invalid_file(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -300,7 +491,7 @@ def test_text_to_audio_voices_with_language_filter(app: Flask, monkeypatch: pyte
     monkeypatch.setattr(
         AudioService,
         "transcript_tts_voices",
-        lambda **_kwargs: [{"id": "voice-1", "name": "Voice 1"}],
+        lambda **_kwargs: [{"name": "Voice 1", "value": "voice-1"}],
     )
 
     app_model = SimpleNamespace(tenant_id="tenant-1")

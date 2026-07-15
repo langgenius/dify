@@ -38,7 +38,10 @@ def _snippet(**overrides) -> CustomizedSnippet:
 @pytest.fixture(autouse=True)
 def _patch_snippet_service_factory(monkeypatch: pytest.MonkeyPatch) -> None:
     def factory():
-        return snippet_workflow_module.SnippetService()
+        try:
+            return snippet_workflow_module.SnippetService(snippet_workflow_module._snippet_session_maker())
+        except TypeError:
+            return snippet_workflow_module.SnippetService()
 
     monkeypatch.setattr(snippet_workflow_module, "_snippet_service", factory)
     monkeypatch.setattr(snippet_workflow_module, "_snippet_session_maker", Mock(return_value=Mock()))

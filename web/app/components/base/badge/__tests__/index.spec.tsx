@@ -76,7 +76,11 @@ describe('Badge', () => {
       { size: 'l', iconOnly: false, label: 'large with text' },
       { size: 'l', iconOnly: true, label: 'large icon-only' },
     ] as const)('should render correctly for $label', ({ size, iconOnly }) => {
-      const { container } = render(<Badge size={size} iconOnly={iconOnly}>🔔</Badge>)
+      const { container } = render(
+        <Badge size={size} iconOnly={iconOnly}>
+          🔔
+        </Badge>,
+      )
       const badge = screen.getByText('🔔')
 
       // Verify badge renders with correct size
@@ -226,9 +230,11 @@ describe('Badge', () => {
 
       fireEvent.click(screen.getByText('Event Badge'))
 
-      expect(handleClick).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'click',
-      }))
+      expect(handleClick).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'click',
+        }),
+      )
     })
   })
 
@@ -248,7 +254,13 @@ describe('Badge', () => {
       )
 
       const badge = screen.getByTestId('combined-badge')
-      expect(badge).toHaveClass('badge', 'badge-l', 'badge-warning', 'system-2xs-medium-uppercase', 'custom-badge')
+      expect(badge).toHaveClass(
+        'badge',
+        'badge-l',
+        'badge-warning',
+        'system-2xs-medium-uppercase',
+        'custom-badge',
+      )
       expect(badge).toHaveStyle({ backgroundColor: 'rgb(0, 0, 255)' })
       expect(badge).toHaveTextContent('Full Featured')
     })

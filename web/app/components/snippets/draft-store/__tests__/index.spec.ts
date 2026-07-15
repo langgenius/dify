@@ -15,10 +15,7 @@ describe('useSnippetDraftStore', () => {
   })
 
   it('should store and reset snippet input fields', () => {
-    const inputFields = [
-      createField('topic'),
-      createField('audience'),
-    ]
+    const inputFields = [createField('topic'), createField('audience')]
 
     useSnippetDraftStore.getState().hydrateDraft({
       snippetId: 'snippet-1',

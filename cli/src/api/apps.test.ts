@@ -6,7 +6,9 @@ import { isHttpClientError } from '@/errors/base'
 import { AppsClient } from './apps.js'
 
 const LIST_BODY = { page: 1, limit: 20, total: 0, has_more: false, data: [] }
-const DESCRIBE_BODY = { info: { id: 'app-1', name: 'Demo', mode: 'chat', service_api_enabled: true } }
+const DESCRIBE_BODY = {
+  info: { id: 'app-1', name: 'Demo', mode: 'chat', service_api_enabled: true },
+}
 
 function makeClient(host: string): AppsClient {
   return new AppsClient(testHttpClient(host, 'dfoa_test'))
@@ -24,7 +26,7 @@ describe('AppsClient.list', () => {
   })
 
   it('defaults page=1 & limit=20 and always sends workspace_id', async () => {
-    stub = await startStubServer(cap => jsonResponder(200, LIST_BODY, cap))
+    stub = await startStubServer((cap) => jsonResponder(200, LIST_BODY, cap))
 
     await makeClient(stub.url).list({ workspaceId: 'ws-1' })
 
@@ -39,7 +41,7 @@ describe('AppsClient.list', () => {
   })
 
   it('forwards explicit pagination and filters', async () => {
-    stub = await startStubServer(cap => jsonResponder(200, LIST_BODY, cap))
+    stub = await startStubServer((cap) => jsonResponder(200, LIST_BODY, cap))
 
     await makeClient(stub.url).list({
       workspaceId: 'ws-1',
@@ -57,7 +59,7 @@ describe('AppsClient.list', () => {
   })
 
   it('treats empty-string filters as absent (not blank query params)', async () => {
-    stub = await startStubServer(cap => jsonResponder(200, LIST_BODY, cap))
+    stub = await startStubServer((cap) => jsonResponder(200, LIST_BODY, cap))
 
     await makeClient(stub.url).list({ workspaceId: 'ws-1', mode: '', name: '' })
 
@@ -67,10 +69,10 @@ describe('AppsClient.list', () => {
   })
 
   it('propagates server 403 as a classified BaseError', async () => {
-    stub = await startStubServer(cap => jsonResponder(403, { error: 'forbidden' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(403, { error: 'forbidden' }, cap))
 
     await expect(makeClient(stub.url).list({ workspaceId: 'ws-1' })).rejects.toSatisfy(
-      err => isHttpClientError(err) && err.httpStatus === 403,
+      (err) => isHttpClientError(err) && err.httpStatus === 403,
     )
   })
 })
@@ -82,12 +84,12 @@ describe('AppsClient.describe', () => {
     await stub?.stop()
   })
 
-  it('hits /apps/<id>/describe, omits workspace_id and fields when not given', async () => {
-    stub = await startStubServer(cap => jsonResponder(200, DESCRIBE_BODY, cap))
+  it('hits /apps/<id>, omits workspace_id and fields when not given', async () => {
+    stub = await startStubServer((cap) => jsonResponder(200, DESCRIBE_BODY, cap))
 
     const res = await makeClient(stub.url).describe('app-1')
 
-    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app-1/describe')
+    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app-1')
     const q = queryOf(stub.captured.url)
     expect(q.has('workspace_id')).toBe(false)
     expect(q.has('fields')).toBe(false)
@@ -95,7 +97,7 @@ describe('AppsClient.describe', () => {
   })
 
   it('joins fields with commas', async () => {
-    stub = await startStubServer(cap => jsonResponder(200, DESCRIBE_BODY, cap))
+    stub = await startStubServer((cap) => jsonResponder(200, DESCRIBE_BODY, cap))
 
     await makeClient(stub.url).describe('app-1', ['parameters', 'input_schema'])
 
@@ -103,10 +105,10 @@ describe('AppsClient.describe', () => {
   })
 
   it('URL-encodes the app id', async () => {
-    stub = await startStubServer(cap => jsonResponder(200, DESCRIBE_BODY, cap))
+    stub = await startStubServer((cap) => jsonResponder(200, DESCRIBE_BODY, cap))
 
     await makeClient(stub.url).describe('app/with space')
 
-    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app%2Fwith%20space/describe')
+    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app%2Fwith%20space')
   })
 })

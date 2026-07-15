@@ -42,7 +42,9 @@ const Result: FC<Props> = ({
     <div className="flex h-full flex-col">
       <div className="mb-3 flex shrink-0 items-center justify-between">
         <div>
-          <div className="shrink-0 text-base leading-[160%] font-semibold text-text-secondary">{t('generate.resTitle', { ns: 'appDebug' })}</div>
+          <div className="shrink-0 text-base leading-[160%] font-semibold text-text-secondary">
+            {t(($) => $['generate.resTitle'], { ns: 'appDebug' })}
+          </div>
           <VersionSelector
             versionLen={versions.length}
             value={currentVersionIndex}
@@ -54,50 +56,39 @@ const Result: FC<Props> = ({
             className="px-2"
             onClick={() => {
               copy(current.modified)
-              toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
+              toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
             }}
           >
             <RiClipboardLine className="size-4 text-text-secondary" />
           </Button>
           <Button variant="primary" onClick={onApply}>
-            {t('generate.apply', { ns: 'appDebug' })}
+            {t(($) => $['generate.apply'], { ns: 'appDebug' })}
           </Button>
         </div>
       </div>
       <div className="flex grow flex-col overflow-y-auto">
-        {
-          current?.message && (
-            <PromptToast message={current.message} className="mb-3 shrink-0" />
-          )
-        }
+        {current?.message && <PromptToast message={current.message} className="mb-3 shrink-0" />}
         <div className="grow pb-6">
-          {isGeneratorPrompt
-            ? (
-                isBasicMode
-                  ? (
-                      <PromptRes
-                        value={current?.modified}
-                        workflowVariableBlock={{
-                          show: false,
-                        }}
-                      />
-                    )
-                  : (
-                      <PromptResInWorkflow
-                        value={current?.modified || ''}
-                        nodeId={nodeId!}
-                      />
-                    )
-              )
-            : (
-                <CodeEditor
-                  editorWrapperClassName="h-full"
-                  className="bg-transparent pt-0"
-                  value={current?.modified}
-                  readOnly
-                  hideTopMenu
-                />
-              )}
+          {isGeneratorPrompt ? (
+            isBasicMode ? (
+              <PromptRes
+                value={current?.modified}
+                workflowVariableBlock={{
+                  show: false,
+                }}
+              />
+            ) : (
+              <PromptResInWorkflow value={current?.modified || ''} nodeId={nodeId!} />
+            )
+          ) : (
+            <CodeEditor
+              editorWrapperClassName="h-full"
+              className="bg-transparent pt-0"
+              value={current?.modified}
+              readOnly
+              hideTopMenu
+            />
+          )}
         </div>
       </div>
     </div>

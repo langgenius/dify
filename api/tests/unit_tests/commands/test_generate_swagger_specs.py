@@ -204,6 +204,18 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert app_detail_schema["properties"]["id"]["type"] == "string"
     assert app_detail_schema["properties"]["export_data"]["type"] == "string"
     assert {"type": "boolean"} in app_detail_schema["properties"]["can_trial"]["anyOf"]
+    app_detail_nullable_schema = schemas["RecommendedAppDetailNullableResponse"]
+    assert _response_schema(paths["/explore/apps/{app_id}"]["get"])["$ref"] == (
+        "#/components/schemas/RecommendedAppDetailNullableResponse"
+    )
+    assert {"$ref": "#/components/schemas/RecommendedAppDetailResponse"} in app_detail_nullable_schema["anyOf"]
+    assert {"type": "null"} in app_detail_nullable_schema["anyOf"]
+    assert schemas["RecommendedAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
+    assert schemas["InstalledAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
+    tool_icon_schema = schemas["ExploreAppMetaResponse"]["properties"]["tool_icons"]["additionalProperties"]
+    assert {"type": "string"} in tool_icon_schema["anyOf"]
+    assert {"additionalProperties": True, "type": "object"} in tool_icon_schema["anyOf"]
+    assert "ToolIconResponse" not in schemas
 
     plugin_versions = schemas["PluginVersionsResponse"]["properties"]["versions"]
     assert plugin_versions["additionalProperties"]["anyOf"][0]["$ref"] == "#/components/schemas/LatestPluginCache"
@@ -249,7 +261,7 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert {"document", "audio", "video", "custom", "preview_config"} <= set(file_upload)
     assert "detail" in schemas["WorkflowFileUploadImagePayload"]["properties"]
     assert {"mode", "file_type_list"} <= set(schemas["WorkflowFileUploadPreviewConfigPayload"]["properties"])
-    assert schemas["AccountWithRole"]["properties"]["avatar_url"]["readOnly"] is True
+    assert schemas["AccountWithRoleResponse"]["properties"]["avatar_url"]["readOnly"] is True
 
 
 def test_checked_in_agent_v2_knowledge_openapi_and_generated_contracts_are_in_sync():

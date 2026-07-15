@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from flask import Flask
@@ -142,7 +142,7 @@ class TestConsoleAnnotationRefBoundaries:
 
         assert response == ""
         assert status == 204
-        delete_mock.assert_called_once_with(AppRef("tenant-1", "app-1"), ["ann-1", "ann-2"])
+        delete_mock.assert_called_once_with(AppRef("tenant-1", "app-1"), ["ann-1", "ann-2"], session=ANY)
 
     def test_update_uses_annotation_ref(self, app: Flask):
         api = annotation_module.AnnotationUpdateDeleteApi()
@@ -216,4 +216,4 @@ class TestConsoleAnnotationRefBoundaries:
             response = handler(api, "app-1", "ann-1")
 
         assert response["total"] == 1
-        hit_history_mock.assert_called_once_with(AnnotationRef("tenant-1", "app-1", "ann-1"), 2, 5)
+        hit_history_mock.assert_called_once_with(AnnotationRef("tenant-1", "app-1", "ann-1"), 2, 5, session=ANY)

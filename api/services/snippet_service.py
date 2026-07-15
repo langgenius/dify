@@ -1,20 +1,26 @@
 import json
 import logging
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy import delete, event, func, select
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.db import session_factory
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from graphon.enums import BuiltinNodeTypes, NodeType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, TagBinding
+from models.agent import (
+    WORKFLOW_ONLY_AGENT_SOURCES,
+    Agent,
+    AgentScope,
+    AgentStatus,
+    WorkflowAgentNodeBinding,
+)
 from models.enums import WorkflowRunTriggeredFrom
-from models.model import UploadFile
+from models.model import App, AppMode, UploadFile
 from models.snippet import CustomizedSnippet, SnippetType
 from models.tools import WorkflowToolProvider
 from models.workflow import (
@@ -59,9 +65,8 @@ class SnippetService:
             session_maker = None
         if session is not None:
             session_maker = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
-        elif session_maker is None:
-            session_maker = session_factory.get_session_maker()
-        assert session_maker is not None
+        if session_maker is None:
+            raise ValueError("SnippetService requires a session or session_maker.")
         self._session = session
         self._session_maker = session_maker
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
@@ -70,7 +75,7 @@ class SnippetService:
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @contextmanager
-    def _session_scope(self) -> Iterator[Session]:
+    def _session_scope(self) -> Generator[Session, None, None]:
         current_session = getattr(self, "_session", None)
         if current_session is not None:
             yield current_session
@@ -192,7 +197,7 @@ class SnippetService:
         self,
         *,
         tenant_id: str,
-        session: scoped_session,
+        session: Session,
         page: int = 1,
         limit: int = 20,
         keyword: str | None = None,
@@ -346,6 +351,7 @@ class SnippetService:
         *,
         session: Session,
         snippet: CustomizedSnippet,
+        account_id: str | None = None,
     ) -> bool:
         """
         Delete a snippet.
@@ -355,6 +361,52 @@ class SnippetService:
         :return: True if deleted successfully
         """
         SnippetService._delete_draft_variable_files(session=session, snippet=snippet)
+        owned_agents = session.scalars(
+            select(Agent).where(
+                Agent.tenant_id == snippet.tenant_id,
+                Agent.app_id == snippet.id,
+                Agent.scope == AgentScope.WORKFLOW_ONLY,
+                Agent.source.in_(WORKFLOW_ONLY_AGENT_SOURCES),
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        ).all()
+        now = datetime.now(UTC).replace(tzinfo=None)
+        backing_app_ids = {agent.backing_app_id for agent in owned_agents if agent.backing_app_id}
+        for agent in owned_agents:
+            agent.status = AgentStatus.ARCHIVED
+            agent.archived_by = account_id
+            agent.archived_at = now
+            agent.updated_by = account_id or agent.updated_by
+            agent.updated_at = now
+
+        if backing_app_ids:
+            session.execute(
+                delete(App)
+                .where(
+                    App.tenant_id == snippet.tenant_id,
+                    App.id.in_(backing_app_ids),
+                    App.mode == AppMode.AGENT,
+                )
+                .execution_options(synchronize_session=False)
+            )
+            tenant_id = snippet.tenant_id
+
+            def cleanup_backing_apps(_session: Session) -> None:
+                from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
+
+                for app_id in backing_app_ids:
+                    remove_app_and_related_data_task.delay(tenant_id=tenant_id, app_id=app_id)
+
+            event.listen(session, "after_commit", cleanup_backing_apps, once=True)
+
+        session.execute(
+            delete(WorkflowAgentNodeBinding)
+            .where(
+                WorkflowAgentNodeBinding.tenant_id == snippet.tenant_id,
+                WorkflowAgentNodeBinding.app_id == snippet.id,
+            )
+            .execution_options(synchronize_session=False)
+        )
         session.execute(
             delete(WorkflowDraftVariable)
             .where(WorkflowDraftVariable.app_id == snippet.id)
@@ -489,6 +541,7 @@ class SnippetService:
         unique_hash: str | None,
         account: Account,
         input_fields: list[dict] | None = None,
+        sync_agent_bindings: bool = True,
     ) -> Workflow:
         """
         Sync draft workflow for snippet.
@@ -541,9 +594,22 @@ class SnippetService:
             snippet.updated_by = account.id
             snippet.updated_at = datetime.now(UTC).replace(tzinfo=None)
 
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
         with self._session_scope() as session:
             session.add(workflow)
             session.add(snippet)
+            if sync_agent_bindings:
+                session.flush()
+                WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                    session=session,
+                    draft_workflow=workflow,
+                    account_id=account.id,
+                )
+                WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+                    session=session,
+                    draft_workflow=workflow,
+                )
             self._commit_if_owned(session)
         return workflow
 
@@ -583,6 +649,15 @@ class SnippetService:
 
         with self._session_scope() as session:
             session.add(draft_workflow)
+            session.flush()
+            from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+            WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
+                session=session,
+                source_workflow=source_workflow,
+                draft_workflow=draft_workflow,
+                account_id=account.id,
+            )
             self._commit_if_owned(session)
         return draft_workflow
 
@@ -614,6 +689,13 @@ class SnippetService:
 
         SnippetService.validate_snippet_graph_forbidden_nodes(draft_workflow.graph_dict)
 
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        WorkflowAgentPublishService.validate_agent_nodes_for_publish(
+            session=session,
+            draft_workflow=draft_workflow,
+        )
+
         # Create new published workflow
         workflow = Workflow.new(
             tenant_id=snippet.tenant_id,
@@ -627,10 +709,13 @@ class SnippetService:
             conversation_variables=[],
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             kind=WorkflowKind.SNIPPET.value,
-            marked_name="",
-            marked_comment="",
         )
         session.add(workflow)
+        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+            session=session,
+            draft_workflow=draft_workflow,
+            published_workflow=workflow,
+        )
 
         # Update snippet version
         snippet.version += 1

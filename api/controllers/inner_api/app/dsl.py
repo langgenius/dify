@@ -98,6 +98,7 @@ class EnterpriseAppDSLExport(Resource):
 
         data = AppDslService.export_dsl(
             app_model=app_model,
+            session=db.session(),
             include_secret=include_secret,
         )
 

@@ -3,25 +3,19 @@ import type { KnowledgeBaseNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
-import {
-  memo,
-  useMemo,
-} from 'react'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { DERIVED_MODEL_STATUS_BADGE_I18N } from '@/app/components/header/account-setting/model-provider-page/derive-model-status'
 import {
   useLanguage,
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import { consoleQuery } from '@/service/client'
 import { useEmbeddingModelStatus } from './hooks/use-embedding-model-status'
 import { useSettingsDisplay } from './hooks/use-settings-display'
-import {
-  IndexMethodEnum,
-} from './types'
+import { IndexMethodEnum } from './types'
 import {
   getKnowledgeBaseValidationIssue,
   getKnowledgeBaseValidationMessage,
@@ -34,11 +28,7 @@ type SettingRowProps = {
   warning?: boolean
 }
 
-const SettingRow = memo(({
-  label,
-  value,
-  warning = false,
-}: SettingRowProps) => {
+const SettingRow = memo(({ label, value, warning = false }: SettingRowProps) => {
   return (
     <div
       className={cn(
@@ -48,11 +38,12 @@ const SettingRow = memo(({
           : 'bg-workflow-block-parma-bg',
       )}
     >
-      <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">
-        {label}
-      </div>
+      <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">{label}</div>
       <div
-        className={cn('grow truncate text-right system-xs-medium', warning ? 'text-text-warning' : 'text-text-secondary')}
+        className={cn(
+          'grow truncate text-right system-xs-medium',
+          warning ? 'text-text-warning' : 'text-text-secondary',
+        )}
         title={value}
       >
         {value}
@@ -82,11 +73,11 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
   const retrievalRerankingEnable = retrievalModel?.reranking_enable
   const embeddingModelProvider = data.embedding_model_provider
   const { data: embeddingProviderModelList } = useQuery(
-    consoleQuery.modelProviders.models.queryOptions({
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
       input: { params: { provider: embeddingModelProvider || '' } },
       enabled: indexingTechnique === IndexMethodEnum.QUALIFIED && !!embeddingModelProvider,
       refetchOnWindowFocus: false,
-      select: response => response.data,
+      select: normalizeModelProviderModelsResponse,
     }),
   )
 
@@ -129,42 +120,60 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
   const validationIssueMessage = useMemo(() => {
     return getKnowledgeBaseValidationMessage(validationIssue, t)
   }, [validationIssue, t])
-  const { currentModel: currentEmbeddingModel, status: embeddingModelStatus } = useEmbeddingModelStatus({
-    embeddingModel: data.embedding_model,
-    embeddingModelProvider: data.embedding_model_provider,
-    embeddingModelList,
-  })
+  const { currentModel: currentEmbeddingModel, status: embeddingModelStatus } =
+    useEmbeddingModelStatus({
+      embeddingModel: data.embedding_model,
+      embeddingModelProvider: data.embedding_model_provider,
+      embeddingModelList,
+    })
 
   const chunksDisplayValue = useMemo(() => {
-    if (!data.index_chunk_variable_selector?.length)
-      return '-'
+    if (!data.index_chunk_variable_selector?.length) return '-'
 
     const chunkVar = data.index_chunk_variable_selector.at(-1)
     return chunkVar || '-'
   }, [data.index_chunk_variable_selector])
 
   const embeddingModelDisplay = useMemo(() => {
-    if (data.indexing_technique !== IndexMethodEnum.QUALIFIED)
-      return '-'
+    if (data.indexing_technique !== IndexMethodEnum.QUALIFIED) return '-'
 
     if (embeddingModelStatus === 'empty')
-      return t('detailPanel.configureModel', { ns: 'plugin' })
+      return t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })
 
     if (embeddingModelStatus !== 'active') {
-      const statusI18nKey = DERIVED_MODEL_STATUS_BADGE_I18N[embeddingModelStatus as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N]
-      if (statusI18nKey)
-        return t(statusI18nKey as 'modelProvider.selector.incompatible', { ns: 'common' })
+      const statusI18nKey =
+        DERIVED_MODEL_STATUS_BADGE_I18N[
+          embeddingModelStatus as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N
+        ]
+      if (statusI18nKey) return t(($) => $[statusI18nKey], { ns: 'common' })
     }
 
-    return currentEmbeddingModel?.label[language] || currentEmbeddingModel?.label.en_US || data.embedding_model || '-'
-  }, [currentEmbeddingModel, data.embedding_model, data.indexing_technique, embeddingModelStatus, language, t])
+    return (
+      currentEmbeddingModel?.label[language] ||
+      currentEmbeddingModel?.label.en_US ||
+      data.embedding_model ||
+      '-'
+    )
+  }, [
+    currentEmbeddingModel,
+    data.embedding_model,
+    data.indexing_technique,
+    embeddingModelStatus,
+    language,
+    t,
+  ])
 
-  const indexMethodDisplay = settingsDisplay[data.indexing_technique as keyof typeof settingsDisplay] || '-'
-  const retrievalMethodDisplay = settingsDisplay[data.retrieval_model?.search_method as keyof typeof settingsDisplay] || '-'
+  const indexMethodDisplay =
+    settingsDisplay[data.indexing_technique as keyof typeof settingsDisplay] || '-'
+  const retrievalMethodDisplay =
+    settingsDisplay[data.retrieval_model?.search_method as keyof typeof settingsDisplay] || '-'
 
-  const chunksWarning = validationIssue?.code === KnowledgeBaseValidationIssueCode.chunksVariableRequired
-  const indexMethodWarning = validationIssue?.code === KnowledgeBaseValidationIssueCode.indexMethodRequired
-  const embeddingWarning = data.indexing_technique === IndexMethodEnum.QUALIFIED && embeddingModelStatus !== 'active'
+  const chunksWarning =
+    validationIssue?.code === KnowledgeBaseValidationIssueCode.chunksVariableRequired
+  const indexMethodWarning =
+    validationIssue?.code === KnowledgeBaseValidationIssueCode.indexMethodRequired
+  const embeddingWarning =
+    data.indexing_technique === IndexMethodEnum.QUALIFIED && embeddingModelStatus !== 'active'
   const showEmbeddingModelRow = data.indexing_technique === IndexMethodEnum.QUALIFIED
   const retrievalWarning = !!(validationIssue && RETRIEVAL_WARNING_CODES.has(validationIssue.code))
 
@@ -173,7 +182,10 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
       <div className="mb-1 space-y-0.5 px-3 py-1">
         <div className="flex h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5">
           <span className="mr-1 size-[4px] shrink-0 rounded-xs bg-text-warning-secondary" />
-          <div className="grow truncate system-xs-medium text-text-warning" title={validationIssueMessage}>
+          <div
+            className="grow truncate system-xs-medium text-text-warning"
+            title={validationIssueMessage}
+          >
             {validationIssueMessage}
           </div>
         </div>
@@ -184,24 +196,24 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
   return (
     <div className="mb-1 space-y-0.5 px-3 py-1">
       <SettingRow
-        label={t('nodes.knowledgeBase.chunksInput', { ns: 'workflow' })}
+        label={t(($) => $['nodes.knowledgeBase.chunksInput'], { ns: 'workflow' })}
         value={chunksWarning ? validationIssueMessage : chunksDisplayValue}
         warning={chunksWarning}
       />
       <SettingRow
-        label={t('stepTwo.indexMode', { ns: 'datasetCreation' })}
+        label={t(($) => $['stepTwo.indexMode'], { ns: 'datasetCreation' })}
         value={indexMethodWarning ? validationIssueMessage : indexMethodDisplay}
         warning={indexMethodWarning}
       />
       {showEmbeddingModelRow && (
         <SettingRow
-          label={t('form.embeddingModel', { ns: 'datasetSettings' })}
+          label={t(($) => $['form.embeddingModel'], { ns: 'datasetSettings' })}
           value={embeddingModelDisplay}
           warning={embeddingWarning}
         />
       )}
       <SettingRow
-        label={t('form.retrievalSetting.method', { ns: 'datasetSettings' })}
+        label={t(($) => $['form.retrievalSetting.method'], { ns: 'datasetSettings' })}
         value={retrievalWarning ? validationIssueMessage : retrievalMethodDisplay}
         warning={retrievalWarning}
       />

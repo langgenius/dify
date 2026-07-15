@@ -14,6 +14,7 @@ from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
 )
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -25,6 +26,7 @@ from services.app_ref_service import MessageRef
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
+    SpeechToTextDisabledServiceError,
 )
 
 
@@ -183,6 +185,22 @@ class TestChatAudioApi:
             ),
         ):
             with pytest.raises(audio_module.ProviderNotSupportSpeechToTextError):
+                self.method(installed_app)
+
+    def test_speech_to_text_disabled(self, app: Flask, installed_app, audio_file):
+        with (
+            app.test_request_context(
+                "/",
+                data={"file": audio_file},
+                content_type="multipart/form-data",
+            ),
+            patch.object(
+                audio_module.AudioService,
+                "transcript_asr",
+                side_effect=SpeechToTextDisabledServiceError(),
+            ),
+        ):
+            with pytest.raises(SpeechToTextDisabledError):
                 self.method(installed_app)
 
     def test_provider_not_initialized(self, app: Flask, installed_app, audio_file):

@@ -3,14 +3,15 @@ import { readFile } from 'node:fs/promises'
 import { request } from '@playwright/test'
 import { authStatePath } from '../fixtures/auth'
 import { apiURL } from '../test-env'
+import { assertE2EResourceName, createE2EResourceName } from './naming'
 
 type StorageState = {
-  cookies: Array<{ name: string, value: string }>
+  cookies: Array<{ name: string; value: string }>
 }
 
 export async function createApiContext() {
   const state = JSON.parse(await readFile(authStatePath, 'utf8')) as StorageState
-  const csrfToken = state.cookies.find(c => c.name.endsWith('csrf_token'))?.value ?? ''
+  const csrfToken = state.cookies.find((c) => c.name.endsWith('csrf_token'))?.value ?? ''
 
   return request.newContext({
     baseURL: apiURL,
@@ -20,8 +21,7 @@ export async function createApiContext() {
 }
 
 export async function expectApiResponseOK(response: APIResponse, action: string): Promise<void> {
-  if (response.ok())
-    return
+  if (response.ok()) return
 
   const body = await response.text().catch(() => '')
   throw new Error(`${action} failed with ${response.status()} ${response.statusText()}: ${body}`)
@@ -32,7 +32,23 @@ export type AppSeed = {
   name: string
 }
 
-export async function createTestApp(name: string, mode = 'workflow'): Promise<AppSeed> {
+export type WorkflowDraft = {
+  graph: {
+    edges: Array<Record<string, unknown>>
+    nodes: Array<{
+      data?: Record<string, unknown>
+      id: string
+      type: string
+    }>
+    viewport?: Record<string, unknown>
+  }
+}
+
+export async function createTestApp(
+  name = createE2EResourceName('App'),
+  mode = 'workflow',
+): Promise<AppSeed> {
+  assertE2EResourceName(name, 'App')
   const ctx = await createApiContext()
   try {
     const response = await ctx.post('/console/api/apps', {
@@ -44,10 +60,21 @@ export async function createTestApp(name: string, mode = 'workflow'): Promise<Ap
         icon_background: '#FFEAD5',
       },
     })
+    await expectApiResponseOK(response, `Create ${mode} app ${name}`)
     const body = (await response.json()) as AppSeed
     return body
+  } finally {
+    await ctx.dispose()
   }
-  finally {
+}
+
+export async function getWorkflowDraft(appId: string): Promise<WorkflowDraft> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/apps/${appId}/workflows/draft`)
+    await expectApiResponseOK(response, `Get workflow draft for ${appId}`)
+    return (await response.json()) as WorkflowDraft
+  } finally {
     await ctx.dispose()
   }
 }
@@ -74,8 +101,52 @@ export async function syncMinimalWorkflowDraft(appId: string): Promise<void> {
         conversation_variables: [],
       },
     })
+  } finally {
+    await ctx.dispose()
   }
-  finally {
+}
+
+export async function syncAgentV2WorkflowDraft(appId: string, agentId: string): Promise<void> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.post(`/console/api/apps/${appId}/workflows/draft`, {
+      data: {
+        graph: {
+          nodes: [
+            {
+              id: 'start',
+              type: 'custom',
+              position: { x: 80, y: 282 },
+              data: { id: 'start', type: 'start', title: 'Start', variables: [] },
+            },
+            {
+              id: 'agent-v2',
+              type: 'custom',
+              position: { x: 420, y: 282 },
+              data: {
+                id: 'agent-v2',
+                type: 'agent',
+                title: 'Agent',
+                desc: '',
+                agent_binding: {
+                  binding_type: 'roster_agent',
+                  agent_id: agentId,
+                },
+                agent_node_kind: 'dify_agent',
+                version: '2',
+              },
+            },
+          ],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+        features: {},
+        environment_variables: [],
+        conversation_variables: [],
+      },
+    })
+    await expectApiResponseOK(response, `Sync Agent v2 workflow draft for ${appId}`)
+  } finally {
     await ctx.dispose()
   }
 }
@@ -83,9 +154,9 @@ export async function syncMinimalWorkflowDraft(appId: string): Promise<void> {
 export async function deleteTestApp(id: string): Promise<void> {
   const ctx = await createApiContext()
   try {
-    await ctx.delete(`/console/api/apps/${id}`)
-  }
-  finally {
+    const response = await ctx.delete(`/console/api/apps/${id}`)
+    await expectApiResponseOK(response, `Delete app ${id}`)
+  } finally {
     await ctx.dispose()
   }
 }
@@ -132,8 +203,7 @@ export async function syncRunnableWorkflowDraft(appId: string): Promise<void> {
         conversation_variables: [],
       },
     })
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -144,15 +214,14 @@ export async function publishWorkflowApp(appId: string): Promise<void> {
     await ctx.post(`/console/api/apps/${appId}/workflows/publish`, {
       data: { marked_name: '', marked_comment: '' },
     })
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
 
 export type AppDetailWithSite = {
   mode?: string
-  site: { access_token: string, app_base_url: string, enable_site: boolean }
+  site: { access_token: string; app_base_url: string; enable_site: boolean }
 }
 
 export function getAppSiteURL({ mode, site }: AppDetailWithSite): string {
@@ -178,8 +247,7 @@ export async function setAppSiteEnabled(
     const detailResponse = await ctx.get(`/console/api/apps/${appId}`)
     await expectApiResponseOK(detailResponse, `Get app site detail for ${appId}`)
     return (await detailResponse.json()) as AppDetailWithSite
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }

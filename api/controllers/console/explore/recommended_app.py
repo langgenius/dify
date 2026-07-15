@@ -3,7 +3,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, Field, RootModel, computed_field, field_validator
 
 from constants.languages import languages
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -80,15 +80,23 @@ class RecommendedAppDetailResponse(ResponseModel):
     can_trial: bool | None = None
 
 
+class RecommendedAppDetailNullableResponse(RootModel[RecommendedAppDetailResponse | None]):
+    pass
+
+
 register_schema_models(
     console_ns,
     RecommendedAppsQuery,
+)
+register_response_schema_models(
+    console_ns,
     RecommendedAppInfoResponse,
     RecommendedAppResponse,
     RecommendedAppListResponse,
     LearnDifyAppListResponse,
+    RecommendedAppDetailResponse,
+    RecommendedAppDetailNullableResponse,
 )
-register_response_schema_models(console_ns, RecommendedAppDetailResponse)
 
 
 def _resolve_language(language: str | None, user: Account) -> str:
@@ -112,7 +120,7 @@ class RecommendedAppListApi(Resource):
         language_prefix = _resolve_language(args.language, current_user)
 
         return RecommendedAppListResponse.model_validate(
-            RecommendedAppService.get_recommended_apps_and_categories(db.session, language_prefix),
+            RecommendedAppService.get_recommended_apps_and_categories(language_prefix, session=db.session()),
             from_attributes=True,
         ).model_dump(mode="json")
 
@@ -129,15 +137,15 @@ class LearnDifyAppListApi(Resource):
         language_prefix = _resolve_language(args.language, current_user)
 
         return LearnDifyAppListResponse.model_validate(
-            RecommendedAppService.get_learn_dify_apps(db.session, language_prefix),
+            RecommendedAppService.get_learn_dify_apps(language_prefix, session=db.session()),
             from_attributes=True,
         ).model_dump(mode="json")
 
 
 @console_ns.route("/explore/apps/<uuid:app_id>")
 class RecommendedAppApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[RecommendedAppDetailResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RecommendedAppDetailNullableResponse.__name__])
     @login_required
     @account_initialization_required
     def get(self, app_id: UUID):
-        return RecommendedAppService.get_recommend_app_detail(db.session, str(app_id))
+        return RecommendedAppService.get_recommend_app_detail(str(app_id), session=db.session())

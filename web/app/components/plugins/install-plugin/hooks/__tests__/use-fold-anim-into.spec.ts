@@ -13,8 +13,9 @@ describe('useFoldAnimInto', () => {
 
   afterEach(() => {
     vi.useRealTimers()
-    document.querySelectorAll('.install-modal, #plugin-task-trigger, .plugins-nav-button')
-      .forEach(el => el.remove())
+    document
+      .querySelectorAll('.install-modal, #plugin-task-trigger, .plugins-nav-button')
+      .forEach((el) => el.remove())
   })
 
   it('should return modalClassName and functions', async () => {

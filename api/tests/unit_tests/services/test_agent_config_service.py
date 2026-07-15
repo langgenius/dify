@@ -75,7 +75,9 @@ def _zip_bytes(members: dict[str, bytes]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
         for name, payload in members.items():
-            archive.writestr(name, payload)
+            zip_info = zipfile.ZipInfo(filename=name)
+            zip_info.date_time = (1980, 1, 1, 0, 0, 0)
+            archive.writestr(zip_info, payload)
     return buffer.getvalue()
 
 
@@ -340,6 +342,38 @@ def test_push_file_for_console_uses_service_owned_upload_lookup_and_naming() -> 
     session.commit.assert_called_once()
 
 
+def test_upload_skill_for_console_maps_package_validation_failures() -> None:
+    session = MagicMock()
+    service = AgentConfigService()
+    target = _target(kind=AgentConfigVersionKind.DRAFT, writable=False)
+    message = "skill package must contain exactly one skill; multiple skill folders in one archive are not supported"
+
+    with (
+        patch(f"{MODULE}.session_factory.create_session", return_value=_session_cm(session)),
+        patch.object(service, "_resolve_target_in_session", return_value=target),
+        patch.object(
+            service._skill_normalizer,
+            "normalize",
+            side_effect=SkillPackageError("files_outside_skill_root", message, status_code=400),
+        ),
+    ):
+        with pytest.raises(AgentConfigServiceError, match="exactly one skill") as exc_info:
+            service.upload_skill_for_console(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                user_id=USER,
+                config_version_id="draft-1",
+                config_version_kind=AgentConfigVersionKind.DRAFT,
+                content=b"bad-archive",
+                filename="skills.zip",
+            )
+
+    assert exc_info.value.code == "files_outside_skill_root"
+    assert exc_info.value.message == message
+    assert exc_info.value.status_code == 400
+    session.commit.assert_not_called()
+
+
 def test_apply_skill_updates_rejects_non_tool_file_refs() -> None:
     service = AgentConfigService()
 
@@ -418,8 +452,8 @@ def test_apply_env_text_supports_delete_comments_export_and_keeps_unmentioned_va
 @pytest.mark.parametrize(
     "archive_bytes",
     [
-        b"not-a-zip-archive",
-        _zip_bytes({"README.md": b"missing skill md"}),
+        pytest.param(b"not-a-zip-archive", id="not-a-zip-archive"),
+        pytest.param(_zip_bytes({"README.md": b"missing skill md"}), id="missing-skill-md"),
     ],
 )
 def test_inspect_skill_maps_invalid_archives_to_service_errors(archive_bytes: bytes) -> None:

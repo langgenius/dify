@@ -203,6 +203,7 @@ def _agent_thought() -> MessageAgentThought:
         tool="tool",
         tool_labels_str="{}",
         tool_input="input",
+        answer="answer",
         message_files="[]",
     )
     thought.id = "thought"
@@ -678,7 +679,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert agent_response.answer == "agent"
         assert isinstance(responses[-1], ErrorStreamResponse)
         assert isinstance(responses[-1].err, ValueError)
-        assert pipeline._task_state.llm_result.message.content == "annotatedagent"
+        assert pipeline._task_state.llm_result.message.content == "annotated"
 
     def test_agent_thought_to_stream_response_returns_payload(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
@@ -720,6 +721,58 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert response is not None
         assert response.id == "thought"
+        assert response.thought == "t"
+
+    def test_agent_thought_to_stream_response_normalizes_null_display_fields(self, monkeypatch: pytest.MonkeyPatch):
+        conversation = _make_conversation(AppMode.CHAT)
+        message = _make_message()
+
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            queue_manager=_FakeQueueManager(),
+            conversation=conversation,
+            message=message,
+            stream=True,
+        )
+
+        agent_thought = _agent_thought()
+        agent_thought.thought = None
+        agent_thought.answer = None
+        agent_thought.observation = None
+        agent_thought.tool = None
+        agent_thought.tool_input = None
+        agent_thought.message_files = None
+
+        class _Session:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def scalar(self, *args, **kwargs):
+                return agent_thought
+
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session",
+            _Session,
+        )
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
+            _FakeDb(),
+        )
+
+        response = pipeline._agent_thought_to_stream_response(QueueAgentThoughtEvent(agent_thought_id="thought"))
+
+        assert response is not None
+        assert response.thought == ""
+        assert response.observation == ""
+        assert response.tool == ""
+        assert response.tool_input == ""
+        assert response.model_dump(mode="json")["message_files"] == []
 
     def test_process_routes_to_stream_and_starts_conversation_name_generation(self):
         conversation = _make_conversation(AppMode.CHAT)
@@ -1280,7 +1333,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         usage_metadata = cast(dict[str, object], response.metadata["usage"])
         assert usage_metadata["prompt_tokens"] == 1
 
-    def test_record_files_returns_none_when_message_has_no_files(self, monkeypatch: pytest.MonkeyPatch):
+    def test_record_files_returns_empty_list_when_message_has_no_files(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
         pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -1316,7 +1369,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         response = pipeline._message_end_to_stream_response()
 
-        assert response.files is None
+        assert response.files == []
 
     def test_record_files_handles_local_fallback_and_tool_url_variants(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)

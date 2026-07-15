@@ -3,12 +3,13 @@ from typing import Any
 from flask_restx import (  # type: ignore
     Resource,  # type: ignore
 )
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel
 
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
+from extensions.ext_database import db
 from libs.login import login_required
 from models import Account
 from models.dataset import Pipeline
@@ -21,18 +22,13 @@ class Parser(BaseModel):
     credential_id: str | None = None
 
 
-class DataSourceContentPreviewResponse(RootModel[Any]):
-    root: Any
-
-
 register_schema_models(console_ns, Parser)
-register_response_schema_models(console_ns, DataSourceContentPreviewResponse)
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview")
 class DataSourceContentPreviewApi(Resource):
     @console_ns.expect(console_ns.models[Parser.__name__])
-    @console_ns.response(200, "Success", console_ns.models[DataSourceContentPreviewResponse.__name__])
+    @console_ns.response(200, "Success")
     @setup_required
     @login_required
     @account_initialization_required
@@ -46,7 +42,7 @@ class DataSourceContentPreviewApi(Resource):
 
         inputs = args.inputs
         datasource_type = args.datasource_type
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session())
         preview_content = rag_pipeline_service.run_datasource_node_preview(
             pipeline=pipeline,
             node_id=node_id,

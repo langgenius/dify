@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import ANY, Mock
@@ -8,7 +9,6 @@ from werkzeug.exceptions import NotFound
 
 from controllers.console.workspace import snippets as snippets_module
 from models.account import Account, TenantAccountRole
-from models.snippet import CustomizedSnippet
 from services.snippet_dsl_service import ImportStatus, SnippetImportInfo
 
 
@@ -39,35 +39,63 @@ def _account(account_id: str = "account-1") -> Account:
     return account
 
 
-def _snippet(**overrides) -> CustomizedSnippet:
+def _snippet(**overrides) -> SimpleNamespace:
     data = {
         "id": "snippet-1",
         "tenant_id": "tenant-1",
         "name": "Snippet",
         "description": "Description",
         "type": snippets_module.SnippetType.NODE,
-        "created_by": "account-1",
+        "version": 1,
+        "use_count": 0,
+        "is_published": False,
+        "icon_info": None,
+        "graph_dict": {},
+        "input_fields_list": [],
+        "tags": [],
+        "created_by": None,
+        "author_name": None,
+        "created_by_account": None,
+        "created_at": datetime.fromtimestamp(1_704_067_200, UTC),
+        "updated_by": None,
+        "updated_by_account": None,
+        "updated_at": datetime.fromtimestamp(1_704_153_600, UTC),
     }
     data.update(overrides)
-    return CustomizedSnippet(**data)
+    return SimpleNamespace(**data)
 
 
-def test_normalize_snippet_list_query_args_sorts_indexed_values():
-    query_args = snippets_module.MultiDict(
-        [
-            ("tag_ids[1]", "tag-b"),
-            ("tag_ids[0]", "tag-a"),
-            ("creator_ids[1]", "account-b"),
-            ("creator_ids[0]", "account-a"),
-            ("keyword", "search"),
-        ]
-    )
+def test_snippet_list_query_reads_repeated_values(app: Flask):
+    tag_id = "11111111-1111-1111-1111-111111111111"
+    other_tag_id = "22222222-2222-2222-2222-222222222222"
 
-    assert snippets_module._normalize_snippet_list_query_args(query_args) == {
-        "tag_ids": ["tag-a", "tag-b"],
-        "creators": ["account-a", "account-b"],
-        "keyword": "search",
-    }
+    with app.test_request_context(
+        f"/workspaces/current/customized-snippets?tag_ids={tag_id}&tag_ids={other_tag_id}"
+        "&creators=account-a&creators=account-b&keyword=search"
+    ):
+        query = snippets_module._snippet_list_query_from_request()
+
+    assert query.tag_ids == [tag_id, other_tag_id]
+    assert query.creators == ["account-a", "account-b"]
+    assert query.keyword == "search"
+
+
+def test_snippet_list_query_reads_creator_ids_alias(app: Flask):
+    with app.test_request_context(
+        "/workspaces/current/customized-snippets?creator_ids=account-a&creator_ids=account-b"
+    ):
+        query = snippets_module._snippet_list_query_from_request()
+
+    assert query.creators == ["account-a", "account-b"]
+
+
+def test_snippet_list_query_ignores_indexed_values(app: Flask):
+    tag_id = "11111111-1111-1111-1111-111111111111"
+    with app.test_request_context(f"/workspaces/current/customized-snippets?tag_ids[0]={tag_id}&creators[0]=account-a"):
+        query = snippets_module._snippet_list_query_from_request()
+
+    assert query.tag_ids is None
+    assert query.creators is None
 
 
 def test_list_snippets_returns_pagination(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -75,19 +103,35 @@ def test_list_snippets_returns_pagination(app: Flask, monkeypatch: pytest.Monkey
     tag_id = "11111111-1111-1111-1111-111111111111"
     get_snippets = Mock(return_value=(snippets, 1, False))
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippets", get_snippets)
-    monkeypatch.setattr(snippets_module, "marshal", Mock(return_value=[{"id": "snippet-1"}]))
 
     api = snippets_module.CustomizedSnippetsApi()
     handler = unwrap(api.get)
 
     with app.test_request_context(
-        f"/workspaces/current/customized-snippets?page=2&limit=10&tag_ids[0]={tag_id}&creator_ids[0]=account-2"
+        f"/workspaces/current/customized-snippets?page=2&limit=10&tag_ids={tag_id}&creators=account-2"
     ):
         response, status_code = handler(api, "tenant-1")
 
     assert status_code == 200
     assert response == {
-        "data": [{"id": "snippet-1"}],
+        "data": [
+            {
+                "id": "snippet-1",
+                "name": "Snippet",
+                "description": "Description",
+                "type": snippets_module.SnippetType.NODE.value,
+                "version": 1,
+                "use_count": 0,
+                "is_published": False,
+                "icon_info": None,
+                "tags": [],
+                "created_by": None,
+                "author_name": None,
+                "created_at": 1_704_067_200,
+                "updated_by": None,
+                "updated_at": 1_704_153_600,
+            }
+        ],
         "page": 2,
         "limit": 10,
         "total": 1,
@@ -124,7 +168,6 @@ def test_create_snippet_defaults_unknown_type_and_returns_created(app: Flask, mo
             )
         ),
     )
-    monkeypatch.setattr(snippets_module, "marshal", Mock(return_value={"id": "snippet-1"}))
 
     api = snippets_module.CustomizedSnippetsApi()
     handler = unwrap(api.post)
@@ -137,7 +180,8 @@ def test_create_snippet_defaults_unknown_type_and_returns_created(app: Flask, mo
         response, status_code = handler(api, "tenant-1", user)
 
     assert status_code == 201
-    assert response == {"id": "snippet-1"}
+    assert response["id"] == "snippet-1"
+    assert response["type"] == snippets_module.SnippetType.NODE.value
     assert create_snippet.call_args.kwargs["snippet_type"] == snippets_module.SnippetType.NODE
 
 
@@ -184,7 +228,6 @@ def test_get_snippet_detail_raises_when_missing(app: Flask, monkeypatch: pytest.
 def test_get_snippet_detail_returns_snippet(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = _snippet()
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
-    monkeypatch.setattr(snippets_module, "marshal", Mock(return_value={"id": "snippet-1"}))
 
     api = snippets_module.CustomizedSnippetDetailApi()
     handler = unwrap(api.get)
@@ -193,7 +236,8 @@ def test_get_snippet_detail_returns_snippet(app: Flask, monkeypatch: pytest.Monk
         response, status_code = handler(api, "tenant-1", snippet_id="snippet-1")
 
     assert status_code == 200
-    assert response == {"id": "snippet-1"}
+    assert response["id"] == "snippet-1"
+    assert response["name"] == "Snippet"
 
 
 def test_patch_snippet_returns_400_for_empty_payload(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -230,7 +274,6 @@ def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.Monke
     monkeypatch.setattr(snippets_module.SnippetService, "update_snippet", update_snippet)
     monkeypatch.setattr(snippets_module, "Session", SessionContext)
     monkeypatch.setattr(snippets_module, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(snippets_module, "marshal", Mock(return_value={"id": "snippet-1", "name": "New"}))
 
     api = snippets_module.CustomizedSnippetDetailApi()
     handler = unwrap(api.patch)
@@ -243,7 +286,8 @@ def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.Monke
         response, status_code = handler(api, "tenant-1", user, snippet_id="snippet-1")
 
     assert status_code == 200
-    assert response == {"id": "snippet-1", "name": "New"}
+    assert response["id"] == "snippet-1"
+    assert response["name"] == "New"
     update_snippet.assert_called_once()
     assert update_snippet.call_args.kwargs["data"] == {
         "name": "New",
@@ -254,6 +298,7 @@ def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.Monke
 
 def test_delete_snippet_deletes_and_commits(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = _snippet()
+    user = _account()
     session = SimpleNamespace(merge=Mock(return_value=snippet), commit=Mock())
     delete_snippet = Mock()
 
@@ -270,11 +315,11 @@ def test_delete_snippet_deletes_and_commits(app: Flask, monkeypatch: pytest.Monk
     handler = unwrap(api.delete)
 
     with app.test_request_context("/workspaces/current/customized-snippets/snippet-1", method="DELETE"):
-        response, status_code = handler(api, "tenant-1", snippet_id="snippet-1")
+        response, status_code = handler(api, "tenant-1", user, snippet_id="snippet-1")
 
     assert status_code == 204
     assert response == ""
-    delete_snippet.assert_called_once_with(session=session, snippet=snippet)
+    delete_snippet.assert_called_once_with(session=session, snippet=snippet, account_id=user.id)
     session.commit.assert_called_once()
 
 
@@ -313,7 +358,7 @@ def test_import_snippet_returns_202_for_pending_confirmation(app: Flask, monkeyp
     user = _account("account-1")
     result = SnippetImportInfo(id="import-1", status=ImportStatus.PENDING, imported_dsl_version="999.0.0")
     import_snippet = Mock(return_value=result)
-    session = SimpleNamespace(commit=Mock())
+    session = SimpleNamespace(commit=Mock(), rollback=Mock())
 
     class _SessionContext:
         def __init__(self, engine):
@@ -341,19 +386,20 @@ def test_import_snippet_returns_202_for_pending_confirmation(app: Flask, monkeyp
         method="POST",
         json={"mode": "yaml-content", "yaml_content": "kind: snippet"},
     ):
-        response, status_code = handler(api, user)
+        response, status_code = handler(api, session, user)
 
     assert status_code == 202
     assert response["status"] == ImportStatus.PENDING.value
     import_snippet.assert_called_once()
-    session.commit.assert_called_once()
+    session.rollback.assert_not_called()
+    session.commit.assert_not_called()
 
 
 def test_import_snippet_returns_400_for_failed_import(app: Flask, monkeypatch: pytest.MonkeyPatch):
     user = _account("account-1")
     result = SnippetImportInfo(id="import-1", status=ImportStatus.FAILED, error="Invalid DSL")
     import_snippet = Mock(return_value=result)
-    session = SimpleNamespace(commit=Mock())
+    session = SimpleNamespace(commit=Mock(), rollback=Mock())
 
     class SessionContext(_SessionContext):
         def __init__(self, engine, *args, **kwargs):
@@ -375,18 +421,19 @@ def test_import_snippet_returns_400_for_failed_import(app: Flask, monkeypatch: p
         method="POST",
         json={"mode": "yaml-content", "yaml_content": "kind: snippet"},
     ):
-        response, status_code = handler(api, user)
+        response, status_code = handler(api, session, user)
 
     assert status_code == 400
     assert response["error"] == "Invalid DSL"
-    session.commit.assert_called_once()
+    session.rollback.assert_not_called()
+    session.commit.assert_not_called()
 
 
 def test_import_confirm_returns_200_for_completed_import(app: Flask, monkeypatch: pytest.MonkeyPatch):
     user = _account("account-1")
     result = SnippetImportInfo(id="import-1", status=ImportStatus.COMPLETED, snippet_id="snippet-1")
     confirm_import = Mock(return_value=result)
-    session = SimpleNamespace(commit=Mock())
+    session = SimpleNamespace(commit=Mock(), rollback=Mock())
 
     class SessionContext(_SessionContext):
         def __init__(self, engine, *args, **kwargs):
@@ -407,12 +454,12 @@ def test_import_confirm_returns_200_for_completed_import(app: Flask, monkeypatch
         "/workspaces/current/customized-snippets/imports/import-1/confirm",
         method="POST",
     ):
-        response, status_code = handler(api, user, import_id="import-1")
+        response, status_code = handler(api, session, user, import_id="import-1")
 
     assert status_code == 200
     assert response["snippet_id"] == "snippet-1"
     confirm_import.assert_called_once_with(import_id="import-1", account=user)
-    session.commit.assert_called_once()
+    session.commit.assert_not_called()
 
 
 def test_check_dependencies_raises_when_snippet_missing(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -428,9 +475,7 @@ def test_check_dependencies_raises_when_snippet_missing(app: Flask, monkeypatch:
 
 def test_check_dependencies_returns_dependency_result(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = _snippet()
-    check_dependencies = Mock(
-        return_value=SimpleNamespace(model_dump=Mock(return_value={"dependencies": [], "missing_dependencies": []}))
-    )
+    check_dependencies = Mock(return_value=SimpleNamespace(model_dump=Mock(return_value={"leaked_dependencies": []})))
     session = SimpleNamespace()
 
     class SessionContext(_SessionContext):
@@ -453,7 +498,7 @@ def test_check_dependencies_returns_dependency_result(app: Flask, monkeypatch: p
         response, status_code = handler(api, "tenant-1", snippet_id="snippet-1")
 
     assert status_code == 200
-    assert response == {"dependencies": [], "missing_dependencies": []}
+    assert response == {"leaked_dependencies": []}
     check_dependencies.assert_called_once_with(snippet=snippet)
 
 

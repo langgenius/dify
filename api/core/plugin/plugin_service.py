@@ -4,6 +4,8 @@ This module owns plugin daemon management calls that are shared by API services
 and core runtimes. Plugin model provider discovery is cached here, alongside
 plugin install, uninstall, and upgrade invalidation, so all cache mutations for
 plugin-owned provider metadata stay tenant-scoped and in one place.
+Provider cache payloads may be stored as prefixed zstd bytes; readers also
+accept legacy plain JSON payloads for rolling upgrades and existing Redis keys.
 
 The console plugin list also normalizes endpoint setup counters against live
 endpoint records. Some plugin daemon builds return stale ``endpoints_*``
@@ -14,10 +16,12 @@ metadata.
 
 import logging
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from mimetypes import guess_type
-from typing import Any, ClassVar
+from typing import Literal, Protocol
 
+import zstandard
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from redis import RedisError
 from redis.exceptions import LockError
@@ -68,14 +72,18 @@ logger = logging.getLogger(__name__)
 _provider_entities_adapter: TypeAdapter[list[ProviderEntity]] = TypeAdapter(list[ProviderEntity])
 
 
-class PluginService:
-    _plugin_model_providers_memory_cache: ClassVar[dict[str, tuple[int, float, tuple[ProviderEntity, ...]]]] = {}
+class _RedisLock(Protocol):
+    def acquire(self, *, blocking: bool = True, blocking_timeout: float | None = None) -> bool: ...
 
+    def release(self) -> None: ...
+
+
+class PluginService:
     class LatestPluginCache(BaseModel):
         plugin_id: str
         version: str
         unique_identifier: str
-        status: str
+        status: Literal["active", "deleted"]
         deprecated_reason: str
         alternative_plugin_id: str
 
@@ -84,9 +92,12 @@ class PluginService:
     PLUGIN_MODEL_PROVIDERS_REDIS_KEY_PREFIX = "plugin_model_providers:tenant_id:"
     PLUGIN_MODEL_PROVIDERS_GENERATION_REDIS_KEY_PREFIX = "plugin_model_providers_generation:tenant_id:"
     PLUGIN_MODEL_PROVIDERS_LOCK_REDIS_KEY_PREFIX = "plugin_model_providers_refresh_lock:tenant_id:"
+    PLUGIN_MODEL_PROVIDERS_REMOTE_DEBUG_REDIS_KEY_PREFIX = "plugin_model_providers_remote_debug:tenant_id:"
     PLUGIN_MODEL_PROVIDERS_LOCK_TTL = 30
     PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT = 2.0
     PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL = 0.05
+    PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX = b"\x00dify-plugin-model-providers-zstd-v1:"
+    PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_MIN_BYTES = 64 * 1024
     PLUGIN_INSTALL_TASK_TERMINAL_STATUSES = (PluginInstallTaskStatus.Success, PluginInstallTaskStatus.Failed)
     # Mirror the detail-panel endpoint query size so list reconciliation and
     # the visible endpoint drawer exercise the same daemon pagination path.
@@ -106,6 +117,10 @@ class PluginService:
     @classmethod
     def _get_plugin_model_providers_lock_key(cls, tenant_id: str, generation: int) -> str:
         return f"{cls.PLUGIN_MODEL_PROVIDERS_LOCK_REDIS_KEY_PREFIX}{tenant_id}:generation:{generation}"
+
+    @classmethod
+    def _get_plugin_model_providers_remote_debug_cache_key(cls, tenant_id: str) -> str:
+        return f"{cls.PLUGIN_MODEL_PROVIDERS_REMOTE_DEBUG_REDIS_KEY_PREFIX}{tenant_id}"
 
     @staticmethod
     def _get_provider_short_name_alias(provider: PluginModelProviderEntity) -> str:
@@ -138,8 +153,25 @@ class PluginService:
         return declaration
 
     @classmethod
-    def _copy_provider_entities(cls, providers: Sequence[ProviderEntity]) -> tuple[ProviderEntity, ...]:
-        return tuple(provider.model_copy(deep=True) for provider in providers)
+    def _encode_plugin_model_providers_cache_payload(cls, payload: bytes) -> bytes:
+        if len(payload) < cls.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_MIN_BYTES:
+            return payload
+
+        return cls.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX + zstandard.compress(payload, level=1)
+
+    @classmethod
+    def _decode_plugin_model_providers_cache_payload(cls, payload: bytes | bytearray | str) -> bytes | bytearray | str:
+        if isinstance(payload, str):
+            return payload
+
+        prefix = cls.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX
+        if not payload.startswith(prefix):
+            return payload
+
+        try:
+            return zstandard.decompress(payload[len(prefix) :])
+        except zstandard.ZstdError as exc:
+            raise ValueError("Invalid compressed plugin model providers cache payload.") from exc
 
     @classmethod
     def _load_plugin_model_providers_generation(cls, tenant_id: str) -> int | None:
@@ -172,62 +204,13 @@ class PluginService:
             return None
 
     @classmethod
-    def _load_in_memory_plugin_model_providers(
-        cls, memory_cache_key: str, generation: int
-    ) -> tuple[ProviderEntity, ...] | None:
-        cached_entry = cls._plugin_model_providers_memory_cache.get(memory_cache_key)
-        if cached_entry is None:
-            return None
-
-        cached_generation, expires_at, providers = cached_entry
-        if cached_generation != generation or time.monotonic() >= expires_at:
-            cls._plugin_model_providers_memory_cache.pop(memory_cache_key, None)
-            return None
-
-        return cls._copy_provider_entities(providers)
-
-    @classmethod
-    def _store_in_memory_plugin_model_providers(
-        cls, memory_cache_key: str, generation: int, providers: Sequence[ProviderEntity]
-    ) -> None:
-        ttl = dify_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL
-        if ttl <= 0:
-            cls._plugin_model_providers_memory_cache.pop(memory_cache_key, None)
-            return
-
-        cls._plugin_model_providers_memory_cache[memory_cache_key] = (
-            generation,
-            time.monotonic() + ttl,
-            cls._copy_provider_entities(providers),
-        )
-
-    @classmethod
-    def _load_cached_plugin_model_providers(
-        cls, tenant_id: str, *, client: PluginModelClient | None = None
-    ) -> tuple[ProviderEntity, ...] | None:
-        generation = cls._load_plugin_model_providers_generation(tenant_id)
-        cached_providers, _ = cls._load_cached_plugin_model_providers_for_generation(tenant_id, generation)
-        return cached_providers
-
-    @classmethod
     def _load_cached_plugin_model_providers_for_generation(
         cls, tenant_id: str, generation: int | None
     ) -> tuple[tuple[ProviderEntity, ...] | None, bool]:
-        if generation is not None:
-            in_memory_cached_providers = cls._load_in_memory_plugin_model_providers(tenant_id, generation)
-            if in_memory_cached_providers is not None:
-                return in_memory_cached_providers, True
-
         if generation is None:
             return None, False
 
-        cache_keys = []
-        cache_keys.append(cls._get_plugin_model_providers_cache_key(tenant_id, generation))
-        if generation == 0:
-            cache_keys.append(cls._get_plugin_model_providers_cache_key(tenant_id))
-
-        if not cache_keys:
-            return None, True
+        cache_keys = [cls._get_plugin_model_providers_cache_key(tenant_id, generation)]
 
         try:
             cached_provider_entries = redis_client.mget(cache_keys)
@@ -247,9 +230,8 @@ class PluginService:
                 continue
 
             try:
-                providers = tuple(_provider_entities_adapter.validate_json(cached_providers))
-                if generation is not None:
-                    cls._store_in_memory_plugin_model_providers(tenant_id, generation, providers)
+                payload = cls._decode_plugin_model_providers_cache_payload(cached_providers)
+                providers = tuple(_provider_entities_adapter.validate_json(payload))
                 return providers, True
             except (TypeError, ValueError, ValidationError):
                 logger.warning(
@@ -275,58 +257,199 @@ class PluginService:
     ) -> None:
         cache_key = cls._get_plugin_model_providers_cache_key(tenant_id, generation)
         try:
-            payload = _provider_entities_adapter.dump_json(list(providers)).decode("utf-8")
+            payload = cls._encode_plugin_model_providers_cache_payload(
+                _provider_entities_adapter.dump_json(list(providers))
+            )
             redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL, payload)
         except (RedisError, RuntimeError):
             logger.warning("Failed to cache plugin model providers for tenant %s.", tenant_id, exc_info=True)
 
     @classmethod
-    def _try_acquire_plugin_model_providers_lock(cls, tenant_id: str, generation: int) -> tuple[Any | None, bool]:
+    def _get_remote_model_plugin_cache_marker(cls, plugins: Sequence[PluginEntity]) -> str | None:
+        remote_model_plugins = sorted(
+            f"{plugin.plugin_id}:{plugin.plugin_unique_identifier}"
+            for plugin in plugins
+            if plugin.source == PluginInstallationSource.Remote
+        )
+        if not remote_model_plugins:
+            return None
+
+        return "\n".join(remote_model_plugins)
+
+    @classmethod
+    def _load_cached_remote_model_plugin_marker(cls, tenant_id: str) -> str | None:
+        cache_key = cls._get_plugin_model_providers_remote_debug_cache_key(tenant_id)
+        try:
+            cached_marker = redis_client.get(cache_key)
+        except (RedisError, RuntimeError):
+            logger.warning("Failed to read remote debug model plugin marker for tenant %s.", tenant_id, exc_info=True)
+            return None
+
+        if cached_marker is None:
+            return None
+        if isinstance(cached_marker, bytes):
+            try:
+                return cached_marker.decode()
+            except UnicodeDecodeError:
+                logger.warning(
+                    "Invalid remote debug model plugin marker for tenant %s; deleting cache marker.",
+                    tenant_id,
+                    exc_info=True,
+                )
+                try:
+                    redis_client.delete(cache_key)
+                except (RedisError, RuntimeError):
+                    logger.warning(
+                        "Failed to delete invalid remote debug model plugin marker for tenant %s.",
+                        tenant_id,
+                        exc_info=True,
+                    )
+                return None
+        if isinstance(cached_marker, str):
+            return cached_marker
+
+        logger.warning("Invalid remote debug model plugin marker for tenant %s; deleting cache marker.", tenant_id)
+        try:
+            redis_client.delete(cache_key)
+        except (RedisError, RuntimeError):
+            logger.warning(
+                "Failed to delete invalid remote debug model plugin marker for tenant %s.",
+                tenant_id,
+                exc_info=True,
+            )
+        return None
+
+    @classmethod
+    def _store_cached_remote_model_plugin_marker(cls, tenant_id: str, marker: str | None) -> None:
+        cache_key = cls._get_plugin_model_providers_remote_debug_cache_key(tenant_id)
+        try:
+            if marker is None:
+                redis_client.delete(cache_key)
+            else:
+                redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL, marker)
+        except (RedisError, RuntimeError):
+            logger.warning("Failed to cache remote debug model plugin marker for tenant %s.", tenant_id, exc_info=True)
+
+    @classmethod
+    def _load_cached_plugin_model_provider_plugin_ids(cls, tenant_id: str) -> set[str] | None:
+        """Return plugin ids represented by the current provider cache, or None when no usable cache exists."""
+        generation = cls._load_plugin_model_providers_generation(tenant_id)
+        cached_providers, _ = cls._load_cached_plugin_model_providers_for_generation(tenant_id, generation)
+        if cached_providers is None:
+            return None
+
+        plugin_ids: set[str] = set()
+        for provider in cached_providers:
+            last_slash = provider.provider.rfind("/")
+            if last_slash > 0:
+                plugin_ids.add(provider.provider[:last_slash])
+
+        return plugin_ids
+
+    @classmethod
+    def _should_invalidate_model_provider_cache_for_remote_model_plugins(
+        cls,
+        tenant_id: str,
+        plugins: Sequence[PluginEntity],
+    ) -> bool:
+        remote_model_plugin_marker = cls._get_remote_model_plugin_cache_marker(plugins)
+        cached_remote_model_plugin_marker = cls._load_cached_remote_model_plugin_marker(tenant_id)
+        if remote_model_plugin_marker is None:
+            return cached_remote_model_plugin_marker is not None
+
+        if remote_model_plugin_marker != cached_remote_model_plugin_marker:
+            return True
+
+        remote_model_plugin_ids = {
+            plugin.plugin_id for plugin in plugins if plugin.source == PluginInstallationSource.Remote
+        }
+        cached_plugin_ids = cls._load_cached_plugin_model_provider_plugin_ids(tenant_id)
+        if cached_plugin_ids is None:
+            return False
+
+        return not remote_model_plugin_ids.issubset(cached_plugin_ids)
+
+    @classmethod
+    @contextmanager
+    def _plugin_model_providers_refresh_lock(
+        cls, tenant_id: str, generation: int, *, wait_timeout: float
+    ) -> Iterator[bool]:
         lock_key = cls._get_plugin_model_providers_lock_key(tenant_id, generation)
         try:
-            lock = redis_client.lock(lock_key, timeout=cls.PLUGIN_MODEL_PROVIDERS_LOCK_TTL, blocking=False)
-            acquired = lock.acquire(blocking=False)
+            refresh_lock: _RedisLock = redis_client.lock(
+                lock_key,
+                timeout=cls.PLUGIN_MODEL_PROVIDERS_LOCK_TTL,
+                sleep=cls.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL,
+            )
         except (RedisError, RuntimeError):
+            logger.warning(
+                "Failed to create plugin model providers refresh lock for tenant %s.",
+                tenant_id,
+                exc_info=True,
+            )
+            yield False
+            return
+
+        try:
+            lock_acquired = refresh_lock.acquire(blocking=True, blocking_timeout=wait_timeout)
+        except LockError:
+            logger.warning(
+                "Provider refresh lock timed out; direct daemon fallback. tenant_id=%s generation=%s",
+                tenant_id,
+                generation,
+                exc_info=True,
+            )
+            yield False
+            return
+        except (RedisError, RuntimeError):
+            # Redis failures should not block provider discovery; callers fetch directly from the daemon.
             logger.warning(
                 "Failed to acquire plugin model providers refresh lock for tenant %s.",
                 tenant_id,
                 exc_info=True,
             )
-            return None, False
+            yield False
+            return
 
-        if not acquired:
-            return None, True
-
-        return lock, True
-
-    @classmethod
-    def _release_plugin_model_providers_lock(cls, tenant_id: str, lock: Any) -> None:
-        try:
-            lock.release()
-        except (LockError, RedisError, RuntimeError):
+        if not lock_acquired:
             logger.warning(
-                "Failed to release plugin model providers refresh lock for tenant %s.",
+                "Provider refresh lock timed out; direct daemon fallback. tenant_id=%s generation=%s",
                 tenant_id,
-                exc_info=True,
+                generation,
             )
+            yield False
+            return
+
+        try:
+            yield True
+        finally:
+            try:
+                refresh_lock.release()
+            except (LockError, RedisError, RuntimeError):
+                # Release failures must not hide the daemon result or the original exception.
+                logger.warning(
+                    "Failed to release plugin model providers refresh lock for tenant %s generation %s.",
+                    tenant_id,
+                    generation,
+                    exc_info=True,
+                )
 
     @classmethod
-    def _wait_for_plugin_model_providers_refresh(
-        cls, tenant_id: str, *, client: PluginModelClient | None = None
-    ) -> tuple[ProviderEntity, ...] | None:
-        deadline = time.monotonic() + cls.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT
-        while time.monotonic() < deadline:
-            time.sleep(cls.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL)
-            cached_providers = cls._load_cached_plugin_model_providers(tenant_id, client=client)
-            if cached_providers is not None:
-                return cached_providers
-
-        return None
+    def _fetch_and_cache_plugin_model_providers(
+        cls, tenant_id: str, client: PluginModelClient | None, *, refresh_generation: int | None
+    ) -> tuple[ProviderEntity, ...]:
+        model_client = client or PluginModelClient()
+        providers = tuple(
+            cls._to_provider_entity(provider) for provider in model_client.fetch_model_providers(tenant_id)
+        )
+        generation = cls._load_plugin_model_providers_generation(tenant_id)
+        if generation is not None and generation == refresh_generation:
+            cls._store_cached_plugin_model_providers(tenant_id, generation, providers)
+        return providers
 
     @classmethod
     def invalidate_plugin_model_providers_cache(cls, tenant_id: str) -> None:
-        """Invalidate tenant-scoped provider metadata across Redis and worker-local mirrors."""
-        cls._plugin_model_providers_memory_cache.pop(tenant_id, None)
+        """Invalidate tenant-scoped provider metadata stored in Redis."""
         cache_key = cls._get_plugin_model_providers_cache_key(tenant_id)
         generation_key = cls._get_plugin_model_providers_generation_cache_key(tenant_id)
         try:
@@ -348,38 +471,68 @@ class PluginService:
         are intentionally owned by this service so tenant isolation and cache
         expiry are handled in one place.
         """
-        generation = cls._load_plugin_model_providers_generation(tenant_id)
-        cached_providers, cache_available = cls._load_cached_plugin_model_providers_for_generation(
-            tenant_id, generation
-        )
-        if cached_providers is not None:
-            return cached_providers
+        deadline = time.monotonic() + cls.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT
 
-        refresh_lock: Any | None = None
-        refresh_generation = generation
-        if generation is not None and cache_available:
-            lock_wait_deadline = time.monotonic() + cls.PLUGIN_MODEL_PROVIDERS_LOCK_TTL
-            while time.monotonic() < lock_wait_deadline:
-                refresh_lock, lock_available = cls._try_acquire_plugin_model_providers_lock(tenant_id, generation)
-                if refresh_lock is not None or not lock_available:
-                    break
-                refreshed_providers = cls._wait_for_plugin_model_providers_refresh(tenant_id, client=client)
-                if refreshed_providers is not None:
-                    return refreshed_providers
-
-        model_client = client or PluginModelClient()
-        try:
-            providers = tuple(
-                cls._to_provider_entity(provider) for provider in model_client.fetch_model_providers(tenant_id)
-            )
+        while True:
             generation = cls._load_plugin_model_providers_generation(tenant_id)
-            if generation is not None and generation == refresh_generation:
-                cls._store_in_memory_plugin_model_providers(tenant_id, generation, providers)
-                cls._store_cached_plugin_model_providers(tenant_id, generation, providers)
-            return providers
-        finally:
-            if refresh_lock is not None:
-                cls._release_plugin_model_providers_lock(tenant_id, refresh_lock)
+            cached_providers, cache_available = cls._load_cached_plugin_model_providers_for_generation(
+                tenant_id, generation
+            )
+            if cached_providers is not None:
+                return cached_providers
+
+            if generation is None or not cache_available:
+                return cls._fetch_and_cache_plugin_model_providers(
+                    tenant_id,
+                    client,
+                    refresh_generation=generation,
+                )
+
+            wait_timeout = deadline - time.monotonic()
+            if wait_timeout < 0:
+                logger.warning(
+                    "Provider refresh lock timed out; direct daemon fallback. tenant_id=%s generation=%s",
+                    tenant_id,
+                    generation,
+                )
+                return cls._fetch_and_cache_plugin_model_providers(
+                    tenant_id,
+                    client,
+                    refresh_generation=generation,
+                )
+
+            with cls._plugin_model_providers_refresh_lock(
+                tenant_id,
+                generation,
+                wait_timeout=wait_timeout,
+            ) as lock_acquired:
+                if not lock_acquired:
+                    return cls._fetch_and_cache_plugin_model_providers(
+                        tenant_id,
+                        client,
+                        refresh_generation=generation,
+                    )
+
+                latest_generation = cls._load_plugin_model_providers_generation(tenant_id)
+                cached_providers, cache_available = cls._load_cached_plugin_model_providers_for_generation(
+                    tenant_id, latest_generation
+                )
+                if cached_providers is not None:
+                    return cached_providers
+                if latest_generation is None or not cache_available:
+                    return cls._fetch_and_cache_plugin_model_providers(
+                        tenant_id,
+                        client,
+                        refresh_generation=latest_generation,
+                    )
+                if latest_generation != generation:
+                    continue
+
+                return cls._fetch_and_cache_plugin_model_providers(
+                    tenant_id,
+                    client,
+                    refresh_generation=generation,
+                )
 
     @staticmethod
     def fetch_latest_plugin_version(plugin_ids: Sequence[str]) -> Mapping[str, LatestPluginCache | None]:
@@ -528,7 +681,21 @@ class PluginService:
         This keeps pagination usable before category is persisted on installation rows.
         """
         manager = PluginInstaller()
-        return manager.list_plugins_by_category(tenant_id, category, page, page_size)
+        plugins = manager.list_plugins_by_category(tenant_id, category, page, page_size)
+        if category == PluginCategory.Model:
+            should_invalidate_model_provider_cache = (
+                PluginService._should_invalidate_model_provider_cache_for_remote_model_plugins(
+                    tenant_id,
+                    plugins.list,
+                )
+            )
+            if should_invalidate_model_provider_cache:
+                PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+
+            remote_model_plugin_marker = PluginService._get_remote_model_plugin_cache_marker(plugins.list)
+            PluginService._store_cached_remote_model_plugin_marker(tenant_id, remote_model_plugin_marker)
+
+        return plugins
 
     @staticmethod
     def _normalize_endpoint_count(value: object) -> int:
@@ -859,7 +1026,10 @@ class PluginService:
             tenant_id,
             plugin_unique_identifiers,
             PluginInstallationSource.Package,
-            [{}],
+            [
+                {"plugin_unique_identifier": plugin_unique_identifier}
+                for plugin_unique_identifier in plugin_unique_identifiers
+            ],
         )
         PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result

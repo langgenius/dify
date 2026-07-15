@@ -6,10 +6,6 @@ import { AppModeEnum } from '@/types/app'
 import { fetchAppList } from '../explore'
 import { useExploreAppList } from '../use-explore'
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => 'en-US',
-}))
-
 vi.mock('../explore', () => ({
   fetchAppList: vi.fn(),
 }))
@@ -58,10 +54,7 @@ describe('useExploreAppList', () => {
     vi.clearAllMocks()
     vi.mocked(fetchAppList).mockResolvedValue({
       categories: [],
-      recommended_apps: [
-        createApp('app-2', 2),
-        createApp('app-1', 1),
-      ],
+      recommended_apps: [createApp('app-2', 2), createApp('app-1', 1)],
     })
   })
 
@@ -74,13 +67,15 @@ describe('useExploreAppList', () => {
     })
 
     it('should fetch localized app list and sort recommended apps by position', async () => {
-      const { result } = renderHook(() => useExploreAppList({ enabled: true }), { wrapper: createWrapper() })
+      const { result } = renderHook(() => useExploreAppList({ enabled: true }), {
+        wrapper: createWrapper(),
+      })
 
       await waitFor(() => {
         expect(fetchAppList).toHaveBeenCalledWith('en-US')
       })
       await waitFor(() => {
-        expect(result.current.data?.allList.map(app => app.app_id)).toEqual(['app-1', 'app-2'])
+        expect(result.current.data?.allList.map((app) => app.app_id)).toEqual(['app-1', 'app-2'])
       })
     })
   })

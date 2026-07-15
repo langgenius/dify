@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, NotRequired, TypedDict, cast
+from typing import Any, NotRequired, TypedDict
 
 from flask import abort, request
 from flask_restx import Resource, fields
@@ -27,7 +27,7 @@ from controllers.console.app.error import (
     DraftWorkflowNotSync,
 )
 from controllers.console.app.permission_keys import get_app_permission_keys
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -522,7 +522,7 @@ class DraftWorkflowApi(Resource):
         """
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model=app_model)
+        workflow = workflow_service.get_draft_workflow(app_model=app_model, session=db.session())
 
         if not workflow:
             raise DraftWorkflowNotExist()
@@ -533,7 +533,7 @@ class DraftWorkflowApi(Resource):
         # front-end can treat draft graph node data as the editing source.
         response = WorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
         response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
-            session=cast(Session, db.session),
+            session=db.session(),
             draft_workflow=workflow,
         )
         return response
@@ -602,6 +602,7 @@ class DraftWorkflowApi(Resource):
                 account=current_user,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
+                session=db.session(),
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
@@ -631,7 +632,8 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    def post(self, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
         """
@@ -644,7 +646,12 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=True
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -689,7 +696,12 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
 
         try:
             response = AppGenerateService.generate_single_iteration(
-                app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
+                app_model=app_model,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session(),
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -732,7 +744,12 @@ class WorkflowDraftRunIterationNodeApi(Resource):
 
         try:
             response = AppGenerateService.generate_single_iteration(
-                app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
+                app_model=app_model,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session(),
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -771,7 +788,12 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
 
         try:
             response = AppGenerateService.generate_single_loop(
-                app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
+                app_model=app_model,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session(),
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -814,7 +836,12 @@ class WorkflowDraftRunLoopNodeApi(Resource):
 
         try:
             response = AppGenerateService.generate_single_loop(
-                app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
+                app_model=app_model,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session(),
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -891,6 +918,7 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
             account=current_user,
             node_id=node_id,
             inputs=inputs,
+            session=db.session(),
         )
         return jsonable_encoder(preview)
 
@@ -926,6 +954,7 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
             form_inputs=args.form_inputs,
             inputs=args.inputs,
             action=args.action,
+            session=db.session(),
         )
         return jsonable_encoder(result)
 
@@ -957,6 +986,7 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
             account=current_user,
             node_id=node_id,
             inputs=inputs,
+            session=db.session(),
         )
         return jsonable_encoder(preview)
 
@@ -992,6 +1022,7 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
             form_inputs=args.form_inputs,
             inputs=args.inputs,
             action=args.action,
+            session=db.session(),
         )
         return jsonable_encoder(result)
 
@@ -1022,6 +1053,7 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
             node_id=node_id,
             delivery_method_id=args.delivery_method_id,
             inputs=args.inputs,
+            session=db.session(),
         )
         return jsonable_encoder({})
 
@@ -1045,7 +1077,8 @@ class DraftWorkflowRunApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    def post(self, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
         """
@@ -1057,6 +1090,7 @@ class DraftWorkflowRunApi(Resource):
 
         try:
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model,
                 user=current_user,
                 args=args,
@@ -1130,7 +1164,7 @@ class DraftWorkflowNodeRunApi(Resource):
 
         workflow_srv = WorkflowService()
         # fetch draft workflow by app_model
-        draft_workflow = workflow_srv.get_draft_workflow(app_model=app_model)
+        draft_workflow = workflow_srv.get_draft_workflow(app_model=app_model, session=db.session())
         if not draft_workflow:
             raise ValueError("Workflow not initialized")
         files = _parse_file(draft_workflow, args.get("files"))
@@ -1173,7 +1207,7 @@ class PublishedWorkflowApi(Resource):
         """
         # fetch published workflow by app_model
         workflow_service = WorkflowService()
-        workflow = workflow_service.get_published_workflow(app_model=app_model)
+        workflow = workflow_service.get_published_workflow(app_model=app_model, session=db.session())
 
         # return workflow, if not found, return None
         if workflow is None:
@@ -1315,7 +1349,9 @@ class ConvertToWorkflowApi(Resource):
 
         # convert to workflow mode
         workflow_service = WorkflowService()
-        new_app_model = workflow_service.convert_to_workflow(app_model=app_model, account=current_user, args=args)
+        new_app_model = workflow_service.convert_to_workflow(
+            app_model=app_model, account=current_user, args=args, session=db.session()
+        )
 
         # return app id
         return {
@@ -1350,7 +1386,9 @@ class WorkflowFeaturesApi(Resource):
         features = args.features.model_dump(mode="json", exclude_unset=True)
 
         workflow_service = WorkflowService()
-        workflow_service.update_draft_workflow_features(app_model=app_model, features=features, account=current_user)
+        workflow_service.update_draft_workflow_features(
+            app_model=app_model, features=features, account=current_user, session=db.session()
+        )
 
         return {"result": "success"}
 
@@ -1431,6 +1469,7 @@ class DraftWorkflowRestoreApi(Resource):
                 app_model=app_model,
                 workflow_id=workflow_id,
                 account=current_user,
+                session=db.session(),
             )
         except IsDraftWorkflowError as exc:
             raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
@@ -1545,7 +1584,7 @@ class DraftWorkflowNodeLastRunApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, node_id: str):
         srv = WorkflowService()
-        workflow = srv.get_draft_workflow(app_model)
+        workflow = srv.get_draft_workflow(app_model, session=db.session())
         if not workflow:
             raise NotFound("Workflow not found")
         node_exec = srv.get_node_last_run(
@@ -1590,14 +1629,15 @@ class DraftWorkflowTriggerRunApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    def post(self, session: Session, current_user: Account, app_model: App):
         """
         Poll for trigger events and execute full workflow when event arrives
         """
         args = DraftWorkflowTriggerRunPayload.model_validate(console_ns.payload or {})
         node_id = args.node_id
         workflow_service = WorkflowService()
-        draft_workflow = workflow_service.get_draft_workflow(app_model)
+        draft_workflow = workflow_service.get_draft_workflow(app_model, session=db.session())
         if not draft_workflow:
             raise ValueError("Workflow not found")
 
@@ -1618,6 +1658,7 @@ class DraftWorkflowTriggerRunApi(Resource):
             workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             return helper.compact_generate_response(
                 AppGenerateService.generate(
+                    session=session,
                     app_model=app_model,
                     user=current_user,
                     args=workflow_args,
@@ -1665,7 +1706,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         """
 
         workflow_service = WorkflowService()
-        draft_workflow = workflow_service.get_draft_workflow(app_model)
+        draft_workflow = workflow_service.get_draft_workflow(app_model, session=db.session())
         if not draft_workflow:
             raise ValueError("Workflow not found")
 
@@ -1740,7 +1781,8 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    def post(self, session: Session, current_user: Account, app_model: App):
         """
         Full workflow debug when the start node is a trigger
         """
@@ -1748,7 +1790,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
         args = DraftWorkflowTriggerRunAllPayload.model_validate(console_ns.payload or {})
         node_ids = args.node_ids
         workflow_service = WorkflowService()
-        draft_workflow = workflow_service.get_draft_workflow(app_model)
+        draft_workflow = workflow_service.get_draft_workflow(app_model, session=db.session())
         if not draft_workflow:
             raise ValueError("Workflow not found")
 
@@ -1772,6 +1814,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
 
             workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model,
                 user=current_user,
                 args=workflow_args,
@@ -1816,7 +1859,7 @@ class WorkflowOnlineUsersApi(Resource):
             return {"data": []}
 
         workflow_service = WorkflowService()
-        accessible_app_ids = workflow_service.get_accessible_app_ids(app_ids, current_tenant_id)
+        accessible_app_ids = workflow_service.get_accessible_app_ids(app_ids, current_tenant_id, session=db.session())
         ordered_accessible_app_ids = [app_id for app_id in app_ids if app_id in accessible_app_ids]
 
         users_json_by_app_id: dict[str, Any] = {}

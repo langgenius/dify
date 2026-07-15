@@ -1,18 +1,18 @@
 import Cookies from 'js-cookie'
-import { trackEvent } from '@/app/components/base/amplitude'
+import { flushEvents, trackEvent } from '@/app/components/base/amplitude/utils'
 import { AppModeEnum } from '@/types/app'
 
 const CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY = 'create_app_external_attribution'
 
-const EXTERNAL_UTM_SOURCE_MAP = {
-  'blog': 'blog',
-  'dify_blog': 'blog',
-  'linkedin': 'linkedin',
-  'newsletter': 'blog',
-  'twitter': 'twitter/x',
-  'twitter/x': 'twitter/x',
-  'x': 'twitter/x',
-} as const
+// const EXTERNAL_UTM_SOURCE_MAP = {
+//   'blog': 'blog',
+//   'dify_blog': 'blog',
+//   'linkedin': 'linkedin',
+//   'newsletter': 'blog',
+//   'twitter': 'twitter/x',
+//   'twitter/x': 'twitter/x',
+//   'x': 'twitter/x',
+// } as const
 
 type SearchParamReader = {
   get: (name: string) => string | null
@@ -20,25 +20,22 @@ type SearchParamReader = {
 
 type OriginalCreateAppMode = 'workflow' | 'chatflow' | 'agent'
 
-type CreateAppSource
-  = | 'external'
-    | 'explore_template_list'
-    | 'explore_template_preview'
-    | 'studio_blank'
-    | 'studio_template_list'
-    | 'studio_template_preview'
-    | 'studio_upload'
+type CreateAppSource =
+  | 'external'
+  | 'explore_template_list'
+  | 'explore_template_preview'
+  | 'studio_blank'
+  | 'studio_template_list'
+  | 'studio_template_preview'
+  | 'studio_upload'
 
 export type TrackCreateAppParams = {
   source: CreateAppSource
-  appMode: AppModeEnum
+  appMode: string
   templateId?: string
 }
 
 type ExternalCreateAppAttribution = {
-  // Raw utm_source from the link (e.g. "dify_blog"), reported as-is to stay consistent
-  // with the registration event. EXTERNAL_UTM_SOURCE_MAP is only used to gate which
-  // sources count as external, not to rewrite the reported value.
   utmSource: string
   slug?: string
 }
@@ -53,20 +50,17 @@ const getObjectStringValue = (value: unknown) => {
 }
 
 const getSearchParamValue = (searchParams?: SearchParamReader | null, key?: string) => {
-  if (!searchParams || !key)
-    return undefined
+  if (!searchParams || !key) return undefined
   return normalizeString(searchParams.get(key))
 }
 
 const parseJSONRecord = (value?: string | null): Record<string, unknown> | null => {
-  if (!value)
-    return null
+  if (!value) return null
 
   try {
     const parsed = JSON.parse(value)
-    return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : null
-  }
-  catch {
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null
+  } catch {
     return null
   }
 }
@@ -75,26 +69,16 @@ const getCookieUtmInfo = () => {
   return parseJSONRecord(Cookies.get('utm_info'))
 }
 
-const mapExternalUtmSource = (value?: string) => {
-  if (!value)
-    return undefined
-
-  const normalized = value.toLowerCase()
-  return EXTERNAL_UTM_SOURCE_MAP[normalized as keyof typeof EXTERNAL_UTM_SOURCE_MAP]
-}
-
 const padTimeValue = (value: number) => String(value).padStart(2, '0')
 
 const formatCreateAppTime = (date: Date) => {
   return `${padTimeValue(date.getMonth() + 1)}-${padTimeValue(date.getDate())}-${padTimeValue(date.getHours())}:${padTimeValue(date.getMinutes())}:${padTimeValue(date.getSeconds())}`
 }
 
-const mapOriginalCreateAppMode = (appMode: AppModeEnum): OriginalCreateAppMode => {
-  if (appMode === AppModeEnum.WORKFLOW)
-    return 'workflow'
+const mapOriginalCreateAppMode = (appMode: string): OriginalCreateAppMode => {
+  if (appMode === AppModeEnum.WORKFLOW) return 'workflow'
 
-  if (appMode === AppModeEnum.AGENT_CHAT)
-    return 'agent'
+  if (appMode === AppModeEnum.AGENT_CHAT || appMode === 'agent') return 'agent'
 
   return 'chatflow'
 }
@@ -106,16 +90,16 @@ export const extractExternalCreateAppAttribution = ({
   searchParams?: SearchParamReader | null
   utmInfo?: Record<string, unknown> | null
 }) => {
-  const rawSource = getSearchParamValue(searchParams, 'utm_source') ?? getObjectStringValue(utmInfo?.utm_source)
+  const rawSource =
+    getSearchParamValue(searchParams, 'utm_source') ?? getObjectStringValue(utmInfo?.utm_source)
 
-  // Gate on known external sources, but keep the raw value for reporting.
-  if (!rawSource || !mapExternalUtmSource(rawSource))
-    return null
+  if (!rawSource) return null
 
-  const slug = getSearchParamValue(searchParams, 'slug')
-    ?? getSearchParamValue(searchParams, 'utm_campaign')
-    ?? getObjectStringValue(utmInfo?.slug)
-    ?? getObjectStringValue(utmInfo?.utm_campaign)
+  const slug =
+    getSearchParamValue(searchParams, 'slug') ??
+    getSearchParamValue(searchParams, 'utm_campaign') ??
+    getObjectStringValue(utmInfo?.slug) ??
+    getObjectStringValue(utmInfo?.utm_campaign)
 
   return {
     utmSource: rawSource,
@@ -124,16 +108,18 @@ export const extractExternalCreateAppAttribution = ({
 }
 
 const readRememberedExternalCreateAppAttribution = (): ExternalCreateAppAttribution | null => {
-  const attribution = parseJSONRecord(window.sessionStorage.getItem(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY))
-  const rawSource = getObjectStringValue(attribution?.utmSource) ?? getObjectStringValue(attribution?.utm_source)
+  const attribution = parseJSONRecord(
+    window.sessionStorage.getItem(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY),
+  )
+  const rawSource =
+    getObjectStringValue(attribution?.utmSource) ?? getObjectStringValue(attribution?.utm_source)
 
-  // Gate on known external sources, but keep the raw value for reporting.
-  if (!rawSource || !mapExternalUtmSource(rawSource))
-    return null
+  if (!rawSource) return null
 
-  const slug = getObjectStringValue(attribution?.slug)
-    ?? getObjectStringValue(attribution?.utmCampaign)
-    ?? getObjectStringValue(attribution?.utm_campaign)
+  const slug =
+    getObjectStringValue(attribution?.slug) ??
+    getObjectStringValue(attribution?.utmCampaign) ??
+    getObjectStringValue(attribution?.utm_campaign)
 
   return {
     utmSource: rawSource,
@@ -142,7 +128,10 @@ const readRememberedExternalCreateAppAttribution = (): ExternalCreateAppAttribut
 }
 
 const writeRememberedExternalCreateAppAttribution = (attribution: ExternalCreateAppAttribution) => {
-  window.sessionStorage.setItem(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY, JSON.stringify(attribution))
+  window.sessionStorage.setItem(
+    CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY,
+    JSON.stringify(attribution),
+  )
 }
 
 const clearRememberedExternalCreateAppAttribution = () => {
@@ -168,8 +157,7 @@ export const rememberCreateAppExternalAttribution = ({
 }
 
 const resolveCurrentExternalCreateAppAttribution = () => {
-  if (typeof window === 'undefined')
-    return null
+  if (typeof window === 'undefined') return null
 
   return readRememberedExternalCreateAppAttribution()
 }
@@ -181,8 +169,7 @@ export const buildCreateAppEventPayload = (
 ) => {
   const source = externalAttribution ? 'external' : params.source
 
-  if (source === 'external' && !externalAttribution)
-    return null
+  if (source === 'external' && !externalAttribution) return null
 
   return {
     source,
@@ -198,15 +185,23 @@ export const buildCreateAppEventPayload = (
   } satisfies Record<string, string>
 }
 
-export const trackCreateApp = (params: TrackCreateAppParams) => {
+export const trackCreateApp = (params: TrackCreateAppParams): Promise<void> | undefined => {
   const externalAttribution = resolveCurrentExternalCreateAppAttribution()
   const payload = buildCreateAppEventPayload(params, externalAttribution)
 
-  if (!payload)
-    return
+  if (!payload) return
 
-  if (externalAttribution)
-    clearRememberedExternalCreateAppAttribution()
+  if (externalAttribution) clearRememberedExternalCreateAppAttribution()
 
-  trackEvent('create_app', payload)
+  const trackingResult = trackEvent('create_app', payload)
+
+  if (!trackingResult) return
+
+  const flushResult = flushEvents()
+
+  const completionPromise = flushResult
+    ? Promise.all([trackingResult.promise, flushResult.promise]).then(() => undefined)
+    : trackingResult.promise.then(() => undefined)
+
+  return completionPromise.catch(() => undefined)
 }
