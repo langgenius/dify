@@ -2916,6 +2916,14 @@ describe('useChat', () => {
     })
 
     expect(result.current.chatList[1]!.message_files).toBeDefined()
+
+    // Finished events with no matching started entry must not corrupt the tracing array.
+    // `findIndex` returns -1, and an unguarded `tracing[-1] = value` silently defines a
+    // stray non-index "-1" property on the array object instead of being a true no-op.
+    const tracing = result.current.chatList[1]!.workflowProcess!.tracing!
+    expect(tracing).toHaveLength(1)
+    expect(tracing[0]!.node_id).toBe('n-new')
+    expect(Object.prototype.hasOwnProperty.call(tracing, '-1')).toBe(false)
   })
 
   it('should cover handleSwitchSibling target message not found early returns', () => {
