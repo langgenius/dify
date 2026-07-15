@@ -162,7 +162,7 @@ class LLMGenerator:
         with measure_time() as timer:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
-        )
+            )
         answer = response.message.get_text_content()
         if not answer.strip():
             answer = query
