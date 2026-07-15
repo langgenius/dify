@@ -7,7 +7,7 @@ Flask-SQLAlchemy's scoped `db.session`.
 """
 
 from collections.abc import Callable
-from functools import wraps
+from functools import lru_cache, wraps
 from typing import cast, overload
 
 from sqlalchemy import select
@@ -18,6 +18,7 @@ from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models import App, AppMode, TrialApp
+from services.recommended_app_service import RecommendedAppService
 
 __all__ = ["get_app_model", "get_app_model_with_trial", "with_session"]
 
@@ -37,6 +38,12 @@ def _load_app_model_from_scoped_session(app_id: str) -> App | None:
     app_model = db.session.scalar(
         select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
     )
+    return app_model
+
+
+def _load_app_model_without_applying_current_tenant(app_id: str) -> App | None:
+    """Load a normal app without applying current-tenant scope."""
+    app_model = db.session.scalar(select(App).where(App.id == app_id, App.status == "normal").limit(1))
     return app_model
 
 
@@ -167,7 +174,11 @@ def get_app_model_with_trial[**P, R](
 
             del kwargs["app_id"]
 
-            app_model = _load_app_model_with_trial(app_id)
+            # note: Recommended Apps rely on the trial-apps router to function.
+            if _is_recommended_app(app_id):
+                app_model = _load_app_model_without_applying_current_tenant(app_id)
+            else:
+                app_model = _load_app_model_with_trial(app_id)
 
             if not app_model:
                 raise AppNotFoundError()
@@ -194,3 +205,8 @@ def get_app_model_with_trial[**P, R](
         return decorator
     else:
         return decorator(view)
+
+
+@lru_cache(maxsize=128)
+def _is_recommended_app(app_id: str):
+    return RecommendedAppService.get_recommend_app_detail(app_id, session=db.session) is not None
