@@ -4,14 +4,26 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"regexp"
 	"time"
 )
+
+var jobIDPattern = regexp.MustCompile(`^[0-9a-f]{16}$`)
 
 // GenerateJobID produces a short random hex job identifier.
 func GenerateJobID() string {
 	b := make([]byte, 8)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+// ValidateJobID enforces the exact lowercase hexadecimal format produced by
+// GenerateJobID before a caller can use the value in tmux targets or paths.
+func ValidateJobID(jobID string) error {
+	if !jobIDPattern.MatchString(jobID) {
+		return NewServerError(400, "invalid_job_id", "job id must be exactly 16 lowercase hexadecimal characters")
+	}
+	return nil
 }
 
 // FormatTimestamp returns an ISO-8601 UTC timestamp string.

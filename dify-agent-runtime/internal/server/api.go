@@ -19,13 +19,13 @@ func Handler(svc *Service, config *Config) http.Handler {
 
 	mux.HandleFunc("GET /healthz", handleHealthz)
 	mux.HandleFunc("POST /v1/jobs/run", auth(handleRunJob(svc)))
-	mux.HandleFunc("POST /v1/jobs/{job_id}/wait", auth(handleWaitJob(svc, config)))
-	mux.HandleFunc("GET /v1/jobs/{job_id}/log/tail", auth(handleTailJob(svc, config)))
-	mux.HandleFunc("GET /v1/jobs/{job_id}", auth(handleJobStatus(svc)))
+	mux.HandleFunc("POST /v1/jobs/{job_id}/wait", auth(validJobID(handleWaitJob(svc, config))))
+	mux.HandleFunc("GET /v1/jobs/{job_id}/log/tail", auth(validJobID(handleTailJob(svc, config))))
+	mux.HandleFunc("GET /v1/jobs/{job_id}", auth(validJobID(handleJobStatus(svc))))
 	mux.HandleFunc("GET /v1/jobs", auth(handleListJobs(svc, config)))
-	mux.HandleFunc("POST /v1/jobs/{job_id}/input", auth(handleInputJob(svc, config)))
-	mux.HandleFunc("POST /v1/jobs/{job_id}/terminate", auth(handleTerminateJob(svc, config)))
-	mux.HandleFunc("DELETE /v1/jobs/{job_id}", auth(handleDeleteJob(svc, config)))
+	mux.HandleFunc("POST /v1/jobs/{job_id}/input", auth(validJobID(handleInputJob(svc, config))))
+	mux.HandleFunc("POST /v1/jobs/{job_id}/terminate", auth(validJobID(handleTerminateJob(svc, config))))
+	mux.HandleFunc("DELETE /v1/jobs/{job_id}", auth(validJobID(handleDeleteJob(svc, config))))
 
 	return requestLoggingMiddleware(recoveryMiddleware(mux))
 }
@@ -212,6 +212,16 @@ func handleDeleteJob(svc *Service, config *Config) http.HandlerFunc {
 }
 
 // Middleware
+
+func validJobID(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := ValidateJobID(r.PathValue("job_id")); err != nil {
+			writeServerError(w, err)
+			return
+		}
+		next(w, r)
+	}
+}
 
 // statusRecorder wraps ResponseWriter to capture the status code.
 type statusRecorder struct {

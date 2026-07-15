@@ -318,6 +318,9 @@ func (s *Service) waitForPipeReady(jobID, readyFile string) error {
 
 // WaitJob blocks until output, completion, truncation, or timeout.
 func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error) {
+	if err := ValidateJobID(jobID); err != nil {
+		return nil, err
+	}
 	row, err := s.db.GetJob(jobID)
 	if err != nil {
 		return nil, err
@@ -408,6 +411,9 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 
 // TailJob returns the tail of a job's output.
 func (s *Service) TailJob(jobID string, outputLimit int) (*JobResult, error) {
+	if err := ValidateJobID(jobID); err != nil {
+		return nil, err
+	}
 	row, err := s.db.GetJob(jobID)
 	if err != nil {
 		return nil, err
@@ -425,6 +431,9 @@ func (s *Service) TailJob(jobID string, outputLimit int) (*JobResult, error) {
 
 // GetJobStatus materializes the current status from SQLite + live tmux state.
 func (s *Service) GetJobStatus(jobID string) (*JobStatusView, error) {
+	if err := ValidateJobID(jobID); err != nil {
+		return nil, err
+	}
 	sessionExists, pipeActive, err := s.liveRuntimeState(jobID)
 	if err != nil {
 		return nil, err
@@ -467,6 +476,9 @@ func (s *Service) ListJobs(status *JobStatusName, limit int) (*ListJobsResponse,
 
 // SendInput sends input to a running job and waits.
 func (s *Service) SendInput(jobID string, req *InputJobRequest) (*JobResult, error) {
+	if err := ValidateJobID(jobID); err != nil {
+		return nil, err
+	}
 	view, err := s.GetJobStatus(jobID)
 	if err != nil {
 		return nil, err
@@ -496,6 +508,9 @@ func (s *Service) SendInput(jobID string, req *InputJobRequest) (*JobResult, err
 
 // TerminateJob terminates a running job.
 func (s *Service) TerminateJob(jobID string, graceSeconds float64) (*JobStatusView, error) {
+	if err := ValidateJobID(jobID); err != nil {
+		return nil, err
+	}
 	view, err := s.GetJobStatus(jobID)
 	if err != nil {
 		return nil, err
@@ -522,6 +537,9 @@ func (s *Service) TerminateJob(jobID string, graceSeconds float64) (*JobStatusVi
 
 // DeleteJob deletes a job and its artifacts.
 func (s *Service) DeleteJob(jobID string, force bool, graceSeconds float64) (*DeleteJobResponse, error) {
+	if err := ValidateJobID(jobID); err != nil {
+		return nil, err
+	}
 	view, err := s.GetJobStatus(jobID)
 	if err != nil {
 		return nil, err

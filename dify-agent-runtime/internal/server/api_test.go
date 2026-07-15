@@ -152,6 +152,46 @@ func TestHealthzHandler(t *testing.T) {
 	}
 }
 
+func TestJobRoutesRejectMalformedJobIDBeforeCallingService(t *testing.T) {
+	handler := Handler(nil, &Config{})
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+	}{
+		{name: "wait", method: http.MethodPost, path: "/v1/jobs/not-a-job-id/wait", body: `not-json`},
+		{name: "tail", method: http.MethodGet, path: "/v1/jobs/not-a-job-id/log/tail"},
+		{name: "status", method: http.MethodGet, path: "/v1/jobs/not-a-job-id"},
+		{name: "status encoded separator", method: http.MethodGet, path: "/v1/jobs/0123456789abc%2Fde"},
+		{name: "status dot dot", method: http.MethodGet, path: "/v1/jobs/%2e%2e"},
+		{name: "status whitespace", method: http.MethodGet, path: "/v1/jobs/0123456789abcde%20"},
+		{name: "status shell metacharacter", method: http.MethodGet, path: "/v1/jobs/0123456789abcde;"},
+		{name: "input", method: http.MethodPost, path: "/v1/jobs/not-a-job-id/input", body: `not-json`},
+		{name: "terminate", method: http.MethodPost, path: "/v1/jobs/not-a-job-id/terminate", body: `not-json`},
+		{name: "delete", method: http.MethodDelete, path: "/v1/jobs/not-a-job-id"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body))
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+			}
+			var result ErrorResponse
+			if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+				t.Fatal(err)
+			}
+			if result.Error.Code != "invalid_job_id" {
+				t.Fatalf("expected invalid_job_id, got %q", result.Error.Code)
+			}
+		})
+	}
+}
+
 func TestServerErrorFormat(t *testing.T) {
 	err := NewServerError(422, "validation_error", "bad input")
 	expected := "[422] validation_error: bad input"
