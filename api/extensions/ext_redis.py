@@ -1,6 +1,8 @@
 import functools
 import logging
+import socket
 import ssl
+import sys
 from collections.abc import Callable
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, Union
@@ -12,6 +14,7 @@ from redis.cache import CacheConfig
 from redis.client import PubSub
 from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
+from redis.exceptions import ConnectionError, TimeoutError
 from redis.retry import Retry
 from redis.sentinel import Sentinel
 
@@ -168,16 +171,32 @@ def _get_retry_policy() -> Retry:
             cap=dify_config.REDIS_RETRY_BACKOFF_CAP,
         ),
         retries=dify_config.REDIS_RETRY_RETRIES,
+        supported_errors=(
+            ConnectionError,
+            TimeoutError,
+            BrokenPipeError,
+            OSError,
+        ),
     )
 
 
 def _get_connection_health_params() -> dict[str, Any]:
     """Get connection health and retry parameters for standalone and Sentinel Redis clients."""
+    socket_keepalive_options: dict[int, int] = {}
+    if sys.platform == "linux":
+        socket_keepalive_options[socket.TCP_KEEPIDLE] = dify_config.REDIS_KEEPALIVE_IDLE
+        socket_keepalive_options[socket.TCP_KEEPINTVL] = dify_config.REDIS_KEEPALIVE_INTERVAL
+        socket_keepalive_options[socket.TCP_KEEPCNT] = dify_config.REDIS_KEEPALIVE_COUNT
+    elif sys.platform == "darwin":
+        socket_keepalive_options[socket.TCP_KEEPALIVE] = dify_config.REDIS_KEEPALIVE_IDLE
+
     return {
         "retry": _get_retry_policy(),
         "socket_timeout": dify_config.REDIS_SOCKET_TIMEOUT,
         "socket_connect_timeout": dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
         "health_check_interval": dify_config.REDIS_HEALTH_CHECK_INTERVAL,
+        "socket_keepalive": dify_config.REDIS_KEEPALIVE,
+        "socket_keepalive_options": socket_keepalive_options,
     }
 
 
@@ -186,8 +205,7 @@ def _get_cluster_connection_health_params() -> dict[str, Any]:
 
     RedisCluster does not support ``health_check_interval`` as a constructor
     keyword (it is silently stripped by ``cleanup_kwargs``), so it is excluded
-    here. Only ``retry``, ``socket_timeout``, and ``socket_connect_timeout``
-    are passed through.
+    here. Every other health parameter is passed through unchanged.
     """
     params = _get_connection_health_params()
     return {k: v for k, v in params.items() if k != "health_check_interval"}
@@ -218,10 +236,14 @@ def _create_sentinel_client(redis_params: dict[str, Any]) -> Union[redis.Redis, 
 
     sentinel_hosts = [(node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")]
 
+    health_params = _get_connection_health_params()
+
     sentinel_kwargs = {
         "socket_timeout": dify_config.REDIS_SENTINEL_SOCKET_TIMEOUT,
         "username": dify_config.REDIS_SENTINEL_USERNAME,
         "password": dify_config.REDIS_SENTINEL_PASSWORD,
+        "socket_keepalive": health_params["socket_keepalive"],
+        "socket_keepalive_options": health_params["socket_keepalive_options"],
     }
 
     if dify_config.REDIS_MAX_CONNECTIONS:
