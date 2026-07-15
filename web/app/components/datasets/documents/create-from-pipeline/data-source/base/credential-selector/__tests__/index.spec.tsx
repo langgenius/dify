@@ -40,9 +40,12 @@ const createMockCredentials = (count: number = 3): DataSourceCredential[] =>
       name: `Credential ${i + 1}`,
       avatar_url: `https://example.com/avatar-${i + 1}.png`,
       is_default: i === 0,
-    }))
+    }),
+  )
 
-const createDefaultProps = (overrides?: Partial<CredentialSelectorProps>): CredentialSelectorProps => ({
+const createDefaultProps = (
+  overrides?: Partial<CredentialSelectorProps>,
+): CredentialSelectorProps => ({
   currentCredentialId: 'cred-1',
   onCredentialChange: vi.fn(),
   credentials: createMockCredentials(),
@@ -148,13 +151,16 @@ describe('CredentialSelector', () => {
         ['cred-1', 'Credential 1'],
         ['cred-2', 'Credential 2'],
         ['cred-3', 'Credential 3'],
-      ])('should display %s credential name when currentCredentialId is %s', (credId, expectedName) => {
-        const props = createDefaultProps({ currentCredentialId: credId })
+      ])(
+        'should display %s credential name when currentCredentialId is %s',
+        (credId, expectedName) => {
+          const props = createDefaultProps({ currentCredentialId: credId })
 
-        render(<CredentialSelector {...props} />)
+          render(<CredentialSelector {...props} />)
 
-        expect(screen.getByText(expectedName))!.toBeInTheDocument()
-      })
+          expect(screen.getByText(expectedName))!.toBeInTheDocument()
+        },
+      )
     })
 
     describe('credentials prop', () => {
@@ -185,7 +191,9 @@ describe('CredentialSelector', () => {
 
       it('should handle credentials with special characters in name', () => {
         const props = createDefaultProps({
-          credentials: [createMockCredential({ id: 'cred-special', name: 'Test & Credential <special>' })],
+          credentials: [
+            createMockCredential({ id: 'cred-special', name: 'Test & Credential <special>' }),
+          ],
           currentCredentialId: 'cred-special',
         })
 
@@ -428,12 +436,7 @@ describe('CredentialSelector', () => {
         createMockCredential({ id: 'cred-4', name: 'New Credential 4' }),
         createMockCredential({ id: 'cred-5', name: 'New Credential 5' }),
       ]
-      rerender(
-        <CredentialSelector
-          {...props}
-          credentials={newCredentials}
-        />,
-      )
+      rerender(<CredentialSelector {...props} credentials={newCredentials} />)
 
       // Assert - Should auto-select first of new credentials
       await waitFor(() => {
@@ -531,9 +534,7 @@ describe('CredentialSelector', () => {
       expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
 
       // Act - Change credentials
-      const newCredentials = [
-        createMockCredential({ id: 'cred-1', name: 'Updated Credential 1' }),
-      ]
+      const newCredentials = [createMockCredential({ id: 'cred-1', name: 'Updated Credential 1' })]
       rerender(<CredentialSelector {...props} credentials={newCredentials} />)
 
       // Assert - Should display updated name
@@ -597,9 +598,7 @@ describe('CredentialSelector', () => {
       const { rerender } = render(<CredentialSelector {...props} />)
 
       // Act - Create new credentials array with different data
-      const newCredentials = [
-        createMockCredential({ id: 'cred-1', name: 'New Name 1' }),
-      ]
+      const newCredentials = [createMockCredential({ id: 'cred-1', name: 'New Name 1' })]
       rerender(<CredentialSelector {...props} credentials={newCredentials} />)
 
       expect(screen.getByText('New Name 1'))!.toBeInTheDocument()

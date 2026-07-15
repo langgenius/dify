@@ -21,7 +21,9 @@ type SlashCommandDeps = {
 
 const registerSlashCommands = (deps: SlashCommandDeps) => {
   slashCommandRegistry.register(themeCommand, { setTheme: deps.setTheme })
-  slashCommandRegistry.register(languageCommand, { setLocale: deps.setLocale as (locale: string) => Promise<void> })
+  slashCommandRegistry.register(languageCommand, {
+    setLocale: deps.setLocale as (locale: string) => Promise<void>,
+  })
   slashCommandRegistry.register(forumCommand, {})
   slashCommandRegistry.register(docsCommand, {})
   slashCommandRegistry.register(communityCommand, {})

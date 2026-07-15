@@ -1,43 +1,48 @@
-import type {
-  MouseEvent,
-  MouseEventHandler,
-  ReactElement,
-  ReactNode,
-} from 'react'
+import type { MouseEvent, MouseEventHandler, ReactElement, ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Operator from '../operator'
 
 type DropdownTriggerRenderProps = {
-  'className'?: string
-  'role'?: string
+  className?: string
+  role?: string
   'aria-label'?: string
-  'onMouseDown'?: MouseEventHandler<HTMLDivElement>
-  'onClick'?: MouseEventHandler<HTMLDivElement>
+  onMouseDown?: MouseEventHandler<HTMLDivElement>
+  onClick?: MouseEventHandler<HTMLDivElement>
 }
 
 type DropdownTriggerProps = {
-  'children': ReactNode
-  'className'?: string
-  'render'?: ReactElement<DropdownTriggerRenderProps>
-  'onMouseDown'?: MouseEventHandler<HTMLDivElement>
-  'onClick'?: MouseEventHandler<HTMLDivElement>
+  children: ReactNode
+  className?: string
+  render?: ReactElement<DropdownTriggerRenderProps>
+  onMouseDown?: MouseEventHandler<HTMLDivElement>
+  onClick?: MouseEventHandler<HTMLDivElement>
   'aria-label'?: string
 }
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const React = await import('react')
-  const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)
+  const DropdownMenuContext = React.createContext<{
+    open: boolean
+    setOpen: (open: boolean) => void
+  } | null>(null)
 
   const useDropdownMenuContext = () => {
     const context = React.use(DropdownMenuContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
     return context
   }
 
   return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+    DropdownMenu: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children: ReactNode
+      open: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => (
       <DropdownMenuContext value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
         <div>{children}</div>
       </DropdownMenuContext>
@@ -53,7 +58,9 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
       const { open, setOpen } = useDropdownMenuContext()
       if (render) {
         const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
-          const baseUiEvent = event as MouseEvent<HTMLDivElement> & { preventBaseUIHandler?: () => void }
+          const baseUiEvent = event as MouseEvent<HTMLDivElement> & {
+            preventBaseUIHandler?: () => void
+          }
           baseUiEvent.preventBaseUIHandler = vi.fn()
           onMouseDown?.(baseUiEvent)
           render.props.onMouseDown?.(event)
@@ -62,8 +69,7 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
         const handleClick = (event: MouseEvent<HTMLDivElement>) => {
           onClick?.(event)
           render.props.onClick?.(event)
-          if (!onMouseDown)
-            setOpen(!open)
+          if (!onMouseDown) setOpen(!open)
         }
 
         return (
@@ -85,14 +91,15 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
           aria-label={ariaLabel}
           className={className}
           onMouseDown={(event) => {
-            const baseUiEvent = event as MouseEvent<HTMLButtonElement> & { preventBaseUIHandler?: () => void }
+            const baseUiEvent = event as MouseEvent<HTMLButtonElement> & {
+              preventBaseUIHandler?: () => void
+            }
             baseUiEvent.preventBaseUIHandler = vi.fn()
             onMouseDown?.(baseUiEvent as unknown as MouseEvent<HTMLDivElement>)
           }}
           onClick={(event) => {
             onClick?.(event as unknown as MouseEvent<HTMLDivElement>)
-            if (!onMouseDown)
-              setOpen(!open)
+            if (!onMouseDown) setOpen(!open)
           }}
         >
           {children}
@@ -126,7 +133,9 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
         </button>
       )
     },
-    DropdownMenuSeparator: ({ className }: { className?: string }) => <div className={className} data-testid="dropdown-separator" />,
+    DropdownMenuSeparator: ({ className }: { className?: string }) => (
+      <div className={className} data-testid="dropdown-separator" />
+    ),
   }
 })
 
@@ -157,11 +166,7 @@ const renderOperator = (showAuthor = false) => {
 describe('NoteEditor Toolbar Operator', () => {
   it('triggers copy, duplicate, and delete from the opened menu', async () => {
     const user = userEvent.setup()
-    const {
-      onCopy,
-      onDelete,
-      onDuplicate,
-    } = renderOperator()
+    const { onCopy, onDelete, onDuplicate } = renderOperator()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.click(screen.getByText('workflow.common.copy'))

@@ -35,23 +35,13 @@ describe('ToolItem', () => {
 
   it('shows auth status actions for no-auth and auth-removed states', () => {
     const { rerender } = render(
-      <ToolItem
-        open={false}
-        toolLabel="Search Tool"
-        providerName="acme/search"
-        noAuth
-      />,
+      <ToolItem open={false} toolLabel="Search Tool" providerName="acme/search" noAuth />,
     )
 
     expect(screen.getByText('tools.notAuthorized')).toBeInTheDocument()
 
     rerender(
-      <ToolItem
-        open={false}
-        toolLabel="Search Tool"
-        providerName="acme/search"
-        authRemoved
-      />,
+      <ToolItem open={false} toolLabel="Search Tool" providerName="acme/search" authRemoved />,
     )
 
     expect(screen.getByText('plugin.auth.authRemoved')).toBeInTheDocument()
@@ -91,12 +81,7 @@ describe('ToolItem', () => {
   it('blocks unsupported MCP tools and still exposes error state', async () => {
     mcpAllowed = false
     const { rerender } = render(
-      <ToolItem
-        open={false}
-        toolLabel="Search Tool"
-        providerName="acme/search"
-        isMCPTool
-      />,
+      <ToolItem open={false} toolLabel="Search Tool" providerName="acme/search" isMCPTool />,
     )
 
     expect(screen.getByTestId('mcp-tooltip')).toBeInTheDocument()

@@ -2,19 +2,12 @@ import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useAtomValue } from 'jotai'
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  useStore,
-  useWorkflowStore,
-} from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { userProfileIdAtom, workspacePermissionKeysAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import {
   fetchNodesDefaultConfigs,
@@ -56,45 +49,46 @@ const createLocalWorkflowDraft = (
 
 const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean => {
   const startNodeIds = nodes
-    .filter(node => node?.data?.type === BlockEnum.Start)
-    .map(node => node.id)
+    .filter((node) => node?.data?.type === BlockEnum.Start)
+    .map((node) => node.id)
 
-  if (!startNodeIds.length)
-    return false
+  if (!startNodeIds.length) return false
 
-  return edges.some(edge => startNodeIds.includes(edge.source))
+  return edges.some((edge) => startNodeIds.includes(edge.source))
 }
 
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
-  const {
-    nodes: nodesTemplate,
-    edges: edgesTemplate,
-  } = useWorkflowTemplate()
-  const appDetail = useAppStore(state => state.appDetail)!
+  const { nodes: nodesTemplate, edges: edgesTemplate } = useWorkflowTemplate()
+  const appDetail = useAppStore((state) => state.appDetail)!
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail.permission_keys, {
-    currentUserId,
-    resourceMaintainer: appDetail.maintainer,
-    workspacePermissionKeys,
-  }), [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys])
+  const appACLCapabilities = useMemo(
+    () =>
+      getAppACLCapabilities(appDetail.permission_keys, {
+        currentUserId,
+        resourceMaintainer: appDetail.maintainer,
+        workspacePermissionKeys,
+      }),
+    [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys],
+  )
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
-  const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
+  const setSyncWorkflowDraftHash = useStore((s) => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
     workflowStore.setState({ appId: appDetail.id, appName: appDetail.name })
   }, [appDetail.id, workflowStore])
 
-  const handleUpdateWorkflowFileUploadConfig = useCallback((config: FileUploadConfigResponse) => {
-    const { setFileUploadConfig } = workflowStore.getState()
-    setFileUploadConfig(config)
-  }, [workflowStore])
-  const {
-    data: fileUploadConfigResponse,
-    isLoading: isFileUploadConfigLoading,
-  } = useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
+  const handleUpdateWorkflowFileUploadConfig = useCallback(
+    (config: FileUploadConfigResponse) => {
+      const { setFileUploadConfig } = workflowStore.getState()
+      setFileUploadConfig(config)
+    },
+    [workflowStore],
+  )
+  const { data: fileUploadConfigResponse, isLoading: isFileUploadConfigLoading } =
+    useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
 
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
@@ -108,19 +102,26 @@ export const useWorkflowInit = () => {
 
       setData(initialData)
       workflowStore.setState({
-        envSecrets: (initialData.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
-          acc[env.id] = env.value
-          return acc
-        }, {} as Record<string, string>),
-        environmentVariables: initialData.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
+        envSecrets: (initialData.environment_variables || [])
+          .filter((env) => env.value_type === 'secret')
+          .reduce(
+            (acc, env) => {
+              acc[env.id] = env.value
+              return acc
+            },
+            {} as Record<string, string>,
+          ),
+        environmentVariables:
+          initialData.environment_variables?.map((env) =>
+            env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env,
+          ) || [],
         conversationVariables: initialData.conversation_variables || [],
         isWorkflowDataLoaded: true,
       })
       setSyncWorkflowDraftHash(initialData.hash)
       setIsLoading(false)
-    }
-    catch (error: unknown) {
-      const responseError = error as { bodyUsed?: boolean, json?: () => Promise<{ code?: string }> }
+    } catch (error: unknown) {
+      const responseError = error as { bodyUsed?: boolean; json?: () => Promise<{ code?: string }> }
       if (responseError.json && !responseError.bodyUsed && appDetail) {
         responseError.json().then((err) => {
           if (err.code === 'draft_workflow_not_exist') {
@@ -174,7 +175,15 @@ export const useWorkflowInit = () => {
         })
       }
     }
-  }, [appACLCapabilities.canEdit, appDetail, getWorkflowDraftGraphForCanvas, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
+  }, [
+    appACLCapabilities.canEdit,
+    appDetail,
+    getWorkflowDraftGraphForCanvas,
+    nodesTemplate,
+    edgesTemplate,
+    workflowStore,
+    setSyncWorkflowDraftHash,
+  ])
 
   useEffect(() => {
     handleGetInitialWorkflowData()
@@ -182,22 +191,27 @@ export const useWorkflowInit = () => {
 
   const handleFetchPreloadData = useCallback(async () => {
     try {
-      const nodesDefaultConfigsData = await fetchNodesDefaultConfigs(`/apps/${appDetail?.id}/workflows/default-workflow-block-configs`)
-      const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${appDetail?.id}/workflows/publish`)
+      const nodesDefaultConfigsData = await fetchNodesDefaultConfigs(
+        `/apps/${appDetail?.id}/workflows/default-workflow-block-configs`,
+      )
+      const publishedWorkflow = await fetchPublishedWorkflow(
+        `/apps/${appDetail?.id}/workflows/publish`,
+      )
       workflowStore.setState({
-        nodesDefaultConfigs: nodesDefaultConfigsData.reduce((acc, block) => {
-          if (!acc[block.type])
-            acc[block.type] = { ...block.config }
-          return acc
-        }, {} as Record<string, unknown>),
+        nodesDefaultConfigs: nodesDefaultConfigsData.reduce(
+          (acc, block) => {
+            if (!acc[block.type]) acc[block.type] = { ...block.config }
+            return acc
+          },
+          {} as Record<string, unknown>,
+        ),
       })
       workflowStore.getState().setPublishedAt(publishedWorkflow?.created_at ?? 0)
       const graph = publishedWorkflow?.graph
-      workflowStore.getState().setLastPublishedHasUserInput(
-        hasConnectedUserInput(graph?.nodes, graph?.edges),
-      )
-    }
-    catch (e) {
+      workflowStore
+        .getState()
+        .setLastPublishedHasUserInput(hasConnectedUserInput(graph?.nodes, graph?.edges))
+    } catch (e) {
       console.error(e)
       workflowStore.getState().setLastPublishedHasUserInput(false)
     }

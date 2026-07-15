@@ -11,13 +11,7 @@ describe('TabSliderNew Component', () => {
   ]
 
   it('should render all options with text and icons', () => {
-    render(
-      <TabSliderNew
-        value="all"
-        options={mockOptions}
-        onChange={() => { }}
-      />,
-    )
+    render(<TabSliderNew value="all" options={mockOptions} onChange={() => {}} />)
 
     expect(screen.getByText('All')).toBeInTheDocument()
     expect(screen.getByText('Active')).toBeInTheDocument()
@@ -26,13 +20,7 @@ describe('TabSliderNew Component', () => {
   })
 
   it('should apply active classes when the value matches the option', () => {
-    render(
-      <TabSliderNew
-        value="active"
-        options={mockOptions}
-        onChange={() => { }}
-      />,
-    )
+    render(<TabSliderNew value="active" options={mockOptions} onChange={() => {}} />)
 
     const activeTab = screen.getByTestId('tab-item-active')
     const inactiveTab = screen.getByTestId('tab-item-all')
@@ -50,13 +38,7 @@ describe('TabSliderNew Component', () => {
     const user = userEvent.setup()
     const handleChange = vi.fn()
 
-    render(
-      <TabSliderNew
-        value="all"
-        options={mockOptions}
-        onChange={handleChange}
-      />,
-    )
+    render(<TabSliderNew value="all" options={mockOptions} onChange={handleChange} />)
 
     const inactiveTab = screen.getByTestId('tab-item-inactive')
     await user.click(inactiveTab)
@@ -71,7 +53,7 @@ describe('TabSliderNew Component', () => {
       <TabSliderNew
         value="all"
         options={mockOptions}
-        onChange={() => { }}
+        onChange={() => {}}
         className={customClass}
       />,
     )
@@ -83,13 +65,7 @@ describe('TabSliderNew Component', () => {
     const user = userEvent.setup()
     const handleChange = vi.fn()
 
-    render(
-      <TabSliderNew
-        value="all"
-        options={mockOptions}
-        onChange={handleChange}
-      />,
-    )
+    render(<TabSliderNew value="all" options={mockOptions} onChange={handleChange} />)
 
     const activeTab = screen.getByTestId('tab-item-all')
     await user.click(activeTab)

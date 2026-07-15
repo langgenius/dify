@@ -1,7 +1,13 @@
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { RiCheckboxCircleFill, RiCheckboxCircleLine, RiCheckLine, RiCloseLine, RiFilter3Line } from '@remixicon/react'
+import {
+  RiCheckboxCircleFill,
+  RiCheckboxCircleLine,
+  RiCheckLine,
+  RiCloseLine,
+  RiFilter3Line,
+} from '@remixicon/react'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,90 +16,109 @@ import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useWorkflowComment } from '@/app/components/workflow/hooks/use-workflow-comment'
 import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
-import { userProfileIdAtom } from '@/context/app-context-state'
+import { userProfileIdAtom } from '@/context/account-state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 const CommentsPanel = () => {
   const { t } = useTranslation()
-  const activeCommentId = useStore(s => s.activeCommentId)
-  const setActiveCommentId = useStore(s => s.setActiveCommentId)
-  const setControlMode = useStore(s => s.setControlMode)
-  const showResolvedComments = useStore(s => s.showResolvedComments)
-  const setShowResolvedComments = useStore(s => s.setShowResolvedComments)
+  const activeCommentId = useStore((s) => s.activeCommentId)
+  const setActiveCommentId = useStore((s) => s.setActiveCommentId)
+  const setControlMode = useStore((s) => s.setControlMode)
+  const showResolvedComments = useStore((s) => s.showResolvedComments)
+  const setShowResolvedComments = useStore((s) => s.setShowResolvedComments)
   const { comments, loading, handleCommentIconClick, handleCommentResolve } = useWorkflowComment()
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   const [showOnlyMine, setShowOnlyMine] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
 
-  const handleSelect = useCallback((comment: WorkflowCommentList) => {
-    handleCommentIconClick(comment)
-  }, [handleCommentIconClick])
+  const handleSelect = useCallback(
+    (comment: WorkflowCommentList) => {
+      handleCommentIconClick(comment)
+    },
+    [handleCommentIconClick],
+  )
 
   const currentUserId = useAtomValue(userProfileIdAtom)
 
   const filteredSorted = useMemo(() => {
     let data = comments
-    if (!showResolvedComments)
-      data = data.filter(c => !c.resolved)
-    if (showOnlyMine)
-      data = data.filter(c => c.created_by === currentUserId)
+    if (!showResolvedComments) data = data.filter((c) => !c.resolved)
+    if (showOnlyMine) data = data.filter((c) => c.created_by === currentUserId)
     return data
   }, [comments, currentUserId, showOnlyMine, showResolvedComments])
 
-  const handleResolve = useCallback(async (comment: WorkflowCommentList) => {
-    if (comment.resolved)
-      return
-    try {
-      await handleCommentResolve(comment.id)
-      setActiveCommentId(comment.id)
-    }
-    catch (e) {
-      console.error('Resolve comment failed', e)
-    }
-  }, [handleCommentResolve, setActiveCommentId])
+  const handleResolve = useCallback(
+    async (comment: WorkflowCommentList) => {
+      if (comment.resolved) return
+      try {
+        await handleCommentResolve(comment.id)
+        setActiveCommentId(comment.id)
+      } catch (e) {
+        console.error('Resolve comment failed', e)
+      }
+    },
+    [handleCommentResolve, setActiveCommentId],
+  )
 
   const hasActiveFilter = showOnlyMine || !showResolvedComments
 
   return (
-    <div className={cn('relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg')}>
+    <div
+      className={cn(
+        'relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg',
+      )}
+    >
       <div className="flex items-center justify-between p-4 pb-2">
-        <div className="system-xl-semibold leading-6 font-semibold text-text-primary">{t('comments.panelTitle', { ns: 'workflow' })}</div>
+        <div className="system-xl-semibold leading-6 font-semibold text-text-primary">
+          {t(($) => $['comments.panelTitle'], { ns: 'workflow' })}
+        </div>
         <div className="relative flex items-center gap-2">
           <button
             className={cn(
               'group flex size-6 items-center justify-center rounded-md hover:bg-state-accent-active',
               hasActiveFilter && 'bg-state-accent-active',
             )}
-            aria-label={t('comments.aria.filterComments', { ns: 'workflow' })}
-            onClick={() => setShowFilter(v => !v)}
+            aria-label={t(($) => $['comments.aria.filterComments'], { ns: 'workflow' })}
+            onClick={() => setShowFilter((v) => !v)}
           >
-            <RiFilter3Line className={cn(
-              'size-4 text-text-secondary group-hover:text-text-accent',
-              hasActiveFilter && 'text-text-accent',
-            )}
+            <RiFilter3Line
+              className={cn(
+                'size-4 text-text-secondary group-hover:text-text-accent',
+                hasActiveFilter && 'text-text-accent',
+              )}
             />
           </button>
           {showFilter && (
             <div className="absolute top-9 right-10 z-50 min-w-[184px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]">
               <button
-                className={cn('flex w-full items-center justify-between rounded-md p-2 text-left text-sm hover:bg-state-base-hover', !showOnlyMine && 'bg-components-panel-on-panel-item-bg')}
+                className={cn(
+                  'flex w-full items-center justify-between rounded-md p-2 text-left text-sm hover:bg-state-base-hover',
+                  !showOnlyMine && 'bg-components-panel-on-panel-item-bg',
+                )}
                 onClick={() => {
                   setShowOnlyMine(false)
                   setShowFilter(false)
                 }}
               >
-                <span className="text-text-secondary">{t('comments.filter.all', { ns: 'workflow' })}</span>
+                <span className="text-text-secondary">
+                  {t(($) => $['comments.filter.all'], { ns: 'workflow' })}
+                </span>
                 {!showOnlyMine && <RiCheckLine className="size-4 text-primary-600" />}
               </button>
               <button
-                className={cn('mt-1 flex w-full items-center justify-between rounded-md p-2 text-left text-sm hover:bg-state-base-hover', showOnlyMine && 'bg-components-panel-on-panel-item-bg')}
+                className={cn(
+                  'mt-1 flex w-full items-center justify-between rounded-md p-2 text-left text-sm hover:bg-state-base-hover',
+                  showOnlyMine && 'bg-components-panel-on-panel-item-bg',
+                )}
                 onClick={() => {
                   setShowOnlyMine(true)
                   setShowFilter(false)
                 }}
               >
-                <span className="text-text-secondary">{t('comments.filter.onlyYourThreads', { ns: 'workflow' })}</span>
+                <span className="text-text-secondary">
+                  {t(($) => $['comments.filter.onlyYourThreads'], { ns: 'workflow' })}
+                </span>
                 {showOnlyMine && <RiCheckLine className="size-4 text-primary-600" />}
               </button>
               <Divider type="horizontal" className="my-1" />
@@ -103,7 +128,9 @@ const CommentsPanel = () => {
                   e.stopPropagation()
                 }}
               >
-                <span className="text-sm text-text-secondary">{t('comments.filter.showResolved', { ns: 'workflow' })}</span>
+                <span className="text-sm text-text-secondary">
+                  {t(($) => $['comments.filter.showResolved'], { ns: 'workflow' })}
+                </span>
                 <Switch
                   size="md"
                   checked={showResolvedComments}
@@ -132,51 +159,50 @@ const CommentsPanel = () => {
           return (
             <div
               key={c.id}
-              className={cn('group mb-2 cursor-pointer rounded-xl bg-components-panel-bg p-3 transition-colors hover:bg-components-panel-on-panel-item-bg-hover', isActive && 'bg-components-panel-on-panel-item-bg-hover')}
+              className={cn(
+                'group mb-2 cursor-pointer rounded-xl bg-components-panel-bg p-3 transition-colors hover:bg-components-panel-on-panel-item-bg-hover',
+                isActive && 'bg-components-panel-on-panel-item-bg-hover',
+              )}
               onClick={() => handleSelect(c)}
             >
               <div className="min-w-0">
                 <div className="mb-1 flex items-center justify-between">
-                  <UserAvatarList
-                    users={c.participants}
-                    maxVisible={3}
-                    size="sm"
-                  />
+                  <UserAvatarList users={c.participants} maxVisible={3} size="sm" />
                   <div className="ml-2 flex items-center">
-                    {c.resolved
-                      ? (
-                          <RiCheckboxCircleFill className="size-4 text-text-secondary" />
-                        )
-                      : (
-                          <RiCheckboxCircleLine
-                            className="size-4 cursor-pointer text-text-tertiary hover:text-text-secondary"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              handleResolve(c)
-                            }}
-                          />
-                        )}
+                    {c.resolved ? (
+                      <RiCheckboxCircleFill className="size-4 text-text-secondary" />
+                    ) : (
+                      <RiCheckboxCircleLine
+                        className="size-4 cursor-pointer text-text-tertiary hover:text-text-secondary"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleResolve(c)
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
                 {/* Header row: creator + time */}
                 <div className="flex items-start">
                   <div className="flex min-w-0 items-center gap-2">
-                    <div className="truncate system-sm-medium text-text-primary">{c.created_by_account?.name ?? ''}</div>
+                    <div className="truncate system-sm-medium text-text-primary">
+                      {c.created_by_account?.name ?? ''}
+                    </div>
                     <div className="shrink-0 system-2xs-regular text-text-tertiary">
                       {formatTimeFromNow((c.updated_at ?? c.created_at ?? 0) * 1000)}
                     </div>
                   </div>
                 </div>
                 {/* Content */}
-                <div className="mt-1 line-clamp-3 system-sm-regular wrap-break-word text-text-secondary">{c.content}</div>
+                <div className="mt-1 line-clamp-3 system-sm-regular wrap-break-word text-text-secondary">
+                  {c.content}
+                </div>
                 {/* Footer */}
                 {c.reply_count > 0 && (
                   <div className="mt-2 flex items-center justify-between">
                     <div className="system-2xs-regular text-text-tertiary">
-                      {c.reply_count}
-                      {' '}
-                      {t('comments.reply', { ns: 'workflow' })}
+                      {c.reply_count} {t(($) => $['comments.reply'], { ns: 'workflow' })}
                     </div>
                   </div>
                 )}
@@ -185,7 +211,9 @@ const CommentsPanel = () => {
           )
         })}
         {!loading && filteredSorted.length === 0 && (
-          <div className="mt-6 text-center system-sm-regular text-text-tertiary">{t('comments.noComments', { ns: 'workflow' })}</div>
+          <div className="mt-6 text-center system-sm-regular text-text-tertiary">
+            {t(($) => $['comments.noComments'], { ns: 'workflow' })}
+          </div>
         )}
       </div>
     </div>

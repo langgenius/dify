@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 import ErrorMessage from '../error-message'
 
 vi.mock('@/app/components/base/icons/src/vender/solid/alertsAndFeedback', () => ({
-  AlertTriangle: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="alert-icon" {...props} />,
+  AlertTriangle: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="alert-icon" {...props} />
+  ),
 }))
 
 describe('ErrorMessage', () => {

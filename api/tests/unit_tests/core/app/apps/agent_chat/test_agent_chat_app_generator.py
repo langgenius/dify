@@ -116,10 +116,12 @@ class TestAgentChatAppGeneratorGenerate:
         )
 
         thread_obj = mocker.MagicMock()
-        mocker.patch(
+        thread_constructor = mocker.patch(
             "core.app.apps.agent_chat.app_generator.threading.Thread",
             return_value=thread_obj,
         )
+        session = mocker.MagicMock()
+        mocker.patch("core.app.apps.agent_chat.app_generator.db.session", return_value=session)
 
         mocker.patch(
             "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateResponseConverter.convert",
@@ -144,6 +146,7 @@ class TestAgentChatAppGeneratorGenerate:
 
         assert result == {"result": "ok"}
         assert generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
+        assert thread_constructor.call_args.kwargs["kwargs"]["session"] is session
         thread_obj.start.assert_called_once()
 
     def test_generate_without_file_config(self, generator, mocker: MockerFixture):

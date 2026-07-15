@@ -57,7 +57,7 @@ describe('Trigger', () => {
       const tags = ['A', 'B', 'C', 'D', 'E']
       render(<TagTrigger tags={tags} />)
 
-      tags.forEach(tag => expect(screen.getByText(tag)).toBeInTheDocument())
+      tags.forEach((tag) => expect(screen.getByText(tag)).toBeInTheDocument())
       expect(screen.getAllByRole('listitem')).toHaveLength(tags.length)
     })
   })

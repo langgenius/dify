@@ -9,7 +9,8 @@ vi.mock('@/service/client', () => ({
   consoleClient: {
     enterprise: {
       webAppAuth: {
-        searchForWhilteListCandidates: (...args: unknown[]) => mockSearchForWhilteListCandidates(...args),
+        searchForWhilteListCandidates: (...args: unknown[]) =>
+          mockSearchForWhilteListCandidates(...args),
       },
     },
   },
@@ -39,11 +40,15 @@ describe('use-access-subjects', () => {
 
   it('should search access subject candidates with the generated enterprise client', async () => {
     renderHook(
-      () => useSearchAccessSubjects({
-        keyword: 'team one',
-        groupId: 'group-1',
-        resultsPerPage: 20,
-      }, true),
+      () =>
+        useSearchAccessSubjects(
+          {
+            keyword: 'team one',
+            groupId: 'group-1',
+            resultsPerPage: 20,
+          },
+          true,
+        ),
       { wrapper: createWrapper() },
     )
 

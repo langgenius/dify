@@ -37,41 +37,49 @@ const mockTimezone = 'America/New_York'
 // Mock modal context
 const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: (selector: (s: { setShowAccountSettingModal: typeof mockSetShowAccountSettingModal }) => typeof mockSetShowAccountSettingModal) => {
+  useModalContextSelector: (
+    selector: (s: {
+      setShowAccountSettingModal: typeof mockSetShowAccountSettingModal
+    }) => typeof mockSetShowAccountSettingModal,
+  ) => {
     return selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal })
   },
 }))
 
 // Mock i18n context
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en-US',
-}))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: (defaultNs?: string) => ({
-    t: (key: string, options?: Record<string, unknown>) => {
-      const ns = (options?.ns as string | undefined) ?? defaultNs
-      const params = { ...options }
-      delete params.ns
-      const suffix = Object.keys(params).length > 0 ? `:${JSON.stringify(params)}` : ''
-      return `${ns ? `${ns}.` : ''}${key}${suffix}`
-    },
-    i18n: {
-      language: 'en',
-      changeLanguage: vi.fn(),
-    },
-  }),
-  Trans: ({ i18nKey, components }: {
-    i18nKey: string
-    components?: Record<string, React.ReactElement>
-  }) => {
-    const setTimezone = components?.setTimezone
-    if (setTimezone)
-      return React.cloneElement(setTimezone, undefined, i18nKey)
+vi.mock('react-i18next', async () => {
+  const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
+  return {
+    useTranslation: (defaultNs?: string) => ({
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
+        const ns = (options?.ns as string | undefined) ?? defaultNs
+        const params = { ...options }
+        delete params.ns
+        const suffix = Object.keys(params).length > 0 ? `:${JSON.stringify(params)}` : ''
+        return `${ns ? `${ns}.` : ''}${key}${suffix}`
+      }),
+      i18n: {
+        language: 'en',
+        changeLanguage: vi.fn(),
+      },
+    }),
+    Trans: withSelectorKeyProps(
+      ({
+        i18nKey,
+        components,
+      }: {
+        i18nKey: string
+        components?: Record<string, React.ReactElement>
+      }) => {
+        const setTimezone = components?.setTimezone
+        if (setTimezone) return React.cloneElement(setTimezone, undefined, i18nKey)
 
-    return <span>{i18nKey}</span>
-  },
-}))
+        return <span>{i18nKey}</span>
+      },
+    ),
+  }
+})
 
 // Mock plugins service
 const mockPluginsData: { plugins: PluginDetail[] } = { plugins: [] }
@@ -87,7 +95,11 @@ let mockPopoverOpen = false
 let forcePopoverContentVisible = false // Allow tests to force content visibility
 let mockPopoverOnOpenChange: ((open: boolean) => void) | undefined
 vi.mock('@langgenius/dify-ui/popover', () => ({
-  Popover: ({ children, open = false, onOpenChange }: {
+  Popover: ({
+    children,
+    open = false,
+    onOpenChange,
+  }: {
     children: React.ReactNode
     open?: boolean
     onOpenChange?: (open: boolean) => void
@@ -95,10 +107,17 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
     mockPopoverOpen = open
     mockPopoverOnOpenChange = onOpenChange
     return (
-      <div data-testid="popover" data-open={open}>{children}</div>
+      <div data-testid="popover" data-open={open}>
+        {children}
+      </div>
     )
   },
-  PopoverTrigger: ({ children, render, onClick, className }: {
+  PopoverTrigger: ({
+    children,
+    render,
+    onClick,
+    className,
+  }: {
     children?: React.ReactNode
     render?: React.ReactNode
     onClick?: (e: React.MouseEvent) => void
@@ -108,33 +127,51 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
       data-testid="popover-trigger"
       onClick={(e) => {
         onClick?.(e)
-        if (!onClick)
-          mockPopoverOnOpenChange?.(!mockPopoverOpen)
+        if (!onClick) mockPopoverOnOpenChange?.(!mockPopoverOpen)
       }}
       className={className}
     >
       {render ?? children}
     </div>
   ),
-  PopoverContent: ({ children, className, popupClassName }: {
+  PopoverContent: ({
+    children,
+    className,
+    popupClassName,
+  }: {
     children: React.ReactNode
     className?: string
     popupClassName?: string
   }) => {
-    if (!mockPopoverOpen && !forcePopoverContentVisible)
-      return null
-    return <div data-testid="popover-content" className={[className, popupClassName].filter(Boolean).join(' ')}>{children}</div>
+    if (!mockPopoverOpen && !forcePopoverContentVisible) return null
+    return (
+      <div
+        data-testid="popover-content"
+        className={[className, popupClassName].filter(Boolean).join(' ')}
+      >
+        {children}
+      </div>
+    )
   },
 }))
 
 // Mock TimePicker component - simplified stateless mock
 vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
-  default: ({ value, onChange, onClear, renderTrigger }: {
+  default: ({
+    value,
+    onChange,
+    onClear,
+    renderTrigger,
+  }: {
     value: { format: (f: string) => string }
     onChange: (v: unknown) => void
     onClear: () => void
     title?: string
-    renderTrigger: (params: { inputElem: React.ReactNode, onClick: () => void, isOpen: boolean }) => React.ReactNode
+    renderTrigger: (params: {
+      inputElem: React.ReactNode
+      onClick: () => void
+      isOpen: boolean
+    }) => React.ReactNode
   }) => {
     const inputElem = <span data-testid="time-input">{value.format('HH:mm')}</span>
 
@@ -171,17 +208,21 @@ vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
 // Mock utils from date-and-time-picker
 vi.mock('@/app/components/base/date-and-time-picker/utils/dayjs', () => ({
   convertTimezoneToOffsetStr: (tz: string) => {
-    if (tz === 'America/New_York')
-      return 'GMT-5'
-    if (tz === 'Asia/Shanghai')
-      return 'GMT+8'
+    if (tz === 'America/New_York') return 'GMT-5'
+    if (tz === 'Asia/Shanghai') return 'GMT+8'
     return 'GMT+0'
   },
 }))
 
 // Mock SearchBox component
 vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
-  default: ({ search, onSearchChange, tags: _tags, onTagsChange: _onTagsChange, placeholder }: {
+  default: ({
+    search,
+    onSearchChange,
+    tags: _tags,
+    onTagsChange: _onTagsChange,
+    placeholder,
+  }: {
     search: string
     onSearchChange: (v: string) => void
     tags: string[]
@@ -192,7 +233,7 @@ vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
       <input
         data-testid="search-input"
         value={search}
-        onChange={e => onSearchChange(e.target.value)}
+        onChange={(e) => onSearchChange(e.target.value)}
         placeholder={placeholder}
       />
     </div>
@@ -201,18 +242,26 @@ vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
 
 // Mock Icon component
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
-  default: ({ size, src }: { size: string, src: string }) => (
+  default: ({ size, src }: { size: string; src: string }) => (
     <img data-testid="plugin-icon" data-size={size} src={src} alt="plugin icon" />
   ),
 }))
 
 // Mock icons
 vi.mock('@/app/components/base/icons/src/vender/line/general', () => ({
-  SearchMenu: ({ className }: { className?: string }) => <span data-testid="search-menu-icon" className={className}>🔍</span>,
+  SearchMenu: ({ className }: { className?: string }) => (
+    <span data-testid="search-menu-icon" className={className}>
+      🔍
+    </span>
+  ),
 }))
 
 vi.mock('@/app/components/base/icons/src/vender/other', () => ({
-  Group: ({ className }: { className?: string }) => <span data-testid="group-icon" className={className}>📦</span>,
+  Group: ({ className }: { className?: string }) => (
+    <span data-testid="group-icon" className={className}>
+      📦
+    </span>
+  ),
 }))
 
 // Mock PLUGIN_TYPE_SEARCH_MAP
@@ -238,7 +287,9 @@ vi.mock('@/i18n-config', () => ({
 // Test Data Factories
 // ================================
 
-const createMockPluginDeclaration = (overrides: Partial<PluginDeclaration> = {}): PluginDeclaration => ({
+const createMockPluginDeclaration = (
+  overrides: Partial<PluginDeclaration> = {},
+): PluginDeclaration => ({
   plugin_unique_identifier: 'test-plugin-id',
   version: '1.0.0',
   author: 'test-author',
@@ -298,7 +349,9 @@ const createMockPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDe
   ...overrides,
 })
 
-const createMockAutoUpdateConfig = (overrides: Partial<AutoUpdateConfig> = {}): AutoUpdateConfig => ({
+const createMockAutoUpdateConfig = (
+  overrides: Partial<AutoUpdateConfig> = {},
+): AutoUpdateConfig => ({
   strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
   upgrade_time_of_day: 36000, // 10:00 UTC
   upgrade_mode: AUTO_UPDATE_MODE.update_all,
@@ -497,7 +550,9 @@ describe('auto-update-setting', () => {
 
         // Assert
         expect(screen.getByTestId('group-icon')).toBeInTheDocument()
-        expect(screen.getByText('plugin.autoUpdate.noPluginPlaceholder.noInstalled')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.noPluginPlaceholder.noInstalled'),
+        ).toBeInTheDocument()
       })
 
       it('should render with noPlugins=false showing search icon', () => {
@@ -506,7 +561,9 @@ describe('auto-update-setting', () => {
 
         // Assert
         expect(screen.getByTestId('search-menu-icon')).toBeInTheDocument()
-        expect(screen.getByText('plugin.autoUpdate.noPluginPlaceholder.noFound')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.noPluginPlaceholder.noFound'),
+        ).toBeInTheDocument()
       })
 
       it('should render with noPlugins=undefined (default) showing search icon', () => {
@@ -529,7 +586,9 @@ describe('auto-update-setting', () => {
     describe('Component Memoization', () => {
       it('should be memoized with React.memo', () => {
         expect(NoDataPlaceholder).toBeDefined()
-        expect((NoDataPlaceholder as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
+        expect((NoDataPlaceholder as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
+          'Symbol',
+        )
       })
     })
   })
@@ -541,7 +600,9 @@ describe('auto-update-setting', () => {
         render(<NoPluginSelected updateMode={AUTO_UPDATE_MODE.partial} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.upgradeModePlaceholder.partial')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.upgradeModePlaceholder.partial'),
+        ).toBeInTheDocument()
       })
 
       it('should render exclude mode placeholder', () => {
@@ -549,7 +610,9 @@ describe('auto-update-setting', () => {
         render(<NoPluginSelected updateMode={AUTO_UPDATE_MODE.exclude} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.upgradeModePlaceholder.exclude')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.upgradeModePlaceholder.exclude'),
+        ).toBeInTheDocument()
       })
     })
 
@@ -611,7 +674,9 @@ describe('auto-update-setting', () => {
 
       it('should apply custom className', () => {
         // Act
-        const { container } = render(<PluginsSelected plugins={['test']} className="custom-class" />)
+        const { container } = render(
+          <PluginsSelected plugins={['test']} className="custom-class" />,
+        )
 
         // Assert
         expect(container.firstChild).toHaveClass('custom-class')
@@ -755,11 +820,10 @@ describe('auto-update-setting', () => {
 
     const findOption = (key: 'disabled' | 'fixOnly' | 'latest') => {
       const options = screen.getAllByRole('button')
-      const option = options.find(item =>
+      const option = options.find((item) =>
         item.textContent?.includes(`plugin.autoUpdate.strategy.${key}.name`),
       )
-      if (!option)
-        throw new Error(`Strategy option "${key}" not found`)
+      if (!option) throw new Error(`Strategy option "${key}" not found`)
       return option
     }
 
@@ -767,13 +831,23 @@ describe('auto-update-setting', () => {
       it('should render the segmented control with all strategies', () => {
         render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
 
-        expect(screen.getByRole('group', { name: 'plugin.autoUpdate.automaticUpdates' })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.disabled) })).toBeInTheDocument()
+        expect(
+          screen.getByRole('group', { name: 'plugin.autoUpdate.automaticUpdates' }),
+        ).toBeInTheDocument()
+        expect(
+          screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.disabled) }),
+        ).toBeInTheDocument()
         const options = screen.getAllByRole('button')
         expect(options).toHaveLength(3)
-        expect(options.some(o => o.textContent?.includes('plugin.autoUpdate.strategy.disabled.name'))).toBe(true)
-        expect(options.some(o => o.textContent?.includes('plugin.autoUpdate.strategy.fixOnly.name'))).toBe(true)
-        expect(options.some(o => o.textContent?.includes('plugin.autoUpdate.strategy.latest.name'))).toBe(true)
+        expect(
+          options.some((o) => o.textContent?.includes('plugin.autoUpdate.strategy.disabled.name')),
+        ).toBe(true)
+        expect(
+          options.some((o) => o.textContent?.includes('plugin.autoUpdate.strategy.fixOnly.name')),
+        ).toBe(true)
+        expect(
+          options.some((o) => o.textContent?.includes('plugin.autoUpdate.strategy.latest.name')),
+        ).toBe(true)
       })
     })
 
@@ -782,21 +856,24 @@ describe('auto-update-setting', () => {
         [AUTO_UPDATE_STRATEGY.disabled, 'fixOnly', AUTO_UPDATE_STRATEGY.fixOnly],
         [AUTO_UPDATE_STRATEGY.disabled, 'latest', AUTO_UPDATE_STRATEGY.latest],
         [AUTO_UPDATE_STRATEGY.fixOnly, 'disabled', AUTO_UPDATE_STRATEGY.disabled],
-      ])('should call onChange with %s -> %s when option is selected', async (initial, optionKey, expected) => {
-        const user = userEvent.setup()
-        const onChange = vi.fn()
-        render(<StrategyPicker value={initial} onChange={onChange} />)
+      ])(
+        'should call onChange with %s -> %s when option is selected',
+        async (initial, optionKey, expected) => {
+          const user = userEvent.setup()
+          const onChange = vi.fn()
+          render(<StrategyPicker value={initial} onChange={onChange} />)
 
-        await user.click(findOption(optionKey))
+          await user.click(findOption(optionKey))
 
-        expect(onChange).toHaveBeenCalledWith(expected)
-      })
+          expect(onChange).toHaveBeenCalledWith(expected)
+        },
+      )
 
       it('should mark only the currently selected option with aria-pressed', () => {
         render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.fixOnly} onChange={vi.fn()} />)
 
         const options = screen.getAllByRole('button')
-        const checked = options.filter(o => o.getAttribute('aria-pressed') === 'true')
+        const checked = options.filter((o) => o.getAttribute('aria-pressed') === 'true')
 
         expect(checked).toHaveLength(1)
         expect(checked[0]).toHaveTextContent('plugin.autoUpdate.strategy.fixOnly.name')
@@ -930,7 +1007,9 @@ describe('auto-update-setting', () => {
           createMockPluginDetail({
             plugin_id: 'test-plugin',
             source: PluginSource.marketplace,
-            declaration: createMockPluginDeclaration({ label: { 'en-US': 'Test Plugin' } as PluginDeclaration['label'] }),
+            declaration: createMockPluginDeclaration({
+              label: { 'en-US': 'Test Plugin' } as PluginDeclaration['label'],
+            }),
           }),
         ]
         const onChange = vi.fn()
@@ -956,7 +1035,12 @@ describe('auto-update-setting', () => {
 
         // Act
         renderWithQueryClient(
-          <ToolPicker {...defaultProps} isShow={true} value={['test-plugin']} onChange={onChange} />,
+          <ToolPicker
+            {...defaultProps}
+            isShow={true}
+            value={['test-plugin']}
+            onChange={onChange}
+          />,
         )
         fireEvent.click(screen.getByRole('checkbox'))
 
@@ -1024,7 +1108,9 @@ describe('auto-update-setting', () => {
         render(<PluginsPicker {...defaultProps} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.upgradeModePlaceholder.partial')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.upgradeModePlaceholder.partial'),
+        ).toBeInTheDocument()
       })
 
       it('should render selected plugins count and clear button when plugins selected', () => {
@@ -1032,8 +1118,12 @@ describe('auto-update-setting', () => {
         render(<PluginsPicker {...defaultProps} value={['plugin-1', 'plugin-2']} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}')).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' })).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}'),
+        ).toBeInTheDocument()
+        expect(
+          screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }),
+        ).toBeInTheDocument()
       })
 
       it('should render select button', () => {
@@ -1055,7 +1145,9 @@ describe('auto-update-setting', () => {
         )
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}'),
+        ).toBeInTheDocument()
       })
     })
 
@@ -1066,13 +1158,11 @@ describe('auto-update-setting', () => {
 
         // Act
         render(
-          <PluginsPicker
-            {...defaultProps}
-            value={['plugin-1', 'plugin-2']}
-            onChange={onChange}
-          />,
+          <PluginsPicker {...defaultProps} value={['plugin-1', 'plugin-2']} onChange={onChange} />,
         )
-        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
+        fireEvent.click(
+          screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }),
+        )
 
         // Assert
         expect(onChange).toHaveBeenCalledWith([])
@@ -1125,7 +1215,9 @@ describe('auto-update-setting', () => {
 
       it('should show time picker when strategy is not disabled', () => {
         // Arrange
-        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly })
+        const payload = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+        })
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
@@ -1137,7 +1229,9 @@ describe('auto-update-setting', () => {
 
       it('should hide time picker and plugins selection when strategy is disabled', () => {
         // Arrange
-        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.disabled })
+        const payload = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.disabled,
+        })
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
@@ -1179,36 +1273,50 @@ describe('auto-update-setting', () => {
     describe('Strategy Description', () => {
       it('should show fixOnly description when strategy is fixOnly', () => {
         // Arrange
-        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly })
+        const payload = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+        })
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.selectedDescription')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.strategy.fixOnly.selectedDescription'),
+        ).toBeInTheDocument()
       })
 
       it('should show latest description when strategy is latest', () => {
         // Arrange
-        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.latest })
+        const payload = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.latest,
+        })
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.strategy.latest.selectedDescription')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.strategy.latest.selectedDescription'),
+        ).toBeInTheDocument()
       })
 
       it('should show no description when strategy is disabled', () => {
         // Arrange
-        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.disabled })
+        const payload = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.disabled,
+        })
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
         // Assert
-        expect(screen.queryByText('plugin.autoUpdate.strategy.fixOnly.selectedDescription')).not.toBeInTheDocument()
-        expect(screen.queryByText('plugin.autoUpdate.strategy.latest.selectedDescription')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('plugin.autoUpdate.strategy.fixOnly.selectedDescription'),
+        ).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('plugin.autoUpdate.strategy.latest.selectedDescription'),
+        ).not.toBeInTheDocument()
       })
     })
 
@@ -1226,7 +1334,9 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}'),
+        ).toBeInTheDocument()
       })
 
       it('should show exclude_plugins when mode is exclude', () => {
@@ -1242,7 +1352,9 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":3,"num":3}')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":3,"num":3}'),
+        ).toBeInTheDocument()
       })
     })
 
@@ -1251,7 +1363,9 @@ describe('auto-update-setting', () => {
         // Arrange
         const user = userEvent.setup()
         const onChange = vi.fn()
-        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly })
+        const payload = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+        })
 
         // Act
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
@@ -1269,7 +1383,9 @@ describe('auto-update-setting', () => {
       it('should call onChange with updated time when time changes', () => {
         // Arrange
         const onChange = vi.fn()
-        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly })
+        const payload = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+        })
 
         // Act
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
@@ -1287,7 +1403,9 @@ describe('auto-update-setting', () => {
       it('should call onChange with 0 when time is cleared', () => {
         // Arrange
         const onChange = vi.fn()
-        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly })
+        const payload = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+        })
 
         // Act
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
@@ -1315,12 +1433,16 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         // Click clear all
-        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
+        fireEvent.click(
+          screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }),
+        )
 
         // Assert
-        expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-          include_plugins: [],
-        }))
+        expect(onChange).toHaveBeenCalledWith(
+          expect.objectContaining({
+            include_plugins: [],
+          }),
+        )
       })
 
       it('should call onChange with exclude_plugins when in exclude mode', () => {
@@ -1336,31 +1458,41 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         // Click clear all
-        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
+        fireEvent.click(
+          screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }),
+        )
 
         // Assert
-        expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-          exclude_plugins: [],
-        }))
+        expect(onChange).toHaveBeenCalledWith(
+          expect.objectContaining({
+            exclude_plugins: [],
+          }),
+        )
       })
 
       it('should open account settings when timezone link is clicked', () => {
         // Arrange
-        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly })
+        const payload = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+        })
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
         fireEvent.click(screen.getByText('autoUpdate.changeTimezone'))
 
         // Assert
-        expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })
+        expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
+          payload: ACCOUNT_SETTING_TAB.PREFERENCES,
+        })
       })
     })
 
     describe('Callback Memoization', () => {
       it('minuteFilter should filter to 15 minute intervals', () => {
         // Arrange
-        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly })
+        const payload = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+        })
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
@@ -1385,14 +1517,18 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
         // Trigger a change (clear plugins)
-        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
+        fireEvent.click(
+          screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }),
+        )
 
         // Assert - other values should be preserved
-        expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
-          upgrade_time_of_day: 36000,
-          upgrade_mode: AUTO_UPDATE_MODE.partial,
-        }))
+        expect(onChange).toHaveBeenCalledWith(
+          expect.objectContaining({
+            strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+            upgrade_time_of_day: 36000,
+            upgrade_mode: AUTO_UPDATE_MODE.partial,
+          }),
+        )
       })
 
       it('handlePluginsChange should not update when mode is update_all', () => {
@@ -1414,18 +1550,26 @@ describe('auto-update-setting', () => {
     describe('Memoization Logic', () => {
       it('strategyDescription should update when strategy_setting changes', () => {
         // Arrange
-        const payload1 = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly })
+        const payload1 = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+        })
         const { rerender } = render(<AutoUpdateSetting {...defaultProps} payload={payload1} />)
 
         // Assert initial
-        expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.selectedDescription')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.strategy.fixOnly.selectedDescription'),
+        ).toBeInTheDocument()
 
         // Act - change strategy
-        const payload2 = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.latest })
+        const payload2 = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.latest,
+        })
         rerender(<AutoUpdateSetting {...defaultProps} payload={payload2} />)
 
         // Assert updated
-        expect(screen.getByText('plugin.autoUpdate.strategy.latest.selectedDescription')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.strategy.latest.selectedDescription'),
+        ).toBeInTheDocument()
       })
 
       it('plugins should reflect correct list based on upgrade_mode', () => {
@@ -1436,10 +1580,14 @@ describe('auto-update-setting', () => {
           include_plugins: ['include-1', 'include-2'],
           exclude_plugins: ['exclude-1'],
         })
-        const { rerender } = render(<AutoUpdateSetting {...defaultProps} payload={partialPayload} />)
+        const { rerender } = render(
+          <AutoUpdateSetting {...defaultProps} payload={partialPayload} />,
+        )
 
         // Assert - partial mode shows include_plugins count
-        expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.partialUPdate:{"count":2,"num":2}'),
+        ).toBeInTheDocument()
 
         // Act - change to exclude mode
         const excludePayload = createMockAutoUpdateConfig({
@@ -1451,14 +1599,18 @@ describe('auto-update-setting', () => {
         rerender(<AutoUpdateSetting {...defaultProps} payload={excludePayload} />)
 
         // Assert - exclude mode shows exclude_plugins count
-        expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}'),
+        ).toBeInTheDocument()
       })
     })
 
     describe('Component Memoization', () => {
       it('should be memoized with React.memo', () => {
         expect(AutoUpdateSetting).toBeDefined()
-        expect((AutoUpdateSetting as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
+        expect((AutoUpdateSetting as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
+          'Symbol',
+        )
       })
     })
 
@@ -1481,7 +1633,9 @@ describe('auto-update-setting', () => {
       it('should handle null timezone gracefully', () => {
         // This tests the timezone! non-null assertion in the component
         // The mock provides a valid timezone, so the component should work
-        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly })
+        const payload = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+        })
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
@@ -1492,7 +1646,9 @@ describe('auto-update-setting', () => {
 
       it('should render timezone offset correctly', () => {
         // Arrange
-        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly })
+        const payload = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+        })
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
@@ -1505,7 +1661,9 @@ describe('auto-update-setting', () => {
     describe('Upgrade Mode Options', () => {
       it('should render all three upgrade mode options', () => {
         // Arrange
-        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly })
+        const payload = createMockAutoUpdateConfig({
+          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+        })
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
@@ -1527,9 +1685,15 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
 
         // Assert
-        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.all' })).toHaveAttribute('aria-pressed', 'false')
-        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.exclude' })).toHaveAttribute('aria-pressed', 'false')
-        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.partial' })).toHaveAttribute('aria-pressed', 'true')
+        expect(
+          screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.all' }),
+        ).toHaveAttribute('aria-pressed', 'false')
+        expect(
+          screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.exclude' }),
+        ).toHaveAttribute('aria-pressed', 'false')
+        expect(
+          screen.getByRole('button', { name: 'plugin.autoUpdate.upgradeMode.partial' }),
+        ).toHaveAttribute('aria-pressed', 'true')
       })
 
       it('should call onChange when upgrade mode is changed', () => {
@@ -1548,9 +1712,11 @@ describe('auto-update-setting', () => {
         fireEvent.click(partialOption)
 
         // Assert
-        expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-          upgrade_mode: AUTO_UPDATE_MODE.partial,
-        }))
+        expect(onChange).toHaveBeenCalledWith(
+          expect.objectContaining({
+            upgrade_mode: AUTO_UPDATE_MODE.partial,
+          }),
+        )
       })
     })
   })
@@ -1600,7 +1766,9 @@ describe('auto-update-setting', () => {
       render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
       // Assert - partial mode shows include_plugins
-      expect(screen.getByText('plugin.autoUpdate.partialUPdate:{"count":1,"num":1}')).toBeInTheDocument()
+      expect(
+        screen.getByText('plugin.autoUpdate.partialUPdate:{"count":1,"num":1}'),
+      ).toBeInTheDocument()
     })
   })
 })

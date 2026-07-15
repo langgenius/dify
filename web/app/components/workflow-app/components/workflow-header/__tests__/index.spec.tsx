@@ -58,14 +58,13 @@ vi.mock('@/app/components/workflow/header', () => ({
       >
         <button
           type="button"
-          onClick={() => props.normal?.runAndHistoryProps?.viewHistoryProps?.onClearLogAndMessageModal?.()}
+          onClick={() =>
+            props.normal?.runAndHistoryProps?.viewHistoryProps?.onClearLogAndMessageModal?.()
+          }
         >
           clear-history
         </button>
-        <button
-          type="button"
-          onClick={() => props.restoring?.onRestoreSettled?.()}
-        >
+        <button type="button" onClick={() => props.restoring?.onRestoreSettled?.()}>
           restore-settled
         </button>
       </div>

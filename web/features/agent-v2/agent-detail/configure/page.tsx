@@ -18,23 +18,15 @@ type AgentConfigurePageProps = {
   agentId: string
 }
 
-export function AgentConfigurePage({
-  agentId,
-}: AgentConfigurePageProps) {
+export function AgentConfigurePage({ agentId }: AgentConfigurePageProps) {
   return (
-    <ScopeProvider
-      key={agentId}
-      atoms={agentConfigureScopedAtoms}
-      name="AgentConfigure"
-    >
+    <ScopeProvider key={agentId} atoms={agentConfigureScopedAtoms} name="AgentConfigure">
       <AgentConfigurePageContent agentId={agentId} />
     </ScopeProvider>
   )
 }
 
-function AgentConfigurePageContent({
-  agentId,
-}: AgentConfigurePageProps) {
+function AgentConfigurePageContent({ agentId }: AgentConfigurePageProps) {
   const { t } = useTranslation('agentV2')
   const selectedVersionId = useAtomValue(agentConfigureSelectedVersionIdAtom)
   const composerRebaseRevision = useAtomValue(agentConfigureComposerRebaseRevisionAtom)
@@ -43,9 +35,7 @@ function AgentConfigurePageContent({
   const configureData = useAgentConfigureData(agentId, selectedVersionId)
 
   if (configureData.isPending) {
-    return (
-      <AgentConfigurePageLoading label={t('agentDetail.sections.configure')} />
-    )
+    return <AgentConfigurePageLoading label={t(($) => $['agentDetail.sections.configure'])} />
   }
 
   return (

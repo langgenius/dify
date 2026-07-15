@@ -6,11 +6,7 @@ import {
 } from '../plugin-install-permission-provider'
 
 const PermissionProbe = () => {
-  const {
-    canInstallPlugin,
-    canUpdatePlugin,
-    currentDifyVersion,
-  } = usePluginInstallPermission()
+  const { canInstallPlugin, canUpdatePlugin, currentDifyVersion } = usePluginInstallPermission()
 
   return (
     <div>

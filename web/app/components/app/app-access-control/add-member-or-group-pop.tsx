@@ -1,6 +1,12 @@
 'use client'
-import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
-import type { AccessControlAccount, AccessControlGroup, Subject, SubjectAccount, SubjectGroup } from '@/models/access-control'
+import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type {
+  AccessControlAccount,
+  AccessControlGroup,
+  Subject,
+  SubjectAccount,
+  SubjectGroup,
+} from '@/models/access-control'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -21,7 +27,7 @@ import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/app-context-state'
+import { userProfileAtom } from '@/context/account-state'
 import { SubjectType } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
@@ -33,17 +39,20 @@ export default function AddMemberOrGroupDialog() {
   const [keyword, setKeyword] = useState('')
   const scrollRootRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
-  const specificGroups = useAccessControlStore(s => s.specificGroups)
-  const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
-  const specificMembers = useAccessControlStore(s => s.specificMembers)
-  const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
-  const selectedGroupsForBreadcrumb = useAccessControlStore(s => s.selectedGroupsForBreadcrumb)
+  const specificGroups = useAccessControlStore((s) => s.specificGroups)
+  const setSpecificGroups = useAccessControlStore((s) => s.setSpecificGroups)
+  const specificMembers = useAccessControlStore((s) => s.specificMembers)
+  const setSpecificMembers = useAccessControlStore((s) => s.setSpecificMembers)
+  const selectedGroupsForBreadcrumb = useAccessControlStore((s) => s.selectedGroupsForBreadcrumb)
   const debouncedKeyword = useDebounce(keyword, { wait: 500 })
 
   const lastAvailableGroup = selectedGroupsForBreadcrumb[selectedGroupsForBreadcrumb.length - 1]
-  const { isLoading, isFetchingNextPage, fetchNextPage, data } = useSearchForWhiteListCandidates({ keyword: debouncedKeyword, groupId: lastAvailableGroup?.id, resultsPerPage: 10 }, open)
+  const { isLoading, isFetchingNextPage, fetchNextPage, data } = useSearchForWhiteListCandidates(
+    { keyword: debouncedKeyword, groupId: lastAvailableGroup?.id, resultsPerPage: 10 },
+    open,
+  )
   const pages = data?.pages ?? []
-  const subjects = pages.flatMap(page => page.subjects ?? [])
+  const subjects = pages.flatMap((page) => page.subjects ?? [])
   const selectedSubjects = [
     ...specificGroups.map(groupToSubject),
     ...specificMembers.map(memberToSubject),
@@ -55,25 +64,25 @@ export default function AddMemberOrGroupDialog() {
   useEffect(() => {
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
-      observer = new IntersectionObserver((entries) => {
-        if (entries[0]!.isIntersecting && !isLoading && hasMore)
-          fetchNextPage()
-      }, { root: scrollRootRef.current, rootMargin: '20px' })
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]!.isIntersecting && !isLoading && hasMore) fetchNextPage()
+        },
+        { root: scrollRootRef.current, rootMargin: '20px' },
+      )
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
   }, [isLoading, fetchNextPage, hasMore])
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen)
-      setKeyword('')
+    if (!nextOpen) setKeyword('')
 
     setOpen(nextOpen)
   }
 
-  const handleInputValueChange = (inputValue: string, details: ComboboxRootChangeEventDetails) => {
-    if (details.reason !== 'item-press')
-      setKeyword(inputValue)
+  const handleInputValueChange = (inputValue: string, details: ComboboxChangeEventDetails) => {
+    if (details.reason !== 'item-press') setKeyword(inputValue)
   }
 
   const handleValueChange = (nextSubjects: Subject[]) => {
@@ -83,8 +92,7 @@ export default function AddMemberOrGroupDialog() {
     for (const subject of nextSubjects) {
       if (subject.subjectType === SubjectType.GROUP)
         nextGroups.push((subject as SubjectGroup).groupData)
-      else
-        nextMembers.push((subject as SubjectAccount).accountData)
+      else nextMembers.push((subject as SubjectAccount).accountData)
     }
 
     setSpecificGroups(nextGroups)
@@ -107,14 +115,14 @@ export default function AddMemberOrGroupDialog() {
       onValueChange={handleValueChange}
     >
       <ComboboxTrigger
-        aria-label={t('operation.add', { ns: 'common' })}
+        aria-label={t(($) => $['operation.add'], { ns: 'common' })}
         icon={false}
         size="small"
         className="h-6 w-auto min-w-[52px] shrink-0 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-accent-hover"
       >
         <span className="inline-flex min-w-0 items-center justify-center gap-x-0.5 whitespace-nowrap">
           <span className="i-ri-add-circle-fill size-4 shrink-0" aria-hidden="true" />
-          <span className="shrink-0">{t('operation.add', { ns: 'common' })}</span>
+          <span className="shrink-0">{t(($) => $['operation.add'], { ns: 'common' })}</span>
         </span>
       </ComboboxTrigger>
       <ComboboxContent
@@ -125,44 +133,51 @@ export default function AddMemberOrGroupDialog() {
         <div ref={scrollRootRef} className="min-h-0 overflow-y-auto">
           <div className="sticky top-0 z-10 bg-components-panel-bg-blur p-2 pb-0.5 backdrop-blur-[5px]">
             <ComboboxInputGroup className="h-8 min-h-8 px-2">
-              <span className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+              <span
+                className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary"
+                aria-hidden="true"
+              />
               <ComboboxInput
-                aria-label={t('accessControlDialog.operateGroupAndMember.searchPlaceholder', { ns: 'app' })}
-                placeholder={t('accessControlDialog.operateGroupAndMember.searchPlaceholder', { ns: 'app' })}
+                aria-label={t(
+                  ($) => $['accessControlDialog.operateGroupAndMember.searchPlaceholder'],
+                  { ns: 'app' },
+                )}
+                placeholder={t(
+                  ($) => $['accessControlDialog.operateGroupAndMember.searchPlaceholder'],
+                  { ns: 'app' },
+                )}
                 className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
               />
             </ComboboxInputGroup>
           </div>
-          {isLoading
-            ? (
-                <ComboboxStatus className="p-1">
-                  <Loading />
-                </ComboboxStatus>
-              )
-            : (
-                <>
-                  {shouldShowBreadcrumb && (
-                    <div className="flex h-7 items-center px-2 py-0.5">
-                      <SelectedGroupsBreadCrumb />
-                    </div>
-                  )}
-                  {hasResults
-                    ? (
-                        <>
-                          <ComboboxList className="max-h-none p-1">
-                            {(subject: Subject) => <SubjectItem key={getSubjectValue(subject)} subject={subject} />}
-                          </ComboboxList>
-                          {isFetchingNextPage && <Loading />}
-                          <div ref={anchorRef} className="h-0" />
-                        </>
-                      )
-                    : (
-                        <ComboboxEmpty className="flex h-7 items-center justify-center px-2 py-0.5">
-                          {t('accessControlDialog.operateGroupAndMember.noResult', { ns: 'app' })}
-                        </ComboboxEmpty>
-                      )}
-                </>
+          {isLoading ? (
+            <ComboboxStatus className="p-1">
+              <Loading />
+            </ComboboxStatus>
+          ) : (
+            <>
+              {shouldShowBreadcrumb && (
+                <div className="flex h-7 items-center px-2 py-0.5">
+                  <SelectedGroupsBreadCrumb />
+                </div>
               )}
+              {hasResults ? (
+                <>
+                  <ComboboxList className="max-h-none p-1">
+                    {(subject: Subject) => (
+                      <SubjectItem key={getSubjectValue(subject)} subject={subject} />
+                    )}
+                  </ComboboxList>
+                  {isFetchingNextPage && <Loading />}
+                  <div ref={anchorRef} className="h-0" />
+                </>
+              ) : (
+                <ComboboxEmpty className="flex h-7 items-center justify-center px-2 py-0.5">
+                  {t(($) => $['accessControlDialog.operateGroupAndMember.noResult'], { ns: 'app' })}
+                </ComboboxEmpty>
+              )}
+            </>
+          )}
         </div>
       </ComboboxContent>
     </Combobox>
@@ -186,8 +201,7 @@ function memberToSubject(member: AccessControlAccount): SubjectAccount {
 }
 
 function getSubjectLabel(subject: Subject) {
-  if (subject.subjectType === SubjectType.GROUP)
-    return (subject as SubjectGroup).groupData.name
+  if (subject.subjectType === SubjectType.GROUP) return (subject as SubjectGroup).groupData.name
 
   return (subject as SubjectAccount).accountData.name
 }
@@ -208,8 +222,10 @@ function SubjectItem({ subject }: { subject: Subject }) {
 }
 
 function SelectedGroupsBreadCrumb() {
-  const selectedGroupsForBreadcrumb = useAccessControlStore(s => s.selectedGroupsForBreadcrumb)
-  const setSelectedGroupsForBreadcrumb = useAccessControlStore(s => s.setSelectedGroupsForBreadcrumb)
+  const selectedGroupsForBreadcrumb = useAccessControlStore((s) => s.selectedGroupsForBreadcrumb)
+  const setSelectedGroupsForBreadcrumb = useAccessControlStore(
+    (s) => s.setSelectedGroupsForBreadcrumb,
+  )
   const { t } = useTranslation()
 
   const handleBreadCrumbClick = (index: number) => {
@@ -223,36 +239,39 @@ function SelectedGroupsBreadCrumb() {
 
   return (
     <div className="flex h-7 items-center gap-x-0.5 px-2 py-0.5">
-      {hasBreadcrumb
-        ? (
-            <button
-              type="button"
-              className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-              onClick={handleReset}
-            >
-              {t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}
-            </button>
-          )
-        : (
-            <span className="system-xs-regular text-text-tertiary">{t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}</span>
-          )}
+      {hasBreadcrumb ? (
+        <button
+          type="button"
+          className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={handleReset}
+        >
+          {t(($) => $['accessControlDialog.operateGroupAndMember.allMembers'], { ns: 'app' })}
+        </button>
+      ) : (
+        <span className="system-xs-regular text-text-tertiary">
+          {t(($) => $['accessControlDialog.operateGroupAndMember.allMembers'], { ns: 'app' })}
+        </span>
+      )}
       {selectedGroupsForBreadcrumb.map((group, index) => {
         const isLastGroup = index === selectedGroupsForBreadcrumb.length - 1
 
         return (
-          <div key={index} className="flex items-center gap-x-0.5 system-xs-regular text-text-tertiary">
+          <div
+            key={index}
+            className="flex items-center gap-x-0.5 system-xs-regular text-text-tertiary"
+          >
             <span>/</span>
-            {isLastGroup
-              ? <span>{group.name}</span>
-              : (
-                  <button
-                    type="button"
-                    className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                    onClick={() => handleBreadCrumbClick(index)}
-                  >
-                    {group.name}
-                  </button>
-                )}
+            {isLastGroup ? (
+              <span>{group.name}</span>
+            ) : (
+              <button
+                type="button"
+                className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={() => handleBreadCrumbClick(index)}
+              >
+                {group.name}
+              </button>
+            )}
           </div>
         )
       })}
@@ -266,10 +285,12 @@ type GroupItemProps = {
 }
 function GroupItem({ group, subject }: GroupItemProps) {
   const { t } = useTranslation()
-  const specificGroups = useAccessControlStore(s => s.specificGroups)
-  const selectedGroupsForBreadcrumb = useAccessControlStore(s => s.selectedGroupsForBreadcrumb)
-  const setSelectedGroupsForBreadcrumb = useAccessControlStore(s => s.setSelectedGroupsForBreadcrumb)
-  const isChecked = specificGroups.some(g => g.id === group.id)
+  const specificGroups = useAccessControlStore((s) => s.specificGroups)
+  const selectedGroupsForBreadcrumb = useAccessControlStore((s) => s.selectedGroupsForBreadcrumb)
+  const setSelectedGroupsForBreadcrumb = useAccessControlStore(
+    (s) => s.setSelectedGroupsForBreadcrumb,
+  )
+  const isChecked = specificGroups.some((g) => g.id === group.id)
 
   const handleExpandClick = () => {
     setSelectedGroupsForBreadcrumb([...selectedGroupsForBreadcrumb, group])
@@ -282,7 +303,10 @@ function GroupItem({ group, subject }: GroupItemProps) {
         <ComboboxItemText className="flex grow items-center px-0">
           <div className="mr-2 size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
             <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
-              <RiOrganizationChart className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" aria-hidden="true" />
+              <RiOrganizationChart
+                className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0"
+                aria-hidden="true"
+              />
             </div>
           </div>
           <span className="mr-1 system-sm-medium text-text-secondary">{group.name}</span>
@@ -294,10 +318,12 @@ function GroupItem({ group, subject }: GroupItemProps) {
         disabled={isChecked}
         variant="ghost-accent"
         className="mr-1 flex shrink-0 items-center justify-between px-1.5 py-1"
-        onPointerDown={event => event.preventDefault()}
+        onPointerDown={(event) => event.preventDefault()}
         onClick={handleExpandClick}
       >
-        <span className="px-[3px]">{t('accessControlDialog.operateGroupAndMember.expand', { ns: 'app' })}</span>
+        <span className="px-[3px]">
+          {t(($) => $['accessControlDialog.operateGroupAndMember.expand'], { ns: 'app' })}
+        </span>
         <RiArrowRightSLine className="size-4" aria-hidden="true" />
       </Button>
     </div>
@@ -311,8 +337,8 @@ type MemberItemProps = {
 function MemberItem({ member, subject }: MemberItemProps) {
   const currentUser = useAtomValue(userProfileAtom)
   const { t } = useTranslation()
-  const specificMembers = useAccessControlStore(s => s.specificMembers)
-  const isChecked = specificMembers.some(m => m.id === member.id)
+  const specificMembers = useAccessControlStore((s) => s.specificMembers)
+  const isChecked = specificMembers.some((m) => m.id === member.id)
   return (
     <BaseItem subject={subject} className="pr-3">
       <SelectionBox checked={isChecked} />
@@ -325,9 +351,7 @@ function MemberItem({ member, subject }: MemberItemProps) {
         <span className="mr-1 system-sm-medium text-text-secondary">{member.name}</span>
         {currentUser.email === member.email && (
           <span className="system-xs-regular text-text-tertiary">
-            (
-            {t('you', { ns: 'common' })}
-            )
+            ({t(($) => $.you, { ns: 'common' })})
           </span>
         )}
       </ComboboxItemText>

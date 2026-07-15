@@ -2,9 +2,13 @@ import type { ComponentProps } from 'react'
 import type { Node } from 'reactflow'
 import type { NodeOutPutVar } from '../../../types'
 import type { ToolVarInputs } from '../../tool/types'
-import type { CredentialFormSchema, CredentialFormSchemaNumberInput, CredentialFormSchemaTextInput } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  CredentialFormSchema,
+  CredentialFormSchemaNumberInput,
+  CredentialFormSchemaTextInput,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PluginMeta } from '@/app/components/plugins/types'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import {
   NumberField,
   NumberFieldControls,
@@ -19,7 +23,10 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 import ListEmpty from '@/app/components/base/list-empty'
-import { FormTypeEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  FormTypeEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
@@ -61,15 +68,22 @@ type MultipleToolSelectorSchema = CustomSchema<'array[tools]'>
 type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema
 
 export const AgentStrategy = memo((props: AgentStrategyProps) => {
-  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes, nodeId } = props
+  const {
+    strategy,
+    onStrategyChange,
+    formSchema,
+    formValue,
+    onFormValueChange,
+    nodeOutputVars,
+    availableNodes,
+    nodeId,
+  } = props
   const { t } = useTranslation()
   const docLink = useDocLink()
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
   const renderI18nObject = useRenderI18nObject()
   const workflowStore = useWorkflowStore()
-  const {
-    setControlPromptEditorRerenderKey,
-  } = workflowStore.getState()
+  const { setControlPromptEditorRerenderKey } = workflowStore.getState()
 
   const override: ComponentProps<typeof Form<CustomField>>['override'] = [
     [FormTypeEnum.textNumber, FormTypeEnum.textInput],
@@ -124,8 +138,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
         }
         case FormTypeEnum.textNumber: {
           const def = schema as CredentialFormSchemaNumberInput
-          if (def.max == null || def.min == null)
-            return false
+          if (def.max == null || def.min == null) return false
 
           const defaultValue = schema.default ? Number.parseInt(schema.default) : 1
           const value = props.value[schema.variable] ?? defaultValue
@@ -135,18 +148,16 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           }
           return (
             <Field
-              title={(
+              title={
                 <>
-                  {label}
-                  {' '}
-                  {def.required && <span className="text-red-500">*</span>}
+                  {label} {def.required && <span className="text-red-500">*</span>}
                 </>
-              )}
+              }
               key={def.variable}
               tooltip={def.tooltip && renderI18nObject(def.tooltip)}
               inline
             >
-              <FieldsetRoot className="flex w-[200px] items-center gap-3">
+              <Fieldset className="flex w-[200px] items-center gap-3">
                 <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
                 <Slider
                   value={value}
@@ -160,7 +171,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                   value={value}
                   min={def.min}
                   max={def.max}
-                  onValueChange={nextValue => onChange(nextValue ?? defaultValue)}
+                  onValueChange={(nextValue) => onChange(nextValue ?? defaultValue)}
                 >
                   <NumberFieldGroup>
                     <NumberFieldInput aria-label={label} className="w-12" />
@@ -170,14 +181,17 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                     </NumberFieldControls>
                   </NumberFieldGroup>
                 </NumberField>
-              </FieldsetRoot>
+              </Fieldset>
             </Field>
           )
         }
       }
     },
   ]
-  const renderField: ComponentProps<typeof Form<CustomField>>['customRenderField'] = (schema, props) => {
+  const renderField: ComponentProps<typeof Form<CustomField>>['customRenderField'] = (
+    schema,
+    props,
+  ) => {
     switch (schema.type) {
       case FormTypeEnum.toolSelector: {
         const value = props.value[schema.variable]
@@ -186,13 +200,12 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
         }
         return (
           <Field
-            title={(
+            title={
               <>
-                {renderI18nObject(schema.label)}
-                {' '}
+                {renderI18nObject(schema.label)}{' '}
                 {schema.required && <span className="text-red-500">*</span>}
               </>
-            )}
+            }
             tooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
           >
             <ToolSelector
@@ -201,7 +214,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               availableNodes={props.availableNodes || []}
               scope={schema.scope}
               value={value}
-              onSelect={item => onChange(item)}
+              onSelect={(item) => onChange(item)}
               onDelete={() => onChange(null)}
               onSelectMultiple={noop}
             />
@@ -233,51 +246,43 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
   return (
     <div className="space-y-2">
       <AgentStrategySelector value={strategy} onChange={onStrategyChange} />
-      {
-        strategy
-          ? (
-              <div>
-                <Form<CustomField>
-                  formSchemas={[
-                    ...formSchema,
-                  ]}
-                  value={formValue}
-                  onChange={onFormValueChange}
-                  validating={false}
-                  showOnVariableMap={{}}
-                  isEditMode={true}
-                  isAgentStrategy={true}
-                  fieldLabelClassName="uppercase"
-                  customRenderField={renderField}
-                  override={override}
-                  nodeId={nodeId}
-                  nodeOutputVars={nodeOutputVars || []}
-                  availableNodes={availableNodes || []}
-                />
-              </div>
-            )
-          : (
-              <ListEmpty
-                icon={<Agent className="size-5 shrink-0 text-text-accent" />}
-                title={t('nodes.agent.strategy.configureTip', { ns: 'workflow' })}
-                description={(
-                  <div className="text-xs text-text-tertiary">
-                    {t('nodes.agent.strategy.configureTipDesc', { ns: 'workflow' })}
-                    {' '}
-                    <br />
-                    <Link
-                      href={docLink('/use-dify/nodes/agent')}
-                      className="text-text-accent-secondary"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {t('nodes.agent.learnMore', { ns: 'workflow' })}
-                    </Link>
-                  </div>
-                )}
-              />
-            )
-      }
+      {strategy ? (
+        <div>
+          <Form<CustomField>
+            formSchemas={[...formSchema]}
+            value={formValue}
+            onChange={onFormValueChange}
+            validating={false}
+            showOnVariableMap={{}}
+            isEditMode={true}
+            isAgentStrategy={true}
+            fieldLabelClassName="uppercase"
+            customRenderField={renderField}
+            override={override}
+            nodeId={nodeId}
+            nodeOutputVars={nodeOutputVars || []}
+            availableNodes={availableNodes || []}
+          />
+        </div>
+      ) : (
+        <ListEmpty
+          icon={<Agent className="size-5 shrink-0 text-text-accent" />}
+          title={t(($) => $['nodes.agent.strategy.configureTip'], { ns: 'workflow' })}
+          description={
+            <div className="text-xs text-text-tertiary">
+              {t(($) => $['nodes.agent.strategy.configureTipDesc'], { ns: 'workflow' })} <br />
+              <Link
+                href={docLink('/use-dify/nodes/agent')}
+                className="text-text-accent-secondary"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t(($) => $['nodes.agent.learnMore'], { ns: 'workflow' })}
+              </Link>
+            </div>
+          }
+        />
+      )}
     </div>
   )
 })

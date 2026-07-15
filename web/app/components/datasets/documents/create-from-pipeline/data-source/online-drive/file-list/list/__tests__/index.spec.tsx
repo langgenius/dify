@@ -8,7 +8,13 @@ import List from '../index'
 
 // Mock Item component for List tests - child component with complex behavior
 vi.mock('../item', () => ({
-  default: ({ file, isSelected, onSelect, onOpen, isMultipleChoice }: {
+  default: ({
+    file,
+    isSelected,
+    onSelect,
+    onOpen,
+    isMultipleChoice,
+  }: {
     file: OnlineDriveFile
     isSelected: boolean
     onSelect: (file: OnlineDriveFile) => void
@@ -22,8 +28,12 @@ vi.mock('../item', () => ({
         data-multiple-choice={isMultipleChoice}
       >
         <span data-testid={`item-name-${file.id}`}>{file.name}</span>
-        <button data-testid={`item-select-${file.id}`} onClick={() => onSelect(file)}>Select</button>
-        <button data-testid={`item-open-${file.id}`} onClick={() => onOpen(file)}>Open</button>
+        <button data-testid={`item-select-${file.id}`} onClick={() => onSelect(file)}>
+          Select
+        </button>
+        <button data-testid={`item-open-${file.id}`} onClick={() => onOpen(file)}>
+          Open
+        </button>
       </div>
     )
   },
@@ -31,9 +41,7 @@ vi.mock('../item', () => ({
 
 // Mock EmptyFolder component for List tests
 vi.mock('../empty-folder', () => ({
-  default: () => (
-    <div data-testid="empty-folder">Empty Folder</div>
-  ),
+  default: () => <div data-testid="empty-folder">Empty Folder</div>,
 }))
 
 // Mock EmptySearchResult component for List tests
@@ -41,7 +49,9 @@ vi.mock('../empty-search-result', () => ({
   default: ({ onResetKeywords }: { onResetKeywords: () => void }) => (
     <div data-testid="empty-search-result">
       <span>No results</span>
-      <button data-testid="reset-keywords-btn" onClick={onResetKeywords}>Reset</button>
+      <button data-testid="reset-keywords-btn" onClick={onResetKeywords}>
+        Reset
+      </button>
     </div>
   ),
 }))
@@ -73,11 +83,13 @@ const createMockOnlineDriveFile = (overrides?: Partial<OnlineDriveFile>): Online
 })
 
 const createMockFileList = (count: number): OnlineDriveFile[] => {
-  return Array.from({ length: count }, (_, index) => createMockOnlineDriveFile({
-    id: `file-${index + 1}`,
-    name: `file-${index + 1}.txt`,
-    size: (index + 1) * 1024,
-  }))
+  return Array.from({ length: count }, (_, index) =>
+    createMockOnlineDriveFile({
+      id: `file-${index + 1}`,
+      name: `file-${index + 1}.txt`,
+      size: (index + 1) * 1024,
+    }),
+  )
 }
 
 type ListProps = React.ComponentProps<typeof List>
@@ -128,15 +140,17 @@ const createMockIntersectionObserver = () => {
 
 const triggerIntersection = (isIntersecting: boolean) => {
   if (mockIntersectionObserverCallback) {
-    const entries = [{
-      isIntersecting,
-      boundingClientRect: {} as DOMRectReadOnly,
-      intersectionRatio: isIntersecting ? 1 : 0,
-      intersectionRect: {} as DOMRectReadOnly,
-      rootBounds: null,
-      target: document.createElement('div'),
-      time: Date.now(),
-    }] as IntersectionObserverEntry[]
+    const entries = [
+      {
+        isIntersecting,
+        boundingClientRect: {} as DOMRectReadOnly,
+        intersectionRatio: isIntersecting ? 1 : 0,
+        intersectionRect: {} as DOMRectReadOnly,
+        rootBounds: null,
+        target: document.createElement('div'),
+        time: Date.now(),
+      },
+    ] as IntersectionObserverEntry[]
     mockIntersectionObserverCallback(entries, {} as IntersectionObserver)
   }
 }
@@ -158,7 +172,8 @@ describe('List', () => {
     mockIntersectionObserverInstance = null
 
     // Setup IntersectionObserver mock
-    window.IntersectionObserver = createMockIntersectionObserver() as unknown as typeof IntersectionObserver
+    window.IntersectionObserver =
+      createMockIntersectionObserver() as unknown as typeof IntersectionObserver
   })
 
   afterEach(() => {
@@ -349,30 +364,38 @@ describe('List', () => {
     describe('isLoading prop', () => {
       it.each([
         { isLoading: true, fileList: [], keywords: '', expected: 'isAllLoading' },
-        { isLoading: true, fileList: createMockFileList(2), keywords: '', expected: 'isPartialLoading' },
+        {
+          isLoading: true,
+          fileList: createMockFileList(2),
+          keywords: '',
+          expected: 'isPartialLoading',
+        },
         { isLoading: false, fileList: [], keywords: '', expected: 'isEmpty' },
         { isLoading: false, fileList: createMockFileList(2), keywords: '', expected: 'hasFiles' },
-      ])('should render correctly when isLoading=$isLoading with fileList.length=$fileList.length', ({ isLoading, fileList, expected }) => {
-        const props = createDefaultProps({ isLoading, fileList })
+      ])(
+        'should render correctly when isLoading=$isLoading with fileList.length=$fileList.length',
+        ({ isLoading, fileList, expected }) => {
+          const props = createDefaultProps({ isLoading, fileList })
 
-        render(<List {...props} />)
+          render(<List {...props} />)
 
-        switch (expected) {
-          case 'isAllLoading':
-            expect(screen.getByRole('status')).toBeInTheDocument()
-            break
-          case 'isPartialLoading':
-            expect(screen.getByRole('status')).toBeInTheDocument()
-            expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
-            break
-          case 'isEmpty':
-            expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
-            break
-          case 'hasFiles':
-            expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
-            break
-        }
-      })
+          switch (expected) {
+            case 'isAllLoading':
+              expect(screen.getByRole('status')).toBeInTheDocument()
+              break
+            case 'isPartialLoading':
+              expect(screen.getByRole('status')).toBeInTheDocument()
+              expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
+              break
+            case 'isEmpty':
+              expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
+              break
+            case 'hasFiles':
+              expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
+              break
+          }
+        },
+      )
     })
 
     describe('supportBatchUpload prop', () => {
@@ -446,7 +469,11 @@ describe('List', () => {
       it('should call handleOpenFolder when opening a folder', () => {
         const handleOpenFolder = vi.fn()
         const fileList = [
-          createMockOnlineDriveFile({ id: 'folder-1', name: 'Documents', type: OnlineDriveFileType.folder }),
+          createMockOnlineDriveFile({
+            id: 'folder-1',
+            name: 'Documents',
+            type: OnlineDriveFileType.folder,
+          }),
         ]
         const props = createDefaultProps({
           fileList,
@@ -786,9 +813,21 @@ describe('List', () => {
 
       it('should handle mixed file types in list', () => {
         const fileList = [
-          createMockOnlineDriveFile({ id: 'file-1', type: OnlineDriveFileType.file, name: 'doc.pdf' }),
-          createMockOnlineDriveFile({ id: 'folder-1', type: OnlineDriveFileType.folder, name: 'Documents' }),
-          createMockOnlineDriveFile({ id: 'bucket-1', type: OnlineDriveFileType.bucket, name: 'my-bucket' }),
+          createMockOnlineDriveFile({
+            id: 'file-1',
+            type: OnlineDriveFileType.file,
+            name: 'doc.pdf',
+          }),
+          createMockOnlineDriveFile({
+            id: 'folder-1',
+            type: OnlineDriveFileType.folder,
+            name: 'Documents',
+          }),
+          createMockOnlineDriveFile({
+            id: 'bucket-1',
+            type: OnlineDriveFileType.bucket,
+            name: 'my-bucket',
+          }),
         ]
         const props = createDefaultProps({ fileList })
 
@@ -887,20 +926,20 @@ describe('List', () => {
   })
 
   describe('Prop Variations', () => {
-    it.each([
-      { supportBatchUpload: true },
-      { supportBatchUpload: false },
-    ])('should render correctly with supportBatchUpload=$supportBatchUpload', ({ supportBatchUpload }) => {
-      const fileList = createMockFileList(2)
-      const props = createDefaultProps({ fileList, supportBatchUpload })
+    it.each([{ supportBatchUpload: true }, { supportBatchUpload: false }])(
+      'should render correctly with supportBatchUpload=$supportBatchUpload',
+      ({ supportBatchUpload }) => {
+        const fileList = createMockFileList(2)
+        const props = createDefaultProps({ fileList, supportBatchUpload })
 
-      render(<List {...props} />)
+        render(<List {...props} />)
 
-      expect(screen.getByTestId('item-file-1')).toHaveAttribute(
-        'data-multiple-choice',
-        String(supportBatchUpload),
-      )
-    })
+        expect(screen.getByTestId('item-file-1')).toHaveAttribute(
+          'data-multiple-choice',
+          String(supportBatchUpload),
+        )
+      },
+    )
 
     it.each([
       { isLoading: true, fileCount: 0, keywords: '', expectedState: 'all-loading' },
@@ -908,31 +947,34 @@ describe('List', () => {
       { isLoading: false, fileCount: 0, keywords: '', expectedState: 'empty-folder' },
       { isLoading: false, fileCount: 0, keywords: 'search', expectedState: 'empty-search' },
       { isLoading: false, fileCount: 5, keywords: '', expectedState: 'file-list' },
-    ])('should render $expectedState when isLoading=$isLoading, fileCount=$fileCount, keywords=$keywords', ({ isLoading, fileCount, keywords, expectedState }) => {
-      const fileList = createMockFileList(fileCount)
-      const props = createDefaultProps({ fileList, isLoading, keywords })
+    ])(
+      'should render $expectedState when isLoading=$isLoading, fileCount=$fileCount, keywords=$keywords',
+      ({ isLoading, fileCount, keywords, expectedState }) => {
+        const fileList = createMockFileList(fileCount)
+        const props = createDefaultProps({ fileList, isLoading, keywords })
 
-      render(<List {...props} />)
+        render(<List {...props} />)
 
-      switch (expectedState) {
-        case 'all-loading':
-          expect(screen.getByRole('status')).toBeInTheDocument()
-          break
-        case 'partial-loading':
-          expect(screen.getByRole('status')).toBeInTheDocument()
-          expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
-          break
-        case 'empty-folder':
-          expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
-          break
-        case 'empty-search':
-          expect(screen.getByTestId('empty-search-result')).toBeInTheDocument()
-          break
-        case 'file-list':
-          expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
-          break
-      }
-    })
+        switch (expectedState) {
+          case 'all-loading':
+            expect(screen.getByRole('status')).toBeInTheDocument()
+            break
+          case 'partial-loading':
+            expect(screen.getByRole('status')).toBeInTheDocument()
+            expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
+            break
+          case 'empty-folder':
+            expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
+            break
+          case 'empty-search':
+            expect(screen.getByTestId('empty-search-result')).toBeInTheDocument()
+            break
+          case 'file-list':
+            expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
+            break
+        }
+      },
+    )
 
     it.each([
       { selectedCount: 0, expectedSelected: [] },
@@ -949,7 +991,10 @@ describe('List', () => {
 
       fileList.forEach((file) => {
         const isSelected = expectedSelected.includes(file.id)
-        expect(screen.getByTestId(`item-${file.id}`)).toHaveAttribute('data-selected', String(isSelected))
+        expect(screen.getByTestId(`item-${file.id}`)).toHaveAttribute(
+          'data-selected',
+          String(isSelected),
+        )
       })
     })
   })
@@ -1020,7 +1065,9 @@ describe('EmptySearchResult', () => {
   let ActualEmptySearchResult: React.ComponentType<{ onResetKeywords: () => void }>
 
   beforeAll(async () => {
-    const mod = await vi.importActual<{ default: React.ComponentType<{ onResetKeywords: () => void }> }>('../empty-search-result')
+    const mod = await vi.importActual<{
+      default: React.ComponentType<{ onResetKeywords: () => void }>
+    }>('../empty-search-result')
     ActualEmptySearchResult = mod.default
   })
 
@@ -1038,7 +1085,9 @@ describe('EmptySearchResult', () => {
     it('should render empty search result message', () => {
       const onResetKeywords = vi.fn()
       render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
-      expect(screen.getByText(/datasetPipeline\.onlineDrive\.emptySearchResult/)).toBeInTheDocument()
+      expect(
+        screen.getByText(/datasetPipeline\.onlineDrive\.emptySearchResult/),
+      ).toBeInTheDocument()
     })
 
     it('should render reset keywords button', () => {
@@ -1093,7 +1142,9 @@ describe('EmptySearchResult', () => {
     it('should have readable text content', () => {
       const onResetKeywords = vi.fn()
       render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
-      expect(screen.getByText(/datasetPipeline\.onlineDrive\.emptySearchResult/)).toBeInTheDocument()
+      expect(
+        screen.getByText(/datasetPipeline\.onlineDrive\.emptySearchResult/),
+      ).toBeInTheDocument()
     })
   })
 })
@@ -1101,11 +1152,18 @@ describe('EmptySearchResult', () => {
 // FileIcon Component Tests (using actual component)
 describe('FileIcon', () => {
   // Get real component for testing
-  type FileIconProps = { type: OnlineDriveFileType, fileName: string, size?: 'sm' | 'md' | 'lg' | 'xl', className?: string }
+  type FileIconProps = {
+    type: OnlineDriveFileType
+    fileName: string
+    size?: 'sm' | 'md' | 'lg' | 'xl'
+    className?: string
+  }
   let ActualFileIcon: React.ComponentType<FileIconProps>
 
   beforeAll(async () => {
-    const mod = await vi.importActual<{ default: React.ComponentType<FileIconProps> }>('../file-icon')
+    const mod = await vi.importActual<{ default: React.ComponentType<FileIconProps> }>(
+      '../file-icon',
+    )
     ActualFileIcon = mod.default
   })
 
@@ -1152,9 +1210,7 @@ describe('FileIcon', () => {
         { type: OnlineDriveFileType.folder, fileName: 'folder-name' },
         { type: OnlineDriveFileType.file, fileName: 'file.txt' },
       ])('should render correctly for type=$type', ({ type, fileName }) => {
-        const { container } = render(
-          <ActualFileIcon type={type} fileName={fileName} />,
-        )
+        const { container } = render(<ActualFileIcon type={type} fileName={fileName} />)
         expect(container.firstChild).toBeInTheDocument()
       })
     })
@@ -1229,9 +1285,7 @@ describe('FileIcon', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty fileName', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.file} fileName="" />,
-      )
+      const { container } = render(<ActualFileIcon type={OnlineDriveFileType.file} fileName="" />)
       expect(container.firstChild).toBeInTheDocument()
     })
 
@@ -1320,7 +1374,11 @@ describe('Item', () => {
 
     it('should not render file size for folder type', () => {
       const props = createItemProps({
-        file: createMockOnlineDriveFile({ size: 1024, type: OnlineDriveFileType.folder, name: 'Documents' }),
+        file: createMockOnlineDriveFile({
+          size: 1024,
+          type: OnlineDriveFileType.folder,
+          name: 'Documents',
+        }),
       })
       render(<ActualItem {...props} />)
       expect(screen.queryByText('1 KB')).not.toBeInTheDocument()
@@ -1445,7 +1503,10 @@ describe('Item', () => {
 
       it('should call onOpen when clicking on folder item', () => {
         const onOpen = vi.fn()
-        const file = createMockOnlineDriveFile({ type: OnlineDriveFileType.folder, name: 'Documents' })
+        const file = createMockOnlineDriveFile({
+          type: OnlineDriveFileType.folder,
+          name: 'Documents',
+        })
         const props = createItemProps({ file, onOpen })
         render(<ActualItem {...props} />)
         fireEvent.click(screen.getByText('Documents'))
@@ -1454,7 +1515,10 @@ describe('Item', () => {
 
       it('should call onOpen when clicking on bucket item', () => {
         const onOpen = vi.fn()
-        const file = createMockOnlineDriveFile({ type: OnlineDriveFileType.bucket, name: 'my-bucket' })
+        const file = createMockOnlineDriveFile({
+          type: OnlineDriveFileType.bucket,
+          name: 'my-bucket',
+        })
         const props = createItemProps({ file, onOpen })
         render(<ActualItem {...props} />)
         fireEvent.click(screen.getByText('my-bucket'))
@@ -1490,8 +1554,7 @@ describe('Item', () => {
           <RadioGroup
             aria-label="Files"
             onValueChange={(fileId) => {
-              if (fileId === file.id)
-                onSelect(file)
+              if (fileId === file.id) onSelect(file)
             }}
           >
             <ActualItem {...props} />
@@ -1548,7 +1611,9 @@ describe('Item', () => {
     })
 
     it('should handle very large file size', () => {
-      const props = createItemProps({ file: createMockOnlineDriveFile({ size: 1024 * 1024 * 1024 * 5 }) })
+      const props = createItemProps({
+        file: createMockOnlineDriveFile({ size: 1024 * 1024 * 1024 * 5 }),
+      })
       render(<ActualItem {...props} />)
       expect(screen.getByText('5.00 GB')).toBeInTheDocument()
     })
@@ -1563,8 +1628,13 @@ describe('utils', () => {
   let FileAppearanceTypeEnum: Record<string, string>
 
   beforeAll(async () => {
-    const utils = await vi.importActual<{ getFileExtension: typeof getFileExtension, getFileType: typeof getFileType }>('../utils')
-    const types = await vi.importActual<{ FileAppearanceTypeEnum: typeof FileAppearanceTypeEnum }>('@/app/components/base/file-uploader/types')
+    const utils = await vi.importActual<{
+      getFileExtension: typeof getFileExtension
+      getFileType: typeof getFileType
+    }>('../utils')
+    const types = await vi.importActual<{ FileAppearanceTypeEnum: typeof FileAppearanceTypeEnum }>(
+      '@/app/components/base/file-uploader/types',
+    )
     getFileExtension = utils.getFileExtension
     getFileType = utils.getFileType
     FileAppearanceTypeEnum = types.FileAppearanceTypeEnum

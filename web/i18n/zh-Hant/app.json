@@ -147,6 +147,7 @@
   "maxActiveRequestsTip": "每個應用程式可同時活躍請求的最大數量（0為無限制）",
   "mermaid.classic": "經典",
   "mermaid.handDrawn": "手繪",
+  "mermaid.waitForCompletion": "正在等待圖表程式碼生成完成...",
   "newApp.Cancel": "取消",
   "newApp.Confirm": "確認",
   "newApp.Create": "建立",

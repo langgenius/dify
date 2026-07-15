@@ -11,6 +11,7 @@ from extensions.ext_database import db
 from libs.helper import to_timestamp
 from models import Account
 from models.agent import (
+    APP_BACKED_AGENT_SOURCES,
     Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
@@ -359,6 +360,32 @@ class AgentComposerService:
         return cls._load_agent_composer_for_agent(tenant_id=tenant_id, agent=agent, session=session)
 
     @classmethod
+    def load_agent_soul_for_debug(
+        cls,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        draft_type: AgentConfigDraftType,
+        session: Session,
+    ) -> AgentSoulConfig:
+        """Load the same normal or account-owned build draft used by Agent debug chat."""
+        if draft_type == AgentConfigDraftType.DEBUG_BUILD:
+            state = cls.load_agent_app_build_draft(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                account_id=account_id,
+                session=session,
+            )
+        else:
+            state = cls.load_agent_composer(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                session=session,
+            )
+        return AgentSoulConfig.model_validate(state["agent_soul"])
+
+    @classmethod
     def _load_agent_composer_for_agent(cls, *, tenant_id: str, agent: Agent, session: Session) -> dict[str, Any]:
         draft = cls._get_or_create_agent_draft(
             tenant_id=tenant_id,
@@ -522,7 +549,7 @@ class AgentComposerService:
         )
         if not active_version:
             return False
-        if agent.source == AgentSource.AGENT_APP and not cls._has_publish_visible_revision(
+        if agent.source in APP_BACKED_AGENT_SOURCES and not cls._has_publish_visible_revision(
             tenant_id=tenant_id,
             agent_id=agent.id,
             snapshot_id=agent.active_config_snapshot_id,
@@ -563,7 +590,7 @@ class AgentComposerService:
         session: Session,
     ) -> dict[str, Any]:
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id, session=session)
-        if agent.scope != AgentScope.ROSTER or agent.source != AgentSource.AGENT_APP:
+        if agent.scope != AgentScope.ROSTER or agent.source not in APP_BACKED_AGENT_SOURCES:
             raise AgentNotFoundError()
         draft = cls._get_or_create_agent_draft(
             tenant_id=tenant_id,
@@ -1729,7 +1756,7 @@ class AgentComposerService:
                 Agent.tenant_id == tenant_id,
                 Agent.app_id == app_id,
                 Agent.scope == AgentScope.ROSTER,
-                Agent.source == AgentSource.AGENT_APP,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                 Agent.status == AgentStatus.ACTIVE,
             )
             .order_by(Agent.created_at.desc())

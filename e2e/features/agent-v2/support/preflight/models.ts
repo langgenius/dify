@@ -1,4 +1,7 @@
-import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  DefaultModelDataResponse,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DifyWorld } from '../../../support/world'
 import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import { agentBuilderPreseededResources } from '../agent-builder-resources'
@@ -22,23 +25,24 @@ const defaultAgentDecisionChatModelName = 'gpt-5.5'
 const defaultAgentDecisionChatModelType = 'llm'
 const defaultBrokenChatModelName = agentBuilderPreseededResources.brokenModel
 
-const getProviderAlias = (provider: string) => provider.split('/').filter(Boolean).at(-1) ?? provider
+const getProviderAlias = (provider: string) =>
+  provider.split('/').filter(Boolean).at(-1) ?? provider
 
 const matchesProvider = (actual: string, expected: string) =>
   actual === expected || getProviderAlias(actual) === getProviderAlias(expected)
 
-type ModelPreflightConfig
-  = | {
-    ok: true
-    provider: string
-    resourceName: string
-    type: string
-    value: string
-  }
+type ModelPreflightConfig =
   | {
-    ok: false
-    reason: string
-  }
+      ok: true
+      provider: string
+      resourceName: string
+      type: string
+      value: string
+    }
+  | {
+      ok: false
+      reason: string
+    }
 
 export function readAgentBuilderStableChatModelConfig(): ModelPreflightConfig {
   const provider = process.env[stableChatModelProviderEnv]?.trim() || defaultStableChatModelProvider
@@ -55,12 +59,12 @@ export function readAgentBuilderStableChatModelConfig(): ModelPreflightConfig {
 }
 
 export function readAgentBuilderAgentDecisionChatModelConfig(): ModelPreflightConfig {
-  const provider = process.env[agentDecisionChatModelProviderEnv]?.trim()
-    || defaultAgentDecisionChatModelProvider
-  const name = process.env[agentDecisionChatModelNameEnv]?.trim()
-    || defaultAgentDecisionChatModelName
-  const type = process.env[agentDecisionChatModelTypeEnv]?.trim()
-    || defaultAgentDecisionChatModelType
+  const provider =
+    process.env[agentDecisionChatModelProviderEnv]?.trim() || defaultAgentDecisionChatModelProvider
+  const name =
+    process.env[agentDecisionChatModelNameEnv]?.trim() || defaultAgentDecisionChatModelName
+  const type =
+    process.env[agentDecisionChatModelTypeEnv]?.trim() || defaultAgentDecisionChatModelType
 
   return {
     ok: true,
@@ -101,8 +105,7 @@ async function skipMissingAgentBuilderModel(
     requireActive: boolean
   },
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['stableModel']>> {
-  if (!config.ok)
-    return skipBlockedPrecondition(world, config.reason)
+  if (!config.ok) return skipBlockedPrecondition(world, config.reason)
 
   const ctx = await createApiContext()
   try {
@@ -111,12 +114,12 @@ async function skipMissingAgentBuilderModel(
     )
     await expectApiResponseOK(response, `Check ${config.resourceName}`)
     const body = (await response.json()) as { data: ProviderWithModelsResponse[] }
-    const provider = body.data.find(item => matchesProvider(item.provider, config.provider))
+    const provider = body.data.find((item) => matchesProvider(item.provider, config.provider))
     const model = provider?.models.find(
-      item =>
-        item.model === config.value
-        || item.label?.en_US === config.value
-        || item.label?.zh_Hans === config.value,
+      (item) =>
+        item.model === config.value ||
+        item.label?.en_US === config.value ||
+        item.label?.zh_Hans === config.value,
     )
 
     if (!provider || !model) {
@@ -138,8 +141,7 @@ async function skipMissingAgentBuilderModel(
       provider: provider.provider,
       type: config.type,
     }
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -150,6 +152,49 @@ export async function skipMissingAgentBuilderStableChatModel(
   return skipMissingAgentBuilderModel(world, readAgentBuilderStableChatModelConfig(), {
     requireActive: true,
   })
+}
+
+export async function skipMissingAgentBuilderSpeechToTextModel(
+  world: DifyWorld,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['speechToTextModel']>> {
+  const ctx = await createApiContext()
+  let defaultModel: NonNullable<DefaultModelDataResponse['data']>
+
+  try {
+    const response = await ctx.get(
+      '/console/api/workspaces/current/default-model?model_type=speech2text',
+    )
+    await expectApiResponseOK(response, `Check ${agentBuilderPreseededResources.speechToTextModel}`)
+    const body = (await response.json()) as DefaultModelDataResponse
+    if (!body.data) {
+      return skipBlockedPrecondition(
+        world,
+        `${agentBuilderPreseededResources.speechToTextModel} is not configured.`,
+        {
+          owner: 'model-provider/seed',
+          remediation:
+            'Configure an active workspace default Speech-to-Text model before running the external scenario.',
+        },
+      )
+    }
+    defaultModel = body.data
+  } finally {
+    await ctx.dispose()
+  }
+
+  return skipMissingAgentBuilderModel(
+    world,
+    {
+      ok: true,
+      provider: defaultModel.provider.provider,
+      resourceName: agentBuilderPreseededResources.speechToTextModel,
+      type: 'speech2text',
+      value: defaultModel.model,
+    },
+    {
+      requireActive: true,
+    },
+  )
 }
 
 export async function skipMissingAgentBuilderAgentDecisionChatModel(

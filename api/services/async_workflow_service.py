@@ -6,6 +6,7 @@ with support for different subscription tiers, rate limiting, and execution trac
 """
 
 import json
+import logging
 from datetime import UTC, datetime
 from typing import Any
 
@@ -21,7 +22,7 @@ from models.model import App, EndUser
 from models.trigger import WorkflowTriggerLog, WorkflowTriggerLogDict
 from models.workflow import Workflow
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.errors.app import QuotaExceededError, WorkflowNotFoundError, WorkflowQuotaLimitError
+from services.errors.app import QuotaExceededError, WorkflowNotFoundError
 from services.quota_service import QuotaService, unlimited
 from services.workflow.entities import AsyncTriggerResponse, TriggerData, WorkflowTaskData
 from services.workflow.queue_dispatcher import QueueDispatcherManager, QueuePriority
@@ -31,6 +32,8 @@ from tasks.async_workflow_tasks import (
     execute_workflow_sandbox,
     execute_workflow_team,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AsyncWorkflowService:
@@ -71,7 +74,7 @@ class AsyncWorkflowService:
 
         Raises:
             WorkflowNotFoundError: If app or workflow not found
-            InvokeDailyRateLimitError: If daily rate limit exceeded
+            QuotaExceededError: If workflow execution quota is exhausted
 
         Behavior:
             - Non-blocking: Returns immediately after queuing
@@ -145,10 +148,15 @@ class AsyncWorkflowService:
             trigger_log.error = f"Quota limit reached: {e}"
             trigger_log_repo.update(trigger_log)
             session.commit()
+            logger.info(
+                "Workflow quota exceeded for tenant %s, app %s, workflow %s, trigger log %s",
+                trigger_data.tenant_id,
+                trigger_data.app_id,
+                workflow.id,
+                trigger_log.id,
+            )
 
-            raise WorkflowQuotaLimitError(
-                f"Workflow execution quota limit reached for tenant {trigger_data.tenant_id}"
-            ) from e
+            raise
 
         # 8. Create task data
         queue_name = dispatcher.get_queue_name()
@@ -206,6 +214,7 @@ class AsyncWorkflowService:
 
         Raises:
             ValueError: If trigger log not found
+            QuotaExceededError: If workflow execution quota is exhausted
 
         Behavior:
             - Non-blocking: Returns immediately after queuing retry

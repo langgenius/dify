@@ -16,11 +16,12 @@ const mockAppContext = vi.hoisted(() => ({
 
 let mockIsRbacEnabled = true
 
-const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
-  systemFeatures: {
-    rbac_enabled: mockIsRbacEnabled,
-  },
-})
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: {
+      rbac_enabled: mockIsRbacEnabled,
+    },
+  })
 
 const mockAppAccessRules = vi.hoisted(() => ({
   items: [] as AccessRulesEditorProps['rules'],
@@ -43,14 +44,35 @@ const mockMutations = vi.hoisted(() => ({
   removeMemberBindings: vi.fn(),
 }))
 
-vi.mock('@/context/app-context-state', async (importOriginal) => {
+vi.mock('@/context/account-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
+})
+vi.mock('@/context/workspace-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
+})
+vi.mock('@/context/permission-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
+})
+vi.mock('@/context/version-state', async (importOriginal) => {
+  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+
+  return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
+})
+vi.mock('@/context/system-features-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateAtomMock(importOriginal, () => mockAppContext)
 })
 
 vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
+  const { createAppContextStateJotaiMock } =
+    await import('@/__tests__/utils/mock-app-context-state')
 
   return createAppContextStateJotaiMock(importOriginal)
 })
@@ -81,9 +103,7 @@ vi.mock('@/service/access-control/use-app-access-config', () => ({
 vi.mock('@/app/components/access-rules-editor', () => ({
   default: (props: AccessRulesEditorProps) => {
     mockAccessRulesEditor.props = props
-    return (
-      <div data-testid="access-rules-editor" />
-    )
+    return <div data-testid="access-rules-editor" />
   },
 }))
 
@@ -113,7 +133,9 @@ describe('AppAccessConfigPage', () => {
     it('should render access config title and pass app rules to the editor', () => {
       render(<AppAccessConfigPage appId="app-1" />)
 
-      expect(screen.getByRole('heading', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: 'common.settings.resourceAccess' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('permission.accessRule.appDescription')).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-editor')).toBeInTheDocument()
       expect(mockAccessRulesEditor.props?.className).toBe('w-full max-w-200')
@@ -168,33 +190,45 @@ describe('AppAccessConfigPage', () => {
       render(<AppAccessConfigPage appId="app-1" />)
 
       mockAccessRulesEditor.props?.onOpenScopeChange?.('all')
-      expect(mockMutations.updateOpenScope).toHaveBeenCalledWith('all', expect.objectContaining({
-        onError: expect.any(Function),
-      }))
+      expect(mockMutations.updateOpenScope).toHaveBeenCalledWith(
+        'all',
+        expect.objectContaining({
+          onError: expect.any(Function),
+        }),
+      )
 
       mockAccessRulesEditor.props?.onUserAccessPoliciesChange?.('account-1', ['policy-1'])
-      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
-        accountId: 'account-1',
-        accessPolicyIds: ['policy-1'],
-      }, expect.objectContaining({
-        onSettled: expect.any(Function),
-      }))
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith(
+        {
+          accountId: 'account-1',
+          accessPolicyIds: ['policy-1'],
+        },
+        expect.objectContaining({
+          onSettled: expect.any(Function),
+        }),
+      )
 
       mockAccessRulesEditor.props?.onAddAccessSubject?.('account-2', ['default'])
-      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
-        accountId: 'account-2',
-        accessPolicyIds: ['default'],
-      }, expect.objectContaining({
-        onSettled: expect.any(Function),
-      }))
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith(
+        {
+          accountId: 'account-2',
+          accessPolicyIds: ['default'],
+        },
+        expect.objectContaining({
+          onSettled: expect.any(Function),
+        }),
+      )
 
       mockAccessRulesEditor.props?.onRemoveAccessPolicyMemberBinding?.('account-3', 'policy-3')
-      expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith({
-        accessPolicyId: 'policy-3',
-        accountIds: ['account-3'],
-      }, expect.objectContaining({
-        onSettled: expect.any(Function),
-      }))
+      expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith(
+        {
+          accessPolicyId: 'policy-3',
+          accountIds: ['account-3'],
+        },
+        expect.objectContaining({
+          onSettled: expect.any(Function),
+        }),
+      )
     })
 
     it('should not mount access config data hooks when access config permission is missing', () => {

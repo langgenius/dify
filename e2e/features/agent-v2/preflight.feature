@@ -14,6 +14,11 @@ Feature: Agent Builder preseeded environment
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
 
+  @speech-to-text-model
+  Scenario: Default speech-to-text model is available
+    Given I am signed in as the default E2E admin
+    And the workspace default speech-to-text model is active
+
   @agent-decision-model
   Scenario: Agent-decision chat model is available
     Given I am signed in as the default E2E admin

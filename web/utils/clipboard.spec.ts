@@ -9,7 +9,6 @@
  * while gracefully handling permissions and API availability.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-
 import { writeTextToClipboard } from './clipboard'
 
 describe('Clipboard Utilities', () => {
