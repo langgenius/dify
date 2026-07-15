@@ -12,6 +12,8 @@ export const getRedirectionPath = (
   app: AppRedirectionTarget,
   maintainerPermissionOptions?: ResourceMaintainerPermissionOptions,
 ) => {
+  if (app.mode === AppModeEnum.AGENT) return '/agents'
+
   const appACLCapabilities = getAppACLCapabilities(app.permission_keys, maintainerPermissionOptions)
 
   if (appACLCapabilities.canAccessLayout) {
