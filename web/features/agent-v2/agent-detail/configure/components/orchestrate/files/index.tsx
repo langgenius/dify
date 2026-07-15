@@ -218,6 +218,8 @@ function AgentFileItem({
   )
   const handleDownload = useCallback(
     async (event: MouseEvent<HTMLButtonElement>) => {
+      if (file.isMissing) return
+
       event.stopPropagation()
       await downloadFile(file)
     },
@@ -225,10 +227,12 @@ function AgentFileItem({
   )
   const handlePreviewOpenChange = useCallback(
     (open: boolean) => {
+      if (open && file.isMissing) return
+
       if (open) setSelectedFileId(file.id)
       setIsPreviewOpen(open)
     },
-    [file.id],
+    [file.id, file.isMissing],
   )
   const canRemoveFile = !readOnly && (!file.virtualContent || isBuildNoteFile)
 
@@ -243,9 +247,10 @@ function AgentFileItem({
             <button
               type="button"
               aria-current={selected ? 'true' : undefined}
+              disabled={file.isMissing}
               className={cn(
                 'group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-                file.isMissing && 'pr-6',
+                file.isMissing && 'cursor-default pr-6',
               )}
             />
           }
@@ -290,14 +295,16 @@ function AgentFileItem({
           file.isMissing ? 'right-7' : 'right-1',
         )}
       >
-        <button
-          type="button"
-          aria-label={t(($) => $['agentDetail.configure.files.download'], { name: file.name })}
-          onClick={handleDownload}
-          className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-download-line size-4" />
-        </button>
+        {!file.isMissing && (
+          <button
+            type="button"
+            aria-label={t(($) => $['agentDetail.configure.files.download'], { name: file.name })}
+            onClick={handleDownload}
+            className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
+            <span aria-hidden className="i-ri-download-line size-4" />
+          </button>
+        )}
         {canRemoveFile && (
           <button
             type="button"
@@ -378,6 +385,7 @@ export function AgentFiles() {
   const upsertAgentFile = useSetAtom(upsertAgentFileAtom)
   const buildNoteFile = getBuildNoteFile(draft.configNote)
   const visibleFiles = buildNoteFile ? [buildNoteFile, ...files] : files
+  const previewFiles = visibleFiles.filter((file) => !file.isMissing)
   const { mutate: deleteAgentFile } = useMutation(
     consoleQuery.agent.byAgentId.config.files.byName.delete.mutationOptions(),
   )
@@ -494,7 +502,7 @@ export function AgentFiles() {
                 <AgentFileItem
                   depth={depth}
                   file={file}
-                  files={visibleFiles}
+                  files={previewFiles}
                   apiContext={apiContext}
                   selected={selected}
                   onRemove={removeFile}

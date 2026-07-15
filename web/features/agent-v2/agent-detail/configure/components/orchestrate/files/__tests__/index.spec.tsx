@@ -211,7 +211,8 @@ describe('AgentFiles', () => {
     }))
   })
 
-  it('should show a warning for missing files', () => {
+  it('should prevent missing files from being previewed or downloaded', async () => {
+    const user = userEvent.setup()
     renderAgentFiles({
       initialDraft: createInitialDraft({
         files: [
@@ -243,6 +244,18 @@ describe('AgentFiles', () => {
         name: 'agentV2.agentDetail.configure.files.missing',
       }),
     ).toHaveLength(1)
+
+    expect(screen.getByRole('button', { name: 'missing.pdf' })).toBeDisabled()
+    expect(
+      screen.queryByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.files\.download.*missing\.pdf/,
+      }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'available.pdf' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).queryByText('missing.pdf')).not.toBeInTheDocument()
+    expect(within(dialog).getAllByText('available.pdf').length).toBeGreaterThan(0)
   })
 
   it('should delete configured files by config name', async () => {

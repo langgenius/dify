@@ -268,7 +268,8 @@ describe('AgentSkills', () => {
     }))
   })
 
-  it('should show a warning for missing skills', () => {
+  it('should prevent missing skills from being previewed or downloaded', async () => {
+    const user = userEvent.setup()
     renderAgentSkills({
       initialDraft: {
         ...defaultAgentSoulConfigFormState,
@@ -297,6 +298,17 @@ describe('AgentSkills', () => {
         name: 'agentV2.agentDetail.configure.skills.missing',
       }),
     ).toHaveLength(1)
+
+    const missingSkill = screen.getByRole('button', { name: 'Missing Skill' })
+    expect(missingSkill).toBeDisabled()
+    expect(
+      screen.queryByRole('button', {
+        name: /common\.operation\.download Missing Skill/,
+      }),
+    ).not.toBeInTheDocument()
+
+    await user.click(missingSkill)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('should delete a configured skill by config name', async () => {

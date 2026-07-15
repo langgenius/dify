@@ -32,6 +32,8 @@ export function AgentSkillItem({
     onRemove(skill.id)
   }, [onRemove, skill.id])
   const handleDownload = useCallback(async () => {
+    if (skill.isMissing) return
+
     if (apiContext.workflow) {
       const result = await queryClient.fetchQuery(
         consoleQuery.apps.byAppId.agent.config.skills.byName.download.get.queryOptions({
@@ -67,10 +69,12 @@ export function AgentSkillItem({
       }),
     )
     downloadUrl({ url: result.url, fileName: skill.name })
-  }, [apiContext, queryClient, skill.name])
+  }, [apiContext, queryClient, skill.isMissing, skill.name])
   const handleOpenPreview = useCallback(() => {
+    if (skill.isMissing) return
+
     setIsPreviewOpen(true)
-  }, [])
+  }, [skill.isMissing])
   const detail = useAgentSkillDetail({
     apiContext,
     description: skill.description ?? t(($) => $['agentDetail.configure.skills.tip']),
@@ -84,7 +88,8 @@ export function AgentSkillItem({
         <button
           type="button"
           aria-label={skill.name}
-          className="flex h-full w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg py-1 pr-2.5 pl-2 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+          disabled={skill.isMissing}
+          className="flex h-full w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg py-1 pr-2.5 pl-2 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid disabled:cursor-default"
           onClick={handleOpenPreview}
         >
           <span aria-hidden className="i-custom-public-agent-building-blocks size-4 shrink-0" />
@@ -110,23 +115,19 @@ export function AgentSkillItem({
             label={t(($) => $['agentDetail.configure.skills.missing'])}
           />
         )}
-        <button
-          type="button"
-          aria-label={`${tCommon(($) => $['operation.download'])} ${skill.name}`}
-          onClick={handleDownload}
-          className={cn(
-            'pointer-events-none absolute top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-            readOnly
-              ? skill.isMissing
-                ? 'right-7'
-                : 'right-1'
-              : skill.isMissing
-                ? 'right-13'
-                : 'right-7',
-          )}
-        >
-          <span aria-hidden className="i-ri-download-line size-4" />
-        </button>
+        {!skill.isMissing && (
+          <button
+            type="button"
+            aria-label={`${tCommon(($) => $['operation.download'])} ${skill.name}`}
+            onClick={handleDownload}
+            className={cn(
+              'pointer-events-none absolute top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+              readOnly ? 'right-1' : 'right-7',
+            )}
+          >
+            <span aria-hidden className="i-ri-download-line size-4" />
+          </button>
+        )}
         {!readOnly && (
           <button
             type="button"
