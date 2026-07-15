@@ -4,7 +4,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, NewType, TypedDict, Union
+from typing import Any, NewType, TypedDict, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -237,8 +237,8 @@ class WorkflowResponseConverter:
         converter = WorkflowRuntimeTypeConverter()
         return converter.to_json_encodable(outputs)
 
-    def _redact(self, value: object) -> object:
-        return redact_secret_values(value, self._secret_values)
+    def _redact[T](self, value: T) -> T:
+        return cast("T", redact_secret_values(value, self._secret_values))
 
     def workflow_start_to_stream_response(
         self,

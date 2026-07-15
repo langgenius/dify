@@ -7,7 +7,7 @@ from core.app.entities.queue_entities import QueueNodeStartedEvent, QueueNodeSuc
 from core.workflow.secret_scrub import SECRET_PLACEHOLDER
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
-from graphon.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
 from libs.datetime_utils import naive_utc_now
@@ -337,5 +337,27 @@ class TestWorkflowResponseConverterSecretRedaction:
         assert secret not in str(response.data.inputs)
         assert SECRET_PLACEHOLDER in str(response.data.process_data)
         assert secret not in str(response.data.process_data)
+        assert SECRET_PLACEHOLDER in str(response.data.outputs)
+        assert secret not in str(response.data.outputs)
+
+    def test_workflow_finish_redacts_outputs(self):
+        """workflow_finish stream response must replace secret values with SECRET_PLACEHOLDER."""
+        secret = "supersecretvalue123"
+        converter = self._make_converter(secret_values=(secret,))
+        self._prime_converter(converter)
+
+        mock_graph_runtime_state = Mock()
+        mock_graph_runtime_state.outputs = {"result": f"token={secret}"}
+        mock_graph_runtime_state.total_tokens = 42
+        mock_graph_runtime_state.node_run_steps = 1
+
+        response = converter.workflow_finish_to_stream_response(
+            task_id="t1",
+            workflow_id="wf-id",
+            status=WorkflowExecutionStatus.SUCCEEDED,
+            graph_runtime_state=mock_graph_runtime_state,
+        )
+
+        assert response is not None
         assert SECRET_PLACEHOLDER in str(response.data.outputs)
         assert secret not in str(response.data.outputs)
