@@ -10,11 +10,12 @@ type CountdownProps = {
 
 const subscribeHydrationState = () => () => {}
 
-const useIsHydrated = () => useSyncExternalStore(
-  subscribeHydrationState,
-  () => true,
-  () => false,
-)
+const useIsHydrated = () =>
+  useSyncExternalStore(
+    subscribeHydrationState,
+    () => true,
+    () => false,
+  )
 
 export default function Countdown({ onResend }: CountdownProps) {
   const isClient = useIsHydrated()
