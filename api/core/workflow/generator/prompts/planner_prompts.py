@@ -159,9 +159,8 @@ def format_existing_graph_section(current_graph: dict | None) -> str:
 
     We pass only ids / node-types / titles + edge endpoints here — the planner
     decides *which nodes* exist, so it needs the shape, not the per-node config.
-    Parallel builders receive only the config of a node marked ``update``;
-    configs marked ``keep`` are reused directly. The legacy full-graph builder
-    still receives the compacted complete graph.
+    Node builders receive only the config of a node marked ``update``;
+    configs marked ``keep`` are reused directly.
     """
     if not current_graph:
         return ""

@@ -27,6 +27,75 @@ def _llm_result(text: str) -> MagicMock:
     return result
 
 
+class _GraphFixtureModel:
+    """Adapt full-graph fixtures to the production per-node model protocol."""
+
+    def __init__(self, planner: str, graph: str) -> None:
+        planner_payload = json.loads(planner)
+        graph_payload = json.loads(graph)
+        graph_nodes = [node for node in graph_payload.get("nodes", []) if isinstance(node, dict)]
+        used_indexes: set[int] = set()
+        graph_node_by_plan_id: dict[str, dict[str, Any]] = {}
+
+        for plan_node in planner_payload.get("nodes", []):
+            plan_type = plan_node.get("node_type")
+            plan_label = plan_node.get("label")
+            match_index = next(
+                (
+                    index
+                    for index, graph_node in enumerate(graph_nodes)
+                    if index not in used_indexes
+                    and isinstance(graph_node.get("data"), dict)
+                    and graph_node["data"].get("type") == plan_type
+                    and graph_node["data"].get("title") == plan_label
+                ),
+                None,
+            )
+            if match_index is None:
+                match_index = next(
+                    (
+                        index
+                        for index, graph_node in enumerate(graph_nodes)
+                        if index not in used_indexes
+                        and isinstance(graph_node.get("data"), dict)
+                        and graph_node["data"].get("type") == plan_type
+                    ),
+                    None,
+                )
+            if match_index is None:
+                continue
+            used_indexes.add(match_index)
+            graph_node = graph_nodes[match_index]
+            node_id = str(graph_node.get("id") or "")
+            plan_node["id"] = node_id
+            if graph_node.get("parentId"):
+                plan_node["parent"] = str(graph_node["parentId"])
+            graph_node_by_plan_id[node_id] = graph_node
+
+        plan_ids = {str(node.get("id") or "") for node in planner_payload.get("nodes", [])}
+        planner_payload["edges"] = [
+            {key: edge[key] for key in ("source", "target", "sourceHandle", "targetHandle") if key in edge}
+            for edge in graph_payload.get("edges", [])
+            if isinstance(edge, dict) and edge.get("source") in plan_ids and edge.get("target") in plan_ids
+        ]
+
+        self._planner = planner_payload
+        self._graph_node_by_plan_id = graph_node_by_plan_id
+        self.invoke_llm = MagicMock(side_effect=self._invoke)
+
+    def _invoke(self, *, prompt_messages, model_parameters, stream):
+        system_prompt = str(prompt_messages[0].content)
+        if "workflow planner" in system_prompt.lower():
+            return _llm_result(json.dumps(self._planner))
+
+        prompt = "\n".join(str(message.content) for message in prompt_messages)
+        node_id = next(node_id for node_id in self._graph_node_by_plan_id if f"id={node_id}, type=" in prompt)
+        data = deepcopy(self._graph_node_by_plan_id[node_id].get("data") or {})
+        for shared_key in ("type", "title", "desc", "selected"):
+            data.pop(shared_key, None)
+        return _llm_result(json.dumps({"config": data}))
+
+
 class _ParallelBuilderModel:
     """Thread-safe fake that blocks the first two node builders together."""
 
@@ -326,6 +395,53 @@ class TestParallelNodeBuilder:
         assert {error["code"] for error in result["errors"]} == {"INVALID_JSON"}
         assert model.calls_for("node2") == 2
 
+    def test_planner_schema_retries_once_then_uses_single_builder_contract(self):
+        invalid_plan = {
+            "title": "Minimal Flow",
+            "description": "Return a fixed value.",
+            "nodes": [
+                {"label": "Start", "node_type": "start", "purpose": "Start."},
+                {"label": "End", "node_type": "end", "purpose": "Return output."},
+            ],
+        }
+        valid_plan = {
+            **invalid_plan,
+            "nodes": [
+                {"id": "node1", **invalid_plan["nodes"][0]},
+                {"id": "node2", **invalid_plan["nodes"][1]},
+            ],
+            "edges": [{"source": "node1", "target": "node2"}],
+        }
+        planner_calls = 0
+
+        def invoke(*, prompt_messages, model_parameters, stream):
+            nonlocal planner_calls
+            system_prompt = str(prompt_messages[0].content)
+            if "workflow planner" in system_prompt.lower():
+                planner_calls += 1
+                return _llm_result(json.dumps(invalid_plan if planner_calls == 1 else valid_plan))
+            prompt = "\n".join(str(message.content) for message in prompt_messages)
+            config = {"variables": []} if "id=node1, type=start" in prompt else {"outputs": []}
+            return _llm_result(json.dumps({"config": config}))
+
+        model = MagicMock()
+        model.invoke_llm.side_effect = invoke
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Return a fixed value",
+        )
+
+        assert result["error"] == ""
+        assert planner_calls == 2
+        retry_prompt = str(model.invoke_llm.call_args_list[1].kwargs["prompt_messages"][-1].content)
+        assert "required topology schema" in retry_prompt
+
 
 class TestWorkflowGeneratorWorkflowMode:
     """Generation in plain ``workflow`` mode: start → llm → end."""
@@ -396,11 +512,7 @@ class TestWorkflowGeneratorWorkflowMode:
         )
 
     def test_happy_path_returns_valid_graph(self, planner_response, builder_response):
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(planner_response),
-            _llm_result(builder_response),
-        ]
+        model_instance = _GraphFixtureModel(planner_response, builder_response)
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -436,6 +548,9 @@ class TestWorkflowGeneratorWorkflowMode:
         assert isinstance(graph["viewport"]["zoom"], float)
 
     def test_missing_end_node_returns_error(self, planner_response):
+        planner_payload = json.loads(planner_response)
+        planner_payload["nodes"] = planner_payload["nodes"][:-1]
+        planner_response = json.dumps(planner_payload)
         builder_response = json.dumps(
             {
                 "nodes": [
@@ -456,11 +571,7 @@ class TestWorkflowGeneratorWorkflowMode:
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(planner_response),
-            _llm_result(builder_response),
-        ]
+        model_instance = _GraphFixtureModel(planner_response, builder_response)
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -509,8 +620,7 @@ class TestWorkflowGeneratorAdvancedChatMode:
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -558,8 +668,7 @@ class TestWorkflowGeneratorAdvancedChatMode:
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -599,13 +708,17 @@ class TestWorkflowGeneratorFailurePaths:
             {
                 "title": "x",
                 "description": "x",
-                "nodes": [{"label": "Start", "node_type": "start", "purpose": "x"}],
+                "nodes": [
+                    {"id": "node1", "label": "Start", "node_type": "start", "purpose": "x"},
+                    {"id": "node2", "label": "End", "node_type": "end", "purpose": "x"},
+                ],
+                "edges": [{"source": "node1", "target": "node2"}],
             }
         )
         model_instance = MagicMock()
-        # First call (planner) returns text; second call (builder) raises.
         model_instance.invoke_llm.side_effect = [
             _llm_result(planner),
+            RuntimeError("provider exploded"),
             RuntimeError("provider exploded"),
         ]
 
@@ -627,36 +740,14 @@ class TestWorkflowGeneratorFailurePaths:
                 "title": "x",
                 "description": "x",
                 "nodes": [
-                    {"label": "Start", "node_type": "start", "purpose": "x"},
-                    {"label": "End", "node_type": "end", "purpose": "x"},
+                    {"id": "node1", "label": "Start", "node_type": "start", "purpose": "x"},
+                    {"id": "node2", "label": "End", "node_type": "end", "purpose": "x"},
                 ],
-            }
-        )
-        builder = json.dumps(
-            {
-                "nodes": [
-                    {
-                        "id": "node1",
-                        "type": "custom",
-                        "position": {"x": 0, "y": 0},
-                        "data": {"type": "start", "title": "Start"},
-                    },
-                    {
-                        "id": "node2",
-                        "type": "custom",
-                        "position": {"x": 0, "y": 0},
-                        "data": {"type": "end", "title": "End"},
-                    },
-                ],
-                "edges": [
-                    {"id": "x", "source": "node1", "target": "node2", "type": "custom"},
-                    {"id": "y", "source": "node1", "target": "ghost", "type": "custom"},
-                ],
-                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+                "edges": [{"source": "node1", "target": "ghost"}],
             }
         )
         model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance.invoke_llm.return_value = _llm_result(planner)
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -725,12 +816,18 @@ class TestWorkflowGeneratorTransientRetry:
 
         monkeypatch.setattr(_runner_mod.time, "sleep", lambda _s: None)
 
+        fixture_model = _GraphFixtureModel(self._planner(), self._builder())
+        first_call = True
+
+        def invoke_with_one_failure(**kwargs):
+            nonlocal first_call
+            if first_call:
+                first_call = False
+                raise InvokeConnectionError("connection reset")
+            return fixture_model._invoke(**kwargs)
+
         model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            InvokeConnectionError("connection reset"),
-            _llm_result(self._planner()),
-            _llm_result(self._builder()),
-        ]
+        model_instance.invoke_llm.side_effect = invoke_with_one_failure
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -743,8 +840,8 @@ class TestWorkflowGeneratorTransientRetry:
         )
 
         assert result["error"] == ""
-        # planner (failed once + retried) + builder = 3 invocations total.
-        assert model_instance.invoke_llm.call_count == 3
+        # Planner (failed once + retried) plus two node builders.
+        assert model_instance.invoke_llm.call_count == 4
 
     def test_gives_up_after_exhausting_transient_retries(self, monkeypatch: pytest.MonkeyPatch):
         # Every attempt hits the transient error — once we exhaust the retry
@@ -874,16 +971,14 @@ class TestWorkflowGeneratorEdgeCases:
         # Builder must NOT have been called.
         assert model_instance.invoke_llm.call_count == 1
 
-    def test_tool_catalogue_text_propagates_into_both_prompts(self):
-        # The catalogue must reach the planner AND the builder so they share
-        # the same tool inventory. We capture both invocations and inspect
-        # the prompt strings.
+    def test_tool_catalogue_reaches_planner_and_only_the_tool_builder(self):
         planner = json.dumps(
             {
                 "title": "x",
                 "description": "x",
                 "nodes": [
                     {"label": "Start", "node_type": "start", "purpose": "x"},
+                    {"label": "Search", "node_type": "tool", "purpose": "Search with google/search."},
                     {"label": "End", "node_type": "end", "purpose": "x"},
                 ],
             }
@@ -901,15 +996,29 @@ class TestWorkflowGeneratorEdgeCases:
                         "id": "node2",
                         "type": "custom",
                         "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "tool",
+                            "title": "Search",
+                            "provider_id": "google",
+                            "provider_name": "google",
+                            "tool_name": "search",
+                        },
+                    },
+                    {
+                        "id": "node3",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
                         "data": {"type": "end", "title": "End"},
                     },
                 ],
-                "edges": [{"id": "x", "source": "node1", "target": "node2", "type": "custom"}],
+                "edges": [
+                    {"id": "x", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "y", "source": "node2", "target": "node3", "type": "custom"},
+                ],
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
 
         WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -928,8 +1037,7 @@ class TestWorkflowGeneratorEdgeCases:
                 all_prompts.append(str(msg.content))
 
         joined = "\n".join(all_prompts)
-        # Catalogue must appear in both planner and builder user prompts.
-        assert joined.count("- google/search — Search.") >= 2
+        assert joined.count("- google/search — Search.") == 2
 
     def test_postprocess_lays_out_nodes_left_to_right_regardless_of_input(self):
         # The LLM often returns wildly overlapping positions. The postprocess
@@ -975,8 +1083,7 @@ class TestWorkflowGeneratorEdgeCases:
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -1031,8 +1138,7 @@ class TestWorkflowGeneratorEdgeCases:
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -1146,11 +1252,7 @@ class TestWorkflowGeneratorContainerNodes:
         # Container children carry positions relative to their parent — the
         # auto-layout step must NOT override them, only top-level nodes get
         # the left-to-right re-flow.
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner()),
-            _llm_result(self._builder()),
-        ]
+        model_instance = _GraphFixtureModel(self._planner(), self._builder())
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -1172,11 +1274,7 @@ class TestWorkflowGeneratorContainerNodes:
         assert inner["extent"] == "parent"
 
     def test_top_level_nodes_still_get_auto_layout(self):
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner()),
-            _llm_result(self._builder()),
-        ]
+        model_instance = _GraphFixtureModel(self._planner(), self._builder())
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -1199,11 +1297,7 @@ class TestWorkflowGeneratorContainerNodes:
         # The iteration-start → llm edge (both children of node2) must be
         # flagged isInIteration with iteration_id pointing at the container.
         # The edges crossing the container boundary must NOT be flagged.
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner()),
-            _llm_result(self._builder()),
-        ]
+        model_instance = _GraphFixtureModel(self._planner(), self._builder())
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -1242,7 +1336,6 @@ class TestWorkflowGeneratorAppMetadata:
                 "icon": "📰",
                 "nodes": [
                     {"label": "Start", "node_type": "start", "purpose": "Take URL."},
-                    {"label": "Summarize", "node_type": "llm", "purpose": "Summarize the page."},
                     {"label": "End", "node_type": "end", "purpose": "Return summary."},
                 ],
             }
@@ -1288,11 +1381,7 @@ class TestWorkflowGeneratorAppMetadata:
         # When the planner emits ``app_name`` + ``icon``, the runner must
         # forward them verbatim. The frontend uses them to name the new App
         # and pick its display icon.
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner_with_metadata()),
-            _llm_result(self._minimal_builder()),
-        ]
+        model_instance = _GraphFixtureModel(self._planner_with_metadata(), self._minimal_builder())
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -1309,14 +1398,10 @@ class TestWorkflowGeneratorAppMetadata:
         assert result["icon"] == "📰"
 
     def test_defaults_to_empty_strings_when_planner_omits_metadata(self):
-        # Older planner outputs (or any model that drops the optional fields)
-        # must NOT break the pipeline — both fields default to "" so the
+        # Planner outputs that drop the optional fields must not break the
+        # pipeline — both fields default to "" so the
         # frontend can run its own ``deriveAppName`` + 🤖 fallback.
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner_without_metadata()),
-            _llm_result(self._minimal_builder()),
-        ]
+        model_instance = _GraphFixtureModel(self._planner_without_metadata(), self._minimal_builder())
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -1347,11 +1432,7 @@ class TestWorkflowGeneratorAppMetadata:
                 ],
             }
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(planner),
-            _llm_result(self._minimal_builder()),
-        ]
+        model_instance = _GraphFixtureModel(planner, self._minimal_builder())
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -1454,11 +1535,9 @@ class TestWorkflowGeneratorVariableReferences:
         # the builder emits the dangling reference, postprocess must inject a
         # default ``url`` variable on the start node so the run-time resolver
         # can satisfy the LLM prompt.
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner_without_start_inputs()),
-            _llm_result(self._builder_referencing_missing_start_var("url")),
-        ]
+        model_instance = _GraphFixtureModel(
+            self._planner_without_start_inputs(), self._builder_referencing_missing_start_var("url")
+        )
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -1535,11 +1614,7 @@ class TestWorkflowGeneratorVariableReferences:
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner_with_start_inputs()),
-            _llm_result(builder),
-        ]
+        model_instance = _GraphFixtureModel(self._planner_with_start_inputs(), builder)
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -1604,11 +1679,9 @@ class TestWorkflowGeneratorVariableReferences:
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner_without_start_inputs()),
-            _llm_result(builder),
-        ]
+        planner_payload = json.loads(self._planner_without_start_inputs())
+        planner_payload["nodes"][1].update({"label": "Process", "node_type": "code"})
+        model_instance = _GraphFixtureModel(json.dumps(planner_payload), builder)
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -1666,8 +1739,7 @@ class TestWorkflowGeneratorVariableReferences:
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -1911,36 +1983,13 @@ class TestWorkflowGeneratorVariableReferences:
         assert {edge["source"] for edge in result["edges"] if edge["target"] == "node4"} == {template["id"]}
         assert WorkflowGenerator._validate_structure(graph=result, mode="workflow") == []
 
-    def test_inserts_template_into_plan_with_two_retrievals_and_one_llm(self):
-        plan_nodes = [
-            {"label": "Start", "node_type": "start", "purpose": "Accept the query."},
-            {"label": "Knowledge A", "node_type": "knowledge-retrieval", "purpose": "Search source A."},
-            {"label": "Knowledge B", "node_type": "knowledge-retrieval", "purpose": "Search source B."},
-            {"label": "Synthesize", "node_type": "llm", "purpose": "Answer from both sources."},
-            {"label": "End", "node_type": "end", "purpose": "Return the answer."},
-        ]
-
-        WorkflowGenerator._insert_multi_retrieval_template_plan(plan_nodes)
-
-        assert [node["node_type"] for node in plan_nodes] == [
-            "start",
-            "knowledge-retrieval",
-            "knowledge-retrieval",
-            "template-transform",
-            "llm",
-            "end",
-        ]
-        assert plan_nodes[3]["label"] == "Combine Knowledge"
-
     def test_start_inputs_flow_into_builder_user_prompt(self):
         # The planner's ``start_inputs`` must be visible to the builder so
         # it can populate ``start.data.variables`` proactively. We sniff the
         # builder's user prompt to confirm the section is rendered.
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner_with_start_inputs()),
-            _llm_result(self._builder_referencing_missing_start_var("url")),
-        ]
+        model_instance = _GraphFixtureModel(
+            self._planner_with_start_inputs(), self._builder_referencing_missing_start_var("url")
+        )
 
         WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -1952,7 +2001,12 @@ class TestWorkflowGeneratorVariableReferences:
             instruction="Summarize a URL",
         )
 
-        builder_user_prompt = str(model_instance.invoke_llm.call_args_list[1].kwargs["prompt_messages"][1].content)
+        builder_call = next(
+            call
+            for call in model_instance.invoke_llm.call_args_list
+            if "id=node1, type=start" in str(call.kwargs["prompt_messages"][1].content)
+        )
+        builder_user_prompt = str(builder_call.kwargs["prompt_messages"][1].content)
         # The Start inputs section must list ``url`` with its declared type.
         assert "Start inputs" in builder_user_prompt
         assert "variable='url'" in builder_user_prompt
@@ -2071,11 +2125,7 @@ class TestWorkflowGeneratorNodeIdHyphens:
     def test_strips_hyphens_from_every_node_id(self):
         # After postprocess, no node id and no cross-reference should
         # contain a hyphen — anything that did would fail at run time.
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner()),
-            _llm_result(self._hyphenated_builder()),
-        ]
+        model_instance = _GraphFixtureModel(self._planner(), self._hyphenated_builder())
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -2099,11 +2149,7 @@ class TestWorkflowGeneratorNodeIdHyphens:
         # The whole reason for the remap — placeholders in prompt_template
         # must use the new id, otherwise the LLM at run time receives the
         # unsubstituted literal.
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner()),
-            _llm_result(self._hyphenated_builder()),
-        ]
+        model_instance = _GraphFixtureModel(self._planner(), self._hyphenated_builder())
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -2122,11 +2168,7 @@ class TestWorkflowGeneratorNodeIdHyphens:
         assert "{{#node1.text#}}" in user_text
 
     def test_rewrites_value_selector_lists(self):
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner()),
-            _llm_result(self._hyphenated_builder()),
-        ]
+        model_instance = _GraphFixtureModel(self._planner(), self._hyphenated_builder())
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -2145,12 +2187,8 @@ class TestWorkflowGeneratorNodeIdHyphens:
     def test_leaves_already_clean_ids_untouched(self):
         # When the builder did the right thing the first time, the remap
         # should be a no-op — no spurious churn, no surprising rewrites.
-        model_instance = MagicMock()
         clean_builder = self._hyphenated_builder().replace("node-", "node")
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner()),
-            _llm_result(clean_builder),
-        ]
+        model_instance = _GraphFixtureModel(self._planner(), clean_builder)
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -2220,8 +2258,7 @@ class TestWorkflowGeneratorStructuredErrors:
             ],
             edges=[{"id": "x", "source": "node1", "target": "node2", "type": "custom"}],
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
             model_parameters={},
@@ -2271,8 +2308,7 @@ class TestWorkflowGeneratorStructuredErrors:
                 {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
             ],
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
             model_parameters={},
@@ -2323,8 +2359,7 @@ class TestWorkflowGeneratorStructuredErrors:
                 {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
             ],
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
             model_parameters={},
@@ -2384,8 +2419,7 @@ class TestWorkflowGeneratorStructuredErrors:
                 {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
             ],
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
             model_parameters={},
@@ -2445,8 +2479,7 @@ class TestWorkflowGeneratorStructuredErrors:
                 {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
             ],
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
             model_parameters={},
@@ -2466,7 +2499,7 @@ class TestWorkflowGeneratorStructuredErrors:
         planner = self._planner(
             [
                 {"label": "Start", "node_type": "start", "purpose": "x"},
-                {"label": "End", "node_type": "end", "purpose": "x"},
+                {"label": "Process", "node_type": "llm", "purpose": "x"},
             ]
         )
         builder = self._builder(
@@ -2477,11 +2510,16 @@ class TestWorkflowGeneratorStructuredErrors:
                     "position": {"x": 0, "y": 0},
                     "data": {"type": "start", "title": "Start"},
                 },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "llm", "title": "Process"},
+                },
             ],
-            edges=[],
+            edges=[{"source": "node1", "target": "node2"}],
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
             model_parameters={},
@@ -2549,8 +2587,7 @@ class TestWorkflowGeneratorStructuredErrors:
                 {"id": "c", "source": "node3", "target": "node4", "type": "custom"},
             ],
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
             model_parameters={},
@@ -2634,13 +2671,18 @@ class TestWorkflowGeneratorStructuredErrors:
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
+        fixture_model = _GraphFixtureModel(planner_valid, builder)
+        first_call = True
+
+        def invoke_with_invalid_json(**kwargs):
+            nonlocal first_call
+            if first_call:
+                first_call = False
+                return _llm_result("[]")
+            return fixture_model._invoke(**kwargs)
+
         model_instance = MagicMock()
-        # planner attempt 1 → non-dict garbage; attempt 2 → valid; then builder.
-        model_instance.invoke_llm.side_effect = [
-            _llm_result("[]"),  # json_repair parses to a list — non-dict, retry fires
-            _llm_result(planner_valid),
-            _llm_result(builder),
-        ]
+        model_instance.invoke_llm.side_effect = invoke_with_invalid_json
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
             model_parameters={},
@@ -2652,8 +2694,8 @@ class TestWorkflowGeneratorStructuredErrors:
         )
         assert result["error"] == ""
         assert result["errors"] == []
-        # Two planner attempts + one builder attempt = three invoke_llm calls.
-        assert model_instance.invoke_llm.call_count == 3
+        # Two planner attempts plus two node builders.
+        assert model_instance.invoke_llm.call_count == 4
 
     def test_planner_json_failure_retries_only_once_then_gives_up(self):
         # Both planner attempts return junk. After the retry exhausts we
@@ -2746,10 +2788,19 @@ class TestWorkflowGeneratorRefine:
                 "title": "Summarizer",
                 "description": "x",
                 "nodes": [
-                    {"label": "Start", "node_type": "start", "purpose": "x"},
-                    {"label": "Summarize", "node_type": "llm", "purpose": "x"},
-                    {"label": "Translate", "node_type": "llm", "purpose": "x"},
-                    {"label": "End", "node_type": "end", "purpose": "x"},
+                    {"id": "node1", "label": "Start", "node_type": "start", "purpose": "x", "action": "keep"},
+                    {
+                        "id": "node2",
+                        "label": "Summarize",
+                        "node_type": "llm",
+                        "purpose": "x",
+                        "action": "update",
+                    },
+                    {"id": "node3", "label": "End", "node_type": "end", "purpose": "x", "action": "keep"},
+                ],
+                "edges": [
+                    {"source": "node1", "target": "node2"},
+                    {"source": "node2", "target": "node3"},
                 ],
             }
         )
@@ -2785,11 +2836,8 @@ class TestWorkflowGeneratorRefine:
             }
         )
 
-    def test_existing_graph_is_injected_into_both_prompts(self):
-        # The planner must see a compact node/edge summary; the builder must see
-        # the full graph JSON so it can preserve untouched node config.
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(self._planner()), _llm_result(self._builder())]
+    def test_existing_graph_is_scoped_to_planner_and_updated_node(self):
+        model_instance = _GraphFixtureModel(self._planner(), self._builder())
 
         WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -2803,7 +2851,12 @@ class TestWorkflowGeneratorRefine:
         )
 
         planner_user_prompt = str(model_instance.invoke_llm.call_args_list[0].kwargs["prompt_messages"][1].content)
-        builder_user_prompt = str(model_instance.invoke_llm.call_args_list[1].kwargs["prompt_messages"][1].content)
+        builder_call = next(
+            call
+            for call in model_instance.invoke_llm.call_args_list
+            if "id=node2, type=llm" in str(call.kwargs["prompt_messages"][1].content)
+        )
+        builder_user_prompt = str(builder_call.kwargs["prompt_messages"][1].content)
 
         # Planner: refine framing + compact summary (node ids/types).
         assert "Existing graph to refine" in planner_user_prompt
@@ -2811,15 +2864,14 @@ class TestWorkflowGeneratorRefine:
         assert "type='llm'" in planner_user_prompt
         assert "node1 -> node2" in planner_user_prompt
 
-        # Builder: full JSON including a preserved prompt template the summary omits.
-        assert "Existing graph to refine (JSON)" in builder_user_prompt
+        # The updated node builder sees its own existing semantic config only.
+        assert "Existing config to preserve" in builder_user_prompt
         assert "{{#node1.url#}}" in builder_user_prompt
 
     def test_create_mode_injects_no_existing_graph_section(self):
         # With no current_graph the prompts must be byte-for-byte the create
         # flow — no stray "refine" framing leaks into a from-scratch generation.
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(self._planner()), _llm_result(self._builder())]
+        model_instance = _GraphFixtureModel(self._planner(), self._builder())
 
         WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -2832,15 +2884,19 @@ class TestWorkflowGeneratorRefine:
         )
 
         planner_user_prompt = str(model_instance.invoke_llm.call_args_list[0].kwargs["prompt_messages"][1].content)
-        builder_user_prompt = str(model_instance.invoke_llm.call_args_list[1].kwargs["prompt_messages"][1].content)
+        builder_call = next(
+            call
+            for call in model_instance.invoke_llm.call_args_list
+            if "workflow planner" not in str(call.kwargs["prompt_messages"][0].content).lower()
+        )
+        builder_user_prompt = str(builder_call.kwargs["prompt_messages"][1].content)
         assert "Existing graph to refine" not in planner_user_prompt
         assert "Existing graph to refine" not in builder_user_prompt
 
     def test_refine_still_returns_a_valid_graph(self):
         # End-to-end: refine runs the same postprocess/validate path and yields
         # a clean graph envelope.
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(self._planner()), _llm_result(self._builder())]
+        model_instance = _GraphFixtureModel(self._planner(), self._builder())
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -2942,11 +2998,7 @@ class TestWorkflowGeneratorFileVariables:
         )
 
     def test_backfills_allowed_file_types_so_draft_loads(self):
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(self._planner()),
-            _llm_result(self._builder_file_var_missing_allowed_types()),
-        ]
+        model_instance = _GraphFixtureModel(self._planner(), self._builder_file_var_missing_allowed_types())
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -2967,19 +3019,7 @@ class TestWorkflowGeneratorFileVariables:
         assert doc["allowed_file_upload_methods"] == ["local_file", "remote_url"]
 
     def test_builder_prompt_is_scoped_to_planned_node_types(self):
-        # Capture the system prompt handed to the builder and assert it only
-        # carries the planned node types' schemas (dynamic assembly).
-        captured: list[str] = []
-
-        def _capture(*args, **kwargs):
-            prompt_messages = kwargs.get("prompt_messages") or (args[1] if len(args) > 1 else [])
-            captured.append("\n".join(getattr(m, "content", "") or "" for m in prompt_messages))
-            # Return planner then builder responses in order.
-            idx = len(captured) - 1
-            return _llm_result(self._planner() if idx == 0 else self._builder_file_var_missing_allowed_types())
-
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = _capture
+        model_instance = _GraphFixtureModel(self._planner(), self._builder_file_var_missing_allowed_types())
 
         WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -2991,10 +3031,15 @@ class TestWorkflowGeneratorFileVariables:
             instruction="Summarize an uploaded file",
         )
 
-        builder_prompt = captured[1]
+        builder_call = next(
+            call
+            for call in model_instance.invoke_llm.call_args_list
+            if "id=node2, type=document-extractor" in str(call.kwargs["prompt_messages"][1].content)
+        )
+        builder_prompt = str(builder_call.kwargs["prompt_messages"][0].content)
         assert "- document-extractor:" in builder_prompt
-        assert "- start:" in builder_prompt
-        # No schema for node types absent from the plan.
+        # A node builder receives no schema for any other node type.
+        assert "- start:" not in builder_prompt
         assert "- if-else:" not in builder_prompt
         assert "- tool" not in builder_prompt
 
@@ -3441,8 +3486,7 @@ class TestWorkflowGeneratorGraphCycleValidation:
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -3458,7 +3502,7 @@ class TestWorkflowGeneratorGraphCycleValidation:
 
 
 class TestWorkflowGeneratorDuplicateNodeIds:
-    """Duplicate ids make every cross-reference ambiguous — fail loudly."""
+    """Duplicate planner ids make every cross-reference ambiguous."""
 
     def test_duplicate_ids_surface_dedicated_code(self):
         planner = json.dumps(
@@ -3491,8 +3535,7 @@ class TestWorkflowGeneratorDuplicateNodeIds:
                 "viewport": {"x": 0, "y": 0, "zoom": 0.7},
             }
         )
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+        model_instance = _GraphFixtureModel(planner, builder)
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
@@ -3505,7 +3548,7 @@ class TestWorkflowGeneratorDuplicateNodeIds:
         )
 
         codes = {e["code"] for e in result["errors"]}
-        assert "DUPLICATE_NODE_ID" in codes
+        assert codes == {"INVALID_SCHEMA"}
 
 
 def _stream_planner_json() -> str:
@@ -3570,11 +3613,7 @@ class TestWorkflowGeneratorStream:
     """``generate_workflow_graph_stream`` yields a ``plan`` event then a ``result`` event."""
 
     def test_stream_emits_plan_then_result(self):
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(_stream_planner_json()),
-            _llm_result(_stream_builder_json()),
-        ]
+        model_instance = _GraphFixtureModel(_stream_planner_json(), _stream_builder_json())
 
         events = list(
             WorkflowGenerator.generate_workflow_graph_stream(
@@ -3627,16 +3666,8 @@ class TestWorkflowGeneratorStream:
 
     def test_stream_and_blocking_results_match(self):
         """The streaming ``result`` event must equal the blocking return value."""
-        stream_instance = MagicMock()
-        stream_instance.invoke_llm.side_effect = [
-            _llm_result(_stream_planner_json()),
-            _llm_result(_stream_builder_json()),
-        ]
-        blocking_instance = MagicMock()
-        blocking_instance.invoke_llm.side_effect = [
-            _llm_result(_stream_planner_json()),
-            _llm_result(_stream_builder_json()),
-        ]
+        stream_instance = _GraphFixtureModel(_stream_planner_json(), _stream_builder_json())
+        blocking_instance = _GraphFixtureModel(_stream_planner_json(), _stream_builder_json())
 
         kwargs = {
             "model_parameters": {},
@@ -3654,11 +3685,7 @@ class TestWorkflowGeneratorStream:
 
     def test_blocking_result_includes_resolved_mode(self):
         """Task 3: the non-streaming envelope carries the resolved ``mode`` too."""
-        model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = [
-            _llm_result(_stream_planner_json()),
-            _llm_result(_stream_builder_json()),
-        ]
+        model_instance = _GraphFixtureModel(_stream_planner_json(), _stream_builder_json())
 
         result = WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,

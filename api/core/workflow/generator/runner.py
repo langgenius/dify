@@ -9,7 +9,6 @@ Pipeline:
 
     1. PLANNER  — short LLM call producing a high-level node list.
     2. BUILDERS — up to two concurrent LLM calls producing compact node configs.
-                  Legacy planner responses fall back to the full-graph builder.
     3. POSTPROC — fill safe defaults, lay nodes out left-to-right, dedupe
                   edge ids, and run a final structural sanity check.
 
@@ -36,18 +35,14 @@ from typing import Any, ClassVar, cast
 
 import json_repair
 
-from core.workflow.generator.prompts.builder_prompts import (
-    BUILDER_USER_PROMPT,
-    format_builder_existing_graph_section,
-    format_builder_tool_catalogue_section,
-    format_plan_block,
-    format_start_inputs_section,
-    get_builder_system_prompt,
-)
 from core.workflow.generator.prompts.node_builder_prompts import (
     NODE_BUILDER_USER_PROMPT,
     format_parallel_plan,
+    format_start_inputs_section,
     get_node_builder_system_prompt,
+)
+from core.workflow.generator.prompts.node_builder_prompts import (
+    format_tool_catalogue_section as format_node_tool_catalogue_section,
 )
 from core.workflow.generator.prompts.planner_prompts import (
     PLANNER_SYSTEM_PROMPT,
@@ -106,8 +101,7 @@ _DEFAULT_FILE_UPLOAD_METHODS = ("local_file", "remote_url")
 # Token ceiling for the planner call when the caller didn't pin one. The plan
 # is a short JSON node list (a handful of nodes with labels/purposes), so this
 # is generous headroom while still bounding a runaway response. Builder calls
-# keep the caller's budget so complex node configs and legacy full graphs are
-# not truncated.
+# keep the caller's budget so complex node configs are not truncated.
 _PLANNER_DEFAULT_MAX_TOKENS = 4096
 
 # Per-node calls trade a larger request count for a shorter critical path.
@@ -131,6 +125,12 @@ _MODEL_NODE_TYPES = frozenset(
 _JSON_RETRY_HINT = (
     "Your previous response was not valid JSON. Return ONLY a single JSON object. "
     "Do not include any prose, markdown code fences, comments, or trailing commas."
+)
+
+_PLANNER_SCHEMA_RETRY_HINT = (
+    "Your plan did not match the required topology schema. Return the complete plan again with "
+    "a unique non-empty id on every node and a non-empty edges array whose source and target "
+    "reference those ids. Return ONLY the JSON object."
 )
 
 
@@ -289,17 +289,16 @@ class WorkflowGenerator:
         Run planner → node builders → postprocess and return a graph payload.
 
         ``current_graph`` switches the pipeline from create mode to REFINE
-        mode: the existing draft graph is summarized for the planner. Parallel
+        mode: the existing draft graph is summarized for the planner. Node
         builders receive only the config of the node they update, while configs
-        marked ``keep`` are reused without an LLM call. Legacy planner output
-        still uses the full-graph builder for compatibility. ``None`` (the
-        default) is plain create-from-scratch behaviour.
+        marked ``keep`` are reused without an LLM call. ``None`` (the default)
+        is plain create-from-scratch behaviour.
 
         ``tool_catalogue_text`` is the formatted list of installed tools for
         the calling tenant (see ``tool_catalogue.build_tool_catalogue`` /
         ``format_tool_catalogue``). It's injected into both the planner and
         builder prompts so the LLM can pick concrete ``provider/tool``
-        identifiers instead of inventing names; parallel builders receive it
+        identifiers instead of inventing names; node builders receive it
         only for tool nodes. An empty string skips the section entirely (useful
         for unit tests).
 
@@ -445,14 +444,6 @@ class WorkflowGenerator:
             return
 
         plan_edges = [cast(dict[str, Any], edge) for edge in (plan.get("edges") or []) if isinstance(edge, dict)]
-        use_parallel_builder = cls._supports_parallel_node_build(plan_nodes=plan_nodes, plan_edges=plan_edges)
-
-        if not use_parallel_builder:
-            # Backward compatibility for terse planner responses produced by
-            # older / weaker models: keep the proven full-graph builder path.
-            # The parallel contract always carries ids + topology, so there is
-            # no ambiguity between the two formats.
-            cls._insert_multi_retrieval_template_plan(plan_nodes)
 
         # Planner-supplied user-input declarations. The builder uses these to
         # populate ``start.data.variables`` so downstream ``{#start.<var>#}``
@@ -472,31 +463,16 @@ class WorkflowGenerator:
         builder_started_at = time.monotonic()
 
         def build_graph() -> GraphDict:
-            if use_parallel_builder:
-                return cls._run_parallel_node_builders(
-                    model_instance=model_instance,
-                    model_parameters=model_parameters,
-                    provider=provider,
-                    model_name=model_name,
-                    model_mode=model_mode,
-                    instruction=instruction,
-                    ideal_output=ideal_output,
-                    plan_nodes=plan_nodes,
-                    plan_edges=plan_edges,
-                    tool_catalogue_text=tool_catalogue_text,
-                    start_inputs=start_inputs,
-                    current_graph=current_graph,
-                )
-            return cls._run_builder(
+            return cls._run_parallel_node_builders(
                 model_instance=model_instance,
                 model_parameters=model_parameters,
                 provider=provider,
                 model_name=model_name,
                 model_mode=model_mode,
-                mode=mode,
                 instruction=instruction,
                 ideal_output=ideal_output,
                 plan_nodes=plan_nodes,
+                plan_edges=plan_edges,
                 tool_catalogue_text=tool_catalogue_text,
                 start_inputs=start_inputs,
                 current_graph=current_graph,
@@ -508,8 +484,7 @@ class WorkflowGenerator:
             run=build_graph,
         )
         logger.info(
-            "Workflow generator: builder completed path=%s nodes=%s elapsed_ms=%.1f",
-            "parallel-node" if use_parallel_builder else "legacy-graph",
+            "Workflow generator: node builders completed nodes=%s elapsed_ms=%.1f",
             len(plan_nodes),
             (time.monotonic() - builder_started_at) * 1000,
         )
@@ -695,73 +670,62 @@ class WorkflowGenerator:
             SystemPromptMessage(content=PLANNER_SYSTEM_PROMPT),
             UserPromptMessage(content=user_prompt),
         ]
-        parsed = cls._invoke_and_parse_json(
-            model_instance=model_instance,
-            messages=messages,
-            model_parameters=_clamp_for_planner(model_parameters),
-            stage="Planner",
-        )
+        for attempt in range(2):
+            attempt_messages = (
+                messages if attempt == 0 else [*messages, UserPromptMessage(content=_PLANNER_SCHEMA_RETRY_HINT)]
+            )
+            parsed = cls._invoke_and_parse_json(
+                model_instance=model_instance,
+                messages=attempt_messages,
+                model_parameters=_clamp_for_planner(model_parameters),
+                stage="Planner",
+            )
+            try:
+                return cls._validate_planner_schema(parsed)
+            except _StageSchemaError:
+                if attempt > 0:
+                    raise
+                logger.info("Workflow generator: planner schema invalid; retrying once")
+        raise AssertionError("planner schema retry loop exhausted unexpectedly")
 
+    @staticmethod
+    def _validate_planner_schema(parsed: dict[str, Any]) -> PlannerResultDict:
+        """Require the single planner contract consumed by node builders."""
         nodes = parsed.get("nodes")
         if not isinstance(nodes, list):
             raise _StageSchemaError("Planner", "missing 'nodes' array")
+        if not nodes:
+            return cast(PlannerResultDict, parsed)
+
+        node_ids: set[str] = set()
         for node in nodes:
-            if not isinstance(node, dict) or "node_type" not in node:
+            if not isinstance(node, dict) or not node.get("node_type"):
                 raise _StageSchemaError("Planner", f"malformed node entry: {node!r}")
+            node_id = node.get("id")
+            if not isinstance(node_id, str) or not node_id.strip():
+                raise _StageSchemaError("Planner", f"node missing non-empty id: {node!r}")
+            if node_id in node_ids:
+                raise _StageSchemaError("Planner", f"duplicate node id: {node_id!r}")
+            node_ids.add(node_id)
+
+        edges = parsed.get("edges")
+        if not isinstance(edges, list) or not edges:
+            raise _StageSchemaError("Planner", "missing non-empty 'edges' array")
+        for edge in edges:
+            if not isinstance(edge, dict):
+                raise _StageSchemaError("Planner", f"malformed edge entry: {edge!r}")
+            source = edge.get("source")
+            target = edge.get("target")
+            if not isinstance(source, str) or not isinstance(target, str):
+                raise _StageSchemaError("Planner", f"edge missing source or target: {edge!r}")
+            if source not in node_ids or target not in node_ids:
+                raise _StageSchemaError("Planner", f"edge references unknown node: {edge!r}")
 
         return cast(PlannerResultDict, parsed)
 
     # ------------------------------------------------------------------
-    # Plan normalization
-    # ------------------------------------------------------------------
-    @staticmethod
-    def _insert_multi_retrieval_template_plan(plan_nodes: list[dict[str, Any]]) -> None:
-        """Insert the unambiguous multi-retrieval template step when omitted.
-
-        Multiple LLM nodes make ownership ambiguous, so that case remains in
-        the planner's hands. With exactly one LLM, every independent retrieval
-        result can safely fan into one template immediately before that LLM.
-        """
-        node_types = [str(node.get("node_type") or "") for node in plan_nodes]
-        if node_types.count(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL) < 2:
-            return
-        if node_types.count(BuiltinNodeTypes.LLM) != 1:
-            return
-        if BuiltinNodeTypes.TEMPLATE_TRANSFORM in node_types:
-            return
-
-        llm_index = node_types.index(BuiltinNodeTypes.LLM)
-        retrievals_before_llm = node_types[:llm_index].count(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL)
-        if retrievals_before_llm < 2:
-            return
-        plan_nodes.insert(
-            llm_index,
-            {
-                "label": "Combine Knowledge",
-                "node_type": BuiltinNodeTypes.TEMPLATE_TRANSFORM,
-                "purpose": "Combine every knowledge retrieval result into one labelled context for the LLM.",
-            },
-        )
-
-    # ------------------------------------------------------------------
     # Builder
     # ------------------------------------------------------------------
-    @staticmethod
-    def _supports_parallel_node_build(
-        *,
-        plan_nodes: list[dict[str, Any]],
-        plan_edges: list[dict[str, Any]],
-    ) -> bool:
-        """Return whether the planner emitted the new id + topology contract."""
-        if not plan_nodes or not plan_edges:
-            return False
-        node_ids = [node.get("id") for node in plan_nodes]
-        if any(not isinstance(node_id, str) or not node_id.strip() for node_id in node_ids):
-            return False
-        if len(set(node_ids)) != len(node_ids):
-            return False
-        return all(isinstance(edge.get("source"), str) and isinstance(edge.get("target"), str) for edge in plan_edges)
-
     @classmethod
     def _run_parallel_node_builders(
         cls,
@@ -872,7 +836,7 @@ class WorkflowGenerator:
             ideal_output_section=format_ideal_output_section(ideal_output),
             model_section=model_section,
             tool_catalogue_section=(
-                format_builder_tool_catalogue_section(tool_catalogue_text) if node_type == BuiltinNodeTypes.TOOL else ""
+                format_node_tool_catalogue_section(tool_catalogue_text) if node_type == BuiltinNodeTypes.TOOL else ""
             ),
             start_inputs_section=(
                 format_start_inputs_section(start_inputs) if node_type == BuiltinNodeTypes.START else ""
@@ -935,7 +899,9 @@ class WorkflowGenerator:
             parent_ref = str(planned.get("parent") or "")
             parent_id = label_to_id.get(parent_ref, parent_ref)
             if parent_id:
+                child_index = len(children_by_parent.get(parent_id, []))
                 node["parentId"] = parent_id
+                node.setdefault("position", {"x": 240 + 260 * child_index, "y": 60})
                 node.setdefault("data", {})
                 parent_type = type_by_id.get(parent_id)
                 if parent_type == BuiltinNodeTypes.ITERATION:
@@ -994,67 +960,6 @@ class WorkflowGenerator:
                 edges.append({"source": f"{parent_id}start", "target": child_ids[0]})
 
         return cast(GraphDict, {"nodes": nodes, "edges": edges, "viewport": _DEFAULT_VIEWPORT})
-
-    @classmethod
-    def _run_builder(
-        cls,
-        *,
-        model_instance,
-        model_parameters: dict[str, Any],
-        provider: str,
-        model_name: str,
-        model_mode: str,
-        mode: WorkflowGenerationMode,
-        instruction: str,
-        ideal_output: str,
-        plan_nodes: list[dict[str, Any]],
-        tool_catalogue_text: str,
-        start_inputs: list[dict[str, Any]] | None = None,
-        current_graph: dict[str, Any] | None = None,
-    ) -> GraphDict:
-        user_prompt = BUILDER_USER_PROMPT.format(
-            instruction=instruction.strip(),
-            ideal_output_section=format_ideal_output_section(ideal_output),
-            existing_graph_section=format_builder_existing_graph_section(current_graph),
-            provider=provider,
-            name=model_name,
-            mode_label=model_mode,
-            plan_block=format_plan_block(plan_nodes),
-            tool_catalogue_section=format_builder_tool_catalogue_section(tool_catalogue_text),
-            start_inputs_section=format_start_inputs_section(start_inputs or []),
-        )
-        # Scope the builder cheatsheet to exactly the node types the planner
-        # chose, so the prompt carries each type's FULL schema (e.g. a file
-        # start variable's required ``allowed_file_types``) without dragging in
-        # config for unrelated node types.
-        plan_node_types = {
-            str(node.get("node_type") or "").strip() for node in plan_nodes if str(node.get("node_type") or "").strip()
-        }
-        messages = [
-            SystemPromptMessage(content=get_builder_system_prompt(mode, plan_node_types)),
-            UserPromptMessage(content=user_prompt),
-        ]
-        parsed = cls._invoke_and_parse_json(
-            model_instance=model_instance,
-            messages=messages,
-            model_parameters=model_parameters,
-            stage="Builder",
-        )
-
-        nodes = parsed.get("nodes")
-        edges = parsed.get("edges")
-        if not isinstance(nodes, list) or not isinstance(edges, list):
-            raise _StageSchemaError("Builder", "graph missing 'nodes' or 'edges' arrays")
-
-        viewport = parsed.get("viewport") or _DEFAULT_VIEWPORT
-        return cast(
-            GraphDict,
-            {
-                "nodes": nodes,
-                "edges": edges,
-                "viewport": viewport,
-            },
-        )
 
     # ------------------------------------------------------------------
     # Postprocessing
@@ -2266,8 +2171,8 @@ class WorkflowGenerator:
         """
         Validate iteration / loop topology:
 
-          * every container has at least one child whose ``parentId``
-            points at it;
+          * every container has at least one executable child whose
+            ``parentId`` points at it;
           * every non-container node with a ``parentId`` points at a real
             container, not at a non-container node;
           * no cycles in the parent chain (a node cannot be its own
@@ -2284,7 +2189,9 @@ class WorkflowGenerator:
             if not isinstance(parent, str) or not parent:
                 continue
             if parent in container_ids:
-                children_by_parent.setdefault(parent, []).append(n.get("id", ""))
+                node_type = (n.get("data") or {}).get("type")
+                if node_type not in {"iteration-start", "loop-start"}:
+                    children_by_parent.setdefault(parent, []).append(n.get("id", ""))
             elif parent in by_id:
                 # Parent exists but isn't a container — that's a topology bug.
                 out.append(

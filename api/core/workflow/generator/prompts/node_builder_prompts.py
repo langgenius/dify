@@ -74,3 +74,31 @@ def get_node_builder_system_prompt(node_type: str) -> str:
 def format_parallel_plan(plan_nodes: list[dict[str, Any]], plan_edges: list[dict[str, Any]]) -> str:
     """Serialize the shared plan compactly so every node call has graph context."""
     return json.dumps({"nodes": plan_nodes, "edges": plan_edges}, ensure_ascii=False, separators=(",", ":"))
+
+
+def format_start_inputs_section(start_inputs: list[dict[str, Any]]) -> str:
+    """Render planner-declared inputs for the start-node builder only."""
+    if not start_inputs:
+        return ""
+    lines = ["# Start inputs (copy each entry verbatim into start.data.variables)", ""]
+    for input_ in start_inputs:
+        variable = str(input_.get("variable") or "").strip()
+        if not variable:
+            continue
+        label = str(input_.get("label") or "").strip()
+        type_ = str(input_.get("type") or "paragraph").strip()
+        lines.append(f"- variable={variable!r}  label={label!r}  type={type_!r}")
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def format_tool_catalogue_section(catalogue_text: str) -> str:
+    """Render exact tool identifiers for a tool-node builder only."""
+    if not catalogue_text.strip():
+        return ""
+    return (
+        "# Available tools (use these exact provider/tool identifiers — "
+        "set provider_id and provider_name to the provider portion and "
+        "tool_name to the tool portion)\n\n"
+        f"{catalogue_text}\n\n"
+    )
