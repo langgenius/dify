@@ -353,12 +353,10 @@ export function AgentRosterResponseContent({
 
   const entries = getAgentActivityEntries(item)
   const hasLiveResponseParts = !!item.agent_response_parts?.length
-  const hasPendingThinking =
-    !!responding &&
-    entries.length === 0 &&
-    !!item.agent_response_parts?.some((part) => part.type === 'thought')
+  const hasThinkingStatus =
+    entries.length === 0 && !!item.agent_response_parts?.some((part) => part.type === 'thought')
   const hasActivity =
-    hasPendingThinking ||
+    hasThinkingStatus ||
     (hasLiveResponseParts ? entries.some((entry) => entry.type === 'thought') : entries.length > 0)
   const standaloneMessages = hasLiveResponseParts
     ? hasActivity
@@ -379,7 +377,7 @@ export function AgentRosterResponseContent({
           item={item}
           entries={entries}
           responding={responding}
-          defaultOpen={hasLiveResponseParts}
+          defaultOpen={hasLiveResponseParts && (!!responding || entries.length > 0)}
         />
       )}
       {standaloneMessages.map((message) => (

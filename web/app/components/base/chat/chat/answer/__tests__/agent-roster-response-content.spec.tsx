@@ -19,34 +19,44 @@ vi.mock('react-i18next', async () => {
   }
 })
 
+const thinkingOnlyItem = {
+  id: 'answer-thinking-only',
+  content: '',
+  isAnswer: true,
+  agent_response_parts: [
+    {
+      type: 'thought',
+      thought: {
+        id: 'thought-thinking-only',
+        thought: 'internal thought should not render',
+        tool: '',
+        tool_input: '',
+        observation: '',
+        message_id: 'answer-thinking-only',
+        conversation_id: 'conversation-thinking-only',
+        position: 1,
+      },
+    },
+  ],
+} satisfies ChatItem
+
 describe('AgentRosterResponseContent', () => {
   it('should keep the live thinking status before visible activity arrives', () => {
-    const item = {
-      id: 'answer-thinking-only',
-      content: '',
-      isAnswer: true,
-      agent_response_parts: [
-        {
-          type: 'thought',
-          thought: {
-            id: 'thought-thinking-only',
-            thought: 'internal thought should not render',
-            tool: '',
-            tool_input: '',
-            observation: '',
-            message_id: 'answer-thinking-only',
-            conversation_id: 'conversation-thinking-only',
-            position: 1,
-          },
-        },
-      ],
-    } satisfies ChatItem
-
-    render(<AgentRosterResponseContent item={item} responding />)
+    render(<AgentRosterResponseContent item={thinkingOnlyItem} responding />)
 
     expect(screen.getByRole('button', { name: /Thinking/ })).toHaveAttribute(
       'aria-expanded',
       'true',
+    )
+    expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
+  })
+
+  it('should keep a stopped thinking status without exposing internal thought', () => {
+    render(<AgentRosterResponseContent item={thinkingOnlyItem} responding={false} />)
+
+    expect(screen.getByRole('button', { name: 'Thinking' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
     )
     expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
   })

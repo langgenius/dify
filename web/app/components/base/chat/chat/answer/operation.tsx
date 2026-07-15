@@ -101,6 +101,7 @@ function Operation({
   const userFeedback = feedback
 
   const content = getPublicResponseContent(item)
+  const hasPublicContent = !!content.trim()
 
   const displayUserFeedback = userLocalFeedback ?? userFeedback
 
@@ -115,6 +116,7 @@ function Operation({
     !readonly && !!onAnnotationAdded && !!onAnnotationEdited && !!onAnnotationRemoved
   const shouldShowAnnotationAction =
     canManageAnnotation &&
+    hasPublicContent &&
     !!config?.supportAnnotation &&
     !!config.annotation_reply?.enabled &&
     !humanInputFormDataList?.length
@@ -182,7 +184,7 @@ function Operation({
     let width = 0
     if (!isOpeningStatement) width += 26
     if (!isOpeningStatement && showPromptLog) width += 28 + 8
-    if (!isOpeningStatement && config?.text_to_speech?.enabled) width += 26
+    if (!isOpeningStatement && config?.text_to_speech?.enabled && hasPublicContent) width += 26
     if (!isOpeningStatement && shouldShowAnnotationAction) width += 26
     if (shouldShowUserFeedbackBar) width += hasUserFeedback ? 28 + 8 : 60 + 8
     if (shouldShowAdminFeedbackBar)
@@ -192,6 +194,7 @@ function Operation({
   }, [
     config?.text_to_speech?.enabled,
     hasAdminFeedback,
+    hasPublicContent,
     hasUserFeedback,
     isOpeningStatement,
     shouldShowAdminFeedbackBar,
@@ -370,10 +373,12 @@ function Operation({
             )}
             data-testid="operation-actions"
           >
-            {config?.text_to_speech?.enabled && !humanInputFormDataList?.length && (
-              <NewAudioButton id={id} value={content} voice={config?.text_to_speech?.voice} />
-            )}
-            {!humanInputFormDataList?.length && (
+            {config?.text_to_speech?.enabled &&
+              hasPublicContent &&
+              !humanInputFormDataList?.length && (
+                <NewAudioButton id={id} value={content} voice={config?.text_to_speech?.voice} />
+              )}
+            {hasPublicContent && !humanInputFormDataList?.length && (
               <ActionButton
                 aria-label={copyLabel}
                 onClick={() => {

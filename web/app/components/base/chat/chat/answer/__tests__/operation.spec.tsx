@@ -213,23 +213,28 @@ const baseItem: ChatItem = {
   isAnswer: true,
 }
 
-const createInterruptedItem = (messages: string[]): ChatItem => ({
-  ...baseItem,
-  content: '',
-  agent_response_parts: messages.map((content) => ({ type: 'message', content })),
-  agent_thoughts: [
-    {
-      id: '1',
-      thought: 'internal thought should not be used',
-      tool: '',
-      tool_input: '',
-      observation: '',
-      message_id: '',
-      conversation_id: '',
-      position: 0,
-    },
-  ],
-})
+const createInterruptedItem = (messages: string[]): ChatItem => {
+  const thought = {
+    id: '1',
+    thought: 'internal thought should not be used',
+    tool: '',
+    tool_input: '',
+    observation: '',
+    message_id: '',
+    conversation_id: '',
+    position: 0,
+  }
+
+  return {
+    ...baseItem,
+    content: '',
+    agent_response_parts: [
+      { type: 'thought', thought },
+      ...messages.map((content) => ({ type: 'message' as const, content })),
+    ],
+    agent_thoughts: [thought],
+  }
+}
 
 const baseProps: OperationProps = {
   item: baseItem,
@@ -299,6 +304,26 @@ describe('Operation', () => {
       })
       renderOperation()
       expect(screen.getByTestId('annotation-ctrl'))!.toBeInTheDocument()
+    })
+
+    it('should hide content-dependent actions for an interrupted response without public content', () => {
+      mockContextValue.config = makeChatConfig({
+        text_to_speech: { enabled: true },
+        supportAnnotation: true,
+        annotation_reply: {
+          id: 'ar-1',
+          score_threshold: 0.5,
+          embedding_model: { embedding_provider_name: '', embedding_model_name: '' },
+          enabled: true,
+        },
+      })
+
+      renderOperation({ ...baseProps, item: createInterruptedItem([]) })
+
+      expect(screen.queryByTestId('audio-btn')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'operation.copy' })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('annotation-ctrl')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'operation.regenerate' })).toBeInTheDocument()
     })
 
     it('should hide annotation button when chat is readonly', () => {
