@@ -4,6 +4,7 @@ import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { FlowType } from '@/types/common'
 import { AgentV2Panel } from '../panel'
 
 const {
@@ -17,6 +18,7 @@ const {
   mockPromptEditorProps,
   mockCopyFromRosterMutate,
   mockCopyFromRosterState,
+  mockConfigsMap,
   mockCreateInlineAgentBinding,
   mockSetInputs,
   mockStoreState,
@@ -47,6 +49,10 @@ const {
   mockCopyFromRosterMutate: vi.fn(),
   mockCopyFromRosterState: {
     isPending: false,
+  },
+  mockConfigsMap: {
+    flowId: 'app-1',
+    flowType: 'appFlow' as FlowType,
   },
   mockCreateInlineAgentBinding: vi.fn(),
   mockSetInputs: vi.fn(),
@@ -307,6 +313,11 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   useWorkflowVariableType: () => vi.fn(),
 }))
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: (selector: (state: { configsMap: typeof mockConfigsMap }) => unknown) =>
+    selector({ configsMap: mockConfigsMap }),
+}))
+
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: typeof mockStoreState) => unknown) => selector(mockStoreState),
 }))
@@ -335,6 +346,8 @@ describe('agent/panel', () => {
     mockStoreState.appId = 'app-1'
     mockStoreState.openInlineAgentPanelNodeId = undefined
     mockCopyFromRosterState.isPending = false
+    mockConfigsMap.flowId = 'app-1'
+    mockConfigsMap.flowType = FlowType.appFlow
     mockCopyFromRosterMutate.mockImplementation(
       (
         _variables,
@@ -502,6 +515,33 @@ describe('agent/panel', () => {
     )
   })
 
+  it('copies a roster agent through the snippet composer API', () => {
+    mockConfigsMap.flowId = 'snippet-1'
+    mockConfigsMap.flowType = FlowType.snippet
+    mockStoreState.appId = undefined as never
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' }))
+
+    expect(mockCopyFromRosterMutate).toHaveBeenCalledWith(
+      {
+        params: {
+          snippet_id: 'snippet-1',
+          node_id: 'agent-node',
+        },
+        body: {
+          source_agent_id: 'agent-1',
+        },
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
+  })
+
   it('renders a required roster state when no roster agent is selected', () => {
     render(
       <AgentV2Panel
@@ -651,6 +691,76 @@ describe('agent/panel', () => {
     expect(screen.queryByText('workflow.nodes.agent.roster.editInConsole')).not.toBeInTheDocument()
     expect(screen.queryByText('workflow.nodes.agent.roster.makeCopy')).not.toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
+  })
+
+  it('does not open copied inline agent configuration before its composer is created', () => {
+    mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
+    mockUseWorkflowInlineAgentDetail.mockReturnValue({
+      data: undefined,
+      isFetching: false,
+      refetch: mockWorkflowInlineAgentDetailRefetch,
+    })
+
+    const { container, rerender } = render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'source-inline-agent',
+            current_snapshot_id: 'source-inline-snapshot',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: /^workflow\.nodes\.agent\.roster\.openPanel/,
+      }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    mockUseWorkflowInlineAgentDetail.mockReturnValue({
+      data: {
+        agent: {
+          id: 'cloned-inline-agent',
+          name: 'Cloned Workflow Agent',
+          description: '',
+          scope: 'workflow_only',
+          status: 'active',
+        },
+        binding: {
+          binding_type: 'inline_agent',
+          agent_id: 'cloned-inline-agent',
+          current_snapshot_id: 'cloned-inline-snapshot',
+        },
+      },
+      isFetching: false,
+      refetch: mockWorkflowInlineAgentDetailRefetch,
+    })
+    rerender(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'source-inline-agent',
+            current_snapshot_id: 'source-inline-snapshot',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByRole('dialog', { name: 'Cloned Workflow Agent' })).toBeInTheDocument()
+    expect(mockOrchestratePanelContentProps.at(-1)).toMatchObject({
+      agentId: 'cloned-inline-agent',
+      nodeId: 'agent-node',
+      open: true,
+    })
   })
 
   it('uses the detail header when opening an existing inline agent from the roster trigger', () => {
@@ -878,7 +988,7 @@ describe('agent/panel', () => {
     expect(screen.queryByRole('button', { name: 'Start from Scratch' })).not.toBeInTheDocument()
   })
 
-  it('opens the inline panel while workflow composer state is still loading', () => {
+  it('keeps the inline panel closed while workflow composer state is still loading', () => {
     mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
     mockUseWorkflowInlineAgentDetail.mockReturnValue({
       data: undefined,
@@ -902,20 +1012,15 @@ describe('agent/panel', () => {
 
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
     expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
-    const panel = screen.getByRole('dialog', {
-      name: 'workflow.nodes.agent.roster.inlineSetup.name',
-    })
-    expect(panel).toBeInTheDocument()
     expect(
-      within(panel).queryByRole('button', { name: 'workflow.nodes.agent.roster.more' }),
+      screen.queryByRole('button', {
+        name: /^workflow\.nodes\.agent\.roster\.openPanel/,
+      }),
     ).not.toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
-    expect(mockOrchestratePanelContentProps.at(-1)).toMatchObject({
-      agentId: 'inline-agent-1',
-      inlineComposerState: undefined,
-      nodeId: 'agent-node',
-      open: true,
-    })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'inline-orchestrate-panel' }),
+    ).not.toBeInTheDocument()
   })
 
   it('recovers the inline setup panel open state from the node open marker', () => {

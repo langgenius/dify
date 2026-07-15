@@ -168,7 +168,7 @@ class TestConsoleAnnotationRefBoundaries:
 
         assert response["question"] == "q"
         update_mock.assert_called_once()
-        assert update_mock.call_args.args[1] == AnnotationRef("tenant-1", "app-1", "ann-1")
+        assert update_mock.call_args.args[1] == AnnotationRef(AppRef("tenant-1", "app-1"), "ann-1")
         assert update_mock.call_args.args[2] is session
 
     def test_delete_uses_annotation_ref(self, app: Flask):
@@ -192,7 +192,7 @@ class TestConsoleAnnotationRefBoundaries:
         assert response == ""
         assert status == 204
         delete_mock.assert_called_once()
-        assert delete_mock.call_args.args[0] == AnnotationRef("tenant-1", "app-1", "ann-1")
+        assert delete_mock.call_args.args[0] == AnnotationRef(AppRef("tenant-1", "app-1"), "ann-1")
         assert delete_mock.call_args.args[1] is session
 
     def test_hit_history_uses_annotation_ref(self, app: Flask):
@@ -223,4 +223,4 @@ class TestConsoleAnnotationRefBoundaries:
             response = handler(api, session, "app-1", "ann-1")
 
         assert response["total"] == 1
-        hit_history_mock.assert_called_once_with(AnnotationRef("tenant-1", "app-1", "ann-1"), 2, 5, session)
+        hit_history_mock.assert_called_once_with(AnnotationRef(AppRef("tenant-1", "app-1"), "ann-1"), 2, 5, session)

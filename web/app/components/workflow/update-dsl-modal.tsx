@@ -1,6 +1,7 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
+import type { DSLImportWarning } from '@/models/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -82,7 +83,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
 
   const isCreatingRef = useRef(false)
   const handleCompletedImport = useCallback(
-    async (status: DSLImportStatus, appId?: string) => {
+    async (status: DSLImportStatus, appId?: string, warnings: DSLImportWarning[] = []) => {
       if (!appId) {
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
         return
@@ -91,7 +92,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
       await handleWorkflowUpdate(appId)
       collaborationManager.emitWorkflowUpdate(appId)
       onImport?.()
-      const payload = getImportNotificationPayload(status, t)
+      const payload = getImportNotificationPayload(status, t, warnings)
       toast[payload.type](
         payload.message,
         payload.children ? { description: payload.children } : undefined,
@@ -133,10 +134,10 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
           yaml_content: fileContent,
           app_id: appDetail.id,
         })
-        const { id, status, app_id, imported_dsl_version, current_dsl_version } = response
+        const { id, status, app_id, imported_dsl_version, current_dsl_version, warnings } = response
 
         if (isImportCompleted(status)) {
-          await handleCompletedImport(status, app_id)
+          await handleCompletedImport(status, app_id, warnings)
         } else if (status === DSLImportStatus.PENDING) {
           handlePendingImport(id, imported_dsl_version, current_dsl_version)
         } else {
@@ -160,10 +161,10 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         import_id: importId,
       })
 
-      const { status, app_id } = response
+      const { status, app_id, warnings } = response
 
       if (isImportCompleted(status)) {
-        await handleCompletedImport(status, app_id)
+        await handleCompletedImport(status, app_id, warnings)
       } else if (status === DSLImportStatus.FAILED) {
         setLoading(false)
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))

@@ -200,7 +200,7 @@ describe('Autocomplete wrappers', () => {
         </Autocomplete>,
       )
 
-      asHTMLElement(screen.getByRole('dialog', { name: 'autocomplete popup' }).element()).click()
+      await screen.getByRole('dialog', { name: 'autocomplete popup' }).click()
 
       await expect
         .element(screen.getByRole('group', { name: 'autocomplete positioner' }))

@@ -339,7 +339,6 @@ const SnippetMain = ({
       invalidateConversationVarValues,
       accessControl: {
         canEdit: canEditSnippet,
-        canComment: true,
         canRun: true,
         canImportExportDSL: canEditSnippet,
         canReleaseAndVersion: canEditSnippet,

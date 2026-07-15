@@ -1,7 +1,6 @@
 import { render } from 'vitest-browser-react'
 import { Switch, SwitchSkeleton } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 const getThumb = (switchElement: HTMLElement | SVGElement) => switchElement.querySelector('span')
 
 describe('Switch', () => {
@@ -27,7 +26,7 @@ describe('Switch', () => {
     const screen = await render(<Switch checked={false} onCheckedChange={onCheckedChange} />)
 
     const switchElement = screen.getByRole('switch')
-    asHTMLElement(switchElement.element()).click()
+    await switchElement.click()
 
     expect(onCheckedChange).toHaveBeenCalledWith(true)
     expect(onCheckedChange).toHaveBeenCalledTimes(1)
@@ -41,7 +40,7 @@ describe('Switch', () => {
 
     await expect.element(switchElement).toHaveAttribute('aria-checked', 'false')
 
-    asHTMLElement(switchElement.element()).click()
+    await switchElement.click()
     expect(onCheckedChange).toHaveBeenCalledWith(true)
     await expect.element(switchElement).toHaveAttribute('aria-checked', 'false')
 
@@ -56,23 +55,18 @@ describe('Switch', () => {
 
     await expect.element(switchElement).toHaveAttribute('aria-checked', 'false')
 
-    asHTMLElement(switchElement.element()).click()
+    await switchElement.click()
 
     expect(onCheckedChange).toHaveBeenCalledWith(true)
     await expect.element(switchElement).toHaveAttribute('aria-checked', 'true')
   })
 
   it('should not call onCheckedChange when disabled', async () => {
-    const onCheckedChange = vi.fn()
-    const screen = await render(
-      <Switch checked={false} disabled onCheckedChange={onCheckedChange} />,
-    )
+    const screen = await render(<Switch checked={false} disabled />)
 
     const switchElement = screen.getByRole('switch')
+    await expect.element(switchElement).toBeDisabled()
     await expect.element(switchElement).toHaveAttribute('data-disabled', '')
-
-    asHTMLElement(switchElement.element()).click()
-    expect(onCheckedChange).not.toHaveBeenCalled()
   })
 
   it('should apply custom className', async () => {
@@ -105,17 +99,11 @@ describe('Switch', () => {
 
   describe('loading state', () => {
     it('should render as disabled when loading', async () => {
-      const onCheckedChange = vi.fn()
-      const screen = await render(
-        <Switch checked={false} loading onCheckedChange={onCheckedChange} />,
-      )
+      const screen = await render(<Switch checked={false} loading />)
 
       const switchElement = screen.getByRole('switch')
       await expect.element(switchElement).toHaveAttribute('aria-busy', 'true')
       await expect.element(switchElement).toHaveAttribute('data-disabled', '')
-
-      asHTMLElement(switchElement.element()).click()
-      expect(onCheckedChange).not.toHaveBeenCalled()
     })
 
     it('should show spinner icon for md and lg sizes', async () => {

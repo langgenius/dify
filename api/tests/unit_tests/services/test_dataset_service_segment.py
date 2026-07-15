@@ -1,6 +1,6 @@
 """Unit tests for SegmentService behaviors in dataset_service."""
 
-from services.dataset_ref_service import DatasetRef, DatasetRefService
+from services.dataset_ref_service import DatasetRef, DatasetRefService, DocumentRef, SegmentRef
 
 from .dataset_service_test_helpers import (
     Account,
@@ -39,15 +39,24 @@ class TestDatasetRefService:
     """Unit tests for typed dataset resource refs."""
 
     def test_dataset_ref_is_plain_named_tuple(self):
-        dataset_ref = DatasetRef("tenant-1", "dataset-1")
+        dataset_ref = DatasetRefService.create_dataset_ref(_make_dataset())
 
+        assert isinstance(dataset_ref, DatasetRef)
         assert dataset_ref.tenant_id == "tenant-1"
         assert dataset_ref.dataset_id == "dataset-1"
         assert tuple(dataset_ref) == ("tenant-1", "dataset-1")
 
-    def test_create_document_ref_rejects_document_outside_dataset(self):
+    @pytest.mark.parametrize(
+        ("document_dataset_id", "document_tenant_id"),
+        [("other-dataset", "tenant-1"), ("dataset-1", "other-tenant")],
+    )
+    def test_create_document_ref_rejects_document_outside_dataset(self, document_dataset_id, document_tenant_id):
         dataset = _make_dataset(dataset_id="dataset-1", tenant_id="tenant-1")
-        document = _make_document(document_id="doc-1", dataset_id="other-dataset", tenant_id="tenant-1")
+        document = _make_document(
+            document_id="doc-1",
+            dataset_id=document_dataset_id,
+            tenant_id=document_tenant_id,
+        )
         dataset_ref = DatasetRefService.create_dataset_ref(dataset)
 
         assert DatasetRefService.create_document_ref(dataset_ref, document) is None
@@ -55,10 +64,29 @@ class TestDatasetRefService:
     def test_create_segment_ref_carries_full_parent_chain(self):
         segment_ref = _make_segment_ref()
 
-        assert segment_ref.tenant_id == "tenant-1"
-        assert segment_ref.dataset_id == "dataset-1"
-        assert segment_ref.document_id == "doc-1"
+        assert isinstance(segment_ref, SegmentRef)
+        assert isinstance(segment_ref.document, DocumentRef)
+        assert isinstance(segment_ref.document.dataset, DatasetRef)
+        assert segment_ref.document.dataset.tenant_id == "tenant-1"
+        assert segment_ref.document.dataset.dataset_id == "dataset-1"
+        assert segment_ref.document.document_id == "doc-1"
         assert segment_ref.segment_id == "segment-1"
+
+    def test_get_document_by_ref_uses_full_ownership_chain(self):
+        dataset_ref = DatasetRefService.create_dataset_ref(_make_dataset())
+        document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, "doc-1")
+        document = _make_document()
+        session = MagicMock()
+        session.scalar.return_value = document
+
+        result = DatasetRefService.get_document_by_ref(document_ref, session=session)
+
+        assert result is document
+        stmt = session.scalar.call_args.args[0]
+        sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert "documents.id = 'doc-1'" in sql
+        assert "documents.dataset_id = 'dataset-1'" in sql
+        assert "documents.tenant_id = 'tenant-1'" in sql
 
 
 class TestSegmentServiceChildChunks:

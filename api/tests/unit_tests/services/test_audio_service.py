@@ -65,7 +65,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import App, AppMode, AppModelConfig, Message
 from models.workflow import Workflow
-from services.app_ref_service import MessageRef
+from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -661,8 +661,7 @@ class TestAudioServiceTTS:
         # Arrange
         app = factory.create_app_mock(app_id=APP_ID, tenant_id=TENANT_ID, mode=AppMode.CHAT)
         message_ref = MessageRef(
-            tenant_id=TENANT_ID,
-            app_id=APP_ID,
+            app=AppRef(tenant_id=TENANT_ID, app_id=APP_ID),
             message_id=MESSAGE_ID,
             end_user_id=END_USER_ID,
             account_id=ACCOUNT_ID,
@@ -678,22 +677,19 @@ class TestAudioServiceTTS:
         # Act
         for wrong_ref in (
             MessageRef(
-                tenant_id=TENANT_ID,
-                app_id=OTHER_ID,
+                app=AppRef(tenant_id=TENANT_ID, app_id=OTHER_ID),
                 message_id=MESSAGE_ID,
                 end_user_id=END_USER_ID,
                 account_id=ACCOUNT_ID,
             ),
             MessageRef(
-                tenant_id=TENANT_ID,
-                app_id=APP_ID,
+                app=AppRef(tenant_id=TENANT_ID, app_id=APP_ID),
                 message_id=MESSAGE_ID,
                 end_user_id=OTHER_ID,
                 account_id=ACCOUNT_ID,
             ),
             MessageRef(
-                tenant_id=TENANT_ID,
-                app_id=APP_ID,
+                app=AppRef(tenant_id=TENANT_ID, app_id=APP_ID),
                 message_id=MESSAGE_ID,
                 end_user_id=END_USER_ID,
                 account_id=OTHER_ID,
