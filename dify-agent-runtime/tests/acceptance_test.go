@@ -490,7 +490,7 @@ func TestJobNotFound(t *testing.T) {
 }
 
 // --- Landlock Tests ---
-// These tests verify that shellctl-landlock-exec restricts filesystem access
+// These tests verify that shellctl-run restricts filesystem access
 // so each agent job can only write within its own HOME directory while still
 // being able to execute system commands.
 
