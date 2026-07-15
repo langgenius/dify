@@ -608,17 +608,21 @@ def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(mon
             },
         }
     )
-    monkeypatch.setattr(
-        "services.agent.dsl_service.get_tenant_knowledge_dataset_rows",
-        Mock(return_value={"existing": SimpleNamespace(id="existing")}),
-    )
+    session = Mock()
+    get_dataset_rows = Mock(return_value={"existing": SimpleNamespace(id="existing")})
+    monkeypatch.setattr("services.agent.dsl_service.get_tenant_knowledge_dataset_rows", get_dataset_rows)
 
-    resolved, warnings = AgentDslService(Mock())._resolve_package_soul(
+    resolved, warnings = AgentDslService(session)._resolve_package_soul(
         tenant_id="tenant-1",
         package=make_portable_agent_package(_agent(), soul),
         package_path="agent_packages.agent_1",
     )
 
+    get_dataset_rows.assert_called_once_with(
+        session=session,
+        tenant_id="tenant-1",
+        dataset_ids=["existing", "missing"],
+    )
     datasets = resolved.knowledge.sets[0].datasets
     assert datasets[0].id == "existing"
     assert datasets[1].id is not None

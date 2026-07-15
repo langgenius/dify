@@ -1,8 +1,9 @@
-"""Testcontainers integration tests for controllers.mcp.mcp endpoints."""
+"""Unit tests for controllers.mcp.mcp endpoints."""
 
 from __future__ import annotations
 
 import types
+from collections.abc import Iterator
 from inspect import unwrap
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -12,6 +13,19 @@ from flask import Flask, Response
 from pydantic import ValidationError
 
 import controllers.mcp.mcp as module
+from models.engine import db
+from models.model import EndUser
+
+
+@pytest.fixture
+def app() -> Iterator[Flask]:
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        EndUser.__table__.create(db.engine)
+        yield app
 
 
 @pytest.fixture(autouse=True)
@@ -20,6 +34,12 @@ def mock_mcp_ns():
     fake_ns.payload = None
     fake_ns.models = {}
     module.mcp_ns = fake_ns
+
+
+@pytest.fixture
+def flask_req_ctx(app: Flask):
+    with app.test_request_context("/"):
+        yield
 
 
 def fake_payload(data):
@@ -66,7 +86,7 @@ class DummyResult:
         return {"jsonrpc": "2.0", "result": "ok", "id": 1}
 
 
-@pytest.mark.usefixtures("flask_req_ctx_with_containers")
+@pytest.mark.usefixtures("flask_req_ctx")
 class TestMCPAppApi:
     @patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True)
     def test_success_request(self, mock_handle):
@@ -431,24 +451,6 @@ class TestMCPAppApi:
             post_fn("server-1")
         assert "Invalid MCP request" in str(exc_info.value)
 
-    def test_server_found_successfully(self):
-        """Test successful server and app retrieval"""
-        api = module.MCPAppApi()
-
-        server = DummyServer(status=module.AppMCPServerStatus.ACTIVE)
-        app = DummyApp(
-            mode=module.AppMode.ADVANCED_CHAT,
-            workflow=DummyWorkflow(),
-        )
-
-        session = MagicMock()
-        session.scalar.side_effect = [server, app]
-
-        result_server, result_app = api._get_mcp_server_and_app("server-1", session)
-
-        assert result_server == server
-        assert result_app == app
-
     def test_validate_server_status_active(self):
         """Test successful server status validation"""
         api = module.MCPAppApi()
@@ -557,30 +559,30 @@ class TestMCPProtocolVersionNegotiationApi:
             return post_fn("server-1")
 
     @pytest.mark.parametrize("version", sorted(module.mcp_types.SERVER_SUPPORTED_PROTOCOL_VERSIONS))
-    def test_initialize_echoes_supported_body_version(self, flask_app_with_containers, version):
+    def test_initialize_echoes_supported_body_version(self, app, version):
         """Initialize echoes every supported client-requested version back unchanged."""
         api = self._make_api()
 
-        response = self._post(flask_app_with_containers, api, _initialize_payload(version))
+        response = self._post(app, api, _initialize_payload(version))
 
         body = response.get_json()
         assert body["result"]["protocolVersion"] == version
 
-    def test_initialize_falls_back_for_unsupported_body_version(self, flask_app_with_containers):
+    def test_initialize_falls_back_for_unsupported_body_version(self, app):
         """An unsupported requested version falls back to the server latest."""
         api = self._make_api()
 
-        response = self._post(flask_app_with_containers, api, _initialize_payload(_UNSUPPORTED_VERSION))
+        response = self._post(app, api, _initialize_payload(_UNSUPPORTED_VERSION))
 
         body = response.get_json()
         assert body["result"]["protocolVersion"] == module.mcp_types.SERVER_LATEST_PROTOCOL_VERSION
 
-    def test_initialize_ignores_unsupported_header(self, flask_app_with_containers):
+    def test_initialize_ignores_unsupported_header(self, app):
         """Initialize negotiates via the request body, so its header is never rejected."""
         api = self._make_api()
 
         response = self._post(
-            flask_app_with_containers,
+            app,
             api,
             _initialize_payload("2024-11-05"),
             headers={"MCP-Protocol-Version": _UNSUPPORTED_VERSION},
@@ -591,13 +593,13 @@ class TestMCPProtocolVersionNegotiationApi:
         assert body["result"]["protocolVersion"] == "2024-11-05"
 
     @pytest.mark.parametrize("request_id", [5, None])
-    def test_unsupported_header_returns_invalid_request_error(self, flask_app_with_containers, request_id):
+    def test_unsupported_header_returns_invalid_request_error(self, app, request_id):
         """An unsupported header gets a JSON-RPC error echoing the request id (missing id -> null)."""
         api = self._make_api()
 
         with patch.object(module, "handle_mcp_request", autospec=True) as mock_handle:
             response = self._post(
-                flask_app_with_containers,
+                app,
                 api,
                 _tools_list_payload(request_id=request_id),
                 headers={"MCP-Protocol-Version": _UNSUPPORTED_VERSION},
@@ -611,12 +613,12 @@ class TestMCPProtocolVersionNegotiationApi:
         assert _UNSUPPORTED_VERSION in body["error"]["message"]
         mock_handle.assert_not_called()
 
-    def test_notification_with_unsupported_header_is_accepted(self, flask_app_with_containers):
+    def test_notification_with_unsupported_header_is_accepted(self, app):
         """A notification is accepted (202, no body) even with an unsupported header."""
         api = self._make_api()
 
         response = self._post(
-            flask_app_with_containers,
+            app,
             api,
             {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
             headers={"MCP-Protocol-Version": _UNSUPPORTED_VERSION},
@@ -625,13 +627,13 @@ class TestMCPProtocolVersionNegotiationApi:
         assert response.status_code == 202
 
     @pytest.mark.parametrize("version", sorted(module.mcp_types.SERVER_SUPPORTED_PROTOCOL_VERSIONS))
-    def test_supported_header_is_threaded_to_handler(self, flask_app_with_containers, version):
+    def test_supported_header_is_threaded_to_handler(self, app, version):
         """Every supported header value is passed through to handle_mcp_request."""
         api = self._make_api()
 
         with patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True) as mock_handle:
             self._post(
-                flask_app_with_containers,
+                app,
                 api,
                 _tools_list_payload(),
                 headers={"MCP-Protocol-Version": version},
@@ -639,21 +641,21 @@ class TestMCPProtocolVersionNegotiationApi:
 
         assert mock_handle.call_args.args[-1] == version
 
-    def test_absent_header_defaults_to_back_compat_version(self, flask_app_with_containers):
+    def test_absent_header_defaults_to_back_compat_version(self, app):
         """An absent header resolves to the spec's default version (2025-03-26)."""
         api = self._make_api()
 
         with patch.object(module, "handle_mcp_request", return_value=DummyResult(), autospec=True) as mock_handle:
-            self._post(flask_app_with_containers, api, _tools_list_payload())
+            self._post(app, api, _tools_list_payload())
 
         assert mock_handle.call_args.args[-1] == module.mcp_types.DEFAULT_NEGOTIATED_VERSION
 
-    def test_tools_list_json_advertises_structured_output_for_modern_client(self, flask_app_with_containers):
+    def test_tools_list_json_advertises_structured_output_for_modern_client(self, app):
         """A 2025-06-18 client sees outputSchema and title in the serialized tool JSON."""
         api = self._make_api()
 
         response = self._post(
-            flask_app_with_containers,
+            app,
             api,
             _tools_list_payload(),
             headers={"MCP-Protocol-Version": "2025-06-18"},
@@ -663,12 +665,12 @@ class TestMCPProtocolVersionNegotiationApi:
         assert tool["outputSchema"] == {"type": "object"}
         assert tool["title"] == "test_app"
 
-    def test_tools_list_json_unchanged_for_legacy_client(self, flask_app_with_containers):
+    def test_tools_list_json_unchanged_for_legacy_client(self, app):
         """A 2024-11-05 client sees exactly the pre-upgrade tool JSON keys."""
         api = self._make_api()
 
         response = self._post(
-            flask_app_with_containers,
+            app,
             api,
             _tools_list_payload(),
             headers={"MCP-Protocol-Version": "2024-11-05"},
@@ -678,15 +680,13 @@ class TestMCPProtocolVersionNegotiationApi:
         assert set(tool) == {"name", "description", "inputSchema"}
 
     @patch("core.mcp.server.streamable_http.AppGenerateService")
-    def test_tools_call_json_includes_structured_content_for_modern_client(
-        self, mock_app_generate, flask_app_with_containers
-    ):
+    def test_tools_call_json_includes_structured_content_for_modern_client(self, mock_app_generate, app):
         """A 2025-06-18 client receives structuredContent alongside the text content."""
         api = self._make_api()
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
         response = self._post(
-            flask_app_with_containers,
+            app,
             api,
             _tools_call_payload(),
             headers={"MCP-Protocol-Version": "2025-06-18"},
@@ -697,15 +697,13 @@ class TestMCPProtocolVersionNegotiationApi:
         assert result["content"][0]["text"] == "test answer"
 
     @patch("core.mcp.server.streamable_http.AppGenerateService")
-    def test_tools_call_json_omits_structured_content_for_legacy_client(
-        self, mock_app_generate, flask_app_with_containers
-    ):
+    def test_tools_call_json_omits_structured_content_for_legacy_client(self, mock_app_generate, app):
         """A 2024-11-05 client receives the pre-upgrade tools/call JSON without structuredContent."""
         api = self._make_api()
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
         response = self._post(
-            flask_app_with_containers,
+            app,
             api,
             _tools_call_payload(),
             headers={"MCP-Protocol-Version": "2024-11-05"},

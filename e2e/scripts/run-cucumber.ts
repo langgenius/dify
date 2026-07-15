@@ -184,7 +184,7 @@ const main = async () => {
       try {
         const shellctlPort = process.env.E2E_SHELLCTL_PORT || '5004'
         await Promise.race([
-          waitForUrl(`http://127.0.0.1:${shellctlPort}/openapi.json`, 180_000, 1_000),
+          waitForUrl(`http://127.0.0.1:${shellctlPort}/healthz`, 180_000, 1_000),
           waitForUnexpectedProcessExit(shellctlProcess, () => !waitingForShellctl),
         ])
       } catch (error) {

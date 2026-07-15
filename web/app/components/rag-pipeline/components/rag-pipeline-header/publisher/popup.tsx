@@ -16,7 +16,7 @@ import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixi
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Divider from '@/app/components/base/divider'
@@ -42,8 +42,8 @@ import { useInvalid } from '@/service/use-base'
 import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
 import { usePublishWorkflow } from '@/service/use-workflow'
 import { getDatasetACLCapabilities } from '@/utils/permission'
+import { RAG_PIPELINE_PUBLISH_HOTKEY } from '../hotkeys'
 
-const PUBLISH_SHORTCUT = ['Mod', 'Shift', 'P']
 type PopupProps = {
   onRequestClose?: () => void
   confirmVisible?: boolean
@@ -53,14 +53,14 @@ type PopupProps = {
   onShowPublishAsKnowledgePipelineModal?: () => void
 }
 
-const Popup = ({
+export function Popup({
   onRequestClose,
   confirmVisible: controlledConfirmVisible,
   onShowConfirm,
   onHideConfirm,
   isPublishingAsCustomizedPipeline = false,
   onShowPublishAsKnowledgePipelineModal,
-}: PopupProps) => {
+}: PopupProps) {
   const { t } = useTranslation()
   const { datasetId } = useParams()
   const { push } = useRouter()
@@ -182,10 +182,10 @@ const Popup = ({
       handleHideConfirm,
     ],
   )
-  useHotkey('Mod+Shift+P', (e) => {
-    e.preventDefault()
-    if (published) return
-    handlePublish()
+  useHotkey(RAG_PIPELINE_PUBLISH_HOTKEY, () => void handlePublish(), {
+    enabled: !published && !publishing,
+    ignoreInputs: true,
+    preventDefault: true,
   })
   const goToAddDocuments = useCallback(() => {
     if (isAddDocumentsDisabled) return
@@ -243,7 +243,7 @@ const Popup = ({
             <div className="flex gap-1">
               <span>{t(($) => $['common.publishUpdate'], { ns: 'workflow' })}</span>
               <KbdGroup>
-                {PUBLISH_SHORTCUT.map((key) => (
+                {RAG_PIPELINE_PUBLISH_HOTKEY.split('+').map((key) => (
                   <Kbd key={key} color="white">
                     {formatForDisplay(key)}
                   </Kbd>
@@ -334,4 +334,3 @@ const Popup = ({
     </div>
   )
 }
-export default memo(Popup)

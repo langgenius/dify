@@ -284,7 +284,7 @@ def _generate_account(
             else:
                 new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session())
                 TenantService.create_tenant_member(new_tenant, account, db.session(), role="owner")
-                account.current_tenant = new_tenant
+                account.set_current_tenant_with_session(new_tenant, session=db.session())
                 tenant_was_created.send(new_tenant)
 
     if not account:

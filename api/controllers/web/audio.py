@@ -79,7 +79,12 @@ class AudioApi(WebApiResource):
         file = request.files["file"]
 
         try:
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user.external_user_id)
+            response = AudioService.transcript_asr(
+                app_model=app_model,
+                file=file,
+                session=db.session(),
+                end_user=end_user.external_user_id,
+            )
 
             return dump_response(AudioToTextResponse, response)
         except services.errors.app_model_config.AppModelConfigBrokenError:

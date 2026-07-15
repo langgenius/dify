@@ -532,7 +532,11 @@ class AgentDslService:
             for dataset in knowledge_set.get("datasets", [])
             if dataset.get("id")
         ]
-        existing = get_tenant_knowledge_dataset_rows(tenant_id=tenant_id, dataset_ids=dataset_ids)
+        existing = get_tenant_knowledge_dataset_rows(
+            session=self.session,
+            tenant_id=tenant_id,
+            dataset_ids=dataset_ids,
+        )
         warnings = [
             DslImportWarning(
                 code=f"agent_{asset.kind}_omitted",

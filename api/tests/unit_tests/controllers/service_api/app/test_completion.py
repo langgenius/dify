@@ -688,11 +688,8 @@ class TestChatApiController:
         # A well-formed but nonexistent conversation_id must fail fast as 404, before the
         # streaming generator is created. Previously the lookup only ran inside the generator,
         # so an invalid id surfaced as a hang instead of a clean error.
-        monkeypatch.setattr(
-            ConversationService,
-            "get_conversation",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
-        )
+        get_conversation_mock = Mock(side_effect=ConversationNotExistsError())
+        monkeypatch.setattr(ConversationService, "get_conversation", get_conversation_mock)
 
         generate_mock = Mock(return_value={"text": "unused"})
         monkeypatch.setattr(AppGenerateService, "generate", generate_mock)
@@ -711,6 +708,7 @@ class TestChatApiController:
 
         # The lookup must run before generation, so the generator is never started.
         generate_mock.assert_not_called()
+        assert get_conversation_mock.call_args.kwargs["session"] is orm_session
 
 
 class TestChatStopApiController:

@@ -4,7 +4,8 @@ import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-syste
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { AppModeEnum } from '@/types/app'
-import CreateFromDSLModal, { CreateFromDSLModalTab } from '../index'
+import CreateFromDSLModal from '../index'
+import { CreateFromDSLModalTab } from '../types'
 
 const mockPush = vi.fn()
 const mockImportDSL = vi.fn()

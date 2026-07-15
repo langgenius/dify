@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode } from '@/models/datasets'
 import { DocumentContext } from '../../../context'
-import ActionButtons from '../action-buttons'
+import { ActionButtons } from '../action-buttons'
 
 const mockUseHotkey = vi.fn()
 vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {

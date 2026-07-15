@@ -203,5 +203,5 @@ class ForgotPasswordResetApi(Resource):
         ):
             tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session())
             TenantService.create_tenant_member(tenant, account, db.session(), role="owner")
-            account.current_tenant = tenant
+            account.set_current_tenant_with_session(tenant, session=db.session())
             tenant_was_created.send(tenant)

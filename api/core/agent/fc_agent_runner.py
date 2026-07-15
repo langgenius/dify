@@ -87,12 +87,21 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             message_file_ids: list[str] = []
             agent_thought_id = self.create_agent_thought(
-                message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
+                message_id=message.id,
+                message="",
+                tool_name="",
+                tool_input="",
+                messages_ids=message_file_ids,
             )
 
             # recalc llm max tokens
             prompt_messages = self._organize_prompt_messages()
             self.recalc_llm_max_tokens(self.model_config, prompt_messages)
+
+            # Release any setup/tool transaction before waiting on the provider stream.
+            session.commit()
+            session.close()
+
             # invoke model
             chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
@@ -256,6 +265,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         message_id=self.message.id,
                         conversation_id=self.conversation.id,
                     )
+                    session.commit()
+                    session.close()
                     # publish files
                     for message_file_id in message_files:
                         # publish message file

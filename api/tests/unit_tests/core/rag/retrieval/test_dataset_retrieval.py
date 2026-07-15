@@ -326,6 +326,18 @@ class TestRetrievalService:
         app.app_context.return_value.__exit__ = Mock()
         return app
 
+    @pytest.fixture
+    def retrieval_session(self):
+        session = MagicMock()
+        session_context = MagicMock()
+        session_context.__enter__.return_value = session
+        session_context.__exit__.return_value = None
+        with (
+            patch("core.rag.datasource.retrieval_service.db", SimpleNamespace(engine=Mock())),
+            patch("core.rag.datasource.retrieval_service.Session", return_value=session_context),
+        ):
+            yield session
+
     @pytest.fixture(autouse=True)
     def mock_thread_pool(self):
         """
@@ -709,6 +721,7 @@ class TestRetrievalService:
         mock_data_processor_class,
         mock_dataset,
         sample_documents,
+        retrieval_session,
     ):
         """
         Test basic hybrid search combining vector and full-text search.
@@ -774,13 +787,20 @@ class TestRetrievalService:
         mock_embedding_search.assert_called_once()
         mock_fulltext_search.assert_called_once()
         mock_processor_instance.invoke.assert_called_once()
+        assert mock_data_processor_class.call_args.kwargs["session"] is retrieval_session
 
     @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
     @patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search")
     @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_hybrid_search_deduplication(
-        self, mock_get_dataset, mock_embedding_search, mock_fulltext_search, mock_data_processor_class, mock_dataset
+        self,
+        mock_get_dataset,
+        mock_embedding_search,
+        mock_fulltext_search,
+        mock_data_processor_class,
+        mock_dataset,
+        retrieval_session,
     ):
         """
         Test that hybrid search properly deduplicates documents.
@@ -905,6 +925,7 @@ class TestRetrievalService:
         doc_ids = [doc.metadata["doc_id"] for doc in results]
         assert "duplicate_doc" in doc_ids, "Duplicate doc should be present (higher score version)"
         assert "unique_doc" in doc_ids, "Unique doc should be present"
+        assert mock_data_processor_class.call_args.kwargs["session"] is retrieval_session
 
         # Implicitly verifies that doc1_low (score 0.6) was discarded
         # in favor of doc1_high (score 0.9)
@@ -921,6 +942,7 @@ class TestRetrievalService:
         mock_data_processor_class,
         mock_dataset,
         sample_documents,
+        retrieval_session,
     ):
         """
         Test hybrid search with custom weights for score merging.
@@ -991,13 +1013,9 @@ class TestRetrievalService:
         assert len(results) == 3
         # Verify DataPostProcessor was created with weights
         mock_data_processor_class.assert_called_once()
-        # Check that weights were passed (may be in args or kwargs)
         call_args = mock_data_processor_class.call_args
-        if call_args.kwargs:
-            assert call_args.kwargs.get("weights") == weights
-        else:
-            # Weights might be in positional args (position 3)
-            assert len(call_args.args) >= 4
+        assert call_args.args[3] == weights
+        assert call_args.kwargs["session"] is retrieval_session
 
     @pytest.mark.parametrize("empty_query", ["", None])
     @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
@@ -1011,6 +1029,7 @@ class TestRetrievalService:
         mock_dataset,
         sample_documents,
         empty_query,
+        retrieval_session,
     ):
         """
         Regression test for GH #37116: attachment-only hybrid retrieval must use IMAGE_QUERY.
@@ -1064,6 +1083,7 @@ class TestRetrievalService:
         assert invoke_kwargs["query"] == attachment_id, (
             "The rerank query must be the attachment_id, not the empty text query"
         )
+        assert mock_data_processor_class.call_args.kwargs["session"] is retrieval_session
 
     # ==================== Full-Text Search Tests ====================
 
@@ -1820,7 +1840,7 @@ class TestRetrievalService:
         mock_dataset2.provider = "dify"
 
         # Act - Call with dataset_count = 2
-        with _patched_retriever_session():
+        with _patched_retriever_session() as rerank_session:
             dataset_retrieval._multiple_retrieve_thread(
                 flask_app=mock_flask_app,
                 available_datasets=[mock_dataset, mock_dataset2],
@@ -1847,6 +1867,7 @@ class TestRetrievalService:
             {"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v2"},
             None,
             False,
+            session=rerank_session,
         )
 
         # Verify invoke was called with correct parameters
@@ -5305,11 +5326,15 @@ class TestInternalHooksCoverage:
         assert len(all_documents) >= 3
 
     def test_to_dataset_retriever_tool_paths(self, retrieval: DatasetRetrieval) -> None:
-        dataset_skip_zero = SimpleNamespace(id="d1", provider="dify", available_document_count=0)
+        dataset_skip_zero = SimpleNamespace(
+            id="d1",
+            provider="dify",
+            get_total_available_documents=Mock(return_value=0),
+        )
         dataset_ok_single = SimpleNamespace(
             id="d2",
             provider="dify",
-            available_document_count=2,
+            get_total_available_documents=Mock(return_value=2),
             retrieval_model={"top_k": 2, "score_threshold_enabled": True, "score_threshold": 0.1},
         )
         single_config = DatasetRetrieveConfigEntity(

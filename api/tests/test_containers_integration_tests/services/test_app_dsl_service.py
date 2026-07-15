@@ -820,17 +820,19 @@ class TestAppDslService:
         db_session_with_containers.commit()
 
         service = AppDslService(db_session_with_containers)
-        service._create_or_update_app(
-            app=app,
-            data={
-                "app": {"mode": AppMode.CHAT},
-                "model_config": {"model": {"provider": "openai"}},
-            },
-            account=account,
-        )
+        with patch("services.app_dsl_service.app_model_config_was_updated") as signal:
+            service._create_or_update_app(
+                app=app,
+                data={
+                    "app": {"mode": AppMode.CHAT},
+                    "model_config": {"model": {"provider": "openai"}},
+                },
+                account=account,
+            )
 
         db_session_with_containers.expire_all()
         assert app.app_model_config_id is not None
+        assert signal.send.call_args.kwargs["session"] is db_session_with_containers
 
     def test_create_or_update_app_invalid_mode_raises(self, db_session_with_containers: Session):
         service = AppDslService(db_session_with_containers)
@@ -1245,17 +1247,29 @@ class TestAppDslService:
         )
         monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
 
-        app_model_config = SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": [{"credential_id": "secret"}]}})
-        app_model = _app_stub(app_model_config=app_model_config)
+        app_model_config = MagicMock(app_id="app-1")
+        app_model_config.to_dict.return_value = {"agent_mode": {"tools": [{"credential_id": "secret"}]}}
+        app_model = _app_stub(id="app-1", app_model_config_id="config-1")
+        session = MagicMock(spec=Session)
+        session.get.return_value = app_model_config
+        annotation_reply = {"enabled": False}
+        monkeypatch.setattr(app_dsl_service, "load_annotation_reply_config", lambda *_args: annotation_reply)
         export_data: dict = {}
 
-        AppDslService._append_model_config_export_data(export_data, app_model)
+        AppDslService._append_model_config_export_data(export_data, app_model, session=session)
         assert export_data["model_config"]["agent_mode"]["tools"] == [{}]
         assert export_data["dependencies"] == [{"tenant": _DEFAULT_TENANT_ID, "dep": "dep-1"}]
+        session.get.assert_called_once_with(AppModelConfig, "config-1")
+        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
     def test_append_model_config_export_data_requires_app_config(self):
+        session = MagicMock(spec=Session)
+        session.get.return_value = None
         with pytest.raises(ValueError, match="Missing app configuration"):
-            AppDslService._append_model_config_export_data({}, _app_stub(app_model_config=None))
+            AppDslService._append_model_config_export_data(
+                {}, _app_stub(app_model_config_id="config-1"), session=session
+            )
+        session.get.assert_called_once_with(AppModelConfig, "config-1")
 
     # ── Dependency Extraction ─────────────────────────────────────────
 

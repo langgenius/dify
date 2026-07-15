@@ -983,8 +983,8 @@ class AgentRosterService:
         return icon_type
 
     def _copy_app_model_config(self, *, source_app: App, target_app: App, account_id: str) -> None:
-        source_config = source_app.app_model_config
-        target_config = target_app.app_model_config
+        source_config = source_app.app_model_config_with_session(session=self._session)
+        target_config = target_app.app_model_config_with_session(session=self._session)
         if source_config is None or target_config is None:
             return
 

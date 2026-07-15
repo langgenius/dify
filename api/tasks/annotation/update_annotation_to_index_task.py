@@ -49,7 +49,8 @@ def update_annotation_to_index_task(
         document = Document(
             page_content=question, metadata={"annotation_id": annotation_id, "app_id": app_id, "doc_id": annotation_id}
         )
-        vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+        with session_factory.create_session() as session:
+            vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
         vector.delete_by_metadata_field("annotation_id", annotation_id)
         vector.add_texts([document])
         end_at = time.perf_counter()

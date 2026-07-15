@@ -3058,7 +3058,7 @@ Get message details by ID
 | 404 | Message not found |  |
 
 ### [POST] /apps/{app_id}/model-config
-**Modify app model config**
+**Modify the app model config and dataset joins in one request transaction**
 
 Update application model configuration
 
@@ -23887,6 +23887,7 @@ Lifecycle state for an asynchronous archive download request.
 | predecessor_node_id | string |  | No |
 | process_data |  |  | No |
 | process_data_truncated | boolean |  | No |
+| retry_index | integer |  | No |
 | status | string |  | No |
 | title | string |  | No |
 
