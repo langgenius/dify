@@ -6222,14 +6222,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/run/retry-log/retry-result-panel.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/run/special-result-panel.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1

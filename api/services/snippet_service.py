@@ -37,6 +37,10 @@ from models.workflow import (
 from repositories.factory import DifyAPIRepositoryFactory
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.tag_service import TagService
+from services.workflow_node_execution_trace_service import (
+    WorkflowNodeExecutionTrace,
+    assemble_workflow_node_execution_traces,
+)
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
 logger = logging.getLogger(__name__)
@@ -896,13 +900,13 @@ class SnippetService:
         *,
         snippet: CustomizedSnippet,
         run_id: str,
-    ) -> Sequence[WorkflowNodeExecutionModel]:
+    ) -> list[WorkflowNodeExecutionTrace]:
         """
         Get workflow run node execution list.
 
         :param snippet: CustomizedSnippet instance
         :param run_id: Workflow run ID
-        :return: List of WorkflowNodeExecutionModel
+        :return: Public terminal and retry trace records
         """
         workflow_run = self.get_snippet_workflow_run(snippet=snippet, run_id=run_id)
         if not workflow_run:
@@ -914,7 +918,7 @@ class SnippetService:
             workflow_run_id=workflow_run.id,
         )
 
-        return node_executions
+        return assemble_workflow_node_execution_traces(node_executions, self._node_execution_service_repo)
 
     # --- Node Execution Operations ---
 

@@ -247,17 +247,21 @@ class TestWorkflowRunServiceQueries:
         monkeypatch.setattr(service_module, "EndUser", FakeEndUser)
         user = cast(EndUser, FakeEndUser(tenant_id="tenant-end-user"))
         app_model = _app_model(id="app-1")
-        expected = [SimpleNamespace(id="exec-1")]
-        node_repo.get_executions_by_workflow_run.return_value = expected
+        expected_executions = [SimpleNamespace(id="exec-1")]
+        expected_traces = [SimpleNamespace(id="exec-1:retry:1")]
+        node_repo.get_executions_by_workflow_run.return_value = expected_executions
+        mock_assemble = MagicMock(return_value=expected_traces)
+        monkeypatch.setattr(service_module, "assemble_workflow_node_execution_traces", mock_assemble)
 
         result = service.get_workflow_run_node_executions(app_model=app_model, run_id="run-1", user=user)
 
-        assert result == expected
+        assert result == expected_traces
         node_repo.get_executions_by_workflow_run.assert_called_once_with(
             tenant_id="tenant-end-user",
             app_id="app-1",
             workflow_run_id="run-1",
         )
+        mock_assemble.assert_called_once_with(expected_executions, node_repo)
 
     def test_get_workflow_run_node_executions_should_use_account_current_tenant_id(
         self,
@@ -269,17 +273,21 @@ class TestWorkflowRunServiceQueries:
         monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=SimpleNamespace(id="run-1")))
         app_model = _app_model(id="app-1")
         user = _account(current_tenant_id="tenant-account")
-        expected = [SimpleNamespace(id="exec-1"), SimpleNamespace(id="exec-2")]
-        node_repo.get_executions_by_workflow_run.return_value = expected
+        expected_executions = [SimpleNamespace(id="exec-1"), SimpleNamespace(id="exec-2")]
+        expected_traces = [SimpleNamespace(id="exec-1:retry:1"), SimpleNamespace(id="exec-1")]
+        node_repo.get_executions_by_workflow_run.return_value = expected_executions
+        mock_assemble = MagicMock(return_value=expected_traces)
+        monkeypatch.setattr(service_module, "assemble_workflow_node_execution_traces", mock_assemble)
 
         result = service.get_workflow_run_node_executions(app_model=app_model, run_id="run-1", user=user)
 
-        assert result == expected
+        assert result == expected_traces
         node_repo.get_executions_by_workflow_run.assert_called_once_with(
             tenant_id="tenant-account",
             app_id="app-1",
             workflow_run_id="run-1",
         )
+        mock_assemble.assert_called_once_with(expected_executions, node_repo)
 
     def test_get_workflow_run_node_executions_should_raise_when_resolved_tenant_id_is_none(
         self,
