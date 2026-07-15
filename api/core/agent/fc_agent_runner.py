@@ -256,6 +256,12 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         message_id=self.message.id,
                         conversation_id=self.conversation.id,
                     )
+                    # accumulate tool usage (e.g. from MCP tools)
+                    if hasattr(tool_instance, "latest_usage"):
+                        tool_usage = tool_instance.latest_usage
+                        if tool_usage and isinstance(tool_usage.total_tokens, int) and tool_usage.total_tokens > 0:
+                            increase_usage(llm_usage, tool_usage)
+
                     # publish files
                     for message_file_id in message_files:
                         # publish message file
