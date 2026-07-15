@@ -218,7 +218,7 @@ describe('Combobox wrappers', () => {
         </Combobox>,
       )
 
-      asHTMLElement(screen.getByRole('dialog', { name: 'combobox popup' }).element()).click()
+      await screen.getByRole('dialog', { name: 'combobox popup' }).click()
 
       await expect
         .element(screen.getByRole('group', { name: 'combobox positioner' }))

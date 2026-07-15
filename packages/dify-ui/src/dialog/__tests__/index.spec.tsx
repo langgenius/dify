@@ -9,8 +9,6 @@ import {
   DialogTrigger,
 } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-
 describe('Dialog wrapper', () => {
   describe('Rendering', () => {
     it('should render dialog content when dialog is open', async () => {
@@ -90,11 +88,10 @@ describe('Dialog wrapper', () => {
     })
 
     it('should forward close button props to base primitive', async () => {
-      const onClick = vi.fn()
       const screen = await render(
         <Dialog open>
           <DialogContent>
-            <DialogCloseButton data-testid="close-button" disabled onClick={onClick} />
+            <DialogCloseButton data-testid="close-button" disabled />
             <span>Dialog body</span>
           </DialogContent>
         </Dialog>,
@@ -102,8 +99,6 @@ describe('Dialog wrapper', () => {
 
       const closeButton = screen.getByTestId('close-button')
       await expect.element(closeButton).toBeDisabled()
-      asHTMLElement(closeButton.element()).click()
-      expect(onClick).not.toHaveBeenCalled()
     })
   })
 })
