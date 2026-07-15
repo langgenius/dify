@@ -3,6 +3,8 @@ package landlock
 import (
 	"os"
 	"strings"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/envvar"
 )
 
 // Config holds the path lists for Landlock filesystem restrictions.
@@ -17,7 +19,7 @@ type Config struct {
 
 var (
 	// DefaultRWPaths are directories granted read-write access besides HOME.
-	// Empty by default — the runner injects TMPDIR=$CWD/.tmp so /tmp is not needed.
+	// Agent-specific paths (e.g. drive base) are added dynamically by the runner.
 	DefaultRWPaths = []string{}
 
 	// DefaultROPaths are directories granted read-only + execute access.
@@ -68,13 +70,13 @@ func DefaultConfig(home, cwd, jobDir string) *Config {
 func ConfigFromEnv(home, cwd, jobDir string) *Config {
 	cfg := DefaultConfig(home, cwd, jobDir)
 
-	if v, ok := os.LookupEnv(EnvRWPaths); ok {
+	if v, ok := os.LookupEnv(envvar.EnvRWPaths); ok {
 		cfg.RWPaths = splitPaths(v)
 	}
-	if v, ok := os.LookupEnv(EnvROPaths); ok {
+	if v, ok := os.LookupEnv(envvar.EnvROPaths); ok {
 		cfg.ROPaths = splitPaths(v)
 	}
-	if v, ok := os.LookupEnv(EnvRWDevPaths); ok {
+	if v, ok := os.LookupEnv(envvar.EnvRWDevPaths); ok {
 		cfg.RWDevPaths = splitPaths(v)
 	}
 

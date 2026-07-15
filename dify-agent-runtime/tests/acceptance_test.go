@@ -26,6 +26,9 @@ var (
 	goURL     = envOrDefault("SHELLCTL_GO_URL", "http://localhost:15005")
 	authToken = envOrDefault("SHELLCTL_TEST_TOKEN", "test-token-123")
 
+	goURLNoIsolation     = os.Getenv("SHELLCTL_GO_URL_NO_ISOLATION")
+	authTokenNoIsolation = os.Getenv("SHELLCTL_TEST_TOKEN_NO_ISOLATION")
+
 	httpClient = &http.Client{Timeout: 120 * time.Second}
 )
 
@@ -41,6 +44,13 @@ func targets() []target {
 	}
 }
 
+func noIsolationTarget() (target, bool) {
+	if goURLNoIsolation == "" {
+		return target{}, false
+	}
+	return target{name: "go-no-isolation", baseURL: goURLNoIsolation}, true
+}
+
 func TestMain(m *testing.M) {
 	// Warmup: wait for both servers to be ready before running tests
 	for _, tgt := range targets() {
@@ -49,9 +59,18 @@ func TestMain(m *testing.M) {
 			os.Exit(1)
 		}
 	}
+	if tgt, ok := noIsolationTarget(); ok {
+		if !waitForServer(tgt) {
+			fmt.Fprintf(os.Stderr, "ERROR: %s server not ready at %s\n", tgt.name, tgt.baseURL)
+			os.Exit(1)
+		}
+	}
 
 	for _, tgt := range targets() {
 		warmupJob(tgt)
+	}
+	if tgt, ok := noIsolationTarget(); ok {
+		warmupJobWithToken(tgt, authTokenNoIsolation)
 	}
 	os.Exit(m.Run())
 }
@@ -600,6 +619,113 @@ func TestLandlockCannotReadOtherAgentHome(t *testing.T) {
 	}
 }
 
+// --- Landlock Disable / Bypass Tests ---
+
+// TestLandlockDisabledAllowsWriteOutsideHome uses the pre-started no-isolation
+// container (ENABLE_PATH_ISOLATION=false) and verifies that isolation is off.
+func TestLandlockDisabledAllowsWriteOutsideHome(t *testing.T) {
+	tgt, ok := noIsolationTarget()
+	if !ok {
+		t.Skip("SHELLCTL_GO_URL_NO_ISOLATION not set; no-isolation container not available")
+	}
+
+	// With isolation disabled, writes to /tmp should succeed.
+	// /tmp is world-writable (Unix perms) but blocked by Landlock when enabled.
+	result := runJobWithToken(t, tgt, authTokenNoIsolation, map[string]any{
+		"script":  "touch /tmp/landlock-disabled-test && echo write_ok",
+		"env":     map[string]string{"HOME": "/home/dify"},
+		"timeout": 10,
+	})
+	assertJobDone(t, result)
+	assertExitCode(t, result, 0)
+	output := result["output"].(string)
+	if !strings.Contains(output, "write_ok") {
+		t.Errorf("expected write to /tmp to succeed with isolation disabled, got %q", output)
+	}
+}
+
+// TestLandlockCanWriteAgentDriveBase verifies that the per-agent drive path
+// (DIFY_AGENT_STUB_DRIVE_BASE) is writable when isolation is enabled.
+func TestLandlockCanWriteAgentDriveBase(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			result := runJob(t, tgt, map[string]any{
+				"script": "mkdir -p $DIFY_AGENT_STUB_DRIVE_BASE && touch $DIFY_AGENT_STUB_DRIVE_BASE/test-file && echo write_ok",
+				"env": map[string]string{
+					"HOME":                       "/home/dify",
+					"DIFY_AGENT_STUB_DRIVE_BASE": "/mnt/drive/agent-test",
+				},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			assertExitCode(t, result, 0)
+			output := result["output"].(string)
+			if !strings.Contains(output, "write_ok") {
+				t.Errorf("expected write to agent drive base to succeed, got %q", output)
+			}
+		})
+	}
+}
+
+// TestLandlockCannotWriteOtherAgentDrive verifies that an agent cannot write
+// to another agent's drive subdirectory.
+func TestLandlockCannotWriteOtherAgentDrive(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			// First create the other agent's drive dir.
+			setup := runJob(t, tgt, map[string]any{
+				"script": "mkdir -p /mnt/drive/agent-other && touch /mnt/drive/agent-other/secret",
+				"env": map[string]string{
+					"HOME":                       "/home/dify",
+					"DIFY_AGENT_STUB_DRIVE_BASE": "/mnt/drive/agent-other",
+				},
+				"timeout": 10,
+			})
+			assertJobDone(t, setup)
+			assertExitCode(t, setup, 0)
+
+			// Now try to access it as a different agent.
+			result := runJob(t, tgt, map[string]any{
+				"script": "cat /mnt/drive/agent-other/secret 2>&1; echo exit=$?",
+				"env": map[string]string{
+					"HOME":                       "/home/dify",
+					"DIFY_AGENT_STUB_DRIVE_BASE": "/mnt/drive/agent-mine",
+				},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			output := result["output"].(string)
+			if strings.Contains(output, "exit=0") {
+				t.Errorf("expected access to other agent's drive to be denied, but it succeeded: %q", output)
+			}
+		})
+	}
+}
+
+// TestLandlockEnvBypassBlocked verifies that a caller cannot set
+// ENABLE_PATH_ISOLATION=false in job env to escape the sandbox.
+func TestLandlockEnvBypassBlocked(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			// Attempt to bypass Landlock by passing the disable flag in job env.
+			result := runJob(t, tgt, map[string]any{
+				"script": "touch /opt/landlock-bypass-test 2>&1; echo exit=$?",
+				"env": map[string]string{
+					"HOME":                  "/home/dify",
+					"ENABLE_PATH_ISOLATION": "false",
+				},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			output := result["output"].(string)
+			// The write should still be denied despite the env override attempt.
+			if strings.Contains(output, "exit=0") {
+				t.Errorf("expected write to /opt to be DENIED even with ENABLE_PATH_ISOLATION=false in job env, but it succeeded: %q", output)
+			}
+		})
+	}
+}
+
 // --- Helpers ---
 
 func runJob(t *testing.T, tgt target, payload map[string]any) map[string]any {
@@ -695,4 +821,47 @@ func envOrDefault(key, defaultVal string) string {
 		return v
 	}
 	return defaultVal
+}
+
+func warmupJobWithToken(tgt target, token string) {
+	warmupClient := &http.Client{Timeout: 180 * time.Second}
+	payload, _ := json.Marshal(map[string]any{
+		"script":  "echo warmup",
+		"timeout": 10,
+	})
+	for attempt := 0; attempt < 3; attempt++ {
+		req, _ := http.NewRequest("POST", tgt.baseURL+"/v1/jobs/run", bytes.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := warmupClient.Do(req)
+		if err != nil {
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode == 200 {
+			return
+		}
+		time.Sleep(2 * time.Second)
+	}
+}
+
+func runJobWithToken(t *testing.T, tgt target, token string, payload map[string]any) map[string]any {
+	t.Helper()
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", tgt.baseURL+"/v1/jobs/run", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		t.Fatalf("[%s] POST /v1/jobs/run failed: %v", tgt.name, err)
+	}
+	assertStatus(t, resp, 200)
+	respBody := readBody(t, resp)
+	var result map[string]any
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		t.Fatalf("[%s] failed to parse run response: %v\nbody: %s", tgt.name, err, string(respBody))
+	}
+	return result
 }

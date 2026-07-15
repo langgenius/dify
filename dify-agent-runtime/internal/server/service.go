@@ -11,8 +11,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/langgenius/dify/dify-agent-runtime/internal/landlock"
 )
 
 // Service is the core job lifecycle manager backed by SQLite and tmux.
@@ -73,7 +71,6 @@ func (s *Service) PrepareRuntime() error {
 	}
 
 	s.installRunner()
-	s.installEnablePathIsolation()
 	return s.tmux.StartServer()
 }
 
@@ -858,20 +855,6 @@ func (s *Service) installRunner() {
 			wrapper := fmt.Sprintf("#!/bin/sh\nexec %q \"$@\"\n", src)
 			_ = os.WriteFile(dst, []byte(wrapper), 0755)
 		}
-	}
-}
-
-// installEnablePathIsolation writes the ENABLE_PATH_ISOLATION env var into
-// the runner's per-job environment by ensuring it's passed through.  The
-// runner binary reads this env var to decide whether to apply Landlock.
-func (s *Service) installEnablePathIsolation() {
-	// The runner binary checks ENABLE_PATH_ISOLATION from its own process
-	// environment.  Since tmux inherits the shellctl server env, we ensure
-	// the variable is set in the server's own environment so it propagates.
-	if s.config.EnablePathIsolation {
-		_ = os.Setenv(landlock.EnvEnablePathIsolation, "true")
-	} else {
-		_ = os.Setenv(landlock.EnvEnablePathIsolation, "false")
 	}
 }
 

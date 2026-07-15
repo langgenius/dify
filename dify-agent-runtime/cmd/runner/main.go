@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/cmdutil"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/envvar"
 	"github.com/langgenius/dify/dify-agent-runtime/internal/landlock"
 )
 
@@ -93,10 +94,7 @@ func parentMode() {
 	env = setEnvIfEmpty(env, "TEMP", agentTmp)
 
 	// Determine if path isolation is enabled.
-	enableIsolation := true
-	if v := envGet(env, landlock.EnvEnablePathIsolation); v == "false" || v == "0" {
-		enableIsolation = false
-	}
+	enableIsolation := envvar.PathIsolationEnabled()
 
 	// Build child command: re-exec self in --exec mode.
 	self, _ := os.Executable()

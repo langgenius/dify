@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
-
-	"github.com/langgenius/dify/dify-agent-runtime/internal/landlock"
 )
 
 const (
@@ -56,15 +54,6 @@ type Config struct {
 	SQLiteBusyTimeoutMs          int
 	SanitizePtyCommand           []string
 	RunnerExitCommand            []string
-	EnablePathIsolation          bool
-}
-
-func isPathIsolationEnabled() bool {
-	v, ok := os.LookupEnv(landlock.EnvEnablePathIsolation)
-	if !ok {
-		return true
-	}
-	return v == "true"
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -102,10 +91,6 @@ func DefaultConfig() *Config {
 	if cfg.AuthToken == "" {
 		cfg.AuthToken = os.Getenv(DefaultAuthTokenEnv)
 	}
-
-	// Path isolation (Landlock) is enabled by default; set
-	// ENABLE_PATH_ISOLATION=false to disable.
-	cfg.EnablePathIsolation = isPathIsolationEnabled()
 
 	return cfg
 }
