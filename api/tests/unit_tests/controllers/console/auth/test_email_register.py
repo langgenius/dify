@@ -1,11 +1,9 @@
-"""Testcontainers integration tests for email register controller endpoints."""
+"""Unit tests for email register controller endpoints."""
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
 from flask import Flask
 
 from controllers.console.auth.email_register import (
@@ -13,12 +11,7 @@ from controllers.console.auth.email_register import (
     EmailRegisterResetApi,
     EmailRegisterSendEmailApi,
 )
-from services.account_service import AccountService
-
-
-@pytest.fixture
-def app(flask_app_with_containers: Flask):
-    return flask_app_with_containers
+from services.feature_service import SystemFeatureModel
 
 
 class TestEmailRegisterSendEmailApi:
@@ -41,10 +34,10 @@ class TestEmailRegisterSendEmailApi:
         mock_account = MagicMock()
         mock_get_account.return_value = mock_account
 
-        feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
+        feature_flags = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
         with (
-            patch("controllers.console.auth.email_register.dify_config", SimpleNamespace(BILLING_ENABLED=True)),
-            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.auth.email_register.dify_config.BILLING_ENABLED", True),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -82,9 +75,9 @@ class TestEmailRegisterCheckApi:
         mock_get_data.return_value = {"email": "User@Example.com", "code": "4321"}
         mock_generate_token.return_value = (None, "new-token")
 
-        feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
+        feature_flags = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
         with (
-            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -130,9 +123,9 @@ class TestEmailRegisterResetApi:
         mock_login.return_value = token_pair
         mock_get_account.return_value = None
 
-        feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
+        feature_flags = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
         with (
-            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -178,9 +171,9 @@ class TestEmailRegisterResetApi:
         mock_login.return_value = token_pair
         mock_get_account.return_value = None
 
-        feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
+        feature_flags = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
         with (
-            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -231,9 +224,9 @@ class TestEmailRegisterResetApi:
         mock_login.return_value = token_pair
         mock_get_account.return_value = None
 
-        feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
+        feature_flags = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
         with (
-            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -258,19 +251,3 @@ class TestEmailRegisterResetApi:
         mock_reset_login_rate.assert_called_once_with("invitee@example.com")
         mock_revoke_token.assert_called_once_with("token-123")
         mock_extract_ip.assert_called_once()
-
-
-def test_get_account_by_email_with_case_fallback_falls_back_to_lowercase():
-    """Test that case fallback tries lowercase when exact match fails."""
-    mock_session = MagicMock()
-    first_result = MagicMock()
-    first_result.scalar_one_or_none.return_value = None
-    expected_account = MagicMock()
-    second_result = MagicMock()
-    second_result.scalar_one_or_none.return_value = expected_account
-    mock_session.execute.side_effect = [first_result, second_result]
-
-    result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=mock_session)
-
-    assert result is expected_account
-    assert mock_session.execute.call_count == 2
