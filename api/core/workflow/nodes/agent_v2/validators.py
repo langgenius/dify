@@ -147,7 +147,7 @@ class WorkflowAgentNodeValidator:
             )
         cls._validate_agent_soul_env(binding=binding, agent_soul=agent_soul)
         cls._validate_agent_soul_tools(binding=binding, agent_soul=agent_soul)
-        cls._validate_agent_soul_knowledge(binding=binding, agent_soul=agent_soul)
+        cls._validate_agent_soul_knowledge(session=session, binding=binding, agent_soul=agent_soul)
         node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
         cls.validate_node_job(session=session, binding=binding, node_job=node_job, topology=topology)
 
@@ -370,11 +370,13 @@ class WorkflowAgentNodeValidator:
     def _validate_agent_soul_knowledge(
         cls,
         *,
+        session: Session,
         binding: WorkflowAgentNodeBinding,
         agent_soul: AgentSoulConfig,
     ) -> None:
         """Validate knowledge set dataset rows against the publishing tenant."""
         missing_ids = list_missing_tenant_knowledge_dataset_ids(
+            session=session,
             tenant_id=binding.tenant_id,
             agent_soul=agent_soul,
         )

@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
 
 from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
-from controllers.web.error import AppUnavailableError
+from controllers.web.error import AgentNotPublishedError, AppUnavailableError
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 
 
 # ---------------------------------------------------------------------------
@@ -22,7 +23,10 @@ class TestAppParameterApi:
             features_dict=features_dict,
             user_input_form=lambda to_old_structure=False: [],
         )
-        app_model = SimpleNamespace(mode="advanced-chat", workflow=workflow)
+        app_model = SimpleNamespace(
+            mode="advanced-chat",
+            workflow_with_session=lambda *, session: workflow,
+        )
 
         with (
             app.test_request_context("/parameters"),
@@ -41,7 +45,10 @@ class TestAppParameterApi:
             features_dict=features_dict,
             user_input_form=lambda to_old_structure=False: [{"var": "x"}],
         )
-        app_model = SimpleNamespace(mode="workflow", workflow=workflow)
+        app_model = SimpleNamespace(
+            mode="workflow",
+            workflow_with_session=lambda *, session: workflow,
+        )
 
         with (
             app.test_request_context("/parameters"),
@@ -54,19 +61,27 @@ class TestAppParameterApi:
         mock_params.assert_called_once_with(features_dict=features_dict, user_input_form=[{"var": "x"}])
 
     def test_advanced_chat_mode_no_workflow_raises(self, app: Flask) -> None:
-        app_model = SimpleNamespace(mode="advanced-chat", workflow=None)
+        app_model = SimpleNamespace(
+            mode="advanced-chat",
+            workflow_with_session=lambda *, session: None,
+        )
         with app.test_request_context("/parameters"):
             with pytest.raises(AppUnavailableError):
                 AppParameterApi().get(app_model, SimpleNamespace())
 
     def test_standard_mode_uses_app_model_config(self, app: Flask) -> None:
-        config = SimpleNamespace(to_dict=lambda: {"user_input_form": [{"var": "y"}], "key": "val"})
-        app_model = SimpleNamespace(mode="chat", app_model_config=config)
+        config = SimpleNamespace(to_dict=lambda **_kwargs: {"user_input_form": [{"var": "y"}], "key": "val"})
+        app_model = SimpleNamespace(
+            id="app-1",
+            mode="chat",
+            app_model_config_with_session=lambda *, session: config,
+        )
 
         with (
             app.test_request_context("/parameters"),
             patch("controllers.web.app.get_parameters_from_feature_dict", return_value={}) as mock_params,
             patch("controllers.web.app.fields.Parameters") as mock_fields,
+            patch("controllers.web.app.load_annotation_reply_config", return_value={"enabled": False}),
         ):
             mock_fields.model_validate.return_value.model_dump.return_value = {}
             AppParameterApi().get(app_model, SimpleNamespace())
@@ -75,9 +90,24 @@ class TestAppParameterApi:
         assert call_kwargs.kwargs["user_input_form"] == [{"var": "y"}]
 
     def test_standard_mode_no_config_raises(self, app: Flask) -> None:
-        app_model = SimpleNamespace(mode="chat", app_model_config=None)
+        app_model = SimpleNamespace(
+            mode="chat",
+            app_model_config_with_session=lambda *, session: None,
+        )
         with app.test_request_context("/parameters"):
             with pytest.raises(AppUnavailableError):
+                AppParameterApi().get(app_model, SimpleNamespace())
+
+    def test_agent_mode_unpublished_raises_friendly_error(self, app: Flask) -> None:
+        app_model = SimpleNamespace(mode="agent")
+        with (
+            app.test_request_context("/parameters"),
+            patch(
+                "controllers.web.app.get_published_agent_app_feature_dict_and_user_input_form",
+                side_effect=AgentAppNotPublishedError("Agent has not been published"),
+            ),
+        ):
+            with pytest.raises(AgentNotPublishedError):
                 AppParameterApi().get(app_model, SimpleNamespace())
 
 
@@ -135,7 +165,7 @@ class TestAppAccessMode:
         with app.test_request_context("/webapp/access-mode?appCode=code1"):
             result = AppAccessMode().get()
 
-        mock_resolve.assert_called_once_with("code1")
+        mock_resolve.assert_called_once_with("code1", session=ANY)
         mock_access.assert_called_once_with("resolved-id")
         assert result == {"accessMode": "external"}
 

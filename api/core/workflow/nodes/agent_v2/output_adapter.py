@@ -333,6 +333,8 @@ class WorkflowAgentOutputAdapter:
         session_snapshot = None
         if isinstance(event, AgentBackendRunSucceededInternalEvent | AgentBackendDeferredToolCallInternalEvent):
             session_snapshot = event.session_snapshot
+            if event.usage is not None:
+                agent_backend["usage"] = dict(event.usage)
         if session_snapshot is not None:
             agent_backend["session_snapshot"] = {
                 "layer_count": len(session_snapshot.layers),

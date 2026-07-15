@@ -69,7 +69,9 @@ describe('utils', () => {
 
   describe('getMarkdownImageURL', () => {
     it('should return the original URL when it does not match the asset regex', () => {
-      expect(getMarkdownImageURL('https://example.com/image.png')).toBe('https://example.com/image.png')
+      expect(getMarkdownImageURL('https://example.com/image.png')).toBe(
+        'https://example.com/image.png',
+      )
     })
 
     it('should transform ./_assets URL without pathname', () => {
@@ -93,8 +95,9 @@ describe('utils', () => {
     })
 
     it('should not transform URLs that contain _assets in the middle', () => {
-      expect(getMarkdownImageURL('https://cdn.example.com/_assets/image.png'))
-        .toBe('https://cdn.example.com/_assets/image.png')
+      expect(getMarkdownImageURL('https://cdn.example.com/_assets/image.png')).toBe(
+        'https://cdn.example.com/_assets/image.png',
+      )
     })
 
     it('should use empty string for pathname when undefined', () => {

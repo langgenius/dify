@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteConversationsByCIdPath,
   zDeleteConversationsByCIdResponse,
@@ -453,11 +452,13 @@ export const forgotPassword = {
 /**
  * Issue an upload token for a human input form
  *
+ * Issue an upload token for an active human input form
  * POST /api/form/human_input/<form_token>/upload-token
  */
 export const post13 = oc
   .route({
-    description: 'POST /api/form/human_input/<form_token>/upload-token',
+    description:
+      'Issue an upload token for an active human input form\nPOST /api/form/human_input/<form_token>/upload-token',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFormHumanInputByFormTokenUploadToken',
@@ -475,11 +476,13 @@ export const uploadToken = {
 /**
  * Get human input form definition by token
  *
+ * Get a human input form definition by token
  * GET /api/form/human_input/<form_token>
  */
 export const get2 = oc
   .route({
-    description: 'GET /api/form/human_input/<form_token>',
+    description:
+      'Get a human input form definition by token\nGET /api/form/human_input/<form_token>',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFormHumanInputByFormToken',
@@ -493,6 +496,7 @@ export const get2 = oc
 /**
  * Submit human input form by token
  *
+ * Submit a human input form by token
  * POST /api/form/human_input/<form_token>
  *
  * Request body:
@@ -506,7 +510,7 @@ export const get2 = oc
 export const post14 = oc
   .route({
     description:
-      'POST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
+      'Submit a human input form by token\nPOST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFormHumanInputByFormToken',
@@ -957,7 +961,7 @@ export const site = {
 export const get13 = oc
   .route({
     description:
-      'Get system feature flags and configuration\nReturns the current system feature flags and configuration\nthat control various functionalities across the platform.\n\nReturns:\n    dict: System feature configuration object\n\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for webapp initialization.\n\nAuthentication would create circular dependency (can\'t authenticate without webapp loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.',
+      "Get system feature flags and configuration\nReturns the current system feature flags and configuration\nthat control various functionalities across the platform.\n\nReturns:\n    dict: System feature configuration object\n\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for webapp initialization.\n\nAuthentication would create circular dependency (can't authenticate without webapp loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSystemFeatures',

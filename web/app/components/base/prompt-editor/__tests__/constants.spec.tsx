@@ -81,17 +81,13 @@ describe('prompt-editor constants', () => {
     it('should strip numeric node id for sys selector vars', () => {
       const text = 'value {{#1711617514996.sys.query#}}'
 
-      expect(getInputVars(text)).toEqual([
-        ['sys', 'query'],
-      ])
+      expect(getInputVars(text)).toEqual([['sys', 'query']])
     })
 
     it('should keep selector unchanged when sys prefix is not numeric id', () => {
       const text = 'value {{#abc.sys.query#}}'
 
-      expect(getInputVars(text)).toEqual([
-        ['abc', 'sys', 'query'],
-      ])
+      expect(getInputVars(text)).toEqual([['abc', 'sys', 'query']])
     })
   })
 

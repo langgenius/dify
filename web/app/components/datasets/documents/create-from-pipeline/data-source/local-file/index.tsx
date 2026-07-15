@@ -8,10 +8,7 @@ type LocalFileProps = {
   supportBatchUpload?: boolean
 }
 
-const LocalFile = ({
-  allowedExtensions,
-  supportBatchUpload = true,
-}: LocalFileProps) => {
+const LocalFile = ({ allowedExtensions, supportBatchUpload = true }: LocalFileProps) => {
   const {
     dropRef,
     dragRef,

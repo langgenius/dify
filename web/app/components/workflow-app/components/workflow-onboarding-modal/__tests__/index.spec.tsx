@@ -19,10 +19,16 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
         {typeof trigger === 'function' ? trigger(Boolean(open)) : trigger}
         {open && (
           <div>
-            <button data-testid="select-trigger-schedule" onClick={() => onSelect(BlockEnum.TriggerSchedule)}>
+            <button
+              data-testid="select-trigger-schedule"
+              onClick={() => onSelect(BlockEnum.TriggerSchedule)}
+            >
               Select Trigger Schedule
             </button>
-            <button data-testid="select-trigger-webhook" onClick={() => onSelect(BlockEnum.TriggerWebhook, { config: 'test' })}>
+            <button
+              data-testid="select-trigger-webhook"
+              onClick={() => onSelect(BlockEnum.TriggerWebhook, { config: 'test' })}
+            >
               Select Trigger Webhook
             </button>
           </div>
@@ -50,8 +56,10 @@ describe('WorkflowOnboardingModal', () => {
     return render(<WorkflowOnboardingModal {...defaultProps} {...props} />)
   }
   const getBackdrop = () => document.body.querySelector('.bg-workflow-canvas-canvas-overlay')
-  const getUserInputHeading = () => screen.getByRole('heading', { name: 'workflow.onboarding.userInputFull' })
-  const getTriggerHeading = () => screen.getByRole('heading', { name: 'workflow.onboarding.trigger' })
+  const getUserInputHeading = () =>
+    screen.getByRole('heading', { name: 'workflow.onboarding.userInputFull' })
+  const getTriggerHeading = () =>
+    screen.getByRole('heading', { name: 'workflow.onboarding.trigger' })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
@@ -199,7 +207,9 @@ describe('WorkflowOnboardingModal', () => {
       await user.click(screen.getByTestId('select-trigger-webhook'))
 
       expect(mockOnSelectStartNode).toHaveBeenCalledTimes(1)
-      expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerWebhook, { config: 'test' })
+      expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerWebhook, {
+        config: 'test',
+      })
       expect(mockOnClose).not.toHaveBeenCalled()
     })
   })
@@ -240,8 +250,7 @@ describe('WorkflowOnboardingModal', () => {
 
       const backdrop = getBackdrop()
       expect(backdrop).toBeInTheDocument()
-      if (!backdrop)
-        throw new Error('backdrop should exist when dialog is open')
+      if (!backdrop) throw new Error('backdrop should exist when dialog is open')
 
       await user.click(backdrop)
 
@@ -412,7 +421,9 @@ describe('WorkflowOnboardingModal', () => {
       await user.click(getTriggerHeading())
       await user.click(screen.getByTestId('select-trigger-webhook'))
 
-      expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerWebhook, { config: 'test' })
+      expect(mockOnSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerWebhook, {
+        config: 'test',
+      })
       expect(mockOnClose).not.toHaveBeenCalled()
     })
 

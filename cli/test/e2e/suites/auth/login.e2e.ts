@@ -44,7 +44,7 @@ describe('E2E / difyctl auth login', () => {
     await cleanup()
   })
 
-  function r(argv: string[], extraOpts: { stdin?: string, timeout?: number } = {}) {
+  function r(argv: string[], extraOpts: { stdin?: string; timeout?: number } = {}) {
     return run(argv, { configDir, ...extraOpts })
   }
 
@@ -54,10 +54,9 @@ describe('E2E / difyctl auth login', () => {
     // Spec 1.13: when the host is unreachable, CLI returns a server/network error.
     // 127.0.0.1:19999 has nothing listening — ECONNREFUSED is immediate.
     // https:// passes the scheme validation; then ECONNREFUSED fires immediately.
-    const result = await r(
-      ['auth', 'login', '--host', 'https://127.0.0.1:19999'],
-      { timeout: 15_000 },
-    )
+    const result = await r(['auth', 'login', '--host', 'https://127.0.0.1:19999'], {
+      timeout: 15_000,
+    })
     expect(result.exitCode, 'unreachable host should cause non-zero exit').not.toBe(0)
     expect(result.stderr + result.stdout).toMatch(
       /network|connect|ECONNREFUSED|server|unreachable|refused|fetch/i,
@@ -112,7 +111,8 @@ describe('E2E / difyctl auth login', () => {
     let stdoutBuf = ''
     const seen = await new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => resolve(false), 15_000)
-      const pattern = /[A-Z0-9]{4}-[A-Z0-9]{4}|https?:\/\/|user.?code|verification|one.?time|device|login/i
+      const pattern =
+        /[A-Z0-9]{4}-[A-Z0-9]{4}|https?:\/\/|user.?code|verification|one.?time|device|login/i
       proc.stderr.on('data', (chunk: Buffer) => {
         stderrBuf += chunk.toString('utf8')
         if (pattern.test(stderrBuf)) {
@@ -135,7 +135,7 @@ describe('E2E / difyctl auth login', () => {
     })
 
     proc.kill('SIGINT')
-    await new Promise<void>(res => proc.on('close', () => res()))
+    await new Promise<void>((res) => proc.on('close', () => res()))
 
     expect(
       seen,
@@ -159,14 +159,14 @@ describe('E2E / difyctl auth login', () => {
 
     // Use https:// to bypass scheme validation; ECONNREFUSED fires immediately.
     // The warning may appear before or after the connection error depending on CLI version.
-    const result = await r(
-      ['auth', 'login', '--host', 'https://127.0.0.1:19999'],
-      { timeout: 10_000 },
-    )
+    const result = await r(['auth', 'login', '--host', 'https://127.0.0.1:19999'], {
+      timeout: 10_000,
+    })
     const combined = result.stderr + result.stdout
     // Accept any of: cross-host warning, connection error, or non-zero exit (WTA-254 may not be shipped yet)
     expect(
-      result.exitCode !== 0 || /warn|different.?host|already|switch|ECONNREFUSED|refused|connect|network/i.test(combined),
+      result.exitCode !== 0 ||
+        /warn|different.?host|already|switch|ECONNREFUSED|refused|connect|network/i.test(combined),
       `Expected non-zero exit or relevant message.\nexitCode: ${result.exitCode}\noutput: ${combined.slice(0, 400)}`,
     ).toBe(true)
   })
@@ -201,7 +201,7 @@ describe('E2E / difyctl auth login', () => {
     })
 
     proc.kill('SIGINT')
-    await new Promise<void>(res => proc.on('close', () => res()))
+    await new Promise<void>((res) => proc.on('close', () => res()))
 
     expect(
       promptSeen,
@@ -215,15 +215,11 @@ describe('E2E / difyctl auth login', () => {
     // Spec 1.17: when the user enters a value that is not a valid URL (e.g. "localhost"
     // without a scheme), CLI reports an error and re-prompts or exits.
     // We pipe "localhost\n" to stdin so the CLI's prompt handler receives invalid input.
-    const result = await r(
-      ['auth', 'login'],
-      { stdin: 'localhost\n', timeout: 10_000 },
-    )
+    const result = await r(['auth', 'login'], { stdin: 'localhost\n', timeout: 10_000 })
     // Either exit non-0 (usage error) or output contains an error message about the URL format.
     const combinedOutput = result.stdout + result.stderr
-    const isValidationError
-      = result.exitCode !== 0
-        || /invalid|url|format|scheme|http|expected/i.test(combinedOutput)
+    const isValidationError =
+      result.exitCode !== 0 || /invalid|url|format|scheme|http|expected/i.test(combinedOutput)
     expect(
       isValidationError,
       `Expected non-zero exit or URL validation error.\nexitCode: ${result.exitCode}\noutput: ${combinedOutput.slice(0, 400)}`,

@@ -4,23 +4,19 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { AppSourceType } from '@/service/share'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import {
-  stopChatMessageResponding,
-  stopWorkflowMessage,
-  updateFeedback,
-} from '@/service/share'
+import { stopChatMessageResponding, stopWorkflowMessage, updateFeedback } from '@/service/share'
 
-type Notify = (payload: { type: 'error', message: string }) => void
+type Notify = (payload: { type: 'error'; message: string }) => void
 
 type RunControlState = {
   currentTaskId: string | null
   isStopping: boolean
 }
 
-type RunControlAction
-  = | { type: 'reset' }
-    | { type: 'setCurrentTaskId', value: SetStateAction<string | null> }
-    | { type: 'setIsStopping', value: SetStateAction<boolean> }
+type RunControlAction =
+  | { type: 'reset' }
+  | { type: 'setCurrentTaskId'; value: SetStateAction<string | null> }
+  | { type: 'setIsStopping'; value: SetStateAction<boolean> }
 
 type UseResultRunStateOptions = {
   appId?: string
@@ -28,7 +24,9 @@ type UseResultRunStateOptions = {
   controlStopResponding?: number
   isWorkflow: boolean
   notify: Notify
-  onRunControlChange?: (control: { onStop: () => Promise<void> | void, isStopping: boolean } | null) => void
+  onRunControlChange?: (
+    control: { onStop: () => Promise<void> | void; isStopping: boolean } | null,
+  ) => void
 }
 
 export type ResultRunStateController = {
@@ -67,12 +65,14 @@ const runControlReducer = (state: RunControlState, action: RunControlAction): Ru
     case 'setCurrentTaskId':
       return {
         ...state,
-        currentTaskId: typeof action.value === 'function' ? action.value(state.currentTaskId) : action.value,
+        currentTaskId:
+          typeof action.value === 'function' ? action.value(state.currentTaskId) : action.value,
       }
     case 'setIsStopping':
       return {
         ...state,
-        isStopping: typeof action.value === 'function' ? action.value(state.isStopping) : action.value,
+        isStopping:
+          typeof action.value === 'function' ? action.value(state.isStopping) : action.value,
       }
   }
 }
@@ -85,7 +85,8 @@ export const useResultRunState = ({
   notify,
   onRunControlChange,
 }: UseResultRunStateOptions): ResultRunStateController => {
-  const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
+  const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] =
+    useBoolean(false)
   const [completionResState, setCompletionResState] = useState<string>('')
   const completionResRef = useRef<string>('')
   const [workflowProcessDataState, setWorkflowProcessDataState] = useState<WorkflowProcess>()
@@ -143,35 +144,37 @@ export const useResultRunState = ({
     resetRunState()
   }, [resetRunState, setCompletionRes, setWorkflowProcessData])
 
-  const handleFeedback = useCallback(async (nextFeedback: FeedbackType) => {
-    await updateFeedback({
-      url: `/messages/${messageId}/feedbacks`,
-      body: {
-        rating: nextFeedback.rating,
-        content: nextFeedback.content,
-      },
-    }, appSourceType, appId)
-    setFeedback(nextFeedback)
-  }, [appId, appSourceType, messageId])
+  const handleFeedback = useCallback(
+    async (nextFeedback: FeedbackType) => {
+      await updateFeedback(
+        {
+          url: `/messages/${messageId}/feedbacks`,
+          body: {
+            rating: nextFeedback.rating,
+            content: nextFeedback.content,
+          },
+        },
+        appSourceType,
+        appId,
+      )
+      setFeedback(nextFeedback)
+    },
+    [appId, appSourceType, messageId],
+  )
 
   const handleStop = useCallback(async () => {
-    if (!currentTaskId || isStopping)
-      return
+    if (!currentTaskId || isStopping) return
 
     setIsStopping(true)
     try {
-      if (isWorkflow)
-        await stopWorkflowMessage(appId!, currentTaskId, appSourceType, appId || '')
-      else
-        await stopChatMessageResponding(appId!, currentTaskId, appSourceType, appId || '')
+      if (isWorkflow) await stopWorkflowMessage(appId!, currentTaskId, appSourceType, appId || '')
+      else await stopChatMessageResponding(appId!, currentTaskId, appSourceType, appId || '')
 
       abortControllerRef.current?.abort()
-    }
-    catch (error) {
+    } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       notify({ type: 'error', message })
-    }
-    finally {
+    } finally {
       setIsStopping(false)
     }
   }, [appId, appSourceType, currentTaskId, isStopping, isWorkflow, notify, setIsStopping])
@@ -195,8 +198,7 @@ export const useResultRunState = ({
   }, [controlStopResponding, resetRunState, setRespondingFalse])
 
   useEffect(() => {
-    if (!onRunControlChange)
-      return
+    if (!onRunControlChange) return
 
     if (isResponding && currentTaskId) {
       onRunControlChange({

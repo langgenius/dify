@@ -4,15 +4,19 @@ import { useState } from 'react'
 import TabSliderNew from '.'
 
 const OPTIONS = [
-  { value: 'visual', text: 'Visual builder', icon: <RiSparklingFill className="mr-2 size-4 text-primary-500" /> },
-  { value: 'code', text: 'Code', icon: <RiTerminalBoxLine className="mr-2 size-4 text-text-tertiary" /> },
+  {
+    value: 'visual',
+    text: 'Visual builder',
+    icon: <RiSparklingFill className="mr-2 size-4 text-primary-500" />,
+  },
+  {
+    value: 'code',
+    text: 'Code',
+    icon: <RiTerminalBoxLine className="mr-2 size-4 text-text-tertiary" />,
+  },
 ]
 
-const TabSliderNewDemo = ({
-  initialValue = 'visual',
-}: {
-  initialValue?: string
-}) => {
+const TabSliderNewDemo = ({ initialValue = 'visual' }: { initialValue?: string }) => {
   const [value, setValue] = useState(initialValue)
 
   return (
@@ -30,14 +34,15 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Rounded pill tabs suited for switching between editors. Icons illustrate mixed text/icon options.',
+        component:
+          'Rounded pill tabs suited for switching between editors. Icons illustrate mixed text/icon options.',
       },
     },
   },
   argTypes: {
     initialValue: {
       control: 'radio',
-      options: OPTIONS.map(option => option.value),
+      options: OPTIONS.map((option) => option.value),
     },
   },
   args: {

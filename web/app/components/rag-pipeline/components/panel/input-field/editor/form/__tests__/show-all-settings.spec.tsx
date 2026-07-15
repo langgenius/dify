@@ -55,7 +55,9 @@ describe('ShowAllSettings', () => {
     }
     render(<ShowAllSettingsHarness />)
 
-    fireEvent.click(screen.getByRole('button', { name: /appDebug\.variableConfig\.showAllSettings/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /appDebug\.variableConfig\.showAllSettings/ }),
+    )
 
     expect(handleShowAllSettings).toHaveBeenCalledTimes(1)
   })

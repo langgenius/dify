@@ -4,7 +4,7 @@ import * as React from 'react'
 import { FeaturesProvider } from '../../context'
 import Citation from '../citation'
 
-const renderWithProvider = (props: { disabled?: boolean, onChange?: OnFeaturesChange } = {}) => {
+const renderWithProvider = (props: { disabled?: boolean; onChange?: OnFeaturesChange } = {}) => {
   return render(
     <FeaturesProvider>
       <Citation disabled={props.disabled} onChange={props.onChange} />

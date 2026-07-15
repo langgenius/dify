@@ -24,25 +24,16 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? !!controlledOpen : uncontrolledOpen
     const setOpen = (nextOpen: boolean) => {
-      if (!isControlled)
-        setUncontrolledOpen(nextOpen)
+      if (!isControlled) setUncontrolledOpen(nextOpen)
       onOpenChange?.(nextOpen)
     }
 
-    return (
-      <PopoverContext.Provider value={{ open, setOpen }}>
-        {children}
-      </PopoverContext.Provider>
-    )
+    return <PopoverContext.Provider value={{ open, setOpen }}>{children}</PopoverContext.Provider>
   }
 
   const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
     const { open, setOpen } = React.useContext(PopoverContext)
-    return (
-      <div onClick={() => setOpen(!open)}>
-        {render}
-      </div>
-    )
+    return <div onClick={() => setOpen(!open)}>{render}</div>
   }
 
   const PopoverContent = ({ children }: { children: React.ReactNode }) => {
@@ -113,7 +104,9 @@ describe('SubscriptionSelectorEntry', () => {
   it('should render empty state label when no selection and closed', () => {
     render(<SubscriptionSelectorEntry selectedId={undefined} onSelect={vi.fn()} />)
 
-    expect(screen.getByText('pluginTrigger.subscription.noSubscriptionSelected')).toBeInTheDocument()
+    expect(
+      screen.getByText('pluginTrigger.subscription.noSubscriptionSelected'),
+    ).toBeInTheDocument()
   })
 
   it('should render placeholder when open without selection', () => {
@@ -144,7 +137,10 @@ describe('SubscriptionSelectorEntry', () => {
     fireEvent.click(screen.getByRole('button'))
     fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
 
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'sub-1', name: 'Subscription One' }), expect.any(Function))
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'sub-1', name: 'Subscription One' }),
+      expect.any(Function),
+    )
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
   })
 })

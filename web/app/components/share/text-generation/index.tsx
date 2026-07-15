@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { InputValueTypes, TextGenerationRunControl } from './types'
+import type { InputValueTypes, TextGenerationRunControl, TextGenerationTranslate } from './types'
 import type { InstalledApp } from '@/models/explore'
 import type { VisionFile } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -23,11 +23,19 @@ type IMainProps = {
 }
 const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = false }) => {
   const { t } = useTranslation()
+  const translateBatchKey: TextGenerationTranslate = useCallback(
+    (selector, options) => {
+      return t(selector, options)
+    },
+    [t],
+  )
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
   const searchParams = useSearchParams()
   const mode = searchParams.get('mode') || 'create'
-  const [currentTab, setCurrentTab] = useState<string>(['create', 'batch'].includes(mode) ? mode : 'create')
+  const [currentTab, setCurrentTab] = useState<string>(
+    ['create', 'batch'].includes(mode) ? mode : 'create',
+  )
   const [inputs, setInputs] = useState<Record<string, InputValueTypes>>({})
   const inputsRef = useRef(inputs)
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
@@ -35,26 +43,58 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
   const [controlSend, setControlSend] = useState(0)
   const [controlStopResponding, setControlStopResponding] = useState(0)
   const [resultExisted, setResultExisted] = useState(false)
-  const [isShowResultPanel, { setTrue: showResultPanelState, setFalse: hideResultPanel }] = useBoolean(false)
-  const notify = useCallback(({ type, message }: { type: 'error' | 'info' | 'success' | 'warning', message: string }) => {
-    toast(message, { type })
-  }, [])
+  const [isShowResultPanel, { setTrue: showResultPanelState, setFalse: hideResultPanel }] =
+    useBoolean(false)
+  const notify = useCallback(
+    ({ type, message }: { type: 'error' | 'info' | 'success' | 'warning'; message: string }) => {
+      toast(message, { type })
+    },
+    [],
+  )
   const updateInputs = useCallback((newInputs: Record<string, InputValueTypes>) => {
     setInputs(newInputs)
     inputsRef.current = newInputs
   }, [])
-  const { accessMode, appId, appSourceType, customConfig, handleRemoveSavedMessage, handleSaveMessage, moreLikeThisConfig, promptConfig, savedMessages, siteInfo, systemFeatures, textToSpeechConfig, visionConfig } = useTextGenerationAppState({
+  const {
+    accessMode,
+    appId,
+    appSourceType,
+    customConfig,
+    handleRemoveSavedMessage,
+    handleSaveMessage,
+    moreLikeThisConfig,
+    promptConfig,
+    savedMessages,
+    siteInfo,
+    systemFeatures,
+    textToSpeechConfig,
+    visionConfig,
+  } = useTextGenerationAppState({
     isInstalledApp,
     isWorkflow,
   })
-  const { allFailedTaskList, allSuccessTaskList, allTaskList, allTasksRun, controlRetry, exportRes, handleCompleted, handleRetryAllFailedTask, handleRunBatch: runBatchExecution, isCallBatchAPI, noPendingTask, resetBatchExecution, setIsCallBatchAPI, showTaskList } = useTextGenerationBatch({
+  const {
+    allFailedTaskList,
+    allSuccessTaskList,
+    allTaskList,
+    allTasksRun,
+    controlRetry,
+    exportRes,
+    handleCompleted,
+    handleRetryAllFailedTask,
+    handleRunBatch: runBatchExecution,
+    isCallBatchAPI,
+    noPendingTask,
+    resetBatchExecution,
+    setIsCallBatchAPI,
+    showTaskList,
+  } = useTextGenerationBatch({
     promptConfig,
     notify,
-    t,
+    t: translateBatchKey,
   })
   useEffect(() => {
-    if (isCallBatchAPI)
-      setRunControl(null)
+    if (isCallBatchAPI) setRunControl(null)
   }, [isCallBatchAPI])
   const showResultPanel = useCallback(() => {
     setTimeout(() => {
@@ -70,15 +110,18 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
     resetBatchExecution()
     showResultPanel()
   }, [resetBatchExecution, setIsCallBatchAPI, showResultPanel])
-  const handleRunBatch = useCallback((data: string[][]) => {
-    runBatchExecution(data, {
-      onStart: () => {
-        setControlSend(Date.now())
-        setControlStopResponding(Date.now())
-        showResultPanel()
-      },
-    })
-  }, [runBatchExecution, showResultPanel])
+  const handleRunBatch = useCallback(
+    (data: string[][]) => {
+      runBatchExecution(data, {
+        onStart: () => {
+          setControlSend(Date.now())
+          setControlStopResponding(Date.now())
+          showResultPanel()
+        },
+      })
+    },
+    [runBatchExecution, showResultPanel],
+  )
   if (!appId || !siteInfo || !promptConfig) {
     return (
       <div className="flex h-screen items-center">
@@ -87,9 +130,70 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
     )
   }
   return (
-    <div className={cn('bg-background-default-burn', isPC ? 'flex' : 'flex-col', isInstalledApp ? 'h-full rounded-2xl shadow-md' : 'h-screen')}>
-      <TextGenerationSidebar accessMode={accessMode} allTasksRun={allTasksRun} currentTab={currentTab} customConfig={customConfig} inputs={inputs} inputsRef={inputsRef} isInstalledApp={isInstalledApp} isPC={isPC} isWorkflow={isWorkflow} onBatchSend={handleRunBatch} onInputsChange={updateInputs} onRemoveSavedMessage={handleRemoveSavedMessage} onRunOnceSend={handleRunOnce} onTabChange={setCurrentTab} onVisionFilesChange={setCompletionFiles} promptConfig={promptConfig} resultExisted={resultExisted} runControl={runControl} savedMessages={savedMessages} siteInfo={siteInfo} systemFeatures={systemFeatures} textToSpeechConfig={textToSpeechConfig} visionConfig={visionConfig} />
-      <TextGenerationResultPanel allFailedTaskList={allFailedTaskList} allSuccessTaskList={allSuccessTaskList} allTaskList={allTaskList} appId={appId} appSourceType={appSourceType} completionFiles={completionFiles} controlRetry={controlRetry} controlSend={controlSend} controlStopResponding={controlStopResponding} exportRes={exportRes} handleCompleted={handleCompleted} handleRetryAllFailedTask={handleRetryAllFailedTask} handleSaveMessage={handleSaveMessage} inputs={inputs} isCallBatchAPI={isCallBatchAPI} isPC={isPC} isShowResultPanel={isShowResultPanel} isWorkflow={isWorkflow} moreLikeThisEnabled={!!moreLikeThisConfig?.enabled} noPendingTask={noPendingTask} onHideResultPanel={hideResultPanel} onRunControlChange={setRunControl} onRunStart={handleRunStart} onShowResultPanel={showResultPanel} promptConfig={promptConfig} resultExisted={resultExisted} showTaskList={showTaskList} siteInfo={siteInfo} textToSpeechEnabled={!!textToSpeechConfig?.enabled} visionConfig={visionConfig} />
+    <div
+      className={cn(
+        'bg-background-default-burn',
+        isPC ? 'flex' : 'flex-col',
+        isInstalledApp ? 'h-full rounded-2xl shadow-md' : 'h-screen',
+      )}
+    >
+      <TextGenerationSidebar
+        accessMode={accessMode}
+        allTasksRun={allTasksRun}
+        currentTab={currentTab}
+        customConfig={customConfig}
+        inputs={inputs}
+        inputsRef={inputsRef}
+        isInstalledApp={isInstalledApp}
+        isPC={isPC}
+        isWorkflow={isWorkflow}
+        onBatchSend={handleRunBatch}
+        onInputsChange={updateInputs}
+        onRemoveSavedMessage={handleRemoveSavedMessage}
+        onRunOnceSend={handleRunOnce}
+        onTabChange={setCurrentTab}
+        onVisionFilesChange={setCompletionFiles}
+        promptConfig={promptConfig}
+        resultExisted={resultExisted}
+        runControl={runControl}
+        savedMessages={savedMessages}
+        siteInfo={siteInfo}
+        systemFeatures={systemFeatures}
+        textToSpeechConfig={textToSpeechConfig}
+        visionConfig={visionConfig}
+      />
+      <TextGenerationResultPanel
+        allFailedTaskList={allFailedTaskList}
+        allSuccessTaskList={allSuccessTaskList}
+        allTaskList={allTaskList}
+        appId={appId}
+        appSourceType={appSourceType}
+        completionFiles={completionFiles}
+        controlRetry={controlRetry}
+        controlSend={controlSend}
+        controlStopResponding={controlStopResponding}
+        exportRes={exportRes}
+        handleCompleted={handleCompleted}
+        handleRetryAllFailedTask={handleRetryAllFailedTask}
+        handleSaveMessage={handleSaveMessage}
+        inputs={inputs}
+        isCallBatchAPI={isCallBatchAPI}
+        isPC={isPC}
+        isShowResultPanel={isShowResultPanel}
+        isWorkflow={isWorkflow}
+        moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
+        noPendingTask={noPendingTask}
+        onHideResultPanel={hideResultPanel}
+        onRunControlChange={setRunControl}
+        onRunStart={handleRunStart}
+        onShowResultPanel={showResultPanel}
+        promptConfig={promptConfig}
+        resultExisted={resultExisted}
+        showTaskList={showTaskList}
+        siteInfo={siteInfo}
+        textToSpeechEnabled={!!textToSpeechConfig?.enabled}
+        visionConfig={visionConfig}
+      />
     </div>
   )
 }

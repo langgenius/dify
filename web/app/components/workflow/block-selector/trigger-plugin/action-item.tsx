@@ -49,8 +49,7 @@ const TriggerPluginActionItem: FC<Props> = ({
         disabled ? 'cursor-default' : 'cursor-pointer hover:bg-state-base-hover',
       )}
       onClick={() => {
-        if (disabled)
-          return
+        if (disabled) return
         const params: Record<string, string> = {}
         if (payload.parameters) {
           payload.parameters.forEach((item) => {
@@ -75,11 +74,17 @@ const TriggerPluginActionItem: FC<Props> = ({
         })
       }}
     >
-      <div className={cn('truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary')}>
+      <div
+        className={cn(
+          'truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary',
+        )}
+      >
         <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
       </div>
       {isAdded && (
-        <div className="mr-4 system-xs-regular text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
+        <div className="mr-4 system-xs-regular text-text-tertiary">
+          {t(($) => $['addToolModal.added'], { ns: 'tools' })}
+        </div>
       )}
     </button>
   )
@@ -104,11 +109,8 @@ type TriggerPluginActionPreviewCardProps = {
   payload?: TriggerPluginActionPreviewPayload
 }
 
-export function TriggerPluginActionPreviewCard({
-  payload,
-}: TriggerPluginActionPreviewCardProps) {
-  if (!payload)
-    return null
+export function TriggerPluginActionPreviewCard({ payload }: TriggerPluginActionPreviewCardProps) {
+  if (!payload) return null
 
   return (
     <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
@@ -119,8 +121,12 @@ export function TriggerPluginActionPreviewCard({
           type={BlockEnum.TriggerPlugin}
           toolIcon={payload.provider.icon}
         />
-        <div className="mb-1 text-sm/5 text-text-primary">{payload.payload.label[payload.language]}</div>
-        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">{payload.payload.description[payload.language]}</div>
+        <div className="mb-1 text-sm/5 text-text-primary">
+          {payload.payload.label[payload.language]}
+        </div>
+        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
+          {payload.payload.description[payload.language]}
+        </div>
       </div>
     </PreviewCardContent>
   )

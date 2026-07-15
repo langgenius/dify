@@ -34,23 +34,16 @@ const extractFieldName = (content: string) => {
   return match ? match[1]! : ''
 }
 
-const SubmittedContentItem = ({
-  content,
-  formInputFields,
-  values,
-}: SubmittedContentItemProps) => {
+const SubmittedContentItem = ({ content, formInputFields, values }: SubmittedContentItemProps) => {
   if (!isOutputField(content)) {
-    return (
-      <Markdown content={content} />
-    )
+    return <Markdown content={content} />
   }
 
   const fieldName = extractFieldName(content)
-  const field = formInputFields.find(field => field.output_variable_name === fieldName)
+  const field = formInputFields.find((field) => field.output_variable_name === fieldName)
   const value = values[fieldName]
 
-  if (!field || value == null)
-    return null
+  if (!field || value == null) return null
 
   if (isParagraphFormInput(field)) {
     return (
@@ -69,11 +62,16 @@ const SubmittedContentItem = ({
     return (
       <div className="py-3" data-testid={`submitted-field-${fieldName}`}>
         <Select value={selectedValue} disabled>
-          <SelectTrigger size="large" className="w-full" aria-label={field.output_variable_name} disabled>
+          <SelectTrigger
+            size="large"
+            className="w-full"
+            aria-label={field.output_variable_name}
+            disabled
+          >
             {selectedValue}
           </SelectTrigger>
           <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-            {field.option_source.value.map(option => (
+            {field.option_source.value.map((option) => (
               <SelectItem key={option} value={option}>
                 <SelectItemText>{option}</SelectItemText>
                 <SelectItemIndicator />
@@ -86,8 +84,7 @@ const SubmittedContentItem = ({
   }
 
   if (isFileFormInput(field)) {
-    if (typeof value === 'string' || Array.isArray(value))
-      return null
+    if (typeof value === 'string' || Array.isArray(value)) return null
 
     return (
       <div className="py-3" data-testid={`submitted-field-${fieldName}`}>
@@ -101,8 +98,7 @@ const SubmittedContentItem = ({
   }
 
   if (isFileListFormInput(field)) {
-    if (typeof value === 'string' || !Array.isArray(value))
-      return null
+    if (typeof value === 'string' || !Array.isArray(value)) return null
 
     return (
       <div className="py-3" data-testid={`submitted-field-${fieldName}`}>

@@ -227,7 +227,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.is_workflow_exist(app)
+        result = workflow_service.is_workflow_exist(app, session=db_session_with_containers)
 
         # Assert
         assert result is True
@@ -247,7 +247,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.is_workflow_exist(app)
+        result = workflow_service.is_workflow_exist(app, session=db_session_with_containers)
 
         # Assert
         assert result is False
@@ -269,7 +269,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_draft_workflow(app)
+        result = workflow_service.get_draft_workflow(app, session=db_session_with_containers)
 
         # Assert
         assert result is not None
@@ -293,7 +293,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_draft_workflow(app)
+        result = workflow_service.get_draft_workflow(app, session=db_session_with_containers)
 
         # Assert
         assert result is None
@@ -320,7 +320,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow_by_id(app, workflow.id)
+        result = workflow_service.get_published_workflow_by_id(app, workflow.id, session=db_session_with_containers)
 
         # Assert
         assert result is not None
@@ -349,7 +349,7 @@ class TestWorkflowService:
         from services.errors.app import IsDraftWorkflowError
 
         with pytest.raises(IsDraftWorkflowError):
-            workflow_service.get_published_workflow_by_id(app, workflow.id)
+            workflow_service.get_published_workflow_by_id(app, workflow.id, session=db_session_with_containers)
 
     def test_get_published_workflow_by_id_not_found(self, db_session_with_containers: Session):
         """
@@ -366,7 +366,9 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow_by_id(app, non_existent_workflow_id)
+        result = workflow_service.get_published_workflow_by_id(
+            app, non_existent_workflow_id, session=db_session_with_containers
+        )
 
         # Assert
         assert result is None
@@ -393,7 +395,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow(app)
+        result = workflow_service.get_published_workflow(app, session=db_session_with_containers)
 
         # Assert
         assert result is not None
@@ -416,7 +418,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow(app)
+        result = workflow_service.get_published_workflow(app, session=db_session_with_containers)
 
         # Assert
         assert result is None
@@ -714,6 +716,7 @@ class TestWorkflowService:
             account=account,
             environment_variables=environment_variables,
             conversation_variables=conversation_variables,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -778,6 +781,7 @@ class TestWorkflowService:
             account=account,
             environment_variables=environment_variables,
             conversation_variables=conversation_variables,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -838,6 +842,7 @@ class TestWorkflowService:
                 account=account,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
+                session=db_session_with_containers,
             )
 
     def test_publish_workflow_success(self, db_session_with_containers: Session):
@@ -979,9 +984,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         restored_workflow = workflow_service.restore_published_workflow_to_draft(
-            app_model=app,
-            workflow_id=published_workflow.id,
-            account=account,
+            app_model=app, workflow_id=published_workflow.id, account=account, session=db_session_with_containers
         )
 
         db_session_with_containers.expire_all()
@@ -1130,7 +1133,9 @@ class TestWorkflowService:
         }
 
         # Act
-        result = workflow_service.convert_to_workflow(app_model=app, account=account, args=conversion_args)
+        result = workflow_service.convert_to_workflow(
+            app_model=app, account=account, args=conversion_args, session=db_session_with_containers
+        )
 
         # Assert
         assert result is not None
@@ -1190,7 +1195,9 @@ class TestWorkflowService:
         }
 
         # Act
-        result = workflow_service.convert_to_workflow(app_model=app, account=account, args=conversion_args)
+        result = workflow_service.convert_to_workflow(
+            app_model=app, account=account, args=conversion_args, session=db_session_with_containers
+        )
 
         # Assert
         assert result is not None
@@ -1222,7 +1229,9 @@ class TestWorkflowService:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Current App mode: workflow is not supported convert to workflow"):
-            workflow_service.convert_to_workflow(app_model=app, account=account, args=conversion_args)
+            workflow_service.convert_to_workflow(
+                app_model=app, account=account, args=conversion_args, session=db_session_with_containers
+            )
 
     def test_validate_features_structure_advanced_chat(self, db_session_with_containers: Session):
         """

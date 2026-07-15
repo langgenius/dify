@@ -20,14 +20,16 @@ import type {
 import { useMutation } from '@tanstack/react-query'
 import { groupBy } from 'es-toolkit/compat'
 import { post } from '../base'
-import { createDocument, createFirstDocument, fetchDefaultProcessRule, fetchFileIndexingEstimate } from '../datasets'
+import {
+  createDocument,
+  createFirstDocument,
+  fetchDefaultProcessRule,
+  fetchFileIndexingEstimate,
+} from '../datasets'
 
 const NAME_SPACE = 'knowledge/create-dataset'
 
-export const getNotionInfo = (
-  notionPages: NotionPage[],
-  credentialId: string,
-) => {
+export const getNotionInfo = (notionPages: NotionPage[], credentialId: string) => {
   const workspacesMap = groupBy(notionPages, 'workspace_id')
   const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
     return {
@@ -52,19 +54,17 @@ export const getNotionInfo = (
   }) as NotionInfo[]
 }
 
-export const getWebsiteInfo = (
-  opts: {
-    websiteCrawlProvider: DataSourceProvider
-    websiteCrawlJobId: string
-    websitePages: CrawlResultItem[]
-    crawlOptions?: CrawlOptions
-  },
-) => {
+export const getWebsiteInfo = (opts: {
+  websiteCrawlProvider: DataSourceProvider
+  websiteCrawlJobId: string
+  websitePages: CrawlResultItem[]
+  crawlOptions?: CrawlOptions
+}) => {
   const { websiteCrawlProvider, websiteCrawlJobId, websitePages, crawlOptions } = opts
   return {
     provider: websiteCrawlProvider,
     job_id: websiteCrawlJobId,
-    urls: websitePages.map(page => page.source_url),
+    urls: websitePages.map((page) => page.source_url),
     only_main_content: crawlOptions?.only_main_content,
   }
 }
@@ -91,9 +91,7 @@ const getFileIndexingEstimateParamsForFile = ({
   processRule,
   dataset_id,
 }: GetFileIndexingEstimateParamsOptionFile): IndexingEstimateParams => {
-  const fileIds = files
-    .map(file => file.id)
-    .filter((id): id is string => Boolean(id))
+  const fileIds = files.map((file) => file.id).filter((id): id is string => Boolean(id))
 
   return {
     info_list: {
@@ -217,8 +215,7 @@ export const useCreateFirstDocument = (
   mutationOptions: MutationOptions<createDocumentResponse, Error, CreateDocumentReq> = {},
 ) => {
   return useMutation({
-    mutationFn: async (createDocumentReq: CreateDocumentReq,
-    ) => {
+    mutationFn: async (createDocumentReq: CreateDocumentReq) => {
       return createFirstDocument({ body: createDocumentReq })
     },
     ...mutationOptions,

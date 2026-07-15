@@ -15,7 +15,10 @@ const mockRefetch = vi.fn()
 const mockUseAllToolProviders = vi.fn()
 let mockProviders: MockProvider[] = []
 let mockIsLoadingToolProviders = false
-let mockWorkspacePermissionKeys = ['mcp.manage']
+const mockAppContextState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['mcp.manage'] as string[],
+  workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
+}))
 
 vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: (enabled?: boolean) => {
@@ -28,17 +31,38 @@ vi.mock('@/service/use-tools', () => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
+vi.mock('@/context/account-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/workspace-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/permission-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/version-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+vi.mock('@/context/system-features-state', () => ({
+  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
+}))
+
+vi.mock('jotai', () => ({
+  useAtomValue: (atom: unknown) => {
+    if (atom === mockAppContextState.workspacePermissionKeysAtom)
+      return mockAppContextState.workspacePermissionKeys
+
+    throw new Error('Unexpected atom')
+  },
 }))
 
 vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
   default: ({ variant }: { variant?: string }) => (
     <>
       {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} data-testid="mcp-card-skeleton" data-variant={variant}>Loading MCP</div>
+        <div key={index} data-testid="mcp-card-skeleton" data-variant={variant}>
+          Loading MCP
+        </div>
       ))}
     </>
   ),
@@ -46,38 +70,82 @@ vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
 
 // Mock child components
 vi.mock('../create-card', () => ({
-  default: ({ handleCreate }: { handleCreate: (provider: { id: string, name: string }) => void }) => (
-    <button data-testid="create-card" type="button" onClick={() => handleCreate({ id: 'new-id', name: 'New Provider' })}>
+  default: ({
+    handleCreate,
+  }: {
+    handleCreate: (provider: { id: string; name: string }) => void
+  }) => (
+    <button
+      data-testid="create-card"
+      type="button"
+      onClick={() => handleCreate({ id: 'new-id', name: 'New Provider' })}
+    >
       Create Card
     </button>
   ),
 }))
 
 vi.mock('../provider-card', () => ({
-  default: ({ data, handleSelect, onUpdate, onDeleted }: { data: MockProvider, handleSelect: (id: string) => void, onUpdate: (id: string) => void, onDeleted: () => void }) => {
+  default: ({
+    data,
+    handleSelect,
+    onUpdate,
+    onDeleted,
+  }: {
+    data: MockProvider
+    handleSelect: (id: string) => void
+    onUpdate: (id: string) => void
+    onDeleted: () => void
+  }) => {
     const displayName = typeof data.name === 'string' ? data.name : Object.values(data.name)[0]
     return (
       <div data-testid={`provider-card-${data.id}`}>
-        <button type="button" onClick={() => handleSelect(data.id)}>{displayName}</button>
-        <button data-testid={`update-btn-${data.id}`} onClick={() => onUpdate(data.id)}>Update</button>
-        <button data-testid={`delete-btn-${data.id}`} onClick={onDeleted}>Delete</button>
+        <button type="button" onClick={() => handleSelect(data.id)}>
+          {displayName}
+        </button>
+        <button data-testid={`update-btn-${data.id}`} onClick={() => onUpdate(data.id)}>
+          Update
+        </button>
+        <button data-testid={`delete-btn-${data.id}`} onClick={onDeleted}>
+          Delete
+        </button>
       </div>
     )
   },
 }))
 
 vi.mock('../detail/provider-detail', () => ({
-  default: ({ detail, onHide, onUpdate, isTriggerAuthorize, onFirstCreate }: { detail: MockDetail, onHide: () => void, onUpdate: () => void, isTriggerAuthorize: boolean, onFirstCreate: () => void }) => {
+  default: ({
+    detail,
+    onHide,
+    onUpdate,
+    isTriggerAuthorize,
+    onFirstCreate,
+  }: {
+    detail: MockDetail
+    onHide: () => void
+    onUpdate: () => void
+    isTriggerAuthorize: boolean
+    onFirstCreate: () => void
+  }) => {
     const displayName = detail?.name
-      ? (typeof detail.name === 'string' ? detail.name : Object.values(detail.name)[0])
+      ? typeof detail.name === 'string'
+        ? detail.name
+        : Object.values(detail.name)[0]
       : ''
     return (
       <div data-testid="detail-panel">
         <div data-testid="detail-name">{displayName}</div>
         <div data-testid="trigger-authorize">{isTriggerAuthorize ? 'true' : 'false'}</div>
-        <button data-testid="close-detail" onClick={onHide}>Close</button>
-        <button data-testid="update-detail" onClick={onUpdate}>Update List</button>
-        <button data-testid="first-create-done" onClick={onFirstCreate}>First Create Done</button>
+        <button data-testid="close-detail" onClick={onHide}>
+          Close
+        </button>
+        <button data-testid="update-detail" onClick={onUpdate}>
+          Update List
+        </button>
+        <button data-testid="first-create-done" onClick={onFirstCreate}>
+          First Create Done
+        </button>
       </div>
     )
   },
@@ -89,7 +157,7 @@ describe('MCPList', () => {
     vi.useFakeTimers()
     mockProviders = []
     mockIsLoadingToolProviders = false
-    mockWorkspacePermissionKeys = ['mcp.manage']
+    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
     mockRefetch.mockResolvedValue(undefined)
   })
 
@@ -111,10 +179,8 @@ describe('MCPList', () => {
     })
 
     it('should render providers read-only when user lacks mcp.manage', () => {
-      mockWorkspacePermissionKeys = []
-      mockProviders = [
-        { id: '1', name: 'Provider 1', type: 'mcp' },
-      ]
+      mockAppContextState.workspacePermissionKeys = []
+      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
 
       render(<MCPList searchText="" />)
 
@@ -124,9 +190,7 @@ describe('MCPList', () => {
     })
 
     it('should hide create card when parent moves creation into the toolbar', () => {
-      mockProviders = [
-        { id: '1', name: 'Provider 1', type: 'mcp' },
-      ]
+      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
 
       render(<MCPList searchText="" showCreateCard={false} />)
 
@@ -151,9 +215,7 @@ describe('MCPList', () => {
     })
 
     it('should not render skeleton cards when providers exist', () => {
-      mockProviders = [
-        { id: '1', name: 'Provider 1', type: 'mcp' },
-      ]
+      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
       render(<MCPList searchText="" />)
 
       expect(screen.queryByTestId('mcp-card-skeleton')).not.toBeInTheDocument()
@@ -337,9 +399,7 @@ describe('MCPList', () => {
 
   describe('Update Provider', () => {
     beforeEach(() => {
-      mockProviders = [
-        { id: '1', name: 'Provider 1', type: 'mcp' },
-      ]
+      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
     })
 
     it('should call refetch and set provider after update', async () => {
@@ -374,9 +434,7 @@ describe('MCPList', () => {
 
   describe('Delete Provider', () => {
     beforeEach(() => {
-      mockProviders = [
-        { id: '1', name: 'Provider 1', type: 'mcp' },
-      ]
+      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
     })
 
     it('should call refetch after delete', async () => {

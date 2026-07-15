@@ -8,7 +8,7 @@ import pytest
 
 from dify_agent.adapters.shell.shellctl import ShellctlProvider
 from dify_agent.layers.drive import DifyDriveLayerConfig, DifyDriveSkillConfig
-from dify_agent.layers.drive.layer import DifyDriveLayer, DifyDriveLayerError
+from dify_agent.layers.drive.layer import DifyDriveLayer, DifyDriveLayerError, _AGENT_FILE_UPLOAD_REPLY_HINT
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer
 
@@ -112,14 +112,18 @@ def test_drive_layer_exposes_agent_stub_cli_usage_suffix_prompt() -> None:
     layer._agent_stub_cli_help = {
         "dify-agent file --help": _file_help_output("dify-agent file --help"),
         "dify-agent file upload --help": _file_help_output("dify-agent file upload --help"),
+        "dify-agent file download --help": _file_help_output("dify-agent file download --help"),
     }
 
     assert len(layer.suffix_prompts) == 1
     prompt = layer.suffix_prompts[0]
     assert "Other available skills" in prompt
     assert "other-skill: Other Skill" in prompt
-    assert "Agent Stub file CLI help" in prompt
+    assert "Agent Stub file CLI reference for installed `dify-agent`" in prompt
     assert "$ dify-agent file upload --help" in prompt
+    assert "$ dify-agent file download --help" in prompt
+    assert prompt.index("$ dify-agent file upload --help") < prompt.index("$ dify-agent file download --help")
+    assert _AGENT_FILE_UPLOAD_REPLY_HINT in prompt
     assert "dify-agent drive" not in prompt
 
 

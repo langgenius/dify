@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath,
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse,
@@ -376,6 +375,7 @@ import {
   zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse,
   zPostWorkspacesCustomConfigBody,
   zPostWorkspacesCustomConfigResponse,
+  zPostWorkspacesCustomConfigWebappLogoUploadBody,
   zPostWorkspacesCustomConfigWebappLogoUploadResponse,
   zPostWorkspacesInfoBody,
   zPostWorkspacesInfoResponse,
@@ -3972,7 +3972,7 @@ export const get87 = oc
     method: 'GET',
     operationId: 'getWorkspacesCurrentTriggerProviderByProviderSubscriptionsList',
     path: '/workspaces/current/trigger-provider/{provider}/subscriptions/list',
-    summary: 'List all trigger subscriptions for the current tenant\'s provider',
+    summary: "List all trigger subscriptions for the current tenant's provider",
     tags: ['console'],
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListPath }))
@@ -4175,6 +4175,7 @@ export const post72 = oc
     successStatus: 201,
     tags: ['console'],
   })
+  .input(z.object({ body: zPostWorkspacesCustomConfigWebappLogoUploadBody }))
   .output(zPostWorkspacesCustomConfigWebappLogoUploadResponse)
 
 export const upload2 = {

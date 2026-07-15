@@ -160,22 +160,6 @@ export const zTrialWorkflowPartialResponse = z.object({
   updated_by: z.string().nullish(),
 })
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
-
 /**
  * TrialDatasetResponse
  */
@@ -236,9 +220,9 @@ export const zParameters = z.object({
 export const zJsonObject2 = z.record(z.string(), z.unknown())
 
 /**
- * TrialWorkflowAccount
+ * TrialSimpleAccount
  */
-export const zTrialWorkflowAccount = z.object({
+export const zTrialSimpleAccount = z.object({
   email: z.string().nullish(),
   id: z.string(),
   name: z.string().nullish(),
@@ -250,7 +234,7 @@ export const zTrialWorkflowAccount = z.object({
 export const zTrialWorkflowResponse = z.object({
   conversation_variables: z.array(zJsonObject2).optional(),
   created_at: z.int().nullish(),
-  created_by: zTrialWorkflowAccount.nullish(),
+  created_by: zTrialSimpleAccount.nullish(),
   environment_variables: z.array(zJsonObject2).optional(),
   features: zJsonObject2.optional(),
   graph: zJsonObject2,
@@ -261,7 +245,7 @@ export const zTrialWorkflowResponse = z.object({
   rag_pipeline_variables: z.array(zJsonObject2).optional(),
   tool_published: z.boolean().nullish(),
   updated_at: z.int().nullish(),
-  updated_by: zTrialWorkflowAccount.nullish(),
+  updated_by: zTrialSimpleAccount.nullish(),
   version: z.string().nullish(),
 })
 
@@ -345,11 +329,6 @@ export const zTrialAppDetailResponse = z.object({
 })
 
 /**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponseWritable = zJsonValue
-
-/**
  * Site
  */
 export const zSiteWritable = z.object({
@@ -396,7 +375,7 @@ export const zPostTrialAppsByAppIdChatMessagesPath = z.object({
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdChatMessagesResponse = zGeneratedAppResponse
+export const zPostTrialAppsByAppIdChatMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostTrialAppsByAppIdCompletionMessagesBody = zCompletionRequest
 
@@ -407,7 +386,7 @@ export const zPostTrialAppsByAppIdCompletionMessagesPath = z.object({
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdCompletionMessagesResponse = zGeneratedAppResponse
+export const zPostTrialAppsByAppIdCompletionMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zGetTrialAppsByAppIdDatasetsPath = z.object({
   app_id: z.uuid(),
@@ -432,8 +411,8 @@ export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath = z.o
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse
-  = zSuggestedQuestionsResponse
+export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse =
+  zSuggestedQuestionsResponse
 
 export const zGetTrialAppsByAppIdParametersPath = z.object({
   app_id: z.uuid(),
@@ -482,7 +461,7 @@ export const zPostTrialAppsByAppIdWorkflowsRunPath = z.object({
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdWorkflowsRunResponse = zGeneratedAppResponse
+export const zPostTrialAppsByAppIdWorkflowsRunResponse = z.record(z.string(), z.unknown())
 
 export const zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath = z.object({
   app_id: z.uuid(),

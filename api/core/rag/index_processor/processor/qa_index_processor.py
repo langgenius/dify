@@ -9,9 +9,9 @@ from typing import Any, TypedDict, override
 import pandas as pd
 from flask import Flask, current_app
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
-from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.llm_generator import LLMGenerator
 from core.rag.cleaner.clean_processor import CleanProcessor
@@ -41,17 +41,20 @@ class QAFormatPreviewDict(TypedDict):
 
 class QAIndexProcessor(BaseIndexProcessor):
     @override
-    def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
+    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
         text_docs = ExtractProcessor.extract(
             extract_setting=extract_setting,
             is_automatic=(
                 kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical"
             ),
+            session=session,
         )
         return text_docs
 
     @override
-    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
+    def transform(
+        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs
+    ) -> list[Document]:
         preview = kwargs.get("preview")
         process_rule = kwargs.get("process_rule")
         if not process_rule:
@@ -145,16 +148,20 @@ class QAIndexProcessor(BaseIndexProcessor):
         documents: list[Document],
         multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
+        *,
+        session: Session,
         **kwargs,
     ) -> None:
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            vector = Vector(dataset)
+            vector = Vector(dataset, session=session)
             vector.create(documents)
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
 
     @override
-    def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
+    def clean(
+        self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
+    ) -> None:
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
         # For disable operations, disable_summaries_for_segments is called directly in the task.
@@ -164,28 +171,27 @@ class QAIndexProcessor(BaseIndexProcessor):
         if delete_summaries:
             if node_ids:
                 # Find segments by index_node_id
-                with session_factory.create_session() as session:
-                    segments = session.scalars(
-                        select(DocumentSegment).where(
-                            DocumentSegment.dataset_id == dataset.id,
-                            DocumentSegment.index_node_id.in_(node_ids),
-                        )
-                    ).all()
-                    segment_ids = [segment.id for segment in segments]
-                    if segment_ids:
-                        SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
+                segments = session.scalars(
+                    select(DocumentSegment).where(
+                        DocumentSegment.dataset_id == dataset.id,
+                        DocumentSegment.index_node_id.in_(node_ids),
+                    )
+                ).all()
+                segment_ids = [segment.id for segment in segments]
+                if segment_ids:
+                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids, session=session)
             else:
                 # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None)
+                SummaryIndexService.delete_summaries_for_segments(dataset, None, session=session)
 
-        vector = Vector(dataset)
+        vector = Vector(dataset, session=session)
         if node_ids:
             vector.delete_by_ids(node_ids)
         else:
             vector.delete()
 
     @override
-    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any, session: Session) -> None:
         qa_chunks = QAStructureChunk.model_validate(chunks)
         documents = []
         for qa_chunk in qa_chunks.qa_chunks:
@@ -201,9 +207,10 @@ class QAIndexProcessor(BaseIndexProcessor):
         if documents:
             # save node to document segment
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
-            doc_store.add_documents(docs=documents, save_child=False)
+            doc_store.add_documents(docs=documents, save_child=False, session=session)
+            session.commit()
             if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                vector = Vector(dataset)
+                vector = Vector(dataset, session=session)
                 vector.create(documents)
             else:
                 raise ValueError("Indexing technique must be high quality.")
@@ -228,6 +235,8 @@ class QAIndexProcessor(BaseIndexProcessor):
         preview_texts: list[PreviewDetail],
         summary_index_setting: SummaryIndexSettingDict,
         doc_language: str | None = None,
+        *,
+        session: Session,
     ) -> list[PreviewDetail]:
         """
         QA model doesn't generate summaries, so this method returns preview_texts unchanged.

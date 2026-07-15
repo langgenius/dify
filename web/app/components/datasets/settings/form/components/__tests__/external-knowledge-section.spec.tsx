@@ -167,7 +167,9 @@ describe('ExternalKnowledgeSection', () => {
 
     it('should call handleSettingsChange when settings change', () => {
       const handleSettingsChange = vi.fn()
-      render(<ExternalKnowledgeSection {...defaultProps} handleSettingsChange={handleSettingsChange} />)
+      render(
+        <ExternalKnowledgeSection {...defaultProps} handleSettingsChange={handleSettingsChange} />,
+      )
 
       // The handler should be properly passed to RetrievalSettings
       // Actual interaction depends on RetrievalSettings implementation
@@ -280,13 +282,16 @@ describe('ExternalKnowledgeSection', () => {
         ...mockDataset,
         external_knowledge_info: {
           ...mockDataset.external_knowledge_info,
-          external_knowledge_api_name: 'This is a very long external knowledge API name that should be truncated',
+          external_knowledge_api_name:
+            'This is a very long external knowledge API name that should be truncated',
         },
       }
 
       render(<ExternalKnowledgeSection {...defaultProps} currentDataset={longNameDataset} />)
 
-      expect(screen.getByText(/This is a very long external knowledge API name/)).toBeInTheDocument()
+      expect(
+        screen.getByText(/This is a very long external knowledge API name/),
+      ).toBeInTheDocument()
     })
 
     it('should handle long API endpoints', () => {
@@ -294,13 +299,16 @@ describe('ExternalKnowledgeSection', () => {
         ...mockDataset,
         external_knowledge_info: {
           ...mockDataset.external_knowledge_info,
-          external_knowledge_api_endpoint: 'https://api.very-long-domain-name.example.com/api/v1/external/knowledge',
+          external_knowledge_api_endpoint:
+            'https://api.very-long-domain-name.example.com/api/v1/external/knowledge',
         },
       }
 
       render(<ExternalKnowledgeSection {...defaultProps} currentDataset={longEndpointDataset} />)
 
-      expect(screen.getByText(/https:\/\/api.very-long-domain-name.example.com/)).toBeInTheDocument()
+      expect(
+        screen.getByText(/https:\/\/api.very-long-domain-name.example.com/),
+      ).toBeInTheDocument()
     })
 
     it('should handle special characters in API name', () => {
@@ -328,7 +336,9 @@ describe('ExternalKnowledgeSection', () => {
 
     it('should handle settings change for top_k', () => {
       const handleSettingsChange = vi.fn()
-      render(<ExternalKnowledgeSection {...defaultProps} handleSettingsChange={handleSettingsChange} />)
+      render(
+        <ExternalKnowledgeSection {...defaultProps} handleSettingsChange={handleSettingsChange} />,
+      )
 
       // Find and interact with the top_k control in RetrievalSettings
       // The exact interaction depends on RetrievalSettings implementation
@@ -336,14 +346,18 @@ describe('ExternalKnowledgeSection', () => {
 
     it('should handle settings change for score_threshold', () => {
       const handleSettingsChange = vi.fn()
-      render(<ExternalKnowledgeSection {...defaultProps} handleSettingsChange={handleSettingsChange} />)
+      render(
+        <ExternalKnowledgeSection {...defaultProps} handleSettingsChange={handleSettingsChange} />,
+      )
 
       // Find and interact with the score_threshold control in RetrievalSettings
     })
 
     it('should handle settings change for score_threshold_enabled', () => {
       const handleSettingsChange = vi.fn()
-      render(<ExternalKnowledgeSection {...defaultProps} handleSettingsChange={handleSettingsChange} />)
+      render(
+        <ExternalKnowledgeSection {...defaultProps} handleSettingsChange={handleSettingsChange} />,
+      )
 
       // Find and interact with the score_threshold_enabled toggle in RetrievalSettings
     })

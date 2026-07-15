@@ -33,7 +33,9 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-function createReleaseRow(overrides: Partial<ReleaseWithSummaryDeployments> = {}): ReleaseWithSummaryDeployments {
+function createReleaseRow(
+  overrides: Partial<ReleaseWithSummaryDeployments> = {},
+): ReleaseWithSummaryDeployments {
   return {
     id: 'release-1',
     appInstanceId: 'app-instance-1',
@@ -54,11 +56,7 @@ function createReleaseRow(overrides: Partial<ReleaseWithSummaryDeployments> = {}
 
 describe('ReleaseHistoryRows', () => {
   it('should render the desktop release list with the knowledge table style', () => {
-    const { container } = render(
-      <ReleaseHistoryRows
-        releaseRows={[createReleaseRow()]}
-      />,
-    )
+    const { container } = render(<ReleaseHistoryRows releaseRows={[createReleaseRow()]} />)
 
     const table = container.querySelector('table')
     const tableScope = within(table!)
@@ -69,7 +67,12 @@ describe('ReleaseHistoryRows', () => {
     expect(table).toHaveClass('w-full', 'border-collapse', 'border-0', 'text-sm')
     expect(header).toHaveClass('border-b', 'border-divider-subtle')
     expect(headerCell).not.toHaveClass('bg-background-section-burn', 'rounded-l-lg')
-    expect(bodyRow).toHaveClass('h-8', 'border-b', 'border-divider-subtle', 'hover:bg-background-default-hover')
+    expect(bodyRow).toHaveClass(
+      'h-8',
+      'border-b',
+      'border-divider-subtle',
+      'hover:bg-background-default-hover',
+    )
     expect(tableScope.getByText('Initial Release')).toBeInTheDocument()
   })
 
@@ -78,11 +81,13 @@ describe('ReleaseHistoryRows', () => {
       <ReleaseHistoryRows
         releaseRows={[
           createReleaseRow({
-            summaryDeployments: [{
-              environmentId: 'env-1',
-              environmentName: 'test-cpu',
-              status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY,
-            }],
+            summaryDeployments: [
+              {
+                environmentId: 'env-1',
+                environmentName: 'test-cpu',
+                status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_READY,
+              },
+            ],
           }),
         ]}
       />,
