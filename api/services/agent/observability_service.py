@@ -94,17 +94,17 @@ class AgentObservabilityService:
         if lowered == "workflow":
             return AgentSourceFilter(kind="workflow")
         if lowered.startswith("workflow:"):
-            parts = normalized.split(":", 4)
+            parts = normalized.split(":")
             if len(parts) == 2 and parts[1]:
                 return AgentSourceFilter(kind="workflow", app_id=parts[1])
-            if len(parts) != 5 or not all(parts[1:]):
+            if len(parts) < 5 or not all(parts[1:]):
                 raise ValueError(f"Unsupported source: {source}")
             return AgentSourceFilter(
                 kind="workflow",
                 app_id=parts[1],
                 workflow_id=parts[2],
-                workflow_version=parts[3],
-                node_id=parts[4],
+                workflow_version=":".join(parts[3:-1]),
+                node_id=parts[-1],
             )
         return AgentSourceFilter(kind="webapp", invoke_from=cls.resolve_source(source))
 

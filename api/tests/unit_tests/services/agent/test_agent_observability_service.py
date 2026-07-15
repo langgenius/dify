@@ -37,6 +37,12 @@ def test_resolve_source_filter_accepts_structured_sources() -> None:
     assert workflow_filter.workflow_version == "v1"
     assert workflow_filter.node_id == "node-1"
 
+    timestamp_version_filter = AgentObservabilityService.resolve_source_filter(
+        "workflow:app-2:workflow-1:2026-07-06 02:17:12.910515:node-1"
+    )
+    assert timestamp_version_filter.workflow_version == "2026-07-06 02:17:12.910515"
+    assert timestamp_version_filter.node_id == "node-1"
+
     legacy_filter = AgentObservabilityService.resolve_source_filter("console")
     assert legacy_filter.kind == "webapp"
     assert legacy_filter.invoke_from == InvokeFrom.EXPLORE
