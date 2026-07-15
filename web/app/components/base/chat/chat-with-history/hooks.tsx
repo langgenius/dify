@@ -61,6 +61,18 @@ function getFormattedChatList(messages: any[]) {
     })
     const answerFiles =
       item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
+    const answerTokens = item.answer_tokens ?? 0
+    const messageTokens = item.message_tokens ?? 0
+    const latency = Number(item.provider_response_latency)
+    const more =
+      item.provider_response_latency == null || !Number.isFinite(latency)
+        ? undefined
+        : {
+            time: '',
+            tokens: answerTokens + messageTokens,
+            latency: latency.toFixed(2),
+            tokens_per_second: latency > 0 ? (answerTokens / latency).toFixed(2) : undefined,
+          }
     const humanInputFormDataList: HumanInputFormData[] = []
     const humanInputFilledFormDataList: HumanInputFilledFormData[] = []
     let workflowRunId = ''
@@ -111,6 +123,7 @@ function getFormattedChatList(messages: any[]) {
       humanInputFormDataList,
       humanInputFilledFormDataList,
       workflow_run_id: workflowRunId,
+      more,
     })
   })
   return newChatList
