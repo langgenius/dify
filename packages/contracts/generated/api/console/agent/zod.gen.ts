@@ -985,7 +985,7 @@ export const zAgentAppPartial = z.object({
   permission_keys: z.array(z.string()).optional(),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
-  reference_count: z.int().optional().default(0),
+  reference_count: z.int().nullish(),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
@@ -1137,7 +1137,7 @@ export const zAgentInviteOptionResponse = z.object({
   published_node_reference_count: z.int().optional().default(0),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentPublishedReferenceResponse).optional(),
-  reference_count: z.int().optional().default(0),
+  reference_count: z.int().nullish(),
   role: z.string().optional().default(''),
   scope: zAgentScope,
   source: zAgentSource,
@@ -1211,7 +1211,7 @@ export const zAgentConfigFileRefConfig = z.object({
  */
 export const zAgentConfigSkillRefConfig = z.object({
   description: z.string().optional().default(''),
-  file_id: z.string().max(255).nullish(),
+  file_id: z.string().max(255).optional().default(''),
   file_kind: z.literal('tool_file').optional().default('tool_file'),
   hash: z.string().nullish(),
   is_missing: z.boolean().optional().default(false),
@@ -1591,7 +1591,7 @@ export const zAgentEnvVariableConfig = z.object({
  */
 export const zAgentFileRefConfig = z.object({
   drive_key: z.string().max(512).nullish(),
-  file_id: z.string().max(255).nullish(),
+  file_id: z.string().max(255).optional().default(''),
   id: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
   reference: z.string().max(255).nullish(),
@@ -2640,7 +2640,7 @@ export const zAgentAppPartialWritable = z.object({
   permission_keys: z.array(z.string()).optional(),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
-  reference_count: z.int().optional().default(0),
+  reference_count: z.int().nullish(),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),

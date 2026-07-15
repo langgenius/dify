@@ -519,7 +519,7 @@ export type AgentAppPartial = {
   permission_keys?: Array<string>
   published_reference_count?: number
   published_references?: Array<AgentAppPublishedReferenceResponse>
-  reference_count?: number
+  reference_count?: number | null
   role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
@@ -611,7 +611,7 @@ export type AgentInviteOptionResponse = {
   published_node_reference_count?: number
   published_reference_count?: number
   published_references?: Array<AgentPublishedReferenceResponse>
-  reference_count?: number
+  reference_count?: number | null
   role?: string
   scope: AgentScope
   source: AgentSource
@@ -1149,7 +1149,7 @@ export type AgentConfigFileRefConfig = {
 
 export type AgentConfigSkillRefConfig = {
   description?: string
-  file_id?: string | null
+  file_id?: string
   file_kind?: 'tool_file'
   hash?: string | null
   is_missing?: boolean
@@ -1494,7 +1494,7 @@ export type AgentEnvVariableConfig = {
 
 export type AgentFileRefConfig = {
   drive_key?: string | null
-  file_id?: string | null
+  file_id?: string
   id?: string | null
   name?: string | null
   reference?: string | null
@@ -1925,7 +1925,7 @@ export type AgentAppPartialWritable = {
   permission_keys?: Array<string>
   published_reference_count?: number
   published_references?: Array<AgentAppPublishedReferenceResponse>
-  reference_count?: number
+  reference_count?: number | null
   role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null

@@ -2850,7 +2850,7 @@ export const zAgentConfigFileRefConfig = z.object({
  */
 export const zAgentConfigSkillRefConfig = z.object({
   description: z.string().optional().default(''),
-  file_id: z.string().max(255).nullish(),
+  file_id: z.string().max(255).optional().default(''),
   file_kind: z.literal('tool_file').optional().default('tool_file'),
   hash: z.string().nullish(),
   is_missing: z.boolean().optional().default(false),
@@ -3172,7 +3172,7 @@ export const zAgentEnvVariableConfig = z.object({
  */
 export const zAgentFileRefConfig = z.object({
   drive_key: z.string().max(512).nullish(),
-  file_id: z.string().max(255).nullish(),
+  file_id: z.string().max(255).optional().default(''),
   id: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
   reference: z.string().max(255).nullish(),

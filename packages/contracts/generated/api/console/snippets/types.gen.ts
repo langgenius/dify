@@ -585,7 +585,7 @@ export type AgentConfigFileRefConfig = {
 
 export type AgentConfigSkillRefConfig = {
   description?: string
-  file_id?: string | null
+  file_id?: string
   file_kind?: 'tool_file'
   hash?: string | null
   is_missing?: boolean
@@ -858,7 +858,7 @@ export type AgentEnvVariableConfig = {
 
 export type AgentFileRefConfig = {
   drive_key?: string | null
-  file_id?: string | null
+  file_id?: string
   id?: string | null
   name?: string | null
   reference?: string | null
