@@ -95,6 +95,8 @@ jobs:
               - 'api/**'
               - 'api/pyproject.toml'
               - 'api/uv.lock'
+              - 'dify-agent/**'
+              - 'dify-agent-runtime/**'
               - 'e2e/**'
               - 'web/**'
               - 'packages/**'
@@ -104,6 +106,7 @@ jobs:
               - '.nvmrc'
               - 'docker/docker-compose.middleware.yaml'
               - 'docker/envs/middleware.env.example'
+              - '.github/workflows/main-ci.yml'
               - '.github/workflows/web-e2e.yml'
               - '.github/actions/setup-web/**'
             vdb:
