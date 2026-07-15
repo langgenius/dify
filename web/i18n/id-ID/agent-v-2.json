@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.toggle": "Alihkan pengaturan lanjutan",
   "agentDetail.configure.answer.duration.minute": "{{count}} mnt",
   "agentDetail.configure.answer.duration.second": "{{count}} dtk",
+  "agentDetail.configure.answer.thinking": "Sedang berpikir",
   "agentDetail.configure.answer.workFinished": "Pekerjaan selesai",
   "agentDetail.configure.answer.workedFor": "Bekerja selama {{duration}}",
   "agentDetail.configure.answer.workingFor": "Bekerja selama {{duration}}",

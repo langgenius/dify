@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.toggle": "Переключить расширенные настройки",
   "agentDetail.configure.answer.duration.minute": "{{count}} мин",
   "agentDetail.configure.answer.duration.second": "{{count}} с",
+  "agentDetail.configure.answer.thinking": "Размышляет",
   "agentDetail.configure.answer.workFinished": "Работа завершена",
   "agentDetail.configure.answer.workedFor": "Работал {{duration}}",
   "agentDetail.configure.answer.workingFor": "Работает {{duration}}",

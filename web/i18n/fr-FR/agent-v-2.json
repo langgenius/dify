@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.toggle": "Basculer les paramètres avancés",
   "agentDetail.configure.answer.duration.minute": "{{count}} min",
   "agentDetail.configure.answer.duration.second": "{{count}} s",
+  "agentDetail.configure.answer.thinking": "Réflexion en cours",
   "agentDetail.configure.answer.workFinished": "Travail terminé",
   "agentDetail.configure.answer.workedFor": "A travaillé pendant {{duration}}",
   "agentDetail.configure.answer.workingFor": "Travaille depuis {{duration}}",

@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.toggle": "Przełącz ustawienia zaawansowane",
   "agentDetail.configure.answer.duration.minute": "{{count}} min",
   "agentDetail.configure.answer.duration.second": "{{count}} s",
+  "agentDetail.configure.answer.thinking": "Myśli",
   "agentDetail.configure.answer.workFinished": "Praca zakończona",
   "agentDetail.configure.answer.workedFor": "Pracował przez {{duration}}",
   "agentDetail.configure.answer.workingFor": "Pracuje od {{duration}}",

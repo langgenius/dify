@@ -92,9 +92,10 @@ function Operation({
   const userFeedback = feedback
 
   const content = useMemo(() => {
+    if (messageContent) return messageContent
     if (agent_thoughts?.length) return agent_thoughts.reduce((acc, cur) => acc + cur.thought, '')
 
-    return messageContent
+    return ''
   }, [agent_thoughts, messageContent])
 
   const displayUserFeedback = userLocalFeedback ?? userFeedback

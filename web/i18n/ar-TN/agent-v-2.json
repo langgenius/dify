@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.toggle": "تبديل الإعدادات المتقدمة",
   "agentDetail.configure.answer.duration.minute": "{{count}} د",
   "agentDetail.configure.answer.duration.second": "{{count}} ث",
+  "agentDetail.configure.answer.thinking": "جارٍ التفكير",
   "agentDetail.configure.answer.workFinished": "اكتمل العمل",
   "agentDetail.configure.answer.workedFor": "عمل لمدة {{duration}}",
   "agentDetail.configure.answer.workingFor": "يعمل منذ {{duration}}",

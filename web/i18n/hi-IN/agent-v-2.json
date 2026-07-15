@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.toggle": "उन्नत सेटिंग्स टॉगल करें",
   "agentDetail.configure.answer.duration.minute": "{{count}} मिनट",
   "agentDetail.configure.answer.duration.second": "{{count}} सेकंड",
+  "agentDetail.configure.answer.thinking": "सोच रहा है",
   "agentDetail.configure.answer.workFinished": "काम पूरा हुआ",
   "agentDetail.configure.answer.workedFor": "{{duration}} तक काम किया",
   "agentDetail.configure.answer.workingFor": "{{duration}} से काम कर रहा है",

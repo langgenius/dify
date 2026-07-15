@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.toggle": "Gelişmiş ayarları değiştir",
   "agentDetail.configure.answer.duration.minute": "{{count}} dk",
   "agentDetail.configure.answer.duration.second": "{{count}} sn",
+  "agentDetail.configure.answer.thinking": "Düşünüyor",
   "agentDetail.configure.answer.workFinished": "İş tamamlandı",
   "agentDetail.configure.answer.workedFor": "{{duration}} çalıştı",
   "agentDetail.configure.answer.workingFor": "{{duration}} çalışıyor",

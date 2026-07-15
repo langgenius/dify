@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.toggle": "تغییر تنظیمات پیشرفته",
   "agentDetail.configure.answer.duration.minute": "{{count}} دقیقه",
   "agentDetail.configure.answer.duration.second": "{{count}} ثانیه",
+  "agentDetail.configure.answer.thinking": "در حال فکر کردن",
   "agentDetail.configure.answer.workFinished": "کار تمام شد",
   "agentDetail.configure.answer.workedFor": "به مدت {{duration}} کار کرد",
   "agentDetail.configure.answer.workingFor": "در حال کار به مدت {{duration}}",

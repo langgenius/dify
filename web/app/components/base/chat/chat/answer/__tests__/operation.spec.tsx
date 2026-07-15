@@ -344,11 +344,11 @@ describe('Operation', () => {
       expect(copy).toHaveBeenCalledWith('Hello world')
     })
 
-    it('should aggregate agent_thoughts for copy content', async () => {
+    it('should copy the visible answer instead of agent thought summaries', async () => {
       const user = userEvent.setup()
       const item: ChatItem = {
         ...baseItem,
-        content: 'ignored',
+        content: 'Final answer',
         agent_thoughts: [
           {
             id: '1',
@@ -374,7 +374,31 @@ describe('Operation', () => {
       }
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('Hello World')
+      expect(copy).toHaveBeenCalledWith('Final answer')
+    })
+
+    it('should fall back to agent thought summaries when legacy messages have no content', async () => {
+      const user = userEvent.setup()
+      const item: ChatItem = {
+        ...baseItem,
+        content: '',
+        agent_thoughts: [
+          {
+            id: '1',
+            thought: 'internal summary',
+            answer: 'Hello World',
+            tool: '',
+            tool_input: '',
+            observation: '',
+            message_id: '',
+            conversation_id: '',
+            position: 0,
+          },
+        ],
+      }
+      renderOperation({ ...baseProps, item })
+      await user.click(screen.getByRole('button', { name: 'operation.copy' }))
+      expect(copy).toHaveBeenCalledWith('internal summary')
     })
   })
 

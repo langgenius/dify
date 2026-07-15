@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.toggle": "詳細設定の表示を切り替え",
   "agentDetail.configure.answer.duration.minute": "{{count}}分",
   "agentDetail.configure.answer.duration.second": "{{count}}秒",
+  "agentDetail.configure.answer.thinking": "思考中",
   "agentDetail.configure.answer.workFinished": "作業が完了しました",
   "agentDetail.configure.answer.workedFor": "{{duration}} 実行しました",
   "agentDetail.configure.answer.workingFor": "{{duration}} 実行中",

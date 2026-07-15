@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.toggle": "Перемкнути розширені налаштування",
   "agentDetail.configure.answer.duration.minute": "{{count}} хв",
   "agentDetail.configure.answer.duration.second": "{{count}} с",
+  "agentDetail.configure.answer.thinking": "Розмірковує",
   "agentDetail.configure.answer.workFinished": "Роботу завершено",
   "agentDetail.configure.answer.workedFor": "Працював {{duration}}",
   "agentDetail.configure.answer.workingFor": "Працює {{duration}}",

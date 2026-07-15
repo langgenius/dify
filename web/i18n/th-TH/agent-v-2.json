@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.toggle": "สลับการตั้งค่าขั้นสูง",
   "agentDetail.configure.answer.duration.minute": "{{count}} นาที",
   "agentDetail.configure.answer.duration.second": "{{count}} วินาที",
+  "agentDetail.configure.answer.thinking": "กำลังคิด",
   "agentDetail.configure.answer.workFinished": "งานเสร็จสิ้น",
   "agentDetail.configure.answer.workedFor": "ทำงานเป็นเวลา {{duration}}",
   "agentDetail.configure.answer.workingFor": "กำลังทำงานเป็นเวลา {{duration}}",
