@@ -65,7 +65,7 @@ class TestCompletionAppRunner:
 
         with patched_create_session(return_value=None):
             with pytest.raises(ValueError):
-                runner.run(MagicMock(), app_generate_entity, MagicMock(), MagicMock())
+                runner.run(app_generate_entity, MagicMock(), MagicMock(), MagicMock())
 
     def test_run_moderation_error_outputs_direct(self, runner, mocker: MockerFixture):
         app_record = MagicMock(id="app1", tenant_id="tenant")
@@ -79,7 +79,7 @@ class TestCompletionAppRunner:
         runner._handle_invoke_result = MagicMock()
 
         with patched_create_session(return_value=app_record):
-            runner.run(MagicMock(), app_generate_entity, MagicMock(), MagicMock(id="msg"))
+            runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg"), MagicMock())
 
         runner.direct_output.assert_called_once()
         runner._handle_invoke_result.assert_not_called()
@@ -96,7 +96,7 @@ class TestCompletionAppRunner:
         runner._handle_invoke_result = MagicMock()
 
         with patched_create_session(return_value=app_record):
-            runner.run(MagicMock(), app_generate_entity, MagicMock(), MagicMock(id="msg"))
+            runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg"), MagicMock())
 
         runner._handle_invoke_result.assert_not_called()
 
@@ -133,19 +133,22 @@ class TestCompletionAppRunner:
         mocker.patch.object(module, "ModelInstance", return_value=model_instance)
 
         with patched_create_session(return_value=app_record):
-            runner.run(MagicMock(), app_generate_entity, MagicMock(), MagicMock(id="msg", tenant_id="tenant"))
+            runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg", tenant_id="tenant"), MagicMock())
 
         dataset_retrieval.retrieve.assert_called_once()
         assert dataset_retrieval.retrieve.call_args.kwargs["query"] == "query_from_input"
         runner._handle_invoke_result.assert_called_once()
 
-    def test_run_closes_scoped_session_before_stream_consumption(self, runner, mocker: MockerFixture):
+    def test_run_closes_explicit_session_before_stream_consumption(self, runner, mocker: MockerFixture):
         app_record = MagicMock(id="app1", tenant_id="tenant")
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
         queue_manager = MagicMock()
 
         events = []
+        session = MagicMock()
+        session.commit.side_effect = lambda: events.append("commit")
+        session.close.side_effect = lambda: events.append("close")
         runner.organize_prompt_messages = MagicMock(return_value=([], None))
         runner.moderation_for_inputs = MagicMock(return_value=(None, app_generate_entity.inputs, "query"))
         runner.check_hosting_moderation = MagicMock(return_value=False)
@@ -164,12 +167,11 @@ class TestCompletionAppRunner:
 
         model_instance.invoke_llm.side_effect = invoke_llm
         mocker.patch.object(module, "ModelInstance", return_value=model_instance)
-        mocker.patch.object(module.db.session, "close", side_effect=lambda: events.append("close"))
 
         with patched_create_session(return_value=app_record):
-            runner.run(MagicMock(), app_generate_entity, queue_manager, MagicMock(id="msg"))
+            runner.run(app_generate_entity, queue_manager, MagicMock(id="msg"), session)
 
-        assert events == ["close", "invoke", "first-chunk"]
+        assert events == ["commit", "close", "invoke", "first-chunk"]
         runner._handle_invoke_result.assert_called_once_with(
             invoke_result=ANY,
             queue_manager=queue_manager,
@@ -190,7 +192,7 @@ class TestCompletionAppRunner:
         runner.check_hosting_moderation = MagicMock(return_value=True)
 
         with patched_create_session(return_value=app_record):
-            runner.run(MagicMock(), app_generate_entity, MagicMock(), MagicMock(id="msg"))
+            runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg"), MagicMock())
 
         assert (
             runner.organize_prompt_messages.call_args.kwargs["image_detail_config"]

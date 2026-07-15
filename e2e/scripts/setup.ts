@@ -6,6 +6,7 @@ import {
   apiDir,
   apiEnvExampleFile,
   difyAgentDir,
+  difyAgentRuntimeDir,
   dockerDir,
   e2eDir,
   e2eWebEnvOverrides,
@@ -32,14 +33,17 @@ const webBuildStampPath = path.join(webDir, '.next', 'e2e-web-build.sha256')
 const apiHost = '127.0.0.1'
 const apiPort = 5001
 const agentBackendHost = '127.0.0.1'
+const agentBackendBindHost = '0.0.0.0'
 const agentBackendPort = Number(process.env.E2E_AGENT_BACKEND_PORT || 5050)
 const shellctlHost = '127.0.0.1'
 const shellctlPort = Number(process.env.E2E_SHELLCTL_PORT || 5004)
 const shellctlContainerName = process.env.E2E_SHELLCTL_CONTAINER_NAME || 'dify-agent-e2e-shellctl'
 const shellctlImage = process.env.E2E_SHELLCTL_IMAGE || 'dify-agent-local-sandbox:e2e'
 const shellctlUrl = `http://${shellctlHost}:${shellctlPort}`
+const agentStubApiBaseUrl = `http://host.docker.internal:${agentBackendPort}/agent-stub`
 const defaultPluginDaemonKey = 'lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi'
 const defaultInnerApiKeyForPlugin = 'QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1'
+const defaultAgentServerSecretKey = 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY'
 
 const middlewareDataPaths = [
   path.join(dockerDir, 'volumes', 'db', 'data'),
@@ -52,6 +56,7 @@ const e2eStatePaths = [
   path.join(e2eDir, '.auth'),
   path.join(e2eDir, 'cucumber-report'),
   path.join(e2eDir, '.logs'),
+  path.join(e2eDir, '.logs-non-external'),
   path.join(e2eDir, 'playwright-report'),
   path.join(e2eDir, 'test-results'),
 ]
@@ -79,12 +84,10 @@ const getApiEnvironment = async (): Promise<Record<string, string>> => {
 
 function getAgentBackendBaseUrl() {
   const explicitApiUrl = process.env.AGENT_BACKEND_BASE_URL?.trim()
-  if (explicitApiUrl)
-    return explicitApiUrl
+  if (explicitApiUrl) return explicitApiUrl
 
   const explicitE2EUrl = process.env.E2E_AGENT_BACKEND_URL?.trim()
-  if (explicitE2EUrl)
-    return explicitE2EUrl.replace(/\/$/, '')
+  if (explicitE2EUrl) return explicitE2EUrl.replace(/\/$/, '')
 
   if (process.env.E2E_START_AGENT_BACKEND === '1' || process.env.E2E_START_AGENT_BACKEND === 'true')
     return `http://${agentBackendHost}:${agentBackendPort}`
@@ -98,33 +101,32 @@ const getAgentBackendEnvironment = async () => {
 
   return {
     DIFY_AGENT_INNER_API_KEY:
-      process.env.DIFY_AGENT_INNER_API_KEY
-      || process.env.INNER_API_KEY_FOR_PLUGIN
-      || process.env.PLUGIN_DIFY_INNER_API_KEY
-      || apiEnv.INNER_API_KEY_FOR_PLUGIN
-      || defaultInnerApiKeyForPlugin,
-    DIFY_AGENT_INNER_API_URL: process.env.DIFY_AGENT_INNER_API_URL || `http://${apiHost}:${apiPort}`,
+      process.env.DIFY_AGENT_INNER_API_KEY ||
+      process.env.INNER_API_KEY_FOR_PLUGIN ||
+      process.env.PLUGIN_DIFY_INNER_API_KEY ||
+      apiEnv.INNER_API_KEY_FOR_PLUGIN ||
+      defaultInnerApiKeyForPlugin,
+    DIFY_AGENT_INNER_API_URL:
+      process.env.DIFY_AGENT_INNER_API_URL || `http://${apiHost}:${apiPort}`,
+    DIFY_AGENT_SERVER_SECRET_KEY:
+      process.env.DIFY_AGENT_SERVER_SECRET_KEY || defaultAgentServerSecretKey,
+    DIFY_AGENT_STUB_API_BASE_URL: process.env.DIFY_AGENT_STUB_API_BASE_URL || agentStubApiBaseUrl,
     DIFY_AGENT_PLUGIN_DAEMON_API_KEY:
-      process.env.DIFY_AGENT_PLUGIN_DAEMON_API_KEY
-      || process.env.PLUGIN_DAEMON_KEY
-      || apiEnv.PLUGIN_DAEMON_KEY
-      || defaultPluginDaemonKey,
+      process.env.DIFY_AGENT_PLUGIN_DAEMON_API_KEY ||
+      process.env.PLUGIN_DAEMON_KEY ||
+      apiEnv.PLUGIN_DAEMON_KEY ||
+      defaultPluginDaemonKey,
     DIFY_AGENT_PLUGIN_DAEMON_URL:
-      process.env.DIFY_AGENT_PLUGIN_DAEMON_URL
-      || process.env.PLUGIN_DAEMON_URL
-      || 'http://127.0.0.1:5002',
+      process.env.DIFY_AGENT_PLUGIN_DAEMON_URL ||
+      process.env.PLUGIN_DAEMON_URL ||
+      'http://127.0.0.1:5002',
     DIFY_AGENT_REDIS_PREFIX: process.env.DIFY_AGENT_REDIS_PREFIX || 'dify-agent-e2e',
     DIFY_AGENT_REDIS_URL:
-      process.env.DIFY_AGENT_REDIS_URL
-      || `redis://:${redisPassword}@127.0.0.1:6379/0`,
+      process.env.DIFY_AGENT_REDIS_URL || `redis://:${redisPassword}@127.0.0.1:6379/0`,
     DIFY_AGENT_SHELLCTL_AUTH_TOKEN:
-      process.env.DIFY_AGENT_SHELLCTL_AUTH_TOKEN
-      || process.env.E2E_SHELLCTL_AUTH_TOKEN
-      || '',
+      process.env.DIFY_AGENT_SHELLCTL_AUTH_TOKEN || process.env.E2E_SHELLCTL_AUTH_TOKEN || '',
     DIFY_AGENT_SHELLCTL_ENTRYPOINT:
-      process.env.DIFY_AGENT_SHELLCTL_ENTRYPOINT
-      || process.env.E2E_SHELLCTL_URL
-      || shellctlUrl,
+      process.env.DIFY_AGENT_SHELLCTL_ENTRYPOINT || process.env.E2E_SHELLCTL_URL || shellctlUrl,
   }
 }
 
@@ -147,8 +149,7 @@ const getContainerHealth = async (containerId: string) => {
     stdio: 'pipe',
   })
 
-  if (result.exitCode !== 0)
-    return ''
+  if (result.exitCode !== 0) return ''
 
   return result.stdout.trim()
 }
@@ -174,8 +175,7 @@ const waitForDependency = async ({
 
   try {
     await wait()
-  }
-  catch (error) {
+  } catch (error) {
     await printComposeLogs(services)
     throw error
   }
@@ -258,7 +258,7 @@ export const ensureWebBuild = async () => {
         .then(() => true)
         .catch(() => false),
       readFile(webBuildStampPath, 'utf8')
-        .then(value => value.trim())
+        .then((value) => value.trim())
         .catch(() => ''),
     ])
 
@@ -266,8 +266,7 @@ export const ensureWebBuild = async () => {
       console.log('Reusing existing web build artifact.')
       return
     }
-  }
-  catch {
+  } catch {
     // Fall through to rebuild when the existing build cannot be verified.
   }
 
@@ -298,9 +297,7 @@ export const startWeb = async () => {
 export const startApi = async () => {
   if (await isTcpPortReachable(apiHost, apiPort)) {
     const listenerDescription = await getTcpPortListenerDescription(apiPort)
-    const listenerMessage = listenerDescription
-      ? `\n\nPort listener:\n${listenerDescription}`
-      : ''
+    const listenerMessage = listenerDescription ? `\n\nPort listener:\n${listenerDescription}` : ''
 
     throw new Error(
       `Cannot start the E2E API server because ${apiHost}:${apiPort} is already in use.${listenerMessage}`,
@@ -338,9 +335,7 @@ export const startApi = async () => {
 export const startAgentBackend = async () => {
   if (await isTcpPortReachable(agentBackendHost, agentBackendPort)) {
     const listenerDescription = await getTcpPortListenerDescription(agentBackendPort)
-    const listenerMessage = listenerDescription
-      ? `\n\nPort listener:\n${listenerDescription}`
-      : ''
+    const listenerMessage = listenerDescription ? `\n\nPort listener:\n${listenerDescription}` : ''
 
     throw new Error(
       `Cannot start the E2E Agent backend because ${agentBackendHost}:${agentBackendPort} is already in use.${listenerMessage}`,
@@ -358,7 +353,7 @@ export const startAgentBackend = async () => {
       'uvicorn',
       'dify_agent.server.app:app',
       '--host',
-      agentBackendHost,
+      agentBackendBindHost,
       '--port',
       String(agentBackendPort),
     ],
@@ -375,29 +370,26 @@ const ensureShellctlSandboxImage = async () => {
     stdio: 'pipe',
   })
 
-  if (inspectResult.exitCode === 0 && process.env.E2E_FORCE_SHELLCTL_BUILD !== '1')
-    return
+  if (inspectResult.exitCode === 0 && process.env.E2E_FORCE_SHELLCTL_BUILD !== '1') return
 
   await runCommandOrThrow({
     command: 'docker',
     args: [
       'build',
       '-f',
-      path.join(difyAgentDir, 'docker', 'local-sandbox', 'Dockerfile'),
+      path.join(difyAgentRuntimeDir, 'docker', 'Dockerfile'),
       '-t',
       shellctlImage,
       '.',
     ],
-    cwd: difyAgentDir,
+    cwd: difyAgentRuntimeDir,
   })
 }
 
 export const startShellctlSandbox = async () => {
   if (await isTcpPortReachable(shellctlHost, shellctlPort)) {
     const listenerDescription = await getTcpPortListenerDescription(shellctlPort)
-    const listenerMessage = listenerDescription
-      ? `\n\nPort listener:\n${listenerDescription}`
-      : ''
+    const listenerMessage = listenerDescription ? `\n\nPort listener:\n${listenerDescription}` : ''
 
     throw new Error(
       `Cannot start the E2E shellctl sandbox because ${shellctlHost}:${shellctlPort} is already in use.${listenerMessage}`,
@@ -420,6 +412,7 @@ export const startShellctlSandbox = async () => {
       '--rm',
       '--name',
       shellctlContainerName,
+      ...(process.platform === 'linux' ? ['--add-host', 'host.docker.internal:host-gateway'] : []),
       '-p',
       `${shellctlHost}:${shellctlPort}:5004`,
       ...(process.env.E2E_SHELLCTL_AUTH_TOKEN
@@ -469,8 +462,7 @@ export const resetState = async () => {
   console.log('Stopping middleware services...')
   try {
     await stopMiddleware()
-  }
-  catch {
+  } catch {
     // Reset should continue even if middleware is already stopped.
   }
 
@@ -484,7 +476,7 @@ export const resetState = async () => {
 
   console.log('Removing E2E local state...')
   await Promise.all(
-    e2eStatePaths.map(targetPath => rm(targetPath, { force: true, recursive: true })),
+    e2eStatePaths.map((targetPath) => rm(targetPath, { force: true, recursive: true })),
   )
 
   console.log('E2E state reset complete.')
@@ -563,7 +555,9 @@ export const startMiddleware = async () => {
 }
 
 const printUsage = () => {
-  console.log('Usage: tsx ./scripts/setup.ts <reset|middleware-up|middleware-down|shellctl-sandbox|agent-backend|api|celery [--queues queues]|web>')
+  console.log(
+    'Usage: tsx ./scripts/setup.ts <reset|middleware-up|middleware-down|shellctl-sandbox|agent-backend|api|celery [--queues queues]|web>',
+  )
 }
 
 const main = async () => {

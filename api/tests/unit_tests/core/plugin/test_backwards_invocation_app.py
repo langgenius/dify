@@ -116,7 +116,6 @@ class TestPluginAppBackwardsInvocation:
         route = mocker.patch.object(PluginAppBackwardsInvocation, route_method, return_value={"routed": True})
 
         result = PluginAppBackwardsInvocation.invoke_app(
-            MagicMock(),
             app_id="app",
             user_id="user",
             tenant_id="tenant",
@@ -125,6 +124,7 @@ class TestPluginAppBackwardsInvocation:
             stream=False,
             inputs={"x": 1},
             files=[],
+            session=MagicMock(),
         )
 
         assert result == {"routed": True}
@@ -143,7 +143,6 @@ class TestPluginAppBackwardsInvocation:
         route = mocker.patch.object(PluginAppBackwardsInvocation, "invoke_workflow_app", return_value={"ok": True})
 
         result = PluginAppBackwardsInvocation.invoke_app(
-            MagicMock(),
             app_id="app",
             user_id="",
             tenant_id="tenant",
@@ -152,6 +151,7 @@ class TestPluginAppBackwardsInvocation:
             stream=True,
             inputs={},
             files=[],
+            session=MagicMock(),
         )
 
         assert result == {"ok": True}
@@ -165,7 +165,6 @@ class TestPluginAppBackwardsInvocation:
 
         with pytest.raises(ValueError, match="missing query"):
             PluginAppBackwardsInvocation.invoke_app(
-                MagicMock(),
                 app_id="app",
                 user_id="user",
                 tenant_id="tenant",
@@ -174,6 +173,7 @@ class TestPluginAppBackwardsInvocation:
                 stream=False,
                 inputs={},
                 files=[],
+                session=MagicMock(),
             )
 
     def test_invoke_app_unexpected_mode_raises(self, mocker: MockerFixture):
@@ -182,7 +182,6 @@ class TestPluginAppBackwardsInvocation:
 
         with pytest.raises(ValueError, match="unexpected app type"):
             PluginAppBackwardsInvocation.invoke_app(
-                MagicMock(),
                 app_id="app",
                 user_id="user",
                 tenant_id="tenant",
@@ -191,6 +190,7 @@ class TestPluginAppBackwardsInvocation:
                 stream=False,
                 inputs={},
                 files=[],
+                session=MagicMock(),
             )
 
     @pytest.mark.parametrize(
@@ -205,7 +205,6 @@ class TestPluginAppBackwardsInvocation:
         spy = mocker.patch(generator_path, return_value={"result": "ok"})
 
         result = PluginAppBackwardsInvocation.invoke_chat_app(
-            MagicMock(),
             app=app,
             user=MagicMock(),
             conversation_id="conv-1",
@@ -213,6 +212,7 @@ class TestPluginAppBackwardsInvocation:
             stream=False,
             inputs={"k": "v"},
             files=[],
+            session=MagicMock(),
         )
 
         assert result == {"result": "ok"}
@@ -234,9 +234,9 @@ class TestPluginAppBackwardsInvocation:
             "core.plugin.backwards_invocation.app.AdvancedChatAppGenerator.generate",
             return_value={"result": "ok"},
         )
+        session = MagicMock()
 
         result = PluginAppBackwardsInvocation.invoke_chat_app(
-            MagicMock(),
             app=app,
             user=MagicMock(),
             conversation_id="conv-1",
@@ -244,10 +244,12 @@ class TestPluginAppBackwardsInvocation:
             stream=False,
             inputs={"k": "v"},
             files=[],
+            session=session,
         )
 
         assert result == {"result": "ok"}
         call_kwargs = generator_spy.call_args.kwargs
+        assert call_kwargs["session"] is session
         pause_state_config = call_kwargs.get("pause_state_config")
         assert isinstance(pause_state_config, PauseStateLayerConfig)
         assert pause_state_config.state_owner_user_id == "owner-id"
@@ -257,7 +259,6 @@ class TestPluginAppBackwardsInvocation:
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_workflow", return_value=None)
         with pytest.raises(ValueError, match="unexpected app type"):
             PluginAppBackwardsInvocation.invoke_chat_app(
-                MagicMock(),
                 app=app,
                 user=MagicMock(),
                 conversation_id="conv-1",
@@ -265,13 +266,13 @@ class TestPluginAppBackwardsInvocation:
                 stream=False,
                 inputs={},
                 files=[],
+                session=MagicMock(),
             )
 
     def test_invoke_chat_app_unexpected_mode_raises(self):
         app = MagicMock(mode="invalid")
         with pytest.raises(ValueError, match="unexpected app type"):
             PluginAppBackwardsInvocation.invoke_chat_app(
-                MagicMock(),
                 app=app,
                 user=MagicMock(),
                 conversation_id="conv-1",
@@ -279,6 +280,7 @@ class TestPluginAppBackwardsInvocation:
                 stream=False,
                 inputs={},
                 files=[],
+                session=MagicMock(),
             )
 
     def test_invoke_workflow_app_injects_pause_state_config(self, mocker: MockerFixture):
@@ -319,7 +321,6 @@ class TestPluginAppBackwardsInvocation:
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_workflow", return_value=None)
         with pytest.raises(ValueError, match="unexpected app type"):
             PluginAppBackwardsInvocation.invoke_app(
-                MagicMock(),
                 app_id="app",
                 user_id="user",
                 tenant_id="tenant",
@@ -328,6 +329,7 @@ class TestPluginAppBackwardsInvocation:
                 stream=False,
                 inputs={},
                 files=[],
+                session=MagicMock(),
             )
 
     def test_invoke_completion_app(self, mocker: MockerFixture):
@@ -336,7 +338,7 @@ class TestPluginAppBackwardsInvocation:
         )
         app = MagicMock(mode=AppMode.COMPLETION)
 
-        result = PluginAppBackwardsInvocation.invoke_completion_app(MagicMock(), app, MagicMock(), False, {"x": 1}, [])
+        result = PluginAppBackwardsInvocation.invoke_completion_app(app, MagicMock(), False, {"x": 1}, [], MagicMock())
 
         assert result == {"ok": 1}
         assert spy.call_count == 1
@@ -408,7 +410,6 @@ class TestPluginAppBackwardsInvocation:
         route = mocker.patch.object(PluginAppBackwardsInvocation, "invoke_workflow_app", return_value={"ok": True})
 
         result = PluginAppBackwardsInvocation.invoke_app(
-            MagicMock(),
             app_id="app",
             user_id="wecom-sender-1",
             tenant_id="tenant",
@@ -417,6 +418,7 @@ class TestPluginAppBackwardsInvocation:
             stream=True,
             inputs={},
             files=[],
+            session=MagicMock(),
         )
 
         assert result == {"ok": True}

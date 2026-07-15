@@ -613,6 +613,36 @@ def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pyte
             handler(api, Mock(), "t1", app_model=SimpleNamespace(id="app"))
 
 
+@pytest.mark.parametrize(
+    ("resource", "payload"),
+    [
+        (workflow_module.DraftWorkflowTriggerRunApi, {"node_id": "node-1"}),
+        (workflow_module.DraftWorkflowTriggerRunAllApi, {"node_ids": ["node-1"]}),
+    ],
+)
+def test_trigger_run_loads_draft_with_request_session(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    resource: type,
+    payload: dict[str, object],
+) -> None:
+    get_draft_workflow = Mock(return_value=None)
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(get_draft_workflow=get_draft_workflow),
+    )
+    session = Mock()
+    app_model = SimpleNamespace(id="app-1")
+    handler = inspect.unwrap(resource.post)
+
+    with app.test_request_context("/", method="POST", json=payload):
+        with pytest.raises(ValueError, match="Workflow not found"):
+            handler(resource(), session, SimpleNamespace(id="account-1"), app_model)
+
+    get_draft_workflow.assert_called_once_with(app_model, session=session)
+
+
 def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     app_id_1 = "11111111-1111-1111-1111-111111111111"
     app_id_2 = "22222222-2222-2222-2222-222222222222"
@@ -621,7 +651,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id: {app_id_1}),
+        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id, session: {app_id_1}),
     )
     monkeypatch.setattr(workflow_module.file_helpers, "get_signed_file_url", sign_avatar)
 
@@ -703,7 +733,7 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id: set(app_ids)),
+        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id, session: set(app_ids)),
     )
 
     first_pipeline = Mock()

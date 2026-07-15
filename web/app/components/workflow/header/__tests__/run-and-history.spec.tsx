@@ -25,7 +25,7 @@ vi.mock('../../hooks-store', () => ({
 }))
 
 vi.mock('../run-mode', () => ({
-  default: ({ text, disabled }: { text?: string, disabled?: boolean }) => {
+  default: ({ text, disabled }: { text?: string; disabled?: boolean }) => {
     mockRunMode({ text, disabled })
 
     return (

@@ -20,13 +20,16 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/utils/create-app-tracking', () => ({
-  rememberCreateAppExternalAttribution: (...args: unknown[]) => mockRememberCreateAppExternalAttribution(...args),
+  rememberCreateAppExternalAttribution: (...args: unknown[]) =>
+    mockRememberCreateAppExternalAttribution(...args),
 }))
 
 const mockUseSearchParams = vi.mocked(useSearchParams)
 
 const setSearchParams = (search = '') => {
-  mockUseSearchParams.mockReturnValue(new URLSearchParams(search) as unknown as ReturnType<typeof useSearchParams>)
+  mockUseSearchParams.mockReturnValue(
+    new URLSearchParams(search) as unknown as ReturnType<typeof useSearchParams>,
+  )
 }
 
 const getUtmInfoCookie = () => {
@@ -58,8 +61,38 @@ describe('ExternalAttributionRecorder', () => {
     expect(firstArg?.searchParams?.get('slug')).toBe('get-started-with-dify')
   })
 
+  it('seeds attribution from the redirect_url when auth redirects away from the landing url', async () => {
+    setSearchParams(
+      `redirect_url=${encodeURIComponent('/apps?utm_source=dify_blog&slug=buildaisupportassistantwithdify')}`,
+    )
+
+    render(<ExternalAttributionRecorder />)
+
+    await waitFor(() => {
+      expect(getUtmInfoCookie()).toEqual({
+        utm_source: 'dify_blog',
+        slug: 'buildaisupportassistantwithdify',
+      })
+    })
+    expect(mockRememberCreateAppExternalAttribution).toHaveBeenCalledTimes(1)
+    const firstArg = mockRememberCreateAppExternalAttribution.mock.calls[0]?.[0]
+    expect(firstArg?.searchParams?.get('utm_source')).toBe('dify_blog')
+    expect(firstArg?.searchParams?.get('slug')).toBe('buildaisupportassistantwithdify')
+  })
+
   it('does nothing without a utm_source', () => {
     setSearchParams('slug=get-started-with-dify')
+
+    render(<ExternalAttributionRecorder />)
+
+    expect(getUtmInfoCookie()).toBeNull()
+    expect(mockRememberCreateAppExternalAttribution).not.toHaveBeenCalled()
+  })
+
+  it('does nothing for cross-origin redirect_url attribution params', () => {
+    setSearchParams(
+      `redirect_url=${encodeURIComponent('https://example.com/apps?utm_source=dify_blog&slug=get-started-with-dify')}`,
+    )
 
     render(<ExternalAttributionRecorder />)
 

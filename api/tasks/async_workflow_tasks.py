@@ -232,6 +232,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         return
 
     graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    response_stream_filter = resumption_context.get_response_stream_filter()
 
     with session_factory() as session:
         workflow = session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
@@ -294,6 +295,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         workflow_node_execution_repository=workflow_node_execution_repository,
         graph_engine_layers=graph_engine_layers,
         pause_state_config=pause_config,
+        response_stream_filter=response_stream_filter,
     )
     workflow_run_repo.delete_workflow_pause(pause_entity)
 
@@ -312,7 +314,7 @@ def _get_user(session: Session, workflow_run: WorkflowRun | WorkflowTriggerLog) 
     if workflow_run.created_by_role == CreatorUserRole.ACCOUNT:
         user = session.scalar(select(Account).where(Account.id == workflow_run.created_by))
         if user:
-            user.current_tenant = tenant
+            user.set_current_tenant_with_session(tenant, session=session)
     else:  # CreatorUserRole.END_USER
         user = session.scalar(select(EndUser).where(EndUser.id == workflow_run.created_by))
 

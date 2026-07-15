@@ -82,7 +82,7 @@ class ForgotPasswordSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        account = AccountService.get_account_by_email_with_case_fallback(db.session, args.email)
+        account = AccountService.get_account_by_email_with_case_fallback(args.email, session=db.session())
 
         token = AccountService.send_reset_password_email(
             account=account,
@@ -180,7 +180,7 @@ class ForgotPasswordResetApi(Resource):
         password_hashed = hash_password(args.new_password, salt)
 
         email = reset_data.get("email", "")
-        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
+        account = AccountService.get_account_by_email_with_case_fallback(email, session=db.session())
 
         if account:
             account = db.session.merge(account)
@@ -198,10 +198,10 @@ class ForgotPasswordResetApi(Resource):
 
         # Create workspace if needed
         if (
-            not TenantService.get_join_tenants(account, session=db.session)
+            not TenantService.get_join_tenants(account, session=db.session())
             and FeatureService.get_system_features().is_allow_create_workspace
         ):
-            tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session)
-            TenantService.create_tenant_member(tenant, account, db.session, role="owner")
-            account.current_tenant = tenant
+            tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session())
+            TenantService.create_tenant_member(tenant, account, db.session(), role="owner")
+            account.set_current_tenant_with_session(tenant, session=db.session())
             tenant_was_created.send(tenant)

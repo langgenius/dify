@@ -5,22 +5,35 @@ import { atom } from 'jotai'
 import { defaultAgentSoulConfigFormState } from './form-state'
 
 export const agentComposerOriginalConfigAtom = atom<AgentSoulConfig | undefined>(undefined)
-export const agentComposerOriginalDraftAtom = atom<AgentSoulConfigFormState | undefined>(defaultAgentSoulConfigFormState)
-export const agentComposerPublishedDraftAtom = atom<AgentSoulConfigFormState | undefined>(defaultAgentSoulConfigFormState)
-export const agentComposerDraftAtom = atom<AgentSoulConfigFormState>(defaultAgentSoulConfigFormState)
+export const agentComposerOriginalDraftAtom = atom<AgentSoulConfigFormState | undefined>(
+  defaultAgentSoulConfigFormState,
+)
+export const agentComposerPublishedDraftAtom = atom<AgentSoulConfigFormState | undefined>(
+  defaultAgentSoulConfigFormState,
+)
+export const agentComposerDraftAtom = atom<AgentSoulConfigFormState>(
+  defaultAgentSoulConfigFormState,
+)
 
-export const rebaseAgentComposerDraftAtom = atom(null, (_get, set, {
-  draft,
-  originalConfig,
-}: {
-  draft: AgentSoulConfigFormState
-  originalConfig?: AgentSoulConfig
-}) => {
-  set(agentComposerOriginalConfigAtom, originalConfig)
-  set(agentComposerDraftAtom, draft)
-  set(agentComposerOriginalDraftAtom, draft)
-  set(agentComposerPublishedDraftAtom, draft)
-})
+export const rebaseAgentComposerDraftAtom = atom(
+  null,
+  (
+    _get,
+    set,
+    {
+      draft,
+      originalConfig,
+    }: {
+      draft: AgentSoulConfigFormState
+      originalConfig?: AgentSoulConfig
+    },
+  ) => {
+    set(agentComposerOriginalConfigAtom, originalConfig)
+    set(agentComposerDraftAtom, draft)
+    set(agentComposerOriginalDraftAtom, draft)
+    set(agentComposerPublishedDraftAtom, draft)
+  },
+)
 
 export const isAgentComposerDirtyAtom = atom((get) => {
   const originalDraft = get(agentComposerOriginalDraftAtom)

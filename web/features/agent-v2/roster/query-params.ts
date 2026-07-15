@@ -17,4 +17,5 @@ export const rosterFilterQueryParser = parseAsStringLiteral(ROSTER_FILTER_VALUES
 
 export const rosterCreatedByMeQueryParser = parseAsBoolean.withDefault(false)
 
-export const rosterSortByQueryParser = parseAsStringLiteral(ROSTER_SORT_BY_VALUES).withDefault(DEFAULT_ROSTER_SORT_BY)
+export const rosterSortByQueryParser =
+  parseAsStringLiteral(ROSTER_SORT_BY_VALUES).withDefault(DEFAULT_ROSTER_SORT_BY)

@@ -3,7 +3,7 @@ Unit tests for Service API App controllers
 """
 
 import uuid
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from flask import Flask
@@ -40,6 +40,8 @@ class TestAppParameterApi:
         app.mode = AppMode.CHAT
         app.status = "normal"
         app.enable_api = True
+        app.app_model_config_with_session.return_value = None
+        app.workflow_with_session.return_value = None
         return app
 
     @patch("controllers.service_api.wraps.user_logged_in")
@@ -60,6 +62,7 @@ class TestAppParameterApi:
             "suggested_questions": [],
         }
         mock_app_model.app_model_config = mock_config
+        mock_app_model.app_model_config_with_session.return_value = mock_config
         mock_app_model.workflow = None
 
         # Mock authentication
@@ -83,7 +86,13 @@ class TestAppParameterApi:
         setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         # Act
-        with app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}):
+        with (
+            app.test_request_context("/parameters", method="GET", headers={"Authorization": "Bearer test_token"}),
+            patch(
+                "controllers.service_api.app.app.load_annotation_reply_config",
+                return_value={"enabled": False},
+            ),
+        ):
             api = AppParameterApi()
             response = api.get()
 
@@ -108,6 +117,7 @@ class TestAppParameterApi:
         mock_workflow.features_dict = {"suggested_questions": []}
         mock_workflow.user_input_form.return_value = [{"type": "text", "label": "Input", "variable": "input"}]
         mock_app_model.workflow = mock_workflow
+        mock_app_model.workflow_with_session.return_value = mock_workflow
         mock_app_model.app_model_config = None
 
         # Mock authentication
@@ -184,7 +194,7 @@ class TestAppParameterApi:
         assert response["user_input_form"] == [
             {"text-input": {"label": "topic", "variable": "topic", "required": True}}
         ]
-        mock_get_agent_parameters.assert_called_once_with(mock_app_model)
+        mock_get_agent_parameters.assert_called_once_with(mock_app_model, session=ANY)
 
     @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.current_app")
@@ -368,7 +378,7 @@ class TestAppMetaApi:
             response = api.get()
 
         # Assert
-        mock_service_instance.get_app_meta.assert_called_once_with(mock_app_model)
+        mock_service_instance.get_app_meta.assert_called_once_with(mock_app_model, session=ANY)
         assert response == {"tool_icons": {}, "AgentIcons": {}}
 
 

@@ -9,20 +9,24 @@ import Processing from '../index'
 // Strips leading slash from path to match actual implementation behavior
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => {
-    const normalizedPath = path?.startsWith('/') ? path.slice(1) : (path || '')
+    const normalizedPath = path?.startsWith('/') ? path.slice(1) : path || ''
     return `https://docs.dify.ai/en-US/${normalizedPath}`
   },
 }))
 
 // Mock dataset detail context
-let mockDataset: {
-  id?: string
-  indexing_technique?: string
-  retrieval_model_dict?: { search_method?: string }
-} | undefined
+let mockDataset:
+  | {
+      id?: string
+      indexing_technique?: string
+      retrieval_model_dict?: { search_method?: string }
+    }
+  | undefined
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: <T,>(selector: (state: { dataset?: typeof mockDataset }) => T): T => {
+  useDatasetDetailContextWithSelector: <T,>(
+    selector: (state: { dataset?: typeof mockDataset }) => T,
+  ): T => {
     return selector({ dataset: mockDataset })
   },
 }))
@@ -37,8 +41,10 @@ vi.mock('../embedding-process', () => ({
         <span data-testid="ep-dataset-id">{props.datasetId as string}</span>
         <span data-testid="ep-batch-id">{props.batchId as string}</span>
         <span data-testid="ep-documents-count">{(props.documents as unknown[])?.length ?? 0}</span>
-        <span data-testid="ep-indexing-type">{props.indexingType as string || 'undefined'}</span>
-        <span data-testid="ep-retrieval-method">{props.retrievalMethod as string || 'undefined'}</span>
+        <span data-testid="ep-indexing-type">{(props.indexingType as string) || 'undefined'}</span>
+        <span data-testid="ep-retrieval-method">
+          {(props.retrievalMethod as string) || 'undefined'}
+        </span>
       </div>
     )
   },
@@ -51,7 +57,9 @@ vi.mock('../embedding-process', () => ({
  * Uses deterministic counter-based IDs to avoid flaky tests
  */
 let documentIdCounter = 0
-const createMockDocument = (overrides: Partial<InitialDocumentDetail> = {}): InitialDocumentDetail => ({
+const createMockDocument = (
+  overrides: Partial<InitialDocumentDetail> = {},
+): InitialDocumentDetail => ({
   id: overrides.id ?? `doc-${++documentIdCounter}`,
   name: 'test-document.txt',
   data_source_type: DatasourceType.localFile,
@@ -72,7 +80,8 @@ const createMockDocuments = (count: number): InitialDocumentDetail[] =>
       id: `doc-${index + 1}`,
       name: `document-${index + 1}.txt`,
       position: index,
-    }))
+    }),
+  )
 
 describe('Processing', () => {
   beforeEach(() => {
@@ -123,7 +132,9 @@ describe('Processing', () => {
       // Assert - verify translation keys are rendered
       expect(screen.getByText('datasetCreation.stepThree.sideTipTitle')).toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepThree.sideTipContent')).toBeInTheDocument()
-      expect(screen.getByText('datasetPipeline.addDocuments.stepThree.learnMore')).toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.addDocuments.stepThree.learnMore'),
+      ).toBeInTheDocument()
     })
 
     it('should render the documentation link with correct attributes', () => {
@@ -134,8 +145,13 @@ describe('Processing', () => {
 
       render(<Processing {...props} />)
 
-      const link = screen.getByRole('link', { name: 'datasetPipeline.addDocuments.stepThree.learnMore' })
-      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/en-US/use-dify/knowledge/knowledge-pipeline/authorize-data-source')
+      const link = screen.getByRole('link', {
+        name: 'datasetPipeline.addDocuments.stepThree.learnMore',
+      })
+      expect(link).toHaveAttribute(
+        'href',
+        'https://docs.dify.ai/en-US/use-dify/knowledge/knowledge-pipeline/authorize-data-source',
+      )
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noreferrer noopener')
     })
@@ -633,7 +649,12 @@ describe('Processing', () => {
   // Retrieval Method Variations
   describe('Retrieval Method Variations', () => {
     // Tests for different retrieval methods
-    const retrievalMethods = ['semantic_search', 'keyword_search', 'hybrid_search', 'full_text_search']
+    const retrievalMethods = [
+      'semantic_search',
+      'keyword_search',
+      'hybrid_search',
+      'full_text_search',
+    ]
 
     it.each(retrievalMethods)('should handle %s retrieval method', (method) => {
       mockDataset = {

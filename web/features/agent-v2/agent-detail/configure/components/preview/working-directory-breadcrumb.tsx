@@ -12,10 +12,10 @@ import { useTranslation } from 'react-i18next'
 const AGENT_WORKING_DIRECTORY_HOME_PATH = '~'
 const AGENT_WORKING_DIRECTORY_ROOT_PATH = '.'
 
-export type AgentWorkingDirectoryPath
-  = | typeof AGENT_WORKING_DIRECTORY_HOME_PATH
-    | typeof AGENT_WORKING_DIRECTORY_ROOT_PATH
-    | string
+export type AgentWorkingDirectoryPath =
+  | typeof AGENT_WORKING_DIRECTORY_HOME_PATH
+  | typeof AGENT_WORKING_DIRECTORY_ROOT_PATH
+  | string
 
 type AgentWorkingDirectoryBreadcrumbItemData = {
   iconClassName: string
@@ -35,7 +35,9 @@ const normalizeWorkingDirectoryPath = (path: AgentWorkingDirectoryPath) => {
 
 function buildPathFromSegments(segments: string[], options: { startsFromHome: boolean }) {
   if (options.startsFromHome)
-    return segments.length ? `${AGENT_WORKING_DIRECTORY_HOME_PATH}/${segments.join('/')}` : AGENT_WORKING_DIRECTORY_HOME_PATH
+    return segments.length
+      ? `${AGENT_WORKING_DIRECTORY_HOME_PATH}/${segments.join('/')}`
+      : AGENT_WORKING_DIRECTORY_HOME_PATH
 
   return segments.length ? segments.join('/') : AGENT_WORKING_DIRECTORY_ROOT_PATH
 }
@@ -51,19 +53,23 @@ function getBreadcrumbItems({
   const normalizedHomeLabel = homeLabel === 'home' ? 'Home' : homeLabel
 
   if (normalizedPath === AGENT_WORKING_DIRECTORY_HOME_PATH) {
-    return [{
-      iconClassName: 'i-ri-folder-3-line',
-      label: normalizedHomeLabel,
-      path: AGENT_WORKING_DIRECTORY_HOME_PATH,
-    }]
+    return [
+      {
+        iconClassName: 'i-ri-folder-3-line',
+        label: normalizedHomeLabel,
+        path: AGENT_WORKING_DIRECTORY_HOME_PATH,
+      },
+    ]
   }
 
   if (normalizedPath === AGENT_WORKING_DIRECTORY_ROOT_PATH) {
-    return [{
-      iconClassName: 'i-ri-folder-3-line',
-      label: AGENT_WORKING_DIRECTORY_ROOT_PATH,
-      path: AGENT_WORKING_DIRECTORY_ROOT_PATH,
-    }]
+    return [
+      {
+        iconClassName: 'i-ri-folder-3-line',
+        label: AGENT_WORKING_DIRECTORY_ROOT_PATH,
+        path: AGENT_WORKING_DIRECTORY_ROOT_PATH,
+      },
+    ]
   }
 
   const startsFromHome = normalizedPath.startsWith(`${AGENT_WORKING_DIRECTORY_HOME_PATH}/`)
@@ -143,19 +149,21 @@ export function AgentWorkingDirectoryBreadcrumb({
 }) {
   const { t } = useTranslation('agentV2')
   const items = getBreadcrumbItems({
-    homeLabel: t('agentDetail.configure.workingDirectory.home'),
+    homeLabel: t(($) => $['agentDetail.configure.workingDirectory.home']),
     path,
   })
   const { hiddenItems, visibleItems } = getVisibleBreadcrumbItems(items)
 
   const renderSeparator = (key: string) => (
-    <span key={key} aria-hidden className="system-xs-regular text-divider-deep">/</span>
+    <span key={key} aria-hidden className="system-xs-regular text-divider-deep">
+      /
+    </span>
   )
 
   return (
     <div className="mb-1 flex w-full shrink-0 flex-col border-y-[0.5px] border-divider-regular px-2.5">
       <nav
-        aria-label={t('agentDetail.configure.workingDirectory.breadcrumbLabel')}
+        aria-label={t(($) => $['agentDetail.configure.workingDirectory.breadcrumbLabel'])}
         className="flex min-w-0 items-center gap-0.5 py-1"
       >
         {visibleItems.map((item, index) => {
@@ -173,15 +181,27 @@ export function AgentWorkingDirectoryBreadcrumb({
                     >
                       <span aria-hidden className="i-ri-more-fill size-4" />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent placement="bottom-start" sideOffset={4} popupClassName="w-[136px] p-1">
-                      {hiddenItems.map(hiddenItem => (
+                    <DropdownMenuContent
+                      placement="bottom-start"
+                      sideOffset={4}
+                      popupClassName="w-[136px] p-1"
+                    >
+                      {hiddenItems.map((hiddenItem) => (
                         <DropdownMenuItem
                           key={hiddenItem.path}
                           className="gap-1 px-2 py-1.5"
                           onClick={() => onPathChange(hiddenItem.path)}
                         >
-                          <span aria-hidden className={cn('size-4 shrink-0 text-text-secondary', hiddenItem.iconClassName)} />
-                          <span className="min-w-0 truncate px-1 system-md-regular">{hiddenItem.label}</span>
+                          <span
+                            aria-hidden
+                            className={cn(
+                              'size-4 shrink-0 text-text-secondary',
+                              hiddenItem.iconClassName,
+                            )}
+                          />
+                          <span className="min-w-0 truncate px-1 system-md-regular">
+                            {hiddenItem.label}
+                          </span>
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>

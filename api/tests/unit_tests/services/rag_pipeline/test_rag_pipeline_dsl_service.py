@@ -633,6 +633,19 @@ def test_import_rag_pipeline_yaml_content_requires_content() -> None:
     assert "yaml_content is required" in result.error
 
 
+def test_import_rag_pipeline_rejects_oversized_yaml_content_before_parsing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("services.rag_pipeline.rag_pipeline_dsl_service.DSL_MAX_SIZE", 3)
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1")
+
+    result = service.import_rag_pipeline(account=account, import_mode="yaml-content", yaml_content="你你")
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "File size exceeds the limit of 10MB"
+
+
 def test_import_rag_pipeline_yaml_content_requires_mapping() -> None:
     service = RagPipelineDslService(session=Mock())
     account = Mock(current_tenant_id="t1")
@@ -641,6 +654,19 @@ def test_import_rag_pipeline_yaml_content_requires_mapping() -> None:
 
     assert result.status == ImportStatus.FAILED
     assert "content must be a mapping" in result.error
+
+
+def test_import_rag_pipeline_rejects_oversized_yaml_content_by_bytes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("services.rag_pipeline.rag_pipeline_dsl_service.DSL_MAX_SIZE", 1)
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1")
+
+    result = service.import_rag_pipeline(account=account, import_mode="yaml-content", yaml_content="é")
+
+    assert result.status == ImportStatus.FAILED
+    assert "10MB" in result.error
 
 
 def test_confirm_import_returns_failed_when_pending_data_is_invalid_type(mocker: MockerFixture) -> None:
@@ -899,6 +925,46 @@ def test_import_rag_pipeline_url_size_exceeds_limit(mocker: MockerFixture) -> No
 
     assert result.status == ImportStatus.FAILED
     assert "10MB" in result.error
+
+
+def test_import_rag_pipeline_rejects_oversized_yaml_url_bytes_before_decode(
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("services.rag_pipeline.rag_pipeline_dsl_service.DSL_MAX_SIZE", 1)
+    response = Mock()
+    response.raise_for_status.return_value = None
+    response.content = b"\xff\xff"
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.remote_fetcher.make_request", return_value=response)
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1")
+
+    result = service.import_rag_pipeline(
+        account=account,
+        import_mode="yaml-url",
+        yaml_url="https://example.com/pipeline.yaml",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "10MB" in result.error
+
+
+def test_import_rag_pipeline_returns_decode_error_for_invalid_yaml_url_bytes(mocker: MockerFixture) -> None:
+    response = Mock()
+    response.raise_for_status.return_value = None
+    response.content = b"\xff"
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.remote_fetcher.make_request", return_value=response)
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1")
+
+    result = service.import_rag_pipeline(
+        account=account,
+        import_mode="yaml-url",
+        yaml_url="https://example.com/pipeline.yaml",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert "utf-8" in result.error
 
 
 def test_import_rag_pipeline_fails_when_rag_pipeline_data_missing() -> None:

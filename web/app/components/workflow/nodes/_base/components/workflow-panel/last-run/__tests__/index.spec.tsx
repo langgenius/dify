@@ -11,9 +11,9 @@ vi.mock('@remixicon/react', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (selector: (state: {
-    configsMap?: { flowType?: string, flowId?: string }
-  }) => unknown) => mockUseHooksStore(selector),
+  useHooksStore: (
+    selector: (state: { configsMap?: { flowType?: string; flowId?: string } }) => unknown,
+  ) => mockUseHooksStore(selector),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -44,14 +44,15 @@ describe('LastRun', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseHooksStore.mockImplementation((selector: (state: {
-      configsMap?: { flowType?: string, flowId?: string }
-    }) => unknown) => selector({
-      configsMap: {
-        flowType: 'appFlow',
-        flowId: 'flow-1',
-      },
-    }))
+    mockUseHooksStore.mockImplementation(
+      (selector: (state: { configsMap?: { flowType?: string; flowId?: string } }) => unknown) =>
+        selector({
+          configsMap: {
+            flowType: 'appFlow',
+            flowId: 'flow-1',
+          },
+        }),
+    )
     mockUseLastRun.mockReturnValue({
       data: undefined,
       isFetching: false,
@@ -100,10 +101,12 @@ describe('LastRun', () => {
     )
 
     expect(screen.getByTestId('result-panel')).toHaveTextContent('running')
-    expect(mockResultPanel).toHaveBeenCalledWith(expect.objectContaining({
-      status: 'running',
-      showSteps: false,
-    }))
+    expect(mockResultPanel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'running',
+        showSteps: false,
+      }),
+    )
   })
 
   it('should render the no-data state for 404 last-run responses and forward single-run clicks', () => {
@@ -156,12 +159,14 @@ describe('LastRun', () => {
     )
 
     expect(screen.getByTestId('result-panel')).toHaveTextContent(NodeRunningStatus.Stopped)
-    expect(mockResultPanel).toHaveBeenCalledWith(expect.objectContaining({
-      status: NodeRunningStatus.Stopped,
-      total_tokens: 9,
-      created_by: 'Alice',
-      showSteps: false,
-    }))
+    expect(mockResultPanel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: NodeRunningStatus.Stopped,
+        total_tokens: 9,
+        created_by: 'Alice',
+        showSteps: false,
+      }),
+    )
   })
 
   it('should respect stopped and listening one-step statuses', () => {

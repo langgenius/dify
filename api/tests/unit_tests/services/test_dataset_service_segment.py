@@ -74,26 +74,26 @@ class TestSegmentServiceChildChunks:
             yield account
 
     def test_create_child_chunk_assigns_next_position_and_commits(self, account_context):
+        session = MagicMock()
         dataset = SimpleNamespace(id="dataset-1")
         document = _make_document()
         segment = _make_segment()
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.uuid.uuid4", return_value="node-1"),
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-1"),
             patch("services.dataset_service.VectorService") as vector_service,
         ):
             mock_redis.lock.return_value = _make_lock_context()
-            mock_db.session.scalar.return_value = 2
+            session.scalar.return_value = 2
 
             child_chunk = SegmentService.create_child_chunk(
                 "child content",
                 segment,
                 document,
                 dataset,
-                mock_db.session,
+                session,
             )
 
         assert isinstance(child_chunk, ChildChunk)
@@ -101,33 +101,34 @@ class TestSegmentServiceChildChunks:
         assert child_chunk.index_node_id == "node-1"
         assert child_chunk.index_node_hash == "hash-1"
         assert child_chunk.word_count == len("child content")
-        mock_db.session.add.assert_called_once_with(child_chunk)
-        vector_service.create_child_chunk_vector.assert_called_once_with(child_chunk, dataset)
-        mock_db.session.commit.assert_called_once()
+        session.add.assert_called_once_with(child_chunk)
+        vector_service.create_child_chunk_vector.assert_called_once_with(child_chunk, dataset, session=session)
+        session.commit.assert_called()
 
     def test_create_child_chunk_rolls_back_and_raises_on_vector_failure(self, account_context):
+        session = MagicMock()
         dataset = SimpleNamespace(id="dataset-1")
         document = _make_document()
         segment = _make_segment()
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.uuid.uuid4", return_value="node-1"),
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-1"),
             patch("services.dataset_service.VectorService") as vector_service,
         ):
             mock_redis.lock.return_value = _make_lock_context()
-            mock_db.session.scalar.return_value = None
+            session.scalar.return_value = None
             vector_service.create_child_chunk_vector.side_effect = RuntimeError("vector failed")
 
             with pytest.raises(ChildChunkIndexingError, match="vector failed"):
-                SegmentService.create_child_chunk("child content", segment, document, dataset, mock_db.session)
+                SegmentService.create_child_chunk("child content", segment, document, dataset, session)
 
-        mock_db.session.rollback.assert_called_once()
-        mock_db.session.commit.assert_not_called()
+        session.rollback.assert_called_once()
+        session.commit.assert_not_called()
 
     def test_update_child_chunks_updates_deletes_and_creates_records(self, account_context):
+        session = MagicMock()
         dataset = SimpleNamespace(id="dataset-1")
         document = _make_document()
         segment = _make_segment()
@@ -154,13 +155,12 @@ class TestSegmentServiceChildChunks:
         existing_a.id = "child-a"
         existing_b.id = "child-b"
         with (
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.uuid.uuid4", return_value="node-new"),
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-new"),
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.VectorService") as vector_service,
         ):
-            mock_db.session.scalars.return_value.all.return_value = [existing_a, existing_b]
+            session.scalars.return_value.all.return_value = [existing_a, existing_b]
 
             result = SegmentService.update_child_chunks(
                 [
@@ -170,36 +170,36 @@ class TestSegmentServiceChildChunks:
                 segment,
                 document,
                 dataset,
-                mock_db.session,
+                session,
             )
 
         assert [chunk.position for chunk in result] == [1, 3]
         assert existing_a.content == "updated content"
         assert existing_a.updated_by == account_context.id
         assert existing_a.updated_at == "now"
-        mock_db.session.bulk_save_objects.assert_called_once_with([existing_a])
-        mock_db.session.delete.assert_called_once_with(existing_b)
+        session.bulk_save_objects.assert_called_once_with([existing_a])
+        session.delete.assert_called_once_with(existing_b)
         new_chunk = result[1]
         assert isinstance(new_chunk, ChildChunk)
         assert new_chunk.position == 3
         assert new_chunk.index_node_id == "node-new"
         vector_service.update_child_chunk_vector.assert_called_once_with(
-            [new_chunk], [existing_a], [existing_b], dataset
+            [new_chunk], [existing_a], [existing_b], dataset, session=session
         )
-        mock_db.session.commit.assert_called_once()
+        session.commit.assert_called()
 
     def test_update_child_chunks_rolls_back_on_vector_failure(self, account_context):
+        session = MagicMock()
         dataset = SimpleNamespace(id="dataset-1")
         document = _make_document()
         segment = _make_segment()
         existing_chunk = _make_child_chunk()
 
         with (
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.VectorService") as vector_service,
         ):
-            mock_db.session.scalars.return_value.all.return_value = [existing_chunk]
+            session.scalars.return_value.all.return_value = [existing_chunk]
             vector_service.update_child_chunk_vector.side_effect = RuntimeError("vector failed")
 
             with pytest.raises(ChildChunkIndexingError, match="vector failed"):
@@ -208,23 +208,23 @@ class TestSegmentServiceChildChunks:
                     segment,
                     document,
                     dataset,
-                    mock_db.session,
+                    session,
                 )
 
-        mock_db.session.rollback.assert_called_once()
+        session.rollback.assert_called_once()
 
     def test_update_child_chunk_updates_vector_and_commits(self, account_context):
+        session = MagicMock()
         dataset = SimpleNamespace(id="dataset-1")
         child_chunk = _make_child_chunk()
 
         with (
             patch("services.dataset_service.current_user", SimpleNamespace(id="user-1")),
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.VectorService") as vector_service,
         ):
             result = SegmentService.update_child_chunk(
-                "new content", child_chunk, _make_segment(), _make_document(), dataset, mock_db.session
+                "new content", child_chunk, _make_segment(), _make_document(), dataset, session
             )
 
         assert result is child_chunk
@@ -232,25 +232,27 @@ class TestSegmentServiceChildChunks:
         assert child_chunk.word_count == len("new content")
         assert child_chunk.updated_by == "user-1"
         assert child_chunk.updated_at == "now"
-        mock_db.session.add.assert_called_once_with(child_chunk)
-        vector_service.update_child_chunk_vector.assert_called_once_with([], [child_chunk], [], dataset)
-        mock_db.session.commit.assert_called_once()
+        session.add.assert_called_once_with(child_chunk)
+        vector_service.update_child_chunk_vector.assert_called_once_with(
+            [], [child_chunk], [], dataset, session=session
+        )
+        session.commit.assert_called()
 
     def test_delete_child_chunk_raises_delete_index_error_on_vector_failure(self):
+        session = MagicMock()
         dataset = SimpleNamespace(id="dataset-1")
         child_chunk = _make_child_chunk()
 
         with (
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.VectorService") as vector_service,
         ):
             vector_service.delete_child_chunk_vector.side_effect = RuntimeError("delete failed")
 
             with pytest.raises(ChildChunkDeleteIndexError, match="delete failed"):
-                SegmentService.delete_child_chunk(child_chunk, dataset, mock_db.session)
+                SegmentService.delete_child_chunk(child_chunk, dataset, session)
 
-        mock_db.session.delete.assert_called_once_with(child_chunk)
-        mock_db.session.rollback.assert_called_once()
+        session.delete.assert_called_once_with(child_chunk)
+        session.rollback.assert_called_once()
 
 
 class TestSegmentServiceQueries:
@@ -266,10 +268,10 @@ class TestSegmentServiceQueries:
             yield account
 
     def test_get_child_chunks_applies_keyword_filter_and_paginate(self, account_context):
+        session = MagicMock()
         paginated = SimpleNamespace(items=["chunk"], total=1)
 
         with (
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.helper.escape_like_pattern", return_value="escaped") as escape_like,
         ):
@@ -282,6 +284,7 @@ class TestSegmentServiceQueries:
                 page=2,
                 limit=10,
                 keyword="needle",
+                session=session,
             )
 
         assert result is paginated
@@ -289,30 +292,31 @@ class TestSegmentServiceQueries:
         mock_paginate.assert_called_once()
 
     def test_get_child_chunk_by_id_returns_only_child_chunk_instances(self):
+        session = MagicMock()
         child_chunk = _make_child_chunk()
 
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalar.return_value = child_chunk
-            result = SegmentService.get_child_chunk_by_id("child-a", "tenant-1", mock_db.session)
+        session.scalar.return_value = child_chunk
+        result = SegmentService.get_child_chunk_by_id("child-a", "tenant-1", session)
 
         assert result is child_chunk
 
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalar.return_value = SimpleNamespace()
-            result = SegmentService.get_child_chunk_by_id("child-a", "tenant-1", mock_db.session)
+        session.scalar.return_value = SimpleNamespace()
+        result = SegmentService.get_child_chunk_by_id("child-a", "tenant-1", session)
 
         assert result is None
 
     def test_get_child_chunk_by_segment_ref_uses_full_ownership_chain(self):
+        session = MagicMock()
         child_chunk = _make_child_chunk()
         segment_ref = _make_segment_ref()
+        session = MagicMock()
+        session.scalar.return_value = child_chunk
 
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalar.return_value = child_chunk
-            result = SegmentService.get_child_chunk_by_segment_ref("child-a", segment_ref)
+        session.scalar.return_value = child_chunk
+        result = SegmentService.get_child_chunk_by_segment_ref("child-a", segment_ref, session=session)
 
         assert result is child_chunk
-        stmt = mock_db.session.scalar.call_args.args[0]
+        stmt = session.scalar.call_args.args[0]
         sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
         assert "child_chunks.id = 'child-a'" in sql
         assert "child_chunks.tenant_id = 'tenant-1'" in sql
@@ -321,10 +325,10 @@ class TestSegmentServiceQueries:
         assert "child_chunks.segment_id = 'segment-1'" in sql
 
     def test_get_segments_uses_status_and_keyword_filters(self):
+        session = MagicMock()
         paginated = SimpleNamespace(items=["segment"], total=1)
 
         with (
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.helper.escape_like_pattern", return_value="escaped") as escape_like,
         ):
@@ -337,6 +341,7 @@ class TestSegmentServiceQueries:
                 keyword="needle",
                 page=1,
                 limit=20,
+                session=session,
             )
 
         assert items == ["segment"]
@@ -345,6 +350,7 @@ class TestSegmentServiceQueries:
         mock_paginate.assert_called_once()
 
     def test_get_segment_by_id_returns_only_document_segment_instances(self):
+        session = MagicMock()
         segment = DocumentSegment(
             tenant_id="tenant-1",
             dataset_id="dataset-1",
@@ -356,19 +362,18 @@ class TestSegmentServiceQueries:
             created_by="user-1",
         )
         segment.id = "segment-1"
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalar.return_value = segment
-            result = SegmentService.get_segment_by_id("segment-1", "tenant-1", mock_db.session)
+        session.scalar.return_value = segment
+        result = SegmentService.get_segment_by_id("segment-1", "tenant-1", session)
 
         assert result is segment
 
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalar.return_value = SimpleNamespace()
-            result = SegmentService.get_segment_by_id("segment-1", "tenant-1", mock_db.session)
+        session.scalar.return_value = SimpleNamespace()
+        result = SegmentService.get_segment_by_id("segment-1", "tenant-1", session)
 
         assert result is None
 
     def test_get_segment_by_ref_uses_full_ownership_chain(self):
+        session = MagicMock()
         segment = DocumentSegment(
             tenant_id="tenant-1",
             dataset_id="dataset-1",
@@ -381,13 +386,14 @@ class TestSegmentServiceQueries:
         )
         segment.id = "segment-1"
         segment_ref = _make_segment_ref()
+        session = MagicMock()
+        session.scalar.return_value = segment
 
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalar.return_value = segment
-            result = SegmentService.get_segment_by_ref(segment_ref)
+        session.scalar.return_value = segment
+        result = SegmentService.get_segment_by_ref(segment_ref, session=session)
 
         assert result is segment
-        stmt = mock_db.session.scalar.call_args.args[0]
+        stmt = session.scalar.call_args.args[0]
         sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
         assert "document_segments.id = 'segment-1'" in sql
         assert "document_segments.tenant_id = 'tenant-1'" in sql
@@ -395,6 +401,7 @@ class TestSegmentServiceQueries:
         assert "document_segments.document_id = 'doc-1'" in sql
 
     def test_get_segments_by_document_and_dataset_returns_scalars_result(self):
+        session = MagicMock()
         segment = DocumentSegment(
             tenant_id="tenant-1",
             dataset_id="dataset-1",
@@ -407,19 +414,18 @@ class TestSegmentServiceQueries:
         )
 
         segment.id = "segment-1"
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalars.return_value.all.return_value = [segment]
+        session.scalars.return_value.all.return_value = [segment]
 
-            result = SegmentService.get_segments_by_document_and_dataset(
-                document_id="doc-1",
-                dataset_id="dataset-1",
-                session=mock_db.session,
-                status="completed",
-                enabled=True,
-            )
+        result = SegmentService.get_segments_by_document_and_dataset(
+            document_id="doc-1",
+            dataset_id="dataset-1",
+            session=session,
+            status="completed",
+            enabled=True,
+        )
 
         assert result == [segment]
-        mock_db.session.scalars.assert_called_once()
+        session.scalars.assert_called_once()
 
 
 class TestSegmentServiceValidation:
@@ -465,6 +471,7 @@ class TestSegmentServiceMutations:
             yield account
 
     def test_create_segment_creates_bindings_and_marks_segment_error_on_vector_failure(self, account_context):
+        session = MagicMock()
         dataset = _make_dataset(indexing_technique="economy")
         document = _make_document(
             dataset_id=dataset.id,
@@ -482,7 +489,6 @@ class TestSegmentServiceMutations:
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-1"),
             patch("services.dataset_service.uuid.uuid4", return_value="node-1"),
@@ -490,27 +496,27 @@ class TestSegmentServiceMutations:
         ):
             mock_redis.lock.return_value = _make_lock_context()
 
-            mock_db.session.scalar.return_value = 2
-            mock_db.session.get.return_value = refreshed_segment
+            session.scalar.return_value = 2
+            session.get.return_value = refreshed_segment
 
             def add_side_effect(obj):
                 if obj.__class__.__name__ == "DocumentSegment" and getattr(obj, "id", None) is None:
                     obj.id = "segment-1"
 
-            mock_db.session.add.side_effect = add_side_effect
+            session.add.side_effect = add_side_effect
             vector_service.create_segments_vector.side_effect = RuntimeError("vector failed")
 
             result = SegmentService.create_segment(
                 args=args,
                 document=document,
                 dataset=dataset,
-                session=mock_db.session,
+                session=session,
             )
 
         created_segment = vector_service.create_segments_vector.call_args.args[1][0]
         attachment_bindings = [
             call.args[0]
-            for call in mock_db.session.add.call_args_list
+            for call in session.add.call_args_list
             if call.args and call.args[0].__class__.__name__ == "SegmentAttachmentBinding"
         ]
 
@@ -524,9 +530,10 @@ class TestSegmentServiceMutations:
         assert document.word_count == len("question") + len("answer")
         assert len(attachment_bindings) == 2
         assert {binding.attachment_id for binding in attachment_bindings} == {"att-1", "att-2"}
-        assert mock_db.session.commit.call_count == 3
+        assert session.commit.call_count == 3
 
     def test_multi_create_segment_high_quality_marks_segments_error_when_vector_creation_fails(self, account_context):
+        session = MagicMock()
         dataset = _make_dataset(indexing_technique="high_quality")
         document = _make_document(
             dataset_id=dataset.id,
@@ -543,7 +550,6 @@ class TestSegmentServiceMutations:
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.dataset_service.helper.generate_text_hash", side_effect=["hash-1", "hash-2"]),
@@ -552,10 +558,10 @@ class TestSegmentServiceMutations:
         ):
             mock_redis.lock.return_value = _make_lock_context()
             model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
-            mock_db.session.scalar.return_value = 1
+            session.scalar.return_value = 1
             vector_service.create_segments_vector.side_effect = RuntimeError("vector failed")
 
-            result = SegmentService.multi_create_segment(segments, document, dataset, mock_db.session)
+            result = SegmentService.multi_create_segment(segments, document, dataset, session)
             assert result
 
         assert len(result) == 2
@@ -566,11 +572,12 @@ class TestSegmentServiceMutations:
         assert all(segment.error == "vector failed" for segment in result)
         assert document.word_count == 5 + sum(len(item["content"]) + len(item["answer"]) for item in segments)
         vector_service.create_segments_vector.assert_called_once_with(
-            [["k1"], None], result, dataset, document.doc_form
+            [["k1"], None], result, dataset, document.doc_form, session=session
         )
-        mock_db.session.commit.assert_called_once()
+        session.commit.assert_called()
 
     def test_update_segment_disables_enabled_segment_and_dispatches_index_cleanup(self, account_context):
+        session = MagicMock()
         segment = _make_segment(enabled=True)
         document = _make_document()
         dataset = _make_dataset()
@@ -578,20 +585,19 @@ class TestSegmentServiceMutations:
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.disable_segment_from_index_task") as disable_task,
         ):
             mock_redis.get.return_value = None
 
-            result = SegmentService.update_segment(args, segment, document, dataset, mock_db.session)
+            result = SegmentService.update_segment(args, segment, document, dataset, session)
 
         assert result is segment
         assert segment.enabled is False
         assert segment.disabled_at == "now"
         assert segment.disabled_by == account_context.id
-        mock_db.session.add.assert_called_once_with(segment)
-        mock_db.session.commit.assert_called_once()
+        session.add.assert_called_once_with(segment)
+        session.commit.assert_called()
         mock_redis.setex.assert_called_once_with(f"segment_{segment.id}_indexing", 600, 1)
         disable_task.delay.assert_called_once_with(segment.id)
 
@@ -622,6 +628,7 @@ class TestSegmentServiceMutations:
                 )
 
     def test_update_segment_updates_keywords_for_same_content_segment(self, account_context):
+        session = MagicMock()
         segment = _make_segment(content="same content", keywords=["old"])
         document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX, word_count=20)
         dataset = _make_dataset()
@@ -630,20 +637,20 @@ class TestSegmentServiceMutations:
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.VectorService") as vector_service,
         ):
             mock_redis.get.return_value = None
-            mock_db.session.get.return_value = refreshed_segment
+            session.get.return_value = refreshed_segment
 
-            result = SegmentService.update_segment(args, segment, document, dataset, mock_db.session)
+            result = SegmentService.update_segment(args, segment, document, dataset, session)
 
         assert result is refreshed_segment
         assert segment.keywords == ["new"]
-        vector_service.update_segment_vector.assert_called_once_with(["new"], segment, dataset)
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        vector_service.update_segment_vector.assert_called_once_with(["new"], segment, dataset, session=session)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 
     def test_update_segment_regenerates_child_chunks_and_updates_manual_summary(self, account_context):
+        session = MagicMock()
         segment = _make_segment(content="same content", word_count=len("same content"))
         document = _make_document(
             doc_form=IndexStructureType.PARENT_CHILD_INDEX,
@@ -662,7 +669,6 @@ class TestSegmentServiceMutations:
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.summary_index_service.SummaryIndexService.update_summary_for_segment") as update_summary,
@@ -671,11 +677,11 @@ class TestSegmentServiceMutations:
             model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model_instance
 
             # get calls: processing_rule, then refreshed_segment
-            mock_db.session.get.side_effect = [processing_rule, refreshed_segment]
+            session.get.side_effect = [processing_rule, refreshed_segment]
             # scalar call: existing_summary
-            mock_db.session.scalar.return_value = existing_summary
+            session.scalar.return_value = existing_summary
 
-            result = SegmentService.update_segment(args, segment, document, dataset, mock_db.session)
+            result = SegmentService.update_segment(args, segment, document, dataset, session)
 
         assert result is refreshed_segment
         vector_service.generate_child_chunks.assert_called_once_with(
@@ -685,11 +691,13 @@ class TestSegmentServiceMutations:
             embedding_model_instance,
             processing_rule,
             True,
+            session=session,
         )
-        update_summary.assert_called_once_with(segment, dataset, "new summary")
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        update_summary.assert_called_once_with(segment, dataset, "new summary", session=session)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 
     def test_update_segment_auto_regenerates_summary_after_content_change(self, account_context):
+        session = MagicMock()
         segment = _make_segment(content="old", word_count=3)
         document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX, word_count=10)
         dataset = _make_dataset(indexing_technique="high_quality")
@@ -702,7 +710,6 @@ class TestSegmentServiceMutations:
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-1"),
@@ -714,21 +721,22 @@ class TestSegmentServiceMutations:
             mock_redis.get.return_value = None
             model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
 
-            mock_db.session.scalar.return_value = existing_summary
-            mock_db.session.get.return_value = refreshed_segment
+            session.scalar.return_value = existing_summary
+            session.get.return_value = refreshed_segment
 
-            result = SegmentService.update_segment(args, segment, document, dataset, mock_db.session)
+            result = SegmentService.update_segment(args, segment, document, dataset, session)
 
         assert result is refreshed_segment
         assert segment.content == "new content"
         assert segment.index_node_hash == "hash-1"
         assert segment.tokens == 9
         assert document.word_count == 18
-        vector_service.update_segment_vector.assert_called_once_with(["kw-1"], segment, dataset)
-        generate_summary.assert_called_once_with(segment, dataset, {"enable": True})
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        vector_service.update_segment_vector.assert_called_once_with(["kw-1"], segment, dataset, session=session)
+        generate_summary.assert_called_once_with(segment, dataset, {"enable": True}, session=session)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 
     def test_update_segment_regenerates_summary_when_manual_summary_is_unchanged(self, account_context):
+        session = MagicMock()
         segment = _make_segment(content="old", word_count=3)
         document = _make_document(doc_form=IndexStructureType.PARAGRAPH_INDEX, word_count=10)
         dataset = _make_dataset(indexing_technique="high_quality")
@@ -741,7 +749,6 @@ class TestSegmentServiceMutations:
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-2"),
@@ -754,30 +761,30 @@ class TestSegmentServiceMutations:
             mock_redis.get.return_value = None
             model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
 
-            mock_db.session.scalar.return_value = existing_summary
-            mock_db.session.get.return_value = refreshed_segment
+            session.scalar.return_value = existing_summary
+            session.get.return_value = refreshed_segment
 
-            result = SegmentService.update_segment(args, segment, document, dataset, mock_db.session)
+            result = SegmentService.update_segment(args, segment, document, dataset, session)
 
         assert result is refreshed_segment
-        generate_summary.assert_called_once_with(segment, dataset, {"enable": True})
+        generate_summary.assert_called_once_with(segment, dataset, {"enable": True}, session=session)
         update_summary.assert_not_called()
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 
     def test_delete_segment_removes_index_and_updates_document_word_count(self):
+        session = MagicMock()
         segment = _make_segment(word_count=4, index_node_id="parent-node")
         document = _make_document(word_count=10)
         dataset = _make_dataset()
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.delete_segment_from_index_task") as delete_task,
         ):
             mock_redis.get.return_value = None
-            mock_db.session.scalars.return_value.all.return_value = ["child-1", "child-2"]
+            session.scalars.return_value.all.return_value = ["child-1", "child-2"]
 
-            SegmentService.delete_segment(segment, document, dataset, mock_db.session)
+            SegmentService.delete_segment(segment, document, dataset, session)
 
         assert document.word_count == 6
         mock_redis.setex.assert_called_once_with(f"segment_{segment.id}_delete_indexing", 600, 1)
@@ -788,9 +795,9 @@ class TestSegmentServiceMutations:
             [segment.id],
             ["child-1", "child-2"],
         )
-        mock_db.session.delete.assert_called_once_with(segment)
-        mock_db.session.add.assert_called_once_with(document)
-        mock_db.session.commit.assert_called_once()
+        session.delete.assert_called_once_with(segment)
+        session.add.assert_called_once_with(document)
+        session.commit.assert_called()
 
     def test_delete_segment_rejects_when_delete_is_already_in_progress(self):
         segment = _make_segment()
@@ -804,13 +811,13 @@ class TestSegmentServiceMutations:
                 SegmentService.delete_segment(segment, document, dataset, MagicMock())
 
     def test_delete_segments_removes_records_and_clamps_document_word_count(self):
+        session = MagicMock()
         dataset = _make_dataset()
         document = _make_document(word_count=3)
         current_user = SimpleNamespace(current_tenant_id="tenant-1")
 
         with (
             patch("services.dataset_service.current_user", current_user),
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.delete_segment_from_index_task") as delete_task,
         ):
             # execute().all() for segments_info (multi-column)
@@ -819,14 +826,14 @@ class TestSegmentServiceMutations:
                 ("node-1", "segment-1", 2),
                 ("node-2", "segment-2", 5),
             ]
-            mock_db.session.execute.return_value = execute_result
+            session.execute.return_value = execute_result
             # scalars() for child_node_ids
-            mock_db.session.scalars.return_value.all.return_value = ["child-1"]
+            session.scalars.return_value.all.return_value = ["child-1"]
 
-            SegmentService.delete_segments(["segment-1", "segment-2"], document, dataset, mock_db.session)
+            SegmentService.delete_segments(["segment-1", "segment-2"], document, dataset, session)
 
         assert document.word_count == 0
-        mock_db.session.add.assert_called_once_with(document)
+        session.add.assert_called_once_with(document)
         delete_task.delay.assert_called_once_with(
             ["node-1", "node-2"],
             dataset.id,
@@ -834,9 +841,10 @@ class TestSegmentServiceMutations:
             ["segment-1", "segment-2"],
             ["child-1"],
         )
-        mock_db.session.commit.assert_called_once()
+        session.commit.assert_called()
 
     def test_update_segments_status_enables_only_segments_without_indexing_cache(self):
+        session = MagicMock()
         dataset = _make_dataset()
         document = _make_document()
         segment_a = _make_segment(segment_id="segment-a", enabled=False)
@@ -846,26 +854,24 @@ class TestSegmentServiceMutations:
         with (
             patch("services.dataset_service.current_user", current_user),
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.enable_segments_to_index_task") as enable_task,
         ):
-            mock_db.session.scalars.return_value.all.return_value = [segment_a, segment_b]
+            session.scalars.return_value.all.return_value = [segment_a, segment_b]
             mock_redis.get.side_effect = [None, "1"]
 
-            SegmentService.update_segments_status(
-                ["segment-a", "segment-b"], "enable", dataset, document, mock_db.session
-            )
+            SegmentService.update_segments_status(["segment-a", "segment-b"], "enable", dataset, document, session)
 
         assert segment_a.enabled is True
         assert segment_a.disabled_at is None
         assert segment_a.disabled_by is None
         assert segment_b.enabled is False
-        mock_db.session.add.assert_called_once_with(segment_a)
-        mock_db.session.commit.assert_called_once()
+        session.add.assert_called_once_with(segment_a)
+        session.commit.assert_called()
         enable_task.delay.assert_called_once_with(["segment-a"], dataset.id, document.id)
 
     def test_update_segments_status_disables_only_segments_without_indexing_cache(self):
+        session = MagicMock()
         dataset = _make_dataset()
         document = _make_document()
         segment_a = _make_segment(segment_id="segment-a", enabled=True)
@@ -875,23 +881,20 @@ class TestSegmentServiceMutations:
         with (
             patch("services.dataset_service.current_user", current_user),
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.disable_segments_from_index_task") as disable_task,
         ):
-            mock_db.session.scalars.return_value.all.return_value = [segment_a, segment_b]
+            session.scalars.return_value.all.return_value = [segment_a, segment_b]
             mock_redis.get.side_effect = [None, "1"]
 
-            SegmentService.update_segments_status(
-                ["segment-a", "segment-b"], "disable", dataset, document, mock_db.session
-            )
+            SegmentService.update_segments_status(["segment-a", "segment-b"], "disable", dataset, document, session)
 
         assert segment_a.enabled is False
         assert segment_a.disabled_at == "now"
         assert segment_a.disabled_by == current_user.id
         assert segment_b.enabled is True
-        mock_db.session.add.assert_called_once_with(segment_a)
-        mock_db.session.commit.assert_called_once()
+        session.add.assert_called_once_with(segment_a)
+        session.commit.assert_called()
         disable_task.delay.assert_called_once_with(["segment-a"], dataset.id, document.id)
 
 
@@ -899,12 +902,12 @@ class TestSegmentServiceChildChunkTailHelpers:
     """Unit tests for the remaining child-chunk helper branches."""
 
     def test_update_child_chunk_rolls_back_on_vector_failure(self):
+        session = MagicMock()
         dataset = SimpleNamespace(id="dataset-1")
         child_chunk = _make_child_chunk()
 
         with (
             patch("services.dataset_service.current_user", SimpleNamespace(id="user-1")),
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.VectorService") as vector_service,
         ):
@@ -912,25 +915,25 @@ class TestSegmentServiceChildChunkTailHelpers:
 
             with pytest.raises(ChildChunkIndexingError, match="vector failed"):
                 SegmentService.update_child_chunk(
-                    "new content", child_chunk, SimpleNamespace(), SimpleNamespace(), dataset, mock_db.session
+                    "new content", child_chunk, SimpleNamespace(), SimpleNamespace(), dataset, session
                 )
 
-        mock_db.session.rollback.assert_called_once()
-        mock_db.session.commit.assert_not_called()
+        session.rollback.assert_called_once()
+        session.commit.assert_not_called()
 
     def test_delete_child_chunk_commits_after_successful_vector_delete(self):
+        session = MagicMock()
         dataset = SimpleNamespace(id="dataset-1")
         child_chunk = _make_child_chunk()
 
         with (
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.VectorService") as vector_service,
         ):
-            SegmentService.delete_child_chunk(child_chunk, dataset, mock_db.session)
+            SegmentService.delete_child_chunk(child_chunk, dataset, session)
 
-        mock_db.session.delete.assert_called_once_with(child_chunk)
-        vector_service.delete_child_chunk_vector.assert_called_once_with(child_chunk, dataset)
-        mock_db.session.commit.assert_called_once()
+        session.delete.assert_called_once_with(child_chunk)
+        vector_service.delete_child_chunk_vector.assert_called_once_with(child_chunk, dataset, session=session)
+        session.commit.assert_called()
 
 
 class TestSegmentServiceAdditionalRegenerationBranches:
@@ -946,6 +949,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
             yield account
 
     def test_update_segment_same_content_updates_answer_and_document_word_count_for_qa_segments(self, account_context):
+        session = MagicMock()
         segment = _make_segment(content="question", word_count=8)
         document = _make_document(doc_form=IndexStructureType.QA_INDEX, word_count=20)
         dataset = _make_dataset()
@@ -953,18 +957,17 @@ class TestSegmentServiceAdditionalRegenerationBranches:
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.VectorService") as vector_service,
         ):
             mock_redis.get.return_value = None
-            mock_db.session.get.return_value = refreshed_segment
+            session.get.return_value = refreshed_segment
 
             result = SegmentService.update_segment(
                 SegmentUpdateArgs(content="question", answer="new answer"),
                 segment,
                 document,
                 dataset,
-                mock_db.session,
+                session,
             )
 
         assert result is refreshed_segment
@@ -972,9 +975,10 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         assert segment.word_count == len("question") + len("new answer")
         assert document.word_count == 20 + (len("question") + len("new answer") - 8)
         vector_service.update_segment_vector.assert_not_called()
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 
     def test_update_segment_content_change_uses_answer_when_counting_tokens_for_qa_segments(self, account_context):
+        session = MagicMock()
         segment = _make_segment(content="old", word_count=3)
         document = _make_document(doc_form=IndexStructureType.QA_INDEX, word_count=10)
         dataset = _make_dataset(indexing_technique="high_quality")
@@ -984,7 +988,6 @@ class TestSegmentServiceAdditionalRegenerationBranches:
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-qa"),
@@ -992,15 +995,15 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         ):
             mock_redis.get.return_value = None
             model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
-            mock_db.session.scalar.return_value = None
-            mock_db.session.get.return_value = refreshed_segment
+            session.scalar.return_value = None
+            session.get.return_value = refreshed_segment
 
             result = SegmentService.update_segment(
                 SegmentUpdateArgs(content="new question", answer="new answer", keywords=["kw-1"]),
                 segment,
                 document,
                 dataset,
-                mock_db.session,
+                session,
             )
 
         assert result is refreshed_segment
@@ -1008,12 +1011,13 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         assert segment.answer == "new answer"
         assert segment.tokens == 21
         assert segment.word_count == len("new question") + len("new answer")
-        vector_service.update_segment_vector.assert_called_once_with(["kw-1"], segment, dataset)
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        vector_service.update_segment_vector.assert_called_once_with(["kw-1"], segment, dataset, session=session)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 
     def test_update_segment_content_change_parent_child_uses_default_embedding_and_ignores_summary_failures(
         self, account_context
     ):
+        session = MagicMock()
         segment = _make_segment(content="old", word_count=3)
         document = _make_document(
             doc_form=IndexStructureType.PARENT_CHILD_INDEX,
@@ -1028,7 +1032,6 @@ class TestSegmentServiceAdditionalRegenerationBranches:
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-parent"),
@@ -1040,16 +1043,16 @@ class TestSegmentServiceAdditionalRegenerationBranches:
             update_summary.side_effect = RuntimeError("summary failed")
 
             # get calls: processing_rule, then refreshed_segment
-            mock_db.session.get.side_effect = [processing_rule, refreshed_segment]
+            session.get.side_effect = [processing_rule, refreshed_segment]
             # scalar call: existing_summary
-            mock_db.session.scalar.return_value = existing_summary
+            session.scalar.return_value = existing_summary
 
             result = SegmentService.update_segment(
                 SegmentUpdateArgs(content="new parent content", regenerate_child_chunks=True, summary="new summary"),
                 segment,
                 document,
                 dataset,
-                mock_db.session,
+                session,
             )
 
         assert result is refreshed_segment
@@ -1064,13 +1067,15 @@ class TestSegmentServiceAdditionalRegenerationBranches:
             embedding_model_instance,
             processing_rule,
             True,
+            session=session,
         )
-        update_summary.assert_called_once_with(segment, dataset, "new summary")
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        update_summary.assert_called_once_with(segment, dataset, "new summary", session=session)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 
     def test_update_segment_same_content_parent_child_marks_segment_error_for_non_high_quality_dataset(
         self, account_context
     ):
+        session = MagicMock()
         segment = _make_segment(content="same content", word_count=len("same content"))
         document = _make_document(
             doc_form=IndexStructureType.PARENT_CHILD_INDEX,
@@ -1081,19 +1086,18 @@ class TestSegmentServiceAdditionalRegenerationBranches:
 
         with (
             patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.VectorService") as vector_service,
         ):
             mock_redis.get.return_value = None
-            mock_db.session.get.return_value = refreshed_segment
+            session.get.return_value = refreshed_segment
 
             result = SegmentService.update_segment(
                 SegmentUpdateArgs(content="same content", regenerate_child_chunks=True),
                 segment,
                 document,
                 dataset,
-                mock_db.session,
+                session,
             )
 
         assert result is refreshed_segment

@@ -49,7 +49,10 @@ const CHECKSUMS = [
   'beadc0de  difyctl-v0.1.0-edge.ce4af868-windows-x64.exe',
 ].join('\n')
 
-function lib(program: string, env: Record<string, string> = {}): { code: number, stdout: string, stderr: string } {
+function lib(
+  program: string,
+  env: Record<string, string> = {},
+): { code: number; stdout: string; stderr: string } {
   const full = `. "${SCRIPT}"\n${program}`
   const r = spawnSync('sh', ['-c', full], {
     encoding: 'utf8',
@@ -63,24 +66,33 @@ describe('install-r2 manifest parsing', () => {
   // so detect_target intentionally dies (Windows installs go through install-r2.ps1).
   it.skipIf(process.platform === 'win32')('detect_target maps to one of the 5 ids', () => {
     const { stdout } = lib('detect_target')
-    expect(['linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64', 'windows-x64']).toContain(stdout)
+    expect(['linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64', 'windows-x64']).toContain(
+      stdout,
+    )
   })
 
   it('manifest_str reads a top-level string field', () => {
-    const { stdout } = lib(`printf '%s' '${MANIFEST}' > "$tmp_m"; manifest_str "$tmp_m" channel`, {})
+    const { stdout } = lib(
+      `printf '%s' '${MANIFEST}' > "$tmp_m"; manifest_str "$tmp_m" channel`,
+      {},
+    )
     expect(stdout).toBe('edge')
   })
 
   it('manifest_target_field extracts per-target values from a single line', () => {
-    const prog = `printf '%s' '${MANIFEST}' > "$tmp_m"\n`
-      + 'manifest_target_field "$tmp_m" darwin-arm64 asset\n'
-      + 'manifest_target_field "$tmp_m" darwin-arm64 sha256'
+    const prog =
+      `printf '%s' '${MANIFEST}' > "$tmp_m"\n` +
+      'manifest_target_field "$tmp_m" darwin-arm64 asset\n' +
+      'manifest_target_field "$tmp_m" darwin-arm64 sha256'
     const { stdout } = lib(prog)
     expect(stdout).toBe('difyctl-v0.1.0-edge.2fd7b82-darwin-arm64\ncafef00d')
   })
 
   it('requires DIFYCTL_R2_BASE when run as the installer (not lib)', () => {
-    const r = spawnSync('sh', [SCRIPT], { encoding: 'utf8', env: { ...process.env, DIFYCTL_R2_BASE: '' } })
+    const r = spawnSync('sh', [SCRIPT], {
+      encoding: 'utf8',
+      env: { ...process.env, DIFYCTL_R2_BASE: '' },
+    })
     expect(r.status).not.toBe(0)
     expect(r.stderr).toMatch(/DIFYCTL_R2_BASE/)
   })
@@ -93,14 +105,18 @@ describe('install-r2 manifest parsing', () => {
 
   it('sha256_check passes on the correct hash', () => {
     // sha256('hello') = 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
-    const r = lib('f="$(mktemp)"; printf \'hello\' > "$f"; sha256_check "$f" 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824 && echo OK')
+    const r = lib(
+      'f="$(mktemp)"; printf \'hello\' > "$f"; sha256_check "$f" 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824 && echo OK',
+    )
     expect(r.stdout).toBe('OK')
   })
 })
 
 describe('install-r2 version/commit pin', () => {
   it('index_resolve matches a build by exact version', () => {
-    const r = lib(`printf '%s' '${INDEX}' > "$tmp_m"; index_resolve "$tmp_m" version 0.1.0-edge.aaaa111`)
+    const r = lib(
+      `printf '%s' '${INDEX}' > "$tmp_m"; index_resolve "$tmp_m" version 0.1.0-edge.aaaa111`,
+    )
     expect(r.stdout).toBe('0.1.0-edge.aaaa111\t0.1.0-edge.aaaa111')
   })
 
@@ -110,7 +126,9 @@ describe('install-r2 version/commit pin', () => {
   })
 
   it('index_resolve matches the full 40-char commit too', () => {
-    const r = lib(`printf '%s' '${INDEX}' > "$tmp_m"; index_resolve "$tmp_m" commit aaaa111bbbbcccc000011112222333344445555`)
+    const r = lib(
+      `printf '%s' '${INDEX}' > "$tmp_m"; index_resolve "$tmp_m" commit aaaa111bbbbcccc000011112222333344445555`,
+    )
     expect(r.stdout).toBe('0.1.0-edge.aaaa111\t0.1.0-edge.aaaa111')
   })
 

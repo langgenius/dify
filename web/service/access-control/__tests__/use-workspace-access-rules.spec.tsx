@@ -43,7 +43,9 @@ describe('use-workspace-access-rules', () => {
   // Queries load workspace-level app and dataset access policies from separate endpoints.
   describe('Queries', () => {
     it('should fetch workspace app access rules', async () => {
-      renderHook(() => useInfiniteWorkspaceAppAccessRules({ page: 1, limit: 20, language: 'zh' }), { wrapper: createWrapper() })
+      renderHook(() => useInfiniteWorkspaceAppAccessRules({ page: 1, limit: 20, language: 'zh' }), {
+        wrapper: createWrapper(),
+      })
 
       await waitFor(() => {
         expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/workspace/apps/access-policy', {
@@ -53,12 +55,18 @@ describe('use-workspace-access-rules', () => {
     })
 
     it('should fetch workspace dataset access rules', async () => {
-      renderHook(() => useInfiniteWorkspaceDatasetAccessRules({ page: 1, limit: 20, language: 'ja' }), { wrapper: createWrapper() })
+      renderHook(
+        () => useInfiniteWorkspaceDatasetAccessRules({ page: 1, limit: 20, language: 'ja' }),
+        { wrapper: createWrapper() },
+      )
 
       await waitFor(() => {
-        expect(get).toHaveBeenCalledWith('/workspaces/current/rbac/workspace/datasets/access-policy', {
-          params: { page: 1, limit: 20, language: 'ja' },
-        })
+        expect(get).toHaveBeenCalledWith(
+          '/workspaces/current/rbac/workspace/datasets/access-policy',
+          {
+            params: { page: 1, limit: 20, language: 'ja' },
+          },
+        )
       })
     })
   })
@@ -105,14 +113,19 @@ describe('use-workspace-access-rules', () => {
 
     it('should copy and delete access rules by id', async () => {
       const copyHook = renderHook(() => useCopyAccessRule('app'), { wrapper: createWrapper() })
-      const deleteHook = renderHook(() => useDeleteAccessRule('dataset'), { wrapper: createWrapper() })
+      const deleteHook = renderHook(() => useDeleteAccessRule('dataset'), {
+        wrapper: createWrapper(),
+      })
 
       await act(async () => {
         await copyHook.result.current.mutateAsync('policy-1')
         await deleteHook.result.current.mutateAsync('policy-2')
       })
 
-      expect(post).toHaveBeenCalledWith('/workspaces/current/rbac/access-policies/policy-1/copy', {})
+      expect(post).toHaveBeenCalledWith(
+        '/workspaces/current/rbac/access-policies/policy-1/copy',
+        {},
+      )
       expect(del).toHaveBeenCalledWith('/workspaces/current/rbac/access-policies/policy-2', {})
     })
   })

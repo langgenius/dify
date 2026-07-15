@@ -205,7 +205,7 @@ def test_get_tags_success(db_session_with_containers: Session, current_user_stub
         db_session_with_containers, tags=tags[:2], target_id=dataset.id, tenant_id=tenant.id, user_id=account.id
     )
 
-    result = TagService.get_tags(db_session_with_containers, TagType.KNOWLEDGE, tenant.id)
+    result = TagService.get_tags(TagType.KNOWLEDGE, tenant.id, session=db_session_with_containers)
 
     assert result is not None
     assert len(result) == 3
@@ -235,7 +235,7 @@ def test_get_tags_with_keyword_filter(db_session_with_containers: Session, curre
     tags[2].name = "web_development"
     db_session_with_containers.flush()
 
-    result = TagService.get_tags(db_session_with_containers, TagType.APP, tenant.id, keyword="development")
+    result = TagService.get_tags(TagType.APP, tenant.id, keyword="development", session=db_session_with_containers)
 
     assert result is not None
     assert len(result) == 2
@@ -243,7 +243,9 @@ def test_get_tags_with_keyword_filter(db_session_with_containers: Session, curre
     for tag_result in result:
         assert "development" in tag_result.name.lower()
 
-    result_no_match = TagService.get_tags(db_session_with_containers, TagType.APP, tenant.id, keyword="nonexistent")
+    result_no_match = TagService.get_tags(
+        TagType.APP, tenant.id, keyword="nonexistent", session=db_session_with_containers
+    )
     assert result_no_match == []
 
 
@@ -291,19 +293,19 @@ def test_get_tags_with_special_characters_in_keyword(
 
     db_session_with_containers.flush()
 
-    result = TagService.get_tags(db_session_with_containers, TagType.APP, tenant.id, keyword="50%")
+    result = TagService.get_tags(TagType.APP, tenant.id, keyword="50%", session=db_session_with_containers)
     assert len(result) == 1
     assert result[0].name == "50% discount"
 
-    result = TagService.get_tags(db_session_with_containers, TagType.APP, tenant.id, keyword="test_data")
+    result = TagService.get_tags(TagType.APP, tenant.id, keyword="test_data", session=db_session_with_containers)
     assert len(result) == 1
     assert result[0].name == "test_data_tag"
 
-    result = TagService.get_tags(db_session_with_containers, TagType.APP, tenant.id, keyword="path\\to\\tag")
+    result = TagService.get_tags(TagType.APP, tenant.id, keyword="path\\to\\tag", session=db_session_with_containers)
     assert len(result) == 1
     assert result[0].name == "path\\to\\tag"
 
-    result = TagService.get_tags(db_session_with_containers, TagType.APP, tenant.id, keyword="50%")
+    result = TagService.get_tags(TagType.APP, tenant.id, keyword="50%", session=db_session_with_containers)
     assert len(result) == 1
     assert all("50%" in item.name for item in result)
 
@@ -312,7 +314,7 @@ def test_get_tags_empty_result(db_session_with_containers: Session, current_user
     account, tenant = _create_account_with_tenant(db_session_with_containers)
     _set_current_user(current_user_stub, account, tenant)
 
-    result = TagService.get_tags(db_session_with_containers, TagType.KNOWLEDGE, tenant.id)
+    result = TagService.get_tags(TagType.KNOWLEDGE, tenant.id, session=db_session_with_containers)
 
     assert result == []
 

@@ -19,19 +19,21 @@ const mockEnvironmentDeploymentsData = vi.hoisted<{
 }>(() => ({}))
 
 vi.mock('jotai-tanstack-query', () => ({
-  atomWithQuery: (createOptions: (get: Getter) => QueryOptions) => atom((get) => {
-    const options = createOptions(get)
-    return {
-      ...options,
-      data: options.queryKey?.[0] === 'listEnvironmentDeployments'
-        ? mockEnvironmentDeploymentsData.current
-        : undefined,
-      isError: false,
-      isFetching: false,
-      isLoading: false,
-      isSuccess: false,
-    }
-  }),
+  atomWithQuery: (createOptions: (get: Getter) => QueryOptions) =>
+    atom((get) => {
+      const options = createOptions(get)
+      return {
+        ...options,
+        data:
+          options.queryKey?.[0] === 'listEnvironmentDeployments'
+            ? mockEnvironmentDeploymentsData.current
+            : undefined,
+        isError: false,
+        isFetching: false,
+        isLoading: false,
+        isSuccess: false,
+      }
+    }),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -61,7 +63,11 @@ async function loadState() {
   return await import('../state')
 }
 
-function setDeploymentRoute(store: ReturnType<typeof createStore>, appInstanceId = 'app-instance-1', tab = 'overview') {
+function setDeploymentRoute(
+  store: ReturnType<typeof createStore>,
+  appInstanceId = 'app-instance-1',
+  tab = 'overview',
+) {
   store.set(setNextRouteStateAtom, {
     pathname: `/deployments/${appInstanceId}/${tab}`,
     params: { appInstanceId },
@@ -116,7 +122,9 @@ describe('deployment detail state', () => {
       input: { params: { appInstanceId: 'app-instance-1' } },
     })
 
-    const environmentDeploymentsQuery = store.get(state.deploymentEnvironmentDeploymentsQueryAtom) as unknown as QueryOptions
+    const environmentDeploymentsQuery = store.get(
+      state.deploymentEnvironmentDeploymentsQueryAtom,
+    ) as unknown as QueryOptions
     expect(environmentDeploymentsQuery).toMatchObject({
       enabled: true,
       input: { params: { appInstanceId: 'app-instance-1' } },
@@ -150,6 +158,8 @@ describe('deployment detail state', () => {
       ],
     }
 
-    expect(store.get(state.deploymentRuntimeInstanceRowsAtom).map(row => row.environment.id)).toEqual(['running'])
+    expect(
+      store.get(state.deploymentRuntimeInstanceRowsAtom).map((row) => row.environment.id),
+    ).toEqual(['running'])
   })
 })

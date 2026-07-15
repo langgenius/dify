@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, override
 from agenton.compositor import CompositorSessionSnapshot
 
 from clients.agent_backend import (
+    AgentBackendAgentMessageDeltaInternalEvent,
     AgentBackendDeferredToolCallInternalEvent,
     AgentBackendError,
     AgentBackendHTTPError,
@@ -16,6 +17,7 @@ from clients.agent_backend import (
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
+    AgentBackendSessionCleanupPayload,
     AgentBackendStreamError,
     AgentBackendStreamInternalEvent,
     AgentBackendTransportError,
@@ -34,6 +36,7 @@ from graphon.node_events import NodeEventBase, NodeRunResult, PauseRequestedEven
 from graphon.nodes.base.node import Node
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
+from tasks.agent_backend_session_cleanup_task import cleanup_workflow_agent_runtime_session
 
 from .ask_human_hitl import AskHumanFormBuildError, build_ask_human_pause_reason
 from .ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
@@ -479,6 +482,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         if isinstance(internal_event, AgentBackendStreamInternalEvent):
                             self._record_stream_metadata(metadata, internal_event)
                         continue
+                    if internal_event.type == AgentBackendInternalEventType.AGENT_MESSAGE_DELTA:
+                        if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
+                            self._record_agent_message_delta_metadata(metadata, internal_event)
+                        continue
                     metadata["agent_backend"] = {
                         **dict(metadata.get("agent_backend") or {}),
                         "stream_event_count": stream_event_count,
@@ -609,6 +616,44 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     ) -> None:
         if self._session_store is None:
             return
+        stored_session = self._session_store.load_active_session(session_scope)
+        try:
+            if stored_session is not None and stored_session.runtime_layer_specs:
+                payload = AgentBackendSessionCleanupPayload(
+                    session_snapshot=stored_session.session_snapshot,
+                    runtime_layer_specs=stored_session.runtime_layer_specs,
+                    idempotency_key=(
+                        f"{session_scope.tenant_id}:{session_scope.workflow_run_id}:{session_scope.node_id}:"
+                        f"{session_scope.binding_id}:workflow-agent-failure-cleanup:"
+                        f"{stored_session.backend_run_id or 'no-stored-run'}:{backend_run_id}"
+                    ),
+                    metadata={
+                        "tenant_id": session_scope.tenant_id,
+                        "app_id": session_scope.app_id,
+                        "workflow_id": session_scope.workflow_id,
+                        "workflow_run_id": session_scope.workflow_run_id,
+                        "node_id": session_scope.node_id,
+                        "node_execution_id": session_scope.node_execution_id,
+                        "binding_id": session_scope.binding_id,
+                        "agent_id": session_scope.agent_id,
+                        "agent_config_snapshot_id": session_scope.agent_config_snapshot_id,
+                        "previous_agent_backend_run_id": stored_session.backend_run_id,
+                        "failed_agent_backend_run_id": backend_run_id,
+                    },
+                )
+                cleanup_workflow_agent_runtime_session.delay(payload.model_dump(mode="json"))
+        except Exception:
+            logger.warning(
+                "Failed to enqueue workflow Agent backend cleanup on agent run failure: "
+                "tenant_id=%s workflow_run_id=%s node_id=%s binding_id=%s agent_id=%s backend_run_id=%s",
+                session_scope.tenant_id,
+                session_scope.workflow_run_id,
+                session_scope.node_id,
+                session_scope.binding_id,
+                session_scope.agent_id,
+                backend_run_id,
+                exc_info=True,
+            )
         try:
             self._session_store.mark_cleaned(scope=session_scope, backend_run_id=backend_run_id)
             agent_backend = dict(metadata.get("agent_backend") or {})
@@ -692,6 +737,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             usage = event.data.get("usage") or event.data.get("model_usage")
             if isinstance(usage, Mapping):
                 agent_backend["usage"] = dict(usage)
+        metadata["agent_backend"] = agent_backend
+
+    @staticmethod
+    def _record_agent_message_delta_metadata(
+        metadata: dict[str, Any], event: AgentBackendAgentMessageDeltaInternalEvent
+    ) -> None:
+        agent_backend = dict(metadata.get("agent_backend") or {})
+        agent_backend["agent_message_delta_count"] = int(agent_backend.get("agent_message_delta_count") or 0) + 1
+        agent_backend["agent_message_delta_length"] = int(agent_backend.get("agent_message_delta_length") or 0) + len(
+            event.delta
+        )
         metadata["agent_backend"] = agent_backend
 
     @classmethod

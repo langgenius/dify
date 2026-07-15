@@ -4,19 +4,20 @@ import { describe, expect, it } from 'vitest'
 import MCPToolItem from '../tool-item'
 
 describe('MCPToolItem', () => {
-  const createMockTool = (overrides = {}): Tool => ({
-    name: 'test-tool',
-    label: {
-      en_US: 'Test Tool',
-      zh_Hans: '测试工具',
-    },
-    description: {
-      en_US: 'A test tool description',
-      zh_Hans: '测试工具描述',
-    },
-    parameters: [],
-    ...overrides,
-  } as unknown as Tool)
+  const createMockTool = (overrides = {}): Tool =>
+    ({
+      name: 'test-tool',
+      label: {
+        en_US: 'Test Tool',
+        zh_Hans: '测试工具',
+      },
+      description: {
+        en_US: 'A test tool description',
+        zh_Hans: '测试工具描述',
+      },
+      parameters: [],
+      ...overrides,
+    }) as unknown as Tool
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
@@ -81,7 +82,9 @@ describe('MCPToolItem', () => {
     it('should have hover styles', () => {
       const tool = createMockTool()
       render(<MCPToolItem tool={tool} />)
-      const toolElement = document.querySelector('[class*="hover:bg-components-panel-on-panel-item-bg-hover"]')
+      const toolElement = document.querySelector(
+        '[class*="hover:bg-components-panel-on-panel-item-bg-hover"]',
+      )
       expect(toolElement).toBeInTheDocument()
     })
   })

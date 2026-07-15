@@ -7,10 +7,7 @@
  * and invokes callbacks on success/failure.
  */
 
-import type {
-  HitTestingResponse,
-  Query,
-} from '@/models/datasets'
+import type { HitTestingResponse, Query } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import QueryInput from '@/app/components/datasets/hit-testing/components/query-input'
@@ -30,31 +27,41 @@ vi.mock('use-context-selector', () => ({
   createContext: vi.fn(() => ({})),
 }))
 
-vi.mock('@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing', () => ({
-  default: ({ textArea, actionButton }: { textArea: React.ReactNode, actionButton: React.ReactNode }) => (
-    <div data-testid="image-uploader-mock">
-      {textArea}
-      {actionButton}
-    </div>
-  ),
-}))
+vi.mock(
+  '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing',
+  () => ({
+    default: ({
+      textArea,
+      actionButton,
+    }: {
+      textArea: React.ReactNode
+      actionButton: React.ReactNode
+    }) => (
+      <div data-testid="image-uploader-mock">
+        {textArea}
+        {actionButton}
+      </div>
+    ),
+  }),
+)
 
 // --- Factories ---
 
-const createRetrievalConfig = (overrides = {}): RetrievalConfig => ({
-  search_method: RETRIEVE_METHOD.semantic,
-  reranking_enable: false,
-  reranking_mode: undefined,
-  reranking_model: {
-    reranking_provider_name: '',
-    reranking_model_name: '',
-  },
-  weights: undefined,
-  top_k: 3,
-  score_threshold_enabled: false,
-  score_threshold: 0.5,
-  ...overrides,
-} as RetrievalConfig)
+const createRetrievalConfig = (overrides = {}): RetrievalConfig =>
+  ({
+    search_method: RETRIEVE_METHOD.semantic,
+    reranking_enable: false,
+    reranking_mode: undefined,
+    reranking_model: {
+      reranking_provider_name: '',
+      reranking_model_name: '',
+    },
+    weights: undefined,
+    top_k: 3,
+    score_threshold_enabled: false,
+    score_threshold: 0.5,
+    ...overrides,
+  }) as RetrievalConfig
 
 const createHitTestingResponse = (numResults: number): HitTestingResponse => ({
   query: {
@@ -113,7 +120,7 @@ const createTextQuery = (content: string): Query[] => [
 
 const findSubmitButton = () => {
   const buttons = screen.getAllByRole('button')
-  const submitButton = buttons.find(btn => btn.classList.contains('w-[88px]'))
+  const submitButton = buttons.find((btn) => btn.classList.contains('w-[88px]'))
   expect(submitButton).toBeTruthy()
   return submitButton!
 }
@@ -161,10 +168,11 @@ describe('Hit Testing Flow', () => {
       mockHitTestingMutation.mockResolvedValue(createHitTestingResponse(3))
 
       render(
-        <QueryInput {...createDefaultProps({
-          queries: createTextQuery('How does RAG work?'),
-          retrievalConfig,
-        })}
+        <QueryInput
+          {...createDefaultProps({
+            queries: createTextQuery('How does RAG work?'),
+            retrievalConfig,
+          })}
         />,
       )
 
@@ -193,11 +201,12 @@ describe('Hit Testing Flow', () => {
       mockHitTestingMutation.mockResolvedValue(createHitTestingResponse(1))
 
       render(
-        <QueryInput {...createDefaultProps({
-          queries: createTextQuery('test query'),
-          retrievalConfig,
-          isEconomy: true,
-        })}
+        <QueryInput
+          {...createDefaultProps({
+            queries: createTextQuery('test query'),
+            retrievalConfig,
+            isEconomy: true,
+          })}
         />,
       )
 
@@ -217,24 +226,25 @@ describe('Hit Testing Flow', () => {
 
     it('should handle empty results by calling setHitResult with empty records', async () => {
       const emptyResponse = createHitTestingResponse(0)
-      mockHitTestingMutation.mockImplementation(async (_params: unknown, options?: { onSuccess?: (data: HitTestingResponse) => void }) => {
-        options?.onSuccess?.(emptyResponse)
-        return emptyResponse
-      })
+      mockHitTestingMutation.mockImplementation(
+        async (_params: unknown, options?: { onSuccess?: (data: HitTestingResponse) => void }) => {
+          options?.onSuccess?.(emptyResponse)
+          return emptyResponse
+        },
+      )
 
       render(
-        <QueryInput {...createDefaultProps({
-          queries: createTextQuery('nonexistent topic'),
-        })}
+        <QueryInput
+          {...createDefaultProps({
+            queries: createTextQuery('nonexistent topic'),
+          })}
         />,
       )
 
       fireEvent.click(findSubmitButton())
 
       await waitFor(() => {
-        expect(mockSetHitResult).toHaveBeenCalledWith(
-          expect.objectContaining({ records: [] }),
-        )
+        expect(mockSetHitResult).toHaveBeenCalledWith(expect.objectContaining({ records: [] }))
       })
     })
 
@@ -243,9 +253,10 @@ describe('Hit Testing Flow', () => {
       mockHitTestingMutation.mockResolvedValue(undefined)
 
       render(
-        <QueryInput {...createDefaultProps({
-          queries: createTextQuery('test'),
-        })}
+        <QueryInput
+          {...createDefaultProps({
+            queries: createTextQuery('test'),
+          })}
         />,
       )
 
@@ -298,15 +309,18 @@ describe('Hit Testing Flow', () => {
   describe('Successful Submission → Callback Chain', () => {
     it('should call setHitResult, onUpdateList, and onSubmit after successful submission', async () => {
       const response = createHitTestingResponse(3)
-      mockHitTestingMutation.mockImplementation(async (_params: unknown, options?: { onSuccess?: (data: HitTestingResponse) => void }) => {
-        options?.onSuccess?.(response)
-        return response
-      })
+      mockHitTestingMutation.mockImplementation(
+        async (_params: unknown, options?: { onSuccess?: (data: HitTestingResponse) => void }) => {
+          options?.onSuccess?.(response)
+          return response
+        },
+      )
 
       render(
-        <QueryInput {...createDefaultProps({
-          queries: createTextQuery('Test query'),
-        })}
+        <QueryInput
+          {...createDefaultProps({
+            queries: createTextQuery('Test query'),
+          })}
         />,
       )
 
@@ -321,15 +335,18 @@ describe('Hit Testing Flow', () => {
 
     it('should trigger records list refresh via onUpdateList after query', async () => {
       const response = createHitTestingResponse(1)
-      mockHitTestingMutation.mockImplementation(async (_params: unknown, options?: { onSuccess?: (data: HitTestingResponse) => void }) => {
-        options?.onSuccess?.(response)
-        return response
-      })
+      mockHitTestingMutation.mockImplementation(
+        async (_params: unknown, options?: { onSuccess?: (data: HitTestingResponse) => void }) => {
+          options?.onSuccess?.(response)
+          return response
+        },
+      )
 
       render(
-        <QueryInput {...createDefaultProps({
-          queries: createTextQuery('new query'),
-        })}
+        <QueryInput
+          {...createDefaultProps({
+            queries: createTextQuery('new query'),
+          })}
         />,
       )
 
@@ -343,17 +360,23 @@ describe('Hit Testing Flow', () => {
 
   describe('External KB Hit Testing', () => {
     it('should use external mutation with correct payload for external datasets', async () => {
-      mockExternalMutation.mockImplementation(async (_params: unknown, options?: { onSuccess?: (data: { records: never[] }) => void }) => {
-        const response = { records: [] }
-        options?.onSuccess?.(response)
-        return response
-      })
+      mockExternalMutation.mockImplementation(
+        async (
+          _params: unknown,
+          options?: { onSuccess?: (data: { records: never[] }) => void },
+        ) => {
+          const response = { records: [] }
+          options?.onSuccess?.(response)
+          return response
+        },
+      )
 
       render(
-        <QueryInput {...createDefaultProps({
-          queries: createTextQuery('test'),
-          isExternal: true,
-        })}
+        <QueryInput
+          {...createDefaultProps({
+            queries: createTextQuery('test'),
+            isExternal: true,
+          })}
         />,
       )
 
@@ -380,16 +403,22 @@ describe('Hit Testing Flow', () => {
 
     it('should call setExternalHitResult and onUpdateList on successful external submission', async () => {
       const externalResponse = { records: [] }
-      mockExternalMutation.mockImplementation(async (_params: unknown, options?: { onSuccess?: (data: { records: never[] }) => void }) => {
-        options?.onSuccess?.(externalResponse)
-        return externalResponse
-      })
+      mockExternalMutation.mockImplementation(
+        async (
+          _params: unknown,
+          options?: { onSuccess?: (data: { records: never[] }) => void },
+        ) => {
+          options?.onSuccess?.(externalResponse)
+          return externalResponse
+        },
+      )
 
       render(
-        <QueryInput {...createDefaultProps({
-          queries: createTextQuery('external query'),
-          isExternal: true,
-        })}
+        <QueryInput
+          {...createDefaultProps({
+            queries: createTextQuery('external query'),
+            isExternal: true,
+          })}
         />,
       )
 
